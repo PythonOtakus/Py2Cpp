@@ -1,0 +1,85 @@
+{
+  "name": "py2cpp-nav",
+  "displayName": "Py2Cpp Navigation",
+  "description": "generated/ C++ 与 Python 源双向跳转（类/方法/字段/模块函数）；保存时自动翻译并更新索引",
+  "version": "0.1.0",
+  "publisher": "PythonOtakus",
+  "author": "PythonOtakus",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0",
+    "node": ">=18"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "workspaceContains:generated",
+    "workspaceContains:py2cpp",
+    "onCommand:py2cpp-nav.rebuildIndex",
+    "onCommand:py2cpp-nav.translateCurrentFile"
+  ],
+  "main": "./out/extension.js",
+  "private": true,
+  "scripts": {
+    "package": "python package.py",
+    "vscode:prepublish": "node -e \"process.exit(0)\""
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "py2cpp-nav.rebuildIndex",
+        "title": "Py2Cpp: Rebuild Navigation Index"
+      },
+      {
+        "command": "py2cpp-nav.translateCurrentFile",
+        "title": "Py2Cpp: Translate Current File"
+      }
+    ],
+    "configuration": {
+      "title": "Py2Cpp Navigation",
+      "properties": {
+        "py2cpp-nav.pythonPath": {
+          "type": "string",
+          "default": "python",
+          "description": "运行 main.py 翻译的 Python 可执行文件"
+        },
+        "py2cpp-nav.repoRoot": {
+          "type": "string",
+          "default": "",
+          "description": "Py2Cpp 仓库根（含 main.py）；留空则自动探测"
+        },
+        "py2cpp-nav.generatedDir": {
+          "type": "string",
+          "default": "generated",
+          "description": "生成物根目录（相对 repoRoot）"
+        },
+        "py2cpp-nav.autoTranslate": {
+          "type": "string",
+          "enum": [
+            "onSave",
+            "off"
+          ],
+          "default": "onSave",
+          "description": "保存 Python 源文件时是否自动翻译以刷新导航索引"
+        },
+        "py2cpp-nav.translateDebounceMs": {
+          "type": "number",
+          "default": 1000,
+          "minimum": 200,
+          "description": "自动翻译防抖（毫秒）"
+        },
+        "py2cpp-nav.jumpPreference": {
+          "type": "string",
+          "enum": [
+            "implementation",
+            "declaration",
+            "both"
+          ],
+          "default": "implementation",
+          "description": "Python→C++ 跳转时优先目标：实现(.inl/.cpp)、声明(.h)或全部"
+        }
+      }
+    }
+  }
+}

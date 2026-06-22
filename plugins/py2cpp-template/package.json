@@ -1,0 +1,75 @@
+{
+  "name": "py2cpp-template",
+  "displayName": "Py2Cpp Template Linter",
+  "description": "Py2Cpp templates/** 译期 T* 规范诊断、PY2CPP_* 宏悬停、配对宏高亮与块折叠",
+  "version": "0.2.1",
+  "publisher": "PythonOtakus",
+  "author": "PythonOtakus",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0",
+    "node": ">=18"
+  },
+  "categories": [
+    "Linters",
+    "Other"
+  ],
+  "activationEvents": [
+    "workspaceContains:templates",
+    "onCommand:py2cpp-template.lintCurrentFile",
+    "onCommand:py2cpp-template.lintWorkspace"
+  ],
+  "main": "./out/extension.js",
+  "private": true,
+  "scripts": {
+    "package": "python package.py",
+    "vscode:prepublish": "node -e \"process.exit(0)\""
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "py2cpp-template.lintCurrentFile",
+        "title": "Py2Cpp: Lint Current Template File"
+      },
+      {
+        "command": "py2cpp-template.lintWorkspace",
+        "title": "Py2Cpp: Lint All Templates"
+      }
+    ],
+    "configuration": {
+      "title": "Py2Cpp Template",
+      "properties": {
+        "py2cpp-template.pythonPath": {
+          "type": "string",
+          "default": "python",
+          "description": "用于运行 T* lint 的 Python 可执行文件（须 3.10+，能 import 仓库 src/）"
+        },
+        "py2cpp-template.repoRoot": {
+          "type": "string",
+          "default": "",
+          "description": "Py2Cpp 仓库根目录（含 main.py 与 templates/）；留空则自动探测"
+        },
+        "py2cpp-template.enableDiagnostics": {
+          "type": "boolean",
+          "default": true,
+          "description": "打开/编辑 templates/ 文件时自动运行 T* 诊断"
+        },
+        "py2cpp-template.includeWarnings": {
+          "type": "boolean",
+          "default": true,
+          "description": "诊断中是否包含 warning 级规则（如 T6 孤立 ~ 片段）"
+        },
+        "py2cpp-template.enableMacroPairs": {
+          "type": "boolean",
+          "default": true,
+          "description": "启用 PY2CPP 配对宏三级嵌套高亮（BEGIN/END、IGNORE、INJECT_CLASS、BEGIN_SCOPE/END_SCOPE）"
+        },
+        "py2cpp-template.enableMacroFolding": {
+          "type": "boolean",
+          "default": true,
+          "description": "为配对宏块提供编辑器代码折叠（依赖 enableMacroPairs）"
+        }
+      }
+    }
+  }
+}

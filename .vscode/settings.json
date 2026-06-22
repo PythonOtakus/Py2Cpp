@@ -1,0 +1,21 @@
+{
+    "editor.tabSize": 4,
+    "npm.autoDetect": "off",
+    "npm.exclude": [
+        "**/plugins",
+        "**/plugins/**",
+        "**/plugins/py2cpp-template",
+        "**/plugins/py2cpp-template/**",
+        "**/plugins/py2cpp-nav",
+        "**/plugins/py2cpp-nav/**"
+    ],
+    "clangd.arguments": [
+        "--compile-commands-dir=${workspaceFolder}",
+        "--background-index",
+        "--header-insertion=never"
+    ],
+    "C_Cpp.default.includePath": [
+        "${workspaceFolder}/generated/runtime"
+    ],
+    "C_Cpp.default.cppStandard": "c++14"
+}

@@ -1,0 +1,66 @@
+"""``cast[T](obj)`` / ``cast(obj)`` → ``static_cast`` emit。"""
+from __future__ import annotations
+
+import ast
+import tempfile
+import unittest
+from pathlib import Path
+
+from src.analysis.ir import ClassInfo
+from src.emit.call_emit import _emit_cast_call
+from src.translator import Scope, Translator
+
+
+class CastEmitTests(unittest.TestCase):
+  def test_cast_ref_downcast(self):
+    cls_src = """
+@refcount
+class Base:
+  pass
+"""
+    tr = Translator("test/mod", "test/mod.py")
+    from src.analysis.analyzer import TypeParser
+
+    tr.type_parser = TypeParser()
+    base_cls = ast.parse(cls_src).body[0]
+    assert isinstance(base_cls, ast.ClassDef)
+    info = ClassInfo(base_cls, "test/mod")
+    tr.classes["Base"] = info
+    tr.classes["Derived"] = info  # same cpp for smoke; only checks & form
+
+    node = ast.parse("cast[Derived](b)", mode="eval").body
+    assert isinstance(node, ast.Call)
+    target = tr._parse_type(ast.Name(id="Derived"), set())
+    tr.scope = Scope(ast.parse("pass").body[0])
+    tr.scope.param_types = {"b": "Base&"}
+    out = _emit_cast_call(tr, target, node)
+    self.assertEqual(out, "static_cast<Derived&>(b)")
+
+  def test_cast_deduced_from_ann_assign(self):
+    src = """
+from py2cpp import *
+
+@refcount
+class Base:
+  pass
+
+@refcount
+class Derived(Base):
+  pass
+
+def narrow(slot: Base) -> None:
+  d: Derived @ref = cast(slot)
+"""
+    with tempfile.TemporaryDirectory() as tmp:
+      out = Path(tmp)
+      py = out / "mod.py"
+      py.write_text(src, encoding="utf-8")
+      _, cpp_path = Translator.translate_file(
+        str(py), output_dir=str(out), include_stdlib=False,
+      )
+      cpp = cpp_path.read_text(encoding="utf-8")
+      self.assertIn("static_cast<Derived&>(*slot)", cpp)
+
+
+if __name__ == "__main__":
+  unittest.main()

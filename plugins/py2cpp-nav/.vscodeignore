@@ -1,0 +1,9 @@
+.vscode/**
+.vscode-test/**
+.gitignore
+package.py
+package.bat
+**/*.vsix
+**/__pycache__/**
+**/*.pyc
+node_modules/**

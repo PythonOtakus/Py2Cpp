@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "modules": {
+    "test_type_if": {
+      "shard": "modules/test_type_if.json",
+      "pyFile": "test/lang/test_type_if.py",
+      "artifacts": {
+        "h": "test/lang/generated/test/lang/test_type_if.h",
+        "inl": null,
+        "cpp": "test/lang/generated/test/lang/test_type_if.cpp"
+      },
+      "updatedAt": "2026-06-19T06:53:28Z",
+      "symbolCount": 17
+    }
+  },
+  "generatedRoot": "test/lang/generated",
+  "repoRoot": ".",
+  "updatedAt": "2026-06-19T06:53:28Z"
+}

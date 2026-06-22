@@ -1,0 +1,355 @@
+{
+  "version": 2,
+  "module": "test_type_if",
+  "pyFile": "test/lang/test_type_if.py",
+  "artifacts": {
+    "h": "test/lang/generated/test/lang/test_type_if.h",
+    "inl": null,
+    "cpp": "test/lang/generated/test/lang/test_type_if.cpp"
+  },
+  "symbols": [
+    {
+      "kind": "class",
+      "module": "test_type_if",
+      "name": "TypeIfModuleTests",
+      "cppName": "TypeIfModuleTests",
+      "cppQual": "test_type_if::TypeIfModuleTests",
+      "py": {
+        "file": "test/lang/test_type_if.py",
+        "line": 94,
+        "endLine": 113,
+        "column": 1
+      },
+      "cpp": {
+        "decl": {
+          "line": 111
+        }
+      }
+    },
+    {
+      "kind": "method",
+      "module": "test_type_if",
+      "owner": "TypeIfModuleTests",
+      "name": "test",
+      "cppName": "test",
+      "py": {
+        "file": "test/lang/test_type_if.py",
+        "line": 98,
+        "endLine": 113,
+        "column": 3
+      },
+      "cpp": {
+        "decl": {
+          "line": 115
+        },
+        "impl": {
+          "line": 102
+        }
+      }
+    },
+    {
+      "kind": "method",
+      "module": "test_type_if",
+      "owner": "TypeIfModuleTests",
+      "name": "run",
+      "cppName": "run",
+      "py": {
+        "file": "test/lang/test_type_if.py",
+        "line": 198,
+        "endLine": 201,
+        "column": 3
+      },
+      "cpp": {
+        "decl": {
+          "line": 116
+        },
+        "impl": {
+          "line": 121
+        }
+      }
+    },
+    {
+      "kind": "method",
+      "module": "test_type_if",
+      "owner": "TypeIfModuleTests",
+      "name": "__bool__",
+      "cppName": "__bool__",
+      "py": {
+        "file": "test/lang/test_type_if.py",
+        "line": 1,
+        "endLine": 1,
+        "column": 1
+      },
+      "cpp": {
+        "decl": {
+          "line": 117
+        },
+        "impl": {
+          "line": 128
+        }
+      }
+    },
+    {
+      "kind": "class",
+      "module": "test_type_if",
+      "name": "ElementOfTests",
+      "cppName": "ElementOfTests",
+      "cppQual": "test_type_if::ElementOfTests",
+      "py": {
+        "file": "test/lang/test_type_if.py",
+        "line": 116,
+        "endLine": 133,
+        "column": 1
+      },
+      "cpp": {
+        "decl": {
+          "line": 130
+        }
+      }
+    },
+    {
+      "kind": "method",
+      "module": "test_type_if",
+      "owner": "ElementOfTests",
+      "name": "test",
+      "cppName": "test",
+      "py": {
+        "file": "test/lang/test_type_if.py",
+        "line": 120,
+        "endLine": 133,
+        "column": 3
+      },
+      "cpp": {
+        "decl": {
+          "line": 115
+        },
+        "impl": {
+          "line": 102
+        }
+      }
+    },
+    {
+      "kind": "method",
+      "module": "test_type_if",
+      "owner": "ElementOfTests",
+      "name": "run",
+      "cppName": "run",
+      "py": {
+        "file": "test/lang/test_type_if.py",
+        "line": 198,
+        "endLine": 201,
+        "column": 3
+      },
+      "cpp": {
+        "decl": {
+          "line": 116
+        },
+        "impl": {
+          "line": 121
+        }
+      }
+    },
+    {
+      "kind": "method",
+      "module": "test_type_if",
+      "owner": "ElementOfTests",
+      "name": "__bool__",
+      "cppName": "__bool__",
+      "py": {
+        "file": "test/lang/test_type_if.py",
+        "line": 1,
+        "endLine": 1,
+        "column": 1
+      },
+      "cpp": {
+        "decl": {
+          "line": 117
+        },
+        "impl": {
+          "line": 128
+        }
+      }
+    },
+    {
+      "kind": "function",
+      "module": "test_type_if",
+      "name": "type_tag",
+      "cppName": "type_tag",
+      "py": {
+        "file": "test/lang/test_type_if.py",
+        "line": 9,
+        "endLine": 17,
+        "column": 1
+      },
+      "cpp": {
+        "decl": {
+          "line": 150
+        },
+        "impl": {
+          "line": 285
+        }
+      }
+    },
+    {
+      "kind": "function",
+      "module": "test_type_if",
+      "name": "type_not_int",
+      "cppName": "type_not_int",
+      "py": {
+        "file": "test/lang/test_type_if.py",
+        "line": 20,
+        "endLine": 24,
+        "column": 1
+      },
+      "cpp": {
+        "decl": {
+          "line": 152
+        },
+        "impl": {
+          "line": 311
+        }
+      }
+    },
+    {
+      "kind": "function",
+      "module": "test_type_if",
+      "name": "tally",
+      "cppName": "tally",
+      "py": {
+        "file": "test/lang/test_type_if.py",
+        "line": 27,
+        "endLine": 36,
+        "column": 1
+      },
+      "cpp": {
+        "decl": {
+          "line": 154
+        },
+        "impl": {
+          "line": 360
+        }
+      }
+    },
+    {
+      "kind": "function",
+      "module": "test_type_if",
+      "name": "type_not_in_num",
+      "cppName": "type_not_in_num",
+      "py": {
+        "file": "test/lang/test_type_if.py",
+        "line": 39,
+        "endLine": 43,
+        "column": 1
+      },
+      "cpp": {
+        "decl": {
+          "line": 156
+        },
+        "impl": {
+          "line": 396
+        }
+      }
+    },
+    {
+      "kind": "function",
+      "module": "test_type_if",
+      "name": "type_list_wildcard",
+      "cppName": "type_list_wildcard",
+      "py": {
+        "file": "test/lang/test_type_if.py",
+        "line": 46,
+        "endLine": 52,
+        "column": 1
+      },
+      "cpp": {
+        "decl": {
+          "line": 158
+        },
+        "impl": {
+          "line": 431
+        }
+      }
+    },
+    {
+      "kind": "function",
+      "module": "test_type_if",
+      "name": "elem_code",
+      "cppName": "elem_code",
+      "py": {
+        "file": "test/lang/test_type_if.py",
+        "line": 55,
+        "endLine": 65,
+        "column": 1
+      },
+      "cpp": {
+        "decl": {
+          "line": 160
+        },
+        "impl": {
+          "line": 484
+        }
+      }
+    },
+    {
+      "kind": "function",
+      "module": "test_type_if",
+      "name": "inner_code",
+      "cppName": "inner_code",
+      "py": {
+        "file": "test/lang/test_type_if.py",
+        "line": 68,
+        "endLine": 76,
+        "column": 1
+      },
+      "cpp": {
+        "decl": {
+          "line": 162
+        },
+        "impl": {
+          "line": 528
+        }
+      }
+    },
+    {
+      "kind": "function",
+      "module": "test_type_if",
+      "name": "pointee_code",
+      "cppName": "pointee_code",
+      "py": {
+        "file": "test/lang/test_type_if.py",
+        "line": 79,
+        "endLine": 87,
+        "column": 1
+      },
+      "cpp": {
+        "decl": {
+          "line": 164
+        },
+        "impl": {
+          "line": 572
+        }
+      }
+    },
+    {
+      "kind": "function",
+      "module": "test_type_if",
+      "name": "take_elem",
+      "cppName": "take_elem",
+      "py": {
+        "file": "test/lang/test_type_if.py",
+        "line": 90,
+        "endLine": 91,
+        "column": 1
+      },
+      "cpp": {
+        "decl": {
+          "line": 166
+        },
+        "impl": {
+          "line": 577
+        }
+      }
+    }
+  ],
+  "updatedAt": "2026-06-19T06:53:28Z"
+}

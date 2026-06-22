@@ -1,0 +1,2 @@
+# Windows cmd 要求 .bat 使用 CRLF
+*.bat text eol=crlf

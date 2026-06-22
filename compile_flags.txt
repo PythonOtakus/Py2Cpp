@@ -1,0 +1,6 @@
+-std=c++14
+-I
+generated/runtime
+-I
+templates
+-D_WIN32

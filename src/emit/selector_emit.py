@@ -34,10 +34,11 @@ def _parse_type_ann(tr: Translator, ann: ast.expr | None) -> str:
     return tr._parse_type(ann, tr._active_type_params()).strip()
 
 def _check_result_ann(tr: Translator, result_ann: str, expected_cpp: str, *, node: ast.AST | None) -> None:
+    from ..analysis.ir import cpp_inferred_type_matches_ann
     ann = result_ann.strip()
     if not ann:
         return
-    if strip_cpp_ref(ann) != strip_cpp_ref(expected_cpp):
+    if not cpp_inferred_type_matches_ann(expected_cpp, ann):
         raise_translation_error(tr, node, f'select 返回类型须为 {expected_cpp}，实为 {ann}')
 
 def _access_sep(tr: Translator, cpp_type: str) -> str:

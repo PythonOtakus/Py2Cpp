@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from ..builtins import *
 from ..core.exceptions import StatisticsError, ValueError
-from ..core.protocols import DictKey, Iterable
+from ..util.protocols import DictKey, Iterable
 from ..util.list import list
 from ..util.misc import Counter
 from . import erfc, exp, fabs, hypot, log, sqrt, tau

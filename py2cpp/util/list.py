@@ -7,14 +7,15 @@ from ..builtins import *
 from .array import array
 from .span import span
 from ..core.exceptions import IndexError, StopIteration, ValueError
+from .mixins import ContainerMixin
 from .slice import slice
 
 
 @mixin
 class FrozenListMixin[Element, StackLength: int = 0]:
-  """序列共享核心（``list`` / ``frozenlist``）；宿主须声明 ``_length``、``_capacity``、``data``。"""
+  """序列共享核心（``list`` / ``frozenlist``）；宿主须声明 ``_length``、``_capacity``、``_data``。"""
 
-  _SEQ_END_VAL: int @const = int.Min
+  _END_INDEX: int @const = int.Min
   def __del__(self):
     self._clear()
 
@@ -31,7 +32,7 @@ class FrozenListMixin[Element, StackLength: int = 0]:
     self._clear()
     self._length = other._length
     self._capacity = other._capacity
-    self.data.__move__(other.data)
+    self._data.__move__(other._data)
     other._length = 0
     other._capacity = 0
 
@@ -75,7 +76,7 @@ class FrozenListMixin[Element, StackLength: int = 0]:
     index = self._norm_index(index)
     if index < 0 or index >= self._length:
       raise IndexError("frozenlist index out of range")
-    return self.data[index]
+    return self._data[index]
 
   @immutable
   @overload
@@ -106,21 +107,11 @@ class FrozenListMixin[Element, StackLength: int = 0]:
     return (newsize + (newsize >> 3) + 6) & ~3
 
   def _clear(self) -> None:
-    if self.data.buf is None and self._length == 0:
+    if self._data.view.at(0) is None and self._length == 0:
       return
-    self.data.release_buffer(self._length)
+    self._data.release_buffer(self._length)
     self._length = 0
     self._capacity = 0
-
-  @immutable
-  def _ensure_active(self) -> None:
-    if self.__moved__:
-      raise ValueError("frozenlist used after move")
-
-  @immutable
-  def _ensure_other_active(self, other: Self) -> None:
-    if other.__moved__:
-      raise ValueError("move from moved frozenlist")
 
   def _grow(self):
     need: int = self._length + 1
@@ -129,13 +120,13 @@ class FrozenListMixin[Element, StackLength: int = 0]:
     new_cap: int = self._allocated_size(need)
     if new_cap <= self._capacity:
       new_cap = self._allocated_size(self._capacity + 1)
-    self.data.reshape(new_cap, self._length)
+    self._data.reshape(new_cap, self._length)
     self._capacity = new_cap
 
   def _insert_new(self, item: Element):
     if self._length >= self._capacity:
       self._grow()
-    init(self.data.buf + self._length, item)
+    self._data.init_slot(self._length, item)
     self._length += 1
 
   def serde_push_slot(self) -> Pointer[Element]:
@@ -143,7 +134,7 @@ class FrozenListMixin[Element, StackLength: int = 0]:
     self._ensure_active()
     if self._length >= self._capacity:
       self._grow()
-    return self.data.buf + self._length
+    return self._data.view.at(self._length)
 
   def serde_commit_push(self) -> None:
     """与 ``serde_push_slot`` 成对：槽位已 ``init`` 后提交。"""
@@ -165,7 +156,7 @@ class FrozenListMixin[Element, StackLength: int = 0]:
 
   @immutable
   def _norm_stop(self, end: int) -> int:
-    if end == Self._SEQ_END_VAL:
+    if end == Self._END_INDEX:
       return self._length
     if end < 0:
       end = self._length + end
@@ -254,6 +245,7 @@ class frozenlist_iterator[Element](FrozenListIteratorMixin[Element]):
 @native_name("PyList")
 class list[Element, StackLength: int = 0](
   FrozenListMixin[Element, StackLength],
+  ContainerMixin,
   friends=(list_iterator, list_reverse_iterator),
 ):
   __repr__ = __str__
@@ -261,7 +253,7 @@ class list[Element, StackLength: int = 0](
   def __init__(self):
     self._length: int = 0
     self._capacity: int = 0
-    self.data: array[Element, StackLength] = new()
+    self._data: array[Element, StackLength] = new()
 
   @immutable
   def __str__(self) -> str:
@@ -286,7 +278,7 @@ class list[Element, StackLength: int = 0](
     index = self._norm_index(index)
     if index < 0 or index >= self._length:
       raise IndexError("list index out of range")
-    return self.data[index]
+    return self._data[index]
 
   @immutable
   @overload
@@ -305,7 +297,7 @@ class list[Element, StackLength: int = 0](
     index = self._norm_index(index)
     if index < 0 or index >= self._length:
       raise IndexError("list assignment index out of range")
-    self.data[index] = value
+    self._data[index] = value
 
   @overload
   def __delitem__(self, index: int):
@@ -338,7 +330,7 @@ class list[Element, StackLength: int = 0](
   @immutable
   def view(self) -> span[Element]:
     self._ensure_active()
-    return new(self.data.buf, self._length, 1)
+    return new(self._data.view.at(0), self._length, 1)
 
   @immutable
   def __add__(self, other: Self) -> Self:
@@ -407,7 +399,7 @@ class list[Element, StackLength: int = 0](
       self.append(other[i])
 
   @immutable
-  def index(self, value: Element, start: int = 0, end: int = Self._SEQ_END_VAL) -> int:
+  def index(self, value: Element, start: int = 0, end: int = Self._END_INDEX) -> int:
     start = self._norm_start(start)
     stop: int = self._norm_stop(end)
     for i in range(start, stop):
@@ -429,11 +421,11 @@ class list[Element, StackLength: int = 0](
       self._grow()
     for j in range(self._length - 1, index - 1, -1):
       if j + 1 >= self._length:
-        init(self.data.buf + j + 1, self.data[j])
+        self._data.init_slot(j + 1, self._data[j])
       else:
-        self.data[j + 1] = self.data[j]
-    destroy(self.data.buf + index)
-    init(self.data.buf + index, item)
+        self._data[j + 1] = self._data[j]
+    self._data.destroy_slot(index)
+    self._data.init_slot(index, item)
     self._length += 1
 
   def pop(self, index: int = -1) -> Element:
@@ -444,8 +436,8 @@ class list[Element, StackLength: int = 0](
       raise IndexError("pop index out of range")
     value: Element = self[index]
     for j in range(index, self._length - 1):
-      self.data[j] = self.data[j + 1]
-    destroy(self.data.buf + self._length - 1)
+      self._data[j] = self._data[j + 1]
+    self._data.destroy_slot(self._length - 1)
     self._length -= 1
     return value
 
@@ -509,9 +501,9 @@ class list[Element, StackLength: int = 0](
       if n <= 0:
         return
       for i in range(start, self._length - n):
-        self.data[i] = self.data[i + n]
+        self._data[i] = self._data[i + n]
       for _ in range(n):
-        destroy(self.data.buf + self._length - 1)
+        self._data.destroy_slot(self._length - 1)
         self._length -= 1
       return
     kept: Self = []
@@ -521,23 +513,13 @@ class list[Element, StackLength: int = 0](
     self._clear()
     self.extend(kept)
 
-  @immutable
-  def _ensure_active(self) -> None:
-    if self.__moved__:
-      raise ValueError("list used after move")
-
-  @immutable
-  def _ensure_other_active(self, other: Self) -> None:
-    if other.__moved__:
-      raise ValueError("move from moved list")
-
   def _reserve(self, capacity: int):
     """预分配容量；按 CPython 规则取分配大小，不改变 length。"""
     if capacity > self._capacity:
       new_cap: int = self._allocated_size(capacity)
       if new_cap < capacity:
         new_cap = capacity
-      self.data.reshape(new_cap, self._length)
+      self._data.reshape(new_cap, self._length)
       self._capacity = new_cap
 
   def set_capacity(self, capacity: int):
@@ -572,7 +554,7 @@ class list[Element, StackLength: int = 0](
     return va < vb
 
   def _swap(self, i: int, j: int):
-    self.data[i], self.data[j] = self.data[j], self.data[i]
+    self._data[i], self._data[j] = self._data[j], self._data[i]
 
   def _tim_binary_insertion_sort(self, lo: int, hi: int, key: Function[[Element], int], reverse: bool):
     for i in range(lo + 1, hi):
@@ -586,8 +568,8 @@ class list[Element, StackLength: int = 0](
           lo_idx = mid + 1
       val: Element = self[i]
       for j in range(i, lo_idx, -1):
-        self.data[j] = self.data[j - 1]
-      self.data[lo_idx] = val
+        self._data[j] = self._data[j - 1]
+      self._data[lo_idx] = val
 
   @immutable
   def _tim_compute_minrun(self, n: int) -> int:
@@ -621,14 +603,14 @@ class list[Element, StackLength: int = 0](
     k: int = lo
     while li < left_len and j < hi:
       if self._sort_less_elems(tmp[li], self[j], key, reverse):
-        self.data[k] = tmp[li]
+        self._data[k] = tmp[li]
         li += 1
       else:
-        self.data[k] = self[j]
+        self._data[k] = self[j]
         j += 1
       k += 1
     for t in range(li, left_len):
-      self.data[k] = tmp[t]
+      self._data[k] = tmp[t]
       k += 1
 
   def _tim_reverse_range(self, lo: int, hi: int):
@@ -642,6 +624,7 @@ class list[Element, StackLength: int = 0](
 @native_name("PyFrozenList")
 class frozenlist[Element, StackLength: int = 0](
   FrozenListMixin[Element, StackLength],
+  ContainerMixin,
   friends=(frozenlist_iterator,),
 ):
   __repr__ = __str__
@@ -649,7 +632,7 @@ class frozenlist[Element, StackLength: int = 0](
   def __init__(self):
     self._length: int = 0
     self._capacity: int = 0
-    self.data: array[Element, StackLength] = new()
+    self._data: array[Element, StackLength] = new()
 
   @immutable
   def __str__(self) -> str:
@@ -676,7 +659,7 @@ class frozenlist[Element, StackLength: int = 0](
     return n
 
   @immutable
-  def index(self, value: Element, start: int = 0, end: int = Self._SEQ_END_VAL) -> int:
+  def index(self, value: Element, start: int = 0, end: int = Self._END_INDEX) -> int:
     start = self._norm_start(start)
     stop: int = self._norm_stop(end)
     for i in range(start, stop):

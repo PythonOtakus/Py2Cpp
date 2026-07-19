@@ -17,10 +17,10 @@ from ..builtins import *
 from ..core.exceptions import KeyError
 from ..util.dict import dict
 from ..util.list import list
-from .container_mixin import AlgContainerMixin
+from ..util.mixins import ContainerMixin
 
 
-class Trie(AlgContainerMixin):
+class Trie(ContainerMixin):
   """0-based 节点池 + ``dict[char, 子节点]``。"""
 
   def __init__(self):
@@ -32,7 +32,7 @@ class Trie(AlgContainerMixin):
 
   def __copy__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other.__moved__)
+    self._ensure_other_active(other)
     nxt: list[dict[char, int]] = []
     pas: list[int] = []
     end: list[int] = []
@@ -50,7 +50,7 @@ class Trie(AlgContainerMixin):
 
   def __move__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other.__moved__)
+    self._ensure_other_active(other)
     self._next = other._next
     self._pass = other._pass
     self._end = other._end
@@ -145,7 +145,7 @@ class Trie(AlgContainerMixin):
 
   @overload
   def update(self, other: Self) -> None:
-    self._ensure_other_active(other.__moved__)
+    self._ensure_other_active(other)
     self._merge_from(other, 0, "")
 
   @overload

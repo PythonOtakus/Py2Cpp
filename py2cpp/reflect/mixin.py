@@ -139,6 +139,21 @@ def mixin(cls):
     return None
 
   @classmethod
+  def iter_method_params(cls, method: str):
+    """翻译期：方法形参名（跳过 ``self``）；``for p in Self.iter_method_params(m):`` 由译器展开。"""
+    return []
+
+  @classmethod
+  def get_param_type(cls, method: str, param: str) -> str:
+    """翻译期：形参 type_id（``"int"`` / ``"object"`` 等）。"""
+    return "object"
+
+  @classmethod
+  def get_return_type(cls, method: str) -> str | None:
+    """翻译期：返回 type_id；``-> None`` / 无注解 → ``None``。"""
+    return None
+
+  @classmethod
   def iter_subclasses(
     cls,
     *,
@@ -166,5 +181,8 @@ def mixin(cls):
   cls.get_annotations = get_annotations
   cls.iter_methods = iter_methods
   cls.get_method_annotation = get_method_annotation
+  cls.iter_method_params = iter_method_params
+  cls.get_param_type = get_param_type
+  cls.get_return_type = get_return_type
   cls.iter_subclasses = iter_subclasses
   return cls

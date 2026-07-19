@@ -39,6 +39,8 @@ PROTOCOL_ERASE_FORCE: frozenset[str] = frozenset({"Iterator", "AsyncIterator"})
 
 PROTOCOL_ERASE_AUTOGEN_MODULES: frozenset[str] = frozenset({
   "core/protocols",
+  "util/protocols",
+  "numeric/protocols",
   "io/protocols",
   "serde/protocols",
   "sql/protocols",

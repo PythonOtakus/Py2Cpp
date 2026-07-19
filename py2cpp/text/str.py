@@ -13,7 +13,7 @@ from ..util.array import array
 from ..util.slice import slice
 from ..util.span import span
 from ..util.tuple import tuple
-from .string_mixin import StringMixin
+from .mixins import StringMixin
 
 @native_name("PyStrIterator")
 class str_iterator:
@@ -53,7 +53,7 @@ class str_reverse_iterator:
 class str(StringMixin[char]):
   """不可变 Unicode 字符串。"""
 
-  data: array[char, _SSO_CAP]
+  _data: array[char, _SSO_CAP]
 
   _DELETE_CHAR: int @const = 0xFFFF
 
@@ -239,26 +239,26 @@ class str(StringMixin[char]):
     n: int = len(text)
     self._hash = 0
     self._hash_ok = n == 0
-    self.data: array[char, _SSO_CAP] = new(n)
+    self._data: array[char, _SSO_CAP] = new(n)
     if n > 0:
       for i in range(n):
-        self.data[i] = char(text[i])
+        self._data[i] = char(text[i])
 
   @overload
   def __init__(self, data: char[:]):
     self._hash = 0
     self._hash_ok = False
     n: int = len(data)
-    self.data = new(n)
+    self._data = new(n)
     for i in range(n):
-      self.data[i] = data[i]
+      self._data[i] = data[i]
     data.reshape(0, 0)
 
   @overload
   def __init__(self, value: char):
     self._hash = 0
     self._hash_ok = False
-    self.data = [value]
+    self._data = [value]
 
   def copy_to(self, buf: char[:], at: int = 0) -> int:
     """把本串码点写入 ``buf[at:]``，返回新尾下标。"""
@@ -270,7 +270,7 @@ class str(StringMixin[char]):
     if end > n:
       buf.reshape(end, n)
     for i in range(sn):
-      buf[at + i] = self.data[i]
+      buf[at + i] = self._data[i]
     return end
 
   def copy_slice_to(self, start: int, end: int, buf: char[:], at: int) -> int:
@@ -280,7 +280,7 @@ class str(StringMixin[char]):
       return at
     need: int = at + n
     buf.reserve(need)
-    seg: span[char] = self.data.view[start:end]
+    seg: span[char] = self._data.view[start:end]
     for i in range(n):
       buf[at + i] = seg[i]
     return need
@@ -313,18 +313,18 @@ class str(StringMixin[char]):
     buf: char[:] = new(new_len)
     at: int = 0
     if start > 0:
-      head: span[char] = self.data.view[:start]
+      head: span[char] = self._data.view[:start]
       for i in range(start):
         buf[at + i] = head[i]
       at = start
     if rn > 0:
-      rview: span[char] = repl.data.view[:rn]
+      rview: span[char] = repl.view[:rn]
       for i in range(rn):
         buf[at + i] = rview[i]
       at += rn
     tail_n: int = sn - end
     if tail_n > 0:
-      tview: span[char] = self.data.view[end:sn]
+      tview: span[char] = self._data.view[end:sn]
       for i in range(tail_n):
         buf[at + i] = tview[i]
       at += tail_n
@@ -355,13 +355,13 @@ class str(StringMixin[char]):
     """将 ``span[char]`` 写入已有 ``PyStr``（``copy_buf`` 叶子）。"""
     n: int = len(seg)
     if not n:
-      self.data.reshape(0, 0)
+      self._data.reshape(0, 0)
       self._hash = 0
       self._hash_ok = True
       return
-    if len(self.data) != n:
-      self.data.reshape(n, 0)
-    copy_buf(self.data.buf, seg.at(), n)
+    if len(self._data) != n:
+      self._data.reshape(n, 0)
+    self._data.copy_ptr_from(0, seg.at(), n)
     self._hash = 0
     self._hash_ok = False
 
@@ -370,14 +370,14 @@ class str(StringMixin[char]):
     """将 ``span[byte]`` 按 ``char`` 写入已有 ``PyStr``（C API / 单字节源）。"""
     n: int = len(seg)
     if not n:
-      self.data.reshape(0, 0)
+      self._data.reshape(0, 0)
       self._hash = 0
       self._hash_ok = True
       return
-    if len(self.data) != n:
-      self.data.reshape(n, 0)
+    if len(self._data) != n:
+      self._data.reshape(n, 0)
     for i in range(n):
-      self.data[i] = char(seg[i])
+      self._data[i] = char(seg[i])
     self._hash = 0
     self._hash_ok = False
 
@@ -410,20 +410,20 @@ class str(StringMixin[char]):
     if lim > max_body:
       lim = max_body
     if lim > 0:
-      copy_buf(dest.at(), self.data.buf, lim)
+      self._data.copy_ptr_to(0, dest.at(), lim)
     dest[lim] = char(0)
 
   def adopt_span(self, seg: span[char]) -> None:
     """接管 ``span[char]`` 底层 ``char`` 缓冲（serde arena；勿与 ``reshape`` 混用）。"""
-    self.data.adopt_span(seg)
+    self._data.adopt_span(seg)
     self._hash = 0
     self._hash_ok = False
 
   def __copy__(self, other: Self):
-    n: int = len(other.data)
-    if len(self.data) != n:
-      self.data.reshape(n, 0)
-    self.data.__copy__(other.data)
+    n: int = len(other._data)
+    if len(self._data) != n:
+      self._data.reshape(n, 0)
+    self._data.__copy__(other._data)
     self._hash = other._hash
     self._hash_ok = other._hash_ok
 
@@ -461,7 +461,7 @@ class str(StringMixin[char]):
     out: Self = "'"
     n: int = len(self)
     for i in range(n):
-      out += Self._repr_codepoint(self.data[i])
+      out += Self._repr_codepoint(self._data[i])
     return out + "'"
 
   @immutable
@@ -479,9 +479,9 @@ class str(StringMixin[char]):
     if self._hash_ok:
       return self._hash
     h: int = 0
-    n: int = len(self.data)
+    n: int = len(self._data)
     for i in range(n):
-      h = h * 31 + self.data[i]
+      h = h * 31 + self._data[i]
     return h
 
   def __hash__(self) -> int:
@@ -495,8 +495,8 @@ class str(StringMixin[char]):
 
   @immutable
   def __eq__(self, other: Self) -> bool:
-    na: int = len(self.data)
-    nb: int = len(other.data)
+    na: int = len(self._data)
+    nb: int = len(other._data)
     if na != nb:
       return False
     if na == 0:
@@ -508,11 +508,17 @@ class str(StringMixin[char]):
       return False
     return self._compare(other) == 0
 
+  @property
+  @immutable
+  def view(self) -> span[char]:
+    """只读码点视图（``serde`` 等）。"""
+    return self._data.view
+
   def __iter__(self) -> str_iterator:
-    return new(self.data.view)
+    return new(self.view)
 
   def __reversed__(self) -> str_reverse_iterator:
-    return new(self.data.view)
+    return new(self.view)
 
   @immutable
   def casefold(self) -> Self:
@@ -523,14 +529,14 @@ class str(StringMixin[char]):
     n: int = len(self)
     total: int = 0
     for i in range(n):
-      total += Self._utf8_byte_len(self.data[i])
+      total += Self._utf8_byte_len(self._data[i])
     if total == 0:
       empty: byte[:] = b""
       return bytes(empty)
     buf: byte[:] = new(total)
     at: int = 0
     for i in range(n):
-      at = Self._write_utf8(buf, at, self.data[i])
+      at = Self._write_utf8(buf, at, self._data[i])
     return bytes(buf)
 
   @immutable
@@ -538,11 +544,11 @@ class str(StringMixin[char]):
     n: int = len(self)
     if n == 0:
       return False
-    c0: char = self.data[0]
+    c0: char = self._data[0]
     if not (c0 in "_" or Self._is_alpha_char(c0)):
       return False
     for i in range(1, n):
-      c: char = self.data[i]
+      c: char = self._data[i]
       if not (c in "_" or Self._is_alnum_char(c)):
         return False
     return True
@@ -554,7 +560,7 @@ class str(StringMixin[char]):
   @immutable
   def isprintable(self) -> bool:
     for i in range(len(self)):
-      if not Self._is_printable_char(self.data[i]):
+      if not Self._is_printable_char(self._data[i]):
         return False
     return True
 

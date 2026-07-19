@@ -11,12 +11,12 @@
 """
 from ..builtins import *
 from ..core.exceptions import IndexError, ValueError
-from ..core.protocols import Comparable
+from ..util.protocols import Comparable
 from ..util.list import list
-from .container_mixin import AlgContainerMixin
+from ..util.mixins import ContainerMixin
 
 
-class MonoQueue[T: Comparable](AlgContainerMixin):
+class MonoQueue[T: Comparable](ContainerMixin):
   """双端单调队列；队头为当前窗口 min 或 max（由 ``is_min`` 决定）。"""
 
   def __init__(self, is_min: bool = True):
@@ -26,7 +26,7 @@ class MonoQueue[T: Comparable](AlgContainerMixin):
 
   def __copy__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other.__moved__)
+    self._ensure_other_active(other)
     self._is_min = other._is_min
     window: list[T] = []
     mono: list[T] = []
@@ -39,7 +39,7 @@ class MonoQueue[T: Comparable](AlgContainerMixin):
 
   def __move__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other.__moved__)
+    self._ensure_other_active(other)
     self._is_min = other._is_min
     self._window = other._window
     self._mono = other._mono

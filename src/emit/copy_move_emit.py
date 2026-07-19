@@ -3,7 +3,7 @@ from __future__ import annotations
 from contextlib import nullcontext
 from typing import TYPE_CHECKING
 from ..analysis.type_pred import is_array_type, is_container_type, is_stack_array_type
-from ..analysis.ir import ClassInfo, cpp_array_ndim, cpp_ident, cpp_stack_array_size, cpp_type_param_template_name
+from ..analysis.ir import ClassInfo, cpp_array_ndim, cpp_ident, cpp_stack_array_size
 from ..analysis.type_emit import field_storage_cpp
 from ..passes.move_state import MOVE_STATE_FIELD
 if TYPE_CHECKING:
@@ -91,19 +91,12 @@ def emit_auto_copy_move(tr: Translator, info: ClassInfo) -> None:
     if info.needs_auto_move():
         emit_auto_move(tr, info)
 
-def _array_allocator_cpp(info: ClassInfo) -> str:
-    if len(info.type_params) >= 2:
-        return cpp_type_param_template_name(info.type_params[1])
-    return "0"
-
 def _emit_array_clone_from(tr: Translator, info: ClassInfo, qual: str, cpp: str, *, dest: str) -> None:
     """把 ``other`` 的缓冲克隆到 ``dest``（``dest`` 为 ``this`` 或已置空的成员）。"""
-    tr.write_line(f'{dest}->shape = other.shape;')
-    tr.write_line(f'{dest}->buf = nullptr;')
-    tr.write_line('int __n = other.shape.__getitem__(0);')
-    with tr._use_block('if ((__n > 0) && (other.buf != nullptr))'):
-        tr.write_line(f'{dest}->_alloc.copy_from_ptr(other.buf, __n, __n);')
-        tr.write_line(f'{dest}->buf = {dest}->_alloc.ptr();')
+    tr.write_line(f'{dest}->_shape = other._shape;')
+    tr.write_line('int __n = other._shape.__getitem__(0);')
+    with tr._use_block('if ((__n > 0) && ((other.view__get()).at(0) != nullptr))'):
+        tr.write_line(f'{dest}->copy_from_ptr((other.view__get()).at(0), __n, __n);')
 
 def _emit_array_copy_ctor(tr: Translator, info: ClassInfo, qual: str, cpp: str) -> None:
     """``array`` 须在已置空状态下按元素 ``init``，不能对未构造的 ``this`` 调 ``__copy__``。"""
@@ -117,8 +110,7 @@ def _emit_array_copy_assign(tr: Translator, info: ClassInfo, qual: str, cpp: str
         tr.write_line('if ((this == &other))')
         with tr._use_indent():
             tr.write_line('return *this;')
-        tr.write_line(f'this->_alloc.release(this->shape.__getitem__(0));')
-        tr.write_line('this->buf = nullptr;')
+        tr.write_line(f'this->release(this->_shape.__getitem__(0));')
         _emit_array_clone_from(tr, info, qual, cpp, dest='this')
         tr.write_line('return *this;')
     tr.write_line()
@@ -136,19 +128,19 @@ def emit_copy_move_special_members(tr: Translator, info: ClassInfo) -> None:
             if info.name == 'array':
                 _emit_array_copy_ctor(tr, info, qual, cpp)
             elif info.name == 'list':
-                tr.write_line(f'{qual}::{cpp}(const {cpp}& other) : _length(0), _capacity(0), __moved__(false), data()')
+                tr.write_line(f'{qual}::{cpp}(const {cpp}& other) : _length(0), _capacity(0), __moved__(false), _data()')
                 with tr._use_block():
                     tr.write_line('__copy__(other);')
             elif info.name == 'str':
-                tr.write_line(f'{qual}::{cpp}(const {cpp}& other) : data()')
+                tr.write_line(f'{qual}::{cpp}(const {cpp}& other) : _data()')
                 with tr._use_block():
                     tr.write_line('__copy__(other);')
             elif info.name == 'bytes':
-                tr.write_line(f'{qual}::{cpp}(const {cpp}& other) : data()')
+                tr.write_line(f'{qual}::{cpp}(const {cpp}& other) : _data()')
                 with tr._use_block():
                     tr.write_line('__copy__(other);')
             elif info.name == 'dict':
-                tr.write_line(f'{qual}::{cpp}(const {cpp}& other) : _capacity(8), _size(0), __moved__(false), _order(), buckets(0)')
+                tr.write_line(f'{qual}::{cpp}(const {cpp}& other) : _capacity(8), _size(0), __moved__(false), _order(), _buckets(0)')
                 with tr._use_block():
                     tr.write_line('__copy__(other);')
             elif info.name in ('set', 'frozenset'):
@@ -156,15 +148,15 @@ def emit_copy_move_special_members(tr: Translator, info: ClassInfo) -> None:
                 with tr._use_block():
                     tr.write_line('__copy__(other);')
             elif info.name == 'frozendict':
-                tr.write_line(f'{qual}::{cpp}(const {cpp}& other) : _capacity(8), _size(0), __moved__(false), _order(), buckets(0)')
+                tr.write_line(f'{qual}::{cpp}(const {cpp}& other) : _capacity(8), _size(0), __moved__(false), _order(), _buckets(0)')
                 with tr._use_block():
                     tr.write_line('__copy__(other);')
             elif info.name == 'frozenlist':
-                tr.write_line(f'{qual}::{cpp}(const {cpp}& other) : _length(0), _capacity(0), __moved__(false), data()')
+                tr.write_line(f'{qual}::{cpp}(const {cpp}& other) : _length(0), _capacity(0), __moved__(false), _data()')
                 with tr._use_block():
                     tr.write_line('__copy__(other);')
             elif info.name == 'deque':
-                tr.write_line(f'{qual}::{cpp}(const {cpp}& other) : head(nullptr), tail(nullptr), _length(0), __moved__(false), _maxlen(PY2CPP_INT_MIN)')
+                tr.write_line(f'{qual}::{cpp}(const {cpp}& other) : _head(nullptr), _tail(nullptr), _length(0), __moved__(false), _maxlen(PY2CPP_INT_MIN)')
                 with tr._use_block():
                     tr.write_line('__copy__(other);')
             elif info.name == 'ChunkDeque':
@@ -190,7 +182,7 @@ def emit_copy_move_special_members(tr: Translator, info: ClassInfo) -> None:
             if info.is_template():
                 tr._emit_template_prefix(info)
             if info.name == 'list':
-                tr.write_line(f'{qual}::{cpp}({cpp}&& other) : _length(0), _capacity(0), __moved__(false), data()')
+                tr.write_line(f'{qual}::{cpp}({cpp}&& other) : _length(0), _capacity(0), __moved__(false), _data()')
                 with tr._use_block():
                     tr.write_line('__move__(other);')
             elif info.name in ('set', 'frozenset'):
@@ -198,23 +190,23 @@ def emit_copy_move_special_members(tr: Translator, info: ClassInfo) -> None:
                 with tr._use_block():
                     tr.write_line('__move__(other);')
             elif info.name == 'frozendict':
-                tr.write_line(f'{qual}::{cpp}({cpp}&& other) : _capacity(8), _size(0), __moved__(false), _order(), buckets(0)')
+                tr.write_line(f'{qual}::{cpp}({cpp}&& other) : _capacity(8), _size(0), __moved__(false), _order(), _buckets(0)')
                 with tr._use_block():
                     tr.write_line('__move__(other);')
             elif info.name == 'frozenlist':
-                tr.write_line(f'{qual}::{cpp}({cpp}&& other) : _length(0), _capacity(0), __moved__(false), data()')
+                tr.write_line(f'{qual}::{cpp}({cpp}&& other) : _length(0), _capacity(0), __moved__(false), _data()')
                 with tr._use_block():
                     tr.write_line('__move__(other);')
             elif info.name == 'dict':
-                tr.write_line(f'{qual}::{cpp}({cpp}&& other) : _capacity(8), _size(0), __moved__(false), _order(), buckets(0)')
+                tr.write_line(f'{qual}::{cpp}({cpp}&& other) : _capacity(8), _size(0), __moved__(false), _order(), _buckets(0)')
                 with tr._use_block():
                     tr.write_line('__move__(other);')
             elif info.name == 'str':
-                tr.write_line(f'{qual}::{cpp}({cpp}&& other) : data()')
+                tr.write_line(f'{qual}::{cpp}({cpp}&& other) : _data()')
                 with tr._use_block():
                     tr.write_line('__move__(other);')
             elif info.name == 'deque':
-                tr.write_line(f'{qual}::{cpp}({cpp}&& other) : head(nullptr), tail(nullptr), _length(0), __moved__(false), _maxlen(PY2CPP_INT_MIN)')
+                tr.write_line(f'{qual}::{cpp}({cpp}&& other) : _head(nullptr), _tail(nullptr), _length(0), __moved__(false), _maxlen(PY2CPP_INT_MIN)')
                 with tr._use_block():
                     tr.write_line('__move__(other);')
             elif info.name == 'ChunkDeque':

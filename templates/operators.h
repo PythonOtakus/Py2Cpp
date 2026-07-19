@@ -298,16 +298,9 @@ inline PyInt hash(PyChar c)
   return (PyInt)(int32_t)c;
 }
 
-/* ``PyStr`` 须优先于 ``hash(PyInt)``（``PyStr::operator PyInt()`` 会误走整型解析） */
-inline PyInt hash(PY2CPP_TYPE(PyStr)& obj)
-{
-  return obj.__hash__();
-}
-
-inline PyInt hash(const PY2CPP_TYPE(PyStr)& obj)
-{
-  return const_cast<PY2CPP_TYPE(PyStr)&>(obj).__hash__();
-}
+/* ``PyStr`` 须优先于 ``hash(PyInt)``（``PyStr::operator PyInt()`` 会误走整型解析）；实现见 ``operators.inl``（``str.h`` 经 ``slice.h`` 回 include 时类型须已完整）。 */
+PyInt hash(PY2CPP_TYPE(PyStr)& obj);
+PyInt hash(const PY2CPP_TYPE(PyStr)& obj);
 
 inline PyInt hash(PyInt v)
 {

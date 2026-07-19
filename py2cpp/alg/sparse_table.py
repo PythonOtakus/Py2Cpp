@@ -12,10 +12,10 @@ from ..builtins import *
 from ..core.exceptions import IndexError, ValueError
 from ..util.list import list
 from .agg_mode import AggMode
-from .container_mixin import AlgContainerMixin
+from ..util.mixins import ContainerMixin
 
 
-class SparseTable(AlgContainerMixin):
+class SparseTable(ContainerMixin):
   """静态 RMQ；构建后不可改原数组。"""
 
   def __init__(self, data: list[int], mode: AggMode):
@@ -62,7 +62,7 @@ class SparseTable(AlgContainerMixin):
 
   def __copy__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other.__moved__)
+    self._ensure_other_active(other)
     self._n = other._n
     self._mode = other._mode
     self._log = new(other._n + 1)
@@ -79,7 +79,7 @@ class SparseTable(AlgContainerMixin):
 
   def __move__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other.__moved__)
+    self._ensure_other_active(other)
     self._n = other._n
     self._mode = other._mode
     self._log = other._log

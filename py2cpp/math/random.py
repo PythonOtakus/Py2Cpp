@@ -189,10 +189,10 @@ class Random:
   def randbytes(self, n: int) -> bytes:
     if n < 0:
       raise ValueError("negative argument not allowed")
-    out: bytes = new(n)
+    out: byte[:] = new(n)
     for i in range(n):
-      out.data[i] = self._genrand_int32() & 0xFF
-    return out
+      out[i] = byte(self._genrand_int32() & 0xFF)
+    return bytes(out)
 
   def choice[T](self, seq: list[T]) -> T:
     if not seq:

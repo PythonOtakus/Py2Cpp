@@ -1,7 +1,6 @@
 """容器与序列类型（``list`` / ``dict`` / ``set`` / …）。"""
 from ..builtins import *
 from .array import array
-from .allocator import Allocator
 from .pool import pool
 from .deque import deque
 from .dict import dict, frozendict
@@ -21,7 +20,6 @@ from .types import (
 
 __all__ = [
   "array",
-  "Allocator",
   "pool",
   "deque",
   "dict",

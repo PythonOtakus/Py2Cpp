@@ -108,7 +108,7 @@ PyStr::PyStr(PyInt value)
   char buf[32];
   snprintf(buf, sizeof(buf), "%d", (int)value);
   PyStr tmp((c_str)buf);
-  (this->data).__move__(tmp.data);
+  (this->_data).__move__(tmp._data);
   this->_hash = tmp._hash;
   this->_hash_ok = tmp._hash_ok;
 }
@@ -118,7 +118,7 @@ PyStr::PyStr(PyInt64 value)
   char buf[32];
   snprintf(buf, sizeof(buf), "%lld", (long long)value);
   PyStr tmp((c_str)buf);
-  (this->data).__move__(tmp.data);
+  (this->_data).__move__(tmp._data);
   this->_hash = tmp._hash;
   this->_hash_ok = tmp._hash_ok;
 }
@@ -128,7 +128,7 @@ PyStr::PyStr(PyFloat value)
   char buf[64];
   snprintf(buf, sizeof(buf), "%g", (double)value);
   PyStr tmp((c_str)buf);
-  (this->data).__move__(tmp.data);
+  (this->_data).__move__(tmp._data);
   this->_hash = tmp._hash;
   this->_hash_ok = tmp._hash_ok;
 }
@@ -138,7 +138,7 @@ PyStr::PyStr(PyFloat64 value)
   char buf[64];
   snprintf(buf, sizeof(buf), "%g", (double)value);
   PyStr tmp((c_str)buf);
-  (this->data).__move__(tmp.data);
+  (this->_data).__move__(tmp._data);
   this->_hash = tmp._hash;
   this->_hash_ok = tmp._hash_ok;
 }
@@ -146,7 +146,7 @@ PyStr::PyStr(PyFloat64 value)
 PyStr::PyStr(PyBool value)
 {
   PyStr tmp(value ? (c_str)"True" : (c_str)"False");
-  (this->data).__move__(tmp.data);
+  (this->_data).__move__(tmp._data);
   this->_hash = tmp._hash;
   this->_hash_ok = tmp._hash_ok;
 }
@@ -229,15 +229,15 @@ PyStr::PyStr(PY2CPP_TYPE(PyArray)<PyChar, 0>&& data)
   PyInt n = data.__len__();
   if (n > 0)
   {
-    this->data.reshape(n, 0);
+    this->_data.reshape(n, 0);
     for (PyInt i = 0; i < n; i += 1)
     {
-      this->data.__setitem__(i, data.__getitem__(i));
+      this->_data.__setitem__(i, data.__getitem__(i));
     }
   }
   else
   {
-    this->data.reshape(0, 0);
+    this->_data.reshape(0, 0);
   }
 }
 

@@ -15,6 +15,7 @@ from ..analysis.module_namespace import (
 from ..codegen.expand_py2cpp_template import expand_template
 from ..codegen.stdlib_mirror_codegen import expand_whole_file_template
 from ..codegen.umbrella_gen import build_py2cpp_umbrella_header
+from ..constant.ffi_layout import ffi_runtime_module_path, ffi_source_note
 from ..constant.stdlib_layout import RUNTIME_PKG, RUNTIME_BUILTINS_MODULE, stdlib_header_include, stdlib_module_path
 from ..codegen.stdlib_mirror_codegen import write_stdlib_codegen_header, write_stdlib_codegen_inl
 from ..constant.stdlib_discovery import STDLIB_REL_PATHS
@@ -31,6 +32,8 @@ from .layout_config_emit import (
   _PROTOCOL_TRAITS_MODULE,
   PROTOCOL_TRAITS_GUARD,
   PROTOCOL_TRAITS_HEADER,
+  PROTOCOL_TRAITS_SOURCE_MODULES,
+  PROTOCOL_TRAITS_SOURCE_MODULE_PATHS,
   RUNTIME_CPP,
   RUNTIME_PREFIX,
   UMBRELLA_HEADER,
@@ -85,8 +88,37 @@ def insert_inl_before_namespace_close(
 
 
 def split_protocol_header_lines(lines: list[str]) -> tuple[list[str], list[str]]:
+  """traits（``#include <type_traits>`` … SFINAE）与模块 doc/namespace 分界。"""
   for i, line in enumerate(lines):
-    if line.startswith("/// 常用") and "@protocol" in line:
+    if line.startswith("/// "):
+      return lines[:i], lines[i:]
+  return lines, []
+
+
+def _strip_leading_protocol_traits_preamble(lines: list[str]) -> list[str]:
+  """合并多模块 traits 时去掉重复的 ``#include`` / ``_Compare_ops_no_pybool_only``。"""
+  i = 0
+  n = len(lines)
+  while i < n:
+    s = lines[i].strip()
+    if s in ("#include <type_traits>", "#include <utility>"):
+      i += 1
+      continue
+    if s == "":
+      i += 1
+      continue
+    if s.startswith("template<typename U") and i + 1 < n and "_Compare_ops_no_pybool_only" in lines[i + 1]:
+      while i < n and not lines[i].startswith("/* @protocol"):
+        i += 1
+      continue
+    break
+  return lines[i:]
+
+
+def _split_core_protocol_traits_for_traits_header(lines: list[str]) -> tuple[list[str], list[str]]:
+  """``StringFormat`` 探测 ``PyStr``，留 ``core/protocols.h`` 避免 ``protocol_traits.h`` MSVC ICE。"""
+  for i, line in enumerate(lines):
+    if line.startswith("/* @protocol StringFormat"):
       return lines[:i], lines[i:]
   return lines, []
 
@@ -175,15 +207,38 @@ def build_stdlib_cpp_lines(tr: Translator, *, merge_entry_runtime: bool) -> list
 
 
 def write_protocol_traits_header(tr: Translator) -> None:
-  lines = tr.per_module_header_lines.get(_PROTOCOL_TRAITS_MODULE, [])
-  traits, rest = split_protocol_header_lines(lines)
-  tr.per_module_header_lines[_PROTOCOL_TRAITS_MODULE] = rest
+  # 仅 bootstrap 写共享 ``protocol_traits.h``；并行测例同时写会 Permission denied。
+  if not tr._is_runtime_bootstrap():
+    return
+  traits: list[str] = []
+  for idx, mod_rel in enumerate(PROTOCOL_TRAITS_SOURCE_MODULES):
+    mod = stdlib_module_path(mod_rel)
+    lines = tr.per_module_header_lines.get(mod, [])
+    mod_traits, rest = split_protocol_header_lines(lines)
+    if mod_rel == "core/protocols":
+      mod_traits, core_tail = _split_core_protocol_traits_for_traits_header(mod_traits)
+      if core_tail:
+        rest = [
+          "#include <type_traits>",
+          "#include <utility>",
+          "",
+          *core_tail,
+          *rest,
+        ]
+    if idx > 0:
+      mod_traits = _strip_leading_protocol_traits_preamble(mod_traits)
+    traits.extend(mod_traits)
+    tr.per_module_header_lines[mod] = rest
   guard = PROTOCOL_TRAITS_GUARD
   hpath = tr._stdlib_artifact_path(_PROTOCOL_TRAITS_MODULE, ".h")
   traits_path = hpath.parent / "protocol_traits.h"
+  traits_path.parent.mkdir(parents=True, exist_ok=True)
   traits_path.write_text(
     "\n".join([
-      *codegen_file_header_lines(f"{RUNTIME_PREFIX}/core/protocols.py", tr.generated_at),
+      *codegen_file_header_lines(
+        ", ".join(f"{RUNTIME_PREFIX}/{m}.py" for m in PROTOCOL_TRAITS_SOURCE_MODULES),
+        tr.generated_at,
+      ),
       f"#ifndef {guard}",
       f"#define {guard}",
       "",
@@ -268,33 +323,43 @@ def sync_runtime_cpp_usings(tr: Translator) -> None:
 
 
 def write_per_module_headers(tr: Translator) -> None:
+  write_protocol_traits_header(tr)
   for module_path in tr.module_order:
     if module_path == tr.entry_module_path and not (
       tr._is_runtime_bootstrap() and module_path == RUNTIME_PKG
     ):
-      continue
+      if tr._is_ffi_module(module_path) and tr._can_write_ffi_artifact(module_path):
+        pass
+      elif not (
+        tr._is_stdlib_module(module_path)
+        and tr._can_write_stdlib_artifact(module_path)
+      ):
+        continue
     if tr._is_stdlib_module(module_path) and not tr._can_write_stdlib_artifact(module_path):
+      continue
+    if tr._is_ffi_module(module_path) and not tr._can_write_ffi_artifact(module_path):
       continue
     if write_stdlib_codegen_header(tr, module_path):
       continue
-    if module_path == _PROTOCOL_TRAITS_MODULE:
-      write_protocol_traits_header(tr)
     lines = tr.per_module_header_lines.get(module_path, [])
     deferred = tr.per_module_deferred_header_lines.get(module_path, [])
     if deferred:
       lines = splice_before_innermost_namespace_close(lines, deferred)
     guard = module_path_to_guard(module_path)
-    if tr._is_stdlib_module(module_path):
+    if tr._is_ffi_module(module_path):
+      hpath = tr._ffi_artifact_path(module_path, ".h")
+    elif tr._is_stdlib_module(module_path):
       hpath = tr._stdlib_artifact_path(module_path, ".h")
     else:
       rel_mp = tr._user_module_output_relpath(module_path)
       hpath = tr.entry_output_dir / f"{rel_mp}.h"
     hpath.parent.mkdir(parents=True, exist_ok=True)
-    note = (
-      tr._stdlib_source_note(module_path)
-      if tr._is_stdlib_module(module_path)
-      else f"{module_path}.py"
-    )
+    if tr._is_ffi_module(module_path):
+      note = ffi_source_note(module_path)
+    elif tr._is_stdlib_module(module_path):
+      note = tr._stdlib_source_note(module_path)
+    else:
+      note = f"{module_path}.py"
     content = [
       *codegen_file_header_lines(note, tr.generated_at),
       f"#ifndef {guard}",
@@ -309,7 +374,7 @@ def write_per_module_headers(tr: Translator) -> None:
           extra_includes.append(inc)
     for inc in list(extra_includes) + list(ma.includes):
       content.append(format_include_line(inc))
-    if module_path == _PROTOCOL_TRAITS_MODULE:
+    if module_path in PROTOCOL_TRAITS_SOURCE_MODULE_PATHS:
       content.append(f'#include "{PROTOCOL_TRAITS_HEADER}"')
     if ma.includes:
       content.append("")
@@ -345,7 +410,12 @@ def write_per_module_headers(tr: Translator) -> None:
             "",
             *global_traits,
           ])
-        inl_tail.extend(["", f'#include "{module_path}.inl"', ""])
+        inl_rel = (
+          f"{ffi_runtime_module_path(module_path)}.inl"
+          if tr._is_ffi_module(module_path)
+          else f"{module_path}.inl"
+        )
+        inl_tail.extend(["", f'#include "{inl_rel}"', ""])
         if module_path in _HEADER_INL_BEFORE_NS_CLOSE:
           content = insert_inl_before_namespace_close(content, module_path, inl_tail)
         else:
@@ -415,12 +485,16 @@ def write_per_module_inl(tr: Translator) -> None:
   for module_path in tr.module_order:
     if tr._is_stdlib_module(module_path) and not tr._can_write_stdlib_artifact(module_path):
       continue
+    if tr._is_ffi_module(module_path) and not tr._can_write_ffi_artifact(module_path):
+      continue
     if write_stdlib_codegen_inl(tr, module_path):
       continue
     lines = tr.per_module_inl_lines.get(module_path)
     if not lines:
       continue
-    if tr._is_stdlib_module(module_path):
+    if tr._is_ffi_module(module_path):
+      ipath = tr._ffi_artifact_path(module_path, ".inl")
+    elif tr._is_stdlib_module(module_path):
       ipath = tr._stdlib_artifact_path(module_path, ".inl")
     else:
       rel_mp = tr._user_module_output_relpath(module_path)
@@ -455,11 +529,12 @@ def write_per_module_inl(tr: Translator) -> None:
     inl_preamble: list[str] = []
     if module_path in _INL_EXTRA_OPERATORS_INL:
       inl_includes.append(f'#include "{RUNTIME_PREFIX}/operators.inl"')
-    note = (
-      f"{tr._stdlib_source_note(module_path)}（模板实现）"
-      if tr._is_stdlib_module(module_path)
-      else f"{module_path}.py（实现）"
-    )
+    if tr._is_ffi_module(module_path):
+      note = f"{ffi_source_note(module_path)}（实现）"
+    elif tr._is_stdlib_module(module_path):
+      note = f"{tr._stdlib_source_note(module_path)}（模板实现）"
+    else:
+      note = f"{module_path}.py（实现）"
     preamble = tr._stdlib_inl_using_lines(module_path) if tr._is_stdlib_module(module_path) else []
     seen_pre = {ln.strip() for ln in preamble}
     idx = tr.header_usings_index

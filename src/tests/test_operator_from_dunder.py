@@ -92,6 +92,31 @@ class Num:
       self.assertNotIn("operator+(constNum&other)const", compact)
       self.assertIn("booloperator==(constNum&other)const", compact)
 
+  def test_copyable_self_param_no_double_const_on_operator(self):
+    src = """
+from py2cpp import copyable, Self
+
+@copyable
+class Num:
+  def __eq__(self, other: Self) -> bool:
+    return True
+
+  def __add__(self, other: Self) -> Self:
+    return other
+"""
+    with tempfile.TemporaryDirectory() as tmp:
+      py = Path(tmp) / "mod.py"
+      py.write_text(src, encoding="utf-8")
+      tr = Translator("mod", str(py))
+      tr._parse_modules([("mod", src)])
+      SemanticAnalyzer().analyze(tr)
+      info = tr.classes["Num"]
+      lines = emit_class_operator_overloads(info)
+      text = "\n".join(lines)
+      compact = text.replace(" ", "")
+      self.assertIn("operator+(constNum&other)", compact)
+      self.assertNotIn("constconst", compact)
+
 
 if __name__ == "__main__":
   unittest.main()

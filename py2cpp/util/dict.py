@@ -9,7 +9,8 @@
 from ..builtins import *
 from .list import list
 from ..core.exceptions import KeyError, StopIteration, ValueError
-from ..core.protocols import DictKey
+from .mixins import ContainerMixin
+from .protocols import DictKey
 
 
 @boxing
@@ -23,7 +24,7 @@ class dict_entry[Key: DictKey, Value]:
 
 @mixin
 class FrozenDictMixin[Key: DictKey, Value]:
-  """映射共享核心（``dict`` / ``frozendict``）；宿主须声明 ``_capacity``、``_size``、``_order``、``_values``、``buckets``。"""
+  """映射共享核心（``dict`` / ``frozendict``）；宿主须声明 ``_capacity``、``_size``、``_order``、``_values``、``_buckets``。"""
 
   def __del__(self):
     self._clear_entries()
@@ -38,7 +39,7 @@ class FrozenDictMixin[Key: DictKey, Value]:
       self._values.clear()
       self._size = 0
     self._capacity = other._capacity
-    self.buckets = new(self._capacity)
+    self._buckets = new(self._capacity)
     for i in range(len(other._order)):
       k: Key = other._order[i]
       self._insert_new(k, other[k])
@@ -52,7 +53,7 @@ class FrozenDictMixin[Key: DictKey, Value]:
     self._size = other._size
     self._order = other._order
     self._values = other._values
-    self.buckets = other.buckets
+    self._buckets = other._buckets
     other._reset_after_move()
 
   @immutable
@@ -112,30 +113,20 @@ class FrozenDictMixin[Key: DictKey, Value]:
 
   def _clear_entries(self):
     for b in range(self._capacity):
-      cur: dict_entry[Key, Value] = self.buckets[b]
+      cur: dict_entry[Key, Value] = self._buckets[b]
       while cur is not None:
         nxt: dict_entry[Key, Value] = cur.next
         self._free_entry(cur)
         cur = nxt
-      self.buckets[b] = None
+      self._buckets[b] = None
     self._size = 0
     self._order.clear()
     self._values.clear()
 
   @immutable
-  def _ensure_active(self) -> None:
-    if self.__moved__:
-      raise ValueError("frozendict used after move")
-
-  @immutable
-  def _ensure_other_active(self, other: Self) -> None:
-    if other.__moved__:
-      raise ValueError("move from moved frozendict")
-
-  @immutable
   def _find_node(self, key: Key) -> dict_entry[Key, Value]:
     idx: int = self._index(key)
-    cur: dict_entry[Key, Value] = self.buckets[idx]
+    cur: dict_entry[Key, Value] = self._buckets[idx]
     while cur is not None:
       if cur.key == key:
         return cur
@@ -158,8 +149,8 @@ class FrozenDictMixin[Key: DictKey, Value]:
     if self._find_node(key) is not None:
       return
     idx: int = self._index(key)
-    entry = dict_entry[Key, Value](key, value, self.buckets[idx])
-    self.buckets[idx] = entry
+    entry = dict_entry[Key, Value](key, value, self._buckets[idx])
+    self._buckets[idx] = entry
     self._size += 1
     self._order.append(key)
     self._values.append(value)
@@ -168,7 +159,7 @@ class FrozenDictMixin[Key: DictKey, Value]:
     self._size = 0
     self._order = new()
     self._values = new()
-    self.buckets = new(self._capacity)
+    self._buckets = new(self._capacity)
 
 
 @mixin
@@ -303,6 +294,7 @@ class frozendict_items_view[Key: DictKey, Value](FrozenDictKeysViewMixin[Key, Va
 @native_name("PyFrozenDict")
 class frozendict[Key: DictKey, Value](
   FrozenDictMixin[Key, Value],
+  ContainerMixin,
   friends=(
     frozendict_key_iterator,
     frozendict_key_reverse_iterator,
@@ -320,7 +312,7 @@ class frozendict[Key: DictKey, Value](
     self._size: int = 0
     self._order: list[Key] = []
     self._values: list[Value] = []
-    self.buckets: dict_entry[Key, Value][:] = new(self._capacity)
+    self._buckets: dict_entry[Key, Value][:] = new(self._capacity)
 
   @immutable
   def __str__(self) -> str:
@@ -441,6 +433,7 @@ class dict_items_view[Key: DictKey, Value](FrozenDictKeysViewMixin[Key, Value]):
 @native_name("PyDict")
 class dict[Key: DictKey, Value](
   FrozenDictMixin[Key, Value],
+  ContainerMixin,
   friends=(
     dict_key_iterator,
     dict_key_reverse_iterator,
@@ -466,12 +459,12 @@ class dict[Key: DictKey, Value](
     self._size: int = 0
     self._order: list[Key] = []
     self._values: list[Value] = []
-    self.buckets: dict_entry[Key, Value][:] = new(self._capacity)
+    self._buckets: dict_entry[Key, Value][:] = new(self._capacity)
 
   def __copy__(self, other: Self):
-    """深拷贝条目（避免默认成员拷贝共享 ``buckets`` 链）。
+    """深拷贝条目（避免默认成员拷贝共享 ``_buckets`` 链）。
 
-    复制构造时 ``buckets`` 尚未分配（C++ 为 ``nullptr``），不可调 ``_clear_entries``。
+    复制构造时 ``_buckets`` 尚未分配（C++ 为 ``nullptr``），不可调 ``_clear_entries``。
     """
     self._ensure_active()
     self._ensure_other_active(other)
@@ -482,7 +475,7 @@ class dict[Key: DictKey, Value](
       self._values.clear()
       self._size = 0
     self._capacity = other._capacity
-    self.buckets = new(self._capacity)
+    self._buckets = new(self._capacity)
     for i in range(len(other._order)):
       k: Key = other._order[i]
       self._insert_new(k, other[k])
@@ -516,8 +509,8 @@ class dict[Key: DictKey, Value](
           return
       return
     idx: int = self._index(key)
-    entry = dict_entry[Key, Value](key, value, self.buckets[idx])
-    self.buckets[idx] = entry
+    entry = dict_entry[Key, Value](key, value, self._buckets[idx])
+    self._buckets[idx] = entry
     self._size += 1
     self._order.append(key)
     self._values.append(value)
@@ -546,7 +539,7 @@ class dict[Key: DictKey, Value](
       return
     if self._size == 0:
       self._capacity = value
-      self.buckets = new(value)
+      self._buckets = new(value)
       return
     self._rehash(value)
 
@@ -608,25 +601,15 @@ class dict[Key: DictKey, Value](
   def values(self) -> dict_values_view[Key, Value]:
     return new(self)
 
-  @immutable
-  def _ensure_active(self) -> None:
-    if self.__moved__:
-      raise ValueError("dict used after move")
-
-  @immutable
-  def _ensure_other_active(self, other: Self) -> None:
-    if other.__moved__:
-      raise ValueError("move from moved dict")
-
   def _erase_key(self, key: Key):
     """从哈希链删除 ``key``（不修改 ``order``）。"""
     idx: int = self._index(key)
     prev: dict_entry[Key, Value] = None
-    cur: dict_entry[Key, Value] = self.buckets[idx]
+    cur: dict_entry[Key, Value] = self._buckets[idx]
     while cur is not None:
       if cur.key == key:
         if prev is None:
-          self.buckets[idx] = cur.next
+          self._buckets[idx] = cur.next
         else:
           prev.next = cur.next
         self._free_entry(cur)
@@ -676,6 +659,6 @@ class dict[Key: DictKey, Value](
       scratch_v.append(self._values[i])
     self._clear_entries()
     self._capacity = new_cap
-    self.buckets = new(new_cap)
+    self._buckets = new(new_cap)
     for i in range(len(scratch_k)):
       self[scratch_k[i]] = scratch_v[i]

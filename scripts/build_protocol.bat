@@ -24,6 +24,9 @@ if errorlevel 1 (
   echo.
 )
 
+call "%~dp0_bootstrap_runtime.bat"
+if errorlevel 1 exit /b 1
+
 echo === expect compile OK ===
 call "%~dp0_build_timing.bat" start
 %PY% main.py test\lang\test_protocol.py -o generated -c --compiler cl --exe "%EXE_OK%" %*

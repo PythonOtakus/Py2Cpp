@@ -12,10 +12,10 @@
 from ..builtins import *
 from ..core.exceptions import IndexError, ValueError
 from .agg_mode import AggMode
-from .container_mixin import AlgContainerMixin
+from ..util.mixins import ContainerMixin
 
 
-class SegTree(AlgContainerMixin):
+class SegTree(ContainerMixin):
   """迭代线段树；下标 0-based。"""
 
   def __init__(self, n: int, mode: AggMode):
@@ -38,7 +38,7 @@ class SegTree(AlgContainerMixin):
 
   def __copy__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other.__moved__)
+    self._ensure_other_active(other)
     self._n = other._n
     self._mode = other._mode
     self._size = other._size
@@ -49,7 +49,7 @@ class SegTree(AlgContainerMixin):
 
   def __move__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other.__moved__)
+    self._ensure_other_active(other)
     mode: AggMode = other._mode
     self._n = other._n
     self._mode = other._mode

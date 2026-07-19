@@ -6,7 +6,12 @@ import copy
 from typing import TYPE_CHECKING
 
 from ..analysis.ir import ClassInfo
-from ..analysis.ir import merge_decorator_type_constraint, strip_type_annotation_markers
+from ..analysis.ir import (
+  merge_concrete_oneof_constraint,
+  merge_decorator_type_constraint,
+  merge_oneof_type_constraint,
+  strip_type_annotation_markers,
+)
 from ..analysis.type_emit import field_ann_ast, write_field_ann_ast, write_field_storage
 from ..analysis.ir import cpp_ident
 from .fixed_vararg import expand_fixed_vararg, method_has_fixed_vararg
@@ -23,6 +28,8 @@ from .method_meta import (
   expand_iter_methods_loop,
   expand_iter_methods_subscript_loop,
   expand_iter_methods_subscript_meta,
+  expand_method_signature_reflect,
+  expand_mixin_method_meta_closures,
 )
 from .static_reflect import fold_static_reflect
 from .varstack import expand_varstack, method_uses_varstack, method_has_unexpanded_varstack
@@ -473,6 +480,9 @@ def _mixin_method_has_unsupported_after_expand(method: ast.FunctionDef) -> bool:
           "get_annotations",
           "iter_methods",
           "get_method_annotation",
+          "iter_method_params",
+          "get_param_type",
+          "get_return_type",
         ):
           return True
       recv = None
@@ -569,16 +579,8 @@ def _clone_mixin_method(
     if expanded is None:
       return None
     cloned = expanded
-  expanded = expand_iter_methods_subscript_meta(cloned, host, classes)
-  if expanded is not None:
-    cloned = expanded
-  else:
-    expanded = expand_iter_methods_subscript_loop(cloned, host, classes)
-    if expanded is not None:
-      cloned = expanded
-  expanded = expand_iter_methods_loop(cloned, host, classes)
-  if expanded is not None:
-    cloned = expanded
+  expanded = expand_mixin_method_meta_closures(cloned, host, classes)
+  cloned = expanded
   expanded = _expand_fieldwise_loop_method(cloned, host, classes)
   if expanded is not None:
     cloned = expanded
@@ -661,9 +663,15 @@ def propagate_mixin_type_param_constraints(
   host_params = set(host.type_params)
   for mixin_tp, mapped in subst_map.items():
     if mapped not in host_params:
+      oneof = mixin.type_param_oneof_constraints.get(mixin_tp, ())
+      if oneof:
+        merge_concrete_oneof_constraint(host.concrete_oneof_constraints, mapped, oneof)
       continue
     for bound in mixin.type_param_constraints.get(mixin_tp, ()):
       merge_decorator_type_constraint(host.type_param_constraints, mapped, bound)
+    oneof = mixin.type_param_oneof_constraints.get(mixin_tp, ())
+    if oneof:
+      merge_oneof_type_constraint(host.type_param_oneof_constraints, mapped, oneof)
     for dec in mixin.type_param_decorator_constraints.get(mixin_tp, ()):
       merge_decorator_type_constraint(host.type_param_decorator_constraints, mapped, dec)
 

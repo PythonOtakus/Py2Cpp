@@ -1,8 +1,8 @@
 {
   "name": "py2cpp-nav",
   "displayName": "Py2Cpp Navigation",
-  "description": "generated/ C++ 与 Python 源双向跳转（类/方法/字段/模块函数）；保存时自动翻译并更新索引",
-  "version": "0.1.0",
+  "description": "generated/ C++ 与 Python 源双向跳转（类/方法/字段/property/enum/union/delegate 等，索引 v3）；保存时自动翻译并更新索引",
+  "version": "0.2.0",
   "publisher": "PythonOtakus",
   "author": "PythonOtakus",
   "license": "MIT",

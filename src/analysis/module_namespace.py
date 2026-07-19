@@ -36,11 +36,16 @@ def cpp_namespace_segment(segment: str) -> str:
 
 
 def module_path_namespace_segments(module_path: str) -> list[str]:
-  """``import_tests/helper`` → ``['import_tests', 'helper']``；``pkg/__init__`` 含 ``__init__``。"""
+  """``import_tests/helper`` → ``['import_tests', 'helper']``；``ffi/sqlite/sqlite3`` → ``['ffi','sqlite','lib']``。"""
   path = module_path.replace("\\", "/").strip("/")
   if not path:
     return []
-  return [cpp_namespace_segment(p) for p in path.split("/")]
+  from ..constant.ffi_layout import ffi_cpp_namespace_segment, is_ffi_module_path
+
+  parts = path.split("/")
+  if is_ffi_module_path(path):
+    return [cpp_namespace_segment(ffi_cpp_namespace_segment(p)) for p in parts]
+  return [cpp_namespace_segment(p) for p in parts]
 
 
 def namespace_qualifier_from_segments(segments: list[str]) -> str:
@@ -65,11 +70,15 @@ def inl_namespace_segments(module_path: str) -> list[str]:
 
   MSVC 在多个 ``namespace py2cpp { }`` 块（各子模块 ``.inl``）之后无法正确解析
   ``py2cpp::PyRange`` 等包根符号，故 ``py2cpp`` 及 ``py2cpp/…`` 下所有 ``.inl`` 均不套命名空间。
+  FFI（``ffi/…``）``.inl`` 同样不套命名空间，实现用全限定 ``ffi::…``。
   """
+  from ..constant.ffi_layout import is_ffi_module_path
   from ..constant.stdlib_layout import RUNTIME_PKG
 
   norm = module_path.replace("\\", "/")
   if norm == RUNTIME_PKG or norm.startswith(f"{RUNTIME_PKG}/"):
+    return []
+  if is_ffi_module_path(norm):
     return []
   return module_path_namespace_segments(module_path)
 

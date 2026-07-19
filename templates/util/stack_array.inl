@@ -13,7 +13,13 @@ PyStackArrayIterator<T, Length, Offset> PyStackArray<T, Length, Offset>::__iter_
 template<typename T, PyInt Length, PyInt Offset>
 PySpan<T> PyStackArray<T, Length, Offset>::view__get() const
 {
-  return PySpan<T>(buf__get(), __len__(), 1);
+  return PySpan<T>(_buf__get(), __len__(), 1);
+}
+
+template<typename T, PyInt Offset>
+PySpan<T> PyStackArray<T, 0, Offset>::view__get() const
+{
+  return PySpan<T>(nullptr, 0, 1);
 }
 
 template<typename T, PyInt Length, PyInt Offset>
@@ -50,7 +56,7 @@ PY2CPP_TYPE(PyArray)<T, 0> PyStackArray<T, Length, Offset>::_getslice(PySlice<Py
   {
     for (PyInt i = start; i < stop; i += step)
     {
-      init<T>((out.buf + j), __getitem__(i));
+      out.__setitem__(j, __getitem__(i));
       j += 1;
     }
   }
@@ -58,7 +64,7 @@ PY2CPP_TYPE(PyArray)<T, 0> PyStackArray<T, Length, Offset>::_getslice(PySlice<Py
   {
     for (PyInt i = start; i > stop; i += step)
     {
-      init<T>((out.buf + j), __getitem__(i));
+      out.__setitem__(j, __getitem__(i));
       j += 1;
     }
   }
@@ -86,7 +92,7 @@ template<typename T, PyInt Rows, PyInt Cols, PyInt RowOff, PyInt ColOff>
 PySpan2D<T> PyStackArray2D<T, Rows, Cols, RowOff, ColOff>::view__get() const
 {
   return PySpan2D<T>(
-    buf__get(),
+    _buf__get(),
     PyTuple<PyInt, PyInt>(Rows, Cols),
     Cols);
 }
@@ -127,8 +133,8 @@ PY2CPP_TYPE(PyArray2D)<T> PyStackArray2D<T, Rows, Cols, RowOff, ColOff>::_getsli
       {
         for (PyInt ci = col_start; ci < col_stop; ci += col_step)
         {
-          init<T>(
-            (out.buf + (orow * out_cols) + ocol),
+          out.__setitem__(
+            PyTuple<PyInt, PyInt>(orow, ocol),
             __getitem__(PyTuple<PyInt, PyInt>(RowOff + ri, ColOff + ci)));
           ocol += 1;
         }
@@ -137,8 +143,8 @@ PY2CPP_TYPE(PyArray2D)<T> PyStackArray2D<T, Rows, Cols, RowOff, ColOff>::_getsli
       {
         for (PyInt ci = col_start; ci > col_stop; ci += col_step)
         {
-          init<T>(
-            (out.buf + (orow * out_cols) + ocol),
+          out.__setitem__(
+            PyTuple<PyInt, PyInt>(orow, ocol),
             __getitem__(PyTuple<PyInt, PyInt>(RowOff + ri, ColOff + ci)));
           ocol += 1;
         }
@@ -155,8 +161,8 @@ PY2CPP_TYPE(PyArray2D)<T> PyStackArray2D<T, Rows, Cols, RowOff, ColOff>::_getsli
       {
         for (PyInt ci = col_start; ci < col_stop; ci += col_step)
         {
-          init<T>(
-            (out.buf + (orow * out_cols) + ocol),
+          out.__setitem__(
+            PyTuple<PyInt, PyInt>(orow, ocol),
             __getitem__(PyTuple<PyInt, PyInt>(RowOff + ri, ColOff + ci)));
           ocol += 1;
         }
@@ -165,8 +171,8 @@ PY2CPP_TYPE(PyArray2D)<T> PyStackArray2D<T, Rows, Cols, RowOff, ColOff>::_getsli
       {
         for (PyInt ci = col_start; ci > col_stop; ci += col_step)
         {
-          init<T>(
-            (out.buf + (orow * out_cols) + ocol),
+          out.__setitem__(
+            PyTuple<PyInt, PyInt>(orow, ocol),
             __getitem__(PyTuple<PyInt, PyInt>(RowOff + ri, ColOff + ci)));
           ocol += 1;
         }
@@ -198,7 +204,7 @@ template<typename T, PyInt D0, PyInt D1, PyInt D2, PyInt O0, PyInt O1, PyInt O2>
 PySpan3D<T> PyStackArray3D<T, D0, D1, D2, O0, O1, O2>::view__get() const
 {
   return PySpan3D<T>(
-    buf__get(),
+    _buf__get(),
     PyTuple<PyInt, PyInt, PyInt>(D0, D1, D2),
     PyTuple<PyInt, PyInt>(D1 * D2, D2));
 }
@@ -255,8 +261,8 @@ PY2CPP_TYPE(PyArray3D)<T> PyStackArray3D<T, D0, D1, D2, O0, O1, O2>::_getslice3d
           {
             for (PyInt k = s2; k < e2; k += t2)
             {
-              init<T>(
-                (out.buf + ((o0 * n1 + o1) * n2 + o2)),
+              out.__setitem__(
+                PyTuple<PyInt, PyInt, PyInt>(o0, o1, o2),
                 __getitem__(PyTuple<PyInt, PyInt, PyInt>(O0 + i, O1 + j, O2 + k)));
               o2 += 1;
             }
@@ -265,8 +271,8 @@ PY2CPP_TYPE(PyArray3D)<T> PyStackArray3D<T, D0, D1, D2, O0, O1, O2>::_getslice3d
           {
             for (PyInt k = s2; k > e2; k += t2)
             {
-              init<T>(
-                (out.buf + ((o0 * n1 + o1) * n2 + o2)),
+              out.__setitem__(
+                PyTuple<PyInt, PyInt, PyInt>(o0, o1, o2),
                 __getitem__(PyTuple<PyInt, PyInt, PyInt>(O0 + i, O1 + j, O2 + k)));
               o2 += 1;
             }
@@ -283,8 +289,8 @@ PY2CPP_TYPE(PyArray3D)<T> PyStackArray3D<T, D0, D1, D2, O0, O1, O2>::_getslice3d
           {
             for (PyInt k = s2; k < e2; k += t2)
             {
-              init<T>(
-                (out.buf + ((o0 * n1 + o1) * n2 + o2)),
+              out.__setitem__(
+                PyTuple<PyInt, PyInt, PyInt>(o0, o1, o2),
                 __getitem__(PyTuple<PyInt, PyInt, PyInt>(O0 + i, O1 + j, O2 + k)));
               o2 += 1;
             }
@@ -293,8 +299,8 @@ PY2CPP_TYPE(PyArray3D)<T> PyStackArray3D<T, D0, D1, D2, O0, O1, O2>::_getslice3d
           {
             for (PyInt k = s2; k > e2; k += t2)
             {
-              init<T>(
-                (out.buf + ((o0 * n1 + o1) * n2 + o2)),
+              out.__setitem__(
+                PyTuple<PyInt, PyInt, PyInt>(o0, o1, o2),
                 __getitem__(PyTuple<PyInt, PyInt, PyInt>(O0 + i, O1 + j, O2 + k)));
               o2 += 1;
             }
@@ -319,8 +325,8 @@ PY2CPP_TYPE(PyArray3D)<T> PyStackArray3D<T, D0, D1, D2, O0, O1, O2>::_getslice3d
           {
             for (PyInt k = s2; k < e2; k += t2)
             {
-              init<T>(
-                (out.buf + ((o0 * n1 + o1) * n2 + o2)),
+              out.__setitem__(
+                PyTuple<PyInt, PyInt, PyInt>(o0, o1, o2),
                 __getitem__(PyTuple<PyInt, PyInt, PyInt>(O0 + i, O1 + j, O2 + k)));
               o2 += 1;
             }
@@ -329,8 +335,8 @@ PY2CPP_TYPE(PyArray3D)<T> PyStackArray3D<T, D0, D1, D2, O0, O1, O2>::_getslice3d
           {
             for (PyInt k = s2; k > e2; k += t2)
             {
-              init<T>(
-                (out.buf + ((o0 * n1 + o1) * n2 + o2)),
+              out.__setitem__(
+                PyTuple<PyInt, PyInt, PyInt>(o0, o1, o2),
                 __getitem__(PyTuple<PyInt, PyInt, PyInt>(O0 + i, O1 + j, O2 + k)));
               o2 += 1;
             }
@@ -347,8 +353,8 @@ PY2CPP_TYPE(PyArray3D)<T> PyStackArray3D<T, D0, D1, D2, O0, O1, O2>::_getslice3d
           {
             for (PyInt k = s2; k < e2; k += t2)
             {
-              init<T>(
-                (out.buf + ((o0 * n1 + o1) * n2 + o2)),
+              out.__setitem__(
+                PyTuple<PyInt, PyInt, PyInt>(o0, o1, o2),
                 __getitem__(PyTuple<PyInt, PyInt, PyInt>(O0 + i, O1 + j, O2 + k)));
               o2 += 1;
             }
@@ -357,8 +363,8 @@ PY2CPP_TYPE(PyArray3D)<T> PyStackArray3D<T, D0, D1, D2, O0, O1, O2>::_getslice3d
           {
             for (PyInt k = s2; k > e2; k += t2)
             {
-              init<T>(
-                (out.buf + ((o0 * n1 + o1) * n2 + o2)),
+              out.__setitem__(
+                PyTuple<PyInt, PyInt, PyInt>(o0, o1, o2),
                 __getitem__(PyTuple<PyInt, PyInt, PyInt>(O0 + i, O1 + j, O2 + k)));
               o2 += 1;
             }

@@ -11,13 +11,13 @@
 """
 from ..builtins import *
 from ..core.exceptions import IndexError, KeyError
-from ..core.protocols import Comparable, DictKey
+from ..util.protocols import Comparable, DictKey
 from ..util.dict import dict
 from ..util.list import list
-from .container_mixin import AlgContainerMixin
+from ..util.mixins import ContainerMixin
 
 
-class Heap[T: Comparable](AlgContainerMixin):
+class Heap[T: Comparable](ContainerMixin):
   """数组二叉最小堆；根为 ``_data[0]``。"""
 
   def __init__(self):
@@ -25,7 +25,7 @@ class Heap[T: Comparable](AlgContainerMixin):
 
   def __copy__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other.__moved__)
+    self._ensure_other_active(other)
     data: list[T] = []
     self._data = data
     for i in range(len(other._data)):
@@ -33,7 +33,7 @@ class Heap[T: Comparable](AlgContainerMixin):
 
   def __move__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other.__moved__)
+    self._ensure_other_active(other)
     self._data = other._data
     data: list[T] = []
     other._data = data
@@ -109,7 +109,7 @@ class Heap[T: Comparable](AlgContainerMixin):
       i = best
 
 
-class IndexedHeap[T: Comparable & DictKey](AlgContainerMixin):
+class IndexedHeap[T: Comparable & DictKey](ContainerMixin):
   """二叉最小堆 + 元素→下标表；``_swap`` 时同步更新 ``_pos``。"""
 
   def __init__(self):
@@ -118,7 +118,7 @@ class IndexedHeap[T: Comparable & DictKey](AlgContainerMixin):
 
   def __copy__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other.__moved__)
+    self._ensure_other_active(other)
     data: list[T] = []
     pos: dict[T, int] = {}
     self._data = data
@@ -130,7 +130,7 @@ class IndexedHeap[T: Comparable & DictKey](AlgContainerMixin):
 
   def __move__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other.__moved__)
+    self._ensure_other_active(other)
     self._data = other._data
     self._pos = other._pos
     data: list[T] = []

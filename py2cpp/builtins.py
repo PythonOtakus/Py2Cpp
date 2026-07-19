@@ -407,10 +407,10 @@ class staticproperty:
 
 
 # ---------------------------------------------------------------------------
-# 迭代与内置函数（``IteratorElement`` / ``Iterable`` 见 ``core.protocols``）
+# 迭代与内置函数（``IteratorElement`` / ``Iterable`` 见 ``util.protocols``）
 # ---------------------------------------------------------------------------
 
-from .core.protocols import Iterable, IteratorElement
+from .util.protocols import Iterable, IteratorElement
 
 
 def len(obj) -> int:

@@ -155,6 +155,10 @@ class _RefcountEmitter:
         else:
           self.t.write_line(f"this->{field} = {self.t.visit(value)};")
       case _:
+        from ..emit.literal_ctor_emit import _try_emit_field_typed_empty_literal_assign
+
+        if _try_emit_field_typed_empty_literal_assign(self.t, tgt, value):
+          return
         self.t.write_line(f"this->{field} = {self.t.visit(value)};")
 
   def _emit_field_subscript_assign(self, stmt: ast.Assign) -> None:

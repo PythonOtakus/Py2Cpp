@@ -2,7 +2,7 @@
 from ..builtins import *
 from ..core.exceptions import IndexError, ValueError
 from ..util.list import list
-from .container_mixin import AlgContainerMixin
+from ..util.mixins import ContainerMixin
 
 
 @enum
@@ -26,7 +26,7 @@ class Cell:
     return self.x ^ (self.y << 16)
 
 
-class Grid2D(AlgContainerMixin):
+class Grid2D(ContainerMixin):
   """``width`` × ``height`` 整数格；``0`` 墙，``>= 1`` 进入边权；``int[:,:]`` 存储。"""
 
   def __init__(self, width: int = 0, height: int = 0, fill: int = 0):
@@ -39,7 +39,7 @@ class Grid2D(AlgContainerMixin):
 
   def __copy__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other.__moved__)
+    self._ensure_other_active(other)
     self._width = other._width
     self._height = other._height
     self._cells = new(other._height, other._width)
@@ -49,7 +49,7 @@ class Grid2D(AlgContainerMixin):
 
   def __move__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other.__moved__)
+    self._ensure_other_active(other)
     self._width = other._width
     self._height = other._height
     self._cells = other._cells

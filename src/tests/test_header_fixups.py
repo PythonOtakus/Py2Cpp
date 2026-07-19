@@ -12,7 +12,7 @@ _PROTOCOL_TRAITS_H = f"{CORE_PKG}/protocol_traits.h"
 _STR_H = stdlib_header_include("text/str")
 _LIST_H = stdlib_header_include("util/list")
 _SLICE_H = stdlib_header_include("util/slice")
-_PROT_H = stdlib_header_include("core/protocols")
+_UTIL_PROT_H = stdlib_header_include("util/protocols")
 _ITER_H = stdlib_header_include("core/iter_result")
 _OPS_H = f"{RUNTIME_PKG}/operators.h"
 _PKG_H = stdlib_header_include(RUNTIME_PKG)
@@ -37,14 +37,14 @@ class HeaderFixupsTests(unittest.TestCase):
     inc = [
       stdlib_header_include("text/bytes"),
       stdlib_header_include("util/list"),
-      _PROT_H,
+      _UTIL_PROT_H,
       _PROTOCOL_TRAITS_H,
       _ITER_H,
     ]
     pre, fwd, post = apply_header_fixups(mp, inc)
     self.assertNotIn(stdlib_header_include("text/bytes"), pre)
     self.assertIn(stdlib_header_include("text/bytes"), post)
-    self.assertNotIn(_PROT_H, pre)
+    self.assertNotIn(_UTIL_PROT_H, pre)
     self.assertNotIn(_PROTOCOL_TRAITS_H, pre)
     self.assertNotIn(_ITER_H, pre)
     self.assertIn(HEADER_FORWARD_DECLS["py_iter_result"], fwd)
@@ -53,13 +53,13 @@ class HeaderFixupsTests(unittest.TestCase):
     self.assertEqual(pre[1], f"{RUNTIME_PKG}/py_types.h")
 
   def test_runtime_pkg_moves_str_to_post(self):
-    pre, fwd, post = apply_header_fixups(RUNTIME_PKG, [_STR_H, _OPS_H, _PROT_H])
+    pre, fwd, post = apply_header_fixups(RUNTIME_PKG, [_STR_H, _OPS_H, stdlib_header_include("core/protocols")])
     self.assertNotIn(_STR_H, pre)
     self.assertIn(_STR_H, post)
     self.assertNotIn(_OPS_H, pre)
     self.assertIn(HEADER_FORWARD_DECLS["pystr"], fwd)
     self.assertEqual(pre[0], f"{RUNTIME_PKG}/py_types.h")
-    self.assertEqual(pre[1], _PROT_H)
+    self.assertEqual(pre[1], stdlib_header_include("core/protocols"))
 
   def test_io_inserts_stdio(self):
     pre, _, _ = apply_header_fixups(stdlib_module_path("io"), [_PKG_H])

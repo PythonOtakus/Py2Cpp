@@ -39,6 +39,20 @@ class ValueError(Exception):
   pass
 
 
+class ZeroDivisionError(Exception):
+  pass
+
+
+class OverflowError(Exception):
+  pass
+
+
+class InvalidOperation(Exception):
+  """``decimal`` 无效运算（对齐 CPython ``decimal.InvalidOperation``）。"""
+
+  pass
+
+
 class StatisticsError(ValueError):
   """统计计算错误（对齐 ``statistics.StatisticsError``）。"""
 

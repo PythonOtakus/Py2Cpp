@@ -33,11 +33,14 @@ class MemoryLeafCopySegTests(TestCaseMixin):
 
   @override
   def test(self):
-    src: str = "hello"
+    raw: str = "hello"
+    src_buf: char[:] = new(5)
+    for i in range(5):
+      src_buf[i] = char(raw[i])
     dst_f: char[:] = new(8)
     dst_r: char[:] = new(8)
-    copy_buf(dst_f.buf, src.data.buf, 5)
-    copy_buf_ref(dst_r.buf, src.data.buf, 5)
+    copy_buf(dst_f.view.at(0), src_buf.view.at(0), 5)
+    copy_buf_ref(dst_r.view.at(0), src_buf.view.at(0), 5)
     self.assertEqual(str.from_buf(dst_f, 5), str.from_buf_ref(dst_r, 5))
 
 
@@ -47,8 +50,11 @@ class MemoryLeafLoadU64Tests(TestCaseMixin):
   @override
   def test(self):
     raw: str = "ABCDEFGH"
-    got_f = load_u64_le(raw.data.buf, 0)
-    got_r = load_u64_le_ref(raw.data.buf, 0)
+    raw_buf: char[:] = new(8)
+    for i in range(8):
+      raw_buf[i] = char(raw[i])
+    got_f = load_u64_le(raw_buf.view.at(0), 0)
+    got_r = load_u64_le_ref(raw_buf.view.at(0), 0)
     self.assertEqual(got_f, got_r)
     expect: uint64 = 0
     for i in range(8):
@@ -72,8 +78,8 @@ class MemoryLeafLoadU64BytesTests(TestCaseMixin):
     buf[5] = ord("6")
     buf[6] = ord("7")
     buf[7] = ord("8")
-    got_f = load_u64_le_bytes(buf.buf, 0)
-    got_r = load_u64_le_bytes_ref(buf.buf, 0)
+    got_f = load_u64_le_bytes(buf.view.at(0), 0)
+    got_r = load_u64_le_bytes_ref(buf.view.at(0), 0)
     self.assertEqual(got_f, got_r)
 
 

@@ -25,16 +25,18 @@ class ParseTypevarProtocolBoundsTests(unittest.TestCase):
   def test_class_type_params_intersection(self):
     mod = ast.parse("class C[T: Comparable & DictKey]:\n  pass\n")
     cls = mod.body[0]
-    _, _, _, constraints, _, nttp, _ = parse_class_type_params(cls)
+    _, _, _, constraints, oneof, _, nttp, _ = parse_class_type_params(cls)
     self.assertEqual(constraints["T"], ("Comparable", "DictKey"))
+    self.assertEqual(oneof, {})
     self.assertEqual(nttp, {})
 
   def test_class_type_param_nttp(self):
     mod = ast.parse("class ModInt[T: Integral, Mod: T]:\n  pass\n")
     cls = mod.body[0]
-    params, _, _, constraints, _, nttp, _ = parse_class_type_params(cls)
+    params, _, _, constraints, oneof, _, nttp, _ = parse_class_type_params(cls)
     self.assertEqual(params, ["T", "Mod"])
     self.assertEqual(constraints["T"], ("Integral",))
+    self.assertEqual(oneof, {})
     self.assertNotIn("Mod", constraints)
     self.assertEqual(nttp, {"Mod": "T"})
     self.assertEqual(type_param_nttp_value_type(ast.Name(id="T"), ["T"]), "T")

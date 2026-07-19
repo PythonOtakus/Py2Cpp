@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from ..builtins import *
 from ..core.exceptions import TypeError, ValueError
-from ..core.protocols import Real
+from .protocols import Real
 from ..math import hypot
 from ..math.complex import exp, log
 

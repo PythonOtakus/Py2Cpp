@@ -1,7 +1,7 @@
 """弱引用集合（对齐 ``weakref.WeakSet`` 子集）。"""
 from ..builtins import *
 from ..core.exceptions import KeyError
-from ..core.protocols import DictKey
+from ..util.protocols import DictKey
 from .ref import WeakRef
 
 

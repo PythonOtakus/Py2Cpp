@@ -12,6 +12,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from ..constant.ffi_layout import (
+  find_ffi_source_file,
+  ffi_import_parts_to_module_path,
+  is_ffi_module_path,
+)
+from ..constant.ffi_layout import (
+  find_ffi_source_file,
+  ffi_import_parts_to_module_path,
+  is_ffi_module_path,
+)
 from ..constant.stdlib_discovery import STDLIB_REL_PATHS, STDLIB_REL_PATH_SET
 from ..constant.stdlib_layout import (
   RUNTIME_PKG,
@@ -42,10 +52,13 @@ class ImportRequest:
 
 
 def dotted_import_to_module_path(dotted: str | None) -> str:
-  """``py2cpp.util.list`` → ``py2cpp/util/list``；``py2cpp`` → 包根。"""
+  """``py2cpp.util.list`` → ``py2cpp/util/list``；``ffi.windows`` → ``ffi/windows``；``py2cpp`` → 包根。"""
   if not dotted:
     return RUNTIME_PKG
   parts = dotted.split(".")
+  ffi_path = ffi_import_parts_to_module_path(parts)
+  if ffi_path is not None:
+    return ffi_path
   if parts and parts[0] == RUNTIME_PKG:
     parts = parts[1:]
   if not parts:
@@ -183,7 +196,8 @@ def iter_module_import_requests(tree: ast.Module) -> list[ImportRequest]:
 
 def _user_module_path_from_file(py_path: Path, project_root: Path) -> str:
   rel = py_path.resolve().relative_to(project_root.resolve())
-  if rel.name == "__init__.py":
+  name = rel.name
+  if name in ("__init__.py", "__init__.pyi"):
     parent = rel.parent.as_posix()
     return f"{parent}/__init__" if parent != "." else "__init__"
   return rel.with_suffix("").as_posix()
@@ -201,6 +215,8 @@ def _find_user_py_file(
 ) -> Path | None:
   if is_runtime_module_path(module_path):
     return None
+  if is_ffi_module_path(module_path):
+    return find_ffi_source_file(module_path, project_root=project_root)
   rel = module_path.replace("\\", "/")
   if rel == "__init__" or rel.endswith("/__init__"):
     pkg = rel[: -len("/__init__")] if rel.endswith("/__init__") else ""
@@ -325,6 +341,8 @@ def resolve_import_target_path(
     return path
   if _find_user_py_file(path, project_root=project_root, runtime_root=runtime_root):
     return path
+  if is_ffi_module_path(path) and find_ffi_source_file(path, project_root=project_root):
+    return path
   return None
 
 
@@ -363,6 +381,8 @@ def discover_translation_modules(
       p = _find_user_py_file(
         path, project_root=project_root, runtime_root=runtime_root,
       )
+    if p is None and is_ffi_module_path(path):
+      p = find_ffi_source_file(path, project_root=project_root)
     if p is None:
       return None
     text = p.read_text(encoding="utf-8").replace("\ufeff", "")

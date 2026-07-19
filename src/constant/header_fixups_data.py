@@ -60,7 +60,7 @@ HEADER_FORWARD_GROUPS: dict[str, tuple[str, ...]] = {
 MODULE_HEADER_FIXUPS: dict[str, tuple[tuple, ...]] = {
   "text/str": (
     ("move_pre_to_post_mods", "text/bytes", "util/list", "util/dict", "util/tuple"),
-    ("remove_pre_mod", "core/protocols"),
+    ("remove_pre_mod", "util/protocols"),
     ("remove_pre_traits",),
     ("remove_post_traits",),
     ("remove_pre_forward_mod", "core/iter_result", "py_iter_result"),
@@ -75,17 +75,17 @@ MODULE_HEADER_FIXUPS: dict[str, tuple[tuple, ...]] = {
   "util/set": (("forward_multi", "pyset_tpl", "pyfrozenset_tpl"),),
   "util/list": (
     ("forward_multi", "pylist_tpl", "pyfrozenlist_tpl"),
-    ("insert_front_mod_if_missing", "util/allocator"),
   ),
   "design/ecs": (("forward", "ecs_component_table_tpl"),),
   "serde/json": (("forward", "json_doc_cursor_tpl"),),
   "util/dict": (
     ("forward_multi", "pydict_tpl", "pyfrozendict_tpl"),
-    ("remove_pre_mod", "core/protocols"),
+    ("remove_pre_mod", "util/protocols"),
     ("remove_pre_traits",),
   ),
-  "util/array": (
-    ("insert_front_mod_if_missing", "util/allocator"),
+  "builtins": (
+    ("remove_pre_traits",),
+    ("insert_mod_after_mod", "core/iter_result", "text/str"),
   ),
   "py2cpp": (
     ("move_pre_to_post_mod", "text/str"),
@@ -98,6 +98,16 @@ MODULE_HEADER_FIXUPS: dict[str, tuple[tuple, ...]] = {
   "core/protocols": (
     ("insert_front_mod_if_missing", "core/none"),
     ("remove_both_key", "umbrella", "operators"),
+  ),
+  "util/protocols": (
+    ("remove_both_key", "umbrella", "operators"),
+  ),
+  "numeric/protocols": (
+    ("remove_pre_mod", "core/protocols"),
+    ("remove_both_key", "umbrella", "operators"),
+  ),
+  "core/iter_result": (
+    ("insert_front_mod_if_missing", "core/exceptions"),
   ),
   "io": (("insert_front_hdr", "<stdio.h>"),),
   "web/http": (("insert_front_mod_if_missing", "web/url"),),
@@ -113,4 +123,15 @@ MODULE_HEADER_FIXUPS: dict[str, tuple[tuple, ...]] = {
   "io/path": (("forward", "path_walk_step"),),
   "concur/task": (("forward", "task_slot_friend"),),
   "system/environ": (("insert_front_mod_if_missing", "io/file/path"),),
+  "ui/flow/shell": (
+    ("insert_front_mod_if_missing", "ui/menu"),
+    ("insert_front_mod_if_missing", "ui/tooltip"),
+    ("insert_front_mod_if_missing", "ui/input"),
+    ("insert_front_mod_if_missing", "io/path"),
+    ("insert_front_mod_if_missing", "ui/file_dialog"),
+    ("insert_front_mod_if_missing", "ui/flow/serialize"),
+  ),
+  "ui/flow/panel": (
+    ("insert_front_mod_if_missing", "ui/flow/shell"),
+  ),
 }

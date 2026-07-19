@@ -10,7 +10,8 @@ from ..builtins import *
 from .dict import dict
 from .list import list
 from ..core.exceptions import KeyError, StopIteration, TypeError
-from ..core.protocols import DictKey, Integral
+from .protocols import DictKey
+from ..numeric.protocols import Integral
 
 
 @copyable

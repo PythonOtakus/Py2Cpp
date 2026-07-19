@@ -18,10 +18,10 @@ from ..builtins import *
 from ..core.exceptions import KeyError
 from ..util.dict import dict
 from ..util.list import list
-from .container_mixin import AlgContainerMixin
+from ..util.mixins import ContainerMixin
 
 
-class ACAuto(AlgContainerMixin):
+class ACAuto(ContainerMixin):
   """Trie 图 + ``fail`` 链；独立实现，不继承 ``Trie``。"""
 
   def __init__(self):
@@ -34,7 +34,7 @@ class ACAuto(AlgContainerMixin):
 
   def __copy__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other.__moved__)
+    self._ensure_other_active(other)
     nxt: list[dict[char, int]] = []
     end: list[int] = []
     fail: list[int] = []
@@ -53,7 +53,7 @@ class ACAuto(AlgContainerMixin):
 
   def __move__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other.__moved__)
+    self._ensure_other_active(other)
     self._next = other._next
     self._end = other._end
     self._fail = other._fail
@@ -149,7 +149,7 @@ class ACAuto(AlgContainerMixin):
 
   @overload
   def update(self, other: Self) -> None:
-    self._ensure_other_active(other.__moved__)
+    self._ensure_other_active(other)
     self._merge_from(other, 0, "")
     self.flush()
 

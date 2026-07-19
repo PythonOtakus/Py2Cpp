@@ -10,7 +10,11 @@ from src.passes.method_meta import (
   annotated_methods,
   expand_iter_methods_subscript_meta,
   expand_iter_methods_loop,
+  expand_method_signature_reflect,
   method_meta_label,
+  method_param_names,
+  method_param_type_id,
+  method_return_type_id,
 )
 
 
@@ -163,6 +167,60 @@ class MethodMetaTests(unittest.TestCase):
     dump = ast.dump(expanded, include_attributes=False)
     self.assertIn("value='Go'", dump)
     self.assertIn("attr='go'", dump)
+
+  def test_method_param_names(self):
+    host_src = textwrap.dedent(
+      '''
+      class P:
+        def fire(self, shots: int, target: str) -> bool:
+          return True
+      '''
+    )
+    host = ClassInfo(ast.parse(host_src).body[0])
+    self.assertEqual(method_param_names(host, "fire"), ["shots", "target"])
+
+  def test_method_type_ids(self):
+    host_src = textwrap.dedent(
+      '''
+      class P:
+        def fire(self, shots: int) -> bool:
+          return True
+        def tick(self) -> None:
+          pass
+      '''
+    )
+    host = ClassInfo(ast.parse(host_src).body[0])
+    self.assertEqual(method_param_type_id(host, "fire", "shots"), "int")
+    self.assertEqual(method_return_type_id(host, "fire"), "bool")
+    self.assertIsNone(method_return_type_id(host, "tick"))
+
+  def test_expand_method_signature_reflect(self):
+    mixin_src = textwrap.dedent(
+      '''
+      class M:
+        def build(self):
+          return_type = Self.get_return_type("fire")
+          if return_type is not None:
+            x: str = return_type
+          for param in Self.iter_method_params("fire"):
+            tid: str = Self.get_param_type("fire", param)
+      '''
+    )
+    host_src = textwrap.dedent(
+      '''
+      class P:
+        def fire(self, shots: int) -> bool:
+          return True
+      '''
+    )
+    method = ast.parse(mixin_src).body[0].body[0]
+    host = ClassInfo(ast.parse(host_src).body[0])
+    expanded = expand_method_signature_reflect(method, host)
+    self.assertIsNotNone(expanded)
+    assert expanded is not None
+    dump = ast.dump(expanded, include_attributes=False)
+    self.assertIn("value='bool'", dump)
+    self.assertIn("value='int'", dump)
 
 
 if __name__ == "__main__":

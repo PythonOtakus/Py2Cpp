@@ -19,6 +19,7 @@ STDLIB_SKIP_DOMAIN_PACKAGE_INITS: frozenset[str] = frozenset({
   "text",
   "util",
   "weak",
+  "ui/flow",
 })
 
 UMBRELLA_PREFIX_TIERS: tuple[str, ...] = (
@@ -46,8 +47,26 @@ UMBRELLA_PRIORITY_MODULES: tuple[str, ...] = (
   "ui/app",
   "ui/widget",
   "ui/window",
+  "ui/canvas",
+  "ui/menu",
+  "ui/input",
+  "ui/file_dialog",
+  "ui/tooltip",
   "ui/layout",
   "ui/panel",
+  "ui/flow/meta",
+  "ui/flow/model",
+  "ui/flow/serialize",
+  "ui/flow/history",
+  "ui/flow/catalog",
+  "ui/flow/builtins",
+  "ui/flow/runtime",
+  "ui/flow/layout",
+  "ui/flow/style",
+  "ui/flow/canvas",
+  "ui/flow/palette",
+  "ui/flow/shell",
+  "ui/flow/panel",
 )
 
 UMBRELLA_MSVC_COMPAT_BEFORE_MODULE = "system/datetime"
@@ -74,6 +93,8 @@ UMBRELLA_MSVC_UNDEF_MACROS: tuple[str, ...] = (
   "remove",
   "rename",
   "replace",
+  # rpcndr.h：#define small char（变量名 small 会被展开）；勿 undef far/near（会弄坏 Win 头）
+  "small",
   "Yield",
   "Return",
 )
@@ -111,6 +132,8 @@ HEADER_SKIP_OPERATORS_BEFORE_INL_REL: frozenset[str] = frozenset({
   "util/tuple",
   "text/str",
   "core/protocols",
+  "util/protocols",
+  "numeric/protocols",
   "core/delegate",
   "core/refcount",
   "weak/ref",
@@ -127,8 +150,16 @@ IO_PATH_MODULE_REL = "io/path"
 SYSTEM_DATETIME_MODULE_REL = "system/datetime"
 PROTOCOL_TRAITS_MODULE_REL = "core/protocols"
 
+PROTOCOL_TRAITS_SOURCE_MODULES: tuple[str, ...] = (
+  "util/protocols",
+  "numeric/protocols",
+  "core/protocols",
+)
+
 HEADER_TAIL_SKIP_UMBRELLA_REL: frozenset[str] = frozenset({
   "core/protocols",
+  "util/protocols",
+  "numeric/protocols",
   "core/iter_result",
   "text/str",
 })
@@ -141,6 +172,8 @@ INL_SKIP_UMBRELLA_REL: frozenset[str] = frozenset({
 
 INL_SKIP_OPERATORS_H_REL: frozenset[str] = frozenset({
   "core/protocols",
+  "util/protocols",
+  "numeric/protocols",
   "text/str",
 })
 
@@ -161,6 +194,8 @@ MODULE_INL_PY_STR_TO_CBUF_REL = "text/str"
 PKG_ROOT_FRONT_SKIP_RELS: frozenset[str] = frozenset({
   "text/str",
   "core/protocols",
+  "util/protocols",
+  "numeric/protocols",
 })
 
 SLICE_FRONT_MODULES_REL: frozenset[str] = frozenset({

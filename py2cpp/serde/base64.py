@@ -46,13 +46,17 @@ def _b64_decode_char(b: byte) -> int:
 
 @immutable
 def _bytes_from_decode_data(s: bytes) -> byte[:]:
-  return s.data
+  n: int = len(s)
+  buf: byte[:] = new(n)
+  for i in range(n):
+    buf[i] = s[i]
+  return buf
 
 
 @immutable
 def _bytes_from_decode_text(s: str) -> byte[:]:
   encoded: bytes = s.encode()
-  return encoded.data
+  return _bytes_from_decode_data(encoded)
 
 
 @immutable
@@ -191,7 +195,7 @@ def _b64decode_view(raw: byte[:]) -> bytes:
 
 def b64encode(s: bytes) -> bytes:
   """``bytes`` → Base64 ``bytes``。"""
-  return _b64encode_raw(s.data)
+  return _b64encode_raw(_bytes_from_decode_data(s))
 
 
 @overload
@@ -210,7 +214,7 @@ def _urlsafe_b64swap(out: bytes) -> bytes:
   n: int = len(out)
   buf: byte[:] = new(n)
   for i in range(n):
-    b: byte = out.data[i]
+    b: byte = out[i]
     if b == ord("+"):
       buf[i] = ord("-")
     elif b == ord("/"):
@@ -257,8 +261,7 @@ def encodebytes(s: bytes) -> bytes:
   if not n:
     empty: bytes = b""
     return empty
-  empty_buf: bytes = b""
-  out: byte[:] = empty_buf.data
+  out: byte[:] = new(0)
   at: int = 0
   nl: bytes = b"\n"
   for i in range(0, n, MAXBINSIZE):
@@ -267,8 +270,10 @@ def encodebytes(s: bytes) -> bytes:
       end = n
     chunk: bytes = s[i:end]
     line: bytes = b64encode(chunk)
-    at = _append_bytes(out, at, line.data, len(line))
-    at = _append_bytes(out, at, nl.data, 1)
+    line_buf: byte[:] = _bytes_from_decode_data(line)
+    nl_buf: byte[:] = _bytes_from_decode_data(nl)
+    at = _append_bytes(out, at, line_buf, len(line))
+    at = _append_bytes(out, at, nl_buf, 1)
   trimmed: byte[:] = new(at)
   for j in range(at):
     trimmed[j] = out[j]

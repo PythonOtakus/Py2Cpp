@@ -17,6 +17,18 @@ def _append_bytes(dst: byte[:], at: int, src: byte[:], end: int) -> None:
     dst[at + i] = src[i]
 
 
+@immutable
+def _append_bytes_from_bytes(dst: byte[:], at: int, src: bytes, end: int) -> None:
+  if end <= 0:
+    return
+  need: int = at + end
+  n: int = len(dst)
+  if need > n:
+    dst.reshape(need, n)
+  for i in range(end):
+    dst[at + i] = src[i]
+
+
 @copyable
 class StreamReader(CloseMixin):
   """缓冲式读流；可绑定 ``TcpSocket`` 或纯内存（测试）。"""
@@ -26,8 +38,7 @@ class StreamReader(CloseMixin):
     self._pos: int = 0
     self._live: bool = False
     self._closed: bool = False
-    empty: bytes = b""
-    self._buf: byte[:] = empty.data
+    self._buf: byte[:] = b""
 
   @staticmethod
   def from_socket(sock: TcpSocket) -> Self:
@@ -36,8 +47,19 @@ class StreamReader(CloseMixin):
     r._live = True
     return r
 
+  @overload
   def load_bytes(self, data: byte[:]) -> None:
     """把 ``byte[:]`` 载入内存读缓冲。"""
+    n: int = len(data)
+    self._buf.reshape(n, 0)
+    for i in range(n):
+      self._buf[i] = data[i]
+    self._pos = 0
+    self._live = False
+
+  @overload
+  def load_bytes(self, data: bytes) -> None:
+    """``bytes`` 载入内存读缓冲。"""
     n: int = len(data)
     self._buf.reshape(n, 0)
     for i in range(n):
@@ -80,15 +102,15 @@ class StreamReader(CloseMixin):
     while self._avail() < n:
       if not self._fill():
         raise RuntimeError("stream ended before readexactly")
-    out: bytes = new(n)
+    buf: byte[:] = new(n)
     for i in range(n):
-      out.data[i] = self._buf[self._pos + i]
+      buf[i] = self._buf[self._pos + i]
     self._pos += n
-    return out
+    return bytes(buf)
 
   def readuntil(self, sep: bytes) -> bytes:
     """读到 ``sep`` 末尾（含 ``sep``）。"""
-    sep_n: int = len(sep.data)
+    sep_n: int = len(sep)
     if sep_n <= 0:
       empty: bytes = b""
       return empty
@@ -98,16 +120,16 @@ class StreamReader(CloseMixin):
       for i in range(start, end):
         matched: bool = True
         for j in range(sep_n):
-          if i + j >= end or self._buf[i + j] != sep.data[j]:
+          if i + j >= end or self._buf[i + j] != sep[j]:
             matched = False
             break
         if matched:
           take: int = (i + sep_n) - start
-          out: bytes = new(take)
+          buf: byte[:] = new(take)
           for k in range(take):
-            out.data[k] = self._buf[start + k]
+            buf[k] = self._buf[start + k]
           self._pos = i + sep_n
-          return out
+          return bytes(buf)
       if not self._fill():
         raise RuntimeError("stream ended before readuntil")
 
@@ -120,8 +142,7 @@ class StreamWriter(CloseMixin):
     self._sock: TcpSocket = new()
     self._live: bool = False
     self._closed: bool = False
-    empty: bytes = b""
-    self._buf: byte[:] = empty.data
+    self._buf: byte[:] = b""
 
   @staticmethod
   def from_socket(sock: TcpSocket) -> Self:
@@ -143,10 +164,13 @@ class StreamWriter(CloseMixin):
     if n <= 0:
       return 0
     if self._live:
-      sent: int = self._sock.send(data.data, n)
+      chunk: byte[:] = new(n)
+      for i in range(n):
+        chunk[i] = data[i]
+      sent: int = self._sock.send(chunk, n)
       return sent
     at: int = len(self._buf)
-    _append_bytes(self._buf, at, data.data, n)
+    _append_bytes_from_bytes(self._buf, at, data, n)
     return n
 
   def drain(self) -> None:
@@ -162,7 +186,4 @@ class StreamWriter(CloseMixin):
   @immutable
   def take_bytes(self) -> bytes:
     n: int = len(self._buf)
-    out: bytes = new(n)
-    for i in range(n):
-      out.data[i] = self._buf[i]
-    return out
+    return bytes(self._buf)

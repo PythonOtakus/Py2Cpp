@@ -13,10 +13,8 @@ if errorlevel 1 (
   echo.
 )
 
-echo === bootstrap: py2cpp runtime ===
-%PY% main.py py2cpp\__init__.py -o generated --no-main
+call "%~dp0_bootstrap_runtime.bat"
 if errorlevel 1 exit /b 1
-call "%~dp0_clean_obj.bat" "%CD%\generated\runtime" "py2cpp" --global-py2cpp
 
 echo === parallel compile JSON tests ===
 %PY% scripts\parallel_build.py files --root test stdlib\serde\test_json.py perf\test_json_serde.py perf\test_json_dump_perf.py perf\test_json_document_perf.py %EXTRA%

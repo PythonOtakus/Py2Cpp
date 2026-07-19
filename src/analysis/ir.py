@@ -895,8 +895,56 @@ def cpp_fill_allocator_default_args(cpp_type: str) -> str:
   return cpp_type
 
 
+def cpp_fill_counter_default_args(cpp_type: str) -> str:
+  """``PyCounter<K>`` 单实参 → 补默认计数类型 ``PyInt``。"""
+  t = strip_cpp_type_qualifiers(strip_cpp_ref(cpp_type.strip()))
+  if not _type_pred().is_counter_type(t):
+    return cpp_type
+  inner = t[len(CPP_COUNTER_PREFIX) : -1].strip()
+  parts = split_cpp_template_args(inner)
+  if len(parts) != 1:
+    return cpp_type
+  return f"{CPP_COUNTER_PREFIX}{parts[0]}, {cpp_ident('int')}>"
+
+
+def cpp_normalize_type_for_compare(cpp_type: str) -> str:
+  """推断类型与注解比较：补 ``list``/``array`` NTTP ``0``、``Counter`` 默认 ``int``；递归模板实参。"""
+  t = strip_cpp_ref(cpp_type.strip())
+  if t.endswith(">"):
+    for prefix in (
+      CPP_DICT_PREFIX,
+      CPP_FROZENDICT_PREFIX,
+      CPP_LIST_PREFIX,
+      CPP_FROZENLIST_PREFIX,
+      CPP_ARRAY_PREFIX,
+      CPP_ARRAY2D_PREFIX,
+      CPP_ARRAY3D_PREFIX,
+      CPP_COUNTER_PREFIX,
+      CPP_TUPLE_PREFIX,
+      CPP_OPTIONAL_PREFIX,
+      CPP_DEQUE_PREFIX,
+    ):
+      idx = t.find(prefix)
+      if idx < 0 or "<" in t[:idx]:
+        continue
+      inner = t[idx + len(prefix) : -1]
+      parts = split_cpp_template_args(inner)
+      if not parts:
+        continue
+      norm = ", ".join(cpp_normalize_type_for_compare(p.strip()) for p in parts)
+      t = f"{t[:idx]}{prefix}{norm}>"
+      break
+  t = cpp_fill_allocator_default_args(t)
+  t = cpp_fill_counter_default_args(t)
+  return t
+
+
+def cpp_inferred_type_matches_ann(expected: str, ann: str) -> bool:
+  return cpp_normalize_type_for_compare(expected) == cpp_normalize_type_for_compare(ann)
+
+
 def heap_array_type_with_allocator(cpp_type: str, info: "ClassInfo") -> str:
-  """``list[T, StackLength]`` / ``array[T, StackLength]`` 内 ``T[:]`` → ``PyArray<T, StackLength>``。"""
+  """``list[Element, StackLength]`` / ``array[Element, StackLength]`` 内 ``Element[:]`` → ``PyArray<Element, StackLength>``。"""
   if info.name not in ("list", "frozenlist", "array"):
     return cpp_type
   if len(info.type_params) < 2:
@@ -1264,7 +1312,7 @@ def qualified_class_static_callee(
         args = tpl[len(b) + 1 : -1].strip()
         return f"{qbase}<{args}>::{member}"
       return f"{qualify_symbol_in_module(info.module_path, tpl)}::{member}"
-    return f"{base}<{cpp_ident('PyNone')}>::{member}"
+    return f"{base}<{cpp_ident('int')}>::{member}"
   if info.cpp_name() == _cpp_complex_base_name():
     tpl = complex_template_cpp_type(effective_arg)
     b = _cpp_complex_base_name()
@@ -1348,9 +1396,7 @@ def class_info_for_cpp_type(
   cpp_type: str, classes: dict[str, ClassInfo],
 ) -> ClassInfo | None:
   """按生成类型名（含模板实参）匹配 ``ClassInfo``。"""
-  bare = cpp_type.strip()
-  if bare.endswith("&"):
-    bare = bare[:-1].strip()
+  bare = strip_cpp_type_qualifiers(cpp_type)
   for info in classes.values():
     cn = info.cpp_name()
     if bare == cn or bare.startswith(f"{cn}<"):
@@ -1489,7 +1535,7 @@ def cpp_type_supports_set_literal_add(
 
 def default_new_ctor_cpp(cpp_type: str) -> str:
   """无参 ``new()`` 默认实参 → ``Type()``（方法形参默认值等）。"""
-  t = strip_cpp_ref(cpp_type.strip())
+  t = strip_cpp_type_qualifiers(cpp_type)
   if _type_pred().is_str_type(t):
     return f"{t}()"
   if _type_pred().is_bytes_type(t):
@@ -1599,6 +1645,7 @@ class TypeAliasInfo:
   value: ast.expr
   type_params: tuple[str, ...] = ()
   type_param_constraints: dict[str, tuple[str, ...]] = field(default_factory=dict)
+  type_param_oneof_constraints: dict[str, tuple[str, ...]] = field(default_factory=dict)
   type_param_nttp: dict[str, str] = field(default_factory=dict)
   member_constraint: bool = False
   """``type Element = ...``：关联类型；要求 ``using Element`` 或嵌套类型 ``Element``。"""
@@ -1678,10 +1725,47 @@ def pep695_used_type_params(
   return used
 
 
-def parse_typevar_protocol_bounds(bound: ast.expr | None) -> tuple[str, ...]:
-  """``T: Proto`` 或 ``T: A & B``（PEP 695 交集）→ 协议名元组。"""
+def parse_typevar_oneof_bounds(bound: ast.expr | None) -> tuple[str, ...]:
+  """``T: oneof[char, byte]`` 或 ``T: Proto & oneof[…]`` → 候选类型名元组。"""
   if bound is None:
     return ()
+  if isinstance(bound, ast.Subscript) and isinstance(bound.value, ast.Name):
+    if bound.value.id == "oneof":
+      alts = _oneof_alternative_names(bound.slice)
+      if len(alts) < 2:
+        raise SyntaxError("oneof[…] 须至少列出 2 个类型")
+      return alts
+    return ()
+  if isinstance(bound, ast.BinOp) and isinstance(bound.op, ast.BitAnd):
+    left = parse_typevar_oneof_bounds(bound.left)
+    right = parse_typevar_oneof_bounds(bound.right)
+    if left and right:
+      raise SyntaxError("类型形参至多一个 oneof[…] 约束")
+    return left or right
+  return ()
+
+
+def _oneof_alternative_names(slice_node: ast.expr) -> tuple[str, ...]:
+  if isinstance(slice_node, ast.Tuple):
+    elts = slice_node.elts
+  else:
+    elts = [slice_node]
+  names: list[str] = []
+  for elt in elts:
+    if isinstance(elt, ast.Name):
+      names.append(elt.id)
+    else:
+      raise SyntaxError("oneof[…] 仅支持类型名列表")
+  return tuple(names)
+
+
+def parse_typevar_protocol_bounds(bound: ast.expr | None) -> tuple[str, ...]:
+  """``T: Proto`` 或 ``T: A & B``（PEP 695 交集）→ 协议名元组（不含 ``oneof[…]``）。"""
+  if bound is None:
+    return ()
+  if isinstance(bound, ast.Subscript) and isinstance(bound.value, ast.Name):
+    if bound.value.id == "oneof":
+      return ()
   if isinstance(bound, ast.Name):
     return (bound.id,)
   if isinstance(bound, ast.BinOp) and isinstance(bound.op, ast.BitAnd):
@@ -1689,6 +1773,47 @@ def parse_typevar_protocol_bounds(bound: ast.expr | None) -> tuple[str, ...]:
       bound.right
     )
   return ()
+
+
+def merge_oneof_type_constraint(
+  constraints: dict[str, tuple[str, ...]],
+  tp: str,
+  alternatives: tuple[str, ...],
+) -> None:
+  if tp not in constraints:
+    constraints[tp] = alternatives
+    return
+  if constraints[tp] != alternatives:
+    raise SyntaxError(f"类型形参 {tp} 的 oneof[…] 约束冲突")
+
+
+def merge_concrete_oneof_constraint(
+  constraints: dict[str, tuple[str, ...]],
+  concrete: str,
+  alternatives: tuple[str, ...],
+) -> None:
+  if concrete not in constraints:
+    constraints[concrete] = alternatives
+    return
+  if constraints[concrete] != alternatives:
+    raise SyntaxError(f"具体类型 {concrete} 的 oneof[…] 约束冲突")
+
+
+def cpp_type_for_oneof_alternative(name: str) -> str:
+  """``oneof`` 候选类型名 → C++ 类型（``char``→``PyChar``，类名→``Py*``）。"""
+  from ..constant.language import CPP_RENAME
+
+  if name in CPP_RENAME:
+    return CPP_RENAME[name]
+  return cpp_ident(name)
+
+
+def cpp_oneof_static_assert_expr(type_cpp: str, alternatives: tuple[str, ...]) -> str:
+  parts = [
+    f"std::is_same<{type_cpp}, {cpp_type_for_oneof_alternative(alt)}>::value"
+    for alt in alternatives
+  ]
+  return " || ".join(parts)
 
 
 def typevar_default_is_capture(default: ast.expr | None) -> bool:
@@ -1714,6 +1839,7 @@ def parse_type_alias_stmt(stmt: ast.TypeAlias) -> TypeAliasInfo:
   type_params: list[str] = []
   capture_params: list[str] = []
   constraints: dict[str, tuple[str, ...]] = {}
+  oneof_constraints: dict[str, tuple[str, ...]] = {}
   nttp: dict[str, str] = {}
   for tp in getattr(stmt, "type_params", None) or ():
     if isinstance(tp, ast.TypeVar):
@@ -1724,6 +1850,9 @@ def parse_type_alias_stmt(stmt: ast.TypeAlias) -> TypeAliasInfo:
       dv = getattr(tp, "default_value", None)
       if typevar_default_is_capture(dv):
         capture_params.append(tp.name)
+      oneof = parse_typevar_oneof_bounds(tp.bound)
+      if oneof:
+        oneof_constraints[tp.name] = oneof
       bounds = parse_typevar_protocol_bounds(tp.bound)
       if bounds:
         constraints[tp.name] = bounds
@@ -1733,18 +1862,21 @@ def parse_type_alias_stmt(stmt: ast.TypeAlias) -> TypeAliasInfo:
       stmt.value,
       tuple(type_params),
       {},
+      {},
       type_param_nttp=nttp,
       member_constraint=True,
       lineno=getattr(stmt, "lineno", 0),
     )
   used = collect_type_names_in_expr(stmt.value) & set(type_params)
   constraints = {k: v for k, v in constraints.items() if k in used}
+  oneof_constraints = {k: v for k, v in oneof_constraints.items() if k in used}
   is_conditional = isinstance(stmt.value, ast.IfExp)
   return TypeAliasInfo(
     name,
     stmt.value,
     tuple(type_params),
     constraints,
+    oneof_constraints,
     type_param_nttp=nttp,
     capture_params=tuple(capture_params),
     is_conditional=is_conditional,
@@ -1781,15 +1913,17 @@ def parse_class_type_params(
   tuple[str, ...],
   str | None,
   dict[str, tuple[str, ...]],
+  dict[str, tuple[str, ...]],
   dict[str, ast.expr],
   dict[str, str],
   dict[str, tuple[str, ...]],
 ]:
-  """解析 PEP 695 类形参：TypeVar 列表、捕获形参、TypeVarTuple、协议/装饰器约束、默认值、NTTP（``Mod: T``）。"""
+  """解析 PEP 695 类形参：TypeVar 列表、捕获形参、TypeVarTuple、协议/oneof/装饰器约束、默认值、NTTP（``Mod: T``）。"""
   regular: list[str] = []
   capture: list[str] = []
   typevar_tuple: str | None = None
   constraints: dict[str, tuple[str, ...]] = {}
+  oneof_constraints: dict[str, tuple[str, ...]] = {}
   decorator_constraints: dict[str, tuple[str, ...]] = {}
   defaults: dict[str, ast.expr] = {}
   nttp: dict[str, str] = {}
@@ -1804,6 +1938,9 @@ def parse_class_type_params(
       if nttp_val is not None:
         nttp[p.name] = nttp_val
       else:
+        oneof = parse_typevar_oneof_bounds(p.bound)
+        if oneof:
+          oneof_constraints[p.name] = oneof
         bounds = parse_typevar_protocol_bounds(p.bound)
         if bounds:
           proto_bounds, dec_bounds = split_typevar_bounds(bounds)
@@ -1816,7 +1953,7 @@ def parse_class_type_params(
         defaults[p.name] = dv
     elif isinstance(p, ast.TypeVarTuple):
       typevar_tuple = p.name
-  return regular, tuple(capture), typevar_tuple, constraints, defaults, nttp, decorator_constraints
+  return regular, tuple(capture), typevar_tuple, constraints, oneof_constraints, defaults, nttp, decorator_constraints
 
 
 def format_cpp_doc(doc: str | None) -> list[str]:
@@ -2653,10 +2790,12 @@ class ClassInfo:
       self.capture_params,
       self.typevar_tuple,
       self.type_param_constraints,
+      self.type_param_oneof_constraints,
       self.type_param_defaults,
       self.type_param_nttp,
       self.type_param_decorator_constraints,
     ) = parse_class_type_params(node)
+    self.concrete_oneof_constraints: dict[str, tuple[str, ...]] = {}
     self.type_alias_list: list[TypeAliasInfo] = []
     self.type_aliases: dict[str, TypeAliasInfo] = {}
     self.bases: list[str] = []
@@ -3282,7 +3421,7 @@ def class_const_cpp_ref(expr: ast.expr, cls: ClassInfo | None) -> str | None:
     return None
   member = cls.cpp_member_name(name)
   if cls.is_template():
-    return qualified_class_static_callee(cls, member)
+    return member
   return f"{cls.cpp_name()}::{member}"
 
 

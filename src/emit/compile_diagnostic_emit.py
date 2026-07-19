@@ -30,6 +30,19 @@ def compile_diag_type_param_decorator(
   )
 
 
+def compile_diag_type_param_oneof(
+  param: str,
+  alternatives: tuple[str, ...],
+  *,
+  loc_prefix: str = "",
+) -> str:
+  """类/别名模板形参 ``oneof[…]`` 约束（``static_assert`` 文案）。"""
+  opts = " | ".join(alternatives)
+  return (
+    f"{loc_prefix}{COMPILE_DIAG_PREFIX}: 类型参数 {param} 须为 {opts} 之一"
+  )
+
+
 def compile_diag_type_param_protocol(
   param: str,
   protocol: str,

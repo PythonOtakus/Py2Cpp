@@ -1,6 +1,6 @@
 """字面量容器查表 / 成员：``{a: x}[k]``、``{…}.get``、``x in {a,b}``。
 
-常量键/元素脱糖为三目 / ``||`` 链或 IIFE；非常量或 ``**`` 展开则临时 ``PyDict`` / ``PySet``。
+常量键/元素脱糖为三目 / ``||`` 链；``x in {…}`` / ``x in […]`` 均 ``||`` 内联：标量 ``==``、``*{b}`` / ``*[b]`` → ``x in b``，不构造临时 ``PySet`` / ``PyList``。
 见 ``.cursor/skills/py2cpp-design/reference.md`` §8.3.3.1。
 """
 from __future__ import annotations
@@ -130,8 +130,58 @@ def try_emit_dict_literal_get(
   )
 
 
-def set_literal_elems_all_constant(node: ast.Set) -> bool:
-  return all(isinstance(e, ast.Constant) for e in node.elts)
+def set_literal_has_starred(node: ast.Set) -> bool:
+  return any(isinstance(e, ast.Starred) for e in node.elts)
+
+
+def _literal_membership_part_for_elt(
+  tr: Translator,
+  member_expr: str,
+  member_node: ast.expr,
+  elt: ast.expr,
+) -> str:
+  """字面量单元素：标量 ``==``；``*{b}`` / ``*[b]`` → ``container.__contains__(member)``。"""
+  if isinstance(elt, ast.Starred):
+    from .binop_emit import _contains_member_arg
+
+    container = elt.value
+    left_v = _contains_member_arg(tr, member_node, container)
+    if tr._use_member_dispatch_macro(container):
+      return tr._cpp_call_expr(
+        container, "__contains__", left_v, site=elt, arg_count=1,
+      )
+    comp_v = tr.visit(container)
+    sep = tr._member_access(comp_v)
+    return f"({comp_v}{sep}__contains__({left_v}))"
+  return f"({member_expr} == {tr._visit_value_expr(elt)})"
+
+
+def _literal_membership_or_chain(member_expr: str, elem_exprs: list[str]) -> str:
+  """``x in {a,b,…}`` / ``x in [a,b,…]`` → ``(x==a)||(x==b)||…``。"""
+  if not elem_exprs:
+    return "false"
+  if len(elem_exprs) == 1:
+    return f"({member_expr} == {elem_exprs[0]})"
+  parts = [f"({member_expr} == {e})" for e in elem_exprs]
+  return "(" + " || ".join(parts) + ")"
+
+
+def _literal_membership_or_chain_from_elts(
+  tr: Translator,
+  member_node: ast.expr,
+  elts: list[ast.expr],
+) -> str:
+  """``x in {a,*b,c}`` / ``x in [a,*b,c]`` → ``(x==a)||(x in b)||(x==c)``。"""
+  member_expr = tr._visit_value_expr(member_node)
+  parts = [
+    _literal_membership_part_for_elt(tr, member_expr, member_node, e)
+    for e in elts
+  ]
+  if not parts:
+    return "false"
+  if len(parts) == 1:
+    return parts[0]
+  return "(" + " || ".join(parts) + ")"
 
 
 def _set_literal_elem_cpp(tr: Translator, node: ast.Set) -> str:
@@ -162,17 +212,7 @@ def try_emit_set_literal_contains(
   *,
   negate: bool = False,
 ) -> str:
-  member_expr = tr._visit_value_expr(member_node)
-  if set_literal_elems_all_constant(set_node):
-    if not set_node.elts:
-      core = "false"
-    else:
-      parts = [
-        f"({member_expr} == {tr._visit_value_expr(e)})" for e in set_node.elts
-      ]
-      core = parts[0] if len(parts) == 1 else "(" + " || ".join(parts) + ")"
-  else:
-    core = _emit_runtime_set_contains(tr, set_node, member_expr)
+  core = _literal_membership_or_chain_from_elts(tr, member_node, set_node.elts)
   if negate:
     return f"(!({core}))"
   return core

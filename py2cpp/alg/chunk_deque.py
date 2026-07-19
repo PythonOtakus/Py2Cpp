@@ -5,13 +5,13 @@
 from ..builtins import *
 from ..core.exceptions import IndexError, StopIteration, ValueError
 from ..util.list import list
-from .container_mixin import AlgContainerMixin
+from ..util.mixins import ContainerMixin
 
 
 @boxing
-class _ChunkNode[Element]:
+class _ChunkNode[Element](friends=(ChunkDeque,)):
   def __init__(self):
-    self.data: list[Element] = []
+    self._data: list[Element] = []
     self.prev: Self = None
     self.next: Self = None
 
@@ -48,7 +48,7 @@ class ChunkDequeReverseIterator[Element]:
     return value
 
 
-class ChunkDeque[Element](AlgContainerMixin):
+class ChunkDeque[Element](ContainerMixin):
   """分块双端队列；``splice`` / ``extend`` / ``insert`` 提供可拼接序列（rope）语义。"""
 
   DEFAULT_BLOCK_SIZE: int @const = 512
@@ -66,13 +66,13 @@ class ChunkDeque[Element](AlgContainerMixin):
 
   def __copy__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other.__moved__)
+    self._ensure_other_active(other)
     self.clear()
     self._block_size = other._block_size
     cur: _ChunkNode[Element] = other._head
     while cur is not None:
-      for j in range(len(cur.data)):
-        self.append(cur.data[j])
+      for j in range(len(cur._data)):
+        self.append(cur._data[j])
       cur = cur.next
 
   @immutable
@@ -84,7 +84,7 @@ class ChunkDeque[Element](AlgContainerMixin):
 
   def __move__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other.__moved__)
+    self._ensure_other_active(other)
     if self._len > 0:
       self.clear()
     else:
@@ -100,11 +100,11 @@ class ChunkDeque[Element](AlgContainerMixin):
     other._len = 0
 
   def append(self, x: Element) -> None:
-    if self._tail is not None and len(self._tail.data) < self._block_size:
-      self._tail.data.append(x)
+    if self._tail is not None and len(self._tail._data) < self._block_size:
+      self._tail._data.append(x)
     else:
       node: _ChunkNode[Element] = new()
-      node.data.append(x)
+      node._data.append(x)
       if self._tail is not None:
         self._tail.next = node
         node.prev = self._tail
@@ -115,11 +115,11 @@ class ChunkDeque[Element](AlgContainerMixin):
     self._len += 1
 
   def appendleft(self, x: Element) -> None:
-    if self._head is not None and len(self._head.data) < self._block_size:
-      self._head.data.insert(0, x)
+    if self._head is not None and len(self._head._data) < self._block_size:
+      self._head._data.insert(0, x)
     else:
       node: _ChunkNode[Element] = new()
-      node.data.append(x)
+      node._data.append(x)
       if self._head is not None:
         node.next = self._head
         self._head.prev = node
@@ -155,9 +155,9 @@ class ChunkDeque[Element](AlgContainerMixin):
     remain: int = i
     node: _ChunkNode[Element] = self._head
     while node is not None:
-      n: int = len(node.data)
+      n: int = len(node._data)
       if remain < n:
-        return node.data[remain]
+        return node._data[remain]
       remain -= n
       node = node.next
     raise IndexError("index out of range")
@@ -172,8 +172,8 @@ class ChunkDeque[Element](AlgContainerMixin):
   def __contains__(self, item: Element) -> bool:
     cur: _ChunkNode[Element] = self._head
     while cur is not None:
-      for j in range(len(cur.data)):
-        if cur.data[j] == item:
+      for j in range(len(cur._data)):
+        if cur._data[j] == item:
           return True
       cur = cur.next
     return False
@@ -187,14 +187,14 @@ class ChunkDeque[Element](AlgContainerMixin):
     node: _ChunkNode[Element] = self._head
     off: int = 0
     while node is not None:
-      n: int = len(node.data)
+      n: int = len(node._data)
       if remain < n:
         off = remain
         break
       remain -= n
       node = node.next
-    node.data.pop(off)
-    if not node.data:
+    node._data.pop(off)
+    if not node._data:
       self._unlink_node(node)
     self._len -= 1
 
@@ -204,9 +204,9 @@ class ChunkDeque[Element](AlgContainerMixin):
     remain: int = i
     node: _ChunkNode[Element] = self._head
     while node is not None:
-      n: int = len(node.data)
+      n: int = len(node._data)
       if remain < n:
-        node.data[remain] = value
+        node._data[remain] = value
         return
       remain -= n
       node = node.next
@@ -245,7 +245,7 @@ class ChunkDeque[Element](AlgContainerMixin):
     node: _ChunkNode[Element] = self._head
     off: int = 0
     while node is not None:
-      n: int = len(node.data)
+      n: int = len(node._data)
       if remain < n:
         off = remain
         break
@@ -265,12 +265,12 @@ class ChunkDeque[Element](AlgContainerMixin):
       self._len = splice_pos
       return right
     tail_data: list[Element] = []
-    for j in range(off, len(node.data)):
-      tail_data.append(node.data[j])
-    while len(node.data) > off:
-      node.data.pop()
+    for j in range(off, len(node._data)):
+      tail_data.append(node._data[j])
+    while len(node._data) > off:
+      node._data.pop()
     new_node: _ChunkNode[Element] = new()
-    new_node.data = tail_data
+    new_node._data = tail_data
     new_node.next = node.next
     if node.next is not None:
       node.next.prev = new_node
@@ -289,8 +289,8 @@ class ChunkDeque[Element](AlgContainerMixin):
     """尾部拼接 ``other`` 的元素（拷贝）；调用方应 ``other.clear()`` 释放原块。"""
     cur: _ChunkNode[Element] = other._head
     while cur is not None:
-      for j in range(len(cur.data)):
-        self.append(cur.data[j])
+      for j in range(len(cur._data)):
+        self.append(cur._data[j])
       cur = cur.next
 
   def insert(self, pos: int, x: Element) -> None:
@@ -308,8 +308,8 @@ class ChunkDeque[Element](AlgContainerMixin):
   def pop(self) -> Element:
     if not self:
       raise IndexError("pop from empty ChunkDeque")
-    value: Element = self._tail.data.pop()
-    if not self._tail.data:
+    value: Element = self._tail._data.pop()
+    if not self._tail._data:
       self._unlink_node(self._tail)
     self._len -= 1
     return value
@@ -333,8 +333,8 @@ class ChunkDeque[Element](AlgContainerMixin):
   def popleft(self) -> Element:
     if not self:
       raise IndexError("pop from empty ChunkDeque")
-    value: Element = self._head.data.pop(0)
-    if not self._head.data:
+    value: Element = self._head._data.pop(0)
+    if not self._head._data:
       self._unlink_node(self._head)
     self._len -= 1
     return value

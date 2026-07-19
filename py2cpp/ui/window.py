@@ -26,6 +26,8 @@ class UIWindow(UIWidget):
   style: UIStyle = new()
   next_y: int @optional = 10
   active_form: int64 @optional = 0
+  flow_shell_ptr: int64 @optional = 0
+  flow_canvas_ptr: int64 @optional = 0
   title: str @property.postsetter(_apply_title) = ""
 
   @native

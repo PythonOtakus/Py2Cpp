@@ -17,7 +17,8 @@ def append_chars(buf: char[:], at: int, src: char[:], end: int) -> int:
   n: int = len(buf)
   if need > n:
     buf.reshape(need, n)
-  copy_buf(buf.buf + at, src.buf, end)
+  for i in range(end):
+    buf[at + i] = src[i]
   return need
 
 

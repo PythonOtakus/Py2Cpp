@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from ..builtins import *
 from ..core.exceptions import ValueError
-from ..core.protocols import Integral
+from .protocols import Integral
 
 
 @copyable

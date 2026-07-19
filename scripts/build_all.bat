@@ -23,16 +23,8 @@ if errorlevel 1 (
   echo.
 )
 
-echo === bootstrap: py2cpp runtime ===
-call "%~dp0_build_timing.bat" start
-%PY% main.py py2cpp\__init__.py -o generated --no-main
-if errorlevel 1 (
-  echo ERROR: failed to translate py2cpp runtime.
-  exit /b 1
-)
-call "%~dp0_build_timing.bat" end translate "bootstrap py2cpp runtime"
-call "%~dp0_clean_obj.bat" "%CD%\generated\runtime" "py2cpp" --global-py2cpp
-echo.
+call "%~dp0_bootstrap_runtime.bat"
+if errorlevel 1 exit /b 1
 
 %PY% scripts\parallel_build.py all %EXTRA%
 set "RC=%ERRORLEVEL%"

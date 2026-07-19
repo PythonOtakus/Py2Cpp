@@ -9,7 +9,7 @@ from ..analysis.build_types import build_result_cpp_type, walk_build_plan
 from ..analysis.type_emit import field_ann_ast, field_storage_cpp, bind_scope_var
 from ..analysis.type_pred import is_list_type
 from ..analysis.type_extract import list_elem_type
-from ..analysis.ir import ClassInfo, cpp_ident, cpp_template_type, strip_cpp_ref
+from ..analysis.ir import ClassInfo, cpp_inferred_type_matches_ann, cpp_ident, cpp_template_type, strip_cpp_ref
 from ..analysis.module_namespace import qualify_symbol_in_module
 from ..passes.build_parse import BUILD_INDEX_PREFIX, AssignSegment, BuildBody, BuildPlan, BuildValue, BuildParseError, ExprValue, IndexRefValue, ListDescentSegment, ListRootPlan, LiteralValue, StructDescentSegment, StructRootPlan, parse_build_literal
 from ..translation_error import raise_translation_error
@@ -191,7 +191,7 @@ def _emit_build_expr(tr: Translator, target_cpp: str, target_info: ClassInfo | N
     walk_build_plan(tr, plan, target_cpp, target_info, node=node)
     expected = build_result_cpp_type(target_cpp)
     ann = result_ann.strip()
-    if ann and strip_cpp_ref(ann) != strip_cpp_ref(expected):
+    if ann and not cpp_inferred_type_matches_ann(expected, ann):
         raise_translation_error(tr, node, f'build 返回 {expected}；期望注解 {ann}')
     if isinstance(plan, ListRootPlan):
         return _emit_list_root_iife(tr, target_cpp, plan)

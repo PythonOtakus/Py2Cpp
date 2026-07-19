@@ -1,5 +1,5 @@
 from py2cpp import *
-from py2cpp.core.protocols import Integral
+from py2cpp.numeric.protocols import Integral
 
 
 def only_integral[T: Integral](x: T) -> int:

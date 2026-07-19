@@ -2,7 +2,7 @@
 from ..builtins import *
 from ..core.exceptions import IndexError, ValueError
 from ..util.list import list
-from .container_mixin import AlgContainerMixin
+from ..util.mixins import ContainerMixin
 
 
 @dataclass
@@ -11,7 +11,7 @@ class Edge:
   w: int = 1
 
 
-class AdjList(AlgContainerMixin):
+class AdjList(ContainerMixin):
   """有向邻接表；顶点 ``0 .. n-1``。"""
 
   def __init__(self, n: int = 0):
@@ -26,7 +26,7 @@ class AdjList(AlgContainerMixin):
 
   def __copy__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other.__moved__)
+    self._ensure_other_active(other)
     self._n = other._n
     adj: list[list[Edge]] = []
     self._adj = adj
@@ -39,7 +39,7 @@ class AdjList(AlgContainerMixin):
 
   def __move__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other.__moved__)
+    self._ensure_other_active(other)
     self._n = other._n
     self._adj = other._adj
     other._n = 0

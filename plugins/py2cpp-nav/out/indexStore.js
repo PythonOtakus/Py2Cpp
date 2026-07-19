@@ -103,19 +103,39 @@ class NavIndexStore {
         if (!shard) {
             return [];
         }
+        const memberKinds = new Set([
+            "method",
+            "field",
+            "property",
+            "type_alias",
+            "enum_member",
+            "variant",
+            "delegate",
+        ]);
+        const classLike = new Set(["class", "protocol", "mixin", "descriptor", "delegate"]);
         return shard.symbols.filter((sym) => {
-            if (query.kind && sym.kind !== query.kind && !(query.kind === "method" && sym.kind === "property")) {
-                if (query.kind === "member" || query.kind === "method") {
-                    if (sym.kind !== "method" && sym.kind !== "field" && sym.kind !== "property") {
+            if (query.kind) {
+                if (query.kind === "member") {
+                    if (!memberKinds.has(sym.kind)) {
+                        return false;
+                    }
+                }
+                else if (query.kind === "method") {
+                    if (sym.kind !== "method" && sym.kind !== "property") {
+                        return false;
+                    }
+                }
+                else if (query.kind === "class") {
+                    if (!classLike.has(sym.kind)) {
                         return false;
                     }
                 }
                 else if (query.kind === "function") {
-                    if (sym.kind !== "function") {
+                    if (sym.kind !== "function" && sym.kind !== "delegate") {
                         return false;
                     }
                 }
-                else {
+                else if (sym.kind !== query.kind) {
                     return false;
                 }
             }

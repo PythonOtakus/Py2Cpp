@@ -1,6 +1,6 @@
 
 from py2cpp import *
-from py2cpp.core.protocols import Comparable
+from py2cpp.util.protocols import Comparable
 
 
 def sorted[T: Comparable](s: list[T]) -> list[T]:

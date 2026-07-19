@@ -161,6 +161,15 @@ def _apply_action(
       pre.remove(_PROT_H)
       pre.insert(1, _PROT_H)
     return
+  if op == "insert_mod_after_mod":
+    h = stdlib_header_include(action[1])
+    anchor = stdlib_header_include(action[2])
+    _remove_all(pre, h)
+    if anchor in pre:
+      pre.insert(pre.index(anchor) + 1, h)
+    else:
+      _append_unique(pre, h)
+    return
   raise ValueError(f"unknown header fixup action: {op!r}")
 
 

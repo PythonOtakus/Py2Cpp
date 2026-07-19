@@ -52,7 +52,6 @@ def f():
     cpp = self._translate(
       """
 from py2cpp import *
-from py2cpp.core.protocols import DictKey
 
 class Bag[T: DictKey]:
   def __init__(self):

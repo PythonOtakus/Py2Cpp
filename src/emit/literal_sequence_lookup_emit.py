@@ -10,6 +10,10 @@ from ..analysis.ir import cpp_ident, cpp_template_type, str_cpp_from_literal
 from ..constant.stdlib_layout import cpp_exception_ctor
 from .comprehensions_emit import _temp_name
 from .iife_emit import emit_iife
+from .literal_map_lookup_emit import (
+  _literal_membership_or_chain,
+  _literal_membership_or_chain_from_elts,
+)
 if TYPE_CHECKING:
     from ..translator import Translator
 _STR_FIND_METHODS = frozenset({'find', 'index', 'rfind', 'rindex'})
@@ -71,15 +75,7 @@ def try_emit_list_literal_getitem(tr: Translator, list_node: ast.List, slice_nod
     return _emit_runtime_list_getitem(tr, list_node, slice_node)
 
 def try_emit_list_literal_contains(tr: Translator, list_node: ast.List, member_node: ast.expr, *, negate: bool=False) -> str:
-    member_expr = tr._visit_value_expr(member_node)
-    if list_literal_elems_all_constant(list_node) and (not list_literal_has_starred(list_node)):
-        if not list_node.elts:
-            core = 'false'
-        else:
-            parts = [f'({member_expr} == {tr._visit_value_expr(e)})' for e in list_node.elts]
-            core = parts[0] if len(parts) == 1 else '(' + ' || '.join(parts) + ')'
-    else:
-        core = _emit_runtime_list_contains(tr, list_node, member_expr)
+    core = _literal_membership_or_chain_from_elts(tr, member_node, list_node.elts)
     if negate:
         return f'(!({core}))'
     return core

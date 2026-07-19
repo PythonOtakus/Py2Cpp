@@ -1,6 +1,7 @@
 """deque[Element]：双端队列，对齐 Python 3.13 ``collections.deque``（双向侵入式链表）。"""
 from ..builtins import *
 from ..core.exceptions import IndexError, StopIteration, ValueError
+from .mixins import ContainerMixin
 
 
 @boxing
@@ -47,16 +48,16 @@ class deque_reverse_iterator[Element]:
 
 
 @native_name("PyDeque")
-class deque[Element]:
-  _DEQUE_END: int @const = int.Min
+class deque[Element](ContainerMixin):
+  _END_INDEX: int @const = int.Min
 
-  _UNBOUNDED_MAXLEN: int @const = int.Min
+  _NO_MAXLEN: int @const = int.Min
 
   __repr__ = __str__
 
-  def __init__(self, maxlen: int = Self._UNBOUNDED_MAXLEN):
-    self.head: deque_node[Element] = None
-    self.tail: deque_node[Element] = None
+  def __init__(self, maxlen: int = Self._NO_MAXLEN):
+    self._head: deque_node[Element] = None
+    self._tail: deque_node[Element] = None
     self._length: int = 0
     self._maxlen: int = maxlen
 
@@ -64,7 +65,7 @@ class deque[Element]:
     self._clear_nodes()
 
   def __copy__(self, other: Self):
-    """深拷贝节点链（避免默认成员拷贝共享 ``head``/``tail``）。
+    """深拷贝节点链（避免默认成员拷贝共享 ``_head``/``_tail``）。
 
     复制构造时成员未初始化，须先 ``_reset_empty`` 再 ``extend``。
     """
@@ -84,8 +85,8 @@ class deque[Element]:
       self._clear_nodes()
     else:
       self._reset_empty()
-    self.head = other.head
-    self.tail = other.tail
+    self._head = other._head
+    self._tail = other._tail
     self._length = other._length
     self._maxlen = other._maxlen
     other._reset_empty()
@@ -95,7 +96,7 @@ class deque[Element]:
     if self._length == 0:
       return "deque([])"
     out: str = "deque(["
-    cur: deque_node[Element] = self.head
+    cur: deque_node[Element] = self._head
     i: int = 0
     while cur is not None:
       if i > 0:
@@ -121,7 +122,7 @@ class deque[Element]:
     index = self._norm_index(index)
     if index < 0 or index >= self._length:
       raise IndexError("deque index out of range")
-    cur: deque_node[Element] = self.head
+    cur: deque_node[Element] = self._head
     for _ in range(index):
       cur = cur.next
     return cur.value
@@ -130,14 +131,14 @@ class deque[Element]:
     index = self._norm_index(index)
     if index < 0 or index >= self._length:
       raise IndexError("deque index out of range")
-    cur: deque_node[Element] = self.head
+    cur: deque_node[Element] = self._head
     for _ in range(index):
       cur = cur.next
     cur.value = value
 
   @immutable
   def __contains__(self, item: Element) -> bool:
-    cur: deque_node[Element] = self.head
+    cur: deque_node[Element] = self._head
     while cur is not None:
       if cur.value == item:
         return True
@@ -192,23 +193,23 @@ class deque[Element]:
 
   def append(self, item: Element):
     self._ensure_active()
-    node = deque_node[Element](item, None, self.tail)
-    if self.head is None:
-      self.head = node
-      self.tail = node
+    node = deque_node[Element](item, None, self._tail)
+    if self._head is None:
+      self._head = node
+      self._tail = node
     else:
-      self.tail.next = node
-      self.tail = node
+      self._tail.next = node
+      self._tail = node
     self._length += 1
     self._trim_right_if_over_maxlen()
 
   def appendleft(self, item: Element):
-    node = deque_node[Element](item, self.head, None)
-    if self.head is not None:
-      self.head.prev = node
-    self.head = node
-    if self.tail is None:
-      self.tail = node
+    node = deque_node[Element](item, self._head, None)
+    if self._head is not None:
+      self._head.prev = node
+    self._head = node
+    if self._tail is None:
+      self._tail = node
     self._length += 1
     self._trim_left_if_over_maxlen()
 
@@ -225,7 +226,7 @@ class deque[Element]:
   @immutable
   def count(self, value: Element) -> int:
     n: int = 0
-    cur: deque_node[Element] = self.head
+    cur: deque_node[Element] = self._head
     while cur is not None:
       if cur.value == value:
         n += 1
@@ -233,22 +234,22 @@ class deque[Element]:
     return n
 
   def extend(self, other: Self):
-    cur: deque_node[Element] = other.head
+    cur: deque_node[Element] = other._head
     while cur is not None:
       self.append(cur.value)
       cur = cur.next
 
   def extendleft(self, other: Self):
-    cur: deque_node[Element] = other.head
+    cur: deque_node[Element] = other._head
     while cur is not None:
       self.appendleft(cur.value)
       cur = cur.next
 
   @immutable
-  def index(self, value: Element, start: int = 0, end: int = Self._DEQUE_END) -> int:
+  def index(self, value: Element, start: int = 0, end: int = Self._END_INDEX) -> int:
     start = self._norm_start(start)
     stop: int = self._norm_stop(end)
-    cur: deque_node[Element] = self.head
+    cur: deque_node[Element] = self._head
     j: int = 0
     while cur is not None and j < stop:
       if j >= start and cur.value == value:
@@ -271,33 +272,33 @@ class deque[Element]:
     if index == self._length:
       self.append(item)
       return
-    cur: deque_node[Element] = self.head
+    cur: deque_node[Element] = self._head
     for _ in range(index):
       cur = cur.next
     node = deque_node[Element](item, cur, cur.prev)
     if cur.prev is not None:
       cur.prev.next = node
     else:
-      self.head = node
+      self._head = node
     cur.prev = node
     self._length += 1
 
   def pop(self) -> Element:
     if self._length == 0:
       raise IndexError("pop from an empty deque")
-    value: Element = self.tail.value
-    self._unlink(self.tail)
+    value: Element = self._tail.value
+    self._unlink(self._tail)
     return value
 
   def popleft(self) -> Element:
     if self._length == 0:
       raise IndexError("pop from an empty deque")
-    value: Element = self.head.value
-    self._unlink(self.head)
+    value: Element = self._head.value
+    self._unlink(self._head)
     return value
 
   def remove(self, value: Element):
-    cur: deque_node[Element] = self.head
+    cur: deque_node[Element] = self._head
     while cur is not None:
       if cur.value == value:
         self._unlink(cur)
@@ -306,15 +307,15 @@ class deque[Element]:
     raise ValueError("deque.remove(x): x not in deque")
 
   def reverse(self):
-    cur: deque_node[Element] = self.head
+    cur: deque_node[Element] = self._head
     while cur is not None:
       nxt: deque_node[Element] = cur.next
       cur.next = cur.prev
       cur.prev = nxt
       cur = nxt
-    old_head: deque_node[Element] = self.head
-    self.head = self.tail
-    self.tail = old_head
+    old_head: deque_node[Element] = self._head
+    self._head = self._tail
+    self._tail = old_head
 
   def rotate(self, n: int = 1):
     if self._length <= 1:
@@ -327,29 +328,19 @@ class deque[Element]:
 
   @immutable
   def maxlen(self) -> int:
-    """未限长时返回 ``Self._UNBOUNDED_MAXLEN``（对应 Python ``None``）。"""
+    """未限长时返回 ``Self._NO_MAXLEN``（对应 Python ``None``）。"""
     return self._maxlen
 
   def _clear_nodes(self):
-    cur: deque_node[Element] = self.head
+    cur: deque_node[Element] = self._head
     while cur is not None:
       nxt: deque_node[Element] = cur.next
       destroy(cur)
       free(cur)
       cur = nxt
-    self.head = None
-    self.tail = None
+    self._head = None
+    self._tail = None
     self._length = 0
-
-  @immutable
-  def _ensure_active(self) -> None:
-    if self.__moved__:
-      raise ValueError("deque used after move")
-
-  @immutable
-  def _ensure_other_active(self, other: Self) -> None:
-    if other.__moved__:
-      raise ValueError("move from moved deque")
 
   @immutable
   def _norm_index(self, index: int) -> int:
@@ -367,7 +358,7 @@ class deque[Element]:
 
   @immutable
   def _norm_stop(self, end: int) -> int:
-    if end == Self._DEQUE_END:
+    if end == Self._END_INDEX:
       return self._length
     if end < 0:
       end = self._length + end
@@ -378,8 +369,8 @@ class deque[Element]:
     return end
 
   def _reset_empty(self):
-    self.head = None
-    self.tail = None
+    self._head = None
+    self._tail = None
     self._length = 0
 
   def _trim_left_if_over_maxlen(self):
@@ -394,11 +385,11 @@ class deque[Element]:
     if node.prev is not None:
       node.prev.next = node.next
     else:
-      self.head = node.next
+      self._head = node.next
     if node.next is not None:
       node.next.prev = node.prev
     else:
-      self.tail = node.prev
+      self._tail = node.prev
     destroy(node)
     free(node)
     self._length -= 1

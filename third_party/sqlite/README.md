@@ -8,6 +8,8 @@
 | `sqlite3.h` | 公开 C API |
 | `sqlite3ext.h` | 扩展 API 头（加载扩展等；P0 可不启用） |
 
+FFI 声明不写在本目录：生成到 **`ffi/sqlite/sqlite3.pyi`**（`ffi.bat` / `scripts/gen_c_ffi.py`；见 [docs/c-ffi-pyi.md](../../docs/c-ffi-pyi.md)）。
+
 ## 当前版本
 
 - **SQLite 3.53.2**（amalgamation 包名 `3530200`）
@@ -19,8 +21,9 @@
 
 1. 从官网下载新版 `sqlite-amalgamation-*.zip`
 2. 解压后覆盖本目录的 `sqlite3.c` / `sqlite3.h` / `sqlite3ext.h`
-3. 更新本 README 的版本号与校验和
-4. 重编 `test/sql/test_sqlite.py`（及依赖 SQL 的用例）
+3. 重生成 FFI 声明：`ffi third_party\sqlite\sqlite3.h`（写出 `ffi\sqlite\sqlite3.pyi`）
+4. 更新本 README 的版本号与校验和
+5. 重编 `test/sql/test_sqlite.py`（及依赖 SQL 的用例）
 
 ## 编译约定（实现 P0 时）
 

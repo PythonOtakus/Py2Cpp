@@ -2,7 +2,7 @@
 from ..builtins import *
 from .str import str
 from ..util.dict import dict
-from .string_mixin import StringMixin
+from .mixins import StringMixin
 
 
 @copyable
@@ -14,31 +14,31 @@ class bytes(StringMixin[byte]):
 
   @overload
   def __init__(self):
-    self.data: byte[:] = b""
+    self._data: byte[:] = b""
 
   @overload
   def __init__(self, data: byte[:]):
-    self.data = data
+    self._data = data
 
   @overload
   def __init__(self, size: int):
     if size <= 0:
-      self.data: byte[:] = b""
+      self._data: byte[:] = b""
       return
-    self.data: byte[:] = new(size)
+    self._data: byte[:] = new(size)
     for i in range(size):
-      self.data[i] = 0
+      self._data[i] = 0
 
   @overload
   def __init__(self, value: byte):
-    self.data: byte[:] = new(1)
-    self.data[0] = value
+    self._data: byte[:] = new(1)
+    self._data[0] = value
 
   def __copy__(self, other: Self):
-    n: int = len(other.data)
-    if len(self.data) != n:
-      self.data.reshape(n, 0)
-    self.data.__copy__(other.data)
+    n: int = len(other._data)
+    if len(self._data) != n:
+      self._data.reshape(n, 0)
+    self._data.__copy__(other._data)
 
   @immutable
   @staticmethod
@@ -127,7 +127,7 @@ class bytes(StringMixin[byte]):
     at: int = 0
     i: int = 0
     while i < n:
-      b0: byte = self.data[i]
+      b0: byte = self._data[i]
       if b0 < 0x80:
         buf[at] = b0
         at += 1
@@ -135,24 +135,24 @@ class bytes(StringMixin[byte]):
       elif b0 < 0xE0:
         if i + 1 >= n:
           break
-        b1: byte = self.data[i + 1]
+        b1: byte = self._data[i + 1]
         buf[at] = ((b0 & 0x1F) << 6) | (b1 & 0x3F)
         at += 1
         i += 2
       elif b0 < 0xF0:
         if i + 2 >= n:
           break
-        b1 = self.data[i + 1]
-        b2: byte = self.data[i + 2]
+        b1 = self._data[i + 1]
+        b2: byte = self._data[i + 2]
         buf[at] = ((b0 & 0x0F) << 12) | ((b1 & 0x3F) << 6) | (b2 & 0x3F)
         at += 1
         i += 3
       else:
         if i + 3 >= n:
           break
-        b1 = self.data[i + 1]
-        b2 = self.data[i + 2]
-        b3: byte = self.data[i + 3]
+        b1 = self._data[i + 1]
+        b2 = self._data[i + 2]
+        b3: byte = self._data[i + 3]
         cp: int = (
           ((b0 & 0x07) << 18)
           | ((b1 & 0x3F) << 12)
@@ -176,9 +176,9 @@ class bytes(StringMixin[byte]):
   @immutable
   def __repr__(self) -> str:
     out: str = "b'"
-    n: int = len(self.data)
+    n: int = len(self._data)
     for i in range(n):
-      b: byte = self.data[i]
+      b: byte = self._data[i]
       if b == ord("'"):
         out += "\\'"
       elif b == ord("\\"):

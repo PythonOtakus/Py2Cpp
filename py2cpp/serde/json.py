@@ -1174,7 +1174,7 @@ class JsonDecoder:
       if int(c) < 0 or int(c) > 127:
         self.ascii_ok = False
         return
-    self.ascii_bytes = self.s.data.buf
+    self.ascii_bytes = self.s.view.at(0)
     self.ascii_bytes_owned = False
     self.ascii_len = n
     self.ascii_ok = True
@@ -1192,7 +1192,7 @@ class JsonDecoder:
     self._skip_ws()
 
   def _skip_ws(self) -> None:
-    src: span[char] = self._src_view()
+    src: span[char] = self.src_view()
     n: int = len(src)
     for j in range(self.pos, n):
       if src[j] not in "\t\n\r ":
@@ -1428,17 +1428,17 @@ class JsonDecoder:
     dec.pos = 0
     return dec
 
-  def _src_view(self) -> span[char]:
-    """输入 ``s.data`` 的只读视图（热路径等价 ``string_view``）。"""
-    return self.s.data.view
+  def src_view(self) -> span[char]:
+    """输入 ``s`` 码点只读视图（``serde`` 热路径）。"""
+    return self.s.view
 
   def src_len(self) -> int:
-    """``_src_view`` 长度（供生成 C++ 快路径，勿经 ``PyStr.__getitem__``）。"""
-    return len(self._src_view())
+    """``src_view`` 长度（供生成 C++ 快路径，勿经 ``PyStr.__getitem__``）。"""
+    return len(self.src_view())
 
   def src_char(self, i: int) -> char:
     """``_src_view[i]``（``i`` 与 ``pos`` 同属输入 ``s``）。"""
-    return self._src_view()[i]
+    return self.src_view()[i]
 
   def src_ascii_ok(self) -> bool:
     """输入是否已绑定紧凑 ASCII 字节视图（仅 ``loads`` 热路径 C++ 使用）。"""
@@ -1459,7 +1459,7 @@ class JsonDecoder:
 
   def _slice_at(self, start: int, end: int) -> span[char]:
     """半开区间 ``[start, end)``，下标与 ``pos`` 同属 ``s``。"""
-    return self._src_view()[start:end]
+    return self.src_view()[start:end]
 
   def skip_empty_array(self) -> None:
     """假定游标已在 ``[``；若为 ``[]`` 则跳过并返回。"""
@@ -2355,7 +2355,7 @@ class JsonDecoder:
     n: int = self.src_len()
     if self.pos >= n or self.src_char(self.pos) not in '"':
       slow: str = self.load_string_slow()
-      return slow.data.view
+      return slow.view
     self.pos += 1
     start: int = self.pos
     while self.pos < n:
@@ -2363,14 +2363,14 @@ class JsonDecoder:
       if c in '"':
         end: int = self.pos
         self.pos += 1
-        return self.s.data.view[start:end]
+        return self.s.view[start:end]
       if c in "\\":
         self.pos = start - 1
         slow2: str = self.load_string_slow()
-        return slow2.data.view
+        return slow2.view
       self.pos += 1
     self.fail("unterminated string")
-    return self.s.data.view[:0]
+    return self.s.view[:0]
 
 
   def parse_int_at_ascii_ref(self) -> int:
@@ -2457,7 +2457,7 @@ class JsonDecoder:
     p: Pointer[char] = self.ascii_bytes
     if self.pos >= n or self.byte_at(self.pos) != ord('"'):
       slow: str = self.load_string_slow()
-      return slow.data.view
+      return slow.view
     self.pos += 1
     start: int = self.pos
     i: int = start
@@ -2469,7 +2469,7 @@ class JsonDecoder:
           c: int = Self._chunk_byte(chunk, k)
           if c == ord('"'):
             self.pos = i + k + 1
-            return self.s.data.view[start:i + k]
+            return self.s.view[start:i + k]
           if c == ord("\\"):
             special = True
             break
@@ -2480,16 +2480,16 @@ class JsonDecoder:
       c2: int = self.byte_at(i)
       if c2 == ord('"'):
         self.pos = i + 1
-        return self.s.data.view[start:i]
+        return self.s.view[start:i]
       if c2 == ord("\\"):
         break
       i += 1
     if i >= n:
       self.fail("unterminated string")
-      return self.s.data.view[:0]
+      return self.s.view[:0]
     self.pos = start - 1
     slow2: str = self.load_string_slow()
-    return slow2.data.view
+    return slow2.view
 
 
   def str_assign_from_seg_ref(self, seg: span[char]) -> str:

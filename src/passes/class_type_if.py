@@ -4,7 +4,7 @@ import ast
 import copy
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
-from ..analysis.type_emit import bind_scope_param, field_storage_cpp, method_param_storage_cpp, sig_return_full_cpp, sig_return_storage_cpp
+from ..analysis.type_emit import bind_scope_param, method_param_storage_cpp, sig_return_full_cpp, sig_return_storage_cpp
 from ..analysis.type_pred import is_byte_type, is_char_type, is_stack_array_type
 from ..analysis.ir import MethodSig, TypeAliasInfo, cpp_type_param_template_name, format_fn_sig, fn_noexcept_suffix, parse_type_alias_stmt
 from .type_if import TypeIfChain, TypePattern, _DefaultElseSpec, _ExactSpec, _PatternSpec, _SpliceSpec, _branch_is_not, _branch_not_in, _collect_type_if_chain, _looks_like_type_if_head, _select_body_for_spec, _strip_docstring, _validate_chain, _validate_single_type_if_chain, branch_emit_patterns, find_type_if_chains
@@ -243,7 +243,7 @@ def _emit_spec_field_decls(tr: Translator, info: ClassInfo, spec: ClassTypeIfSpe
             from ..emit.class_decl_emit import _emit_class_static_field_decl
             _emit_class_static_field_decl(tr, info, stmt)
         for field in spec.fields:
-            ftype = field_storage_cpp(spec, field, fallback=cpp_ident('int') if field in INT_FIELDS else 'void*')
+            ftype = spec.field_types.get(field, cpp_ident('int') if field in INT_FIELDS else 'void*')
             ftype = resolve_self_in_cpp_type(ftype, info.cpp_name())
             cpp = info.cpp_member_name(field)
             default = spec.field_defaults.get(field)
@@ -292,7 +292,7 @@ def _emit_spec_method_decl(tr: Translator, info: ClassInfo, spec: ClassTypeIfSpe
         from ..analysis.ir import field_property_getter_return_ref
         from ..passes.descriptors import storage_field_for
         storage = storage_field_for(method.name)
-        stype = field_storage_cpp(spec, storage, fallback=sig_return_storage_cpp(msig))
+        stype = spec.field_types.get(storage, sig_return_storage_cpp(msig))
         ret = field_property_getter_return_ref(stype or sig_return_storage_cpp(msig))
         getter_cpp = tr._property_getter_cpp_name(info, method.name)
         tr._write_doc_lines(msig.doc_lines)
@@ -388,7 +388,7 @@ def _emit_spec_field_property_getter(tr: Translator, info: ClassInfo, spec: Clas
     cpp_field = info.cpp_member_name(storage)
     getter_cpp = tr._property_getter_cpp_name(info, prop)
     qual = f'{base}::{getter_cpp}'
-    stype = field_storage_cpp(spec, storage, fallback=sig_return_storage_cpp(msig))
+    stype = spec.field_types.get(storage, sig_return_storage_cpp(msig))
     ret = field_property_getter_return_ref(stype or sig_return_storage_cpp(msig))
     tr._write_doc_lines(msig.doc_lines)
     tr.write_line(f'{ret} {qual}() const {{ return {cpp_field}; }}')

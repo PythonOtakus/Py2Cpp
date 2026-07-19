@@ -655,7 +655,7 @@ __all__ = [
 | 2026-06-02 | 初稿：推荐方案落盘（P0–P4、默认约定、模块清单） |
 | 2026-05-19 | 增 §2.5 统一 API 范式；``ChunkSequence``→``ChunkList``；落地 ``ChunkDeque`` / ``ChunkList``；P0.5/P1/P1b/P2 标记完成 |
 | 2026-05-19 | 增 §4.3 / §5.12–5.13：`ChunkDeque`、`ChunkList`（rope 语义）；P0.5 / P1b 分期；明确 **`util/deque` 不动** |
-| 2026-05-19 | ``alg`` 容器统一移除 ``@copyable``；``dst = src`` 移动、``src.copy()`` 显式副本；新增 ``AlgContainerMixin`` |
+| 2026-05-19 | ``alg`` 容器统一移除 ``@copyable``；``dst = src`` 移动、``src.copy()`` 显式副本；新增 ``ContainerMixin``（``util/mixins.py``） |
 | 2026-05-19 | ``chunks``→``chunk_deque`` 模块名；``ChunkList`` 并入 ``ChunkDeque``；``split``→``splice``；删除 ``ChunkMixin`` |
 | 2026-05-19 | ``ChunkDeque``：删 ``to_list``；增 ``__iter__`` / ``__reversed__``（``ChunkDequeIterator`` 等） |
 | 2026-05-19 | ``ACAuto``：``remove`` / ``discard`` 增加 ``flush=``（与 ``add`` 对齐） |

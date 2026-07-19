@@ -89,6 +89,17 @@ class varint:
 
   @staticmethod
   @immutable
+  def pow10(n: int) -> Self:
+    if n <= 0:
+      return new._one()
+    result: Self = new._one()
+    ten: Self = new._from_abs_digits(False, Self._digits_from_int(10))
+    for _ in range(n):
+      result *= ten
+    return result
+
+  @staticmethod
+  @immutable
   def _digits_from_int(n: int) -> list[int]:
     if n == 0:
       zero: list[int] = []
@@ -351,6 +362,7 @@ class varint:
     return new._from_abs_digits(False, rev)
 
   @immutable
+  @immutable
   def _pow_abs(self, exp: Self) -> Self:
     if exp._neg:
       return new._zero()
@@ -393,6 +405,7 @@ class varint:
       out += mod
     return out
 
+  @immutable
   def _pow_mod(self, exp: Self, mod: Self) -> Self:
     """``pow(base, exp, mod)`` 语义（含负指数逆元）。"""
     one: Self = new._one()
@@ -421,9 +434,11 @@ class varint:
       e = half
     return result
 
+  @immutable
   def __bool__(self) -> bool:
     return self._top_index() > 0
 
+  @immutable
   def __neg__(self) -> Self:
     if not self:
       return new._zero()
@@ -434,6 +449,7 @@ class varint:
       out._neg = False
     return out
 
+  @immutable
   def __pos__(self) -> Self:
     return self
 
@@ -446,10 +462,12 @@ class varint:
     out._hash_ok = False
     return out
 
+  @immutable
   def __invert__(self) -> Self:
     one: Self = new._one()
     return -(self + one)
 
+  @immutable
   def __add__(self, other: Self) -> Self:
     if not self._neg and not other._neg:
       return self._add_abs(other)
@@ -464,15 +482,18 @@ class varint:
       return -self._sub_abs(other)
     return other._sub_abs(self)
 
+  @immutable
   def __sub__(self, other: Self) -> Self:
     return self + (-other)
 
+  @immutable
   def __mul__(self, other: Self) -> Self:
     p: Self = self._mul_abs(other)
     if (self._neg != other._neg) and p:
       return -p
     return p
 
+  @immutable
   def __floordiv__(self, other: Self) -> Self:
     one: Self = new._one()
     parts: (Self, Self) = abs(self)._divmod_abs(abs(other))
@@ -484,25 +505,32 @@ class varint:
       q = -q
     return q
 
+  @immutable
   def __mod__(self, other: Self) -> Self:
     q: Self = self // other
     prod: Self = q * other
     return self - prod
 
+  @immutable
   def __truediv__(self, other: Self) -> float:
     return float(str(self)) / float(str(other))
 
   @overload
+  @immutable
   def __pow__(self, other: Self) -> Self:
-    return self._pow_abs(other)
+    base: Self = self
+    return base._pow_abs(other)
 
   @overload
+  @immutable
   def __pow__(self, other: Self, mod: Self) -> Self:
-    return self._pow_mod(other, mod)
+    base: Self = self
+    return base._pow_mod(other, mod)
 
   def __modmul__(self, other: Self, mod: Self) -> Self:
     return (self * other) % mod
 
+  @immutable
   def __and__(self, other: Self) -> Self:
     na: int = self._top_index()
     nb: int = other._top_index()
@@ -514,6 +542,7 @@ class varint:
       digits.append(self._digit_at(i) & other._digit_at(i))
     return new._from_abs_digits(False, digits)
 
+  @immutable
   def __or__(self, other: Self) -> Self:
     na: int = self._top_index()
     nb: int = other._top_index()
@@ -525,6 +554,7 @@ class varint:
       digits.append(self._digit_at(i) | other._digit_at(i))
     return new._from_abs_digits(False, digits)
 
+  @immutable
   def __xor__(self, other: Self) -> Self:
     na: int = self._top_index()
     nb: int = other._top_index()
@@ -536,11 +566,13 @@ class varint:
       digits.append(self._digit_at(i) ^ other._digit_at(i))
     return new._from_abs_digits(False, digits)
 
+  @immutable
   def __lshift__(self, other: Self) -> Self:
     if int(other) < 0:
       return self >> (-other)
     return self._shl_abs(int(other))
 
+  @immutable
   def __rshift__(self, other: Self) -> Self:
     if int(other) < 0:
       return self << (-other)
@@ -625,6 +657,10 @@ class varint:
     if self._neg:
       acc = -acc
     return acc
+
+  @immutable
+  def __float__(self) -> float:
+    return float(str(self))
 
   def bit_length(self) -> int:
     if not self:

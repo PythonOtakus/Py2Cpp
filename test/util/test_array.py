@@ -1,4 +1,4 @@
-"""``util.allocator``：内建堆分配 API 与 ``Allocator[T, StackLength]`` SSO 路径。"""
+"""``util.array``：堆/SSO 缓冲与 ``list`` 底层 ``_data``。"""
 from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
@@ -30,7 +30,7 @@ class BuiltinAllocTests(TestCaseMixin):
     freeArray(p)
 
 
-class AllocatorListTests(TestCaseMixin):
+class ArrayListTests(TestCaseMixin):
   _test_tag = 3
 
   @override
@@ -42,7 +42,7 @@ class AllocatorListTests(TestCaseMixin):
     self.assertEqual(xs[0] + xs[1], 3)
 
 
-class AllocatorSsoTests(TestCaseMixin):
+class ArraySsoTests(TestCaseMixin):
   _test_tag = 4
 
   @override

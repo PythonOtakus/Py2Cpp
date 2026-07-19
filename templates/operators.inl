@@ -8,6 +8,16 @@ PY2CPP_IGNORE
 #include "py2cpp/util/tuple.h"
 PY2CPP_END
 
+inline PyInt hash(PY2CPP_TYPE(PyStr)& obj)
+{
+  return obj.__hash__();
+}
+
+inline PyInt hash(const PY2CPP_TYPE(PyStr)& obj)
+{
+  return const_cast<PY2CPP_TYPE(PyStr)&>(obj).__hash__();
+}
+
 inline PyInt _py_int_mod(PyInt a, PyInt b)
 {
   PyInt r = a % b;

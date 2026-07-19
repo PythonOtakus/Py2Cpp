@@ -1,7 +1,7 @@
 """弱值字典：键强持有、值 ``WeakRef``（对齐 ``weakref.WeakValueDictionary`` 子集）。"""
 from ..builtins import *
 from ..core.exceptions import KeyError
-from ..core.protocols import DictKey
+from ..util.protocols import DictKey
 from .ref import WeakRef
 
 

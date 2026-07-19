@@ -15,6 +15,7 @@ from .import_resolver import (
   resolve_relative_module_path,
 )
 from .ir import TYPE_MARKER_CLASSES, TypeAliasInfo, cpp_ident, cpp_type_rename
+from ..constant.ffi_layout import is_ffi_module_path
 from ..constant.parallel import CONCUR_PARALLEL_MODULE, PRANGE_TRANSLATION_ONLY_FUNCS
 from ..constant.stdlib_layout import RUNTIME_PKG
 from ..analysis.runtime_symbols import (
@@ -170,7 +171,8 @@ def _apply_import_request(
       )
       if target is None:
         raise NotImplementedError(
-          f"无法解析 import：{req.source_dotted!r}（仅支持 py2cpp 标准库与本仓库内用户模块）"
+          f"无法解析 import：{req.source_dotted!r}"
+          f"（支持 py2cpp 标准库、本仓库用户模块、ffi/**/*.pyi）"
         )
       bindings[local] = ImportBinding(
         local_name=local,
@@ -197,6 +199,11 @@ def _apply_import_request(
     raise NotImplementedError(f"无法解析 from … import（模块 {mod_display!r}）")
 
   if req.is_star:
+    if is_ffi_module_path(target):
+      raise NotImplementedError(
+        f"禁止 from {req.module or target} import *（FFI 面见 docs/c-ffi-pyi.md §10；"
+        f"请显式 import 符号）"
+      )
     _append_using_namespace(usings, target)
     for local, binding in _star_exports(tr, target).items():
       if binding.kind == "type_alias":

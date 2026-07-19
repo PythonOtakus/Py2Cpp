@@ -459,16 +459,19 @@ def _header_value(line: bytes) -> str:
 def _header_lines(block: bytes) -> list[bytes]:
   """``block``（含末尾 ``\\r\\n\\r\\n``）→ 各行 ``bytes``（不含行尾）。"""
   out: list[bytes] = []
-  buf: byte[:] = block.data
-  n: int = len(buf)
+  n: int = len(block)
+  buf: byte[:] = new(n)
+  for bi in range(n):
+    buf[bi] = block[bi]
   start: int = 0
   i: int = 0
   while i < n:
     if i + 1 < n and buf[i] == ord("\r") and buf[i + 1] == ord("\n"):
       ln: int = i - start
-      line: bytes = new(ln)
+      line_buf: byte[:] = new(ln)
       for j in range(ln):
-        line.data[j] = buf[start + j]
+        line_buf[j] = buf[start + j]
+      line: bytes = bytes(line_buf)
       if not line:
         break
       out.append(line)

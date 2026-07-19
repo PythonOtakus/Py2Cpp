@@ -47,6 +47,10 @@ if errorlevel 1 (
   echo.
 )
 
+call "%~dp0_bootstrap_runtime.bat"
+if errorlevel 1 exit /b 1
+
+
 for /f "usebackq delims=" %%R in (`%PY% "%MATCH_PY%"!PAT_ARGS!`) do (
   set "MATCHED=1"
   call :DemoOne "%%R"

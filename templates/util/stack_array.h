@@ -37,7 +37,7 @@ class PyStackArray
   }
 
 public:
-  T* buf__get() const
+  T* _buf__get() const
   {
     return const_cast<T*>(_data);
   }
@@ -130,12 +130,12 @@ public:
   }
 };
 
-/// ``Length=0``：纯堆路径占位，无 ``T`` 默认构造（``Allocator<T,0>`` 等）。
+/// ``Length=0``：纯堆路径占位，无 ``T`` 默认构造（``PyArray<T,0>`` 等）。
 template<typename T, PyInt Offset>
 class PyStackArray<T, 0, Offset>
 {
 public:
-  T* buf__get() const
+  T* _buf__get() const
   {
     return nullptr;
   }
@@ -269,7 +269,7 @@ class PyStackArray2D
   }
 
 public:
-  T* buf__get() const
+  T* _buf__get() const
   {
     return const_cast<T*>(_data);
   }
@@ -379,7 +379,7 @@ class PyStackArray3D
   }
 
 public:
-  T* buf__get() const
+  T* _buf__get() const
   {
     return const_cast<T*>(_data);
   }

@@ -13,10 +13,10 @@
 """
 from ..builtins import *
 from ..core.exceptions import IndexError, ValueError
-from .container_mixin import AlgContainerMixin
+from ..util.mixins import ContainerMixin
 
 
-class DSU(AlgContainerMixin):
+class DSU(ContainerMixin):
   """Disjoint Set Union；顶点编号 ``0 .. n-1``。"""
 
   def __init__(self, n: int):
@@ -33,7 +33,7 @@ class DSU(AlgContainerMixin):
 
   def __copy__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other.__moved__)
+    self._ensure_other_active(other)
     self._n = other._n
     if other._n == 0:
       self._parent = new(0)
@@ -50,7 +50,7 @@ class DSU(AlgContainerMixin):
 
   def __move__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other.__moved__)
+    self._ensure_other_active(other)
     self._n = other._n
     self._parent = other._parent
     self._rank = other._rank

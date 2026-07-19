@@ -28,6 +28,9 @@ PyBool ui_form_on_hscroll(window::UIWindow& win, HWND ctrl);
 void ui_form_session_reset();
 void ui_form_on_window_end(window::UIWindow& win);
 } // namespace layout
+PyBool ui_menu_on_command(window::UIWindow& win, UINT_PTR cmd_id);
+PyBool ui_flow_on_key(window::UIWindow& win, PyInt vk);
+void ui_flow_shell_on_resize(window::UIWindow& win);
 } // namespace ui
 } // namespace py2cpp
 
@@ -326,6 +329,10 @@ static LRESULT CALLBACK _ui_panel_wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARAM
 UIWindow* ctx = (UIWindow*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
       if (ctx)
       {
+        if (py2cpp::ui::ui_menu_on_command(*ctx, (UINT_PTR)LOWORD(wp)))
+        {
+          return 0;
+        }
         if (HIWORD(wp) == BN_CLICKED)
         {
           if (py2cpp::ui::layout::ui_form_on_bn_clicked(*ctx, (UINT_PTR)LOWORD(wp)))
@@ -342,6 +349,17 @@ UIWindow* ctx = (UIWindow*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
       }
       break;
     }
+    case WM_KEYDOWN: {
+      UIWindow* ctx = (UIWindow*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
+      if (ctx)
+      {
+        if (py2cpp::ui::ui_flow_on_key(*ctx, (PyInt)(UINT)wp))
+        {
+          return 0;
+        }
+      }
+      break;
+    }
     case WM_HSCROLL: {
 UIWindow* ctx = (UIWindow*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
       if (ctx)
@@ -350,6 +368,14 @@ UIWindow* ctx = (UIWindow*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
         {
           return 0;
         }
+      }
+      break;
+    }
+    case WM_SIZE: {
+UIWindow* ctx = (UIWindow*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
+      if (ctx)
+      {
+        py2cpp::ui::ui_flow_shell_on_resize(*ctx);
       }
       break;
     }
@@ -365,6 +391,18 @@ UIWindow* ctx = (UIWindow*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
     case WM_CLOSE:
       DestroyWindow(hwnd);
       return 0;
+    case WM_MOUSEWHEEL: {
+      POINT pt;
+      pt.x = (LONG)(short)LOWORD(lp);
+      pt.y = (LONG)(short)HIWORD(lp);
+      ScreenToClient(hwnd, &pt);
+      HWND child = ChildWindowFromPointEx(hwnd, pt, CWP_SKIPINVISIBLE);
+      if (child && child != hwnd)
+      {
+        return SendMessageA(child, msg, wp, lp);
+      }
+      break;
+    }
     default:
       break;
   }

@@ -1,7 +1,7 @@
 """参数校验 ``@descriptor``（内联到宿主字段 / 函数签名）。"""
 from ..builtins import *
 from py2cpp import descriptor
-from py2cpp.core.protocols import Comparable, Sized
+from py2cpp.util.protocols import Comparable, Sized
 
 
 @descriptor

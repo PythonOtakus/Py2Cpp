@@ -2,11 +2,12 @@
 
 PROTOCOL_SCAN_REL_PATHS: tuple[str, ...] = (
   "core/protocols",
+  "util/protocols",
+  "numeric/protocols",
   "alg/protocols",
   "io/protocols",
   "serde/protocols",
   "sql/protocols",
-  "util/allocator",
 )
 
 PROTOCOL_PARAM_ERASE_EXCLUDE: frozenset[str] = frozenset({"Equatable"})

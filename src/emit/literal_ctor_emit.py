@@ -70,6 +70,7 @@ def _emit_same_class_ctor(tr: 'Translator', cpp_type: str, args: str, *, str_inn
 
 def new_call_default_ctor_cpp(call: ast.Call, cpp_type: str, *, classes: dict[str, ClassInfo], emit_default_arg: Callable[[ast.expr, str | None], str], parse_param_type: Callable[[ast.arg], str | None] | None=None) -> str:
     """``new(...)`` 作 C++ 默认实参：无参/有参/关键字对齐目标 ``__init__`` 形参表。"""
+    ctor_t = strip_cpp_type_qualifiers(cpp_type)
     if not call.args and (not call.keywords):
         return default_new_ctor_cpp(cpp_type)
     info = class_info_for_cpp_type(cpp_type, classes)
@@ -85,11 +86,11 @@ def new_call_default_ctor_cpp(call: ast.Call, cpp_type: str, *, classes: dict[st
             pt = parse_param_type(param) if parse_param_type is not None else None
             parts.append(emit_default_arg(expr, pt))
         inner = ', '.join(parts)
-        return f'{cpp_type}({inner})' if inner else f'{cpp_type}()'
+        return f'{ctor_t}({inner})' if inner else f'{ctor_t}()'
     if call.keywords:
         raise NotImplementedError('new(kw=…) 默认实参须能解析目标类 __init__（注解为该类且已 expand_dataclass）')
     args = ', '.join((emit_default_arg(a, None) for a in call.args))
-    return f'{cpp_type}({args})' if args else f'{cpp_type}()'
+    return f'{ctor_t}({args})' if args else f'{ctor_t}()'
 
 def _emit_boxing_new_ctor(tr: 'Translator', cpp_type: str, call: ast.Call) -> str | None:
     """``node: BoxingNode[T] = new()`` → ``new BoxingNode<T>(...)``。"""

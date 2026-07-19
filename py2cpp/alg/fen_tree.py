@@ -12,11 +12,11 @@
 """
 from ..builtins import *
 from ..core.exceptions import IndexError, ValueError
-from ..core.protocols import Complex
-from .container_mixin import AlgContainerMixin
+from ..numeric.protocols import Complex
+from ..util.mixins import ContainerMixin
 
 
-class FenTree[T: Complex](AlgContainerMixin):
+class FenTree[T: Complex](ContainerMixin):
   """一点修改 + 前缀和；内部 1-indexed BIT，对外 0-indexed。"""
 
   def __init__(self, n: int):
@@ -27,7 +27,7 @@ class FenTree[T: Complex](AlgContainerMixin):
 
   def __copy__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other.__moved__)
+    self._ensure_other_active(other)
     self._n = other._n
     self._bit = new(other._n + 1)
     for i in range(other._n + 1):
@@ -35,7 +35,7 @@ class FenTree[T: Complex](AlgContainerMixin):
 
   def __move__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other.__moved__)
+    self._ensure_other_active(other)
     self._n = other._n
     self._bit = other._bit
     other._n = 0

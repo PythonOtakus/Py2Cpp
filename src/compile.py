@@ -34,6 +34,10 @@ def source_needs_sqlite(source: Path) -> bool:
     return False
   markers = (
     "py2cpp/sql/sqlite",
+    "py2cpp/ffi/sqlite",
+    "ffi/sqlite/sqlite3",
+    "ffi::sqlite::sqlite3",
+    "ffi::sqlite::sqlite3",
     "SqliteConnection",
     "PySqliteConnection",
     "SqliteCursor",
@@ -43,12 +47,17 @@ def source_needs_sqlite(source: Path) -> bool:
 
 
 def runtime_has_sqlite_inl(source: Path) -> bool:
-  """``minimal.h`` → ``sql/sqlite.h`` → ``sqlite.inl`` 时任意 runtime 测试 TU 均需 sqlite 头/链。"""
+  """``minimal.h`` → ``sql/sqlite.h`` / FFI sqlite 时任意 runtime 测试 TU 均需 sqlite 头/链。"""
   umbrella = Path(UMBRELLA_HEADER)
   for parent in source.parents:
     runtime_dir = parent / RUNTIME_OUTPUT_SUBDIR
     if (runtime_dir / umbrella).is_file():
-      return (runtime_dir / "py2cpp/sql/sqlite.inl").is_file()
+      if (runtime_dir / "py2cpp/sql/sqlite.inl").is_file():
+        return True
+      if (runtime_dir / "ffi/sqlite/sqlite3.inl").is_file():
+        return True
+      if (runtime_dir / "py2cpp/ffi/sqlite/sqlite3.inl").is_file():
+        return True
   return False
 
 
@@ -436,6 +445,8 @@ def _cmd_msvc_cl(
     cmd.append("/c")
     return cmd
   cmd.append(f"/Fe:{exe}")
+  cmd.append("/link")
+  cmd.append("/STACK:8388608")
   return cmd
 
 

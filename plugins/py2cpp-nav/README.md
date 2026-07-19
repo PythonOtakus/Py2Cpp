@@ -7,7 +7,9 @@
 | **Python → C++** | `class Foo` / `def bar` / 字段 → 对应 `.h` 声明或 `.inl`/`.cpp` 实现 |
 | **C++ → Python** | `PyList::append`、`class ChrOrdTests` → `py2cpp/util/list.py` 或 `test/.../*.py` |
 
-覆盖范围：**类、方法、字段、模块级函数**（不含函数体内逐行映射）。标准库 `py2cpp/**` 与 `test/**`、`examples/**` 均支持；索引由译器在翻译时写入，扩展只读 JSON。
+覆盖范围（索引 **v3**）：类 / 方法 / 字段 / `@property`·`@staticproperty`（含 setter）/ 模块函数 / `type` 别名 / `@enum` 成员 / `@union` `@variant` / `@delegate` / `@protocol`（仅 Python）/ `@mixin`（方法可附宿主实现）。不含函数体内逐行映射。标准库 `py2cpp/**` 与 `test/**`、`examples/**` 均支持；索引由译器写入，扩展只读 JSON。
+
+完整方案（格式、覆盖矩阵、已决议开放问题）：[`docs/py2cpp-nav.md`](../../docs/py2cpp-nav.md)。
 
 ## 依赖
 

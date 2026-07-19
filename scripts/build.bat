@@ -14,6 +14,9 @@ if errorlevel 1 (
   echo.
 )
 
+call "%~dp0_bootstrap_runtime.bat"
+if errorlevel 1 exit /b 1
+
 echo [py2cpp] build patterns: %*
 echo.
 

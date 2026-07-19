@@ -189,7 +189,7 @@ class Path:
     n: int = len(data)
     buf: char[:] = new(n)
     for i in range(n):
-      buf[i] = data.data[i]
+      buf[i] = data[i]
     return buf
 
   @staticmethod

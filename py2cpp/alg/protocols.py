@@ -1,6 +1,7 @@
 """``alg`` 域协议：可寻路图抽象（``Navigatable``）。"""
 from ..builtins import *
-from ..core.protocols import DictKey, protocol
+from ..core.protocols import protocol
+from ..util.protocols import DictKey
 
 
 @protocol

@@ -1,6 +1,8 @@
 from ..builtins import *
 from ..core.exceptions import Exception
 from .protocols import Connection, Cursor, Dialect
+# 翻译闭包拉取 FFI 声明 + glue（``templates/sql/+sqlite.inl`` 经 ``ffi::sqlite::sqlite3`` 调 C）
+from ffi.sqlite.sqlite3 import sqlite3_open as _ffi_sqlite3_open
 
 
 class Error(Exception):

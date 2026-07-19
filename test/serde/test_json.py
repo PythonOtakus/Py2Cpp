@@ -439,8 +439,8 @@ class JsonScanStrAssignLeafTests(TestCaseMixin):
     dec_r.try_bind_ascii()
     dec_f.pos = 1
     dec_r.pos = 1
-    seg_f = dec_f.s.data.view[1:3]
-    seg_r = dec_r.s.data.view[1:3]
+    seg_f = dec_f.src_view()[1:3]
+    seg_r = dec_r.src_view()[1:3]
     got_f: str = dec_f.str_assign_from_seg(seg_f)
     got_r: str = dec_r.str_assign_from_seg_ref(seg_r)
     self.assertEqual(got_f, "hi")

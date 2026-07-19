@@ -1,6 +1,6 @@
 """``str`` / ``bytes`` 共享序列逻辑（``StringMixin[T]``）。
 
-宿主须声明 ``data: T[:]`` 或 ``data: array[T, StackLength]``（``StackLength>0`` 时 ``Allocator[T,StackLength]`` SSO；``str`` 用 ``StringMixin._SSO_CAP``）；
+宿主须声明 ``_data: T[:]`` 或 ``_data: array[T, StackLength]``（``StackLength>0`` 时 ``array`` 内联 SSO；``str`` 用 ``StringMixin._SSO_CAP``）；
 ``str(StringMixin[char])``、``bytes(StringMixin[byte])``。
 注解 ``Self`` 的空序列用 ``new()``（S06b）；``char[:]``/``byte[:]`` 缓冲见编码规范 §2.1。
 """
@@ -13,10 +13,10 @@ from ..util.slice import slice
 
 
 @mixin
-class StringMixin[T]:
+class StringMixin[T: oneof[char, byte]]:
   """不可变堆序列（码点/字节）共享核心。"""
 
-  _SEQ_END_VAL: int @const = int.Min
+  _END_INDEX: int @const = int.Min
   _SSO_CAP: int @const = 22
 
   @staticmethod
@@ -27,7 +27,7 @@ class StringMixin[T]:
   @immutable
   @staticmethod
   def _norm_end(n: int, end: int) -> int:
-    if end == Self._SEQ_END_VAL:
+    if end == Self._END_INDEX:
       return n
     if end < 0:
       end += n
@@ -57,7 +57,7 @@ class StringMixin[T]:
     k: int = 1
     lps[0] = 0
     while k < subn:
-      if sub.data[k] == sub.data[length]:
+      if sub._data[k] == sub._data[length]:
         length += 1
         lps[k] = length
         k += 1
@@ -71,16 +71,16 @@ class StringMixin[T]:
   @immutable
   def _find_sub_forward_kmp(self, sub: Self, i: int, j: int, subn: int) -> int:
     if subn == 1:
-      c0: T = sub.data[0]
+      c0: T = sub._data[0]
       for k in range(i, j):
-        if self.data[k] == c0:
+        if self._data[k] == c0:
           return k
       return -1
     lps: int[:] = Self._kmp_build_lps(sub, subn)
     pat: int = 0
     pos: int = i
     while pos < j:
-      if self.data[pos] == sub.data[pat]:
+      if self._data[pos] == sub._data[pat]:
         pos += 1
         pat += 1
         if pat == subn:
@@ -94,9 +94,9 @@ class StringMixin[T]:
   @immutable
   def _find_sub_backward_kmp(self, sub: Self, i: int, j: int, subn: int) -> int:
     if subn == 1:
-      c0: T = sub.data[0]
+      c0: T = sub._data[0]
       for k in range(j - 1, i - 1, -1):
-        if self.data[k] == c0:
+        if self._data[k] == c0:
           return k
       return -1
     lps: int[:] = Self._kmp_build_lps(sub, subn)
@@ -104,7 +104,7 @@ class StringMixin[T]:
     pos: int = i
     last: int = -1
     while pos < j:
-      if self.data[pos] == sub.data[pat]:
+      if self._data[pos] == sub._data[pat]:
         pos += 1
         pat += 1
         if pat == subn:
@@ -126,21 +126,21 @@ class StringMixin[T]:
     m: int = j - i
     buf: T[:] = new(m)
     for k in range(m):
-      buf[k] = self.data[i + k]
+      buf[k] = self._data[i + k]
     return new(buf)
 
   @immutable
   def _compare(self, other: Self) -> int:
     """按元素逐字比较（与 ``list`` 字典序一致）。"""
-    na: int = len(self.data)
-    nb: int = len(other.data)
+    na: int = len(self._data)
+    nb: int = len(other._data)
     lim: int = na
     if nb < lim:
       lim = nb
     for i in range(lim):
-      if self.data[i] < other.data[i]:
+      if self._data[i] < other._data[i]:
         return -1
-      if self.data[i] > other.data[i]:
+      if self._data[i] > other._data[i]:
         return 1
     if na < nb:
       return -1
@@ -150,18 +150,18 @@ class StringMixin[T]:
 
   @immutable
   def __len__(self) -> int:
-    return len(self.data)
+    return len(self._data)
 
   @immutable
   def __bool__(self) -> bool:
-    return len(self.data) > 0
+    return len(self._data) > 0
 
   @immutable
   @overload
   def __getitem__(self, index: int) -> T:
     if index < 0:
-      index = len(self.data) + index
-    return self.data[index]
+      index = len(self._data) + index
+    return self._data[index]
 
   @immutable
   @overload
@@ -177,14 +177,14 @@ class StringMixin[T]:
       cnt: int = (stop - start + step - 1) // step
       buf: T[:] = new(cnt)
       for at in range(cnt):
-        buf[at] = self.data[start + at * step]
+        buf[at] = self._data[start + at * step]
       return new(buf)
     if start <= stop:
       return new()
     cnt: int = (start - stop - step - 1) // (-step)
     buf: T[:] = new(cnt)
     for at in range(cnt):
-      buf[at] = self.data[start + at * step]
+      buf[at] = self._data[start + at * step]
     return new(buf)
 
   @immutable
@@ -192,25 +192,25 @@ class StringMixin[T]:
     return self.find(sub) >= 0
 
   def __add__(self, other: Self) -> Self:
-    n: int = len(self.data)
-    m: int = len(other.data)
+    n: int = len(self._data)
+    m: int = len(other._data)
     buf: T[:] = new(n + m)
     for i in range(n):
-      buf[i] = self.data[i]
+      buf[i] = self._data[i]
     for j in range(m):
-      buf[n + j] = other.data[j]
+      buf[n + j] = other._data[j]
     return new(buf)
 
   def __mul__(self, n: int) -> Self:
     if n <= 0:
       return new()
-    unit: int = len(self.data)
+    unit: int = len(self._data)
     total: int = unit * n
     buf: T[:] = new(total)
     at: int = 0
     for _ in range(n):
       for i in range(unit):
-        buf[at] = self.data[i]
+        buf[at] = self._data[i]
         at += 1
     return new(buf)
 
@@ -234,7 +234,7 @@ class StringMixin[T]:
     return self._compare(other) >= 0
 
   @immutable
-  def find(self, sub: Self, start: int = 0, end: int = Self._SEQ_END_VAL) -> int:
+  def find(self, sub: Self, start: int = 0, end: int = Self._END_INDEX) -> int:
     n: int = len(self)
     i: int = Self._norm_start(n, start)
     j: int = Self._norm_end(n, end)
@@ -246,14 +246,14 @@ class StringMixin[T]:
     return self._find_sub_forward_kmp(sub, i, j, subn)
 
   @immutable
-  def index(self, sub: Self, start: int = 0, end: int = Self._SEQ_END_VAL) -> int:
+  def index(self, sub: Self, start: int = 0, end: int = Self._END_INDEX) -> int:
     pos: int = self.find(sub, start, end)
     if pos < 0:
       raise ValueError("substring not found")
     return pos
 
   @immutable
-  def rfind(self, sub: Self, start: int = 0, end: int = Self._SEQ_END_VAL) -> int:
+  def rfind(self, sub: Self, start: int = 0, end: int = Self._END_INDEX) -> int:
     n: int = len(self)
     i: int = Self._norm_start(n, start)
     j: int = Self._norm_end(n, end)
@@ -265,14 +265,14 @@ class StringMixin[T]:
     return self._find_sub_backward_kmp(sub, i, j, subn)
 
   @immutable
-  def rindex(self, sub: Self, start: int = 0, end: int = Self._SEQ_END_VAL) -> int:
+  def rindex(self, sub: Self, start: int = 0, end: int = Self._END_INDEX) -> int:
     pos: int = self.rfind(sub, start, end)
     if pos < 0:
       raise ValueError("substring not found")
     return pos
 
   @immutable
-  def count(self, sub: Self, start: int = 0, end: int = Self._SEQ_END_VAL) -> int:
+  def count(self, sub: Self, start: int = 0, end: int = Self._END_INDEX) -> int:
     n: int = len(self)
     i: int = Self._norm_start(n, start)
     j: int = Self._norm_end(n, end)
@@ -293,33 +293,33 @@ class StringMixin[T]:
 
   @immutable
   @overload
-  def startswith(self, prefix: Self, start: int = 0, end: int = Self._SEQ_END_VAL) -> bool:
+  def startswith(self, prefix: Self, start: int = 0, end: int = Self._END_INDEX) -> bool:
     sub: Self = self._sub(start, end)
     subn: int = len(sub)
     pren: int = len(prefix)
     if pren > subn:
       return False
     for i in range(pren):
-      if sub.data[i] != prefix.data[i]:
+      if sub._data[i] != prefix._data[i]:
         return False
     return True
 
   @immutable
   @overload
-  def startswith(self, prefix: T[:], start: int = 0, end: int = Self._SEQ_END_VAL) -> bool:
+  def startswith(self, prefix: T[:], start: int = 0, end: int = Self._END_INDEX) -> bool:
     sub: Self = self._sub(start, end)
     subn: int = len(sub)
     pren: int = len(prefix)
     if pren > subn:
       return False
     for i in range(pren):
-      if sub.data[i] != prefix[i]:
+      if sub._data[i] != prefix[i]:
         return False
     return True
 
   @immutable
   @overload
-  def startswith(self, prefixes: list[Self], start: int = 0, end: int = Self._SEQ_END_VAL) -> bool:
+  def startswith(self, prefixes: list[Self], start: int = 0, end: int = Self._END_INDEX) -> bool:
     cnt: int = len(prefixes)
     for i in range(cnt):
       if self.startswith(prefixes[i], start, end):
@@ -328,7 +328,7 @@ class StringMixin[T]:
 
   @immutable
   @overload
-  def startswith(self, prefixes: Self[:], start: int = 0, end: int = Self._SEQ_END_VAL) -> bool:
+  def startswith(self, prefixes: Self[:], start: int = 0, end: int = Self._END_INDEX) -> bool:
     cnt: int = len(prefixes)
     for i in range(cnt):
       if self.startswith(prefixes[i], start, end):
@@ -337,7 +337,7 @@ class StringMixin[T]:
 
   @immutable
   @overload
-  def endswith(self, suffix: Self, start: int = 0, end: int = Self._SEQ_END_VAL) -> bool:
+  def endswith(self, suffix: Self, start: int = 0, end: int = Self._END_INDEX) -> bool:
     sub: Self = self._sub(start, end)
     subn: int = len(sub)
     sufn: int = len(suffix)
@@ -345,13 +345,13 @@ class StringMixin[T]:
       return False
     off: int = subn - sufn
     for i in range(sufn):
-      if sub.data[off + i] != suffix.data[i]:
+      if sub._data[off + i] != suffix._data[i]:
         return False
     return True
 
   @immutable
   @overload
-  def endswith(self, suffix: T[:], start: int = 0, end: int = Self._SEQ_END_VAL) -> bool:
+  def endswith(self, suffix: T[:], start: int = 0, end: int = Self._END_INDEX) -> bool:
     sub: Self = self._sub(start, end)
     subn: int = len(sub)
     sufn: int = len(suffix)
@@ -359,13 +359,13 @@ class StringMixin[T]:
       return False
     off: int = subn - sufn
     for i in range(sufn):
-      if sub.data[off + i] != suffix[i]:
+      if sub._data[off + i] != suffix[i]:
         return False
     return True
 
   @immutable
   @overload
-  def endswith(self, suffixes: list[Self], start: int = 0, end: int = Self._SEQ_END_VAL) -> bool:
+  def endswith(self, suffixes: list[Self], start: int = 0, end: int = Self._END_INDEX) -> bool:
     cnt: int = len(suffixes)
     for i in range(cnt):
       if self.endswith(suffixes[i], start, end):
@@ -374,7 +374,7 @@ class StringMixin[T]:
 
   @immutable
   @overload
-  def endswith(self, suffixes: Self[:], start: int = 0, end: int = Self._SEQ_END_VAL) -> bool:
+  def endswith(self, suffixes: Self[:], start: int = 0, end: int = Self._END_INDEX) -> bool:
     cnt: int = len(suffixes)
     for i in range(cnt):
       if self.endswith(suffixes[i], start, end):
@@ -391,7 +391,7 @@ class StringMixin[T]:
     alt: T = ord("/")
     sep: T = ord("\\")
     for i in range(n):
-      c: T = self.data[i]
+      c: T = self._data[i]
       if c == alt:
         buf[i] = sep
       else:
@@ -402,12 +402,12 @@ class StringMixin[T]:
   def _glob_class_body_contains(self, c: T, start: int, end: int) -> bool:
     has_dash: bool = False
     for i in range(start, end):
-      if self.data[i] == ord("-"):
+      if self._data[i] == ord("-"):
         has_dash = True
         break
     if not has_dash:
       for i in range(start, end):
-        if c == self.data[i]:
+        if c == self._data[i]:
           return True
       return False
     chunks: list[Self] = []
@@ -440,10 +440,10 @@ class StringMixin[T]:
       case 0:
         return False
       case 1:
-        return c == self.data[0]
+        return c == self._data[0]
       case 2:
-        lo: T = self.data[0]
-        hi: T = self.data[1]
+        lo: T = self._data[0]
+        hi: T = self._data[1]
         if lo <= hi:
           return lo <= c and c <= hi
         if c == lo:
@@ -451,7 +451,7 @@ class StringMixin[T]:
         return c == hi
       case _:
         for i in range(cn):
-          if c == self.data[i]:
+          if c == self._data[i]:
             return True
         return False
 
@@ -460,7 +460,7 @@ class StringMixin[T]:
     bn: int = len(self)
     neg: bool = False
     start: int = 0
-    if bn > 0 and self.data[0] == ord("!"):
+    if bn > 0 and self._data[0] == ord("!"):
       neg = True
       start = 1
     matched: bool = True
@@ -475,15 +475,15 @@ class StringMixin[T]:
     """匹配 ``[…]``；成功返回 pattern 新下标，失败返回 ``-1``。"""
     pn: int = len(self)
     j: int = pi + 1
-    if j < pn and self.data[j] == ord("!"):
+    if j < pn and self._data[j] == ord("!"):
       j += 1
-    if j < pn and self.data[j] == ord("]"):
+    if j < pn and self._data[j] == ord("]"):
       j += 1
     close: int = j
-    while close < pn and self.data[close] != ord("]"):
+    while close < pn and self._data[close] != ord("]"):
       close += 1
     if close >= pn:
-      if c == self.data[pi]:
+      if c == self._data[pi]:
         return pi + 1
       return -1
     body: Self = self._sub(pi + 1, close)
@@ -498,10 +498,10 @@ class StringMixin[T]:
     while True:
       if pi >= pn:
         return ni >= nn
-      star_c: T = pat.data[pi]
+      star_c: T = pat._data[pi]
       if star_c == ord("*"):
         pi += 1
-        while pi < pn and pat.data[pi] == star_c:
+        while pi < pn and pat._data[pi] == star_c:
           pi += 1
         if pi >= pn:
           return True
@@ -511,19 +511,19 @@ class StringMixin[T]:
         return False
       if ni >= nn:
         return False
-      pc: T = pat.data[pi]
+      pc: T = pat._data[pi]
       if pc == ord("?"):
         ni += 1
         pi += 1
         continue
       if pc == ord("["):
-        next_pi: int = pat._glob_match_bracket(self.data[ni], pi)
+        next_pi: int = pat._glob_match_bracket(self._data[ni], pi)
         if next_pi < 0:
           return False
         ni += 1
         pi = next_pi
         continue
-      if self.data[ni] != pat.data[pi]:
+      if self._data[ni] != pat._data[pi]:
         return False
       ni += 1
       pi += 1
@@ -574,11 +574,11 @@ class StringMixin[T]:
       part: Self = iterable[i]
       pn: int = len(part)
       for j in range(pn):
-        buf[at] = part.data[j]
+        buf[at] = part._data[j]
         at += 1
       if i + 1 < cnt:
         for j in range(sep_n):
-          buf[at] = self.data[j]
+          buf[at] = self._data[j]
           at += 1
     return new(buf)
 
@@ -663,10 +663,10 @@ class StringMixin[T]:
     n: int = len(self)
     i: int = 0
     if not chars:
-      while i < n and Self._is_field_whitespace(self.data[i]):
+      while i < n and Self._is_field_whitespace(self._data[i]):
         i += 1
     else:
-      while i < n and Self(self.data[i]) in chars:
+      while i < n and Self(self._data[i]) in chars:
         i += 1
     return self._sub(i, n)
 
@@ -681,10 +681,10 @@ class StringMixin[T]:
     n: int = len(self)
     j: int = n
     if not chars:
-      while j > 0 and Self._is_field_whitespace(self.data[j - 1]):
+      while j > 0 and Self._is_field_whitespace(self._data[j - 1]):
         j -= 1
     else:
-      while j > 0 and Self(self.data[j - 1]) in chars:
+      while j > 0 and Self(self._data[j - 1]) in chars:
         j -= 1
     return self._sub(0, j)
 
@@ -728,7 +728,7 @@ class StringMixin[T]:
     i: int = 0
     splits: int = 0
     while i < n:
-      while i < n and Self._is_field_whitespace(self.data[i]):
+      while i < n and Self._is_field_whitespace(self._data[i]):
         i += 1
       if i >= n:
         break
@@ -736,7 +736,7 @@ class StringMixin[T]:
         out.append(self._sub(i, n))
         return out
       j: int = i
-      while j < n and not Self._is_field_whitespace(self.data[j]):
+      while j < n and not Self._is_field_whitespace(self._data[j]):
         j += 1
       out.append(self._sub(i, j))
       i = j
@@ -773,7 +773,7 @@ class StringMixin[T]:
     splits = 0
     j: int = n
     while j > 0:
-      while j > 0 and Self._is_field_whitespace(self.data[j - 1]):
+      while j > 0 and Self._is_field_whitespace(self._data[j - 1]):
         j -= 1
       if j == 0:
         break
@@ -781,7 +781,7 @@ class StringMixin[T]:
         out.append(self._sub(0, j))
         break
       k: int = j
-      while k > 0 and not Self._is_field_whitespace(self.data[k - 1]):
+      while k > 0 and not Self._is_field_whitespace(self._data[k - 1]):
         k -= 1
       out.append(self._sub(k, j))
       j = k
@@ -794,12 +794,12 @@ class StringMixin[T]:
     """无 ``sep``：等同 ``split(maxsplit=1)[0]``（无字段时 ``new()``）；不构造 ``list``。"""
     n: int = len(self)
     i: int = 0
-    while i < n and Self._is_field_whitespace(self.data[i]):
+    while i < n and Self._is_field_whitespace(self._data[i]):
       i += 1
     if i >= n:
       return new()
     j: int = i
-    while j < n and not Self._is_field_whitespace(self.data[j]):
+    while j < n and not Self._is_field_whitespace(self._data[j]):
       j += 1
     return self._sub(i, j)
 
@@ -818,15 +818,15 @@ class StringMixin[T]:
     """无 ``sep``：等同 ``split(maxsplit=1)[1]``（仅一段或无时 ``new()``）；不构造 ``list``。"""
     n: int = len(self)
     i: int = 0
-    while i < n and Self._is_field_whitespace(self.data[i]):
+    while i < n and Self._is_field_whitespace(self._data[i]):
       i += 1
     if i >= n:
       return new()
     j: int = i
-    while j < n and not Self._is_field_whitespace(self.data[j]):
+    while j < n and not Self._is_field_whitespace(self._data[j]):
       j += 1
     i = j
-    while i < n and Self._is_field_whitespace(self.data[i]):
+    while i < n and Self._is_field_whitespace(self._data[i]):
       i += 1
     if i >= n:
       return new()
@@ -850,14 +850,14 @@ class StringMixin[T]:
     splits: int = 0
     found: bool = False
     while j > 0:
-      while j > 0 and Self._is_field_whitespace(self.data[j - 1]):
+      while j > 0 and Self._is_field_whitespace(self._data[j - 1]):
         j -= 1
       if j == 0:
         break
       if splits >= 1:
         return self._sub(0, j)
       k: int = j
-      while k > 0 and not Self._is_field_whitespace(self.data[k - 1]):
+      while k > 0 and not Self._is_field_whitespace(self._data[k - 1]):
         k -= 1
       found = True
       j = k
@@ -885,7 +885,7 @@ class StringMixin[T]:
     tail: Self = new()
     have_tail: bool = False
     while j > 0:
-      while j > 0 and Self._is_field_whitespace(self.data[j - 1]):
+      while j > 0 and Self._is_field_whitespace(self._data[j - 1]):
         j -= 1
       if j == 0:
         break
@@ -894,7 +894,7 @@ class StringMixin[T]:
           return tail
         return new()
       k: int = j
-      while k > 0 and not Self._is_field_whitespace(self.data[k - 1]):
+      while k > 0 and not Self._is_field_whitespace(self._data[k - 1]):
         k -= 1
       tail = self._sub(k, j)
       have_tail = True
@@ -924,7 +924,7 @@ class StringMixin[T]:
     splits: int = 0
     if not sep:
       while i < len(self):
-        while i < len(self) and Self._is_field_whitespace(self.data[i]):
+        while i < len(self) and Self._is_field_whitespace(self._data[i]):
           i += 1
         if i >= len(self):
           return
@@ -932,7 +932,7 @@ class StringMixin[T]:
           yield self._sub(i, len(self))
           return
         j: int = i
-        while j < len(self) and not Self._is_field_whitespace(self.data[j]):
+        while j < len(self) and not Self._is_field_whitespace(self._data[j]):
           j += 1
         yield self._sub(i, j)
         i = j
@@ -989,7 +989,7 @@ class StringMixin[T]:
       j: int = len(self)
       done = False
       while j > 0 and not done:
-        while j > 0 and Self._is_field_whitespace(self.data[j - 1]):
+        while j > 0 and Self._is_field_whitespace(self._data[j - 1]):
           j -= 1
         if j == 0:
           done = True
@@ -1000,7 +1000,7 @@ class StringMixin[T]:
           done = True
         else:
           k: int = j
-          while k > 0 and not Self._is_field_whitespace(self.data[k - 1]):
+          while k > 0 and not Self._is_field_whitespace(self._data[k - 1]):
             k -= 1
           starts[cnt] = k
           ends[cnt] = j
@@ -1037,7 +1037,7 @@ class StringMixin[T]:
     if best < end:
       return best
     for i in range(start, end):
-      if Self._is_linebreak(self.data[i]):
+      if Self._is_linebreak(self._data[i]):
         return i
     return end
 
@@ -1050,13 +1050,13 @@ class StringMixin[T]:
       j: int = self._find_linebreak(i, n)
       consumed: int = 1
       if j + 1 < n:
-        if Self._is_cr_lf_pair(self.data[j], self.data[j + 1]):
+        if Self._is_cr_lf_pair(self._data[j], self._data[j + 1]):
           consumed = 2
       piece: Self = self._sub(i, j)
       if keepends and j < n:
         endb: T[:] = new(consumed)
         for k in range(consumed):
-          endb[k] = self.data[j + k]
+          endb[k] = self._data[j + k]
         piece += Self(endb)
       out.append(piece)
       if j >= n:
@@ -1073,13 +1073,13 @@ class StringMixin[T]:
       j: int = self._find_linebreak(i, n)
       consumed: int = 1
       if j + 1 < n:
-        if Self._is_cr_lf_pair(self.data[j], self.data[j + 1]):
+        if Self._is_cr_lf_pair(self._data[j], self._data[j + 1]):
           consumed = 2
       piece: Self = self._sub(i, j)
       if keepends and j < n:
         endb: T[:] = new(consumed)
         for k in range(consumed):
-          endb[k] = self.data[j + k]
+          endb[k] = self._data[j + k]
         piece += Self(endb)
       yield piece
       if j >= n:
@@ -1092,9 +1092,9 @@ class StringMixin[T]:
     if n == 0:
       return new()
     buf: T[:] = new(n)
-    buf[0] = Self._to_upper_char(self.data[0])
+    buf[0] = Self._to_upper_char(self._data[0])
     for i in range(1, n):
-      buf[i] = Self._to_lower_char(self.data[i])
+      buf[i] = Self._to_lower_char(self._data[i])
     return new(buf)
 
   @immutable
@@ -1115,7 +1115,7 @@ class StringMixin[T]:
     for i in range(left):
       buf[i] = fillchar
     for i in range(n):
-      buf[left + i] = self.data[i]
+      buf[left + i] = self._data[i]
     for i in range(right):
       buf[left + n + i] = fillchar
     return new(buf)
@@ -1133,7 +1133,7 @@ class StringMixin[T]:
     col: int = 0
     sp: T = Self._default_pad_char()
     for i in range(n):
-      c: T = self.data[i]
+      c: T = self._data[i]
       if c == ord("\t"):
         spaces: int = tabsize - (col % tabsize)
         if spaces == 0:
@@ -1157,7 +1157,7 @@ class StringMixin[T]:
     if not self:
       return False
     for i in range(len(self)):
-      if not Self._is_alnum_char(self.data[i]):
+      if not Self._is_alnum_char(self._data[i]):
         return False
     return True
 
@@ -1166,14 +1166,14 @@ class StringMixin[T]:
     if not self:
       return False
     for i in range(len(self)):
-      if not Self._is_alpha_char(self.data[i]):
+      if not Self._is_alpha_char(self._data[i]):
         return False
     return True
 
   @immutable
   def isascii(self) -> bool:
     for i in range(len(self)):
-      if not Self._is_ascii(self.data[i]):
+      if not Self._is_ascii(self._data[i]):
         return False
     return True
 
@@ -1182,7 +1182,7 @@ class StringMixin[T]:
     if not self:
       return False
     for i in range(len(self)):
-      if not Self._is_digit_char(self.data[i]):
+      if not Self._is_digit_char(self._data[i]):
         return False
     return True
 
@@ -1197,7 +1197,7 @@ class StringMixin[T]:
       return False
     has_cased: bool = False
     for i in range(n):
-      c: T = self.data[i]
+      c: T = self._data[i]
       if Self._is_cased(c):
         has_cased = True
         if c < ord("a") or c > ord("z"):
@@ -1211,7 +1211,7 @@ class StringMixin[T]:
     if n == 0:
       return False
     for i in range(n):
-      if not Self._is_field_whitespace(self.data[i]):
+      if not Self._is_field_whitespace(self._data[i]):
         return False
     return True
 
@@ -1222,7 +1222,7 @@ class StringMixin[T]:
       return False
     has_cased: bool = False
     for i in range(n):
-      c: T = self.data[i]
+      c: T = self._data[i]
       if Self._is_cased(c):
         has_cased = True
         if c < ord("A") or c > ord("Z"):
@@ -1243,7 +1243,7 @@ class StringMixin[T]:
       return self
     buf: T[:] = new(width)
     for i in range(n):
-      buf[i] = self.data[i]
+      buf[i] = self._data[i]
     for i in range(n, width):
       buf[i] = fillchar
     return new(buf)
@@ -1253,7 +1253,7 @@ class StringMixin[T]:
     n: int = len(self)
     buf: T[:] = new(n)
     for i in range(n):
-      buf[i] = Self._to_lower_char(self.data[i])
+      buf[i] = Self._to_lower_char(self._data[i])
     return new(buf)
 
   @immutable
@@ -1272,7 +1272,7 @@ class StringMixin[T]:
     for i in range(pad):
       buf[i] = fillchar
     for i in range(n):
-      buf[pad + i] = self.data[i]
+      buf[pad + i] = self._data[i]
     return new(buf)
 
   @immutable
@@ -1280,7 +1280,7 @@ class StringMixin[T]:
     n: int = len(self)
     buf: T[:] = new(n)
     for i in range(n):
-      c: T = self.data[i]
+      c: T = self._data[i]
       if c >= ord("A") and c <= ord("Z"):
         buf[i] = c + 32
       elif c >= ord("a") and c <= ord("z"):
@@ -1295,7 +1295,7 @@ class StringMixin[T]:
     buf: T[:] = new(n)
     new_word: bool = True
     for i in range(n):
-      c: T = self.data[i]
+      c: T = self._data[i]
       if Self._is_alpha_char(c):
         if new_word:
           buf[i] = Self._to_upper_char(c)
@@ -1312,7 +1312,7 @@ class StringMixin[T]:
     n: int = len(self)
     buf: T[:] = new(n)
     for i in range(n):
-      buf[i] = Self._to_upper_char(self.data[i])
+      buf[i] = Self._to_upper_char(self._data[i])
     return new(buf)
 
   @immutable
@@ -1324,7 +1324,7 @@ class StringMixin[T]:
     body_start: int = 0
     has_sign: bool = False
     if n > 0:
-      c0: T = self.data[0]
+      c0: T = self._data[0]
       if c0 in "+-":
         has_sign = True
         sign = c0
@@ -1340,7 +1340,7 @@ class StringMixin[T]:
       buf[at] = zc
       at += 1
     for i in range(body_start, n):
-      buf[at] = self.data[i]
+      buf[at] = self._data[i]
       at += 1
     return new(buf)
 
@@ -1357,10 +1357,10 @@ class StringMixin[T]:
     table: dict[T, T] = {}
     n: int = len(frm)
     for i in range(n):
-      table[frm.data[i]] = to.data[i]
+      table[frm._data[i]] = to._data[i]
     zlen: int = len(remove)
     for i in range(zlen):
-      table[remove.data[i]] = Self._translate_delete_marker()
+      table[remove._data[i]] = Self._translate_delete_marker()
     return table
 
   @immutable
@@ -1371,7 +1371,7 @@ class StringMixin[T]:
     buf: T[:] = new(cap)
     at: int = 0
     for i in range(n):
-      c: T = self.data[i]
+      c: T = self._data[i]
       if Self(c) in delete:
         continue
       if c in table:
@@ -1393,7 +1393,7 @@ class StringMixin[T]:
   @immutable
   def __hash__(self) -> int:
     h: int = 0
-    n: int = len(self.data)
+    n: int = len(self._data)
     for i in range(n):
-      h = h * 31 + self.data[i]
+      h = h * 31 + self._data[i]
     return h

@@ -81,7 +81,6 @@ _STD_TYPES = {
   "PyArray": cpp_stdlib_class("util/array", "PyArray"),
   "PyArray2D": cpp_stdlib_class("util/array", "PyArray2D"),
   "PyArray3D": cpp_stdlib_class("util/array", "PyArray3D"),
-  "Allocator": cpp_stdlib_class("util/allocator", "Allocator"),
   "PyIterResult": cpp_stdlib_class("core/iter_result", "PyIterResult"),
   "PyNone": cpp_stdlib_class("core/none", "PyNone"),
   "PyCoroutine": cpp_stdlib_class("core/coroutine", "PyCoroutine"),

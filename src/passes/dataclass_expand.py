@@ -301,8 +301,8 @@ def _body_init_rhs(spec: DataclassFieldSpec) -> ast.expr:
     raise ValueError("body_init required")
   match spec.body_init:
     case ast.List() | ast.Dict() | ast.Set():
-      if isinstance(spec.annotation, ast.Subscript):
-        return ast.Call(func=copy.deepcopy(spec.annotation), args=[])
+      # 空容器字面量：``self.f = []`` 由 emit 按字段注解生成 ``PyList<…>()``（含 ``list[T,N]``）
+      return copy.deepcopy(spec.body_init)
     case ast.Call():
       return copy.deepcopy(spec.body_init)
   return copy.deepcopy(spec.body_init)

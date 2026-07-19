@@ -23,6 +23,9 @@ if errorlevel 1 (
   echo.
 )
 
+call "%~dp0_bootstrap_runtime.bat"
+if errorlevel 1 exit /b 1
+
 %PY% scripts\parallel_build.py fail %EXTRA%
 set "RC=%ERRORLEVEL%"
 call "%~dp0_gen_compile_commands.bat"

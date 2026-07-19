@@ -182,46 +182,46 @@ def _strptime_fixed(s: str, fmt: str) -> c_time:
   match fmt:
     case "%Y-%m-%d":
       y: int = _parse_int_field(s, 0, 4)
-      if s.data[4] != ord("-"):
+      if s[4] != ord("-"):
         raise ValueError("strptime")
       mo: int = _parse_int_field(s, 5, 2)
-      if s.data[7] != ord("-"):
+      if s[7] != ord("-"):
         raise ValueError("strptime")
       d: int = _parse_int_field(s, 8, 2)
       return new(y, mo, d, 0, 0, 0)
     case "%Y-%m-%d %H:%M:%S":
       y2: int = _parse_int_field(s, 0, 4)
-      if s.data[4] != ord("-"):
+      if s[4] != ord("-"):
         raise ValueError("strptime")
       mo2: int = _parse_int_field(s, 5, 2)
-      if s.data[7] != ord("-"):
+      if s[7] != ord("-"):
         raise ValueError("strptime")
       d2: int = _parse_int_field(s, 8, 2)
-      if s.data[10] != ord(" "):
+      if s[10] != ord(" "):
         raise ValueError("strptime")
       h: int = _parse_int_field(s, 11, 2)
-      if s.data[13] != ord(":"):
+      if s[13] != ord(":"):
         raise ValueError("strptime")
       mi: int = _parse_int_field(s, 14, 2)
-      if s.data[16] != ord(":"):
+      if s[16] != ord(":"):
         raise ValueError("strptime")
       sec: int = _parse_int_field(s, 17, 2)
       return new(y2, mo2, d2, h, mi, sec)
     case "%Y/%m/%d %H:%M:%S":
       y3: int = _parse_int_field(s, 0, 4)
-      if s.data[4] != ord("/"):
+      if s[4] != ord("/"):
         raise ValueError("strptime")
       mo3: int = _parse_int_field(s, 5, 2)
-      if s.data[7] != ord("/"):
+      if s[7] != ord("/"):
         raise ValueError("strptime")
       d3: int = _parse_int_field(s, 8, 2)
-      if s.data[10] != ord(" "):
+      if s[10] != ord(" "):
         raise ValueError("strptime")
       h3: int = _parse_int_field(s, 11, 2)
-      if s.data[13] != ord(":"):
+      if s[13] != ord(":"):
         raise ValueError("strptime")
       mi3: int = _parse_int_field(s, 14, 2)
-      if s.data[16] != ord(":"):
+      if s[16] != ord(":"):
         raise ValueError("strptime")
       sec3: int = _parse_int_field(s, 17, 2)
       return new(y3, mo3, d3, h3, mi3, sec3)

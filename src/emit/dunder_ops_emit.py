@@ -31,6 +31,18 @@ def _other_param_type(msig: MethodSig) -> str:
   return "void*"
 
 
+def _operator_param_decl(cpp_t: str, name: str) -> str:
+  """``operator`` 形参：已是 ``const T&`` 时勿再包 ``const … &``。"""
+  t = cpp_t.strip()
+  if t.endswith("&"):
+    return f"{t} {name}"
+  return f"const {t}& {name}"
+
+
+def _operator_other_decl(msig: MethodSig) -> str:
+  return _operator_param_decl(_other_param_type(msig), "other")
+
+
 def _ret_cpp_type(msig: MethodSig) -> str:
   return sig_return_full_cpp(msig)
 
@@ -63,13 +75,13 @@ def _emit_member_binary(
   is_bool: bool,
   is_const: bool,
 ) -> list[str]:
-  other = _other_param_type(msig)
+  other = _operator_other_decl(msig)
   ret = _ret_cpp_type(msig)
   const = " const" if is_const else ""
   if is_bool and "bool" not in ret:
     ret = "bool"
   lines = [
-    f"{ret} operator{cpp_op}(const {other}& other){const}",
+    f"{ret} operator{cpp_op}({other}){const}",
     "{",
     f"  return {dunder}(other);",
     "}",
@@ -92,11 +104,12 @@ def _emit_reverse_binary(
   cpp_class: str, rdunder: str, cpp_op: str, msig: MethodSig
 ) -> list[str]:
   other = _other_param_type(msig)
+  lhs = _operator_param_decl(other, "lhs")
   ret = _ret_cpp_type(msig)
   # 非 ``@immutable`` 的 ``__r*__`` 无法在 ``const`` 接收方上调用；右操作数按值传入再委托。
   rhs_param = f"const {cpp_class}& rhs" if msig.is_const else f"{cpp_class} rhs"
   lines = [
-    f"friend {ret} operator{cpp_op}(const {other}& lhs, {rhs_param})",
+    f"friend {ret} operator{cpp_op}({lhs}, {rhs_param})",
     "{",
     f"  return rhs.{rdunder}(lhs);",
     "}",
@@ -105,9 +118,9 @@ def _emit_reverse_binary(
 
 
 def _emit_inplace_binary(cpp_class: str, idunder: str, cpp_op: str, msig: MethodSig) -> list[str]:
-  other = _other_param_type(msig)
+  other = _operator_other_decl(msig)
   lines = [
-    f"{cpp_class}& operator{cpp_op}(const {other}& other)",
+    f"{cpp_class}& operator{cpp_op}({other})",
     "{",
     f"  return {idunder}(other);",
     "}",

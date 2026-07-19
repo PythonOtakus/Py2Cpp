@@ -1696,6 +1696,15 @@ class SignatureBuilder:
             )
             return f"{cpp_type}({args})"
         raise NotImplementedError(f"default arg: {ast.dump(node)}")
+      case ast.Attribute(value=ast.Name(id=enum_name), attr=member) if enum_name != "new":
+        from ..passes.enum_expand import enum_member_names
+        from ..analysis.module_namespace import qualify_symbol_in_module
+
+        cinfo = self._classes.get(enum_name)
+        if cinfo is not None and cinfo.is_enum and member in enum_member_names(cinfo):
+          base = qualify_symbol_in_module(cinfo.module_path, cinfo.cpp_name())
+          return f"{base}::{member}"
+        raise NotImplementedError(f"default arg: {ast.dump(node)}")
       case ast.Attribute(value=ast.Name(id="new"), attr=attr):
         if cpp_type:
           from ..analysis.ir import (
@@ -1953,11 +1962,16 @@ class SignatureBuilder:
       if (
         info.is_copyable
         and method
-        and method.name == "__init__"
+        and not has_named_decorator(method, "staticmethod")
+        and not has_named_decorator(method, "classmethod")
+        and arg.arg not in ("self", "cls")
+        and method.name != "__move__"
         and arg.annotation
         and isinstance(arg.annotation, ast.Name)
         and arg.annotation.id in (info.name, "Self")
       ):
+        if info.is_template():
+          return f"const {info.cpp_specialization()}&"
         return f"const {info.cpp_name()}&"
       ecs_t = ecs_query_ptr_cpp_type(info.name, arg.arg, info.type_params)
       if ecs_t is not None:
@@ -3216,7 +3230,10 @@ class SemanticAnalyzer:
           else ""
         ) or None
         if value_t and storage in info.static_property_storage:
-          self.sigs._set_field_cpp_type(info, storage, value_t)
+          from .ir import strip_cpp_ref, strip_cpp_type_qualifiers
+
+          storage_t = strip_cpp_type_qualifiers(strip_cpp_ref(value_t))
+          self.sigs._set_field_cpp_type(info, storage, storage_t)
       ensure_move_state_field(info)
 
     from .module_functions import partition_module_functions_from_asts
@@ -3287,14 +3304,14 @@ class SemanticAnalyzer:
             for h in _headers_from_type_text(text, own_header, tr.classes):
               if h not in includes:
                 includes.append(h)
-      _protocols_h = stdlib_header_include("core/protocols")
+      _protocol_traits_h = f"{CORE_PKG}/protocol_traits.h"
       if module_path != stdlib_module_path("core/protocols"):
         for info in tr.classes.values():
           if info.module_path != module_path or info.is_protocol:
             continue
-          if info.type_param_constraints:
-            if _protocols_h not in includes:
-              includes.insert(0, _protocols_h)
+          if info.type_param_constraints or info.type_param_oneof_constraints or info.concrete_oneof_constraints:
+            if _protocol_traits_h not in includes:
+              includes.insert(0, _protocol_traits_h)
             break
       _delegate_h = stdlib_header_include("core/delegate")
       if any(d.module_path == module_path for d in tr.delegates.values()):
@@ -3306,6 +3323,13 @@ class SemanticAnalyzer:
 
           h = header_for_module(imp.module_path)
           if h != own_header and h not in includes:
+            includes.append(h)
+      from ..constant.ffi_layout import ffi_header_include, is_ffi_module_path
+
+      for imp in tr.module_import_bindings.get(module_path, {}).values():
+        if is_ffi_module_path(imp.module_path):
+          h = ffi_header_include(imp.module_path)
+          if h not in includes:
             includes.append(h)
       pre, forward, post = finalize_module_headers(module_path, includes)
       ma = tr.module_analysis[module_path]

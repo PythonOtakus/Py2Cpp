@@ -106,6 +106,11 @@ from .emit.class_decl_emit import _emit_class_type_usings, _emit_class_constrain
 from .emit.stdlib_inject_emit import emit_stdlib_class_runtime, emit_stdlib_module_paste_after, emit_stdlib_module_paste_before, with_stdlib_inl
 from .constant.parallel import CONCUR_PARALLEL_MODULE, PRANGE_TRANSLATION_ONLY_FUNCS
 from .constant.stdlib_discovery import STDLIB_REL_PATH_SET, STDLIB_REL_PATHS
+from .constant.ffi_layout import (
+  ffi_header_include,
+  ffi_runtime_module_path,
+  is_ffi_module_path,
+)
 from .constant.stdlib_layout import CORE_PKG, RUNTIME_PKG, is_on_demand_stdlib_rel, stdlib_header_include, stdlib_module_path
 from .constant.stdlib_layout import STR_PYSTR, cpp_exception_ctor
 from .analysis.runtime_symbols import BUILTINS_CPP_RUNTIME_FUNCS, RUNTIME_PKG_QUALIFIED_SYMBOLS, TRANSLATION_ONLY_FUNCS, runtime_root_ctor_expr
@@ -762,6 +767,9 @@ class Translator(ast.NodeVisitor):
             for module_path in self.module_order:
                 if module_path == self.entry_module_path:
                     continue
+                if is_ffi_module_path(module_path):
+                    self.write_line(f'#include "{ffi_header_include(module_path)}"')
+                    continue
                 if has_stdlib and self._is_stdlib_module(module_path):
                     if self._is_on_demand_stdlib_module(module_path):
                         rel = self._stdlib_rel_from_module_path(module_path)
@@ -807,23 +815,44 @@ class Translator(ast.NodeVisitor):
             self.write_line(line)
         self.write_line()
 
+    def _stdlib_entry_header_stays_in_per_module(self) -> bool:
+        """单模块 runtime 翻译：声明留在 ``per_module_header_lines`` 供 ``write_per_module_headers`` 写入。"""
+        if self._is_runtime_bootstrap() and self.entry_module_path == RUNTIME_PKG:
+            return True
+        return (
+            self._is_stdlib_module(self.entry_module_path)
+            and self._can_write_stdlib_artifact(self.entry_module_path)
+        )
+
     def _splice_entry_deferred_header_lines(self, entry_body: list[str]) -> list[str]:
         """入口模块 ``.h``：``PyList`` 等延后类声明须在 ``} // namespace`` 之前（``write_per_module_headers`` 已处理非入口模块）。"""
-        deferred = self.per_module_deferred_header_lines.pop(self.entry_module_path, [])
+        if self._stdlib_entry_header_stays_in_per_module():
+            deferred = self.per_module_deferred_header_lines.get(self.entry_module_path, [])
+        else:
+            deferred = self.per_module_deferred_header_lines.pop(self.entry_module_path, [])
         return splice_before_innermost_namespace_close(entry_body, deferred)
 
     def _finish_header(self):
-        if self._is_runtime_bootstrap() and self.entry_module_path == RUNTIME_PKG:
+        if self._stdlib_entry_header_stays_in_per_module():
             entry_body = self.per_module_header_lines.get(self.entry_module_path, [])
         else:
             entry_body = self.per_module_header_lines.pop(self.entry_module_path, [])
         entry_body = self._splice_entry_deferred_header_lines(entry_body)
-        global_traits = self.per_module_global_traits_lines.pop(self.entry_module_path, [])
+        if self._stdlib_entry_header_stays_in_per_module():
+            global_traits = self.per_module_global_traits_lines.get(self.entry_module_path, [])
+        else:
+            global_traits = self.per_module_global_traits_lines.pop(self.entry_module_path, [])
         if global_traits:
             entry_body = entry_body + ['', '#include "py2cpp/core/refcount.h"', '', *global_traits, '']
         if self.per_module_inl_lines.get(self.entry_module_path):
             entry_body = [*entry_body, '', f'#include "{self.module_name}.inl"', '']
-        if entry_body:
+        if self._stdlib_entry_header_stays_in_per_module():
+            self.per_module_header_lines[self.entry_module_path] = entry_body
+            if self.entry_module_path in self.per_module_deferred_header_lines:
+                self.per_module_deferred_header_lines.pop(self.entry_module_path, None)
+            if self.entry_module_path in self.per_module_global_traits_lines:
+                self.per_module_global_traits_lines.pop(self.entry_module_path, None)
+        elif entry_body:
             self.header_lines.extend(entry_body)
         with self._use_header():
             guard = module_path_to_guard(self.entry_module_path)
@@ -906,9 +935,8 @@ class Translator(ast.NodeVisitor):
     def _class_info_for_type(self, cpp_type: str) -> ClassInfo | None:
         if not cpp_type:
             return None
-        base = cpp_type.strip()
-        while base.endswith('&') or base.endswith('*'):
-            base = base[:-1].strip()
+        from .analysis.ir import strip_cpp_type_qualifiers
+        base = strip_cpp_type_qualifiers(cpp_type)
         base = ClassInfo.unwrap_refcount_type(base)
         from .analysis.proxy import is_cpp_proxy_type
         if is_cpp_proxy_type(base):
@@ -2319,7 +2347,9 @@ class Translator(ast.NodeVisitor):
             return f'{info.cpp_name()}::{attr}'
         if attr in info.static_class_fields:
             cpp = info.cpp_member_name(attr)
-            return qualified_class_static_callee(info, cpp)
+            if info.is_template():
+                return cpp
+            return f'{info.cpp_name()}::{cpp}'
         if attr in info.static_property_storage:
             return f'{info.cpp_name()}::{info.cpp_member_name(attr)}'
         sig = info.method_sigs.get(attr)
@@ -2785,18 +2815,30 @@ class Translator(ast.NodeVisitor):
     def _is_stdlib_module(module_path: str) -> bool:
         return module_path == RUNTIME_PKG or module_path.startswith(f'{RUNTIME_PREFIX}/')
 
+    @staticmethod
+    def _is_ffi_module(module_path: str) -> bool:
+        return is_ffi_module_path(module_path)
+
     def _is_runtime_bootstrap(self) -> bool:
         """仅翻译 ``py2cpp/__init__.py`` 时写 runtime 标准库头/实现，避免测试覆盖共享产物。"""
         return self.entry_module_path == RUNTIME_PKG
 
     def _module_output_dir(self, module_path: str) -> Path:
-        if self._is_stdlib_module(module_path):
+        if self._is_stdlib_module(module_path) or self._is_ffi_module(module_path):
             return self.runtime_output_dir
         return self.entry_output_dir
 
     def _stdlib_artifact_path(self, module_path: str, suffix: str) -> Path:
         """``py2cpp/array`` + ``.h`` → ``<runtime>/py2cpp/array.h``（相对 ``runtime_output_dir``）。"""
         return self.runtime_output_dir / f'{module_path}{suffix}'
+
+    def _ffi_artifact_path(self, module_path: str, suffix: str) -> Path:
+        """``ffi/windows`` + ``.h`` → ``<runtime>/ffi/windows.h``（与 ``py2cpp/`` 并列）。"""
+        return self.runtime_output_dir / f'{ffi_runtime_module_path(module_path)}{suffix}'
+
+    def _can_write_ffi_artifact(self, module_path: str) -> bool:
+        """FFI 被 import 进闭包即可写 runtime 产物（不依赖 bootstrap）。"""
+        return self._is_ffi_module(module_path)
 
     def _user_module_output_relpath(self, module_path: str) -> str:
         """用户子模块在入口输出目录下的相对路径。"""
@@ -3569,6 +3611,9 @@ class Translator(ast.NodeVisitor):
             if not self._is_stdlib_module(module_path):
                 continue
             if module_path == RUNTIME_PKG and self.entry_module_path == RUNTIME_PKG and self._is_runtime_bootstrap():
+                continue
+            # 单模块 stdlib 入口由 ``_emit_entry_module_implementations`` 写入 ``.inl``，此处跳过以免重复定义。
+            if module_path == self.entry_module_path and self.entry_module_path != RUNTIME_PKG:
                 continue
             funcs = self._module_emit_functions_for(module_path)
             classes = self._stdlib_module_classes(module_path)
@@ -4406,20 +4451,20 @@ class Translator(ast.NodeVisitor):
                         return self._field_storage(storage_field_for(attr))
                     return self._field_storage(attr)
             case ast.Subscript(value=base_expr, slice=sl):
+                from .emit.subscript_emit import _ptr_subscript_base_type
+                ptr_t = _ptr_subscript_base_type(self, base_expr)
+                if ptr_t:
+                    inner = ptr_t[:-1].strip() if ptr_t.endswith('*') else ptr_t
+                    return inner
                 if isinstance(base_expr, ast.Attribute) and isinstance(base_expr.value, ast.Name):
                     if base_expr.value.id == 'self' and self.class_info:
                         ft = self._field_storage(base_expr.attr)
                         if is_stack_array_type(ft):
                             return cpp_stack_array_elem_type(ft) or ''
-                        if self._is_ptr_type(ft):
-                            inner = ft[:-1].strip() if ft.endswith('*') else ft
-                            return inner
                 if isinstance(base_expr, ast.Name) and self.scope:
                     vt = self._scope_storage(base_expr.id)
                     if is_stack_array_type(vt):
                         return cpp_stack_array_elem_type(vt) or ''
-                    if self._is_ptr_type(vt):
-                        return vt[:-1].strip()
         return ''
 
     def _try_emit_delegate_augassign(self, node: ast.AugAssign) -> bool:
@@ -4589,6 +4634,11 @@ class Translator(ast.NodeVisitor):
                 if not self._is_primitive_cpp_type(vtype):
                     return False
                 idx = self.visit(sl)
+                from .emit.subscript_emit import _ptr_subscript_base_type
+                if _ptr_subscript_base_type(self, base_expr) is not None:
+                    base_cpp = self.visit(base_expr)
+                    self.write_line(f'{base_cpp}[{idx}] {aug_op} {rhs};')
+                    return True
                 if isinstance(base_expr, ast.Attribute) and isinstance(base_expr.value, ast.Name):
                     if base_expr.value.id == 'self':
                         fcpp = self._attr_cpp_name(base_expr.value, base_expr.attr)
@@ -4596,17 +4646,11 @@ class Translator(ast.NodeVisitor):
                         if is_stack_array_type(ft):
                             self.write_line(f'this->{fcpp}.__getitem__({idx}) {aug_op} {rhs};')
                             return True
-                        if self._is_ptr_type(ft):
-                            self.write_line(f'this->{fcpp}[{idx}] {aug_op} {rhs};')
-                            return True
                 if isinstance(base_expr, ast.Name):
                     base_cpp = cpp_param(base_expr.id)
                     vt = self._scope_storage(base_expr.id) if self.scope else ''
                     if is_stack_array_type(vt):
                         self.write_line(f'{base_cpp}.__getitem__({idx}) {aug_op} {rhs};')
-                        return True
-                    if self._is_ptr_type(vt):
-                        self.write_line(f'{base_cpp}[{idx}] {aug_op} {rhs};')
                         return True
             case _:
                 return False
@@ -5878,10 +5922,14 @@ class Translator(ast.NodeVisitor):
         return f'makeTuple({self._visit_value_expr(right)})'
 
     def visit_Tuple(self, node: ast.Tuple):
+        from .analysis.ir import strip_cpp_type_qualifiers
         if not node.elts:
             return 'PyTuple<>()'
         args = ', '.join((self._visit_value_expr(e) for e in node.elts))
-        types = ', '.join((self._infer_expr_cpp_type(e) for e in node.elts))
+        types = ', '.join(
+            strip_cpp_type_qualifiers(self._infer_expr_cpp_type(e) or 'void*')
+            for e in node.elts
+        )
         return f'PyTuple<{types}>({args})'
 
     def visit_BoolOp(self, node: ast.BoolOp):
@@ -5964,6 +6012,8 @@ class Translator(ast.NodeVisitor):
         self._finish_header()
         self._start_source()
         self._emit_stdlib_module_implementations()
+        from .emit.ffi_glue_emit import emit_all_ffi_glue
+        emit_all_ffi_glue(self)
         self._emit_user_module_functions()
         self._emit_entry_module_implementations()
         self._emit_module_functions()
@@ -6019,10 +6069,14 @@ class Translator(ast.NodeVisitor):
         if func.name == 'main' and module_path != self.entry_module_path:
             stem = module_path.rsplit('/', 1)[-1]
             return f'{stem}_main'
+        from .analysis.stubs.builtin_stubs import function_cpp_rename
         from .analysis.stubs.class_stubs import lookup_module_function_cpp_name
         mapped = lookup_module_function_cpp_name(module_path, func.name)
         if mapped is not None:
             return mapped
+        renamed = function_cpp_rename(func)
+        if renamed is not None:
+            return renamed
         return func.name
 
     def _is_serializable_cpp_type(self, cpp_type: str) -> bool:
@@ -6135,7 +6189,13 @@ class Translator(ast.NodeVisitor):
             self.write_line()
 
     def _entry_imported_user_modules(self) -> list[str]:
-        return [mp for mp in self.module_order if mp != self.entry_module_path and (not self._is_stdlib_module(mp))]
+        return [
+            mp
+            for mp in self.module_order
+            if mp != self.entry_module_path
+            and (not self._is_stdlib_module(mp))
+            and (not self._is_ffi_module(mp))
+        ]
 
     def _emit_user_module_functions(self) -> None:
         for module_path in self._entry_imported_user_modules():
@@ -6208,10 +6268,12 @@ class Translator(ast.NodeVisitor):
             tpl_funcs = [f for f in emit_funcs if id(f) in allowed and _needs_func_template(f) and (not is_overload_stub(f))]
             non_tpl_classes = [c for c in entry_classes if not c.is_template()]
             tpl_classes = [c for c in entry_classes if c.is_template()]
+            emit_stdlib_module_paste_before(self, mp)
             if non_tpl_funcs:
-                with self._use_module_source(mp), self._use_import_bindings(mp), self._use_module_namespace(mp):
+                with with_stdlib_inl(self, mp):
                     for func in non_tpl_funcs:
-                        self._emit_stdlib_module_function_body(mp, func)
+                        qname = self._module_function_qualifier(mp, self._module_function_cpp_name(mp, func))
+                        self._emit_stdlib_module_function_body(mp, func, qualified_name=qname)
             if non_tpl_classes or tpl_classes or tpl_funcs:
                 with self._use_module_inl(mp), self._use_import_bindings(mp), self._use_inl_namespace(mp):
                     for info in non_tpl_classes + tpl_classes:
@@ -6219,6 +6281,7 @@ class Translator(ast.NodeVisitor):
                     for func in tpl_funcs:
                         qname = self._module_function_qualifier(mp, self._module_function_cpp_name(mp, func))
                         self._emit_stdlib_module_function_body(mp, func, qualified_name=qname)
+            emit_stdlib_module_paste_after(self, mp)
             return
         with self._use_source(), self._use_import_bindings(self.entry_module_path), self._use_module_namespace(self.entry_module_path):
             self._emit_module_import_usings(self.entry_module_path)

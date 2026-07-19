@@ -13,17 +13,17 @@ class ArenaAdoptTests(TestCaseMixin):
     p: Pointer[char] = ar.acquire(5)
     s: str = ""
     owned: span[char] = new(p, 5, 1)
-    s.adopt_span(owned)
     h: char = ord("h")
     e: char = ord("e")
     l1: char = ord("l")
     l2: char = ord("l")
     o: char = ord("o")
-    s.data[0] = h
-    s.data[1] = e
-    s.data[2] = l1
-    s.data[3] = l2
-    s.data[4] = o
+    owned[0] = h
+    owned[1] = e
+    owned[2] = l1
+    owned[3] = l2
+    owned[4] = o
+    s.adopt_span(owned)
     ar.release(p)
     self.assertEqual(len(s), 5)
     self.assertEqual(s[0], "h")

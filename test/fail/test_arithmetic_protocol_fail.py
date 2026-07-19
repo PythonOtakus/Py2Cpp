@@ -1,6 +1,6 @@
 """负向：不满足 ``Integral`` 的类型传入 ``half`` 应编译失败。"""
 from py2cpp import *
-from py2cpp.core.protocols import Integral
+from py2cpp.numeric.protocols import Integral
 
 
 def half[T: Integral](x: T) -> float:

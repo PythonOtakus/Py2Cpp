@@ -215,26 +215,46 @@ def emit_span_slice_subscript(tr: Translator, base_expr: ast.expr, slice_expr: a
         inner = tr.visit(slice_expr)
     return f'{base}{sep}__getitem__({inner})'
 
+def _ptr_subscript_base_type(tr: Translator, base_expr: ast.expr) -> str | None:
+    """下标基表达式为 ``Pointer[T]`` / ``T*`` 时返回其 C++ 类型。"""
+    ptr_t = tr._infer_expr_cpp_type(base_expr) or tr._expr_cpp_type(base_expr)
+    if ptr_t and tr._is_ptr_type(ptr_t):
+        return ptr_t
+    return None
+
+def try_emit_ptr_subscript_store(tr: Translator, base_expr: ast.expr, sl: ast.expr, set_val: str) -> bool:
+    """``ptr[i] = v`` / ``obj.buf[i] = v``（``buf`` 为 ``@property`` 返回指针）→ C 式 ``[i]``。"""
+    if _ptr_subscript_base_type(tr, base_expr) is None:
+        return False
+    base = tr.visit(base_expr)
+    idx = tr._coerce_dict_key_expr(base_expr, sl)
+    tr.write_line(f'{base}[{idx}] = {set_val};')
+    return True
+
 def subscript_augassign_native_candidate(tr: Translator, target: ast.Subscript) -> bool:
     """栈数组 / 裸指针下标且元素为原生标量 → ``visit_AugAssign`` 走 ``_try_emit_native_augassign``。"""
     vtype = tr._cpp_type_for_assign_target(target)
     if not vtype or not tr._is_primitive_cpp_type(vtype):
         return False
     base_expr = target.value
+    if _ptr_subscript_base_type(tr, base_expr) is not None:
+        return True
     if isinstance(base_expr, ast.Attribute) and isinstance(base_expr.value, ast.Name):
         if base_expr.value.id == 'self' and tr.class_info:
             ft = field_storage_cpp(tr.class_info, base_expr.attr) if tr.class_info else ''
-            if is_stack_array_type(ft) or tr._is_ptr_type(ft):
+            if is_stack_array_type(ft):
                 return True
     if isinstance(base_expr, ast.Name) and tr.scope:
         vt = scope_storage_cpp(tr, base_expr.id)
-        if is_stack_array_type(vt) or tr._is_ptr_type(vt):
+        if is_stack_array_type(vt):
             return True
     return False
 
 def emit_subscript_store(tr: Translator, base_expr: ast.expr, sl: ast.expr, set_val: str) -> None:
     """``base[idx] = value`` → ``__setitem__``（与 ``translator._emit_assign`` 下标分支一致）。"""
     if array_subscript_set(tr, base_expr, sl, set_val):
+        return
+    if try_emit_ptr_subscript_store(tr, base_expr, sl, set_val):
         return
     if isinstance(base_expr, ast.Attribute) and base_expr.attr == 'shape':
         recv = tr.visit(base_expr.value)

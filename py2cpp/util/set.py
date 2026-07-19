@@ -8,7 +8,8 @@
 from ..builtins import *
 from .list import list
 from ..core.exceptions import KeyError, StopIteration, ValueError
-from ..core.protocols import DictKey
+from .mixins import ContainerMixin
+from .protocols import DictKey
 
 
 @boxing
@@ -166,16 +167,6 @@ class FrozenSetMixin[T: DictKey]:
     self._size = 0
 
   @immutable
-  def _ensure_active(self) -> None:
-    if self.__moved__:
-      raise ValueError("frozenset used after move")
-
-  @immutable
-  def _ensure_other_active(self, other: Self) -> None:
-    if other.__moved__:
-      raise ValueError("move from moved frozenset")
-
-  @immutable
   def _find_node(self, key: T) -> frozenset_entry[T]:
     idx: int = self._index(key)
     cur: frozenset_entry[T] = self._buckets[idx]
@@ -252,6 +243,7 @@ class set_iterator[T: DictKey](FrozenSetIteratorMixin[T]):
 @native_name("PySet")
 class set[T: DictKey](
   FrozenSetMixin[T],
+  ContainerMixin,
   friends=(set_iterator,),
 ):
   __repr__ = __str__
@@ -385,16 +377,6 @@ class set[T: DictKey](
         self.add(cur.key)
         cur = cur.next
 
-  @immutable
-  def _ensure_active(self) -> None:
-    if self.__moved__:
-      raise ValueError("set used after move")
-
-  @immutable
-  def _ensure_other_active(self, other: Self) -> None:
-    if other.__moved__:
-      raise ValueError("move from moved set")
-
   def _erase_key(self, key: T):
     idx: int = self._index(key)
     prev: frozenset_entry[T] = None
@@ -449,6 +431,7 @@ class frozenset_iterator[T: DictKey](FrozenSetIteratorMixin[T]):
 @native_name("PyFrozenSet")
 class frozenset[T: DictKey](
   FrozenSetMixin[T],
+  ContainerMixin,
   friends=(frozenset_iterator,),
 ):
   __repr__ = __str__

@@ -26,7 +26,6 @@ class ProtocolStubTests(unittest.TestCase):
     self.assertNotIn("Equatable", erase)
     self.assertIn("Comparable", erase)
     self.assertIn("Navigatable", erase)
-    self.assertIn("Allocator", erase)
     self.assertNotIn("Encoder", erase)
 
   def test_parametric_receiver_navigatable_only(self):

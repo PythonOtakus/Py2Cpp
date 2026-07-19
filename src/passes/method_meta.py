@@ -99,6 +99,309 @@ def method_meta_label(host: ClassInfo, method_name: str, meta_name: str) -> str:
   return method_name
 
 
+def _meta_decorator_call(method: ast.FunctionDef, meta_name: str) -> ast.Call | None:
+  for dec in method.decorator_list:
+    if isinstance(dec, ast.Call) and isinstance(dec.func, ast.Name) and dec.func.id == meta_name:
+      return dec
+  return None
+
+
+def method_meta_category(host: ClassInfo, method_name: str, meta_name: str) -> str:
+  method = host.methods.get(method_name)
+  if method is None:
+    return ""
+  call = _meta_decorator_call(method, meta_name)
+  if call is None:
+    return ""
+  for kw in call.keywords:
+    if kw.arg == "category" and isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, str):
+      return kw.value.value
+  return ""
+
+
+def method_meta_hidden(host: ClassInfo, method_name: str, meta_name: str) -> bool:
+  method = host.methods.get(method_name)
+  if method is None:
+    return False
+  call = _meta_decorator_call(method, meta_name)
+  if call is None:
+    return False
+  for kw in call.keywords:
+    if kw.arg == "hidden" and isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, bool):
+      return bool(kw.value.value)
+  return False
+
+
+_TYPE_ID_MAP: dict[str, str] = {
+  "bool": "bool",
+  "int": "int",
+  "float": "float",
+  "float64": "float",
+  "str": "str",
+}
+
+
+def _annotation_to_type_id(ann: ast.expr | None) -> str | None:
+  """形参/返回注解 → blueprint type_id；``None`` 注解 → ``object``；``-> None`` → ``None``。"""
+  if ann is None:
+    return "object"
+  if isinstance(ann, ast.Constant):
+    if ann.value is None:
+      return None
+    return "object"
+  if isinstance(ann, ast.Name):
+    if ann.id == "None":
+      return None
+    return _TYPE_ID_MAP.get(ann.id, "object")
+  return "object"
+
+
+def method_param_names(host: ClassInfo, method_name: str) -> list[str]:
+  """方法形参名（跳过 ``self``）。"""
+  method = host.methods.get(method_name)
+  if method is None:
+    return []
+  out: list[str] = []
+  for arg in method.args.posonlyargs + method.args.args:
+    if arg.arg == "self":
+      continue
+    out.append(arg.arg)
+  for arg in method.args.kwonlyargs:
+    out.append(arg.arg)
+  return out
+
+
+def method_param_type_id(host: ClassInfo, method_name: str, param_name: str) -> str:
+  method = host.methods.get(method_name)
+  if method is None:
+    return "object"
+  for arg in method.args.posonlyargs + method.args.args + method.args.kwonlyargs:
+    if arg.arg == param_name:
+      tid = _annotation_to_type_id(arg.annotation)
+      return tid if tid is not None else "object"
+  return "object"
+
+
+def method_return_type_id(host: ClassInfo, method_name: str) -> str | None:
+  method = host.methods.get(method_name)
+  if method is None:
+    return None
+  return _annotation_to_type_id(method.returns)
+
+
+def _resolve_const_method_name(expr: ast.expr) -> str | None:
+  if isinstance(expr, ast.Constant) and isinstance(expr.value, str):
+    return expr.value
+  return None
+
+
+def _resolve_const_param_name(expr: ast.expr) -> str | None:
+  if isinstance(expr, ast.Constant) and isinstance(expr.value, str):
+    return expr.value
+  return None
+
+
+def _is_iter_method_params_call(node: ast.expr) -> bool:
+  return (
+    isinstance(node, ast.Call)
+    and isinstance(node.func, ast.Attribute)
+    and isinstance(node.func.value, ast.Name)
+    and node.func.value.id == "Self"
+    and node.func.attr == "iter_method_params"
+    and len(node.args) == 1
+  )
+
+
+def _is_get_param_type_call(node: ast.expr) -> tuple[str, str] | None:
+  """``Self.get_param_type(method, param)`` → ``(method, param)`` 常量名。"""
+  if not isinstance(node, ast.Call):
+    return None
+  func = node.func
+  if not (
+    isinstance(func, ast.Attribute)
+    and isinstance(func.value, ast.Name)
+    and func.value.id == "Self"
+    and func.attr == "get_param_type"
+    and len(node.args) == 2
+  ):
+    return None
+  m = _resolve_const_method_name(node.args[0])
+  p = _resolve_const_param_name(node.args[1])
+  if m is None or p is None:
+    return None
+  return m, p
+
+
+def _is_get_return_type_call(node: ast.expr) -> str | None:
+  if not isinstance(node, ast.Call):
+    return None
+  func = node.func
+  if not (
+    isinstance(func, ast.Attribute)
+    and isinstance(func.value, ast.Name)
+    and func.value.id == "Self"
+    and func.attr == "get_return_type"
+    and len(node.args) == 1
+  ):
+    return None
+  return _resolve_const_method_name(node.args[0])
+
+
+def expand_iter_method_params_loop(
+  method: ast.FunctionDef,
+  host: ClassInfo,
+) -> ast.FunctionDef | None:
+  """``for param in Self.iter_method_params(method_expr):`` → 按形参展开（``method_expr`` 须为字面量）。"""
+  for_idx: int | None = None
+  for i, stmt in enumerate(method.body):
+    if isinstance(stmt, ast.For) and _is_iter_method_params_call(stmt.iter):
+      for_idx = i
+      break
+  if for_idx is None:
+    return None
+  for_node = method.body[for_idx]
+  if not isinstance(for_node.target, ast.Name):
+    return None
+  if not isinstance(for_node.iter, ast.Call):
+    return None
+  method_name = _resolve_const_method_name(for_node.iter.args[0])
+  if method_name is None:
+    return None
+  param_var = for_node.target.id
+  names = method_param_names(host, method_name)
+  if not names:
+    out = copy.deepcopy(method)
+    out.body = method.body[:for_idx] + method.body[for_idx + 1 :]
+    ast.fix_missing_locations(out)
+    return out
+  unrolled: list[ast.stmt] = []
+  for param_name in names:
+    unrolled.extend(
+      _clone_body_replace_names(
+        for_node.body,
+        {param_var: ast.Constant(value=param_name)},
+        known_fields=frozenset(host.fields),
+      )
+    )
+  out = copy.deepcopy(method)
+  out.body = method.body[:for_idx] + unrolled + method.body[for_idx + 1 :]
+  ast.fix_missing_locations(out)
+  return out
+
+
+def _fold_method_signature_expr(node: ast.expr, host: ClassInfo) -> ast.expr | None:
+  parsed = _is_get_param_type_call(node)
+  if parsed is not None:
+    m, p = parsed
+    return ast.Constant(value=method_param_type_id(host, m, p))
+  m = _is_get_return_type_call(node)
+  if m is not None:
+    tid = method_return_type_id(host, m)
+    if tid is None:
+      return ast.Constant(value=None)
+    return ast.Constant(value=tid)
+  return None
+
+
+def _fold_method_signature_in_body(body: list[ast.stmt], host: ClassInfo) -> list[ast.stmt]:
+  out: list[ast.stmt] = []
+  for stmt in body:
+    if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1:
+      folded = _fold_method_signature_expr(stmt.value, host)
+      if folded is not None:
+        out.append(
+          ast.Assign(
+            targets=[copy.deepcopy(stmt.targets[0])],
+            value=folded,
+          )
+        )
+        continue
+    if isinstance(stmt, ast.AnnAssign) and stmt.value is not None:
+      folded = _fold_method_signature_expr(stmt.value, host)
+      if folded is not None:
+        out.append(
+          ast.AnnAssign(
+            target=copy.deepcopy(stmt.target),
+            annotation=copy.deepcopy(stmt.annotation),
+            value=folded,
+            simple=stmt.simple,
+          )
+        )
+        continue
+    if isinstance(stmt, ast.If):
+      stmt = copy.deepcopy(stmt)
+      stmt.body = _fold_method_signature_in_body(stmt.body, host)
+      stmt.orelse = _fold_method_signature_in_body(stmt.orelse, host)
+      out.append(stmt)
+      continue
+    out.append(stmt)
+  return out
+
+
+def expand_method_signature_reflect(
+  method: ast.FunctionDef,
+  host: ClassInfo,
+) -> ast.FunctionDef | None:
+  """展开 ``iter_method_params`` 并折叠 ``get_param_type`` / ``get_return_type``。"""
+  out = copy.deepcopy(method)
+  changed = True
+  while changed:
+    changed = False
+    expanded = expand_iter_method_params_loop(out, host)
+    if expanded is not None:
+      out = expanded
+      changed = True
+  folded_body = _fold_method_signature_in_body(out.body, host)
+  if folded_body != out.body:
+    out.body = folded_body
+    changed = True
+  if not changed and folded_body == method.body:
+    return None
+  out.body = _simplify_const_ifs(out.body)
+  fold_static_reflect(out, known_fields=frozenset(host.fields), known_methods=frozenset(host.methods))
+  out.body = _simplify_const_ifs(out.body)
+  ast.fix_missing_locations(out)
+  return out
+
+
+def expand_mixin_method_meta_closures(
+  method: ast.FunctionDef,
+  host: ClassInfo,
+  classes: dict[str, ClassInfo],
+  *,
+  max_rounds: int = 32,
+) -> ast.FunctionDef:
+  """混入方法：``iter_methods[*]`` / ``iter_method_params`` 可能嵌套，须迭代展开至稳定。"""
+  out = method
+  for _ in range(max_rounds):
+    changed = False
+    expanded = expand_iter_methods_subscript_meta(out, host, classes)
+    if expanded is not None:
+      out = expanded
+      changed = True
+    else:
+      expanded = expand_iter_methods_subscript_loop(out, host, classes)
+      if expanded is not None:
+        out = expanded
+        changed = True
+    while True:
+      expanded = expand_iter_method_params_loop(out, host)
+      if expanded is None:
+        break
+      out = expanded
+      changed = True
+    expanded = expand_iter_methods_loop(out, host, classes)
+    if expanded is not None:
+      out = expanded
+      changed = True
+    if not changed:
+      break
+  expanded = expand_method_signature_reflect(out, host)
+  if expanded is not None:
+    out = expanded
+  return out
+
+
 def _is_iter_methods_call(node: ast.expr) -> bool:
   return (
     isinstance(node, ast.Call)
@@ -238,9 +541,16 @@ def expand_iter_methods_subscript_loop(
   known = frozenset(host.fields)
   unrolled: list[ast.stmt] = []
   for i, method_name in enumerate(names):
+    if method_meta_hidden(host, method_name, ann):
+      continue
+    title = method_meta_label(host, method_name, ann)
+    category = method_meta_category(host, method_name, ann)
+    if not category:
+      category = host.name
+    folded_body = _fold_flow_catalog_assigns(for_node.body, method_var, title, category)
     unrolled.extend(
       _clone_body_replace_names(
-        for_node.body,
+        folded_body,
         {
           method_var: ast.Constant(value=method_name),
           "btn_id": ast.Constant(value=i),
@@ -276,6 +586,83 @@ def parse_self_get_method_annotation_meta(node: ast.expr) -> tuple[str, ast.expr
   if isinstance(sl, ast.Call) and isinstance(sl.func, ast.Name):
     return sl.func.id, node.args[0]
   return None
+
+
+def _fold_flow_catalog_assigns(
+  body: list[ast.stmt],
+  method_var: str,
+  title: str,
+  category: str,
+) -> list[ast.stmt]:
+  """折叠 ``title`` / ``category`` 初值及 ``get_method_annotation`` 块。"""
+  out: list[ast.stmt] = []
+  for stmt in body:
+    if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name):
+      if stmt.target.id == "title":
+        if (
+          (isinstance(stmt.value, ast.Name) and stmt.value.id == method_var)
+          or (isinstance(stmt.value, ast.Constant) and stmt.value.value == "")
+          or stmt.value is None
+        ):
+          out.append(
+            ast.AnnAssign(
+              target=ast.Name(id="title", ctx=ast.Store()),
+              annotation=ast.Name(id="str", ctx=ast.Load()),
+              value=ast.Constant(value=title),
+              simple=1,
+            )
+          )
+          continue
+      if stmt.target.id == "category":
+        out.append(
+          ast.AnnAssign(
+            target=ast.Name(id="category", ctx=ast.Store()),
+            annotation=ast.Name(id="str", ctx=ast.Load()),
+            value=ast.Constant(value=category),
+            simple=1,
+          )
+        )
+        continue
+    if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1:
+      tgt = stmt.targets[0]
+      if isinstance(tgt, ast.Name) and tgt.id == "title":
+        if isinstance(stmt.value, ast.Name) and stmt.value.id == method_var:
+          out.append(
+            ast.Assign(
+              targets=[ast.Name(id="title", ctx=ast.Store())],
+              value=ast.Constant(value=title),
+            )
+          )
+          continue
+      parsed = parse_self_get_method_annotation_meta(stmt.value)
+      if parsed is not None:
+        continue
+    if isinstance(stmt, ast.If):
+      test = stmt.test
+      if isinstance(test, ast.BoolOp):
+        out.extend(_fold_flow_catalog_assigns(stmt.body, method_var, title, category))
+        continue
+      if (
+        isinstance(test, ast.Compare)
+        and len(test.ops) == 1
+        and isinstance(test.ops[0], ast.IsNot)
+        and len(test.comparators) == 1
+        and isinstance(test.comparators[0], ast.Constant)
+        and test.comparators[0].value is None
+      ):
+        left = test.left
+        if isinstance(left, ast.Name) and left.id in ("meta", "flow_meta", "ui_btn"):
+          continue
+        if isinstance(left, ast.Call) and parse_self_get_method_annotation_meta(left) is not None:
+          continue
+      if isinstance(test, ast.Call) and parse_self_get_method_annotation_meta(test) is not None:
+        if stmt.body and isinstance(stmt.body[0], ast.If):
+          inner = stmt.body[0]
+          if isinstance(inner.test, ast.Call) and parse_self_get_method_annotation_meta(inner.test) is not None:
+            continue
+        continue
+    out.append(stmt)
+  return out
 
 
 def _is_method_var_label_assign(stmt: ast.stmt, method_var: str, label_names: frozenset[str]) -> str | None:

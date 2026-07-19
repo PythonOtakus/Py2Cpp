@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from ..analysis.ir import ClassInfo, UnionVariantInfo, has_named_decorator
 from ..analysis.module_namespace import (
-  namespace_qualifier_for_module,
+  inl_namespace_segments,
   qualify_symbol_in_module,
 )
 from .dataclass_expand import DataclassFieldSpec, _collect_dataclass_fields
@@ -809,6 +809,30 @@ def _cpp_ctor_fast_args(specs: list[DataclassFieldSpec]) -> tuple[str, str]:
   return id_arg, active_arg
 
 
+def _cpp_str_field_ctor_default(spec: DataclassFieldSpec) -> str:
+  if (
+    spec.default is not None
+    and isinstance(spec.default, ast.Constant)
+    and isinstance(spec.default.value, str)
+  ):
+    return f'PyStr("{spec.default.value}")'
+  return 'PyStr("")'
+
+
+def _cpp_fast_ctor_placeholder_args(specs: list[DataclassFieldSpec]) -> str:
+  """快路径 ``init``：标量用 ``_v``，``str`` 用占位（随后 ``str_assign_from_seg``）。"""
+  parts: list[str] = []
+  for spec in specs:
+    if not isinstance(spec.annotation, ast.Name):
+      continue
+    ann = spec.annotation.id
+    if ann in ("int", "varint", "bool"):
+      parts.append(f"{spec.name}_v")
+    elif ann == "str":
+      parts.append(_cpp_str_field_ctor_default(spec))
+  return ", ".join(parts)
+
+
 def _cpp_is_scalar_int_bool_only(specs: list[DataclassFieldSpec]) -> bool:
   """仅 ``int``/``bool`` 字段（无 ``str``/``list``/嵌套），可 ``serde_push_slot`` + ``init``。"""
   for spec in specs:
@@ -850,10 +874,10 @@ def _cpp_emit_list_push_fast_user(
   indent: str,
 ) -> list[str]:
   """``list`` 尾槽 ``init`` + ``copy_from_span``，避免 ``append`` 再拷贝 ``User``。"""
-  id_arg, active_arg = _cpp_ctor_fast_args(specs)
+  ctor_args = _cpp_fast_ctor_placeholder_args(specs)
   lines: list[str] = [
     f"{indent}{cpp_cls}* _slot = {out_var}.serde_push_slot();",
-    f"{indent}init<{cpp_cls}>(_slot, {id_arg}, PyStr(\"\"), {active_arg});",
+    f"{indent}init<{cpp_cls}>(_slot, {ctor_args});",
   ]
   for spec in specs:
     if isinstance(spec.annotation, ast.Name) and spec.annotation.id == "str":
@@ -872,7 +896,7 @@ def _cpp_emit_fast_from_ordered_helper(
     return False
   helper = _cpp_fast_from_ordered_name(cpp_cls)
   params: list[str] = []
-  id_arg, active_arg = _cpp_ctor_fast_args(specs)
+  ctor_args = _cpp_fast_ctor_placeholder_args(specs)
   for spec in specs:
     if not isinstance(spec.annotation, ast.Name):
       continue
@@ -889,7 +913,7 @@ def _cpp_emit_fast_from_ordered_helper(
     f"static __forceinline {cpp_cls} {helper}({', '.join(params)})",
   )
   lines_out.append("{")
-  lines_out.append(f"  {cpp_cls} u({id_arg}, PyStr(\"\"), {active_arg});")
+  lines_out.append(f"  {cpp_cls} u({ctor_args});")
   for spec in specs:
     if isinstance(spec.annotation, ast.Name) and spec.annotation.id == "str":
       lines_out.append(
@@ -1068,10 +1092,10 @@ def _emit_cpp_list_load_fast(
   fq_cls = qualify_symbol_in_module(mp, cpp_cls)
   parse_fn = f"_json_parse_{cpp_cls}_ordered"
   load_fn = f"_fast_load_list_{cpp_cls}_dec"
-  ns = namespace_qualifier_for_module(mp)
+  inl_ns = inl_namespace_segments(mp)
   lines_out: list[str] = tr.per_module_inl_lines.setdefault(mp, [])
-  if ns:
-    lines_out.append(f"namespace {ns} {{")
+  for seg in inl_ns:
+    lines_out.append(f"namespace {seg} {{")
   use_fast_helper = _cpp_emit_fast_from_ordered_helper(cpp_cls, specs, lines_out)
   str_as_span = use_fast_helper
   def_ctor = _cpp_default_ctor_expr(cpp_cls, specs)
@@ -1152,23 +1176,21 @@ def _emit_cpp_list_load_fast(
   lines_out.append("    dec.skip_spaces();")
   lines_out.append("  }")
   lines_out.append("}")
-  if ns:
-    lines_out.append(f"}} // namespace {ns}")
+  for seg in reversed(inl_ns):
+    lines_out.append(f"}} // namespace {seg}")
   lines_out.append("")
   lines_out.append("namespace py2cpp {")
   lines_out.append("namespace serde {")
   lines_out.append("namespace json {")
   lines_out.append("")
+  # helper 在用户模块 namespace（runtime .inl 则为全局）；特化在 py2cpp::serde::json，须限定调用。
+  call_load = f"::{'::'.join(inl_ns)}::{load_fn}" if inl_ns else load_fn
   lines_out.append(f"template<>")
   lines_out.append(
     f"PyList<{fq_cls}> JsonDecoder::load_list_element<{fq_cls}>()",
   )
   lines_out.append("{")
-  ns = namespace_qualifier_for_module(mp)
-  if ns:
-    lines_out.append(f"  return {ns}::{load_fn}(*this);")
-  else:
-    lines_out.append(f"  return {load_fn}(*this);")
+  lines_out.append(f"  return {call_load}(*this);")
   lines_out.append("}")
   lines_out.append("")
   lines_out.append("} // json")

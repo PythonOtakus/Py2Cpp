@@ -85,7 +85,7 @@ class Host:
   def test_generic_descriptor_substitutes_value_type(self):
     src = """
 from py2cpp import descriptor
-from py2cpp.core.protocols import Comparable
+from py2cpp.util.protocols import Comparable
 
 @descriptor
 class RangeVar[T: Comparable]:

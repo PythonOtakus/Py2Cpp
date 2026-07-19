@@ -10,6 +10,8 @@ from src.translator import Translator
 
 class DictLiteralLookupTests(unittest.TestCase):
   def _translate(self, src: str) -> str:
+    if "from py2cpp import" not in src:
+      src = "from py2cpp import *\n\n" + src
     with tempfile.TemporaryDirectory() as tmp:
       out = Path(tmp)
       py = out / "mod.py"
@@ -51,6 +53,65 @@ def f(c: int) -> bool:
     self.assertIn("c == 9", cpp)
     self.assertIn("||", cpp)
     self.assertNotIn(".add(", cpp)
+
+  def test_set_literal_attr_in_or_chain(self):
+    cpp = self._translate(
+      '''
+@enum
+class Kind:
+  A = 0
+  B = 1
+
+def f(k: Kind) -> bool:
+  return k in {Kind.A, Kind.B}
+'''
+    )
+    self.assertIn("Kind::A", cpp)
+    self.assertIn("||", cpp)
+    self.assertNotIn("PySet<", cpp)
+    self.assertNotIn(".add(", cpp)
+
+  def test_set_literal_starred_in_or_chain(self):
+    cpp = self._translate(
+      '''
+def f(x: int, items: list[int, 0]) -> bool:
+  return x in {1, *items, 9}
+'''
+    )
+    self.assertIn("x == 1", cpp)
+    self.assertIn("__contains__", cpp)
+    self.assertIn("x == 9", cpp)
+    self.assertIn("||", cpp)
+    self.assertNotIn("PySet<", cpp)
+    self.assertNotIn(".add(", cpp)
+
+  def test_list_literal_starred_in_or_chain(self):
+    cpp = self._translate(
+      '''
+def f(x: int, items: list[int, 0]) -> bool:
+  return x in [1, *items, 9]
+'''
+    )
+    self.assertIn("x == 1", cpp)
+    self.assertIn("__contains__", cpp)
+    self.assertIn("x == 9", cpp)
+    self.assertIn("||", cpp)
+    self.assertNotIn(".append(", cpp)
+    self.assertNotIn(".extend(", cpp)
+
+  def test_list_literal_name_in_or(self):
+    cpp = self._translate(
+      '''
+X: int = 1
+Y: int = 2
+
+def f(v: int) -> bool:
+  return v in [X, Y]
+'''
+    )
+    self.assertIn("v == X", cpp)
+    self.assertIn("||", cpp)
+    self.assertNotIn(".append(", cpp)
 
   def test_list_literal_subscript_tbl(self):
     cpp = self._translate(

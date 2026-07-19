@@ -1,39 +1,48 @@
 """运行时核心：异常、协议、对象模型、委托等。"""
 from ..builtins import *
 from .protocols import (
-  Arithmetic,
   AsyncContextManager,
   AsyncGenerator,
   AsyncIterable,
   AsyncIterator,
   Awaitable,
-  Collection,
-  Comparable,
-  Complex,
-  Container,
   ContextManager,
   Coroutine,
+  Generator,
+  Self,
+  StringFormat,
+  protocol,
+)
+from ..util.protocols import (
+  Appendable,
+  Collection,
+  Comparable,
+  Container,
   DictKey,
   Equatable,
-  Generator,
   Hashable,
-  Integral,
   Iterable,
   IterableIterator,
   Iterator,
   IteratorElement,
+  MutableMapping,
+  Reversible,
+  Sized,
+)
+from ..numeric.protocols import (
+  Arithmetic,
+  Complex,
+  Integral,
   Number,
   Rational,
   Real,
-  Reversible,
-  Sized,
-  StringFormat,
 )
 from .exceptions import StopIteration
 from .never import Never
 from .proxy import Proxy
 
 __all__ = [
+  "Appendable",
   "Arithmetic",
   "AsyncContextManager",
   "AsyncGenerator",
@@ -55,6 +64,7 @@ __all__ = [
   "IterableIterator",
   "Iterator",
   "IteratorElement",
+  "MutableMapping",
   "Number",
   "Rational",
   "Real",
@@ -64,4 +74,6 @@ __all__ = [
   "StopIteration",
   "Never",
   "Proxy",
+  "Self",
+  "protocol",
 ]

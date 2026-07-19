@@ -1,6 +1,6 @@
 """寻路：``astar`` / ``dijkstra``（仅依赖 ``Navigatable``）。"""
 from ..builtins import *
-from ..core.protocols import DictKey
+from ..util.protocols import DictKey
 from ..util.list import list
 from .heap import Heap
 from .protocols import Navigatable

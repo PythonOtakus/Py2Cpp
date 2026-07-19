@@ -2591,6 +2591,14 @@ def _check_s27_imports(tr: Translator, violations: list[_Violation]) -> None:
             if expected and expected not in source:
                 violations.append(_Violation(S27, _s27_missing_builtins_msg(expected), tree, module_path))
             continue
+        from ..constant.ffi_layout import is_ffi_module_path
+        if is_ffi_module_path(norm):
+            # 生成器产出 ``from py2cpp.builtins import *``（同标准库域内风格），勿要求包根 star
+            if 'from py2cpp.builtins import *' not in source and 'from py2cpp import *' not in source:
+                violations.append(
+                    _Violation(S27, _s27_missing_builtins_msg('from py2cpp.builtins import *'), tree, module_path)
+                )
+            continue
         if star not in source:
             violations.append(_Violation(S27, _s27_missing_py2cpp_star_msg(), tree, module_path))
         _check_s27_user_py2cpp_imports(tr, module_path, tree, violations)
@@ -2605,8 +2613,6 @@ def _s28_array_ann_allowed(node: ast.Subscript) -> bool:
   if not isinstance(sl, ast.Tuple) or len(sl.elts) < 2:
     return False
   cap = sl.elts[1]
-  if isinstance(cap, ast.Subscript) and isinstance(cap.value, ast.Name):
-    return cap.value.id == "Allocator"
   if isinstance(cap, ast.Name):
     return True
   if isinstance(cap, ast.Constant) and isinstance(cap.value, int):

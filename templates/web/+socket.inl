@@ -273,7 +273,7 @@ PyInt PyTcpSocket::send(PyArray<PyByte>& buf, PyInt end)
   {
     end = n;
   }
-  const char* p = (const char*)buf.buf;
+  const char* p = (const char*)(buf.view__get()).at(0);
 #ifdef _WIN32
   int sent = ::send(_web_sock_from_u64(_sock), p, end, 0);
   if (sent == SOCKET_ERROR)
@@ -305,7 +305,7 @@ PyInt PyTcpSocket::recv(PyArray<PyByte>& buf, PyInt cap)
   {
     cap = n;
   }
-  char* p = (char*)buf.buf;
+  char* p = (char*)(buf.view__get()).at(0);
 #ifdef _WIN32
   int got = ::recv(_web_sock_from_u64(_sock), p, cap, 0);
   if (got == SOCKET_ERROR)

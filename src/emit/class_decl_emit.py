@@ -158,6 +158,42 @@ def _emit_class_boxing_check_specializations(tr: 'Translator', info: ClassInfo) 
 def _emit_class_copyable_check_specializations(tr: 'Translator', info: ClassInfo) -> None:
     _emit_class_decorator_check_specialization(tr, info, 'copyable')
 
+def _emit_class_oneof_asserts(tr: 'Translator', info: ClassInfo) -> None:
+    from ..analysis.ir import cpp_oneof_static_assert_expr, cpp_type_for_oneof_alternative
+    from .compile_diagnostic_emit import compile_diag_c_utf8_literal, compile_diag_type_param_oneof
+
+    emitted: set[tuple[str, tuple[str, ...]]] = set()
+    loc_prefix = tr._compile_diag_loc_prefix(info.node)
+    nttp = getattr(info, 'type_param_nttp', None) or {}
+    for p in info.type_params:
+        if p in nttp:
+            continue
+        alts = info.type_param_oneof_constraints.get(p, ())
+        if not alts or (p, alts) in emitted:
+            continue
+        msg = compile_diag_type_param_oneof(p, alts, loc_prefix=loc_prefix)
+        expr = cpp_oneof_static_assert_expr(p, alts)
+        tr.write_line(f'static_assert({expr}, {compile_diag_c_utf8_literal(msg)});')
+        emitted.add((p, alts))
+    for concrete, alts in info.concrete_oneof_constraints.items():
+        key = (concrete, alts)
+        if key in emitted:
+            continue
+        cpp_t = cpp_type_for_oneof_alternative(concrete)
+        msg = compile_diag_type_param_oneof(concrete, alts, loc_prefix=loc_prefix)
+        expr = cpp_oneof_static_assert_expr(cpp_t, alts)
+        tr.write_line(f'static_assert({expr}, {compile_diag_c_utf8_literal(msg)});')
+        emitted.add(key)
+    for alias in info.type_alias_list:
+        for p, alts in alias.type_param_oneof_constraints.items():
+            if (p, alts) in emitted:
+                continue
+            msg = compile_diag_type_param_oneof(p, alts, loc_prefix=loc_prefix)
+            expr = cpp_oneof_static_assert_expr(p, alts)
+            tr.write_line(f'static_assert({expr}, {compile_diag_c_utf8_literal(msg)});')
+            emitted.add((p, alts))
+
+
 def _emit_class_constraint_asserts(tr: 'Translator', info: ClassInfo) -> None:
     from .compile_diagnostic_emit import compile_diag_cpp_string, compile_diag_type_param_decorator, compile_diag_type_param_protocol
     emitted: set[tuple[str, str]] = set()
@@ -656,6 +692,7 @@ def _emit_class_declaration(tr: 'Translator', info: ClassInfo):
                     if access == 'public':
                         _emit_class_type_usings(tr, info)
                         _emit_class_constraint_asserts(tr, info)
+                        _emit_class_oneof_asserts(tr, info)
                     for kind, data in items:
                         match kind:
                             case 'static_field':

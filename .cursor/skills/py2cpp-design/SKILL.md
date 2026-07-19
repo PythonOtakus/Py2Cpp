@@ -20,8 +20,8 @@ description: >-
 
 ## 冲突须根治，勿绕行（重要的事情说三遍）
 
-1. **写法出现冲突时应解决冲突**（译器、`py2cpp.h`、MSVC 宏、`#undef`、属性派发等），**不要**换一种不符合 [编码规范.md](../../../docs/编码规范.md) / CPython 对外 API 的绕行写法（例如用 `dirname` 代替 `self.parent`、手改 `generated/`）。
-2. **写法出现冲突时应解决冲突**，在根因处修（如 `parent`/`suffix` Win 宏 → `py2cpp.h` + `this->parent()`；`@property` 未生成 `()` → `_class_info_for_receiver`），**禁止**用“能编译就行”的替代 API 糊弄过去。
+1. **写法出现冲突时应解决冲突**（译器、`minimal.h`、MSVC 宏、`#undef`、属性派发等），**不要**换一种不符合 [编码规范.md](../../../docs/编码规范.md) / CPython 对外 API 的绕行写法（例如用 `dirname` 代替 `self.parent`、手改 `generated/`）。
+2. **写法出现冲突时应解决冲突**，在根因处修（如 `parent`/`suffix` Win 宏 → `minimal.h` `#undef` + `this->parent()`；`@property` 未生成 `()` → `_class_info_for_receiver`），**禁止**用“能编译就行”的替代 API 糊弄过去。
 3. **写法出现冲突时应解决冲突**：标准库与用户代码仍写规范 Python（`self.parent`、`Path.suffix`、链式比较、`Self._…` 静态调用等），冲突由基础设施层一次性消掉，**不得**把妥协扩散到业务代码。
 
 ---
@@ -40,6 +40,7 @@ description: >-
 2. **`util/memory`**：``copy_buf`` / ``buf_to_str`` / ``load_u64_le`` / ``load_u64_le_bytes`` 为 ``@native``（各带 ``*_ref``）；缓冲扩容见 ``array.reserve``。
 3. **`serde/json`**：``JsonEncoder`` 静态 ``append_*`` / ``fast_encode`` 纯 Python + ``JsonDecoder`` 实例 decode 组合（``load_u64_le`` 来自 ``util/memory``，``span``→``str`` 用 ``str.from_codes_span``）；``@serializable`` codegen 直调 ``dec.parse_int_at_ascii()`` / ``dec.str_assign_from_seg(seg)``。**无** ``json_scan_cpp``。
 4. **C++ 可无损删除**：关掉 ``memory_cpp`` 注入后仍靠 Python 组合 + 叶子 ``*_ref`` 全绿（性能可降）。
+5. **第三方 C FFI**：仓库根 ``ffi/**/*.pyi``（生成器产出）→ 译器按需写 ``generated/runtime/ffi/…``，C++ ``ffi::…``（**不**挂 ``py2cpp::``、**不**进 ``minimal.h``）。句柄别名 ``*_h``（如 ``sqlite3_h``）；glue ``#include <c_header>`` + ``struct`` C 标签。详规 [c-ffi-pyi.md](../../../docs/c-ffi-pyi.md) / 编码规范 §9.4；查阅表 [reference §5.3](./reference.md#53-第三方-c-ffiffipyi)。**禁止** star-import、批量删 UI ``templates/**``。
 
 ---
 
@@ -49,7 +50,7 @@ description: >-
 
 1. **实现后须自行对照规范自检**：标准库与用户测试仍写规范 Python——`new` / `Self` 静态调用、链式比较、**勿手写 dunder**、辅助数据结构用 **`@dataclass`**（勿手写 `__init__` 拼字段）、`@copyable` 等与域内范本一致；**无 STL**；能复用 `str` / `path` / `util` 现有 API 的**禁止**手写 `while` 扫串、重复 `splitext` 语义。
 2. **实现后须自行对照规范自检**：对照编码规范 §2–§3、§8、§10 做清单核对——`s[:k]`（起始 0 省略 `s[0:k]`）、`not s` / `if s`（勿 `len(s)==0`）、`int64` 大常量勿用 32 位乘法溢出、测试用 `TestCaseMixin` + `override def test`；**同名符号**（如 `time` 函数 vs `datetime.time`）import 绑定与 C++ 名无歧义；依赖内建（`int(str)` 等）时确认译器已支持，否则在基础设施层补，勿在业务模块假造轮子。
-3. **实现后须自行对照规范自检**：与上文「冲突须根治」联动——Win 宏、`parent`/`suffix`/`date`/`time` 等须在 `py2cpp.h` / 译器根因处理，**禁止**为通过编译改业务 API；对外可见行为变化须同步 `docs/参考手册.md` / `docs/编码规范.md` §8.1；自检未通过则继续改源树，**禁止**声称完成或只改 `generated/`。
+3. **实现后须自行对照规范自检**：与上文「冲突须根治」联动——Win 宏、`parent`/`suffix`/`date`/`time` 等须在 `minimal.h` / 译器根因处理，**禁止**为通过编译改业务 API；对外可见行为变化须同步 `docs/参考手册.md` / `docs/编码规范.md` §8.1（动 FFI 时含 `c-ffi-pyi.md`）；自检未通过则继续改源树，**禁止**声称完成或只改 `generated/`。
 
 **最小自检表**（可 mental walk，宜在回复用户前过一遍）：
 
@@ -195,9 +196,12 @@ generated\test\misc\test_containers.exe
 │    → 标准库 __init__.py 桩声明
 ├─ 模块路径 / C++ 命名空间 / 万能头 include 顺序
 │    → src/analysis/module_namespace.py
-│    → src/codegen/umbrella_gen.py（py2cpp.h，单文件模板）
+│    → src/codegen/umbrella_gen.py（→ generated/runtime/py2cpp/minimal.h）
 │    → src/emit/layout_emit.py、src/translator.py（per-module .h/.inl）
 │    ⚠ 高风险：MSVC 对多个 namespace py2cpp 块、块内 #include <utility> 极敏感
+├─ 第三方 C FFI（.pyi / glue）
+│    → ffi/**/*.pyi（ffi.bat / src/tools/c_ffi_pyi.py）；constant/ffi_layout.py
+│    → src/emit/ffi_glue_emit.py；docs/c-ffi-pyi.md
 └─ 仅用户示例/测试 Python
      → test/ 或 examples/，不改译器
 ```
@@ -233,12 +237,11 @@ generated\test\misc\test_containers.exe
 `main.py` → `Translator.translate_file`：
 
 1. **解析**：`ast.parse` → `ClassInfo`、模块函数  
-2. **预处理 passes**（`translator.py` 中顺序）：  
-   `expand_dataclass` → `expand_default_bool` / `expand_default_iter` → descriptors → mixins → kwargs → static_reflect → **generators（在 decorators 前）** → decorators → copyable → **move_state** → protocol → member_access → **descriptor_signatures** → analyze → **check_moved_use**  
-3. **分析**：`SemanticAnalyzer`（`analysis/analyzer.py`）  
-4. **生成**：`.h` / `.cpp` / `.inl`；runtime bootstrap 另写 `py2cpp.h`
+2. **预处理 / 分析 / 后检**：完整顺序见 [reference.md §2.1](./reference.md#21-passessrcpasses顺序不可乱)（与 `translator.py` 对齐）。硬约束摘要：  
+   `expand_enum` / `expand_union` 在 dataclass 后；**S38 / `check_yield_from_in_async_def` 在 `expand_generators` 前**；**generators 在 decorators 前**；`expand_move_state` / `expand_descriptor_signatures` 在 analyze 前；analyze 后含 `check_parallel_loops`、`check_moved_use` 等。  
+3. **生成**：`.h` / `.cpp` / `.inl`；runtime bootstrap 写 `py2cpp/minimal.h`（万能头）
 
-新增 pass：在 `src/passes/` 实现并在 `src/translator.py` **按依赖**插入调用；加 `src/tests/test_*.py`（译器单元测，非 `test/` 集成测）。
+新增 pass：在 `src/passes/` 实现并在 `src/translator.py` **按依赖**插入；同步 reference §2.1 与 [参考手册 §4](../../../docs/参考手册.md#4-翻译流水线)；加 `src/tests/test_*.py`。
 
 ### 3.2 测试分层
 
@@ -266,7 +269,7 @@ generated\test\misc\test_containers.exe
 
 **禁止**：恢复独立 `range_shim.h/.cpp` 或自动链额外 TU（用户已明确要求删除）。
 
-**MSVC 坑**：多个子模块头各自 `namespace py2cpp { }` 时，`using namespace py2cpp` 可能绑到**最后一个空块**（如 `io.h`），导致找不到 `PyRange`。当前稳定方案：**扁平** `py2cpp.h` include 列表 + 包根 `py2cpp.h` 中定义 `PyRange`；勿在未成套设计下改「子头去掉 py2cpp + 万能头单块包裹」（易引发 `py2cpp::std`、前向声明污染）。
+**MSVC 坑**：多个子模块头各自 `namespace py2cpp { }` 时，`using namespace py2cpp` 可能绑到**最后一个空块**（如 `io.h`），导致找不到 `PyRange`。当前稳定方案：**扁平** `minimal.h` include 列表 + `py2cpp::util::range::PyRange`（`util/range.py`）；勿在未成套设计下改「子头去掉 py2cpp + 万能头单块包裹」（易引发 `py2cpp::std`、前向声明污染）。
 
 ---
 
@@ -278,11 +281,12 @@ generated\test\misc\test_containers.exe
 |------|------|
 | 用户模块 `a/b.py` | `namespace a { namespace b { … } }` |
 | 标准库 `py2cpp/util/list` | `namespace py2cpp { namespace util { namespace list { … } } }` |
+| FFI `ffi/sqlite/sqlite3` | `namespace ffi { namespace sqlite { namespace sqlite3 { … } } }`（路径段 = 段名；句柄用 `*_h`） |
 | `set` 模块 | C++ 段名 **`py_set`**（`py2cpp::util::py_set`） |
 | `.inl` 实现 | runtime 的 `.inl` **不**套 namespace，用全限定 `py2cpp::util::list::…` |
 | `tuple` / `delegate` / `refcount` | 全局或特殊模块，见 `module_namespace.MODULES_WITHOUT_CPP_NAMESPACE` |
 | `protocol_traits.h` | **全局** include；勿放进 `namespace py2cpp { #include … }`（会把 `std` 拉进 `py2cpp::std`） |
-| `py2cpp.h` 聚合 | `src/codegen/umbrella_gen.py`；改 include 顺序必全量重编 `build_all.bat` |
+| `minimal.h` 聚合 | `src/codegen/umbrella_gen.py`；改 include 顺序必全量重编 `build_all.bat` |
 
 **失败征象**：`py2cpp::text` 只有部分符号、`py2cpp::std::pair`、`C2065: Args`（`__mod__` 缺 template 行）、`PyTuple` 歧义、`PyRange` 找不到（`io` 空 namespace 块 + `using namespace py2cpp` 误绑）。
 
@@ -303,7 +307,7 @@ generated\test\misc\test_containers.exe
 [ ] 已运行对应 .exe，失败数为 0
 [ ] 若动 @protocol：已考虑 build_protocol.bat
 [ ] 若动负向用例：已考虑 build_fail.bat
-[ ] 文档已同步（参考手册 / 编码规范），若对外行为变化
+[ ] 文档已同步（参考手册 / 编码规范；动 FFI 时含 c-ffi-pyi.md / skill reference §5.3）
 [ ] 未引入 range_shim、未提交 generated/（除非用户明确要求）
 ```
 
@@ -317,15 +321,16 @@ generated\test\misc\test_containers.exe
 | `cl` 找不到 | `build_*.bat` 或 vcvars64；勿假装编译通过 |
 | 翻译成功但用的是旧 exe | 必须重新 `cl` 链接；看 exe 时间戳 |
 | `翻译失败: NotImplementedError` | 查参考手册 §6–8 是否未实现；加 visit/ pass |
-| LNK2005 重复符号 | 勿同时链 `py2cpp.cpp` 与完整 `py2cpp.h` |
-| `py_open` / `format` 未解析 | 确认 `io.inl`、`py2cpp.h` 含 `operators.inl` |
+| LNK2005 重复符号 | 勿同时链 `py2cpp.cpp` 与完整 `minimal.h` |
+| `py_open` / `format` 未解析 | 确认 `io.inl`、`minimal.h` 含 `operators.inl` |
 | `DictKey_check` / traits 未定义 | `dict`/`str` 依赖 `protocol_traits.h`，勿只 include 被拆空的 `protocols.h` |
-| `PyRange` 找不到 | 确认已 include 包根 `py2cpp.h`；用户代码用 `(::py2cpp::PyRange)(n)`；勿依赖未验证的 namespace 尾 shim |
+| `PyRange` 找不到 | 确认已 include `minimal.h`；用 `(::py2cpp::util::range::PyRange)(n)`；勿依赖未验证的 namespace 尾 shim |
+| FFI C API「找不到」/ 自包含 | glue 须 `#include <sqlite3.h>`（尖括号）；句柄别名须 `*_h`，cast 用 C 标签；见 c-ffi-pyi.md |
+| MSVC `C2059` 在 `.add` / `isdisjoint()` | 变量名勿用 `far`/`near`（Win 宏）；`isascii` 调用前需 `#undef`（见 `minimal.h` 尾部） |
 | `PyTuple` / `Args` 编译错 | `protocol_traits` 中 `__mod__` 前须有 `template<typename... Args>`；`PyTuple` 在全局，勿误写 `py2cpp::PyTuple` |
 | 头文件循环 include | `str.h`↔`list.h`：按参考手册 §8.5 拆 `protocol_traits`、调整 include |
 | 测试写 `Cls(1)` / `Cls(src)` | 用 `new(...)` / `dst: Cls = src`（编码规范 §2） |
 | `assertTrue(f)` 文件对象 | 勿 `f.__bool__()`；用 `assertTrue`/`assertFalse` |
-| MSVC `C2059` 在 `.add` / `isdisjoint()` | 变量名勿用 `far`/`near`（Win 宏）；`isascii` 调用前需 `#undef`（见 `py2cpp.h` 尾部） |
 | MSVC **C4716** ``T0 fn(…): 必须返回一个值`` | 旧版误推返回 ``T0``（已删 fallback）。无 ``return expr`` → ``void``；有 ``return expr`` → ``decltype``。见 [参考手册 §5.3.1 **4）**](../../../docs/参考手册.md#531-缺少注解时的-c-类型策略) |
 | 规范写法与 MSVC/译器冲突（如 `self.parent`、`.suffix`） | **解决冲突**，勿改业务为绕行 API；见上文「冲突须根治，勿绕行」 |
 | 手写 `while` 扫路径/扩展名、重复实现 `splitext` 等 | 复用 `str` / `io.file.path`；见上文「勿重复造轮子，严格按编码规范」 |
@@ -354,12 +359,14 @@ generated\test\misc\test_containers.exe
 | 命名空间 | `src/analysis/module_namespace.py` |
 | Passes | `src/passes/*.py` |
 | 单文件 C++ 模板 | `src/codegen/*_gen.py`、`expand_py2cpp_template.py` |
-| AST 生成 | `src/emit/*.py` |
+| AST 生成 | `src/emit/*.py`（含 `ffi_glue_emit.py`） |
 | 标准库 Python | `py2cpp/` |
+| FFI 声明 | `ffi/**/*.pyi`；布局 `src/constant/ffi_layout.py`；生成器 `src/tools/c_ffi_pyi.py` |
 | 模块列表 | `src/constant/stdlib_discovery.py` → `STDLIB_REL_PATHS`（遍历 `py2cpp/`） |
 | 编译 | `src/compile.py` |
 | 万能头 | `src/codegen/umbrella_gen.py` → `generated/runtime/py2cpp/minimal.h` |
-| 生成输出 | `generated/runtime/`, `generated/test/` |
+| 生成输出 | `generated/runtime/py2cpp/`、`generated/runtime/ffi/`、`generated/test/` |
+| FFI 规格 | [docs/c-ffi-pyi.md](../../../docs/c-ffi-pyi.md) |
 
 ---
 
@@ -377,6 +384,8 @@ run.bat PATTERN [...]
 demo.bat PATTERN [...]
 build_protocol.bat
 build_fail.bat
+ffi.bat third_party\sqlite\sqlite3.h
+REM → ffi\sqlite\sqlite3.pyi（见 docs/c-ffi-pyi.md）
 ```
 
 **`--debug`**（`src/codegen/debug_cpp.py`）：为函数调用插入 `fprintf(stderr, "[py2cpp] …")` 跟踪，并将 ``__debug__`` 编译为 ``true``。**崩溃难以排查时优先使用**（见上文「崩溃难查先用 --debug」三节强调）；仅调试用，非常态。测试 TU：`build.bat … --debug`；跟踪 runtime 内调用：bootstrap 亦加 `--debug`。
@@ -396,4 +405,4 @@ build_fail.bat
 9. **中文回复用户**，引用代码用 ```start:end:path``` 格式。  
 10. **不要**未经用户要求 commit、不要恢复 `range_shim`、不要 Over-engineer 新抽象。
 
-更多细节：[reference.md](./reference.md)、[参考手册 §14–15](../../../docs/参考手册.md)、[编码规范](../../../docs/编码规范.md)。
+更多细节：[reference.md](./reference.md)、[参考手册 §14–15](../../../docs/参考手册.md)、[编码规范](../../../docs/编码规范.md)、[c-ffi-pyi.md](../../../docs/c-ffi-pyi.md)。

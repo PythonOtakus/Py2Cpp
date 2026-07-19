@@ -15,32 +15,33 @@ Py2Cpp/
 ├── src/                         # 译器
 │   ├── translator.py            # AST → C++ 主访问器
 │   ├── compile.py               # -c 编译；test/ 默认不链 py2cpp.cpp
-│   ├── constant/                # 静态表：模块/类/方法名、布局、umbrella、inject、mixin、codegen 符号
-│   │   ├── stdlib_layout.py     # 逻辑模块路径 py2cpp/util/list → #include / ::
-│   │   ├── stdlib_layout.py   # 命名空间、`STR_PYSTR`、`cpp_exception_ctor` 等
+│   ├── constant/                # 静态表：模块/类/方法名、布局、umbrella、FFI、inject…
+│   │   ├── stdlib_layout.py     # 逻辑模块路径 → #include / ::
+│   │   ├── ffi_layout.py        # ffi/**/*.pyi → generated/runtime/ffi/；句柄 *_h
 │   │   └── mixin.py             # @mixin 方法名契约
+│   ├── tools/c_ffi_pyi.py       # libclang → ffi/**/*.pyi（CLI：ffi.bat / scripts/gen_c_ffi.py）
 │   ├── analysis/
 │   │   ├── runtime_symbols.py   # 包根 AST 推导符号 + PyRange 限定构造
 │   │   └── stubs/               # AST loader（*_stubs.py）
 │   ├── passes/                  # 预处理脱糖
 │   ├── codegen/                 # 与单个 runtime .h/.inl 一一对应的 *_cpp 模板
-│   ├── emit/                    # AST 驱动生成（visit / 语句 / 类 / 字面量内联）
+│   ├── emit/                    # AST 驱动生成（含 ffi_glue_emit）
 │   └── tests/                   # 译器单元测试
 ├── py2cpp/                      # 标准库 Python 规格（按域分目录）
 │   ├── __init__.py              # 包根 API、域再导出
-│   ├── core/ util/ text/ io/ system/ concur/ test/
+│   ├── core/ util/ text/ io/ system/ concur/ test/ sql/ …
 │   └── …
-├── scripts/                     # MSVC / 翻译构建脚本
-├── build_all.bat                # → scripts\build_all.bat
-├── build.bat                    # → scripts\build.bat（PATTERN 匹配 test_*.py）
-├── run.bat                      # → scripts\run.bat
-├── demo.bat                     # → scripts\demo.bat（PATTERN 匹配 examples\*.py，build+run）
+├── ffi/                         # 第三方 C FFI 声明面（.pyi；生成器产出，勿手改 AUTO-GENERATED）
+├── templates/                   # C++ 注入 / 万能头模板（+*.h / +*.inl）
+├── scripts/                     # MSVC / 翻译 / FFI 构建脚本
+├── build_all.bat / build.bat / run.bat / demo.bat / ffi.bat
 ├── examples/
-├── test/                        # 集成测试（misc/ lang/ pool/ import_tests/ fail/）
+├── test/                        # 集成测试（misc/ lang/ sql/ ui/ … / fail/）
 ├── generated/                   # 翻译输出（勿手改）
-│   ├── runtime/py2cpp/          # 标准库 .h / .inl / py2cpp.h / protocol_traits.h
+│   ├── runtime/py2cpp/          # 标准库 .h / .inl / minimal.h / protocol_traits.h
+│   ├── runtime/ffi/             # FFI 按需生成（不进 minimal.h bulk）
 │   └── test/                    # 用户测试 .h / .cpp / .exe
-└── docs/
+└── docs/                        # 参考手册、编码规范、c-ffi-pyi.md …
 ```
 
 **命名三层**（易混）：
@@ -48,8 +49,9 @@ Py2Cpp/
 | 层 | 含义 |
 |----|------|
 | 标准库 Python 包 | 仓库根 `py2cpp/`；`import py2cpp` |
+| FFI 声明面 | 仓库根 `ffi/`；`from ffi.sqlite.sqlite3 import …` → C++ `ffi::…`（**不**挂 `py2cpp::`） |
 | 译器 Python 包 | `src/`；`from src import Translator` |
-| C++ 输出 | `generated/runtime/py2cpp/`；`namespace py2cpp::<域>::…` |
+| C++ 输出 | `generated/runtime/py2cpp/`（`namespace py2cpp::<域>::…`）与 `generated/runtime/ffi/` |
 
 ---
 
@@ -63,39 +65,34 @@ Py2Cpp/
 | 2. 预处理 passes | 见下表 | 改写 AST / 附加元数据 |
 | 3. 分析 | `SemanticAnalyzer.analyze` | `method_sigs`、`ModuleAnalysis.includes` |
 | 3b. 移动检查 | `check_moved_use`（`moved_use_check.py`） | 容器移动后再用 → 翻译期 `ValueError`（跳过 stdlib） |
-| 4. 生成 | `_emit_*` / `visit_*` | `.h`、`.cpp`、`.inl`；bootstrap 时 `py2cpp.h` |
+| 4. 生成 | `_emit_*` / `visit_*` | `.h`、`.cpp`、`.inl`；bootstrap 时写 `py2cpp/minimal.h` |
 
 ### 2.1 Passes（`src/passes/`，顺序不可乱）
 
-| 顺序 | 函数 | 文件 | 作用摘要 |
-|------|------|------|----------|
-| 1 | `expand_dataclass` | `dataclass_expand.py` | `@dataclass` → `__init__` / 字段 |
-| 2 | `expand_enum` | `enum_expand.py` | `@enum` → `enum class`；``...`` / ``flag=True``；单继承合并成员 |
-| 3 | `expand_default_bool` | `default_bool.py` | 默认 `bool` 参数（跳过 `@enum` / `@union`） |
-| 4 | `expand_default_iter` | `default_iter.py` | 默认可迭代参数 |
-| 5 | `expand_descriptors` | `descriptors.py` | `@descriptor` |
-| 6 | `expand_mixins` | `mixins.py` | `@mixin` 基类注入 |
-| 7 | `expand_kwargs_options` | `kwargs_options.py` | `@kwargs_options` |
-| 8 | `expand_static_reflect` | `mixins.py` | 静态反射字面量 |
-| 9 | `expand_generators` | `generators.py` | `yield` → `*_generator` 类（**须在 decorators 前**） |
-| 9a | `check_yield_from_for_style` | `strict_style.py` | **S38**；须紧挨在 9 之前（脱糖前查 ``for x: yield x``） |
-| 9b | `check_yield_from_in_async_def` | `coroutine_desugar.py` | ``async def`` 内用户 ``yield from`` → 翻译失败（Python 3.13；须紧挨在 9 之前） |
-| 9c | `analyze_closures` | `closures.py` | **待实现**：嵌套 `def` capture / `global`/`nonlocal`；见 [closure.md](../../../docs/closure.md) |
-| 10 | `expand_decorators` | `decorators.py` | `@decorator` / `@context` |
-| 11 | `expand_copyable` | `copyable.py` | `@copyable` |
-| 12 | `expand_move_state` | `move_state.py` | 含 `__move__` 的类自动注入 `__moved__`；剥手写初始化/赋值；`__init__`/`__copy__`/`__move__` 由译器维护 |
-| 13 | `expand_protocol` | `protocol.py` | `@protocol` SFINAE 元数据 |
-| 14 | `expand_member_access` | `access.py` | 成员访问脱糖 |
-| 15 | `expand_descriptor_signatures` | `descriptor_signatures.py` | 函数形参/返回 ``T @Desc(...)`` → ``__set_<fn>_param_*`` / ``__set_<fn>_return`` |
-| 16 | `SemanticAnalyzer` | `analyzer.py` | 类型、签名、头文件依赖 |
-| 17 | `check_moved_use` | `moved_use_check.py` | 移动后再用检查 |
-| 18 | `check_parallel_loops` | `parallel_loop_check.py` | ``prange`` 嵌套 / ``break`` 静态约束 |
+**权威顺序以** `Translator.translate_file`（`src/translator.py`）**为准**。下表与之对齐（摘要；细节见 [参考手册 §4](../../../docs/参考手册.md#4-翻译流水线)）。
 
-协程相关：`coroutine_desugar.py`、`generator_emit.py`（由 `visit_Async*` / 生成器发射调用）。
+| 阶段 | 函数（摘） | 作用摘要 |
+|------|------------|----------|
+| 前检 | `check_s32_*` / `check_s44_*` | dataclass 必填字段、注解标记 |
+| 展开 | `expand_dataclass` → `expand_class_id` → `expand_enum_mro` / `expand_union_mro` → **`expand_enum`** → **`expand_union`** → `expand_serializable` | 数据类 / 枚举 / 联合 / 序列化 |
+| | `check_native_function_bodies` | `@native` 体须 `...` |
+| | `expand_default_iter` → `expand_descriptors` → `expand_mixins` → `expand_proxy` → `expand_class_type_base` | 迭代默认、描述符、mixin、proxy |
+| | `expand_field_properties` / `expand_property_value_references` | 字段 `@property` |
+| | `expand_default_bool` → `expand_default_numeric_convert` → `expand_default_ne` | 默认协议 |
+| | `expand_test_discovery` → `expand_kwargs_options` → `expand_static_reflect` | 测试发现 / kwargs / 静态反射 |
+| 生成器前 | **`check_yield_from_for_style`（S38）** → **`check_yield_from_in_async_def`** | 须在 `expand_generators` **之前** |
+| | **`expand_generators`** | `yield` → `*_generator`（**须在** `expand_decorators` **之前**） |
+| | `expand_decorators` → `check_noexcept_functions` → `expand_copyable` → **`expand_move_state`** | 装饰器 / copyable / moved |
+| | `expand_protocol` → `expand_member_access` → **`expand_descriptor_signatures`** → `expand_lazy_params` → `expand_final_ctor_inits` | 协议 / 访问 / 描述符签名 |
+| 分析 | `SemanticAnalyzer.analyze` | 类型、签名、头依赖 |
+| 后检 | `check_proxy_*` / `resolve_union_*` / `check_new_*` / `check_*_rules` / `check_*_style` / **`check_parallel_loops`** / **`check_moved_use`** | 静态约束（含 `prange`） |
+| 生成 | `_emit_all` 等 | 写 `.h` / `.inl` / `minimal.h` |
+
+协程相关：`coroutine_desugar.py`、`generator_emit.py`（由 `visit_Async*` / 生成器发射调用）。闭包捕获见 [closure.md](../../../docs/closure.md)（规划中，非上表已挂 pass）。
 
 **生成顺序**：模块级描述符签名校验 helper（``is_descriptor_signature_helper``）在 ``_module_functions_emit_order`` 中排在普通模块函数之前，避免 MSVC「找不到标识符」。
 
-新增 pass：在 `passes/` 实现 → 在 `translator.py` 上表位置**按依赖**插入 → 加回归测试。
+新增 pass：在 `passes/` 实现 → 在 `translator.py` **按依赖**插入 → 同步本表与 [参考手册 §4](../../../docs/参考手册.md#4-翻译流水线) → 加回归测试。
 
 **``select`` 路径**（**非**上表 AST pass）：``src/passes/selector_parse.py`` 仅作路径 DSL 解析；在 ``call_emit`` / ``visit_AnnAssign`` 触发。类型 walk + ``$`` 校验见 ``analysis/selector_types.py``；内联生成见 ``emit/selector_emit.py``。详规 [docs/selector.md](../../../docs/selector.md)；主文档 [参考手册 §7.9](../../../docs/参考手册.md#79-select译期路径选择)。
 
@@ -148,7 +145,7 @@ Py2Cpp/
 | `template_scope.py` | 宏名与展开上下文 |
 | `inject_template_emit.py` / `class_header_inject.py` | `+*.h` / `paste_after` 注入登记 |
 | `stdlib_mirror_codegen.py` | mirror 包壳 + `STDLIB_CODEGEN_MODULES` 占位（`write_stdlib_codegen_*`） |
-| `umbrella_gen.py` | `minimal.h` / `py2cpp.h` 聚合（原 `primitive_types_cpp.py`） |
+| `umbrella_gen.py` | `minimal.h` 聚合（原 `primitive_types_cpp.py` / 旧名「py2cpp.h」） |
 | `protocol_traits_gen.py` | `@protocol` SFINAE 探测 + ctx → `~protocol_traits*.inl`（原 `protocol_emit.py`） |
 | `delegate_gen.py` | `DelegateInfo` → ctx → `core/~delegate_class.inl`（原 `delegate_cpp.py`） |
 | `exception_group_gen.py` | `ExcSlot` → `core/~exception_group_*` |
@@ -187,7 +184,7 @@ Py2Cpp/
 
 ## 4. 标准库模块（`constant` 发现）
 
-``src/constant/`` 存放译器静态表（**不含** AST 扫描 loader、emit 算法、C++ 模板正文）。**AST loader** 在 ``src/analysis/stubs/``（``*_stubs.py`` + ``paths.py``；读 ``py2cpp/`` 源 + ``constant/`` 表，``@lru_cache``；**无** barrel re-export，消费方显式 ``from …stubs.<mod> import …``）。模块发现见 ``constant/stdlib_discovery.py``（遍历 ``py2cpp/**/*.py``，排除 ``reflect/``、域包空 ``__init__`` 等）→ ``STDLIB_REL_PATHS``；``constant/stdlib_modules.py`` 的 ``UMBRELLA_PREFIX_TIERS`` / ``UMBRELLA_PRIORITY_MODULES`` 定 bulk 域前缀顺序与少数拓扑例外。bootstrap 在 ``analyze`` 后由 ``stdlib_module_order.reorder_stdlib_modules_for_umbrella`` 按 ``ModuleAnalysis.includes`` 对每个 tier 拓扑排序，再写 ``py2cpp.h``。万能头顺序与 bulk 跳过见 ``constant/umbrella.py``；头文件破环动作与前向声明见 ``constant/header_fixups_data.py``（算法 ``analysis/header_fixups.py``）；``.inl`` 注入规格见 ``constant/inject_specs.py``（hook 构建 ``emit/stdlib_inject_emit.py``）；整模块 codegen 模块表 ``STDLIB_CODEGEN_MODULES`` → ``codegen/stdlib_mirror_codegen``（``write_stdlib_codegen_*``）。语言关键字 / dunder 方法名 / 标量 rename 见 ``constant/language.py``（``operator`` 映射见 ``constant/dunder_ops.py``；类型标记类名见 ``constant/type_markers.py``；命名 helper 留 ``analysis/patterns.py``）。``TRANSLATION_ONLY_FUNCS`` 由 ``stubs.builtin_stubs.load_translation_only_funcs()`` 从包根 ``__init__.py`` 推导；模块函数 C++ 名由 ``@global_call`` AST 扫描（``stubs.class_stubs.lookup_module_function_cpp_name``）。翻译 bootstrap：``python main.py py2cpp/__init__.py -o generated --no-main``。
+``src/constant/`` 存放译器静态表（**不含** AST 扫描 loader、emit 算法、C++ 模板正文）。**AST loader** 在 ``src/analysis/stubs/``（``*_stubs.py`` + ``paths.py``；读 ``py2cpp/`` 源 + ``constant/`` 表，``@lru_cache``；**无** barrel re-export，消费方显式 ``from …stubs.<mod> import …``）。模块发现见 ``constant/stdlib_discovery.py``（遍历 ``py2cpp/**/*.py``，排除 ``reflect/``、域包空 ``__init__`` 等）→ ``STDLIB_REL_PATHS``；``constant/stdlib_modules.py`` 的 ``UMBRELLA_PREFIX_TIERS`` / ``UMBRELLA_PRIORITY_MODULES`` 定 bulk 域前缀顺序与少数拓扑例外。bootstrap 在 ``analyze`` 后由 ``stdlib_module_order.reorder_stdlib_modules_for_umbrella`` 按 ``ModuleAnalysis.includes`` 对每个 tier 拓扑排序，再写 ``py2cpp/minimal.h``。万能头顺序与 bulk 跳过见 ``constant/umbrella.py``；头文件破环动作与前向声明见 ``constant/header_fixups_data.py``（算法 ``analysis/header_fixups.py``）；``.inl`` 注入规格见 ``constant/inject_specs.py``（hook 构建 ``emit/stdlib_inject_emit.py``）；整模块 codegen 模块表 ``STDLIB_CODEGEN_MODULES`` → ``codegen/stdlib_mirror_codegen``（``write_stdlib_codegen_*``）。语言关键字 / dunder 方法名 / 标量 rename 见 ``constant/language.py``（``operator`` 映射见 ``constant/dunder_ops.py``；类型标记类名见 ``constant/type_markers.py``；命名 helper 留 ``analysis/patterns.py``）。``TRANSLATION_ONLY_FUNCS`` 由 ``stubs.builtin_stubs.load_translation_only_funcs()`` 从包根 ``__init__.py`` 推导；模块函数 C++ 名由 ``@global_call`` AST 扫描（``stubs.class_stubs.lookup_module_function_cpp_name``）。翻译 bootstrap：``python main.py py2cpp/__init__.py -o generated --no-main``。
 
 | 域 | Python 路径 | C++ 命名空间（典型） | 备注 |
 |----|-------------|----------------------|------|
@@ -227,18 +224,19 @@ Py2Cpp/
 
 | 产物 | 说明 |
 |------|------|
-| `runtime/py2cpp.h` | 包根类型：`PyRange`、`new`、`zip` 等 |
-| `runtime/py2cpp/minimal.h` | **测试 TU 主 include**；扁平 `#include` 子模块 + `operators.inl` |
+| `runtime/py2cpp/minimal.h` | **万能头 / 测试 TU 主 include**（`UMBRELLA_HEADER`）；扁平 `#include` 子模块 + `operators.inl` |
 | `runtime/py2cpp/<域>/*.h` | 类声明；模板类末尾或万能头外挂 `*.inl` |
+| `runtime/py2cpp/util/range.h` | `PyRange`（`py2cpp::util::range::PyRange`；**不**在已删除的根 `py2cpp.h`） |
 | `runtime/py2cpp/core/protocol_traits.h` | 全部 `@protocol` traits；**全局作用域** |
 | `runtime/py2cpp.cpp` | 可选汇总 TU；**`test/` 链接时不要同时用** |
+| `runtime/ffi/**` | FFI 按需写出（`#include "ffi/…"`）；**不**进 `minimal.h` bulk |
 | `test/<module>.h/.cpp` | 用户测试翻译结果 |
 
 ### 5.1 头文件依赖（常见）
 
 - `dict` / `str` 依赖 `protocol_traits.h`（即使不 include 完整 `protocols.h`）。
 - `str.h` 与 `list.h` 曾循环 include；traits 已拆分，改 include 后须全量重编。
-- `operators.inl` 须在 `py2cpp.h` 末尾（标量 `format`/`repr`）。
+- `operators.inl` 须在 `minimal.h` 末尾（标量 `format`/`repr`）。
 - `io.inl` 提供 `py_open`；`StringIO` 在 `io.py` + `io.inl`。
 
 ### 5.2 命名空间规则
@@ -248,10 +246,25 @@ Py2Cpp/
 | 用户 `test/foo.py` | `namespace test { … }` |
 | 用户 `pkg/sub.py` | `namespace pkg { namespace sub { … } }` |
 | 标准库 `py2cpp/util/list.py` | `namespace py2cpp { namespace util { namespace list { … } } }` |
-| 多数 `.inl` | 无 namespace 块；实现里写 `py2cpp::util::list::…` |
+| FFI `ffi/sqlite/sqlite3.pyi` | `namespace ffi { namespace sqlite { namespace sqlite3 { … } } }`（路径段 = 命名空间段） |
+| 多数 `.inl` | 无 namespace 块；实现里写 `py2cpp::util::list::…` / `ffi::sqlite::sqlite3::…` |
 | `tuple` / `delegate` / `refcount` | 见 `module_namespace.MODULES_WITHOUT_CPP_NAMESPACE` |
 
 **勿**在 `namespace py2cpp { #include <utility> }` 内 include `protocol_traits.h`（会产生 `py2cpp::std::…`）。
+
+### 5.3 第三方 C FFI（`ffi/**/*.pyi`）
+
+详规 [docs/c-ffi-pyi.md](../../../docs/c-ffi-pyi.md)；编码规范 §9.4。
+
+| 项 | 约定 |
+|----|------|
+| 源 | 仓库根 `ffi/`（`ffi.bat` / `scripts/gen_c_ffi.py` → `src/tools/c_ffi_pyi.py`） |
+| 句柄别名 | `type sqlite3_h = uint64`（`*_h`；**永不**与 C 标签同名）；glue 用 `struct sqlite3*`（`ffi_opaque_c_tag`） |
+| C++ | `ffi::…`（**不**挂 `py2cpp::`）；`#include <c_header>` 尖括号防同目录自包含 |
+| 业务 | `py2cpp/sql/sqlite.py` import 拉闭包；`templates/sql/+sqlite.inl` 调 `::ffi::sqlite::sqlite3::…` |
+| 禁止 | `from ffi… import *`；把全量 `windows.pyi` 塞进 `minimal.h`；手改 `AUTO-GENERATED` `.pyi` |
+
+回归：`python -m unittest src.tests.test_ffi_import`；`build.bat sql/test_sqlite`。
 
 ---
 
@@ -636,7 +649,7 @@ generated\test\misc\test_containers.exe
 | 翻译 OK、链接旧符号 | 未重链 | 全量重编；`main.py -c` / `build_*.bat` 会自动删 `.obj` |
 | LNK2005 | 同时链 `py2cpp.cpp` + 含实现的万能头 | `compile.py` 对 `test/` 已跳过 `py2cpp.cpp` |
 | LNK2019 `py_open` | 缺 `io.inl` 或未链入 | 重译 runtime |
-| `PyRange` 未声明 | 未 include `py2cpp.h`（包根）或 namespace 尾块污染 | 用户代码用 `(::py2cpp::PyRange)(n)`；勿乱改 umbrella |
+| `PyRange` 未声明 | 未 include `minimal.h`（或 `util/range`）或 namespace 尾块污染 | 用 `(::py2cpp::util::range::PyRange)(n)`；勿乱改 umbrella |
 | `C2065: Args` | `protocol_traits` 中 `__mod__` 缺 `template<typename... Args>` | 修 `translator._emit_module_protocol_traits` |
 | `py2cpp::std::pair` | traits 在 `namespace py2cpp` 内 include 标准头 | traits 保持全局 include |
 | `PyTuple` 歧义 | 误写 `py2cpp::PyTuple` | C++ 类型为全局 `PyTuple`；Python 侧用 `tuple[...]` / `from py2cpp import *` 的 `tuple` |

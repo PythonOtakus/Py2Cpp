@@ -175,11 +175,11 @@ def _which(name: str) -> str | None:
 
 
 def _links_runtime_cpp(source: Path) -> bool:
-  """测试/示例入口通过 ``py2cpp.h`` 拉入 ``*.inl``；再链接 ``py2cpp.cpp`` 会重复定义。"""
+  """测试/示例入口通过 ``minimal.h`` 拉入 ``*.inl``；再链接 ``py2cpp.cpp`` 会重复定义。"""
   if source.name == RUNTIME_CPP:
     return False
   parts = source.resolve().parts
-  # ``test/``、``examples/`` 与集成测相同：仅 ``py2cpp.h`` + ``*.inl``，勿链 runtime TU
+  # ``test/``、``examples/`` 与集成测相同：仅 ``minimal.h`` + ``*.inl``，勿链 runtime TU
   if "test" in parts or "examples" in parts:
     return False
   return True

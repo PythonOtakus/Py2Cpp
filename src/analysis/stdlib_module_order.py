@@ -99,7 +99,7 @@ def order_stdlib_modules_by_header_deps(
 
 
 def reorder_stdlib_modules_for_umbrella(translator) -> None:
-  """``analyze`` 之后、写 ``py2cpp.h`` 之前更新 ``stdlib_modules_for_umbrella``。"""
+  """``analyze`` 之后、写 ``minimal.h`` 之前更新 ``stdlib_modules_for_umbrella``。"""
   if not translator.stdlib_modules_for_umbrella:
     return
   if not translator._is_runtime_bootstrap():

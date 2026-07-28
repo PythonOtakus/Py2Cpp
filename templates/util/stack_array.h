@@ -37,7 +37,7 @@ class PyStackArray
   }
 
 public:
-  T* _buf__get() const
+  T* PY2CPP_GETTER(_buf)() const
   {
     return const_cast<T*>(_data);
   }
@@ -55,7 +55,7 @@ public:
     return Length;
   }
 
-  PySpan<T> view__get() const;
+  PySpan<T> PY2CPP_GETTER(view)() const;
 
   PyStackArrayIterator<T, Length, Offset> __iter__();
 
@@ -135,7 +135,7 @@ template<typename T, PyInt Offset>
 class PyStackArray<T, 0, Offset>
 {
 public:
-  T* _buf__get() const
+  T* PY2CPP_GETTER(_buf)() const
   {
     return nullptr;
   }
@@ -149,7 +149,7 @@ public:
     return 0;
   }
 
-  PySpan<T> view__get() const;
+  PySpan<T> PY2CPP_GETTER(view)() const;
 
   PyStackArrayIterator<T, 0, Offset> __iter__();
 
@@ -269,7 +269,7 @@ class PyStackArray2D
   }
 
 public:
-  T* _buf__get() const
+  T* PY2CPP_GETTER(_buf)() const
   {
     return const_cast<T*>(_data);
   }
@@ -282,7 +282,7 @@ public:
     }
   }
 
-  PySpan2D<T> view__get() const;
+  PySpan2D<T> PY2CPP_GETTER(view)() const;
 
   T& __getitem__(PyTuple<PyInt, PyInt> index)
   {
@@ -379,7 +379,7 @@ class PyStackArray3D
   }
 
 public:
-  T* _buf__get() const
+  T* PY2CPP_GETTER(_buf)() const
   {
     return const_cast<T*>(_data);
   }
@@ -392,7 +392,7 @@ public:
     }
   }
 
-  PySpan3D<T> view__get() const;
+  PySpan3D<T> PY2CPP_GETTER(view)() const;
 
   T& __getitem__(PyTuple<PyInt, PyInt, PyInt> index)
   {

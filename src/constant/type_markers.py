@@ -2,6 +2,6 @@
 
 TYPE_MARKER_CLASSES: frozenset[str] = frozenset({
   "char", "byte", "c_str", "Pointer", "Function", "Callable", "Generator", "Coroutine", "Self", "Super",
-  "staticproperty", "const", "optional", "ref", "lazy",
+  "staticproperty", "const", "optional", "ref", "lazy", "thread_local",
   "int64", "uint", "uint64", "uintptr", "float64",
 })

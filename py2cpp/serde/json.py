@@ -7,7 +7,7 @@ from __future__ import annotations
 from ..builtins import *
 from ..util.dict import dict
 from ..util.list import list
-from ..util.arena import arena
+from ..util.arena import Arena
 from ..util.memory import (
   copy_buf,
   copy_buf_ref,
@@ -1114,7 +1114,7 @@ class JsonDecoder:
   ascii_len: int = 0
   ascii_bytes: Pointer[char] = None
   ascii_bytes_owned: bool = False
-  str_arena: arena = new()
+  str_arena: Arena = new()
   str_arena_active: bool = False
 
   def __repr__(self) -> str:
@@ -2500,7 +2500,7 @@ class JsonDecoder:
 
 
   def str_assign_from_seg(self, seg: span[char]) -> str:
-    """``seg`` → 新 ``str``（arena 时 ``copy_buf`` + ``adopt_span``）。"""
+    """``seg`` → 新 ``str``（Arena 时 ``copy_buf`` + ``adopt_span``）。"""
     seg_len: int = len(seg)
     if seg_len == 0 or not self.str_arena_active:
       return self.str_assign_from_seg_ref(seg)

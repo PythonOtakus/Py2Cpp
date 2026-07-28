@@ -1,10 +1,17 @@
+#include <atomic>
 #include <type_traits>
+#include "py2cpp/py_types.h"
 
 struct _PyRefCountBlockHeader {
-  int strong_count;
-  int weak_count;
+  std::atomic<int> strong_count;
+  std::atomic<int> weak_count;
   void (*destroy_fn)(void*);
   void* object;
+
+  explicit _PyRefCountBlockHeader()
+    : strong_count(0), weak_count(0), destroy_fn(0), object(0)
+  {
+  }
 };
 
 template<typename U>
@@ -89,6 +96,25 @@ void _py_refcount_destroy(void* p) {
   destroy<U>(static_cast<U*>(p));
 }
 
+inline void _py_refcount_delete_block_if_dead(_PyRefCountBlockHeader* b)
+{
+  if (b && b->strong_count.load(std::memory_order_acquire) == 0 &&
+      b->weak_count.load(std::memory_order_acquire) == 0) {
+    ::operator delete(b);
+  }
+}
+
+template<typename U>
+_PyRefCountBlock<U>* _py_refcount_new_block()
+{
+  void* mem = ::operator new(sizeof(_PyRefCountBlock<U>));
+  _PyRefCountBlock<U>* block = new (mem) _PyRefCountBlock<U>();
+  block->strong_count.store(1, std::memory_order_relaxed);
+  block->weak_count.store(0, std::memory_order_relaxed);
+  block->destroy_fn = &_py_refcount_destroy<U>;
+  return block;
+}
+
 template<typename T>
 class PyRefCount;
 
@@ -143,22 +169,23 @@ class PyRefCount {
     }
     _PyRefCountBlockHeader* b = block_;
     block_ = 0;
-    if ((--(b->strong_count)) == 0) {
+    if (b->strong_count.fetch_sub(1, std::memory_order_acq_rel) == 1) {
       if (b->destroy_fn && b->object) {
         b->destroy_fn(b->object);
         b->object = 0;
       }
-      if (b->weak_count == 0) {
-        ::operator delete(b);
-      }
+      _py_refcount_delete_block_if_dead(b);
     }
   }
 
   void acquire(_PyRefCountBlockHeader* b) {
+    if (block_ == b) {
+      return;
+    }
     release();
     block_ = b;
     if (block_) {
-      ++(block_->strong_count);
+      block_->strong_count.fetch_add(1, std::memory_order_relaxed);
     }
   }
 
@@ -182,11 +209,7 @@ public:
     typedef typename std::decay<Arg0>::type Arg0D;
     static_assert(!std::is_same<Arg0D, std::nullptr_t>::value,
       "PyRefCount: use PyRefCount() for null, not nullptr");
-    void* mem = ::operator new(sizeof(_PyRefCountBlock<T>));
-    _PyRefCountBlock<T>* typed = static_cast<_PyRefCountBlock<T>*>(mem);
-    typed->strong_count = 1;
-    typed->weak_count = 0;
-    typed->destroy_fn = &_py_refcount_destroy<T>;
+    _PyRefCountBlock<T>* typed = _py_refcount_new_block<T>();
     init<T>(typed->object_ptr(), arg0, args...);
     typed->object = typed->object_ptr();
     block_ = typed;
@@ -194,7 +217,7 @@ public:
 
   PyRefCount(const PyRefCount& other) : block_(other.block_) {
     if (block_) {
-      ++(block_->strong_count);
+      block_->strong_count.fetch_add(1, std::memory_order_relaxed);
     }
   }
 
@@ -203,7 +226,7 @@ public:
   PyRefCount(const PyRefCount<U>& other) : block_(other.block_) {
     static_assert(std::is_base_of<T, U>::value, "PyRefCount upcast requires U to derive from T");
     if (block_) {
-      ++(block_->strong_count);
+      block_->strong_count.fetch_add(1, std::memory_order_relaxed);
     }
   }
 
@@ -254,7 +277,7 @@ public:
       reinterpret_cast<char*>(const_cast<T*>(obj)) - offsetof(_PyRefCountBlock<T>, storage)
     );
     rc.block_ = block;
-    ++(block->strong_count);
+    block->strong_count.fetch_add(1, std::memory_order_relaxed);
     return rc;
   }
 };
@@ -274,11 +297,7 @@ struct py2cpp_refcount_unwrap<PyRefCount<T>> {
 
 template<typename T, typename... Args>
 PyRefCount<T> makeRefCount(Args... args) {
-  void* mem = ::operator new(sizeof(_PyRefCountBlock<T>));
-  _PyRefCountBlock<T>* block = static_cast<_PyRefCountBlock<T>*>(mem);
-  block->strong_count = 1;
-  block->weak_count = 0;
-  block->destroy_fn = &_py_refcount_destroy<T>;
+  _PyRefCountBlock<T>* block = _py_refcount_new_block<T>();
   init<T>(block->object_ptr(), args...);
   block->object = block->object_ptr();
   PyRefCount<T> result;
@@ -307,7 +326,7 @@ public:
   {
     if (block_)
     {
-      ++(block_->weak_count);
+      block_->weak_count.fetch_add(1, std::memory_order_relaxed);
     }
   }
 
@@ -315,7 +334,7 @@ public:
   {
     if (block_)
     {
-      ++(block_->weak_count);
+      block_->weak_count.fetch_add(1, std::memory_order_relaxed);
     }
   }
 
@@ -325,15 +344,15 @@ public:
     {
       if (block_)
       {
-        if ((--(block_->weak_count)) == 0 && block_->strong_count == 0)
+        if (block_->weak_count.fetch_sub(1, std::memory_order_acq_rel) == 1)
         {
-          ::operator delete(block_);
+          _py_refcount_delete_block_if_dead(block_);
         }
       }
       block_ = other.block_;
       if (block_)
       {
-        ++(block_->weak_count);
+        block_->weak_count.fetch_add(1, std::memory_order_relaxed);
       }
     }
     return *this;
@@ -343,26 +362,38 @@ public:
   {
     if (block_)
     {
-      if ((--(block_->weak_count)) == 0 && block_->strong_count == 0)
+      if (block_->weak_count.fetch_sub(1, std::memory_order_acq_rel) == 1)
       {
-        ::operator delete(block_);
+        _py_refcount_delete_block_if_dead(block_);
       }
       block_ = 0;
     }
   }
 
-  bool alive__get() const
+  bool PY2CPP_GETTER(alive)() const
   {
-    return block_ && block_->strong_count > 0;
+    return block_ && block_->strong_count.load(std::memory_order_acquire) > 0;
   }
 
-  PyRefCount<T> value__get() const
+  PyRefCount<T> PY2CPP_GETTER(value)() const
   {
     PyRefCount<T> rc;
-    if (block_ && block_->strong_count > 0)
+    if (!block_)
     {
-      rc.block_ = block_;
-      ++(block_->strong_count);
+      return rc;
+    }
+    int count = block_->strong_count.load(std::memory_order_acquire);
+    while (count > 0)
+    {
+      if (block_->strong_count.compare_exchange_weak(
+            count,
+            count + 1,
+            std::memory_order_acquire,
+            std::memory_order_acquire))
+      {
+        rc.block_ = block_;
+        break;
+      }
     }
     return rc;
   }
@@ -377,7 +408,7 @@ PyWeakRef<T> makeWeakRef(const PyRefCount<T>& strong) {
   PyWeakRef<T> w;
   w.block_ = strong.block_;
   if (w.block_) {
-    ++(w.block_->weak_count);
+    w.block_->weak_count.fetch_add(1, std::memory_order_relaxed);
   }
   return w;
 }

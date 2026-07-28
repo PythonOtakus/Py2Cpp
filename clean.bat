@@ -20,6 +20,7 @@ for %%F in ("%ROOT%*") do (
     if /i "%%~nxF"=="compile_flags.txt" set "KEEP=1"
     if /i "%%~nxF"=="main.py" set "KEEP=1"
     if /i "%%~nxF"=="README.md" set "KEEP=1"
+    if /i "%%~nxF"=="LICENSE" set "KEEP=1"
     if /i "%%~xF"==".bat" set "KEEP=1"
     if !KEEP! equ 0 (
       echo del %%~nxF

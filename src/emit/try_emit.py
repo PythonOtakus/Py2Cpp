@@ -6,8 +6,9 @@ from typing import TYPE_CHECKING
 
 from ..constant.stdlib_layout import EXCEPTIONS_NS
 from ..analysis.ir import cpp_ident, cpp_param
+from ..analysis.module_namespace import qualify_symbol_in_module
 from ..analysis.patterns import temp_name
-from ..translation_error import TranslationError
+from ..translation_error import TranslationError, location_from_node
 from ..analysis.type_emit import bind_scope_var
 
 if TYPE_CHECKING:
@@ -49,25 +50,52 @@ def _parse_handler_types(handler: ast.ExceptHandler) -> list[str | None]:
   )
 
 
-def _validate_exc_name(tr: Translator, name: str, handler: ast.ExceptHandler) -> None:
+def _class_info_for_exception_name(tr: Translator, name: str):
+  binding = tr._effective_import_bindings().get(name)
+  if binding is not None and binding.kind == "class":
+    for info in tr.classes.values():
+      if info.name == binding.symbol and info.module_path == binding.module_path:
+        return info
+  mp = tr._active_module_path()
+  for info in tr.classes.values():
+    if info.name == name and info.module_path == mp:
+      return info
+  return None
+
+
+def _is_exception_class(tr: Translator, info) -> bool:
+  if info.name == "Exception":
+    return True
+  from ..passes.mro_closure import is_subclass_of
+
+  return is_subclass_of(info, "Exception", tr)
+
+
+def _resolve_exception_cpp_type(
+  tr: Translator,
+  name: str,
+  handler: ast.ExceptHandler,
+) -> str:
   from ..analysis.runtime_symbols import CPP_EXCEPTION_TYPES
 
-  if name not in CPP_EXCEPTION_TYPES:
-    raise TranslationError(
-      f"未知异常类型 ``{name}``（须在 ``py2cpp.core.exceptions`` 中声明）",
-      tr,
-      node=handler,
-    )
+  if name in CPP_EXCEPTION_TYPES:
+    return _exc_cpp_type(name)
+  info = _class_info_for_exception_name(tr, name)
+  if info is not None and _is_exception_class(tr, info):
+    return f"::{qualify_symbol_in_module(info.module_path, info.cpp_name())}"
+  raise TranslationError(
+    f"未知异常类型 ``{name}``（须为当前作用域可见的 ``Exception`` 子类）",
+    location=location_from_node(tr, handler),
+  )
 
 
 def _validate_star_type(tr: Translator, name: str, handler: ast.ExceptHandler) -> None:
   if name in _FORBIDDEN_STAR_TYPES:
     raise TranslationError(
       f"``except* {name}`` 语义歧义（对齐 Python 3.13 ``TypeError``）",
-      tr,
-      node=handler,
+      location=location_from_node(tr, handler),
     )
-  _validate_exc_name(tr, name, handler)
+  _resolve_exception_cpp_type(tr, name, handler)
 
 
 def _has_bare_except(handlers: list[ast.ExceptHandler]) -> bool:
@@ -94,8 +122,8 @@ def _emit_handler_catches(
         raise NotImplementedError("bare except ... as name 暂不支持")
       header = "catch (...)"
     else:
-      _validate_exc_name(tr, exc_name, handler)
-      header = f"catch (const {_exc_cpp_type(exc_name)}& {catch_var})"
+      exc_cpp = _resolve_exception_cpp_type(tr, exc_name, handler)
+      header = f"catch (const {exc_cpp}& {catch_var})"
     with tr._use_block(header):
       if ok_flag is not None:
         tr.write_line(f"{ok_flag} = false;")

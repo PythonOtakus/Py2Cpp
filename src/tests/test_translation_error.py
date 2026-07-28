@@ -12,7 +12,7 @@ from src.translator import Translator
 class TranslationErrorFormatTests(unittest.TestCase):
   def test_emit_failure_includes_line(self):
     src = '''\
-from py2cpp.util.list import list
+from py2cpp import *
 
 def run() -> None:
   xs: list[int] = [1, 2, 3]

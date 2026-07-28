@@ -11,13 +11,13 @@ PyStackArrayIterator<T, Length, Offset> PyStackArray<T, Length, Offset>::__iter_
 }
 
 template<typename T, PyInt Length, PyInt Offset>
-PySpan<T> PyStackArray<T, Length, Offset>::view__get() const
+PySpan<T> PyStackArray<T, Length, Offset>::PY2CPP_GETTER(view)() const
 {
-  return PySpan<T>(_buf__get(), __len__(), 1);
+  return PySpan<T>(PY2CPP_GETTER(_buf)(), __len__(), 1);
 }
 
 template<typename T, PyInt Offset>
-PySpan<T> PyStackArray<T, 0, Offset>::view__get() const
+PySpan<T> PyStackArray<T, 0, Offset>::PY2CPP_GETTER(view)() const
 {
   return PySpan<T>(nullptr, 0, 1);
 }
@@ -89,10 +89,10 @@ static PyInt _slice_count2d(PyInt start, PyInt stop, PyInt step)
 }
 
 template<typename T, PyInt Rows, PyInt Cols, PyInt RowOff, PyInt ColOff>
-PySpan2D<T> PyStackArray2D<T, Rows, Cols, RowOff, ColOff>::view__get() const
+PySpan2D<T> PyStackArray2D<T, Rows, Cols, RowOff, ColOff>::PY2CPP_GETTER(view)() const
 {
   return PySpan2D<T>(
-    _buf__get(),
+    PY2CPP_GETTER(_buf)(),
     PyTuple<PyInt, PyInt>(Rows, Cols),
     Cols);
 }
@@ -201,10 +201,10 @@ static PyInt _slice_count3d(PyInt start, PyInt stop, PyInt step)
 }
 
 template<typename T, PyInt D0, PyInt D1, PyInt D2, PyInt O0, PyInt O1, PyInt O2>
-PySpan3D<T> PyStackArray3D<T, D0, D1, D2, O0, O1, O2>::view__get() const
+PySpan3D<T> PyStackArray3D<T, D0, D1, D2, O0, O1, O2>::PY2CPP_GETTER(view)() const
 {
   return PySpan3D<T>(
-    _buf__get(),
+    PY2CPP_GETTER(_buf)(),
     PyTuple<PyInt, PyInt, PyInt>(D0, D1, D2),
     PyTuple<PyInt, PyInt>(D1 * D2, D2));
 }

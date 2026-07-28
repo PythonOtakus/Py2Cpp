@@ -1,10 +1,12 @@
 """单线程协作式 ``Task`` 调度（C# ``Task`` 风格：``Task.run`` / ``await Task.sleep`` / ``Task.gather``）。
 
 ``period`` 为每帧时长（秒）；``Task.period_count`` 为当前帧计数；``Task.duration = period_count * period``。
+``Task.run_thread`` 参考 Python 3.13 ``asyncio.to_thread``，把阻塞 callable 放入 OS 线程并以 ``Task`` 等待结果。
 """
 from ..builtins import *
 from ..core.exceptions import RuntimeError
 from ..core.iter_result import IterResult
+from .thread import Future, ThreadPool
 
 
 _PERIOD_DEFAULT: float64 = 1.0 / 60.0
@@ -12,8 +14,10 @@ _PERIOD_DEFAULT: float64 = 1.0 / 60.0
 TASK_CORO: int = 0
 TASK_SLEEP: int = 1
 TASK_GATHER: int = 2
+TASK_THREAD: int = 3
 
 LOOP_TASK_WAIT: int = 0
+LOOP_TASK_POLL: int = 1
 
 
 @copyable
@@ -137,6 +141,35 @@ class _GatherSlot[U](_SlotBase):
       self.mark_done()
 
 
+@refcount
+class _ThreadSlot[R](_SlotBase):
+  """``Task.run_thread`` 线程槽：完成后从 ``Future`` 读取 ``result``。"""
+
+  _future: Future[R]
+  _pool: ThreadPool[R]
+
+  def __init__(self, future: Future[R], pool: ThreadPool[R]):
+    self._future = future
+    self._pool = pool
+
+  def get_result(self) -> R:
+    return self._future.result(timeout=0.0)
+
+  @override
+  def advance(self) -> IterResult[LoopHandle, None]:
+    if self._future.done():
+      self.mark_done()
+      return new.Return(None)
+    h: LoopHandle = new()
+    h.kind = LOOP_TASK_POLL
+    h.target_id = self.slot_id
+    return new.Yield(h)
+
+  @override
+  def release_coro(self) -> None:
+    self._pool.shutdown()
+
+
 def _make_coro_slot[R](coro: Coroutine[LoopHandle, None, R]) -> _SlotBase:
   slot: _CoroSlot[R] = new(coro)
   slot.kind = TASK_CORO
@@ -156,6 +189,9 @@ def _gather_list_result[U](slot: _SlotBase) -> list[U]:
 def _slot_result[T](slot: _SlotBase) -> T:
   if slot.kind == TASK_SLEEP:
     return None
+  if slot.kind == TASK_THREAD:
+    ts: _ThreadSlot[T] @ref = cast(slot)
+    return ts.get_result()
   if T is list[...]:
     if slot.kind == TASK_GATHER:
       return _gather_list_result[T.Element](slot)
@@ -179,7 +215,6 @@ def _make_coro_slot_from_gen(gen) -> _SlotBase: ...
 @native
 @native_name("::py2cpp_concur_task_detail::slot_result_for_coro")
 def _slot_result_for_coro[Coro](slot: _SlotBase, _coro: Coro): ...
-
 
 @copyable
 class _TaskAwaitIter[T]:
@@ -284,8 +319,11 @@ class Scheduler(friends=(Task, _TaskAwaitIter)):
     self._timers.append(entry)
     if wakeup_period <= self.period_count:
       t: _SlotBase = self.slot_by_id(task_id)
-      t.mark_done()
-      self._finish_slot(t)
+      if t.kind == TASK_SLEEP:
+        t.mark_done()
+        self._finish_slot(t)
+      else:
+        self._enqueue(task_id)
 
   def _register_gather_child(
     self,
@@ -328,9 +366,12 @@ class Scheduler(friends=(Task, _TaskAwaitIter)):
       entry: _TimerEntry = self._timers[i]
       if entry.wakeup_period <= self.period_count:
         t: _SlotBase = self.slot_by_id(entry.task_id)
-        if not t.is_done():
+        if t.kind == TASK_SLEEP and not t.is_done():
           t.mark_done()
           self._finish_slot(t)
+        else:
+          if not t.is_done():
+            self._enqueue(entry.task_id)
       else:
         keep.append(entry)
     self._timers = keep
@@ -340,9 +381,13 @@ class Scheduler(friends=(Task, _TaskAwaitIter)):
     self._fire_timers()
 
   def _dispatch_handle(self, slot: _SlotBase, handle: LoopHandle) -> None:
-    if handle.kind != LOOP_TASK_WAIT:
-      raise RuntimeError("Task scheduler: unknown loop handle kind")
-    self._add_wait(slot.slot_id, handle.target_id)
+    if handle.kind == LOOP_TASK_WAIT:
+      self._add_wait(slot.slot_id, handle.target_id)
+      return
+    if handle.kind == LOOP_TASK_POLL:
+      self._register_timer(handle.target_id, self.period_count + 1)
+      return
+    raise RuntimeError("Task scheduler: unknown loop handle kind")
 
   def pump(self) -> None:
     self._run_once()
@@ -353,7 +398,9 @@ class Scheduler(friends=(Task, _TaskAwaitIter)):
       return
     task_id: int64 = self._ready.pop(0)
     slot: _SlotBase = self.slot_by_id(task_id)
-    if slot.is_done() or slot.kind != TASK_CORO:
+    if slot.is_done():
+      return
+    if slot.kind not in {TASK_CORO, TASK_THREAD}:
       return
     step: IterResult[LoopHandle, None] = slot.advance()
     if step.done:
@@ -469,6 +516,22 @@ class Task[T](friends=(Scheduler,)):
     sched._register_slot(slot)
     sched._enqueue(tid)
     t: Task[R] = new()
+    t.task_id = tid
+    return t
+
+  @staticmethod
+  def run_thread(fn: Callable[[], T]) -> Self:
+    """在线程中运行阻塞 callable，并返回可 ``await`` 的 ``Task[T]``。"""
+    sched: Scheduler @ref = _require_scheduler()
+    pool: ThreadPool[T] = new(1, "Task.run_thread")
+    future: Future[T] = pool.submit(fn)
+    slot: _ThreadSlot[T] = new(future, pool)
+    tid: int64 = _alloc_task_id()
+    slot.slot_id = tid
+    slot.kind = TASK_THREAD
+    sched._register_slot(slot)
+    sched._enqueue(tid)
+    t: Self = new()
     t.task_id = tid
     return t
 

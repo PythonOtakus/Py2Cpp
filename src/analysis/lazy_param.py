@@ -54,7 +54,7 @@ def lazy_supplier_cpp_type(value_cpp: str) -> str:
 
 
 def lazy_supplier_is_none_expr(supplier_cpp: str) -> str:
-  return f"({supplier_cpp}.invoke == nullptr)"
+  return f"({supplier_cpp}._func == nullptr)"
 
 
 def lazy_supplier_invoke_expr(supplier_cpp: str, value_cpp: str) -> str:

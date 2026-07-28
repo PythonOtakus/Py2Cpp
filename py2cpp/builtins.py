@@ -221,8 +221,15 @@ class ref:
 class lazy:
   """类型注解标记：``T @lazy`` → 形参 ``PyCallable<T>`` supplier（first-touch memo 求值）。
 
-  与 ``@ref`` 可叠用（``T @ref @lazy``）；默认 ``None`` 表示未传 supplier（``invoke == nullptr``）；
+  与 ``@ref`` 可叠用（``T @ref @lazy``）；默认 ``None`` 表示未传 supplier（``_func == nullptr``）；
   非 ``None`` 默认值在函数入口填充 supplier。调用点实参一律包零参 lambda；同名 lazy 形参透传 supplier。
+  """
+
+
+class thread_local:
+  """类型注解标记：``name: T @thread_local = v`` → C++ ``static thread_local`` 类字段。
+
+  该字段按线程隔离存储；通过 ``Self.name`` / ``Class.name`` 访问，不能作为实例普通成员。
   """
 
 

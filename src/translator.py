@@ -137,7 +137,6 @@ class _WithFrame:
 class _TryFrame:
     """``try`` / ``finally``：``return`` / ``break`` / ``continue`` 前须执行 ``finalbody``。"""
     finally_body: list[ast.stmt]
-    finally_emitted: bool = False
 
 class Scope:
     """单个函数或方法体的作用域：名称分类与 C++ 类型表。"""
@@ -2261,6 +2260,9 @@ class Translator(ast.NodeVisitor):
             if self.class_info and field in self.class_info.static_class_fields:
                 cpp = self.class_info.cpp_member_name(field)
                 return f'{self.class_info.cpp_name()}::{cpp}'
+            if self.class_info and field in getattr(self.class_info, 'thread_local_fields', {}):
+                cpp = self.class_info.cpp_member_name(field)
+                return f'{self.class_info.cpp_name()}::{cpp}'
             if self.class_info and (field in self.class_info.field_properties or field in self.class_info.postsetter_properties):
                 getter = self._property_getter_cpp_name(self.class_info, field)
                 return f'this->{getter}()'
@@ -2350,6 +2352,11 @@ class Translator(ast.NodeVisitor):
             if info.is_template():
                 return cpp
             return f'{info.cpp_name()}::{cpp}'
+        if attr in getattr(info, 'thread_local_fields', {}):
+            cpp = info.cpp_member_name(attr)
+            if info.is_template():
+                return cpp
+            return f'{info.cpp_name()}::{cpp}'
         if attr in info.static_property_storage:
             return f'{info.cpp_name()}::{info.cpp_member_name(attr)}'
         sig = info.method_sigs.get(attr)
@@ -2367,6 +2374,10 @@ class Translator(ast.NodeVisitor):
         if self._emit_cpp_setattr(receiver, field, val):
             return
         if isinstance(receiver, ast.Name) and receiver.id == 'self':
+            if self.class_info and field in getattr(self.class_info, 'thread_local_fields', {}):
+                cpp = self.class_info.cpp_member_name(field)
+                self.write_line(f'{self.class_info.cpp_name()}::{cpp} = {val};')
+                return
             self.write_line(f'this->{self._attr_cpp_name(receiver, field)} = {val};')
             return
         recv, sep = self._receiver_access(receiver)
@@ -3769,9 +3780,8 @@ class Translator(ast.NodeVisitor):
             self._emit_body(frame.finally_body)
 
     def _emit_try_finally(self, frame: _TryFrame) -> None:
-        if not frame.finally_body or frame.finally_emitted:
+        if not frame.finally_body:
             return
-        frame.finally_emitted = True
         self._emit_body(frame.finally_body)
 
     def _emit_active_finally(self) -> None:
@@ -4548,7 +4558,7 @@ class Translator(ast.NodeVisitor):
         else:
             var = var_name
         param_decls = ', '.join((f'{cpp_t} {name}' for name, cpp_t in param_pairs))
-        capture = '[this]' if uses_self else '[]'
+        capture = '[&]' if self.scope is not None else ('[this]' if uses_self else '[]')
         saved_types = dict(self.scope.var_types) if self.scope else {}
         saved_vars = dict(self.scope.vars) if self.scope else {}
         try:
@@ -4685,6 +4695,9 @@ class Translator(ast.NodeVisitor):
                     pass
                 elif rhs_node is not None and self._try_emit_self_field_move_from_param(attr, rhs_node):
                     pass
+                elif self.class_info and attr in getattr(self.class_info, 'thread_local_fields', {}):
+                    cpp = self.class_info.cpp_member_name(attr)
+                    self.write_line(f'{self.class_info.cpp_name()}::{cpp} = {value};')
                 elif self.class_info and attr in self.class_info.properties and (self.class_info.properties[attr].setter or self.class_info.properties[attr].postsetter):
                     val = self._coerce_property_setter_value(self.class_info, attr, value, rhs_node)
                     self.write_line(f'this->{self._property_setter_cpp_name(self.class_info, attr)}({val});')
@@ -5260,6 +5273,9 @@ class Translator(ast.NodeVisitor):
                 if node.attr in cls.static_class_fields:
                     cpp = cls.cpp_member_name(node.attr)
                     return qualified_class_static_callee(cls, cpp)
+                if node.attr in getattr(cls, 'thread_local_fields', {}):
+                    cpp = cls.cpp_member_name(node.attr)
+                    return qualified_class_static_callee(cls, cpp)
                 if cls.inject_type_id and node.attr == '__id__':
                     return f"{cls.cpp_name()}::{property_getter_method_for('__id__')}()"
                 sp_read = self._static_property_read(node.value.id, node.attr)
@@ -5290,6 +5306,9 @@ class Translator(ast.NodeVisitor):
         match node.value:
             case ast.Name(id='self'):
                 if self.class_info and node.attr in self.class_info.static_class_fields:
+                    cpp = self.class_info.cpp_member_name(node.attr)
+                    return f'{self.class_info.cpp_name()}::{cpp}'
+                if self.class_info and node.attr in getattr(self.class_info, 'thread_local_fields', {}):
                     cpp = self.class_info.cpp_member_name(node.attr)
                     return f'{self.class_info.cpp_name()}::{cpp}'
                 attr = node.attr
@@ -5439,6 +5458,36 @@ class Translator(ast.NodeVisitor):
         return cpp_union_static_call(cls_cpp, variant)
 
     def _visit_value_for_type(self, node: ast.expr, cpp_type: str) -> str:
+        if isinstance(node, ast.Lambda):
+            from .analysis.delegates import DelegateInfo
+            from .emit.delegate_emit import py_callable_owned_lambda_expr, py_callable_type_to_delegate_params
+            parsed = py_callable_type_to_delegate_params(cpp_type)
+            if parsed is not None:
+                ret_cpp, params = parsed
+                info = DelegateInfo(
+                    name='Callable',
+                    module_path=self._active_module_path(),
+                    type_params=(),
+                    func_template_names=(),
+                    params=params,
+                    ret_cpp=ret_cpp,
+                    node=ast.FunctionDef(
+                        name='Callable',
+                        args=ast.arguments(
+                            posonlyargs=[],
+                            args=[],
+                            vararg=None,
+                            kwonlyargs=[],
+                            kw_defaults=[],
+                            kwarg=None,
+                            defaults=[],
+                        ),
+                        body=[],
+                        decorator_list=[],
+                    ),
+                )
+                lam_var = self._emit_delegate_cpp_lambda(node, info)
+                return py_callable_owned_lambda_expr(lam_var, ret_cpp, params)
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
             match node.func.value:
                 case ast.Name(id=cls) if is_json_class_ref(self, cls):

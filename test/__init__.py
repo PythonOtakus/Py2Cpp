@@ -6,7 +6,7 @@
 | 目录 | 对应标准库 |
 |------|------------|
 | ``text/`` | ``py2cpp/text/`` |
-| ``util/`` | ``py2cpp/util/``（含 ``pool``、``misc``） |
+| ``util/`` | ``py2cpp/util/``（含 ``Pool``、``misc``） |
 | ``io/`` | ``py2cpp/io/``（``test_io.py``） |
 | ``io/file/`` | ``py2cpp/io/file/``、``io/file/path`` |
 | ``system/`` | ``py2cpp/system/``（``time``、``datetime``） |

@@ -692,6 +692,9 @@ def propagate_mixin_static_fields(host: ClassInfo, mixin: ClassInfo) -> None:
   for name, stmt in mixin.static_class_fields.items():
     if name not in host.static_class_fields:
       host.static_class_fields[name] = copy.deepcopy(stmt)
+  for name, stmt in getattr(mixin, "thread_local_fields", {}).items():
+    if name not in getattr(host, "thread_local_fields", {}):
+      host.thread_local_fields[name] = copy.deepcopy(stmt)
 
 
 def propagate_mixin_instance_fields(host: ClassInfo, mixin: ClassInfo) -> None:

@@ -11,6 +11,8 @@ from src.translator import Translator
 class PropertyPostsetterEmitTests(unittest.TestCase):
   def test_emits_synthetic_setter_and_postset(self):
     src = """
+from py2cpp import *
+
 class Counter:
   last_set: int = 0
 
@@ -39,6 +41,8 @@ class Counter:
 
   def test_field_annotation_shorthand(self):
     src = """
+from py2cpp import *
+
 class Counter:
   last_set: int = 0
 
@@ -61,6 +65,8 @@ class Counter:
 
   def test_field_shorthand_conflicts_with_method(self):
     src = """
+from py2cpp import *
+
 class Bad:
   x: int @property.postsetter(on_x) = 0
   last_set: int = 0
@@ -82,6 +88,8 @@ class Bad:
 
   def test_rejects_postsetter_with_getter(self):
     src = """
+from py2cpp import *
+
 class Bad:
   @property
   def x(self) -> int:

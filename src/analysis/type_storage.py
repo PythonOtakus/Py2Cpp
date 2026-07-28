@@ -127,6 +127,8 @@ def apply_refcount_storage_type_node(
     info = _class_for_template_node(node, classes)
     if info is not None and info.is_refcount:
       bare = info.cpp_name()
+      if node.name == bare and node.args:
+        return TypeNode.refcount(TypeNode.template(node.py_name, bare, *node.args))
       if node.name == bare or cpp == bare or cpp == info.storage_cpp_type():
         inner_name = info.storage_cpp_type()
         if inner_name.startswith(CPP_REFCount_PREFIX.rstrip("<")):

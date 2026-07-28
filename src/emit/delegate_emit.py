@@ -148,10 +148,16 @@ def py_callable_lambda_invoke_ref(lam_var: str, ret: str, params: tuple[Delegate
         types = f'decltype({lam_var}), {ret}'
     return f'py_callable_lambda_invoke<{types}>::call'
 
+def py_callable_owned_lambda_expr(lam_var: str, ret: str, params: tuple[DelegateParam, ...]) -> str:
+    if params:
+        types = ', '.join([ret, f'decltype({lam_var})', *(p.cpp_type for p in params)])
+    else:
+        types = f'{ret}, decltype({lam_var})'
+    return f'py_callable_make_owned_lambda<{types}>({lam_var})'
+
 def _emit_lambda_callable(tr: 'Translator', info: DelegateInfo, lam: ast.Lambda) -> str:
     lam_var = tr._emit_delegate_cpp_lambda(lam, info)
-    invoke = py_callable_lambda_invoke_ref(lam_var, info.ret_cpp, info.params)
-    return _emit_callable_slot(info, f'(void*)&{lam_var}', f'&{invoke}')
+    return py_callable_owned_lambda_expr(lam_var, info.ret_cpp, info.params)
 
 def _scope_py_callable_var(tr: 'Translator', name: str) -> str | None:
     if tr.scope is None or not scope_has_type_binding(tr.scope, name):
@@ -181,15 +187,14 @@ def try_emit_delegate_lambda_assign(tr: 'Translator', target: ast.expr, lam: ast
         return False
     ret_cpp, params = parsed
     lam_var = tr._emit_delegate_cpp_lambda(lam, None, var_name=f'_{cpp_var}_lam')
-    invoke = py_callable_lambda_invoke_ref(lam_var, ret_cpp, params)
-    slot = _emit_callable_slot_type(slot_type, f'(void*)&{lam_var}', f'&{invoke}')
+    slot = py_callable_owned_lambda_expr(lam_var, ret_cpp, params)
     tr.write_line(f'{slot_type} {cpp_var} = {slot};')
     if tr.scope is not None:
         bind_scope_var(tr.scope, name, slot_type, classes=tr.classes)
     return True
 
 def try_emit_delegate_handler(tr: 'Translator', info: DelegateInfo, node: ast.expr) -> str | None:
-    """将 ``+=`` / ``-=`` 右侧译为 ``PyCallable{ctx, invoke}`` 字面量。"""
+    """将 ``+=`` / ``-=`` 右侧译为 ``PyCallable{_closure, _func}`` 槽位。"""
     match node:
         case ast.Name(id=name):
             callable_var = _scope_py_callable_var(tr, name)

@@ -1,4 +1,4 @@
-"""``pool[T]`` 功能与 ``alloc``/``free`` 微基准（``py2cpp/util/pool.py``）。"""
+"""``Pool[T]`` 功能与 ``alloc``/``free`` 微基准（``py2cpp/util/pool.py``）。"""
 
 from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
@@ -15,7 +15,7 @@ class PoolBasicTests(TestCaseMixin):
 
   @override
   def test(self):
-    p: pool[PoolIntBox] = new(2)
+    p: Pool[PoolIntBox] = new(2)
     self.assertEqual(len(p), 0)
     self.assertEqual(p.capacity, 0)
     p.capacity = 4
@@ -43,7 +43,7 @@ class PoolReuseTests(TestCaseMixin):
 
   @override
   def test(self):
-    p: pool[PoolIntBox] = new(4)
+    p: Pool[PoolIntBox] = new(4)
     for i in range(8):
       q: Pointer[PoolIntBox] = p.acquire()
       init(q, PoolIntBox(i))
@@ -59,7 +59,7 @@ class PoolGrowLiveTests(TestCaseMixin):
 
   @override
   def test(self):
-    p: pool[PoolIntBox] = new(2)
+    p: Pool[PoolIntBox] = new(2)
     p.capacity = 2
     a: Pointer[PoolIntBox] = p.acquire()
     b: Pointer[PoolIntBox] = p.acquire()
@@ -110,7 +110,7 @@ def _bench_alloc_free_wall(n: int) -> (float64, int):
 
 def _bench_pool_ping_pong_wall(n: int) -> (float64, int):
   """整段 wall-clock：单槽 ping-pong acquire/release（旧累加计时口径）。"""
-  pl: pool[PoolIntBox] = new()
+  pl: Pool[PoolIntBox] = new()
   acc: int = 0
   t0: float64 = perf_counter()
   cur: Pointer[PoolIntBox] = pl.acquire()
@@ -131,15 +131,15 @@ def _bench_pool_ping_pong_wall(n: int) -> (float64, int):
 def _bench_pool_batch_wall(n: int) -> (float64, int):
   """整段 wall-clock：n 次 acquire+init，再 n 次 release（与 alloc 两阶段对称）。
 
-  同时存活槽数受 ``pool._SLOT_CAP`` 限制，按块分批以免撑爆栈式空闲表。
+  同时存活槽数受 ``Pool._SLOT_CAP`` 限制，按块分批以免撑爆栈式空闲表。
   """
-  pl: pool[PoolIntBox] = new()
+  pl: Pool[PoolIntBox] = new()
   acc: int = 0
   t0: float64 = perf_counter()
-  for base in range(0, n, pool._SLOT_CAP):
+  for base in range(0, n, Pool._SLOT_CAP):
     chunk: int = n - base
-    if chunk > pool._SLOT_CAP:
-      chunk = pool._SLOT_CAP
+    if chunk > Pool._SLOT_CAP:
+      chunk = Pool._SLOT_CAP
     slots: list[Pointer[PoolIntBox]] = []
     for i in range(chunk):
       p: Pointer[PoolIntBox] = pl.acquire()
@@ -176,7 +176,7 @@ def _print_alloc_vs_pool(
     f"  n={n}  alloc/free={t_alloc:.6f}s  "
     f"pool_batch={t_pool_batch:.6f}s (alloc/batch={ratio_batch:.2f}x)  "
     f"pool_ping={t_pool_ping:.6f}s (alloc/ping={ratio_ping:.2f}x)  "
-    f"block_cap={pool._BLOCK_CAP}"
+    f"block_cap={Pool._BLOCK_CAP}"
   )
 
 

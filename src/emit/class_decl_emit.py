@@ -385,6 +385,15 @@ def _emit_class_static_field_decl(tr: 'Translator', info: ClassInfo, stmt: ast.A
         t = cpp_ident('int')
     tr.write_line(f'static constexpr {t} {cpp} = {val};')
 
+def _emit_class_thread_local_field_decl(tr: 'Translator', info: ClassInfo, stmt: ast.AnnAssign) -> None:
+    name = stmt.target.id
+    ann = stmt.annotation
+    t = tr._parse_type(ann, info.type_params) if ann is not None else cpp_ident('int')
+    if info.is_template():
+        t = tr._rewrite_template_args_to_cpp_params(t, info)
+    cpp = info.cpp_member_name(name)
+    tr.write_line(f'static thread_local {t} {cpp};')
+
 def _emit_class_field_decl(tr: 'Translator', info: ClassInfo, field: str) -> None:
     from ..analysis.ir import resolve_self_in_cpp_type
     ftype = field_storage_cpp(info, field, fallback=cpp_ident('int') if field in INT_FIELDS else 'void*')
@@ -540,8 +549,10 @@ def _emit_class_declaration(tr: 'Translator', info: ClassInfo):
                 buckets[acc].append(('static_mutable_field', storage))
             for _name, stmt in info.static_class_fields.items():
                 buckets['public'].append(('static_field', stmt))
+            for _name, stmt in getattr(info, 'thread_local_fields', {}).items():
+                buckets[info.member_access_level(_name)].append(('thread_local_field', stmt))
             for field in info.fields:
-                if field in info.static_class_fields or field in info.static_property_storage:
+                if field in info.static_class_fields or field in info.static_property_storage or field in getattr(info, 'thread_local_fields', {}):
                     continue
                 buckets[info.member_access_level(field)].append(('field', field))
             overload_defs = {id(ov) for ovs in info.method_overloads.values() for ov in ovs}
@@ -697,6 +708,8 @@ def _emit_class_declaration(tr: 'Translator', info: ClassInfo):
                         match kind:
                             case 'static_field':
                                 _emit_class_static_field_decl(tr, info, data)
+                            case 'thread_local_field':
+                                _emit_class_thread_local_field_decl(tr, info, data)
                             case 'static_mutable_field':
                                 _emit_class_static_mutable_field_decl(tr, info, data)
                             case 'field':

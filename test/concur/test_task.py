@@ -2,6 +2,7 @@
 from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 from py2cpp.concur.task import Task, LoopHandle
+from py2cpp.concur.thread import Thread
 
 
 _buf_entries: list[int] = []
@@ -29,6 +30,26 @@ async def duration_after_ticks() -> float64:
   await Task.sleep(0)
   await Task.sleep(0)
   return Task.duration
+
+
+def thread_return_123() -> int:
+  return 123
+
+
+def thread_worker_not_main() -> int:
+  current: Thread = Thread.current
+  main: Thread = Thread.main
+  if current.ident not in {0, main.ident}:
+    return 1
+  return 0
+
+
+async def run_thread_value() -> int:
+  return await Task.run_thread(thread_return_123)
+
+
+async def run_thread_identity() -> int:
+  return await Task.run_thread(thread_worker_not_main)
 
 
 class TaskSleepZeroTests(TestCaseMixin):
@@ -89,6 +110,15 @@ class TaskMultiRunTests(TestCaseMixin):
       v: int = Task.run(tick_log(7))
       self.assertEqual(v, 7)
     self.assertEqual(len(_buf_entries), 6)
+
+
+class TaskRunThreadTests(TestCaseMixin):
+  _test_tag = 6
+
+  @override
+  def test(self):
+    self.assertEqual(Task.run(run_thread_value()), 123)
+    self.assertEqual(Task.run(run_thread_identity()), 1)
 
 
 def main():

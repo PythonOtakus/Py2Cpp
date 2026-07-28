@@ -292,10 +292,10 @@ def emit_named_call_args(tr: Translator, node: ast.Call, param_names: list[str],
         if lazy_info is not None:
             from .lazy_param_emit import try_emit_lazy_call_arg
             v = try_emit_lazy_call_arg(tr, arg, lazy_info, param_name=name, func=node.func)
+        elif i < len(param_cpp_types) and param_cpp_types[i]:
+            v = tr._visit_value_for_type(arg, param_cpp_types[i])
         else:
             v = tr._visit_value_expr(arg)
-            if i < len(param_cpp_types) and param_cpp_types[i]:
-                v = tr._coerce_expr_to_cpp_type(v, param_cpp_types[i], rhs_node=arg)
         bound[name] = v
     for kw in node.keywords:
         if kw.arg is None:
@@ -762,6 +762,37 @@ def _task_elem_type_from_expr(tr: 'Translator', arg: ast.expr) -> str | None:
     args = split_cpp_template_args(inner[:-1])
     return args[0].strip() if args else None
 
+def _module_function_return_cpp_type(tr: 'Translator', module_path: str | None, name: str) -> str | None:
+    if module_path is None:
+        return None
+    for f_mp, func in tr.module_functions:
+        if f_mp != module_path or func.name != name or func.returns is None:
+            continue
+        from ..analysis.variadic_template import parse_function_type_params
+        regular, _capture, _header_tuple = parse_function_type_params(func)
+        return tr._parse_storage_type(func.returns, set(regular))
+    return None
+
+def _callable_return_type_from_expr(tr: 'Translator', arg: ast.expr) -> str | None:
+    from .delegate_emit import py_callable_type_parts
+    t = strip_cpp_ref(tr._infer_expr_cpp_type(arg) or '')
+    parts = py_callable_type_parts(t)
+    if parts is not None and not parts[1]:
+        return parts[0]
+    if isinstance(arg, ast.Lambda):
+        ret = strip_cpp_ref(tr._infer_expr_cpp_type(arg.body) or '')
+        return ret or cpp_ident('int')
+    if isinstance(arg, ast.Name):
+        binding = tr._effective_import_bindings().get(arg.id)
+        if binding is not None and binding.kind == 'function':
+            hit = _module_function_return_cpp_type(tr, binding.module_path, binding.symbol)
+            if hit is not None:
+                return hit
+        hit = _module_function_return_cpp_type(tr, tr._active_module_path(), arg.id)
+        if hit is not None:
+            return hit
+    return None
+
 def _static_method_template_angle(tr: 'Translator', info: ClassInfo, method: str, node: ast.Call) -> str:
     sig = info.method_sigs.get(method)
     if sig is None or not sig.func_ft.template_names:
@@ -1024,9 +1055,10 @@ def _emit_module_function_call(tr: 'Translator', mp: str, func_def: ast.Function
     if param_types:
         parts: list[str] = []
         for i, arg in enumerate(kept):
-            v = tr._visit_value_expr(arg)
             if i < len(param_types) and param_types[i]:
-                v = tr._coerce_expr_to_cpp_type(v, param_types[i], rhs_node=arg)
+                v = tr._visit_value_for_type(arg, param_types[i])
+            else:
+                v = tr._visit_value_expr(arg)
             parts.append(v)
         arg_str = ', '.join(parts)
     else:
@@ -1498,8 +1530,21 @@ def emit_call_expr(tr: Translator, node: ast.Call):
                     else:
                         from ..analysis.ir import qualified_class_static_callee
                         arg_t = tr._infer_expr_cpp_type(node.args[0]) if node.args else None
-                        callee = qualified_class_static_callee(info, mcpp, arg_cpp_type=arg_t)
-                        tpl = _static_method_template_angle(tr, info, attr, node)
+                        run_thread_ret: str | None = None
+                        if (
+                            info.name == 'Task'
+                            and info.module_path.endswith('concur/task')
+                            and attr == 'run_thread'
+                            and node.args
+                        ):
+                            run_thread_ret = _callable_return_type_from_expr(tr, node.args[0])
+                        if run_thread_ret:
+                            base = qualify_symbol_in_module(info.module_path, info.cpp_name())
+                            callee = f'{base}<{run_thread_ret}>::{mcpp}'
+                            tpl = ''
+                        else:
+                            callee = qualified_class_static_callee(info, mcpp, arg_cpp_type=arg_t)
+                            tpl = _static_method_template_angle(tr, info, attr, node)
                         if tpl:
                             callee = f'{callee}{tpl}'
                         if attr == 'create' and node.args:
@@ -1507,6 +1552,8 @@ def emit_call_expr(tr: Translator, node: ast.Call):
                         elif attr == 'gather' and tpl and node.args:
                             elem = tpl.strip('<>')
                             arg_str = _emit_task_gather_pack(tr, info, node, elem)
+                        elif run_thread_ret and node.args:
+                            arg_str = emit_call_args(tr, node, param_cpp_types=[f'PyCallable<{run_thread_ret}>'])
                         else:
                             arg_str = emit_call_args(tr, node, param_cpp_types=tr._ordered_method_param_cpp_types(info, attr))
                     if arg_str:

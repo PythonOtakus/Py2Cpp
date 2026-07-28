@@ -1,4 +1,4 @@
-"""``pool[T]``：多段块对象池（贴近 ``std::hive`` 块复用；非 CPython 标准库）。
+"""``Pool[T]``：多段块对象池（贴近 ``std::hive`` 块复用；非 CPython 标准库）。
 
 ``_block_bufs`` 块表 + 栈定长 ``_free_top`` / ``_free_data``（每块 LIFO 空闲下标，无 ``PyList``）
 + ``_use_mark``（在用槽标记）+ ``_meta_*`` / ``_skip_hi``（``_skip_hi_append`` 增量维护）。
@@ -20,7 +20,7 @@ class pool_slot_loc:
 
 
 @native_name("PyPool")
-class pool[T]:
+class Pool[T]:
   """``block_capacity`` 为每块槽数（≤ ``Self._BLOCK_CAP``）。"""
 
   _BLOCK_CAP: int @const = 64
@@ -30,9 +30,9 @@ class pool[T]:
 
   def __init__(self, block_capacity: int = Self._BLOCK_CAP):
     if block_capacity < 1:
-      raise ValueError("pool block_capacity must be >= 1")
+      raise ValueError("Pool block_capacity must be >= 1")
     if block_capacity > Self._BLOCK_CAP:
-      raise ValueError("pool block_capacity exceeds Self._BLOCK_CAP")
+      raise ValueError("Pool block_capacity exceeds Self._BLOCK_CAP")
     self._block_capacity: int = block_capacity
     self._block_bufs: list[Pointer[T]] = []
     self._free_top: int[:_BLOCK_COUNT] = new()
@@ -63,7 +63,7 @@ class pool[T]:
   @property.setter
   def capacity(self, need: int) -> None:
     if need < 0:
-      raise ValueError("pool.capacity must be >= 0")
+      raise ValueError("Pool.capacity must be >= 0")
     cur: int = len(self._block_bufs) * self._block_capacity
     while cur < need:
       self._add_block()
@@ -75,7 +75,7 @@ class pool[T]:
       self._add_block()
       loc = self._pop_free_slot()
       if loc.block_index < 0:
-        raise ValueError("pool.acquire: no free slot")
+        raise ValueError("Pool.acquire: no free slot")
     b: int = loc.block_index
     self._use_mark[self._free_base(b) + loc.offset] = 1
     self._live += 1
@@ -84,13 +84,13 @@ class pool[T]:
   def release(self, ptr: Pointer[T]) -> None:
     loc: pool_slot_loc = self._locate_ptr(ptr)
     if loc.block_index < 0:
-      raise ValueError("pool.release: pointer not from this pool")
+      raise ValueError("Pool.release: pointer not from this pool")
     destroy(ptr)
     b: int = loc.block_index
     self._use_mark[self._free_base(b) + loc.offset] = 0
     top: int = self._free_top[b]
     if top >= self._block_capacity:
-      raise ValueError("pool.release: free stack overflow")
+      raise ValueError("Pool.release: free stack overflow")
     base: int = self._free_base(b)
     self._free_data[base + top] = loc.offset
     self._free_top[b] = top + 1
@@ -120,7 +120,7 @@ class pool[T]:
   def _add_block(self):
     n_blocks: int = len(self._block_bufs)
     if n_blocks >= Self._BLOCK_COUNT:
-      raise ValueError("pool: too many blocks (max Self._BLOCK_COUNT)")
+      raise ValueError("Pool: too many blocks (max Self._BLOCK_COUNT)")
     cap: int = self._block_capacity
     base: Pointer[T] = allocArray[T](cap)
     self._block_bufs.append(base)

@@ -115,6 +115,18 @@ def probe() -> int:
     )
     self.assertGreaterEqual(cpp.count("acc = 2;"), 1)
 
+  def test_conditional_return_does_not_skip_fallthrough_finally(self):
+    cpp = self._translate(
+      "  acc: int = 0\n"
+      "  try:\n"
+      "    if acc == 0:\n"
+      "      return 1\n"
+      "  finally:\n"
+      "    acc = 2\n"
+      "  return acc\n",
+    )
+    self.assertGreaterEqual(cpp.count("acc = 2;"), 3)
+
   def test_except_as_binds_exception(self):
     cpp = self._translate(
       "  n: int = 0\n"

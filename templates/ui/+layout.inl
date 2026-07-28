@@ -536,19 +536,19 @@ static void _ui_row_fire_value_changed(UIRowEntry& row)
   switch (row.kind)
   {
     case UI_ROW_CHECKBOX: {
-      row.checkbox.checked__set(row.bval);
+      row.checkbox.PY2CPP_SETTER(checked)(row.bval);
       break;
     }
     case UI_ROW_LINE_EDIT: {
-      row.line_edit.text__set(row.sval);
+      row.line_edit.PY2CPP_SETTER(text)(row.sval);
       break;
     }
     case UI_ROW_INT_EDIT: {
-      row.int_edit.value__set(row.ival);
+      row.int_edit.PY2CPP_SETTER(value)(row.ival);
       break;
     }
     case UI_ROW_SLIDER: {
-      row.slider.value__set(row.ival);
+      row.slider.PY2CPP_SETTER(value)(row.ival);
       break;
     }
     default:
@@ -678,7 +678,7 @@ void UIFormLayout::add_checkbox(PyStr label, py2cpp::ui::widget::UICheckBox& wid
   row.kind = UI_ROW_CHECKBOX;
   row.label = label;
   row.ctrl = NULL;
-  row.bval = widget.checked__get();
+  row.bval = widget.PY2CPP_GETTER(checked)();
   row.sval = PyStr("");
   row.ival = 0;
   row.lo = 0;
@@ -695,7 +695,7 @@ void UIFormLayout::add_line_edit(PyStr label, py2cpp::ui::widget::UILineEdit& wi
   row.label = label;
   row.ctrl = NULL;
   row.bval = false;
-  row.sval = widget.text__get();
+  row.sval = widget.PY2CPP_GETTER(text)();
   row.ival = 0;
   row.lo = 0;
   row.hi = 0;
@@ -712,7 +712,7 @@ void UIFormLayout::add_int_edit(PyStr label, py2cpp::ui::widget::UIIntEdit& widg
   row.ctrl = NULL;
   row.bval = false;
   row.sval = PyStr("");
-  row.ival = widget.value__get();
+  row.ival = widget.PY2CPP_GETTER(value)();
   row.lo = 0;
   row.hi = 0;
   row.int_edit = widget;
@@ -728,7 +728,7 @@ void UIFormLayout::add_slider(PyStr label, py2cpp::ui::widget::UISlider& widget)
   row.ctrl = NULL;
   row.bval = false;
   row.sval = PyStr("");
-  row.ival = widget.value__get();
+  row.ival = widget.PY2CPP_GETTER(value)();
   row.lo = widget.lo;
   row.hi = widget.hi;
   row.slider = widget;
@@ -907,7 +907,7 @@ void UIFormLayout::push_row_bool(PyInt index, PyBool value)
     return;
   }
   row.bval = value;
-  row.checkbox.checked__set(value);
+  row.checkbox.PY2CPP_SETTER(checked)(value);
 }
 
 void UIFormLayout::push_row_str(PyInt index, PyStr value)
@@ -923,7 +923,7 @@ void UIFormLayout::push_row_str(PyInt index, PyStr value)
     return;
   }
   row.sval = value;
-  row.line_edit.text__set(value);
+  row.line_edit.PY2CPP_SETTER(text)(value);
 }
 
 void UIFormLayout::push_row_int(PyInt index, PyInt value)
@@ -937,13 +937,13 @@ void UIFormLayout::push_row_int(PyInt index, PyInt value)
   if (row.kind == UI_ROW_INT_EDIT)
   {
     row.ival = value;
-    row.int_edit.value__set(value);
+    row.int_edit.PY2CPP_SETTER(value)(value);
     return;
   }
   if (row.kind == UI_ROW_SLIDER)
   {
     row.ival = value;
-    row.slider.value__set(value);
+    row.slider.PY2CPP_SETTER(value)(value);
   }
 }
 

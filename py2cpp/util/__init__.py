@@ -1,7 +1,8 @@
 """容器与序列类型（``list`` / ``dict`` / ``set`` / …）。"""
 from ..builtins import *
 from .array import array
-from .pool import pool
+from .arena import Arena
+from .pool import Pool
 from .deque import deque
 from .dict import dict, frozendict
 from .misc import Counter
@@ -20,7 +21,8 @@ from .types import (
 
 __all__ = [
   "array",
-  "pool",
+  "Arena",
+  "Pool",
   "deque",
   "dict",
   "frozendict",

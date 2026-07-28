@@ -414,7 +414,7 @@ class str(StringMixin[char]):
     dest[lim] = char(0)
 
   def adopt_span(self, seg: span[char]) -> None:
-    """接管 ``span[char]`` 底层 ``char`` 缓冲（serde arena；勿与 ``reshape`` 混用）。"""
+    """接管 ``span[char]`` 底层 ``char`` 缓冲（serde Arena；勿与 ``reshape`` 混用）。"""
     self._data.adopt_span(seg)
     self._hash = 0
     self._hash_ok = False

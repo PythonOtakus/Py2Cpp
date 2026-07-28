@@ -67,6 +67,14 @@ class SlotHolder:
   slot: Callable[[int], int]
 
 
+class SlotFactory:
+  v: int = 0
+
+  def make_slot(self) -> Callable[[int], int]:
+    slot = lambda x: self.v + x
+    return slot
+
+
 class DelegateBasicTests(TestCaseMixin):
   _test_tag = 10
 
@@ -183,6 +191,19 @@ class CallableParamTests(TestCaseMixin):
     self.assertEqual(d(3), 5)
     detach_slot(d, slot)
     self.assertFalse(d)
+
+
+class CallableLifetimeTests(TestCaseMixin):
+  _test_tag = 70
+
+  @override
+  def test(self):
+    factory: SlotFactory = new()
+    factory.v = 10
+    slot: Callable[[int], int] = factory.make_slot()
+    self.assertEqual(slot(3), 13)
+    factory.v = 20
+    self.assertEqual(slot(3), 23)
 
 
 def main():

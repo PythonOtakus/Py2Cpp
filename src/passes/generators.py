@@ -389,7 +389,7 @@ def _infer_yield_from_result_ann(expr: ast.expr, tr: Translator, body: list[ast.
     and inner.func.attr == "__await__"
   ):
     inner = inner.func.value
-  ta = _task_await_iter_ann(inner)
+  ta = _task_await_iter_ann(inner, tr)
   if isinstance(ta, ast.Subscript) and isinstance(ta.value, ast.Name):
     if ta.value.id == "_TaskAwaitIter":
       if isinstance(ta.slice, ast.Constant) and ta.slice.value is None:
@@ -489,8 +489,30 @@ def _scandir_iter_ann() -> ast.expr:
   return ast.Name(id="ScandirIterator")
 
 
-def _task_await_iter_ann(inner: ast.expr) -> ast.expr | None:
-  """``Task.sleep/gather(...)`` → ``_TaskAwaitIter[…]``（``__await__`` 接收者）。"""
+def _module_function_return_ann(tr: Translator, module_path: str | None, name: str) -> ast.expr | None:
+  if module_path is None:
+    return None
+  for f_mp, func in tr.module_functions:
+    if f_mp == module_path and func.name == name and func.returns is not None:
+      return copy.deepcopy(func.returns)
+  return None
+
+
+def _run_thread_return_ann(arg: ast.expr, tr: Translator) -> ast.expr:
+  if isinstance(arg, ast.Name):
+    binding = tr._effective_import_bindings().get(arg.id)
+    if binding is not None and binding.kind == "function":
+      hit = _module_function_return_ann(tr, binding.module_path, binding.symbol)
+      if hit is not None:
+        return hit
+    hit = _module_function_return_ann(tr, tr._active_module_path(), arg.id)
+    if hit is not None:
+      return hit
+  return ast.Name(id="int")
+
+
+def _task_await_iter_ann(inner: ast.expr, tr: Translator) -> ast.expr | None:
+  """``Task.sleep/gather/run_thread(...)`` → ``_TaskAwaitIter[…]``（``__await__`` 接收者）。"""
   if not isinstance(inner, ast.Call) or not isinstance(inner.func, ast.Attribute):
     return None
   recv = inner.func.value
@@ -506,6 +528,14 @@ def _task_await_iter_ann(inner: ast.expr) -> ast.expr | None:
     return ast.Subscript(
       value=ast.Name(id="_TaskAwaitIter"),
       slice=ast.Subscript(value=ast.Name(id="list"), slice=ast.Name(id="int")),
+    )
+  if meth == "run_thread":
+    elem: ast.expr = ast.Name(id="int")
+    if inner.args:
+      elem = _run_thread_return_ann(inner.args[0], tr)
+    return ast.Subscript(
+      value=ast.Name(id="_TaskAwaitIter"),
+      slice=elem,
     )
   return None
 
@@ -523,7 +553,7 @@ def _infer_iter_type(
   lookup_body = ann_body if ann_body is not None else body
   match expr:
     case ast.Call(func=ast.Attribute(value=inner, attr="__await__")):
-      ta = _task_await_iter_ann(inner)
+      ta = _task_await_iter_ann(inner, tr)
       if ta is not None:
         return ta
       return _infer_iter_type(
@@ -533,6 +563,11 @@ def _infer_iter_type(
     case ast.Call(func=ast.Attribute(value=ast.Name(id="Task"), attr=meth)) if meth == "sleep":
       none = ast.Constant(value=None)
       return ast.Subscript(value=ast.Name(id="_TaskAwaitIter"), slice=none)
+    case ast.Call(func=ast.Attribute(value=ast.Name(id="Task"), attr=meth)) if meth == "run_thread":
+      elem: ast.expr = ast.Name(id="int")
+      if expr.args:
+        elem = _run_thread_return_ann(expr.args[0], tr)
+      return ast.Subscript(value=ast.Name(id="_TaskAwaitIter"), slice=elem)
     case ast.Call(func=ast.Attribute(value=ast.Name(id="self"), attr=meth)):
       if host_class is not None:
         coro_name = f"{host_class}_{meth}{COROUTINE_SUFFIX}"
@@ -1648,7 +1683,7 @@ def _is_task_scheduling_call(expr: ast.expr) -> bool:
     return False
   recv = inner.func.value
   if isinstance(recv, ast.Name) and recv.id == "Task":
-    return inner.func.attr in ("sleep", "gather", "create")
+    return inner.func.attr in ("sleep", "gather", "create", "run_thread")
   return False
 
 

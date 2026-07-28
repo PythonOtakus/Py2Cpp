@@ -31,6 +31,10 @@ typedef double PyFloat64;
 #define PY2CPP_FLOAT_MAX ((PyFloat)FLT_MAX)
 #define PY2CPP_FLOAT64_MIN ((PyFloat64)(-DBL_MAX))
 #define PY2CPP_FLOAT64_MAX ((PyFloat64)DBL_MAX)
+/// 手写 C++ 模板中访问 ``@property`` / ``@staticproperty`` / ``postsetter`` 的统一拼接宏。
+#define PY2CPP_GETTER(name) name##__get
+#define PY2CPP_SETTER(name) name##__set
+#define PY2CPP_POSTSETTER(name) name##__postset
 /// 标量静态方法：``float64.isInf(x)`` 等（译器 ``visit_Call`` 直映）
 #define PY2CPP_ISFINITE_F(x) ((PyBool)::isfinite((double)(x)))
 #define PY2CPP_ISINF_F(x) ((PyBool)::isinf((double)(x)))

@@ -1,5 +1,6 @@
 
 #include <type_traits>
+#include "py2cpp/py_types.h"
 
 namespace py2cpp {
 namespace access {
@@ -42,13 +43,13 @@ struct py2cpp_invoke_tag3 {};
 /* 每个翻译单元在首次使用某 attr/method 前须展开（由译器写入 ``namespace py2cpp::access``）。 */
 #define PY2CPP_DECLARE_GETATTR(attr) \
   template<typename T> \
-  auto get_##attr(T& o, int) -> decltype(o.attr##__get()) { return o.attr##__get(); } \
+  auto get_##attr(T& o, int) -> decltype(o.PY2CPP_GETTER(attr)()) { return o.PY2CPP_GETTER(attr)(); } \
   template<typename T> \
-  auto get_##attr(const T& o, int) -> decltype(o.attr##__get()) { return o.attr##__get(); } \
+  auto get_##attr(const T& o, int) -> decltype(o.PY2CPP_GETTER(attr)()) { return o.PY2CPP_GETTER(attr)(); } \
   template<typename T> \
-  auto get_##attr(T* o, int) -> decltype(o->attr##__get()) { return o->attr##__get(); } \
+  auto get_##attr(T* o, int) -> decltype(o->PY2CPP_GETTER(attr)()) { return o->PY2CPP_GETTER(attr)(); } \
   template<typename T> \
-  auto get_##attr(const T* o, int) -> decltype(o->attr##__get()) { return o->attr##__get(); } \
+  auto get_##attr(const T* o, int) -> decltype(o->PY2CPP_GETTER(attr)()) { return o->PY2CPP_GETTER(attr)(); } \
   template<typename T> \
   auto get_##attr(T& o, long) -> decltype((o.attr)) { return o.attr; } \
   template<typename T> \
@@ -182,9 +183,9 @@ template<typename T> \
 
 #define PY2CPP_DECLARE_SETATTR(attr) \
   template<typename T, typename V> \
-  auto set_##attr(T& o, V v, int) -> decltype(o.attr##__set(v), void()) { o.attr##__set(v); } \
+  auto set_##attr(T& o, V v, int) -> decltype(o.PY2CPP_SETTER(attr)(v), void()) { o.PY2CPP_SETTER(attr)(v); } \
   template<typename T, typename V> \
-  auto set_##attr(T* o, V v, int) -> decltype(o->attr##__set(v), void()) { o->attr##__set(v); } \
+  auto set_##attr(T* o, V v, int) -> decltype(o->PY2CPP_SETTER(attr)(v), void()) { o->PY2CPP_SETTER(attr)(v); } \
   template<typename T, typename V> \
   auto set_##attr(T& o, V v, long) -> decltype((o.attr = v), void()) { o.attr = v; } \
   template<typename T, typename V> \

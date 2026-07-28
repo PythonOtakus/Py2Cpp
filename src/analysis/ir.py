@@ -2196,13 +2196,18 @@ def is_ref_type_annotation(ann: ast.expr | None) -> bool:
 
 
 _TYPE_ANNOTATION_METADATA_MARKERS = frozenset(
-  {"const", "final", "optional", "property", "ref", "lazy"},
+  {"const", "final", "optional", "property", "ref", "lazy", "thread_local"},
 )
 
 
 def is_lazy_type_annotation(ann: ast.expr | None) -> bool:
   """``T @lazy``：形参惰性实参（``PyCallable<T>`` supplier）。"""
   return _matmult_marker_name(ann, "lazy")
+
+
+def is_thread_local_type_annotation(ann: ast.expr | None) -> bool:
+  """``T @thread_local``：类级 ``static thread_local`` 字段。"""
+  return _matmult_marker_name(ann, "thread_local")
 
 
 def iter_matmult_marker_names(ann: ast.expr | None) -> list[str]:
@@ -2240,6 +2245,7 @@ def _strip_type_annotation_markers_once(ann: ast.expr | None) -> ast.expr | None
     or is_property_type_annotation(ann)
     or is_ref_type_annotation(ann)
     or is_lazy_type_annotation(ann)
+    or is_thread_local_type_annotation(ann)
   ):
     return copy.deepcopy(ann.left)
   return copy.deepcopy(ann)
@@ -2257,6 +2263,8 @@ def strip_type_annotation_markers(ann: ast.expr | None) -> ast.expr | None:
     or is_property_type_annotation(out)
     or is_ref_type_annotation(out)
     or is_postsetter_type_annotation(out)
+    or is_lazy_type_annotation(out)
+    or is_thread_local_type_annotation(out)
   ):
     out = _strip_type_annotation_markers_once(out)
   return out
@@ -2874,6 +2882,8 @@ class ClassInfo:
     self.static_property_storage: set[str] = set()
     # 类体 ``name: T @const = <编译期常量>`` → C++ ``static const`` 成员
     self.static_class_fields: dict[str, ast.AnnAssign] = {}
+    # 类体 ``name: T @thread_local = v`` → C++ ``static thread_local`` 成员
+    self.thread_local_fields: dict[str, ast.AnnAssign] = {}
     # 类体 ``name: T = <默认>``（无 ``@const``）→ 实例字段默认值（供 dataclass 等）
     self.field_defaults: dict[str, ast.expr] = {}
     # 类体 ``name: T`` 显式实例字段注解（``__init__`` 赋值推断不得覆盖）
@@ -3359,6 +3369,24 @@ class ClassInfo:
         )
         ast.fix_missing_locations(static_stmt)
         self.static_class_fields[name] = static_stmt
+        if base_ann is not None:
+          write_field_storage(self, name, None)
+          write_field_ann_ast(self, name, base_ann)
+        return
+      if is_thread_local_type_annotation(stmt.annotation):
+        markers = set(iter_matmult_marker_names(stmt.annotation))
+        if "const" in markers or "final" in markers or "property" in markers:
+          raise NotImplementedError(
+            f"{self.name}.{name}: ``@thread_local`` 不支持与 ``@const`` / ``@final`` / ``@property`` 叠用"
+          )
+        static_stmt = ast.AnnAssign(
+          target=ast.Name(id=name, ctx=ast.Store()),
+          annotation=copy.deepcopy(base_ann) if base_ann is not None else None,
+          value=copy.deepcopy(stmt.value) if stmt.value is not None else None,
+          simple=1,
+        )
+        ast.fix_missing_locations(static_stmt)
+        self.thread_local_fields[name] = static_stmt
         if base_ann is not None:
           write_field_storage(self, name, None)
           write_field_ann_ast(self, name, base_ann)

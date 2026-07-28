@@ -87,12 +87,35 @@ def _emit_static_property_storage_defs(tr: "Translator", info: ClassInfo) -> Non
     tr.write_line()
 
 
+def _emit_thread_local_field_defs(tr: "Translator", info: ClassInfo) -> None:
+  """``T @thread_local`` → 类外 ``thread_local`` 静态成员定义（C++11）。"""
+  if not getattr(info, "thread_local_fields", {}):
+    return
+  from .class_decl_emit import _emit_field_default_initializer
+
+  qual = tr._class_method_qualifier(info)
+  for field, stmt in info.thread_local_fields.items():
+    ftype = field_storage_cpp(
+      info, field, fallback=cpp_ident("int") if field in INT_FIELDS else "void*",
+    )
+    if info.is_template():
+      ftype = tr._typename_member_alias_type(ftype, info)
+    member = info.cpp_member_name(field)
+    init = f"{ftype}()"
+    if stmt.value is not None:
+      init = _emit_field_default_initializer(tr, ftype, stmt.value)
+    if info.is_template():
+      tr._emit_template_prefix(info)
+    tr.write_line(f"thread_local {ftype} {qual}::{member} = {init};")
+    tr.write_line()
+
+
 def _emit_class_properties(tr: "Translator", info: ClassInfo) -> None:
   for prop in info.properties.values():
     if prop.getter and prop.getter_sig:
       if prop.name in info.field_properties or prop.name in info.postsetter_properties:
         _emit_field_backed_property_getter(tr, info, prop.name, prop.getter_sig)
-      else:
+      elif not (info.is_native or has_named_decorator(prop.getter, "native")):
         _emit_property_method(
           tr,
           info,
@@ -101,7 +124,10 @@ def _emit_class_properties(tr: "Translator", info: ClassInfo) -> None:
           tr._property_getter_cpp_name(info, prop.name),
           is_const=True,
         )
-    if prop.postsetter and prop.setter_sig and prop.postsetter_sig:
+    if (
+      prop.postsetter and prop.setter_sig and prop.postsetter_sig
+      and not (info.is_native or has_named_decorator(prop.postsetter, "native"))
+    ):
       _emit_postsetter_property_setter(tr, info, prop.name, prop.setter_sig)
       _emit_property_method(
         tr,
@@ -110,7 +136,10 @@ def _emit_class_properties(tr: "Translator", info: ClassInfo) -> None:
         prop.postsetter_sig,
         tr._property_postsetter_cpp_name(info, prop.name),
       )
-    elif prop.setter and prop.setter_sig:
+    elif (
+      prop.setter and prop.setter_sig
+      and not (info.is_native or has_named_decorator(prop.setter, "native"))
+    ):
       _emit_property_method(
         tr,
         info,
@@ -120,7 +149,10 @@ def _emit_class_properties(tr: "Translator", info: ClassInfo) -> None:
         descriptor_protocol_bounds=prop.descriptor_protocol_bounds,
       )
   for prop in info.static_properties.values():
-    if prop.getter and prop.getter_sig:
+    if (
+      prop.getter and prop.getter_sig
+      and not (info.is_native or has_named_decorator(prop.getter, "native"))
+    ):
       _emit_static_property_method(
         tr,
         info,
@@ -128,7 +160,10 @@ def _emit_class_properties(tr: "Translator", info: ClassInfo) -> None:
         prop.getter_sig,
         tr._property_getter_cpp_name(info, prop.name),
       )
-    if prop.postsetter and prop.setter_sig and prop.postsetter_sig:
+    if (
+      prop.postsetter and prop.setter_sig and prop.postsetter_sig
+      and not (info.is_native or has_named_decorator(prop.postsetter, "native"))
+    ):
       _emit_postsetter_static_property_setter(tr, info, prop.name, prop.setter_sig)
       _emit_static_property_setter(
         tr,
@@ -137,7 +172,10 @@ def _emit_class_properties(tr: "Translator", info: ClassInfo) -> None:
         prop.postsetter_sig,
         tr._property_postsetter_cpp_name(info, prop.name),
       )
-    elif prop.setter and prop.setter_sig:
+    elif (
+      prop.setter and prop.setter_sig
+      and not (info.is_native or has_named_decorator(prop.setter, "native"))
+    ):
       _emit_static_property_setter(
         tr,
         info,
@@ -171,6 +209,7 @@ def _emit_class_methods_body_impl(tr: "Translator", info: ClassInfo):
     tr._emit_virtual_dtor_definition(info)
     return
   _emit_static_property_storage_defs(tr, info)
+  _emit_thread_local_field_defs(tr, info)
   for init, sig in zip(info.inits, info.init_sigs):
     if tr._io_skip_runtime_method(info, init):
       continue

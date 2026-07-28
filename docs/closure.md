@@ -188,7 +188,7 @@ def outer() -> Callable[[], int]:
 若 `inner` **无** free/nonlocal/`self` capture：
 
 - 生成普通 **静态函数** `{mangled}(args...) -> Ret`（与模块函数 emit 相同，仅命名 mangled）。
-- 定义点：`PyCallable<Ret, Args...> inner = { ctx: nullptr, invoke: &{mangled}_thunk }` 或直接可调用对象包装（与自由函数 `PyCallable` 一致）。
+- 定义点：`PyCallable<Ret, Args...> inner = { _closure: nullptr, _func: &{mangled}_thunk }` 或直接可调用对象包装（与自由函数 `PyCallable` 一致）。
 
 ### 4.3 有 capture 闭包
 
@@ -260,9 +260,9 @@ void outer()
 
 | 形式 | Lowering |
 |------|----------|
-| `inner(a, b)` | 若变量类型为 `PyCallable<R, A, B>`：`py_callable_invoke(inner, a, b)` 或 `inner.invoke(inner.ctx, a, b)` |
+| `inner(a, b)` | 若变量类型为 `PyCallable<R, A, B>`：`inner(a, b)` 或 `inner._func(inner._closure, a, b)` |
 | 传给 `Callable[[A], R]` 形参 | 按值传递 `PyCallable`（与委托 §7.4 一致） |
-| 递归 `fact(n-1)` | `fact.invoke(fact.ctx, n-1)`；`fact` 为闭包变量 |
+| 递归 `fact(n-1)` | `fact._func(fact._closure, n-1)`；`fact` 为闭包变量 |
 
 ### 4.6 与 `lambda` 赋值规则一致
 

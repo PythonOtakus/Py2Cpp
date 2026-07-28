@@ -1,4 +1,4 @@
-"""``util.arena``：分配、``str.adopt_span``、``reset``。"""
+"""``util.Arena``：分配、``str.adopt_span``、``reset``。"""
 from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
@@ -8,8 +8,8 @@ class ArenaAdoptTests(TestCaseMixin):
 
   @override
   def test(self):
-    # ``arena.acquire`` / ``release`` + ``PyStr.adopt_span`` 接管缓冲
-    ar: arena = new()
+    # ``Arena.acquire`` / ``release`` + ``PyStr.adopt_span`` 接管缓冲
+    ar: Arena = new()
     p: Pointer[char] = ar.acquire(5)
     s: str = ""
     owned: span[char] = new(p, 5, 1)

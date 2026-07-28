@@ -214,7 +214,10 @@ def _access_is_internal(
     cls_name = _class_by_python_or_cpp_name(
       recv_class, classes, import_bindings, context=context,
     )
-  if cls_name and cls_name in classes and attr in classes[cls_name].static_class_fields:
+  if cls_name and cls_name in classes and (
+    attr in classes[cls_name].static_class_fields
+    or attr in getattr(classes[cls_name], "thread_local_fields", {})
+  ):
     return True
   if isinstance(recv, ast.Name) and recv.id in ("self", "Self", "new"):
     if context and class_extends(context.name, recv_class, classes):
@@ -460,6 +463,7 @@ def resolve_member_access(
     for overloads in info.method_overloads.values():
       names.update(ov.name for ov in overloads)
     names.update(info.static_class_fields)
+    names.update(getattr(info, "thread_local_fields", {}))
     for prop in info.properties.values():
       names.add(prop.name)
     for name in names:

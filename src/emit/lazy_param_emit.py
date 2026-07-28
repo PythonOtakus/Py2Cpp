@@ -68,15 +68,15 @@ def resolve_lazy_value_cpp_type_at_call(tr: 'Translator', func: ast.expr | None,
 
 def emit_lazy_supplier_from_expr(tr: 'Translator', expr: ast.expr, value_cpp_type: str) -> str:
     """实参表达式 → ``PyCallable<V>``（IIFE 内嵌零参 lambda）。"""
-    from ..emit.delegate_emit import py_callable_lambda_invoke_ref
+    from ..emit.delegate_emit import py_callable_owned_lambda_expr
     base = value_cpp_type.rstrip('&').strip()
     idx = tr._lazy_lambda_counter
     tr._lazy_lambda_counter += 1
     lam = f'_lazy_lam_{idx}'
     body = tr._visit_value_expr(expr)
-    invoke = py_callable_lambda_invoke_ref(lam, base, ())
     sup_t = lazy_supplier_cpp_type(base)
-    return f'([&]() {{ auto {lam} = [&]() {{ return {body}; }}; return {sup_t}{{ (void*)&{lam}, &{invoke} }}; }})()'
+    slot = py_callable_owned_lambda_expr(lam, base, ())
+    return f'([&]() {{ auto {lam} = [&]() {{ return {body}; }}; return {slot}; }})()'
 
 def emit_lazy_param_materialize(tr: 'Translator', param_name: str, info: LazyParamInfo) -> str:
     """first-touch memo：读取惰性形参 materialized 值。"""

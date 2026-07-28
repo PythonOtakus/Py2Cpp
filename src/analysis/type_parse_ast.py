@@ -172,10 +172,16 @@ def _parse_callable_subscript_nodes(
         self_class=self_class, typevar_tuple_names=typevar_tuple_names,
       ),
     )
-  ret = parse_type_node_direct(
-    parser, ret_node, type_params,
-    self_class=self_class, typevar_tuple_names=typevar_tuple_names,
-  )
+  if (
+    isinstance(ret_node, ast.Name) and ret_node.id == "None"
+    or isinstance(ret_node, ast.Constant) and ret_node.value is None
+  ):
+    ret = TypeNode.void()
+  else:
+    ret = parse_type_node_direct(
+      parser, ret_node, type_params,
+      self_class=self_class, typevar_tuple_names=typevar_tuple_names,
+    )
   return arg_types, ret
 
 

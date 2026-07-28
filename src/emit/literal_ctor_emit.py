@@ -105,6 +105,48 @@ def _emit_boxing_new_ctor(tr: 'Translator', cpp_type: str, call: ast.Call) -> st
     args_t = ', '.join(info.type_params) if info.type_params else ''
     return emit_construct(tr, info.cpp_name(), args_t, inner, info.name)
 
+def _ctor_init_for_call(tr: 'Translator', info: ClassInfo, call: ast.Call) -> ast.FunctionDef | None:
+    if info.method_overloads.get('__init__'):
+        picked = tr._method_def_for_call(info, '__init__', call)
+        if picked is not None:
+            return picked
+    if info.inits:
+        return info.inits[0]
+    return None
+
+def _emit_new_class_ctor_expr(tr: 'Translator', cpp_type: str, call: ast.Call) -> str | None:
+    info = class_info_for_cpp_type(cpp_type, tr.classes)
+    if info is None or not info.inits:
+        return None
+    init = _ctor_init_for_call(tr, info, call)
+    if init is None:
+        return None
+    params = [a for a in init.args.args if a.arg not in ('self', 'cls')]
+    if call.keywords:
+        from ..passes.kwargs_options import new_ctor_arg_exprs_from_init
+        exprs = new_ctor_arg_exprs_from_init(call, init)
+        emit_params = params
+    else:
+        exprs = list(call.args)
+        emit_params = params[:len(exprs)]
+    sig = info.method_sig_for(init)
+    parts: list[str] = []
+    for i, expr in enumerate(exprs):
+        pt = ''
+        if i < len(emit_params):
+            param = emit_params[i]
+            if sig is not None:
+                from ..analysis.type_emit import method_param_storage_cpp
+                pt = method_param_storage_cpp(sig, param.arg, fallback='')
+            elif param.annotation is not None:
+                pt = tr._parse_storage_type(param.annotation, tr._active_type_params())
+        if pt:
+            parts.append(tr._visit_value_for_type(expr, pt))
+        else:
+            parts.append(tr._visit_value_expr(expr))
+    args = ', '.join(parts)
+    return f'{cpp_type}({args})' if args else f'{cpp_type}()'
+
 def _emit_new_ctor_expr(tr: 'Translator', cpp_type: str, call: ast.Call) -> str:
     """``new(args...)`` + 已知 C++ 类型 → ``Type(args...)``；与所在类相同时 → ``Self(...)``。"""
     from ..passes.new_type_args import validate_new_call_args
@@ -174,7 +216,6 @@ def _emit_new_ctor_expr(tr: 'Translator', cpp_type: str, call: ast.Call) -> str:
         return boxing_ctor
     from ..analysis.type_extract import refcount_inner_type
     from ..analysis.type_pred import is_refcount_type
-    args = ', '.join((tr._visit_value_expr(a) for a in call.args))
     if cpp_type.strip() == cpp_ident('str'):
         inner = ', '.join((tr._cpp_str_ctor_arg(a) for a in call.args))
         return f"{cpp_ident('str')}({inner})" if inner else f"{cpp_ident('str')}()"
@@ -182,7 +223,12 @@ def _emit_new_ctor_expr(tr: 'Translator', cpp_type: str, call: ast.Call) -> str:
     if rc_inner is not None and is_refcount_type(cpp_type.strip()):
         if not call.args:
             return f'makeRefCount<{rc_inner}>()'
+        args = ', '.join((tr._visit_value_expr(a) for a in call.args))
         return f'makeRefCount<{rc_inner}>({args})'
+    class_ctor = _emit_new_class_ctor_expr(tr, cpp_type, call)
+    if class_ctor is not None:
+        return class_ctor
+    args = ', '.join((tr._visit_value_expr(a) for a in call.args))
     return f'{cpp_type}({args})' if args else f'{cpp_type}()'
 
 def _try_emit_new_ann_assign(tr: 'Translator', node: ast.AnnAssign) -> bool:

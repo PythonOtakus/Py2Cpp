@@ -13,7 +13,7 @@
 在 **`py2cpp/alg/`** 提供 **ACM 算法竞赛** 与 **游戏开发** 中高频使用的**数据结构**（非完整算法库）：
 
 - 用规范 Python（PEP 695 泛型）描述，由译器生成 C++11 模板；
-- 复用现有 `list` / `dict` / `array` / `deque` / `pool` / `Counter` 等，**禁止 STL**；
+- 复用现有 `list` / `dict` / `array` / `deque` / `Pool` / `Counter` 等，**禁止 STL**；
 - 纳入 `py2cpp/alg/` 源树（``constant/stdlib_discovery`` 自动发现），支持 `from py2cpp import *`；
 - 每个模块配套 `test/alg/test_*.py` + MSVC 集成测。
 
@@ -38,7 +38,7 @@
 | 可 splice/concat 的序列（rope 语义） | `str` 不可变 | **`ChunkDeque`**（`chunk_deque`：`splice` / `extend` / `insert`） |
 | 滑动窗口最值 | `deque` / `ChunkDeque` | 单调队列**语义**（`mono_queue`） |
 | 哈希、多重集 | `dict`、`set`、`Counter` | — |
-| 对象池、临时缓冲 | `pool`、`arena` | — |
+| 对象池、临时缓冲 | `Pool`、`Arena` | — |
 | ECS | `design/ecs` | — |
 | 固定规模索引结构 | — | DSU、BIT、线段树、堆、Trie、ST 等 |
 | 2D 空间粗筛 | — | `grid2d`、`spatial_hash`（游戏） |
@@ -52,7 +52,7 @@
 | 项 | 决策 |
 |----|------|
 | **下标** | 全程 **0-based**（与 Py2Cpp 一致）；ACM 题面 1-based 由调用方 `i - 1` |
-| **容量** | 竞赛向结构构造时给定 `n`，内部 `array` / 定长 `int[:]`；游戏向可选 `reserve` 提示（参考 `arena.reserve` 占位语义） |
+| **容量** | 竞赛向结构构造时给定 `n`，内部 `array` / 定长 `int[:]`；游戏向可选 `reserve` 提示（参考 `Arena.reserve` 占位语义） |
 | **拷贝 / 移动** | **无** ``@copyable``；``dst = src`` → **移动**（``__move__``）；显式副本 ``dst = src.copy()``（对齐 ``util/list`` / ``util/deque``） |
 | **块节点** | 指针链式块节点标 **`@boxing``**（对齐 ``dict_entry`` / ``util/deque``） |
 | **堆元素** | **`Heap[T: Comparable]`**，支持 `int` / `int64` 及实现 `__lt__` 的类型 |
@@ -178,7 +178,7 @@ py2cpp/
 | **空间哈希** | `spatial_hash` | 粗碰撞、邻近查询 | `insert(id,x,y)`, `query_cell`, `query_rect` |
 | **四叉树** | `quadtree` | 2D 范围选取、LOD 粗筛 | `insert`, `query_range`（P4） |
 
-**不重复实现**：多重集 → `Counter`；对象池 → `pool`；ECS → `design/ecs`；CPython **`collections.deque`** → **`util/deque`**（侵入式链表，**不迁移、不重命名**）。
+**不重复实现**：多重集 → `Counter`；对象池 → `Pool`；ECS → `design/ecs`；CPython **`collections.deque`** → **`util/deque`**（侵入式链表，**不迁移、不重命名**）。
 
 ### 4.3 序列容器（竞赛 / 编辑向）
 

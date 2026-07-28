@@ -97,12 +97,12 @@ namespace py2cpp_concur_task_detail
 
     static OuterResult run(task_coro_bridge<G>& self, InnerResult step)
     {
-      while (!step.done__get())
+      while (!step.PY2CPP_GETTER(done)())
       {
         step = self.gen.send(
           py2cpp_coroutine_detail::default_send_value<typename G::SendType>());
       }
-      return OuterResult::Return(step.return_value__get());
+      return OuterResult::Return(step.PY2CPP_GETTER(return_value)());
     }
   };
 
@@ -114,11 +114,11 @@ namespace py2cpp_concur_task_detail
 
     static OuterResult run(task_coro_bridge<G>& self, InnerResult step)
     {
-      while (!step.done__get())
+      while (!step.PY2CPP_GETTER(done)())
       {
-        return OuterResult::Yield(step.value__get());
+        return OuterResult::Yield(step.PY2CPP_GETTER(value)());
       }
-      return OuterResult::Return(step.return_value__get());
+      return OuterResult::Return(step.PY2CPP_GETTER(return_value)());
     }
   };
 
@@ -162,6 +162,6 @@ namespace py2cpp_concur_task_detail
     using RT = typename G::ReturnType;
     const py2cpp::concur::task::_CoroSlot<RT>& coro_slot =
       static_cast<const py2cpp::concur::task::_CoroSlot<RT>&>(*slot);
-    return SlotResultCopy<RT>::apply(coro_slot.result__get());
+    return SlotResultCopy<RT>::apply(coro_slot.PY2CPP_GETTER(result)());
   }
 }

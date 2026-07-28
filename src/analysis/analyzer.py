@@ -338,7 +338,13 @@ class TypeParser:
       ]
     else:
       arg_types = [self.parse_type(args_node, type_params, self_class=self_class)]
-    ret = self.parse_type(ret_node, type_params, self_class=self_class)
+    if (
+      isinstance(ret_node, ast.Name) and ret_node.id == "None"
+      or isinstance(ret_node, ast.Constant) and ret_node.value is None
+    ):
+      ret = "void"
+    else:
+      ret = self.parse_type(ret_node, type_params, self_class=self_class)
     return arg_types, ret
 
   def _try_parse_function_type(
@@ -1647,6 +1653,10 @@ class SignatureBuilder:
         if cpp_type and is_varint_type(cpp_type):
           return format_cpp_varint(-v)
         return format_cpp_int(-v)
+      case ast.UnaryOp(op=ast.USub(), operand=ast.Constant(value=v)) if isinstance(v, float):
+        if cpp_type and is_float64_type(cpp_type):
+          return format_cpp_float64(-v)
+        return format_cpp_float(-v)
       case ast.Call(func=ast.Name(id="new")):
         if not cpp_type:
           raise NotImplementedError("new() 默认参数须能推断 C++ 类型")
@@ -1859,6 +1869,21 @@ class SignatureBuilder:
         clear_field_ann_ast(info, field)
       elif field not in info.field_type_nodes and not field_storage_cpp(info, field):
         self._set_field_cpp_type(info, field, self._field_cpp_type(info, field))
+    for field, stmt in getattr(info, "thread_local_fields", {}).items():
+      ann = field_ann_ast(info, field) or stmt.annotation
+      if ann is None:
+        continue
+      node = self._parse_ann_storage_type_node(ann, tparams, info=info)
+      from .ir import resolve_self_in_cpp_type
+      from .type_render import CLASS_BODY
+
+      rendered = node.render(CLASS_BODY)
+      resolved = resolve_self_in_cpp_type(rendered, info.cpp_name())
+      if resolved != rendered:
+        self._set_field_cpp_type(info, field, resolved)
+      else:
+        write_field_storage(info, field, node)
+      clear_field_ann_ast(info, field)
     self._infer_fields_from_init_assignments(info)
     if info.name.endswith("_iterator") and "_host" in info.fields:
       host_py = info.name[: -len("_iterator")]

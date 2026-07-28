@@ -1,4 +1,4 @@
-"""``arena``：解码期临时 ``char`` 分配（``json.loads`` 热路径）。
+"""``Arena``：解码期临时 ``char`` 分配（``json.loads`` 热路径）。
 
 ``acquire`` 返回独立 ``allocRawArray`` 缓冲；``adopt_span`` 后须 ``release``，
 否则 ``reset`` 会释放。``reserve`` 为容量提示（当前无操作，保留 API）。
@@ -9,7 +9,7 @@ from .list import list
 
 @copyable
 @native_name("PyArena")
-class arena:
+class Arena:
   """单次 ``loads`` 作用域内的 ``char`` 堆缓冲池。"""
 
   def __init__(self):

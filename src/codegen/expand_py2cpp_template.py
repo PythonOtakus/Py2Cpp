@@ -77,6 +77,7 @@ _STD_TYPES = {
   "PyStr": cpp_stdlib_class("text/str", "PyStr"),
   "PyBytes": cpp_stdlib_class("text/bytes", "PyBytes"),
   "PyList": cpp_stdlib_class("util/list", "PyList"),
+  "PyDeque": cpp_stdlib_class("util/deque", "PyDeque"),
   "PyDict": cpp_stdlib_class("util/dict", "PyDict"),
   "PyArray": cpp_stdlib_class("util/array", "PyArray"),
   "PyArray2D": cpp_stdlib_class("util/array", "PyArray2D"),

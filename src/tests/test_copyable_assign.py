@@ -11,7 +11,7 @@ from src.translator import Translator
 class CopyableAssignTests(unittest.TestCase):
   def _translate(self, body: str) -> str:
     src = f"""
-from py2cpp import Self, copyable
+from py2cpp import *
 
 @copyable
 class varint:

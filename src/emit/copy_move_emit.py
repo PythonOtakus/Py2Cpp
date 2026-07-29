@@ -225,3 +225,27 @@ def emit_copy_move_special_members(tr: Translator, info: ClassInfo) -> None:
                     tr.write_line('__move__(other);')
                 tr.write_line('return *this;')
             tr.write_line()
+
+def is_frozen_dataclass(info: ClassInfo) -> bool:
+    opts = getattr(info, 'dataclass_options', None)
+    return bool(info.is_dataclass and getattr(opts, 'frozen', False))
+
+def emit_frozen_dataclass_assign(tr: Translator, info: ClassInfo) -> None:
+    """``@dataclass(frozen=True)`` 局部 ``q = p``：重建对象以保留 const 字段语义。"""
+    if not is_frozen_dataclass(info):
+        return
+    if info.is_refcount or info.is_uncopyable or info.has_copy:
+        return
+    cpp = info.cpp_name()
+    spec = info.cpp_specialization() if info.is_template() else cpp
+    qual = _qual_name(tr, info)
+    with _emit_ctx(tr, info), tr._use_source():
+        if info.is_template():
+            tr._emit_template_prefix(info)
+        with tr._use_block(f'{qual}& {qual}::operator=(const {spec}& other)'):
+            tr.write_line('if ((this != &other))')
+            with tr._use_block():
+                tr.write_line(f'this->~{cpp}();')
+                tr.write_line(f'::new (static_cast<void*>(this)) {spec}(other);')
+            tr.write_line('return *this;')
+        tr.write_line()

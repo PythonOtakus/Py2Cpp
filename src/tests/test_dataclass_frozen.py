@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from src.translation_error import TranslationError
 from src.translator import Translator
 
 
@@ -47,6 +48,24 @@ class Mixed:
     )
     self.assertIn("const PyInt a", h)
     self.assertIn("const PyInt b", h)
+
+  def test_frozen_copyable_rejected(self):
+    src = """
+from py2cpp import *
+
+@copyable
+@dataclass(frozen=True)
+class FrozenBox:
+  x: int
+"""
+    with tempfile.TemporaryDirectory() as tmp:
+      py = Path(tmp) / "mod.py"
+      py.write_text(src, encoding="utf-8")
+      with self.assertRaises(TranslationError) as ctx:
+        Translator.translate_file(
+          str(py), output_dir=str(Path(tmp) / "out"), include_stdlib=True,
+        )
+      self.assertIn("@copyable 与 @dataclass(frozen=True) 不能同用", str(ctx.exception))
 
 
 if __name__ == "__main__":

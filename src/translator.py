@@ -791,6 +791,7 @@ class Translator(ast.NodeVisitor):
             self.write_line('#include <stdio.h>')
             self.write_line('#include <string.h>')
             self.write_line('#include <math.h>')
+            self.write_line('#include <new>')
             self._emit_debug_helper()
             self.write_line()
 

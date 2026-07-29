@@ -44,6 +44,7 @@ from .enum_emit import emit_enum_declaration, emit_enum_support
 from ..codegen.class_header_inject import class_header_inject_blobs
 from ..constant.stdlib_layout import RUNTIME_PKG
 from .object_repr_emit import complex_operator_cpp_type, emit_default_object_repr_decls, has_effective_bool, has_effective_complex, has_effective_float, has_effective_int, has_effective_str
+from .copy_move_emit import is_frozen_dataclass
 from ..codegen.protocol_traits_gen import compare_ops_no_pybool_only_helper_lines, protocol_module_preamble_lines, protocol_traits_lines
 from ..codegen.expand_py2cpp_template import expand_exception_pystr_ctor, expand_template
 from ..analysis.stubs.class_stubs import load_stdlib_exception_types
@@ -639,6 +640,8 @@ def _emit_class_declaration(tr: 'Translator', info: ClassInfo):
                     if info.has_move:
                         tr.write_line(f'{cpp}({cpp}&& other);')
                         tr.write_line(f'{cpp}& operator=({cpp}&& other);')
+                    if is_frozen_dataclass(info) and not info.has_copy:
+                        tr.write_line(f'{cpp}& operator=(const {cpp}& other);')
                 if info.repr_aliases_str and '__repr__' in info.method_sigs:
                     sig = info.method_sigs['__repr__']
                     mcpp = info.cpp_member_name('__repr__')

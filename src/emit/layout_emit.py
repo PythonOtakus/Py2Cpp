@@ -183,6 +183,7 @@ def build_stdlib_cpp_lines(tr: Translator, *, merge_entry_runtime: bool) -> list
     "#include <stdio.h>",
     "#include <string.h>",
     "#include <math.h>",
+    "#include <new>",
     "",
   ]
   lines.append(f'#include "{UMBRELLA_HEADER}"')
@@ -559,7 +560,7 @@ def write_per_module_inl(tr: Translator) -> None:
       ]
       inl_includes = [str_inc, *rest]
     body = list(lines)
-    if any("::new (&" in ln for ln in body):
+    if any("::new (" in ln for ln in body):
       new_inc = "#include <new>"
       if new_inc not in inl_includes:
         inl_includes.append(new_inc)

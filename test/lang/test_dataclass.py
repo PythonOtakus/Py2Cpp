@@ -190,6 +190,9 @@ class FrozenDataclassTests(TestCaseMixin):
     self.assertEqual(fp.y, 4)
     fp2: FrozenPoint = new(1)
     self.assertEqual(fp2.y, 0)
+    fp2 = fp
+    self.assertEqual(fp2.x, 3)
+    self.assertEqual(fp2.y, 4)
 
 
 def main():

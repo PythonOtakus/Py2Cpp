@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import unittest
+import tempfile
 from pathlib import Path
 
 from src.analysis.analyzer import SemanticAnalyzer
@@ -26,21 +27,22 @@ def _root() -> Path:
 
 def _analyze_body(body: str) -> Translator:
   root = _root()
-  entry_py = root / "test" / "test_move_min.py"
-  entry_mod = "test/test_move_min"
   src = f"from py2cpp import *\n\n{body}"
-  modules = [
-    (m, src if m == entry_mod else s)
-    for m, s in discover_translation_modules(
+  with tempfile.TemporaryDirectory() as tmp:
+    project_root = Path(tmp)
+    entry_py = project_root / "test_move_min.py"
+    entry_py.write_text(src, encoding="utf-8")
+    entry_mod = "test_move_min"
+    modules = discover_translation_modules(
       entry_py,
       include_stdlib=True,
-      runtime_root=root / "py2cpp" / "py2cpp",
-      project_root=root,
+      runtime_root=root / "py2cpp",
+      project_root=project_root,
     )
-  ]
-  tr = Translator("test_move_min", str(entry_py))
-  tr.entry_module_path = entry_mod
-  tr._parse_modules(modules)
+    tr = Translator("test_move_min", str(entry_py))
+    tr.entry_module_path = entry_mod
+    tr._import_project_root_cache = project_root
+    tr._parse_modules(modules)
   expand_dataclass(tr)
   expand_descriptors(tr)
   expand_mixins(tr)
@@ -56,12 +58,24 @@ def _analyze_body(body: str) -> Translator:
   return tr
 
 
+_MOVE_ONLY_BOX = """class Box:
+  def __init__(self):
+    self.x: int = 0
+
+  def __move__(self, other: Self):
+    self.x = other.x
+    other.x = 0
+
+"""
+
+
 class MovedUseCheckTests(unittest.TestCase):
   def test_allows_moved_flag(self):
     tr = _analyze_body(
-      """def main():
-  a: list[int] = [1, 2]
-  b: list[int] = a
+      _MOVE_ONLY_BOX
+      + """def main():
+  a: Box = new()
+  b: Box = a
   return a.__moved__
 """
     )
@@ -69,10 +83,11 @@ class MovedUseCheckTests(unittest.TestCase):
 
   def test_rejects_load_after_move(self):
     tr = _analyze_body(
-      """def main():
-  a: list[int] = [1, 2]
-  b: list[int] = a
-  return len(a)
+      _MOVE_ONLY_BOX
+      + """def main():
+  a: Box = new()
+  b: Box = a
+  return a.x
 """
     )
     with self.assertRaises(ValueError) as ctx:
@@ -82,11 +97,12 @@ class MovedUseCheckTests(unittest.TestCase):
 
   def test_reassign_clears_moved(self):
     tr = _analyze_body(
-      """def main():
-  a: list[int] = [1, 2]
-  b: list[int] = a
-  a: list[int] = [3]
-  return len(a)
+      _MOVE_ONLY_BOX
+      + """def main():
+  a: Box = new()
+  b: Box = a
+  a: Box = new()
+  return a.x
 """
     )
     check_moved_use(tr)

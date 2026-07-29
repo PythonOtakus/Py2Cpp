@@ -633,6 +633,11 @@ def expand_dataclass(tr: Translator) -> None:
       raise NotImplementedError("@dataclass(kw_only=True) 尚未支持")
     if opts.slots:
       raise NotImplementedError("@dataclass(slots=True) 尚未支持")
+    if opts.frozen and info.is_copyable:
+      raise NotImplementedError(
+        f"{info.name}: @copyable 与 @dataclass(frozen=True) 不能同用；"
+        "frozen 字段会生成 C++ const 成员，copyable 赋值需要写入字段"
+      )
     specs = _collect_dataclass_fields(info.node)
     if opts.frozen:
       for spec in specs:

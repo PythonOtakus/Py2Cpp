@@ -26,7 +26,8 @@ class MonoQueue[T: Comparable](ContainerMixin):
 
   def __copy__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     self._is_min = other._is_min
     window: list[T] = []
     mono: list[T] = []
@@ -39,7 +40,8 @@ class MonoQueue[T: Comparable](ContainerMixin):
 
   def __move__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     self._is_min = other._is_min
     self._window = other._window
     self._mono = other._mono

@@ -29,7 +29,8 @@ class FrozenSetMixin[T: DictKey]:
 
   def __copy__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     if self._size > 0:
       self._clear_entries()
     else:
@@ -44,7 +45,8 @@ class FrozenSetMixin[T: DictKey]:
 
   def __move__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     if self._size > 0:
       self._clear_entries()
     self._capacity = other._capacity

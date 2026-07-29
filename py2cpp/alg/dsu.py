@@ -33,7 +33,8 @@ class DSU(ContainerMixin):
 
   def __copy__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     self._n = other._n
     if other._n == 0:
       self._parent = new(0)
@@ -50,7 +51,8 @@ class DSU(ContainerMixin):
 
   def __move__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     self._n = other._n
     self._parent = other._parent
     self._rank = other._rank

@@ -66,7 +66,8 @@ class ChunkDeque[Element](ContainerMixin):
 
   def __copy__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     self.clear()
     self._block_size = other._block_size
     cur: _ChunkNode[Element] = other._head
@@ -84,7 +85,8 @@ class ChunkDeque[Element](ContainerMixin):
 
   def __move__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     if self._len > 0:
       self.clear()
     else:

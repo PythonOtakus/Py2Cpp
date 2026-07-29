@@ -9,7 +9,7 @@
 from ..builtins import *
 from .dict import dict
 from .list import list
-from ..core.exceptions import KeyError, StopIteration, TypeError
+from ..core.exceptions import KeyError, StopIteration, TypeError, ValueError
 from .protocols import DictKey
 from ..numeric.protocols import Integral
 
@@ -20,7 +20,8 @@ class Counter[K: DictKey, C: Integral = int](dict[K, C]):
 
   def __copy__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     self.clear()
     for i in range(len(other)):
       k: K = other.key_at(i)

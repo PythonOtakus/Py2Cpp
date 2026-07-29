@@ -25,7 +25,8 @@ class Heap[T: Comparable](ContainerMixin):
 
   def __copy__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     data: list[T] = []
     self._data = data
     for i in range(len(other._data)):
@@ -33,7 +34,8 @@ class Heap[T: Comparable](ContainerMixin):
 
   def __move__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     self._data = other._data
     data: list[T] = []
     other._data = data
@@ -118,7 +120,8 @@ class IndexedHeap[T: Comparable & DictKey](ContainerMixin):
 
   def __copy__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     data: list[T] = []
     pos: dict[T, int] = {}
     self._data = data
@@ -130,7 +133,8 @@ class IndexedHeap[T: Comparable & DictKey](ContainerMixin):
 
   def __move__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     self._data = other._data
     self._pos = other._pos
     data: list[T] = []

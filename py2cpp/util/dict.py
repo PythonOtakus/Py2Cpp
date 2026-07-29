@@ -31,7 +31,8 @@ class FrozenDictMixin[Key: DictKey, Value]:
 
   def __copy__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     if self._size > 0:
       self._clear_entries()
     else:
@@ -46,7 +47,8 @@ class FrozenDictMixin[Key: DictKey, Value]:
 
   def __move__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     if self._size > 0:
       self._clear_entries()
     self._capacity = other._capacity
@@ -467,7 +469,8 @@ class dict[Key: DictKey, Value](
     复制构造时 ``_buckets`` 尚未分配（C++ 为 ``nullptr``），不可调 ``_clear_entries``。
     """
     self._ensure_active()
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     if self._size > 0:
       self._clear_entries()
     else:

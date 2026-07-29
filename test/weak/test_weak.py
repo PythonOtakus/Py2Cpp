@@ -11,6 +11,18 @@ class Node:
   value: int = 0
 
 
+@dataclass(eq=False, repr=False)
+@refcount
+class LinkNode:
+  name: str = ""
+  parent: WeakRef[Self] | None = None
+  children: list[Self] @optional = []
+
+  def bind_parent(self, par: Self) -> None:
+    wr: WeakRef[Self] = new(par)
+    self.parent = wr
+
+
 class WeakRefTests(TestCaseMixin):
   _test_tag = 1
 
@@ -57,6 +69,18 @@ class WeakListTests(TestCaseMixin):
     item = new()
     n = new()
     self.assertEqual(len(lst), 0)
+
+
+class WeakRefNestedDestroyTests(TestCaseMixin):
+  _test_tag = 4
+
+  @override
+  def test(self):
+    root: LinkNode = new("root")
+    child: LinkNode = new("child")
+    root.children.append(child)
+    child.bind_parent(root)
+    self.assertEqual(len(root.children), 1)
 
 
 def main():

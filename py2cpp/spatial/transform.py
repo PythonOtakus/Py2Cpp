@@ -175,7 +175,7 @@ class TransformMixin[Vec, Rot, Mat]:
     rot: Rot = self.local_rotation
     par: Self | None = self.parent
     while par is not None:
-      rot = par.local_rotation * rot
+      rot = par.local_rotation @ rot
       par = par.parent
     return rot
 
@@ -183,7 +183,7 @@ class TransformMixin[Vec, Rot, Mat]:
   def rotation(self, value: Rot) -> None:
     par: Self | None = self.parent
     if par is not None:
-      local: Rot = value * ~par.rotation
+      local: Rot = value @ ~par.rotation
       self.local_rotation = local
     else:
       self.local_rotation = value
@@ -269,13 +269,13 @@ class Transform2D(TransformMixin[Vector2, Rotator, Matrix3]):
 
   def rotate(self, angle: float64) -> None:
     delta: Rotator = new.from_angle(angle)
-    self.rotation = delta * self.rotation
+    self.rotation = delta @ self.rotation
 
   def rotate_around(self, center: Vector2, angle: float64) -> None:
     pos: Vector2 = self.position
     self.position = pos.rotated_around(center, angle)
     delta: Rotator = new.from_angle(angle)
-    self.rotation = delta * self.rotation
+    self.rotation = delta @ self.rotation
 
   def look_at(self, target: Vector2) -> None:
     aim: Rotator = new.look_at(target - self.position)
@@ -371,13 +371,13 @@ class Transform3D(TransformMixin[Vector3, Quaternion, Matrix4]):
 
   def rotate(self, axis: Vector3, angle: float64) -> None:
     delta: Quaternion = new.from_axis_angle(axis, angle)
-    self.rotation = delta * self.rotation
+    self.rotation = delta @ self.rotation
 
   def rotate_around(self, center: Vector3, axis: Vector3, angle: float64) -> None:
     pos: Vector3 = self.position
     self.position = pos.rotated_around(center, axis, angle)
     delta: Quaternion = new.from_axis_angle(axis, angle)
-    self.rotation = delta * self.rotation
+    self.rotation = delta @ self.rotation
 
   def look_at(self, target: Vector3) -> None:
     aim: Quaternion = new.look_at(target - self.position)

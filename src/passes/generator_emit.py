@@ -335,9 +335,16 @@ class GeneratorSwitchEmitter:
         self._state = nxt
 
     def _is_async_generator_class(self) -> bool:
-        """``AsyncGenerator[Y, None]``：``ReturnType`` 为 ``PyNone`` 且 ``Element`` 非 send 占位。"""
+        """``AsyncGenerator[Y, None]``：只识别已混入 ``__aiter__``/``__anext__`` 的 async 生成器类。"""
         info = self._class_info
         if info is None:
+            return False
+        method_names = {
+            node.name
+            for node in info.node.body
+            if isinstance(node, ast.FunctionDef)
+        }
+        if '__aiter__' not in method_names or '__anext__' not in method_names:
             return False
         element_ann: ast.expr | None = None
         return_ann: ast.expr | None = None

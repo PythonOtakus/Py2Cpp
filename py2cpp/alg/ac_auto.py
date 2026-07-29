@@ -15,7 +15,7 @@
 | ``len(ac)`` / ``bool(ac)`` | 已 ``add`` 的模式串总数 |
 """
 from ..builtins import *
-from ..core.exceptions import KeyError
+from ..core.exceptions import KeyError, ValueError
 from ..util.dict import dict
 from ..util.list import list
 from ..util.mixins import ContainerMixin
@@ -34,7 +34,8 @@ class ACAuto(ContainerMixin):
 
   def __copy__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     nxt: list[dict[char, int]] = []
     end: list[int] = []
     fail: list[int] = []
@@ -53,7 +54,8 @@ class ACAuto(ContainerMixin):
 
   def __move__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     self._next = other._next
     self._end = other._end
     self._fail = other._fail
@@ -149,7 +151,8 @@ class ACAuto(ContainerMixin):
 
   @overload
   def update(self, other: Self) -> None:
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     self._merge_from(other, 0, "")
     self.flush()
 

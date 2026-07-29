@@ -14,7 +14,7 @@
 | ``len(trie)`` / ``bool(trie)`` | 已插入串总数（含重复 ``add``） |
 """
 from ..builtins import *
-from ..core.exceptions import KeyError
+from ..core.exceptions import KeyError, ValueError
 from ..util.dict import dict
 from ..util.list import list
 from ..util.mixins import ContainerMixin
@@ -32,7 +32,8 @@ class Trie(ContainerMixin):
 
   def __copy__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     nxt: list[dict[char, int]] = []
     pas: list[int] = []
     end: list[int] = []
@@ -50,7 +51,8 @@ class Trie(ContainerMixin):
 
   def __move__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     self._next = other._next
     self._pass = other._pass
     self._end = other._end
@@ -145,7 +147,8 @@ class Trie(ContainerMixin):
 
   @overload
   def update(self, other: Self) -> None:
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     self._merge_from(other, 0, "")
 
   @overload

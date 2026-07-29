@@ -118,7 +118,7 @@ def semaphore_waiter(sem: Semaphore, box: Box) -> None:
   sem.release()
 
 
-def barrier_waiter(barrier: Barrier, ready: Event, done: Event, box: Box) -> None:
+def barrier_waiter(barrier: Barrier @ref, ready: Event, done: Event, box: Box) -> None:
   ready.set()
   try:
     box.value = barrier.wait(timeout=1.0)
@@ -127,13 +127,13 @@ def barrier_waiter(barrier: Barrier, ready: Event, done: Event, box: Box) -> Non
   done.set()
 
 
-def barrier_rounds_waiter(barrier: Barrier, rounds: int, counter: atomic[int]) -> None:
+def barrier_rounds_waiter(barrier: Barrier @ref, rounds: int, counter: atomic[int]) -> None:
   for _i in range(rounds):
     barrier.wait(timeout=1.0)
     counter.fetch_add(1)
 
 
-def barrier_broken_waiter(barrier: Barrier, ready: Event, box: Box) -> None:
+def barrier_broken_waiter(barrier: Barrier @ref, ready: Event, box: Box) -> None:
   ready.set()
   try:
     barrier.wait(timeout=1.0)
@@ -143,6 +143,14 @@ def barrier_broken_waiter(barrier: Barrier, ready: Event, box: Box) -> None:
 
 def barrier_global_action() -> None:
   _barrier_action_count.fetch_add(1)
+
+
+def wait_barrier_waiting(barrier: Barrier @ref, n: int) -> bool:
+  for _i in range(1000):
+    if barrier.n_waiting == n:
+      return True
+    sleep(0.001)
+  return barrier.n_waiting == n
 
 
 def pool_return_21() -> int:
@@ -589,6 +597,9 @@ class BarrierTests(TestCaseMixin):
 
   @override
   def test(self):
+    # Windows 下前序线程测试刚结束时，立刻启动 barrier 双线程轮次偶发触发
+    # native thread/condition_variable 清理窗口；短暂让出调度可避免测试竞态。
+    sleep(0.01)
     barrier: Barrier = new(2)
     self.assertEqual(barrier.parties, 2)
 
@@ -598,7 +609,7 @@ class BarrierTests(TestCaseMixin):
     waiter: Thread = new(lambda: barrier_waiter(barrier, ready, done, box))
     waiter.start()
     self.assertTrue(ready.wait(timeout=1.0))
-    self.assertEqual(barrier.n_waiting, 1)
+    self.assertTrue(wait_barrier_waiting(barrier, 1))
     main_index: int = barrier.wait(timeout=1.0)
     self.assertTrue(done.wait(timeout=1.0))
     waiter.join()
@@ -625,8 +636,7 @@ class BarrierTests(TestCaseMixin):
     action_waiter: Thread = new(lambda: barrier_waiter(action_barrier, action_ready, action_done, action_box))
     action_waiter.start()
     self.assertTrue(action_ready.wait(timeout=1.0))
-    sleep(0.02)
-    self.assertEqual(action_barrier.n_waiting, 1)
+    self.assertTrue(wait_barrier_waiting(action_barrier, 1))
     action_barrier.wait(timeout=1.0)
     self.assertTrue(action_done.wait(timeout=1.0))
     action_waiter.join()
@@ -651,7 +661,7 @@ class BarrierTests(TestCaseMixin):
     reset_waiter: Thread = new(lambda: barrier_broken_waiter(reset_barrier, reset_ready, reset_box))
     reset_waiter.start()
     self.assertTrue(reset_ready.wait(timeout=1.0))
-    self.assertEqual(reset_barrier.n_waiting, 1)
+    self.assertTrue(wait_barrier_waiting(reset_barrier, 1))
     reset_barrier.reset()
     reset_waiter.join()
     self.assertEqual(reset_box.value, 1)

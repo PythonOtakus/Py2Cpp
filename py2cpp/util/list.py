@@ -21,14 +21,16 @@ class FrozenListMixin[Element, StackLength: int = 0]:
 
   def __copy__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     self._clear()
     for i in range(len(other)):
       self._insert_new(other[i])
 
   def __move__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     self._clear()
     self._length = other._length
     self._capacity = other._capacity

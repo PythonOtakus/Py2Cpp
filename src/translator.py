@@ -1818,12 +1818,6 @@ class Translator(ast.NodeVisitor):
     def _emit_dunder_call(self, receiver: ast.expr, dunder: str, other: ast.expr) -> str:
         recv_ty = strip_cpp_ref(self._infer_expr_cpp_type(receiver) or '')
         left_info = self._class_info_for_expr(receiver) or self._class_info_for_type(recv_ty)
-        if dunder == '__mul__' and left_info and self._class_info_has_method(left_info, '__matmul__'):
-            right_t = strip_cpp_ref(self._infer_expr_cpp_type(other) or '')
-            right_info = self._class_info_for_expr(other) or self._class_info_for_type(right_t)
-            lt = strip_cpp_ref(recv_ty or '')
-            if right_info is left_info or (lt and right_t and (lt == right_t or lt.split('::')[-1] == right_t.split('::')[-1])):
-                dunder = '__matmul__'
         recv = self._paren_expr(self.visit(receiver))
         sep = self._member_access(recv)
         rhs = self._coerce_dunder_other_for_str_add(dunder, receiver, other)
@@ -1856,16 +1850,6 @@ class Translator(ast.NodeVisitor):
             left_info = self._class_info_for_type(strip_cpp_ref(left_t))
         if left_info is None and is_str_type(left_t):
             left_info = self.classes.get('str')
-        if isinstance(node.op, ast.Mult) and left_info and self._class_info_has_method(left_info, '__matmul__'):
-            right_t = strip_cpp_ref(self._infer_expr_cpp_type(node.right) or '')
-            lt = strip_cpp_ref(left_t or '')
-            right_info = self._class_info_for_expr(node.right)
-            if right_info is None and right_t:
-                right_info = self._class_info_for_type(right_t)
-            if right_info is left_info or (
-                lt and right_t and (lt == right_t or lt.split('::')[-1] == right_t.split('::')[-1])
-            ):
-                return self._emit_dunder_call(node.left, '__matmul__', node.right)
         if left_info and self._class_info_has_method(left_info, dunder):
             return self._emit_dunder_call(node.left, dunder, node.right)
         if is_varint_type(left_t):

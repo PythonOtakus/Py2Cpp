@@ -39,7 +39,8 @@ class Grid2D(ContainerMixin):
 
   def __copy__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     self._width = other._width
     self._height = other._height
     self._cells = new(other._height, other._width)
@@ -49,7 +50,8 @@ class Grid2D(ContainerMixin):
 
   def __move__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     self._width = other._width
     self._height = other._height
     self._cells = other._cells

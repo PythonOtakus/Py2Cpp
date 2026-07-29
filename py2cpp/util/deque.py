@@ -70,7 +70,8 @@ class deque[Element](ContainerMixin):
     复制构造时成员未初始化，须先 ``_reset_empty`` 再 ``extend``。
     """
     self._ensure_active()
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     if self._length > 0:
       self._clear_nodes()
     else:
@@ -80,7 +81,8 @@ class deque[Element](ContainerMixin):
 
   def __move__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     if self._length > 0:
       self._clear_nodes()
     else:

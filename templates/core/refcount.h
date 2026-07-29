@@ -170,9 +170,22 @@ class PyRefCount {
     _PyRefCountBlockHeader* b = block_;
     block_ = 0;
     if (b->strong_count.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+      // Hold the control block alive while the object destructor runs.
+      //
+      // Destructors may release the last real PyWeakRef back to this same
+      // block (for example a parent owns a child strongly, and the child owns
+      // a weak parent link).  Without this temporary weak sentinel, that weak
+      // release can delete the control block before this release() call has
+      // finished using it.
+      b->weak_count.fetch_add(1, std::memory_order_relaxed);
       if (b->destroy_fn && b->object) {
-        b->destroy_fn(b->object);
+        void* object = b->object;
         b->object = 0;
+        b->destroy_fn(object);
+      }
+      if (b->weak_count.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+        _py_refcount_delete_block_if_dead(b);
+        return;
       }
       _py_refcount_delete_block_if_dead(b);
     }

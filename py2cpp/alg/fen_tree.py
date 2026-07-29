@@ -27,7 +27,8 @@ class FenTree[T: Complex](ContainerMixin):
 
   def __copy__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     self._n = other._n
     self._bit = new(other._n + 1)
     for i in range(other._n + 1):
@@ -35,7 +36,8 @@ class FenTree[T: Complex](ContainerMixin):
 
   def __move__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     self._n = other._n
     self._bit = other._bit
     other._n = 0

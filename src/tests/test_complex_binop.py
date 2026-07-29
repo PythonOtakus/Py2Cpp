@@ -11,7 +11,6 @@ from src.translator import Translator
 class ComplexBinopEmitTests(unittest.TestCase):
   def _translate(self, body: str, *, extra: str = "") -> str:
     src = f"""from py2cpp import *
-from py2cpp.numeric.complex import complex
 {extra}
 
 def probe():
@@ -59,6 +58,28 @@ def probe():
     )
     self.assertIn(".__mul__(", cpp)
     self.assertNotIn(".__rmul__(_i)", cpp.replace(" ", ""))
+
+  def test_class_with_mul_and_matmul_keeps_operators_distinct(self):
+    cpp = self._translate(
+      "  a: V = new()\n"
+      "  b: V = new()\n"
+      "  c: int = a * b\n"
+      "  d: int = a @ b\n"
+      "  return c + d\n",
+      extra="""
+class V:
+  def __init__(self):
+    pass
+
+  def __mul__(self, other: Self) -> int:
+    return 1
+
+  def __matmul__(self, other: Self) -> int:
+    return 2
+""",
+    )
+    self.assertIn("a.__mul__(b)", cpp)
+    self.assertIn("a.__matmul__(b)", cpp)
 
 
 if __name__ == "__main__":

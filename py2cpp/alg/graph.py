@@ -26,7 +26,8 @@ class AdjList(ContainerMixin):
 
   def __copy__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     self._n = other._n
     adj: list[list[Edge]] = []
     self._adj = adj
@@ -39,7 +40,8 @@ class AdjList(ContainerMixin):
 
   def __move__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     self._n = other._n
     self._adj = other._adj
     other._n = 0

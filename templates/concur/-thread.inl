@@ -150,10 +150,10 @@ namespace py2cpp_concur_thread_detail
     ConditionLockKind lock_kind;
     void* lock_state;
     PyInt waiters;
-    PyInt signals;
+    bool closing;
 
     ConditionState(ConditionLockKind kind, void* lock)
-      : refs(1), lock_kind(kind), lock_state(lock), waiters(0), signals(0)
+      : refs(1), lock_kind(kind), lock_state(lock), waiters(0), closing(false)
     {
     }
   };
@@ -393,6 +393,17 @@ namespace py2cpp_concur_thread_detail
   {
     if (st && st->refs.fetch_sub(1, std::memory_order_acq_rel) == 1)
     {
+      {
+        std::unique_lock<std::mutex> lk(st->mutex);
+        st->closing = true;
+        lk.unlock();
+        st->cv.notify_all();
+        lk.lock();
+        while (st->waiters > 0)
+        {
+          st->cv.wait(lk);
+        }
+      }
       if (st->lock_kind == CONDITION_LOCK)
       {
         release_lock(reinterpret_cast<LockState*>(st->lock_state));
@@ -730,6 +741,10 @@ namespace py2cpp_concur_thread_detail
       end = timeout_deadline(timeout);
     }
     std::unique_lock<std::mutex> lk(st->mutex);
+    if (st->closing)
+    {
+      return false;
+    }
     st->waiters += 1;
     PyInt saved = 0;
     bool released = false;
@@ -737,45 +752,57 @@ namespace py2cpp_concur_thread_detail
     {
       saved = condition_release_save_state(st);
       released = true;
-      while (st->signals == 0)
+      PyBool ok = true;
+      if (timeout < 0.0)
       {
-        if (timeout < 0.0)
+        st->cv.wait(lk);
+      }
+      else
+      {
+        double now = (double)py2cpp::system::time::monotonic();
+        double remaining = end - now;
+        if (remaining <= 0.0)
         {
-          st->cv.wait(lk);
+          ok = false;
         }
         else
         {
-          double now = (double)py2cpp::system::time::monotonic();
-          double remaining = end - now;
-          if (remaining <= 0.0)
-          {
-            st->waiters -= 1;
-            lk.unlock();
-            condition_acquire_restore_state(st, saved);
-            return false;
-          }
-          timed_wait_cv(st->cv, lk, remaining);
+          ok = timed_wait_cv(st->cv, lk, remaining);
         }
       }
-      st->signals -= 1;
-      st->waiters -= 1;
+      PyBool closing = st->closing;
       lk.unlock();
       condition_acquire_restore_state(st, saved);
-      return true;
+      lk.lock();
+      st->waiters -= 1;
+      if (closing)
+      {
+        st->cv.notify_all();
+      }
+      return ok && !closing;
     }
     catch (...)
     {
+      if (released)
+      {
+        if (lk.owns_lock())
+        {
+          lk.unlock();
+        }
+        condition_acquire_restore_state(st, saved);
+        lk.lock();
+      }
       if (lk.owns_lock())
       {
         if (st->waiters > 0)
         {
           st->waiters -= 1;
         }
+        if (st->closing)
+        {
+          st->cv.notify_all();
+        }
         lk.unlock();
-      }
-      if (released)
-      {
-        condition_acquire_restore_state(st, saved);
       }
       throw;
     }
@@ -798,13 +825,12 @@ namespace py2cpp_concur_thread_detail
     PyInt count = 0;
     {
       std::lock_guard<std::mutex> lk(st->mutex);
-      PyInt available = st->waiters - st->signals;
+      PyInt available = st->waiters;
       if (available <= 0)
       {
         return;
       }
       count = n < available ? n : available;
-      st->signals += count;
     }
     for (PyInt i = 0; i < count; ++i)
     {
@@ -825,13 +851,12 @@ namespace py2cpp_concur_thread_detail
     PyInt count = 0;
     {
       std::lock_guard<std::mutex> lk(st->mutex);
-      PyInt available = st->waiters - st->signals;
+      PyInt available = st->waiters;
       if (available <= 0)
       {
         return;
       }
       count = available;
-      st->signals += count;
     }
     st->cv.notify_all();
   }

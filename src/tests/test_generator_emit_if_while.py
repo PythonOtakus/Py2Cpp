@@ -94,6 +94,15 @@ class TranslatorStub:
   def _next_result_cpp_type(self) -> str:
     return "PyIterResult<int, PyNone>"
 
+  def _member_access(self, expr: str) -> str:
+    return "."
+
+  def _emit_active_finally(self) -> None:
+    pass
+
+  def _emit_with_exits(self) -> None:
+    pass
+
 
 def _emit_resume(body: list[ast.stmt]) -> str:
   tr = TranslatorStub()
@@ -213,6 +222,17 @@ def g() -> Generator[int, None, None]:
     head, _tail = out.split("PY2CPP_YIELD", 1)
     self.assertIn("if (!(", head)
     self.assertNotIn("PY2CPP_RETURN", head)
+
+  def test_sync_yield_from_yields_child_value(self):
+    body = _resume_body_from_source(
+      """
+def g(xs: list[int]) -> Generator[int, None, None]:
+  yield from xs
+""",
+    )
+    out = _emit_resume(body)
+    self.assertIn("return (PyIterResult<int, PyNone>::Yield)", out)
+    self.assertNotRegex(out, r"if \(!__yf\d+\.done__get\(\)\)\s*\{\s*continue;")
 
 
 if __name__ == "__main__":

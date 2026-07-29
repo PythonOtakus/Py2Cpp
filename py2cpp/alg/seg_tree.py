@@ -38,7 +38,8 @@ class SegTree(ContainerMixin):
 
   def __copy__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     self._n = other._n
     self._mode = other._mode
     self._size = other._size
@@ -49,7 +50,8 @@ class SegTree(ContainerMixin):
 
   def __move__(self, other: Self):
     self._ensure_active()
-    self._ensure_other_active(other)
+    if other.__moved__:
+      raise ValueError("move from moved container")
     mode: AggMode = other._mode
     self._n = other._n
     self._mode = other._mode

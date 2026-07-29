@@ -227,7 +227,7 @@ def _emit_class_methods_body_impl(tr: "Translator", info: ClassInfo):
       _emit_method(tr, info, m, info.method_sigs[name])
   if not info.is_uncopyable:
     emit_auto_copy_move(tr, info)
-  if not info.is_uncopyable:
+  if (not info.is_uncopyable) or (info.has_move and not info.is_native):
     emit_copy_move_special_members(tr, info)
   overload_names = set(info.method_overloads.keys())
   for _name, overloads in info.method_overload_sigs.items():

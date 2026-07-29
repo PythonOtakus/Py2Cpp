@@ -9,12 +9,13 @@ from ..core.exceptions import OSError
 class TcpSocket:
   """IPv4 TCP 套接字。"""
 
-  _sock: uint64
-  _closed: bool
+  _state: uintptr = 0
 
   def __init__(self): ...
 
   def __del__(self): ...
+
+  def __copy__(self, other: Self): ...
 
   def connect(self, host: str, port: int) -> None:
     """连接 ``host:port``。"""

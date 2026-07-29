@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #endif
+#include <atomic>
 #include <string.h>
 
 PY2CPP_IGNORE
@@ -74,36 +75,134 @@ static _web_sock_t _web_sock_from_u64(unsigned long long v)
 #endif
 }
 
+struct PyTcpSocketState
+{
+  std::atomic<int> refs;
+  _web_sock_t sock;
+  bool closed;
+  bool has_timeout;
+  double timeout_sec;
+
+  PyTcpSocketState()
+    : refs(1), sock(_web_invalid), closed(true),
+      has_timeout(false), timeout_sec(0.0)
+  {
+  }
+};
+
+static PyTcpSocketState* _web_socket_state(PyUPtr handle)
+{
+  return (PyTcpSocketState*)(uintptr_t)handle;
+}
+
+static void _web_close_state(PyTcpSocketState* st)
+{
+  if (!st)
+  {
+    return;
+  }
+  if ((!st->closed) && (st->sock != _web_invalid))
+  {
+    _web_close_sock(st->sock);
+  }
+  st->sock = _web_invalid;
+  st->closed = true;
+}
+
+static void _web_retain_state(PyTcpSocketState* st)
+{
+  if (st)
+  {
+    st->refs.fetch_add(1, std::memory_order_relaxed);
+  }
+}
+
+static void _web_release_state(PyTcpSocketState* st)
+{
+  if (st && st->refs.fetch_sub(1, std::memory_order_acq_rel) == 1)
+  {
+    _web_close_state(st);
+    delete st;
+  }
+}
+
+static _web_sock_t _web_require_open(PyTcpSocketState* st)
+{
+  if ((!st) || st->closed || st->sock == _web_invalid)
+  {
+    _web_throw_oserror();
+  }
+  return st->sock;
+}
+
+static void _web_apply_timeout(_web_sock_t sock, double sec)
+{
+#ifdef _WIN32
+  int ms = (int)(sec * 1000.0);
+  if (ms < 0)
+  {
+    ms = 0;
+  }
+  setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&ms, (int)sizeof(ms));
+  setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (const char*)&ms, (int)sizeof(ms));
+#else
+  struct timeval tv;
+  tv.tv_sec = (long)sec;
+  tv.tv_usec = (long)((sec - (double)tv.tv_sec) * 1000000.0);
+  setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+  setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+#endif
+}
+
+static void _web_apply_pending_timeout(PyTcpSocketState* st)
+{
+  if (st && st->has_timeout && (!st->closed) && st->sock != _web_invalid)
+  {
+    _web_apply_timeout(st->sock, st->timeout_sec);
+  }
+}
+
 PyTcpSocket::PyTcpSocket()
 {
-  _sock = (unsigned long long)_web_invalid;
-  _closed = true;
+  _state = (PyUPtr)(uintptr_t)(new PyTcpSocketState());
 }
 
 PyTcpSocket::~PyTcpSocket()
 {
-  close();
+  PyTcpSocketState* st = _web_socket_state(_state);
+  _web_release_state(st);
+  _state = 0;
+}
+
+void PyTcpSocket::__copy__(const PyTcpSocket& other)
+{
+  if (_state == other._state)
+  {
+    return;
+  }
+  PyTcpSocketState* next = _web_socket_state(other._state);
+  _web_retain_state(next);
+  PyTcpSocketState* old = _web_socket_state(_state);
+  _web_release_state(old);
+  _state = other._state;
 }
 
 void PyTcpSocket::close()
 {
-  if ((!_closed) && (_sock != (unsigned long long)_web_invalid))
-  {
-    _web_close_sock(_web_sock_from_u64(_sock));
-  }
-  _sock = (unsigned long long)_web_invalid;
-  _closed = true;
+  _web_close_state(_web_socket_state(_state));
 }
 
 PyBool PyTcpSocket::is_closed() const
 {
-  return _closed;
+  PyTcpSocketState* st = _web_socket_state(_state);
+  return (!st) || st->closed;
 }
 
 void PyTcpSocket::connect(PyStr host, PyInt port)
 {
   _web_ensure_wsa();
-  close();
+  PyTcpSocketState* st = _web_socket_state(_state);
+  _web_close_state(st);
   char hbuf[256];
   host.copy_to_span(PySpan<PyByte>((PyByte*)hbuf, (PyInt)sizeof(hbuf), 1));
 #ifdef _WIN32
@@ -126,8 +225,9 @@ void PyTcpSocket::connect(PyStr host, PyInt port)
     _web_close_sock(s);
     _web_throw_oserror();
   }
-  _sock = (unsigned long long)s;
-  _closed = false;
+  st->sock = s;
+  st->closed = false;
+  _web_apply_pending_timeout(st);
 #else
   _web_sock_t s = ::socket(AF_INET, SOCK_STREAM, 0);
   if (s < 0)
@@ -148,15 +248,17 @@ void PyTcpSocket::connect(PyStr host, PyInt port)
     _web_close_sock(s);
     _web_throw_oserror();
   }
-  _sock = (unsigned long long)s;
-  _closed = false;
+  st->sock = s;
+  st->closed = false;
+  _web_apply_pending_timeout(st);
 #endif
 }
 
 void PyTcpSocket::bind(PyStr host, PyInt port)
 {
   _web_ensure_wsa();
-  close();
+  PyTcpSocketState* st = _web_socket_state(_state);
+  _web_close_state(st);
   char hbuf[256];
   host.copy_to_span(PySpan<PyByte>((PyByte*)hbuf, (PyInt)sizeof(hbuf), 1));
 #ifdef _WIN32
@@ -181,8 +283,9 @@ void PyTcpSocket::bind(PyStr host, PyInt port)
     _web_close_sock(s);
     _web_throw_oserror();
   }
-  _sock = (unsigned long long)s;
-  _closed = false;
+  st->sock = s;
+  st->closed = false;
+  _web_apply_pending_timeout(st);
 #else
   _web_sock_t s = ::socket(AF_INET, SOCK_STREAM, 0);
   if (s < 0)
@@ -205,24 +308,22 @@ void PyTcpSocket::bind(PyStr host, PyInt port)
     _web_close_sock(s);
     _web_throw_oserror();
   }
-  _sock = (unsigned long long)s;
-  _closed = false;
+  st->sock = s;
+  st->closed = false;
+  _web_apply_pending_timeout(st);
 #endif
 }
 
 void PyTcpSocket::listen(PyInt backlog)
 {
-  if (_closed)
-  {
-    _web_throw_oserror();
-  }
+  _web_sock_t sock = _web_require_open(_web_socket_state(_state));
 #ifdef _WIN32
-  if (::listen(_web_sock_from_u64(_sock), backlog) != 0)
+  if (::listen(sock, backlog) != 0)
   {
     _web_throw_oserror();
   }
 #else
-  if (::listen(_web_sock_from_u64(_sock), backlog) != 0)
+  if (::listen(sock, backlog) != 0)
   {
     _web_throw_oserror();
   }
@@ -231,14 +332,11 @@ void PyTcpSocket::listen(PyInt backlog)
 
 PyTcpSocket PyTcpSocket::accept()
 {
-  if (_closed)
-  {
-    _web_throw_oserror();
-  }
+  _web_sock_t sock = _web_require_open(_web_socket_state(_state));
 #ifdef _WIN32
   struct sockaddr_in peer;
   int plen = (int)sizeof(peer);
-  _web_sock_t c = ::accept(_web_sock_from_u64(_sock), (struct sockaddr*)&peer, &plen);
+  _web_sock_t c = ::accept(sock, (struct sockaddr*)&peer, &plen);
   if (c == INVALID_SOCKET)
   {
     _web_throw_oserror();
@@ -246,24 +344,22 @@ PyTcpSocket PyTcpSocket::accept()
 #else
   struct sockaddr_in peer;
   socklen_t plen = sizeof(peer);
-  _web_sock_t c = ::accept(_web_sock_from_u64(_sock), (struct sockaddr*)&peer, &plen);
+  _web_sock_t c = ::accept(sock, (struct sockaddr*)&peer, &plen);
   if (c < 0)
   {
     _web_throw_oserror();
   }
 #endif
-PyTcpSocket out = PyTcpSocket();
-  out._sock = (unsigned long long)c;
-  out._closed = false;
+  PyTcpSocket out = PyTcpSocket();
+  PyTcpSocketState* out_st = _web_socket_state(out._state);
+  out_st->sock = c;
+  out_st->closed = false;
   return out;
 }
 
 PyInt PyTcpSocket::send(PyArray<PyByte>& buf, PyInt end)
 {
-  if (_closed)
-  {
-    _web_throw_oserror();
-  }
+  _web_sock_t sock = _web_require_open(_web_socket_state(_state));
   if (end <= 0)
   {
     return 0;
@@ -275,13 +371,13 @@ PyInt PyTcpSocket::send(PyArray<PyByte>& buf, PyInt end)
   }
   const char* p = (const char*)(buf.PY2CPP_GETTER(view)()).at(0);
 #ifdef _WIN32
-  int sent = ::send(_web_sock_from_u64(_sock), p, end, 0);
+  int sent = ::send(sock, p, end, 0);
   if (sent == SOCKET_ERROR)
   {
     _web_throw_oserror();
   }
 #else
-  ssize_t sent = ::send(_web_sock_from_u64(_sock), p, (size_t)end, 0);
+  ssize_t sent = ::send(sock, p, (size_t)end, 0);
   if (sent < 0)
   {
     _web_throw_oserror();
@@ -292,10 +388,7 @@ PyInt PyTcpSocket::send(PyArray<PyByte>& buf, PyInt end)
 
 PyInt PyTcpSocket::recv(PyArray<PyByte>& buf, PyInt cap)
 {
-  if (_closed)
-  {
-    _web_throw_oserror();
-  }
+  _web_sock_t sock = _web_require_open(_web_socket_state(_state));
   if (cap <= 0)
   {
     return 0;
@@ -307,13 +400,13 @@ PyInt PyTcpSocket::recv(PyArray<PyByte>& buf, PyInt cap)
   }
   char* p = (char*)(buf.PY2CPP_GETTER(view)()).at(0);
 #ifdef _WIN32
-  int got = ::recv(_web_sock_from_u64(_sock), p, cap, 0);
+  int got = ::recv(sock, p, cap, 0);
   if (got == SOCKET_ERROR)
   {
     _web_throw_oserror();
   }
 #else
-  ssize_t got = ::recv(_web_sock_from_u64(_sock), p, (size_t)cap, 0);
+  ssize_t got = ::recv(sock, p, (size_t)cap, 0);
   if (got < 0)
   {
     _web_throw_oserror();
@@ -324,24 +417,13 @@ PyInt PyTcpSocket::recv(PyArray<PyByte>& buf, PyInt cap)
 
 void PyTcpSocket::set_timeout(PyFloat sec)
 {
-  if (_closed)
+  PyTcpSocketState* st = _web_socket_state(_state);
+  if (!st)
   {
     _web_throw_oserror();
   }
-#ifdef _WIN32
-  int ms = (int)(sec * 1000.0);
-  if (ms < 0)
-  {
-    ms = 0;
-  }
-  setsockopt(_web_sock_from_u64(_sock), SOL_SOCKET, SO_RCVTIMEO, (const char*)&ms, (int)sizeof(ms));
-  setsockopt(_web_sock_from_u64(_sock), SOL_SOCKET, SO_SNDTIMEO, (const char*)&ms, (int)sizeof(ms));
-#else
-  struct timeval tv;
-  tv.tv_sec = (long)sec;
-  tv.tv_usec = (long)((sec - (double)tv.tv_sec) * 1000000.0);
-  setsockopt(_web_sock_from_u64(_sock), SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
-  setsockopt(_web_sock_from_u64(_sock), SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
-#endif
+  st->has_timeout = true;
+  st->timeout_sec = (double)sec;
+  _web_apply_pending_timeout(st);
 }
 

@@ -6,7 +6,7 @@ from src.translator import Translator
 
 
 class TestNativeClassFields(unittest.TestCase):
-  def test_tcp_socket_uint64_bool_members_in_header(self):
+  def test_tcp_socket_state_member_in_header(self):
     root = Path(__file__).resolve().parents[2]
     src = root / "py2cpp" / "web" / "socket.py"
     out = root / "generated"
@@ -18,13 +18,14 @@ class TestNativeClassFields(unittest.TestCase):
       strict=False,
     )
     header = (out / "runtime" / "py2cpp" / "web" / "socket.h").read_text(encoding="utf-8")
-    self.assertIn("PyUInt64 _sock", header)
-    self.assertIn("PyBool _closed", header)
+    self.assertIn("PyUPtr _state", header)
+    self.assertNotIn("PyUInt64 _sock", header)
+    self.assertNotIn("PyBool _closed", header)
     self.assertNotIn("web_tcp_socket_tail", header)
 
   def test_text_io_wrapper_uintptr_bool_members_in_header(self):
     root = Path(__file__).resolve().parents[2]
-    src = root / "py2cpp" / "io" / "__init__.py"
+    src = root / "py2cpp" / "__init__.py"
     out = root / "generated"
     Translator.translate_file(
       str(src),

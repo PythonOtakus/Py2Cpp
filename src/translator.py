@@ -4988,20 +4988,25 @@ class Translator(ast.NodeVisitor):
         if not ret or ret == 'Self':
             enter_ty = info.storage_cpp_type()
         else:
-            enter_ty = strip_cpp_ref(ret)
+            enter_ty = ret
         if info.module_path != RUNTIME_PKG and self._is_stdlib_module(info.module_path):
-            base, _, tail = enter_ty.partition('<')
+            is_ref = enter_ty.rstrip().endswith('&')
+            enter_base = strip_cpp_ref(enter_ty)
+            base, _, tail = enter_base.partition('<')
             if tail:
                 enter_ty = f'{qualify_symbol_in_module(info.module_path, base)}<{tail}'
             else:
-                enter_ty = qualify_symbol_in_module(info.module_path, enter_ty)
+                enter_ty = qualify_symbol_in_module(info.module_path, enter_base)
+            if is_ref:
+                enter_ty = f'{enter_ty}&'
         return enter_ty
 
     def _emit_with_as_target(self, target: ast.expr, mgr: str, *, mgr_type: str | None=None) -> None:
         """``as x`` 绑定 ``__enter__()`` 返回值（对齐 CPython ``with m as x``）。"""
         enter_tmp = temp_name('with_ent')
-        self.write_line(f'auto {enter_tmp} = {mgr}.__enter__();')
         enter_ty = self._context_manager_enter_return_type(mgr_type)
+        enter_is_ref = bool(enter_ty and enter_ty.rstrip().endswith('&'))
+        self.write_line(f'auto{"&" if enter_is_ref else ""} {enter_tmp} = {mgr}.__enter__();')
         match target:
             case ast.Name(id=name):
                 pname = cpp_param(name)

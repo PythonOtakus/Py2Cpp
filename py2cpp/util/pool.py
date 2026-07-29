@@ -19,6 +19,7 @@ class pool_slot_loc:
     self.offset: int = offset
 
 
+@uncopyable
 @native_name("PyPool")
 class Pool[T]:
   """``block_capacity`` 为每块槽数（≤ ``Self._BLOCK_CAP``）。"""
@@ -46,6 +47,26 @@ class Pool[T]:
 
   def __del__(self):
     self.clear()
+
+  def __move__(self, other: Self):
+    self.clear()
+    self._block_capacity = other._block_capacity
+    self._block_bufs = other._block_bufs
+    self._free_top = other._free_top
+    self._free_data = other._free_data
+    self._meta_block_index = other._meta_block_index
+    self._meta_base = other._meta_base
+    self._meta_capacity = other._meta_capacity
+    self._skip_hi = other._skip_hi
+    self._use_mark = other._use_mark
+    self._live = other._live
+    other._block_capacity = Self._BLOCK_CAP
+    other._block_bufs = []
+    other._meta_block_index = []
+    other._meta_base = []
+    other._meta_capacity = []
+    other._skip_hi = []
+    other._live = 0
 
   @immutable
   def __len__(self) -> int:

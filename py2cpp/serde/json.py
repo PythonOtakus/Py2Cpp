@@ -1103,6 +1103,7 @@ class JsonEncoder:
     return str.from_buf(buf, at)
 
 
+@copyable
 @dataclass(eq=False, repr=False)
 class JsonDecoder:
   """JSON ``Decoder`` 实现；游标保存在 ``pos``。"""
@@ -1119,6 +1120,17 @@ class JsonDecoder:
 
   def __repr__(self) -> str:
     return f"JsonDecoder(s={self.s!r}, pos={self.pos})"
+
+  def __copy__(self, other: Self):
+    self.s = other.s
+    self.pos = other.pos
+    self.ascii_bind_done = False
+    self.ascii_ok = False
+    self.ascii_len = 0
+    self.ascii_bytes = None
+    self.ascii_bytes_owned = False
+    self.str_arena.reset()
+    self.str_arena_active = False
 
   @staticmethod
   @immutable

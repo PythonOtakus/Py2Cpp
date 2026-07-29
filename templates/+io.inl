@@ -43,6 +43,27 @@ PyTextIOWrapper::PyTextIOWrapper(PyStr path, PyStr mode)
   }
 }
 
+PyTextIOWrapper::PyTextIOWrapper(PyTextIOWrapper&& other)
+{
+  _fp = other._fp;
+  _closed = other._closed;
+  other._fp = 0;
+  other._closed = true;
+}
+
+PyTextIOWrapper& PyTextIOWrapper::operator=(PyTextIOWrapper&& other)
+{
+  if (this != &other)
+  {
+    this->close();
+    _fp = other._fp;
+    _closed = other._closed;
+    other._fp = 0;
+    other._closed = true;
+  }
+  return *this;
+}
+
 PyTextIOWrapper::~PyTextIOWrapper()
 {
   if ((_fp) && (!_closed))

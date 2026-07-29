@@ -213,6 +213,7 @@ class StringIO(CloseMixin):
 
 
 @native
+@uncopyable
 @native_name("Py*")
 class TextIOWrapper:
   """基于 ``FILE*`` 的文本文件包装（实现见 ``io.inl``）。"""

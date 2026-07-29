@@ -31,12 +31,15 @@ def _builtin_class_info(tr: Translator, py_name: str) -> ClassInfo | None:
 _CONTAINER_PREFIX_TO_PY: tuple[tuple[str, str], ...] = ((CPP_LIST_PREFIX, 'list'), (CPP_DICT_PREFIX, 'dict'), (CPP_SET_PREFIX, 'set'), (CPP_FROZENSET_PREFIX, 'frozenset'), (CPP_DEQUE_PREFIX, 'deque'))
 
 def _class_info_from_cpp_type(tr: Translator, cpp_type: str) -> ClassInfo | None:
-    if not is_container_type(cpp_type):
-        return None
     base = strip_cpp_type_qualifiers(cpp_type)
-    for prefix, py_name in _CONTAINER_PREFIX_TO_PY:
-        if base.startswith(prefix):
-            return _builtin_class_info(tr, py_name)
+    if is_container_type(cpp_type):
+        for prefix, py_name in _CONTAINER_PREFIX_TO_PY:
+            if base.startswith(prefix):
+                return _builtin_class_info(tr, py_name)
+    for info in tr.classes.values():
+        cpp = info.cpp_name()
+        if base == cpp or base.startswith(f'{cpp}<'):
+            return info
     return None
 
 def _class_info_from_annotation(tr: Translator, ann: ast.expr | None, tparams: list[str], *, typevar_tuple_names: frozenset[str] | None=None) -> ClassInfo | None:
@@ -45,10 +48,10 @@ def _class_info_from_annotation(tr: Translator, ann: ast.expr | None, tparams: l
     cpp = tr.type_parser.parse_type(ann, set(tparams), typevar_tuple_names=typevar_tuple_names)
     return _class_info_from_cpp_type(tr, cpp)
 
-def _is_move_container(info: ClassInfo | None) -> bool:
+def _is_move_type(info: ClassInfo | None) -> bool:
     if info is None:
         return False
-    return info.name in _MOVE_CONTAINER_NAMES and info.has_move and (not info.is_refcount)
+    return info.has_move and (not info.is_copyable) and (not info.is_refcount) and (not info.is_boxing)
 
 class _FunctionMovedChecker(ast.NodeVisitor):
 
@@ -97,7 +100,7 @@ class _FunctionMovedChecker(ast.NodeVisitor):
         if target_info is None and target_ann is not None:
             target_info = _class_info_from_annotation(self.tr, target_ann, self._active_tparams(), typevar_tuple_names=self._active_typevar_tuple_names())
         rhs_info = self._class_info_for_var(rhs.id)
-        if not _is_move_container(target_info) or not _is_move_container(rhs_info):
+        if not _is_move_type(target_info) or not _is_move_type(rhs_info):
             return False
         return target_info.name == rhs_info.name
 

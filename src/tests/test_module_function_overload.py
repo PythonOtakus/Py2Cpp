@@ -26,7 +26,7 @@ class JsonClassSerializeOverloadTest(unittest.TestCase):
       text = header.read_text(encoding="utf-8")
       self.assertIn("static PyStr dumps(PyBool obj, PyInt indent = 0);", text)
       self.assertIn(
-        "static PyStr dumps(const PyList<PyInt>& obj, PyInt indent = 0);",
+        "static PyStr dumps(const PyList<PyInt, 0>& obj, PyInt indent = 0);",
         text,
       )
       self.assertIn(
@@ -56,7 +56,7 @@ class JsonClassSerializeOverloadTest(unittest.TestCase):
         cwd=root,
         check=True,
       )
-      cpp = out / "test" / "stdlib" / "serde" / "test_json.cpp"
+      cpp = out / "test" / "serde" / "test_json.cpp"
       text = cpp.read_text(encoding="utf-8")
       self.assertIn("Json::dumps(", text)
       self.assertIn("Json::dump(", text)

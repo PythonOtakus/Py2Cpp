@@ -238,13 +238,13 @@ ScandirIterator::ScandirIterator(PyStr pathname)
   this->_state = (PyUPtr)(uintptr_t)st;
 }
 
-ScandirIterator::ScandirIterator(ScandirIterator&& other) noexcept
+ScandirIterator::ScandirIterator(ScandirIterator&& other)
   : _path(other._path), _state(other._state)
 {
   other._state = 0;
 }
 
-ScandirIterator& ScandirIterator::operator=(ScandirIterator&& other) noexcept
+ScandirIterator& ScandirIterator::operator=(ScandirIterator&& other)
 {
   if (this != &other)
   {

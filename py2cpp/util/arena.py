@@ -7,7 +7,7 @@ from ..builtins import *
 from .list import list
 
 
-@copyable
+@uncopyable
 @native_name("PyArena")
 class Arena:
   """单次 ``loads`` 作用域内的 ``char`` 堆缓冲池。"""
@@ -17,6 +17,11 @@ class Arena:
 
   def __del__(self):
     self.reset()
+
+  def __move__(self, other: Self):
+    self.reset()
+    self._owned = other._owned
+    other._owned = []
 
   def reset(self) -> None:
     """释放未 ``release`` 的缓冲。"""

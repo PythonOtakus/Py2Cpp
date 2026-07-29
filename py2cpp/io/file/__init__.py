@@ -273,6 +273,7 @@ def walk(
 
 
 @native
+@uncopyable
 @native_name("ScandirIterator")
 class scandir_iterator:
   """惰性 ``os.scandir`` 迭代器（Win ``FindNextFile`` / POSIX ``readdir``）。"""

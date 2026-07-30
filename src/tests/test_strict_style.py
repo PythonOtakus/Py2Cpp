@@ -1772,6 +1772,27 @@ def drop(p: Pointer[Widget]) -> None:
 """
     )
 
+  def test_s02_allows_rect_contains_and_size(self):
+    self._translate(
+      """class Rect:
+  @property
+  def size(self) -> int:
+    return 0
+
+  def contains(self, point: int) -> bool:
+    return True
+"""
+    )
+
+  def test_s02_rejects_contains_outside_rect(self):
+    self._expect_strict_fail(
+      """class Box:
+  def contains(self, x: int) -> bool:
+    return True
+""",
+      "S02",
+    )
+
   def test_s14_allows_cpp_style_method_call(self):
     self._translate(
       """class Box:
@@ -2377,6 +2398,98 @@ def choose(x: int, y: int) -> int:
       """def ok(ch: str) -> int:
   d: int = int(ch) - ord('0')
   return d
+"""
+    )
+
+  def test_s46_rejects_new_type_context_temp_assign(self):
+    self._expect_strict_fail(
+      """@copyable
+class Point:
+  x: int = 0
+
+@copyable
+class Box:
+  item: Point = new()
+
+  def __init__(self):
+    sp: Point = new()
+    self.item = sp
+""",
+      "S46",
+    )
+
+  def test_s46_rejects_new_type_context_temp_return(self):
+    self._expect_strict_fail(
+      """@copyable
+class Point:
+  x: int = 0
+
+def bad() -> Point:
+  p: Point = new()
+  return p
+""",
+      "S46",
+    )
+
+  def test_s46_allows_new_temp_with_mutation(self):
+    self._translate(
+      """@copyable
+class Point:
+  x: int = 0
+
+def ok() -> Point:
+  p: Point = new()
+  p.x = 1
+  return p
+"""
+    )
+
+  def test_s46_allows_direct_field_new(self):
+    self._translate(
+      """@copyable
+class Point:
+  x: int = 0
+
+@copyable
+class Box:
+  item: Point = new()
+
+  def __init__(self):
+    self.item = new()
+"""
+    )
+
+  def test_s46_allows_explicit_cls_in_call_arg(self):
+    self._translate(
+      """@copyable
+class Point:
+  x: int = 0
+
+def take(p: Point) -> int:
+  return p.x
+
+def ok() -> int:
+  return take(Point())
+"""
+    )
+
+  def test_s46_allows_new_temp_before_cleanup_return(self):
+    self._translate(
+      """@copyable
+class Resp:
+  n: int = 0
+
+  @staticmethod
+  def read() -> Self:
+    return new()
+
+def close() -> None:
+  pass
+
+def ok() -> Resp:
+  resp: Resp = new.read()
+  close()
+  return resp
 """
     )
 

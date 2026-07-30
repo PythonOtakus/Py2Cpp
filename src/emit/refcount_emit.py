@@ -120,7 +120,16 @@ class _RefcountEmitter:
     field = tgt.attr
     match value:
       case ast.Constant(value=None):
-        self.t.write_line(f"this->{field} = nullptr;")
+        from ..analysis.type_pred import is_refcount_type
+
+        ft = self.t._field_storage(field, info=self.info) or ""
+        if ft and is_refcount_type(ft):
+          self.t.write_line(f"this->{field} = {ft}();")
+        else:
+          none_v = self.t._coerce_expr_to_cpp_type(
+            "nullptr", ft or "void*", rhs_node=value,
+          )
+          self.t.write_line(f"this->{field} = {none_v};")
       case ast.Call(func=ast.Subscript(value=ast.Name(id="alloc"), slice=sl), args=[]) if isinstance(sl, ast.Name):
         elem = sl.id
         self._field_free[field] = "free"
@@ -132,14 +141,28 @@ class _RefcountEmitter:
         self.info.owned_fields[field] = (elem, "freeArray")
         count = self.t.visit(args[0]) if args else "1"
         self.t.write_line(f"this->{field} = allocArray<{elem}>({count});")
+      case ast.Call() if self.t._is_new_call(value):
+        from ..emit.literal_ctor_emit import _emit_new_ctor_expr
+
+        ft = self.t._field_storage(field, info=self.info) or ""
+        if not ft and self.info.dataclass_field_specs:
+          for spec in self.info.dataclass_field_specs:
+            if spec.name == field:
+              ft = self.t._parse_storage_type(
+                spec.annotation, self.t._active_type_params(),
+              )
+              break
+        if not ft:
+          raise NotImplementedError(
+            f"@refcount 构造 self.{field} = new(...) 需字段类型"
+          )
+        self.t.write_line(f"this->{field} = {_emit_new_ctor_expr(self.t, ft, value)};")
       case ast.Name(id=name):
         self.t.write_line(f"this->{field} = {cpp_param(name)};")
       case ast.Attribute(value=ast.Name(id="new")) as new_attr:
         from .call_emit import try_emit_new_staticproperty_ref
 
-        from ..analysis.type_emit import field_storage_cpp
-
-        ft = field_storage_cpp(self.info, field, fallback="") or None
+        ft = self.t._field_storage(field, info=self.info) or None
         if not ft and self.info.dataclass_field_specs:
           for spec in self.info.dataclass_field_specs:
             if spec.name == field:
@@ -177,11 +200,20 @@ class _RefcountEmitter:
         fake = ast.Assign(targets=[tgt], value=value)
         self._emit_field_subscript_assign(fake)
       case ast.Assign(targets=[tgt], value=value):
-        self._emit_field_assign(tgt, value)
+        # 仅 self.field = … 走专用路径；嵌套属性等回退普通 visit
+        if (
+          isinstance(tgt, ast.Attribute)
+          and isinstance(tgt.value, ast.Name)
+          and tgt.value.id == "self"
+        ):
+          self._emit_field_assign(tgt, value)
+        else:
+          self.t.visit(stmt)
       case ast.Pass() | ast.Expr(value=ast.Constant(value=None)):
         pass
       case _:
-        raise NotImplementedError(f"@refcount 构造语句: {ast.dump(stmt)}")
+        # 方法调用、AnnAssign 等：与普通方法体相同
+        self.t.visit(stmt)
 
   def _emit_free_stmt(self, stmt: ast.stmt) -> None:
     call = stmt.value if isinstance(stmt, ast.Expr) else stmt

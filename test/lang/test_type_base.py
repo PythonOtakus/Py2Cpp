@@ -23,8 +23,7 @@ class TypeBaseTests(TestCaseMixin):
     se: StatisticsError = new()
     self.assertEqual(se.__class_id__, StatisticsError.__id__)
     stat_view: StatisticsError.__base__ = se
-    c: Container[int] = new()
-    box_view: Box[int].__base__ = c
+    box_view: Box[int].__base__ = new()
 
 
 def main():

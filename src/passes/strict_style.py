@@ -1,6 +1,6 @@
 """编码规范强检查（``--strict``，默认开启）。
 
-S01–S29 按 A–F 分组（见 ``docs/编码规范.md`` §1.1）；``S06`` 构造优先级用子码 ``S06a``–``S06e``；``S18`` 为覆盖基类 ``@virtual``/``@abstract`` 方法（含继承链上纯虚/虚声明）时子类须 ``@override``；**静态**：覆盖基类 ``@staticmethod``+``@override``，或模块内 ``func[Cls]`` 绑定之 ``@protocol`` 静态虚成员，亦须 ``@staticmethod``+``@override``（不检查 dunder；``@mixin`` 基类豁免）；``S27`` 为 import 布局；``S28`` 为堆/栈数组切片注解；``S29`` 为同类型反向 dunder；``S30`` 为继承顺序（mixin 在实体类前、至多一个实体基类）；``S31`` 禁止显式 ``RefCount``（含 ``RefCount()`` / ``RefCount[T]``；``@refcount`` 类与 ``T: refcount`` 须写 ``T``，清空用 ``new()``）；``S32`` 为 ``@dataclass`` 须至少一个非 ``@optional`` 实例字段；``S33`` 禁止类成员名 ``assign``/``build``/``select``（与译期专用 API 冲突）；``S34`` 禁止非字面量 ``ord``；``S35`` 禁止仅作类型转换且无再赋值的注解临时变量（勿 ``n: int = int(x); return n``）；``S36`` 禁止定长元组解包中未使用的具名绑定（须 ``_`` / ``*_``）；``S37`` 禁止显式 ``PyNone``（须写 ``None``；``py2cpp/core/none.py`` 豁免）；``S38`` 禁止 ``for x in …: yield x``（须 ``yield from …``；``async def`` 异步生成器豁免；``for`` ``else`` 分支除外）；``S41`` 禁止 ``return self._field`` 与 ``self._field = 形参`` 成对的手写 getter/setter（须 ``@property`` 或公有字段）；``S42`` 禁止 trivial ``@property`` getter + 顶层 ``self._field = value`` 与其它语句的 ``@property.setter``（须 ``@property.postsetter`` / 字段简写）；``S45`` 禁止非 ``@dataclass`` 字段使用 ``@optional``。
+S01–S29 按 A–F 分组（见 ``docs/编码规范.md`` §1.1）；``S06`` 构造优先级用子码 ``S06a``–``S06e``；``S18`` 为覆盖基类 ``@virtual``/``@abstract`` 方法（含继承链上纯虚/虚声明）时子类须 ``@override``；**静态**：覆盖基类 ``@staticmethod``+``@override``，或模块内 ``func[Cls]`` 绑定之 ``@protocol`` 静态虚成员，亦须 ``@staticmethod``+``@override``（不检查 dunder；``@mixin`` 基类豁免）；``S27`` 为 import 布局；``S28`` 为堆/栈数组切片注解；``S29`` 为同类型反向 dunder；``S30`` 为继承顺序（mixin 在实体类前、至多一个实体基类）；``S31`` 禁止显式 ``RefCount``（含 ``RefCount()`` / ``RefCount[T]``；``@refcount`` 类与 ``T: refcount`` 须写 ``T``，清空用 ``new()``）；``S32`` 为 ``@dataclass`` 须至少一个非 ``@optional`` 实例字段；``S33`` 禁止类成员名 ``assign``/``build``/``select``（与译期专用 API 冲突）；``S34`` 禁止非字面量 ``ord``；``S35`` 禁止仅作类型转换且无再赋值的注解临时变量（勿 ``n: int = int(x); return n``）；``S36`` 禁止定长元组解包中未使用的具名绑定（须 ``_`` / ``*_``）；``S37`` 禁止显式 ``PyNone``（须写 ``None``；``py2cpp/core/none.py`` 豁免）；``S38`` 禁止 ``for x in …: yield x``（须 ``yield from …``；``async def`` 异步生成器豁免；``for`` ``else`` 分支除外）；``S41`` 禁止 ``return self._field`` 与 ``self._field = 形参`` 成对的手写 getter/setter（须 ``@property`` 或公有字段）；``S42`` 禁止 trivial ``@property`` getter + 顶层 ``self._field = value`` 与其它语句的 ``@property.setter``（须 ``@property.postsetter`` / 字段简写）；``S45`` 禁止非 ``@dataclass`` 字段使用 ``@optional``；``S46`` 禁止仅为 ``new`` 造类型上下文的注解临时变量（勿 ``sp: T = new(...); self.f = sp``，须 ``self.f = new(...)`` 或无法推断时 ``self.f = Cls(...)``）。
 检查 ``py2cpp/``、用户模块与 ``test/**``；``test/fail/`` 豁免；``# py2cpp: strict-off`` 可关单文件。
 
 内部 helper 前缀 ``_sNN_`` / ``_check_sNN_`` 与 §1.1 规则 ID 一致。
@@ -73,6 +73,7 @@ S42 = 'S42'
 S43 = 'S43'
 S44 = 'S44'
 S45 = 'S45'
+S46 = 'S46'
 _PRIMITIVE_CONVERT_CTORS = frozenset({'int', 'float', 'bool', 'char', 'byte', 'str', 'int64', 'float64', 'uint', 'uint64', 'uintptr'})
 _SLICE_ARRAY_ANN_ROOTS = frozenset({'array', 'array2d', 'array3d', 'stack_array', 'stack_array2d', 'stack_array3d'})
 _S20_MIN_DISPATCH_BRANCHES = 3
@@ -87,6 +88,8 @@ _DESUGAR_PROTO_DUNDERS = frozenset({'__aenter__', '__aexit__'})
 _S01_GLOBAL_DUNDERS = frozenset({'__await__'})
 _AUG_BINOPS = (ast.Add, ast.Sub, ast.Mult, ast.MatMult, ast.FloorDiv, ast.Mod, ast.BitOr, ast.BitAnd, ast.BitXor, ast.LShift, ast.RShift)
 _CPP_STYLE_METHOD_ALLOWLIST = frozenset({'reserve', 'reshape', 'capacity', 'clear', 'insert', 'remove', 'discard', 'update', 'get', 'find', 'index', 'rfind', 'rindex', 'startswith', 'endswith', 'split', 'strip', 'append', 'extend', 'pop', 'popleft', 'appendleft', 'add', 'copy', 'move', 'items', 'keys', 'values', 'getstate', 'setstate', 'join', 'replace', 'format', 'encode', 'decode'})
+# 类限定 S02 豁免：空间矩形允许 ``contains`` / ``size``（非容器 ``len`` 语义）
+_S02_CLASS_METHOD_ALLOW: dict[str, frozenset[str]] = {'Rect': frozenset({'contains', 'size'})}
 _CPP_STYLE_METHOD_ALIASES: dict[str, str] = {'push_back': 'append', 'push_copy': 'append', 'pop_back': 'pop', 'emplace_back': 'append', 'emplace': 'append', 'assign_copy': 'copy_from(other)', 'subgroup_len': 'len(container) 或 __len__', 'push_front': 'insert(0, item) 或 deque.appendleft', 'pop_front': 'popleft', 'shrink_to_fit': '勿引入；用容器/缓冲自有扩容语义', 'substr': '切片 s[i:j]', 'erase': 'pop / del / remove', 'is_empty': 'not container', 'isempty': 'not container', 'get_size': 'len(container)', 'contains': 'item in container', 'front': 'seq[0]', 'back': 'seq[-1]', 'size': 'len(container)', 'empty': 'not container 或 if not container', 'length': 'len(container)', 'pushback': 'append', 'popback': 'pop', 'emplaceback': 'append'}
 _CAMEL_CASE_BOUNDARY = re.compile('(?<!^)(?=[A-Z])')
 _BUILTIN_CTORS = frozenset({'int', 'float', 'bool', 'new', 'range', 'print', 'len', 'min', 'max', 'abs', 'enumerate', 'zip', 'super', 'type', 'isinstance', 'hasattr', 'getattr', 'setattr', 'ord', 'chr', 'hex', 'oct', 'bin', 'repr', 'str', 'bytes'})
@@ -418,6 +421,16 @@ def _is_new_call(node: ast.expr) -> bool:
 
 def _is_new_receiver_attribute(node: ast.expr) -> bool:
     return isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name) and (node.value.id == 'new')
+
+def _is_new_ctor_expr(node: ast.expr | None) -> bool:
+    """``new()`` / ``new(...)`` / ``new.方法(...)`` / ``new.静态属性``。"""
+    if node is None:
+        return False
+    if _is_new_call(node):
+        return True
+    if isinstance(node, ast.Call) and _is_new_receiver_attribute(node.func):
+        return True
+    return _is_new_receiver_attribute(node)
 
 def _ann_root_name(ann: ast.expr | None) -> str | None:
     if ann is None:
@@ -1416,6 +1429,115 @@ def _s35_check_primitive_convert_temp(checker: _StrictStyleChecker, node: ast.An
     except Exception:
         arg_text = 'x'
     checker._add(S35, node, _s35_primitive_convert_temp_msg(node.target.id, ctor, arg_text))
+
+def _s46_ast_parents(root: ast.AST) -> dict[ast.AST, ast.AST]:
+    parents: dict[ast.AST, ast.AST] = {}
+    for node in ast.walk(root):
+        for child in ast.iter_child_nodes(node):
+            parents[child] = node
+    return parents
+
+def _s46_is_pure_forward_use(name_node: ast.Name, parents: dict[ast.AST, ast.AST]) -> bool:
+    """``name`` 仅作为整表达式转发：``x = name`` / ``return name``。"""
+    parent = parents.get(name_node)
+    if parent is None:
+        return False
+    if isinstance(parent, ast.Assign) and parent.value is name_node:
+        return True
+    if isinstance(parent, ast.AnnAssign) and parent.value is name_node:
+        return True
+    if isinstance(parent, ast.Return) and parent.value is name_node:
+        return True
+    return False
+
+def _s46_find_stmt_list(stmts: list[ast.stmt], target: ast.stmt) -> tuple[list[ast.stmt], int] | None:
+    for i, stmt in enumerate(stmts):
+        if stmt is target:
+            return (stmts, i)
+        nested: list[list[ast.stmt]] = []
+        if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            nested.append(stmt.body)
+        elif isinstance(stmt, ast.If):
+            nested.append(stmt.body)
+            nested.append(stmt.orelse)
+        elif isinstance(stmt, (ast.For, ast.AsyncFor, ast.While)):
+            nested.append(stmt.body)
+            nested.append(stmt.orelse)
+        elif isinstance(stmt, ast.With) or (hasattr(ast, 'AsyncWith') and isinstance(stmt, ast.AsyncWith)):
+            nested.append(stmt.body)
+        elif isinstance(stmt, ast.Try):
+            nested.append(stmt.body)
+            nested.append(stmt.orelse)
+            nested.append(stmt.finalbody)
+            for h in stmt.handlers:
+                nested.append(h.body)
+        elif isinstance(stmt, ast.Match):
+            for case in stmt.cases:
+                nested.append(case.body)
+        for child in nested:
+            found = _s46_find_stmt_list(child, target)
+            if found is not None:
+                return found
+    return None
+
+def _s46_new_temp_msg(name: str, ann_text: str, new_text: str) -> str:
+    cls = ann_text if ann_text else 'Cls'
+    return _strict_msg(
+        f'`{name}: {cls} = {new_text}; … = {name}`',
+        f'`… = {new_text}`（有类型上下文）或 `… = {cls}(...)`（无法推断时）',
+        '仅为 ``new`` 提供类型上下文的注解临时变量',
+        reason='禁止为用 ``new`` 而创建临时变量再立刻转发赋值；优先对目标直接 ``new``，类型无法推断时用具体类名构造',
+        example=f'`self.f = {new_text}` 或 `self.f = {cls}(...)`；勿 `{name}: {cls} = {new_text}; self.f = {name}`',
+    )
+
+def _s46_check_new_type_context_temp(checker: _StrictStyleChecker, node: ast.AnnAssign) -> None:
+    """S46：勿 ``sp: T = new(...); self.f = sp``（中间无其它语句）。"""
+    if checker._s06_in_desugar_host():
+        return
+    if node.value is None or not _is_new_ctor_expr(node.value):
+        return
+    if not isinstance(node.target, ast.Name):
+        return
+    func = checker._current_func
+    if func is None:
+        return
+    name = node.target.id
+    hits = _s35_assign_hits_in_function(func, name)
+    if len(hits) != 1 or hits[0] is not node:
+        return
+    parents = _s46_ast_parents(func)
+    loads: list[ast.Name] = []
+    for n in ast.walk(func):
+        if isinstance(n, ast.Name) and n.id == name and isinstance(n.ctx, ast.Load):
+            loads.append(n)
+    if not loads:
+        return
+    if not all(_s46_is_pure_forward_use(n, parents) for n in loads):
+        return
+    located = _s46_find_stmt_list(func.body, node)
+    if located is None:
+        return
+    stmts, idx = located
+    remaining = set(id(n) for n in loads)
+    for stmt in stmts[idx + 1 :]:
+        loads_in_stmt = [n for n in loads if id(n) in remaining and any(x is n for x in ast.walk(stmt))]
+        if not loads_in_stmt:
+            # 中间夹有其它语句（如 close 后再 return）——临时变量有序用途，不记 S46
+            return
+        if not all(_s46_is_pure_forward_use(n, parents) for n in loads_in_stmt):
+            return
+        for n in loads_in_stmt:
+            remaining.discard(id(n))
+        if not remaining:
+            break
+    if remaining:
+        return
+    try:
+        new_text = ast.unparse(node.value)
+    except Exception:
+        new_text = 'new(...)'
+    ann_text = _s35_ann_text(node.annotation) or 'Cls'
+    checker._add(S46, node, _s46_new_temp_msg(name, ann_text, new_text))
 
 def _s36_is_discard_of_name(stmt: ast.stmt, name: str) -> bool:
     if not isinstance(stmt, ast.Assign) or len(stmt.targets) != 1:
@@ -3151,6 +3273,12 @@ class _StrictStyleChecker(ast.NodeVisitor):
     def _check_s02_cpp_style_name(self, name: str, node: ast.AST) -> None:
         if _is_dunder(name):
             return
+        if self._class_stack:
+            allowed = _S02_CLASS_METHOD_ALLOW.get(self._class_stack[-1])
+            if allowed is not None:
+                key = name.lstrip('_') if name.lstrip('_') else name
+                if name in allowed or key in allowed:
+                    return
         msg = _s02_cpp_style_message(name)
         if msg is None:
             return
@@ -3707,6 +3835,7 @@ class _StrictStyleChecker(ast.NodeVisitor):
         self._check_s15_annotation(node.annotation, node)
         self._check_s16_tuple_annotation(node.annotation, node)
         _s35_check_primitive_convert_temp(self, node)
+        _s46_check_new_type_context_temp(self, node)
         prev_ann = self._type_context_ann
         self._type_context_ann = node.annotation
         self._visit_in_context('new_preferred', node.value)

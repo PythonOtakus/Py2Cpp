@@ -44,8 +44,7 @@ class WeakValueDict[K: DictKey, V: refcount]:
     self._compact()
     for i in range(len(self._keys)):
       if self._keys[i] == key:
-        wr: WeakRef[V] = new(value)
-        self._values[i] = wr
+        self._values[i] = new(value)
         return
     self._keys.append(key)
     wv: WeakRef[V] = new(value)

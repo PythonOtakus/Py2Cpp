@@ -15,10 +15,14 @@ from .paths import _REPO_ROOT
 
 FFI_PKG = "ffi"
 FFI_ROOT = _REPO_ROOT / FFI_PKG
+# Zeus 旁路：``zeus/ffi/**/*.pyi`` 与仓库根 ``ffi/`` 同 module_path（``ffi/glfw/glfw3``）
+_ZEUS_FFI_ROOT = _REPO_ROOT / "zeus" / "ffi"
 
 # module_path → 第三方 C 头（供 glue ``#include``；``None`` 表示暂不自动 glue）
 _FFI_C_HEADER_BY_MODULE: dict[str, str] = {
   "ffi/sqlite/sqlite3": "sqlite3.h",
+  "ffi/glfw/glfw3": "GLFW/glfw3.h",
+  "ffi/gl/gl": "GL/gl.h",
 }
 
 # 生成 ``.inl`` 体的 C 符号白名单；缺省/``None`` = 该模块全部 ``@native``（慎用：回调签名易 C2664）
@@ -36,6 +40,8 @@ _FFI_GLUE_ALLOWLIST: dict[str, frozenset[str] | None] = {
     "sqlite3_exec",
     "sqlite3_free",
   }),
+  "ffi/glfw/glfw3": None,
+  "ffi/gl/gl": None,
 }
 
 
@@ -52,30 +58,37 @@ def ffi_import_parts_to_module_path(parts: list[str]) -> str | None:
 
 
 def find_ffi_source_file(module_path: str, *, project_root: Path | None = None) -> Path | None:
-  """``ffi/windows`` → 仓库根 ``ffi/windows.pyi``（其次 ``.py``）。
+  """``ffi/windows`` → 仓库根 ``ffi/windows.pyi``；其次 ``zeus/ffi/…``。
 
-  始终相对仓库根 ``ffi/``，与入口 ``project_root``（常为 ``test/…`` 父目录）无关。
   ``project_root`` 参数保留兼容调用方，忽略。
   """
   _ = project_root
   if not is_ffi_module_path(module_path):
     return None
   rel = module_path.replace("\\", "/").strip("/")
+  for root in (FFI_ROOT, _ZEUS_FFI_ROOT):
+    hit = _find_ffi_under_root(root, rel)
+    if hit is not None:
+      return hit
+  return None
+
+
+def _find_ffi_under_root(root: Path, rel: str) -> Path | None:
   if rel == FFI_PKG:
     for suf in (".pyi", ".py"):
-      cand = FFI_ROOT / f"__init__{suf}"
+      cand = root / f"__init__{suf}"
       if cand.is_file():
         return cand
     return None
   rest = rel[len(FFI_PKG) + 1 :]
   for suf in (".pyi", ".py"):
-    cand = FFI_ROOT / f"{rest}{suf}"
+    cand = root / f"{rest}{suf}"
     if cand.is_file():
       return cand
-  init_pyi = FFI_ROOT / rest / "__init__.pyi"
+  init_pyi = root / rest / "__init__.pyi"
   if init_pyi.is_file():
     return init_pyi
-  init_py = FFI_ROOT / rest / "__init__.py"
+  init_py = root / rest / "__init__.py"
   if init_py.is_file():
     return init_py
   return None

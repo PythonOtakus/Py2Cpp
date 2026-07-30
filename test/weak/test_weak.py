@@ -19,8 +19,7 @@ class LinkNode:
   children: list[Self] @optional = []
 
   def bind_parent(self, par: Self) -> None:
-    wr: WeakRef[Self] = new(par)
-    self.parent = wr
+    self.parent = new(par)
 
 
 class WeakRefTests(TestCaseMixin):

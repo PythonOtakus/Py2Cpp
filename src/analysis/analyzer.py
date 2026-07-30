@@ -3170,6 +3170,54 @@ class SemanticAnalyzer:
     self.types = TypeParser()
     self.sigs = SignatureBuilder(self.types)
 
+  def _inherited_field_names(self, info: ClassInfo, classes: dict[str, ClassInfo]) -> set[str]:
+    """真实基类（含 MRO）上已声明的实例字段名。
+
+    跳过 mixin / protocol / annotation：它们不占 C++ 存储，且常因方法体
+    ``self.x = …`` 误收集同名字段；若当作「已继承」会误删宿主上带注解的字段
+    （如 ``dict._buckets``）。
+    """
+    names: set[str] = set()
+    seen: set[str] = set()
+    stack = list(info.bases)
+    while stack:
+      base_name = stack.pop()
+      if base_name in seen:
+        continue
+      seen.add(base_name)
+      base = classes.get(base_name)
+      if base is None:
+        for cand in classes.values():
+          if cand.name == base_name or cand.cpp_name() == base_name:
+            base = cand
+            break
+      if base is None:
+        continue
+      stack.extend(base.bases)
+      if base.is_mixin or base.is_annotation or base.is_protocol:
+        continue
+      names.update(base.fields)
+      names.update(base.class_body_field_anns)
+    return names
+
+  def _drop_inherited_init_shadow_fields(self, tr) -> None:
+    """子类 ``__init__`` 对基类字段赋值勿再声明同名字段（避免 ``void*`` 遮蔽）。"""
+    for info in tr.classes.values():
+      if not info.bases:
+        continue
+      inherited = self._inherited_field_names(info, tr.classes)
+      if not inherited:
+        continue
+      kept: list[str] = []
+      for field in info.fields:
+        if field in inherited and field not in info.class_body_field_anns:
+          info.field_type_nodes.pop(field, None)
+          info.field_types.pop(field, None)
+          info.field_defaults.pop(field, None)
+          continue
+        kept.append(field)
+      info.fields = kept
+
   def analyze(self, tr):
     collect_entry_imports(tr)
     tr.type_parser = self.types
@@ -3330,6 +3378,8 @@ class SemanticAnalyzer:
           storage_t = strip_cpp_type_qualifiers(strip_cpp_ref(value_t))
           self.sigs._set_field_cpp_type(info, storage, storage_t)
       ensure_move_state_field(info)
+
+    self._drop_inherited_init_shadow_fields(tr)
 
     from .module_functions import partition_module_functions_from_asts
 

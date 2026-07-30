@@ -202,8 +202,7 @@ class JsonUnionTests(TestCaseMixin):
     vals.append(10)
     vals.append(20)
     pkt: TickPacket = new.Body(seq=1, values=vals)
-    pkt2: TickPacket = pkt
-    js_pkt: str = Json.dumps(pkt2)
+    js_pkt: str = Json.dumps(pkt)
     self.assertTrue(js_pkt.find('"values":[10,20]') >= 0)
 
 

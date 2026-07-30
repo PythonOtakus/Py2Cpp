@@ -38,8 +38,7 @@ class StaticPropertyWriteTests(TestCaseMixin):
 
   @override
   def test(self):
-    fresh: Point = new(9, 8)
-    Point.origin = fresh
+    Point.origin = new(9, 8)
     p: Point = Point.origin
     self.assertEqual(p.x, 9)
     self.assertEqual(p.y, 8)

@@ -31,8 +31,7 @@ class Point:
   @staticproperty.postsetter
   def origin(value: Self) -> None:
     if value.x < 0:
-      zero: Self = new(0, 0)
-      Self.__value__ = zero
+      Self.__value__ = new(0, 0)
     else:
       Self.__value__ = value
 
@@ -66,11 +65,9 @@ class StaticPostsetterTests(TestCaseMixin):
 
   @override
   def test(self):
-    p: Point = new(3, 4)
-    Point.origin = p
+    Point.origin = new(3, 4)
     self.assertEqual(Point.origin.x, 3)
-    q: Point = new(-1, 2)
-    Point.origin = q
+    Point.origin = new(-1, 2)
     self.assertEqual(Point.origin.x, 0)
 
 

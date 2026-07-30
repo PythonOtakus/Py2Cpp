@@ -40,11 +40,9 @@ class ECSWorld(ECSWorldMixin):
   def create(self, bundle: ECSSpawnComponents) -> ECSEntity:
     e: ECSEntity = self._alloc_entity()
     if bundle.spawn_position:
-      pos: ECSPosition = new(x=bundle.pos_x, y=bundle.pos_y)
-      self.position[e] = pos
+      self.position[e] = new(x=bundle.pos_x, y=bundle.pos_y)
     if bundle.spawn_velocity:
-      vel: ECSVelocity = new(dx=bundle.vel_dx, dy=bundle.vel_dy)
-      self.velocity[e] = vel
+      self.velocity[e] = new(dx=bundle.vel_dx, dy=bundle.vel_dy)
     return e
 
 

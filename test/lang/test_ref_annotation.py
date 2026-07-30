@@ -23,8 +23,7 @@ class RefAnnotationTests(TestCaseMixin):
   def test(self):
     table: ECSComponentTable[Position] = new()
     e: ECSEntity = new(index=0, generation=0)
-    pos: Position = new(x=5, y=0)
-    table[e] = pos
+    table[e] = new(x=5, y=0)
     bump_x(table, e)
     self.assertEqual(table[e].x, 6)
 

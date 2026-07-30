@@ -1759,11 +1759,33 @@ class Translator(ast.NodeVisitor):
             ft = self._field_cpp_type_for_attribute(base_expr.value, base_expr.attr)
             if ft:
                 t = ft
+            if not t and isinstance(base_expr.value, ast.Name) and base_expr.value.id == 'self' and self.class_info:
+                ann = self._annotation_expr_for_assign_target(base_expr)
+                if ann is not None:
+                    t = self._parse_storage_type(ann, self._active_type_params())
         if not t:
             t = self._infer_expr_cpp_type(base_expr) or ''
+        if not t:
+            return None
         if self._is_ptr_type(t):
             return t.strip()[:-1].rstrip()
-        return cpp_array_elem_type(t) or list_elem_type(t)
+        elem = cpp_array_elem_type(t) or list_elem_type(t)
+        if elem:
+            return elem
+        bare = t.strip()
+        ecs_prefix = f"{cpp_ident('ECSComponentTable')}<"
+        if bare.startswith(ecs_prefix) and bare.endswith('>'):
+            return bare[len(ecs_prefix):-1].strip()
+        owner = self._class_info_for_type(bare)
+        if owner is not None:
+            sig = owner.method_sigs.get('__setitem__')
+            if sig is not None:
+                for pname, pt in sig.param_types.items():
+                    if pname in ('self', 'e', 'key', 'index', 'i', 'row', 'col'):
+                        continue
+                    if pt:
+                        return pt
+        return None
 
     def _dict_value_cpp_type(self, base_expr: ast.expr) -> str | None:
         t = self._expr_cpp_type(base_expr)
@@ -2228,6 +2250,73 @@ class Translator(ast.NodeVisitor):
         for line in reversed(insert):
             target.insert(i, line)
 
+    def _annotation_expr_for_assign_target(self, target: ast.expr) -> ast.expr | None:
+        """赋值目标的类型注解 AST（字段/``@property``/静态属性），供 ``new.方法`` 推断。"""
+        match target:
+            case ast.Attribute(value=val, attr=attr):
+                info = self._class_info_for_receiver(val)
+                if info is None and isinstance(val, ast.Name):
+                    if val.id == 'Self':
+                        info = self._active_class_info()
+                    elif self._name_refers_to_class(val.id):
+                        info = self._class_info_for_ref(val.id)
+                if info is None:
+                    return None
+                seen: set[str] = set()
+                stack: list[ClassInfo] = [info]
+                while stack:
+                    cur = stack.pop()
+                    if cur.name in seen:
+                        continue
+                    seen.add(cur.name)
+                    prop = cur.properties.get(attr)
+                    if prop is not None and prop.getter is not None and prop.getter.returns is not None:
+                        ret = prop.getter.returns
+                        if isinstance(ret, ast.Name) and ret.id == 'Self':
+                            return ast.Name(id=cur.name, ctx=ast.Load())
+                        return ret
+                    sp = cur.static_properties.get(attr)
+                    if sp is not None and sp.getter is not None and sp.getter.returns is not None:
+                        ret = sp.getter.returns
+                        if isinstance(ret, ast.Name) and ret.id == 'Self':
+                            return ast.Name(id=cur.name, ctx=ast.Load())
+                        return ret
+                    if attr in cur.field_properties or attr in cur.postsetter_properties:
+                        storage = storage_field_for(attr)
+                        ft = self._field_storage(storage, info=cur)
+                        if ft:
+                            owner = self._class_info_for_type(ft)
+                            if owner is not None:
+                                return ast.Name(id=owner.name, ctx=ast.Load())
+                    ft = self._field_storage(attr, info=cur)
+                    if ft:
+                        owner = self._class_info_for_type(ft)
+                        if owner is not None:
+                            return ast.Name(id=owner.name, ctx=ast.Load())
+                        # ``WeakRef[T]`` / 可选等：用字段注解字符串无法还原 AST 时，尝试 class_body
+                        ann_cpp = cur.field_annotations.get(attr)
+                        if ann_cpp:
+                            owner2 = self._class_info_for_type(ann_cpp)
+                            if owner2 is not None:
+                                return ast.Name(id=owner2.name, ctx=ast.Load())
+                    for base in cur.bases:
+                        base_info = self.classes.get(base) or self._class_info_for_ref(base)
+                        if base_info is not None:
+                            stack.append(base_info)
+                return None
+            case ast.Subscript(value=base_expr):
+                elem = self._subscript_container_elem_type(base_expr)
+                if not elem:
+                    elem = self._dict_value_cpp_type(base_expr)
+                if not elem:
+                    return None
+                owner = self._class_info_for_type(elem)
+                if owner is not None:
+                    return ast.Name(id=owner.name, ctx=ast.Load())
+                return None
+            case _:
+                return None
+
     def _field_cpp_type_for_attribute(self, val: ast.expr, attr: str) -> str | None:
         inner_t = self._infer_expr_cpp_type(val)
         if not inner_t:
@@ -2567,7 +2656,7 @@ class Translator(ast.NodeVisitor):
         ci = info if info is not None else self.class_info
         if ci is None:
             return fallback
-        return field_storage_cpp(ci, field, fallback=fallback)
+        return field_storage_cpp(ci, field, fallback=fallback, classes=self.classes)
 
     def _field_type_node(self, field: str, *, info: ClassInfo | None=None):
         from .analysis.type_emit import field_type_node
@@ -4319,17 +4408,31 @@ class Translator(ast.NodeVisitor):
                 t = ''
                 if isinstance(receiver, ast.Name) and receiver.id == 'self':
                     if self.class_info:
-                        t = self._field_storage(attr)
+                        storage_attr = attr
+                        if attr in self.class_info.field_properties or attr in self.class_info.postsetter_properties:
+                            storage_attr = storage_field_for(attr)
+                        t = self._field_storage(storage_attr)
                 else:
                     t = self._field_cpp_type_for_attribute(receiver, attr) or ''
                 if not t:
+                    ann = self._annotation_expr_for_assign_target(target)
+                    if ann is not None:
+                        t = self._parse_storage_type(ann, self._active_type_params())
+                if not t:
                     return False
                 val = _emit_new_ctor_expr(self, t, call)
-                if isinstance(receiver, ast.Name) and receiver.id == 'self':
-                    self.write_line(f'this->{self._attr_cpp_name(target, attr)} = {val};')
-                else:
-                    recv, sep = self._receiver_access(receiver)
-                    self.write_line(f'{recv}{sep}{self._attr_cpp_name(target, attr)} = {val};')
+                self._emit_assign(target, val, type_hint=t, rhs_node=call)
+                return True
+            case ast.Subscript(value=base_expr):
+                t = self._subscript_container_elem_type(base_expr) or self._dict_value_cpp_type(base_expr) or ''
+                if not t:
+                    ann = self._annotation_expr_for_assign_target(target)
+                    if ann is not None:
+                        t = self._parse_storage_type(ann, self._active_type_params())
+                if not t:
+                    return False
+                val = _emit_new_ctor_expr(self, t, call)
+                self._emit_assign(target, val, type_hint=t, rhs_node=call)
                 return True
             case _:
                 return False
@@ -4633,22 +4736,9 @@ class Translator(ast.NodeVisitor):
                     return False
                 self.write_line(f'{self._member_call_with_arg(target, iform, node.value)};')
                 return True
-            case ast.Attribute(value=val, attr=attr) if not (isinstance(val, ast.Name) and val.id == 'self'):
-                info = self._class_info_for_receiver(val)
-                if not info or iform not in info.methods:
-                    return False
-                recv, sep = self._receiver_access(val)
-                rhs = self._visit_value_expr(node.value)
-                self.write_line(f'{recv}{sep}{iform}({rhs});')
-                return True
-            case ast.Attribute(value=ast.Name(id='self'), attr=attr):
-                if self.class_info and iform in self.class_info.methods:
-                    ft = self._field_storage(attr)
-                    if self._is_primitive_cpp_type(ft):
-                        return False
-                    rhs = self._visit_value_expr(node.value)
-                    self.write_line(f'this->{iform}({rhs});')
-                    return True
+            case ast.Attribute():
+                # ``v.y += x`` / ``obj.field += x`` / ``self.field += x``：走 get/binop/set
+                return False
             case _:
                 return False
         return False
@@ -5623,6 +5713,9 @@ class Translator(ast.NodeVisitor):
                     return f"{cpp_ident('PyNone')}()"
                 if self._in_result_method():
                     return f"{cpp_ident('PyNone')}()"
+                from .analysis.type_pred import is_refcount_type
+                if cpp_type and is_refcount_type(tgt, classes=self.classes):
+                    return f'{tgt}()'
                 return 'nullptr'
             case bool():
                 return 'true' if value else 'false'
@@ -5647,6 +5740,8 @@ class Translator(ast.NodeVisitor):
                     return format_cpp_float64(value)
                 return format_cpp_float(value)
             case str():
+                if cpp_type in ('c_str', 'const char*'):
+                    return quote_cpp_string(value)
                 return str_cpp_from_literal(value)
             case bytes():
                 return bytes_cpp_from_literal(value)
@@ -6150,6 +6245,7 @@ class Translator(ast.NodeVisitor):
         from .emit.ffi_glue_emit import emit_all_ffi_glue
         emit_all_ffi_glue(self)
         self._emit_user_module_functions()
+        self._emit_user_module_class_methods()
         self._emit_entry_module_implementations()
         self._emit_module_functions()
         self._inject_cpp_attr_dispatch_definitions()
@@ -6284,6 +6380,10 @@ class Translator(ast.NodeVisitor):
                 is_const = is_const_type_annotation(node.annotation)
                 if node.value is not None and self._is_new_call(node.value) and (not is_const):
                     val = _emit_new_ctor_expr(self, t, node.value)
+                    if self._is_ffi_module(module_path):
+                        self.write_line(f'#ifdef {name}')
+                        self.write_line(f'#undef {name}')
+                        self.write_line('#endif')
                     self.write_line(f'static {t} {name} = {val};')
                     continue
                 if node.value is not None:
@@ -6306,6 +6406,11 @@ class Translator(ast.NodeVisitor):
                 else:
                     val = '0'
                 const_kw = 'const ' if is_const else ''
+                # C 头宏（如 GL_COLOR_BUFFER_BIT / GLFW_TRUE）会污染同名声明；FFI 模块先 #undef
+                if self._is_ffi_module(module_path):
+                    self.write_line(f'#ifdef {name}')
+                    self.write_line(f'#undef {name}')
+                    self.write_line('#endif')
                 self.write_line(f'static {const_kw}{t} {name} = {val};')
             self.write_line()
 
@@ -6395,6 +6500,26 @@ class Translator(ast.NodeVisitor):
                                 from .emit.lazy_param_emit import emit_lazy_param_prologue
                                 emit_lazy_param_prologue(self, fsig.lazy_params)
                             self._emit_generic_body_or_type_if(func, fsig, type_if_plan=type_if_plan, type_if_pick=type_if_pick)
+
+    def _emit_user_module_class_methods(self) -> None:
+        """导入的用户模块类方法 → 各模块 ``.inl``（与自由函数同路径；此前仅入口类有实现）。"""
+        for module_path in self._entry_imported_user_modules():
+            classes = [
+                info for info in self.classes.values()
+                if info.module_path == module_path
+                and (not info.is_descriptor)
+                and (not info.is_mixin)
+                and (not info.is_annotation)
+                and (not info.is_variant_mixin)
+                and (not self._is_type_marker(info))
+            ]
+            if not classes:
+                continue
+            emit_stdlib_module_paste_before(self, module_path)
+            with self._use_module_inl(module_path), self._use_source(), self._use_import_bindings(module_path), self._use_inl_namespace(module_path):
+                for info in classes:
+                    _emit_class_methods_body(self, info)
+            emit_stdlib_module_paste_after(self, module_path)
 
     def _emit_entry_module_implementations(self) -> None:
         """入口实现：用户模块 → ``source_lines``；bootstrap ``py2cpp`` → ``.cpp`` / ``.inl``。"""

@@ -100,8 +100,7 @@ class Transform3DQuaternionTests(TestCaseMixin):
     node: Transform3D = new("n")
     axis_z: Vector3 = new.forward
     axis_x: Vector3 = new.right
-    rot: Quaternion = new.from_axis_angle(axis_z, 90.0)
-    node.rotation = rot
+    node.rotation = new.from_axis_angle(axis_z, 90.0)
     v: Vector3 = node.local_to_world_vector(axis_x)
     self.assertTrue(almost(v.x, 0.0))
     self.assertTrue(almost(v.y, 1.0))

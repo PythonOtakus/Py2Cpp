@@ -66,8 +66,7 @@ class span[T]:
     ptr: Pointer[T] = self._ptr + (trip[0] * self._step)
     new_step: int = self._step * trip[2]
     phys: int = self._extent_from_logical(cnt, new_step)
-    out: Self = new(ptr, phys, new_step)
-    return out
+    return new(ptr, phys, new_step)
 
   @immutable
   def __setitem__(self, index: int, value: T):
@@ -174,8 +173,7 @@ class span2d[T]:
     if out_cols < 0:
       out_cols = 0
     ptr: Pointer[T] = self._ptr + self._linear(row[0], col[0])
-    out: Self = new(ptr, (out_rows, out_cols), self.stride)
-    return out
+    return new(ptr, (out_rows, out_cols), self.stride)
 
   @immutable
   def __setitem__(self, index: (int, int), value: T):
@@ -277,8 +275,7 @@ class span3d[T]:
     if n2 < 0:
       n2 = 0
     ptr: Pointer[T] = self._ptr + self._linear(d0[0], d1[0], d2[0])
-    out: Self = new(ptr, (n0, n1, n2), self.strides)
-    return out
+    return new(ptr, (n0, n1, n2), self.strides)
 
   @immutable
   def __setitem__(self, index: (int, int, int), value: T):

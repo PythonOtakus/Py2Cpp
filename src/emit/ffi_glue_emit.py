@@ -169,6 +169,14 @@ def emit_ffi_module_glue(tr: Translator, module_path: str) -> None:
     return
   lines.append(f'// py2cpp FFI glue → C ({c_inc})')
   # 尖括号：勿用引号，否则同目录生成的 ``sqlite3.h`` 会自包含（guard 已定义 → C API 被跳过）
+  if norm := module_path.replace("\\", "/").strip("/"):
+    if norm == "ffi/gl/gl":
+      lines.append("#ifdef _WIN32")
+      lines.append("#ifndef WIN32_LEAN_AND_MEAN")
+      lines.append("#define WIN32_LEAN_AND_MEAN")
+      lines.append("#endif")
+      lines.append("#include <windows.h>")
+      lines.append("#endif")
   lines.append(f"#include <{c_inc}>")
   lines.append("#include <stdint.h>")
   lines.append("")
@@ -212,6 +220,23 @@ def emit_ffi_module_glue(tr: Translator, module_path: str) -> None:
     else:
       lines.append(f"  return {_wrap_c_call_as_ret(c_call, ret_ann, store)};")
     lines.append("}")
+    lines.append("")
+
+  # C 头在上方 #include 后会重新定义与 FFI 常量同名的宏；再 #undef，
+  # 否则 ``::ffi::…::GLFW_TRUE`` 等限定名仍被预处理成 ``::ffi::…::1``。
+  const_names = [
+    node.target.id
+    for mp, node in tr.module_constants
+    if mp == module_path
+    and isinstance(node.target, ast.Name)
+    and node.target.id != "__all__"
+  ]
+  if const_names:
+    lines.append("// 撤销 C 头对 FFI 常量同名宏的再定义")
+    for name in const_names:
+      lines.append(f"#ifdef {name}")
+      lines.append(f"#undef {name}")
+      lines.append("#endif")
     lines.append("")
 
 

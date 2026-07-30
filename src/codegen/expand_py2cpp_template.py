@@ -1090,11 +1090,12 @@ def expand_template(
   ctx: dict[str, Any] | None = None,
   *,
   apply_allman: bool = True,
+  templates_root: Path | None = None,
 ) -> str:
-  """展开 ``templates/<rel>``（``~`` 前缀文件亦可）。"""
+  """展开 ``templates/<rel>``（``~`` 前缀文件亦可；``templates_root`` 默认可为仓库根或 ``zeus/templates``）。"""
   norm = rel.replace("\\", "/")
-  path = (_TEMPLATE_ROOT / norm).resolve()
-  root = _TEMPLATE_ROOT.resolve()
+  root = (templates_root or _TEMPLATE_ROOT).resolve()
+  path = (root / norm).resolve()
   if not str(path).startswith(str(root)):
     raise ValueError(f"模板路径越界: {rel}")
   if not path.is_file():

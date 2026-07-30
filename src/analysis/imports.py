@@ -255,6 +255,10 @@ def _apply_import_request(
         cpp_name=qualify_symbol_in_module(target, binding.cpp_name),
       )
       continue
+    # 模块常量：.inl 在 namespace 外再开块，短名 using 失效；始终全限定
+    if binding.kind == "constant":
+      bindings[local] = binding
+      continue
     if binding.kind != "function":
       if binding.kind == "type_alias":
         _append_using_symbol(usings, binding.module_path, binding.symbol)
@@ -414,6 +418,17 @@ def _resolve_symbol(
       kind="class",
       cpp_name=cpp_ren,
     )
+  for mp, node in tr.module_constants:
+    if mp != def_mp:
+      continue
+    if isinstance(node.target, ast.Name) and node.target.id == symbol:
+      return ImportBinding(
+        local_name=local_name,
+        symbol=symbol,
+        module_path=def_mp,
+        kind="constant",
+        cpp_name=qualify_symbol_in_module(def_mp, symbol),
+      )
   return None
 
 

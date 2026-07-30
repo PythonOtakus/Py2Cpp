@@ -41,8 +41,7 @@ def use_opts(**kwargs: WindowOpts) -> None:
 
 
 def build_with_new() -> WindowOpts:
-  o: WindowOpts = new(width=5, height=6, title="mk")
-  return o
+  return new(width=5, height=6, title="mk")
 
 
 @dataclass
@@ -50,8 +49,7 @@ class Widget:
   value: int = 0
 
   def fresh(self) -> Self:
-    w: Self = new(value=9)
-    return w
+    return new(value=9)
 
 
 class KwargsMakeWindowTests(TestCaseMixin):

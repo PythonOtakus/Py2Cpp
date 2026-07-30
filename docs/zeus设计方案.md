@@ -1,8 +1,23 @@
 # Zeus 3D 游戏引擎设计方案
 
-> 状态：方案草案。本文只定义目标、边界、目录、模块与阶段计划；代码实现待确认后再进入 `./zeus`。
+> 状态：方案草案（tggame 场景图心智 + UE5 式「可继承对象 / 可挂组件」+ Py2Cpp 语法/性能优势）。本文只定义目标、边界、目录、模块与阶段计划；代码实现另开确认后再进入 `./zeus`。
 
-Zeus 是一个基于现有 Py2Cpp 能力实现的轻量 3D 游戏引擎。它的第一目标不是复制 Unity / Unreal 的完整体量，而是建立一套“可运行、可编辑、可扩展、可被工具操作”的引擎骨架，并能用它完成类似微信小游戏《跳一跳》的 3D demo。
+Zeus 是一个基于现有 Py2Cpp 能力实现的轻量 3D 游戏引擎。第一目标不是复制 Unity / Unreal 的完整体量，而是建立一套「可运行、可编辑、可扩展、可被工具操作」的引擎骨架，并用它完成类似微信小游戏《跳一跳》的 3D demo。
+
+风格对标：
+
+- **tggame**：`World` / Task 主循环 / `active`·`visible` / 场景树遍历。
+- **UE5**：`GameObject`（对标 Actor）**既可继承写玩法，也可挂组件**；逻辑组件与带位姿的 `Transform`（对标 SceneComponent）由对象拥有。
+- **Py2Cpp**：复用 `spatial`、`design.ecs`、`prange`、`@ref`、`span`、`@union`/`match`、`@serializable` 等；**禁止在 Zeus 内重复造轮子**。命名 `snake_case`，不照搬 tggame camelCase / 元类 / Cython。
+
+命名约定（本文定稿）：
+
+| 名称 | 含义 |
+|------|------|
+| `GameObject` | 世界中的可放置对象（原草案 `GameObject3D`） |
+| `Component` | 无独立世界位姿的逻辑组件（对标 `UActorComponent`） |
+| `Transform` | Zeus **场景组件**（对标 `USceneComponent`）；**不是**再实现一套数学库 |
+| `py2cpp.spatial.Transform3D` | 标准库 TRS/场景图数学；`zeus.Transform` **组合复用**其能力，源码中避免无前缀混用 |
 
 ---
 
@@ -10,40 +25,29 @@ Zeus 是一个基于现有 Py2Cpp 能力实现的轻量 3D 游戏引擎。它的
 
 ### 1.1 总目标
 
-在仓库根目录新增 `./zeus`，实现一个基于 OpenGL 的 3D 游戏引擎雏形，包含：
+在仓库根目录新增 `./zeus`，实现基于 OpenGL 的 3D 引擎雏形：
 
-- 运行时引擎核心：窗口、主循环、场景、实体、组件、资源、输入、时间、日志。
-- OpenGL 渲染后端：基础 shader、mesh、material、camera、draw call。
-- 编辑器：可视化场景视口、层级树、属性面板、资源面板、控制台、运行控制。
-- 插件系统：插件 manifest、生命周期、组件/菜单/工具窗口/命令注册。
-- MCP 操作接口：通过命令协议让外部工具/AI 查询和修改工程、场景与编辑器状态。
-- 跳一跳 demo：基于 Zeus 开发一个可运行的 3D 小游戏 demo。
+- 运行时：窗口、Task 主循环、`World`、`GameObject` 树、组件生命周期、资源、输入、时间、日志。
+- OpenGL：shader、mesh、material、camera、draw call。
+- 编辑器：视口、层级、属性、资源、控制台、运行控制。
+- 插件：manifest、生命周期、菜单/面板/命令；可注册 **对象类型与组件类型**。
+- MCP：统一命令协议查询/修改工程与场景。
+- 跳一跳 demo。
 
 ### 1.2 第一阶段必须达到的能力
 
-第一阶段以“能开发跳一跳 demo”为验收标准：
-
-- 能创建 3D 场景。
-- 能渲染平台方块、玩家棋子、背景和简单光照/颜色。
-- 能读取鼠标/键盘输入。
-- 能实现蓄力、跳跃、重力、落点判断、分数。
-- 能让摄像机跟随玩家前进。
-- 能在编辑器里查看场景层级、修改核心参数、启动/停止 demo。
-- 能通过命令接口创建实体、修改 Transform、查询场景。
+- 创建 `GameObject` 树；对象可子类化，也可 `add_component`。
+- 渲染平台/玩家/背景与简单颜色光照。
+- 鼠标/键盘；蓄力跳跃、重力、落点、分数（子类和/或组件 + 简易 FSM）。
+- 摄像机跟随。
+- 编辑器查看层级、改参数、Play/Stop。
+- 命令：创建/查找对象、改 `Transform`、增删组件、查树。
 
 ### 1.3 暂不实现
 
-第一阶段不做以下内容：
-
-- PBR、阴影、后处理、骨骼动画、粒子系统。
-- 大型物理引擎绑定。
-- 多平台完整打包发布。
-- 多线程资源热加载。
-- 完整蓝图/可视化脚本系统。
-- 大规模资产导入管线。
-- 网络联机。
-
-这些能力应在架构上预留扩展点，但不进入初版交付。
+- PBR、阴影、后处理、骨骼、粒子；大型物理引擎；完整打包；资源热加载；蓝图；大规模导入；联机。
+- 组件拥有组件（UE 也不鼓励）；ChildActor 式复杂嵌套序列化。
+- 强制玩法走完整 ECS（ECS 为可选热路径，见 §2.7）。
 
 ---
 
@@ -51,102 +55,108 @@ Zeus 是一个基于现有 Py2Cpp 能力实现的轻量 3D 游戏引擎。它的
 
 ### 2.1 Py2Cpp 优先
 
-Zeus 的主体逻辑应使用 Py2Cpp 标准写法实现：
-
-- 标准库与引擎逻辑尽量写 Python 子集。
-- 原生 C++ 只用于 OpenGL、窗口、平台输入等不可避免的叶子能力。
-- 不手改 `generated/`。
-- 不绕开 Py2Cpp 编码规范。
-- 能复用已有 `py2cpp` 模块时不重复造轮子。
+- 规范 Python：`new` / `Self` / `@dataclass` / `@mixin` / 勿手写 dunder / 无 STL。
+- **`@native` 原子化**：仅窗口、GL、shader/buffer/texture、draw、平台输入叶子。
+- 不手改 `generated/`；冲突在根因处解决。
 
 ### 2.2 Runtime / Editor 分层
 
-Zeus 分为运行时和编辑器：
-
-- Runtime 是游戏发布时需要的最小集合。
-- Editor 是开发工具，依赖 Runtime，但 Runtime 不反向依赖 Editor。
-- Demo 使用 Runtime API，可被 Editor 加载和运行。
+Runtime 最小集；Editor 依赖 Runtime，反向禁止；Demo 只依赖 Runtime。
 
 ### 2.3 Native 能力集中
 
-OpenGL / 窗口 / 输入的 native 能力集中在少量模块：
-
-- `zeus/platform`
-- `zeus/render/opengl`
-
-其他模块不直接调用 OpenGL API，而是通过 Zeus 抽象层调用。
+`zeus/platform`、`zeus/render/opengl`；其余只走 `Renderer` / `Window` / `Input`。
 
 ### 2.4 命令化编辑器
 
-编辑器操作应统一走 command registry：
-
-- UI 点击按钮调用命令。
-- MCP 调用同一套命令。
-- 插件注册命令。
-- 命令可以被记录、撤销、重放。
-
-这样可以避免“编辑器 UI 一套逻辑，MCP 一套逻辑”的分裂。
+UI / 插件 / MCP 共用 `@union` 命令 + JSON 桥接。
 
 ### 2.5 独立项目化
 
-Zeus 虽然初期放在 Py2Cpp 仓库根目录 `./zeus` 下开发，但目录组织应按未来可独立拆仓设计。
-
-因此 Zeus 内部必须自带：
-
-- `zeus/docs`：Zeus 自身文档，不混入仓库根 `docs`。
-- `zeus/templates`：Zeus 自身 C++ / runtime 模板，不混入仓库根 `templates`。
-- `zeus/ffi`：Zeus 自身第三方 C/C++ FFI 声明，不混入仓库根 `ffi`。
-
-仓库根 `docs/zeus设计方案.md` 仅作为当前 Py2Cpp 仓库中的总设计文档；真正开始实现后，Zeus 的细化设计、OpenGL 接入说明、插件协议、MCP 协议应迁移或同步到 `zeus/docs/`。
-
-实现时，仓库根目录的 `templates/`、`ffi/` 仍服务于 Py2Cpp 主工程；Zeus 的 OpenGL / GLFW / 编辑器 native 模板和 FFI 声明默认进入 `zeus/templates/` 与 `zeus/ffi/`。只有当能力被明确提升为 Py2Cpp 通用标准库能力时，才考虑迁移到仓库根对应目录。
+`zeus/docs`、`zeus/templates`、`zeus/ffi` 随 Zeus；根 `docs/zeus设计方案.md` 为总设计。
 
 ### 2.6 不重复造轮子
 
-Zeus 不重复实现 Py2Cpp 标准库已经具备的基础能力，尤其是：
+| 需求 | 复用 |
+|------|------|
+| 向量 / 矩阵 / 四元数 / TRS 数学与父子合成 | `py2cpp.spatial`（`Transform3D` / `TransformMixin`） |
+| 材质色 / 清屏 / 顶点色 | `py2cpp.spatial.color`（`Color` / `ColorMatrix`） |
+| 2D AABB / 编辑器矩形 | `py2cpp.spatial.rect`（`Rect`；尺寸属性 `size`） |
+| SoA / `@ref` 交集 | `py2cpp.design.ecs`（符号保持 `ECS*`） |
+| 并行 | `prange` |
+| 序列化 | `py2cpp.serde` |
+| IO / UI / 弱引用 | `py2cpp.io` / `ui` / `weak.ref` |
 
-- 向量、矩阵、旋转、Transform 数学能力优先复用 `py2cpp.spatial`。
-- JSON / 文档序列化优先复用 `py2cpp.serde.json`。
-- 路径、文件 IO 优先复用 `py2cpp.io`。
-- UI 面板和窗口能力优先复用 `py2cpp.ui`。
+禁止在 Zeus 重写 `Vector3` / `Matrix4` / `Quaternion`。
 
-Zeus 内部只保留引擎领域对象，例如 `Bounds`、`Ray`、`Mesh`、`Camera`、`Material`；不要在 `zeus` 中重新写 `Vector3`、`Matrix4`、`Quaternion` 这类标准库已有类型。
+### 2.7 对象模型（核心定案：UE5 双通道 + ECS 预留）
+
+```text
+World（Task：detect → update → draw → refresh）
+  └─ GameObject 树（可继承；拥有组件列表）
+        ├─ 继承通道：class Player(GameObject): ...
+        ├─ 组件通道：add_component(JumpMotor) / MeshComponent / …
+        │     ├─ Component          # 逻辑，无独立世界位姿
+        │     └─ Transform(Component)  # 场景组件，局部 TRS + 附件树
+        │           （数学复用 spatial.Transform3D）
+        └─ （预留）热数据 → design.ecs SoA + prange
+```
+
+要点：
+
+1. **继承与组件并存**（对标 UE Actor）：专用玩法可子类化；可复用行为做成组件挂到任意 `GameObject`。
+2. **仅 `GameObject` 拥有组件**；`Transform` 之间可 `attach`，但**组件不拥有组件**。
+3. 每个 `GameObject` 有 **root `Transform`**（对标 RootComponent）；对象世界位姿以 root 为准；子 `GameObject` 仍可用对象树 `attach`。
+4. **ECS** 与节点组件不同层：节点组件是面向对象 API；ECS 是可选 SoA 优化，对外不强制。
+
+### 2.8 充分利用 Py2Cpp（清单）
+
+| 特性 | Zeus 用法 |
+|------|-----------|
+| `spatial.Transform3D` / `@mixin` | `zeus.Transform` 组合复用；勿复制矩阵公式 |
+| `spatial.Color` / `ColorMatrix` | 清屏、材质、顶点色；矩阵用 `matrix.apply(color)` |
+| `spatial.Rect` | 视口/拾取 AABB、编辑器 2D；勿在 Zeus 重写 |
+| `@refcount` / `WeakRef` | 对象/组件图；parent 弱引用 |
+| `@boxing` | Mesh 缓冲等 |
+| `@copyable` + `@dataclass` | 组件字段、命令载荷、ECS POD |
+| `T @ref` | ECS 系统；组件内改共享缓冲 |
+| `float[:]` / `span` | 顶点索引 |
+| `@union` + `match` | 输入、FSM、命令 |
+| `@serializable` | 场景（对象 + 组件列表）、工程、桥接 |
+| `select` / `build` | 编辑器路径、测试构造 |
+| `prange` | 后期批量；Phase 1 可不启用 |
+| `@native` | 仅 platform / opengl 叶子 |
 
 ---
 
 ## 3. 目录结构规划
 
-初步目录如下：
-
 ```text
 zeus/
   __init__.py
-  app.py
-  engine.py
   project.py
   log.py
 
-  core/
-    object.py
-    event.py
-    command.py
-    uuid.py
+  world.py              # World：Task 主循环
+  node.py               # GameNodeMixin：active / visible / tags
+  game_object.py        # GameObject（拥有组件 + root Transform）
+  component.py          # Component 基类
+  transform.py          # Transform(Component)：场景组件（复用 spatial）
+  mesh_component.py     # MeshComponent(Transform)
+  camera_component.py   # CameraComponent(Transform)
+  task.py
+  fsm.py
+  event.py
+  command.py
+  time_clock.py
 
   geometry/
     bounds.py
     ray.py
     plane.py
 
-  scene/
-    scene.py
-    entity.py
-    component.py
-    transform.py
-    prefab.py
-
   render/
     renderer.py
-    camera.py
     mesh.py
     material.py
     color.py
@@ -163,893 +173,251 @@ zeus/
     window.py
     input.py
     file_dialog.py
-    timer.py
 
   asset/
     asset_db.py
     importer.py
-    mesh_importer.py
-    material_importer.py
     scene_io.py
 
   physics/
-    collider.py
-    rigidbody.py
     simple_world.py
 
-  editor/
-    editor_app.py
-    layout.py
-    scene_view.py
-    hierarchy.py
-    inspector.py
-    assets_panel.py
-    console.py
-    toolbar.py
-    gizmo.py
+  ecs/
+    bridge.py           # 后期可选
 
-  plugin/
-    manifest.py
-    plugin.py
-    registry.py
-    loader.py
-
-  mcp/
-    schema.py
-    server.py
-    tools.py
-
-  ffi/
-    glfw/
-      glfw3.pyi
-    opengl/
-      gl.pyi
-
-  templates/
-    platform/
-      window.h
-      window.inl
-    render/
-      opengl.h
-      opengl.inl
-
-  docs/
-    README.md
-    architecture.md
-    opengl-backend.md
-    editor.md
-    plugin.md
-    mcp.md
-
-  demos/
-    jump/
-      main.py
-      scene.py
-      gameplay.py
-      components.py
-      assets/
+  editor/ …
+  plugin/ …
+  mcp/ …
+  ffi/ …
+  templates/ …
+  docs/ …
+  demos/jump/ …
 ```
 
 说明：
 
-- `zeus/core`：引擎基础设施。
-- `zeus/geometry`：引擎领域几何类型，例如 `Bounds`、`Ray`、`Plane`；不重复实现向量/矩阵。
-- `zeus/scene`：实体组件系统。
-- `zeus/render`：渲染抽象。
-- `zeus/render/opengl`：OpenGL 后端。
-- `zeus/platform`：窗口、输入、时间等平台层。
-- `zeus/editor`：编辑器。
-- `zeus/plugin`：插件机制。
-- `zeus/mcp`：MCP/命令桥接。
-- `zeus/ffi`：Zeus 自身 FFI 声明，未来可随 Zeus 独立迁移。
-- `zeus/templates`：Zeus 自身 C++ 模板，未来可随 Zeus 独立迁移。
-- `zeus/docs`：Zeus 项目内部文档。
-- `zeus/demos/jump`：跳一跳 demo。
+- `zeus/transform.py` 是 **组件类型** `Transform`，内部调用 `py2cpp.spatial`，**不是**第二套数学库。
+- 不再使用 `GameObject3D` / `SceneComponent` / `Camera3D` / `GameMesh` 作为主类型名；相机与网格以 **组件**（或对象子类 + 默认组件）表达。
 
 ---
 
 ## 4. 引擎核心设计
 
-### 4.1 Engine
+### 4.1 World
 
-`Engine` 是运行时入口，负责：
-
-- 初始化平台层。
-- 初始化渲染后端。
-- 加载工程与场景。
-- 执行主循环。
-- 调度输入、更新、物理、渲染。
-- 管理运行状态：`stopped` / `playing` / `paused`。
-
-核心接口草案：
+- 初始化平台与渲染。
+- 根：`render: GameObject`、主相机对象（挂 `CameraComponent`）、可选 `aspect`（UI）。
+- Task：`detect` → `update` → `draw` → `refresh`。
+- 状态：`stopped` / `playing` / `paused`。
 
 ```python
-class Engine:
-  def init(self, project: Project) -> None: ...
-  def load_scene(self, scene: Scene) -> None: ...
-  def start(self) -> None: ...
-  def stop(self) -> None: ...
-  def tick(self) -> None: ...
+class World:
+  def init(self, project: Project): ...
+  def clear(self): ...
+  def step(self): ...
+  def run(self): ...
+  def quit(self): ...
+  def update(self): ...
+  def draw(self): ...
 ```
 
-### 4.2 Scene
+### 4.2 GameNodeMixin
 
-`Scene` 保存实体集合与场景级配置：
+`active` / `visible`、`enable`/`disable`、`show`/`hide`、`tags`；`update`/`draw` 递归与开关。
 
-- 场景名称。
-- 根实体列表。
-- 当前相机。
-- 环境颜色。
-- 场景资源引用。
+### 4.3 GameObject（对标 AActor）
 
-接口草案：
-
-```python
-class Scene:
-  name: str
-  entities: list[Entity]
-
-  def create_entity(self, name: str = "Entity") -> Entity: ...
-  def destroy_entity(self, e: Entity) -> None: ...
-  def find(self, name: str) -> Entity: ...
-  def update(self, dt: float) -> None: ...
+```text
+GameObject = GameNodeMixin + 组件容器 + root Transform
 ```
 
-### 4.3 Entity / Component
-
-Zeus 初期采用简单 Entity + Component，而不是复杂 ECS。
-
-每个 Entity：
-
-- 有唯一 id。
-- 有名字。
-- 有 Transform。
-- 有父子关系。
-- 持有组件列表。
-
-每个 Component：
-
-- 绑定一个 Entity。
-- 可启用/禁用。
-- 支持生命周期：`on_create`、`on_update`、`on_destroy`。
-
-接口草案：
+- `name`、父子 `GameObject` 树（世界中的对象层级）。
+- `components: list[Component]`；`add_component` / `get_component` / `remove_component`。
+- **root**：默认创建的 `Transform`；`GameObject` 的 position/rotation/scale 转发到 root（或显式 `self.root`）。
+- **继承通道**：`class Player(GameObject)`，可在构造中默认 `add_component(...)`。
+- **组件通道**：无子类也可组合行为。
+- 所有权：`@refcount` 等策略；owner 反向弱引用，避免环。
 
 ```python
-class Entity:
-  id: str
-  name: str
-  transform: Transform
-  components: list[Component]
-
+class GameObject:
   def add_component[T: Component](self, comp: T) -> T: ...
-  def get_component[T: Component](self) -> T: ...
+  def get_component[T: Component](self) -> T | None: ...
+  def remove_component[T: Component](self): ...
 ```
+
+生命周期：对象 `update` 时先调自身 `_update`，再调已启用组件的 `on_update`，再递归子对象；`draw` 类似（可见性）。
+
+### 4.4 Component（对标 UActorComponent）
 
 ```python
 class Component:
-  entity: Entity
+  owner: GameObject
   enabled: bool = True
 
-  def on_create(self) -> None: ...
-  def on_update(self, dt: float) -> None: ...
-  def on_destroy(self) -> None: ...
+  def on_create(self): ...
+  def on_update(self, dt: float): ...
+  def on_destroy(self): ...
 ```
 
-### 4.4 Transform
+- 无独立世界坐标；通过 `owner` / `owner.root` 读写位姿。
+- 示例：`JumpMotor`、`ScoreBoard`、库存类逻辑。
 
-Transform 是最核心组件，包含：
+### 4.5 Transform（对标 USceneComponent；原 SceneComponent）
 
-- local position
-- local rotation
-- local scale
-- parent / children
-- world matrix
+```text
+Transform(Component)  +  局部 TRS / 附件树（能力来自 spatial.Transform3D）
+```
 
-第一阶段可简化：
+- 局部 `position` / `rotation` / `scale`；相对父 `Transform` 合成世界矩阵。
+- `attach(child: Transform)` / `detach`；**仅**在同一 `GameObject` 拥有的组件之间（或约定允许跨对象附件时由对象层转发）。
+- **禁止** `Transform` 再 `add_component`。
+- 实现：优先让 `Transform` **混入或持有** `spatial.Transform3D` 的数据与矩阵 API，Zeus 只加 `owner`、组件生命周期与序列化。
 
-- rotation 初期可只支持 yaw 或 quaternion。
-- 必须支持 `forward`、`up`、`right`。
-- 必须支持 parent-child 世界矩阵合成。
+命名消歧：注解与 import 写清 `from zeus.transform import Transform` 与 `from py2cpp.spatial.transform import Transform3D`；文档称前者「场景组件 Transform」，后者「spatial.Transform3D」。
 
-### 4.5 Time
+### 4.6 MeshComponent / CameraComponent
 
-`Time` 提供：
+- `MeshComponent(Transform)`：`Mesh` + `Material`；`on_draw` / 由 World draw 收集提交 `Renderer`。
+- `CameraComponent(Transform)`：投影与 view-projection；跟随可写在组件或 `FollowCamera(GameObject)` 子类。
 
-- `delta_time`
-- `fixed_delta_time`
-- `time`
-- `frame_count`
+第一阶段跳一跳可用：`Player(GameObject)` + 默认 `MeshComponent` + `JumpMotor(Component)`，或把跳跃逻辑写在 `Player` 子类——**两种都合法**。
 
-第一阶段物理可直接每帧更新，不强制 fixed update。
+### 4.7 TaskManager / Time / Input / FSM
 
-### 4.6 Input
+同前：Task 表；`Clock`；`Input` + `@union` 事件；玩家 FSM `idle`/`charging`/`jumping`/`failed`。
 
-Input 抽象：
+### 4.8 ECS 预留
 
-- key down / key up / key held
-- mouse position
-- mouse button
-- pointer drag duration
-
-跳一跳 demo 需要：
-
-- 鼠标按下开始蓄力。
-- 鼠标松开触发跳跃。
-- 可选键盘空格替代鼠标。
+与 §2.7 一致；桥接「哪个 GameObject / 组件字段 ↔ ECS 行」。符号保持 `ECSEntity` / `ECSComponentTable`，勿与 Zeus `Component` 混名。
 
 ---
 
 ## 5. OpenGL 渲染设计
 
-### 5.1 渲染层分层
-
-```text
-Renderer API
-  └─ OpenGL backend
-       ├─ GLContext
-       ├─ GLDevice
-       ├─ GLShader
-       ├─ GLBuffer
-       ├─ GLTexture
-       └─ GLMesh
-```
-
-Runtime 代码应依赖 `Renderer` 抽象，不直接依赖 OpenGL。
-
-### 5.2 Renderer
-
-Renderer 负责：
-
-- 设置 viewport。
-- 清屏。
-- 设置 camera。
-- 提交 mesh + material。
-- 执行 draw。
-
-接口草案：
-
-```python
-class Renderer:
-  def begin_frame(self) -> None: ...
-  def clear(self, color: Color) -> None: ...
-  def draw_mesh(self, mesh: Mesh, material: Material, transform: Matrix4) -> None: ...
-  def end_frame(self) -> None: ...
-```
-
-### 5.3 Mesh
-
-第一阶段 Mesh 支持：
-
-- 顶点位置。
-- 顶点颜色。
-- 顶点 uv 可选。
-- index buffer。
-
-内置 mesh：
-
-- cube
-- plane
-- capsule 或 sphere 近似体
-
-跳一跳 demo 只需要：
-
-- 平台 cube。
-- 玩家棋子可以先用 cube / capsule 近似。
-
-### 5.4 Material
-
-第一阶段 Material 简化为：
-
-- shader 引用。
-- base color。
-- texture 可选。
-
-不做复杂材质图。
-
-### 5.5 Camera
-
-Camera 支持：
-
-- perspective projection。
-- orthographic 可后续。
-- view matrix。
-- 跟随目标。
-
-跳一跳 demo 使用透视相机，斜俯视角跟随玩家。
-
-### 5.6 OpenGL native 边界
-
-OpenGL 后端中的不可移植操作走 native：
-
-- 创建窗口。
-- 创建 GL context。
-- 加载 OpenGL 函数。
-- 编译 shader。
-- 创建 buffer / vertex array / texture。
-- draw call。
-
-候选底层方案：
-
-1. GLFW + OpenGL
-   - 优点：跨平台、成熟。
-   - 缺点：需要第三方库。
-2. Windows 原生 WGL + OpenGL
-   - 优点：少依赖。
-   - 缺点：跨平台差，窗口/输入代码更多。
-
-第一阶段建议优先 GLFW + OpenGL。如果仓库不希望引入第三方二进制，则先做 Windows WGL 最小后端。
+（分层、`Renderer`、`Mesh` 顶点 `float[:]`/`span`、`Material`、Camera 透视、GLFW 优先 / WGL 备选、native 边界）— 与前一版相同；draw 数据来自 `MeshComponent` 的 world 矩阵，而非已删除的 `GameMesh` 类型名。
 
 ---
 
 ## 6. 编辑器设计
 
-### 6.1 EditorApp
-
-EditorApp 是 Zeus 编辑器入口：
-
-- 创建编辑器窗口。
-- 初始化 Engine。
-- 加载 Project。
-- 管理编辑器状态。
-- 驱动 UI 面板。
-
-### 6.2 编辑器布局
-
-MVP 布局：
-
-```text
-+---------------------------------------------------------+
-| Toolbar: [Play] [Pause] [Stop] [Save]                   |
-+-------------------+-----------------------+-------------+
-| Hierarchy         | Scene View            | Inspector   |
-|                   | OpenGL viewport       |             |
-+-------------------+-----------------------+-------------+
-| Assets            | Console                             |
-+---------------------------------------------------------+
-```
-
-### 6.3 Scene View
-
-Scene View 负责：
-
-- 显示 OpenGL 3D 视口。
-- 显示相机视角。
-- 支持选择实体。
-- 支持基础 gizmo。
-
-第一阶段 Gizmo：
-
-- 显示选中实体位置。
-- 支持通过 Inspector 修改数值。
-- 视口内拖拽可以后续再做。
-
-### 6.4 Hierarchy
-
-Hierarchy 显示：
-
-- 当前 Scene 的实体树。
-- 选中实体。
-- 创建 / 删除实体。
-- 重命名实体。
-
-### 6.5 Inspector
-
-Inspector 显示：
-
-- Entity 名称。
-- Transform。
-- 组件列表。
-- 组件字段。
-
-第一阶段字段类型：
-
-- int
-- float
-- bool
-- str
-- Vector3
-- Color
-
-### 6.6 Assets
-
-Assets 面板显示项目资源：
-
-- scene
-- material
-- mesh
-- texture
-- plugin
-
-第一阶段可以先做文件树 + 选中预览，不做复杂导入器。
-
-### 6.7 Console
-
-Console 显示：
-
-- log
-- warning
-- error
-- command 输出
-- MCP 调用结果
+Hierarchy：`GameObject` 树；展开可选显示其下 `Transform` 附件与组件列表。  
+Inspector：对象字段 + 组件列表字段（含 root `Transform` TRS）。  
+其余 Toolbar / Scene View / Assets / Console 同前。
 
 ---
 
 ## 7. 插件系统
 
-### 7.1 插件目录
-
-建议插件目录：
-
-```text
-zeus_plugins/
-  my_plugin/
-    plugin.json
-    main.py
-```
-
-也可以允许工程内插件：
-
-```text
-project/
-  plugins/
-    my_plugin/
-```
-
-### 7.2 Manifest
-
-`plugin.json` 草案：
-
-```json
-{
-  "name": "jump_tools",
-  "display_name": "Jump Tools",
-  "version": "0.1.0",
-  "entry": "main.py",
-  "enabled": true,
-  "dependencies": []
-}
-```
-
-### 7.3 插件生命周期
-
-```python
-class ZeusPlugin:
-  def on_load(self, ctx: PluginContext) -> None: ...
-  def on_unload(self, ctx: PluginContext) -> None: ...
-  def on_editor_start(self, ctx: PluginContext) -> None: ...
-  def on_play_start(self, ctx: PluginContext) -> None: ...
-  def on_play_stop(self, ctx: PluginContext) -> None: ...
-  def on_update(self, ctx: PluginContext, dt: float) -> None: ...
-```
-
-### 7.4 插件可注册内容
-
-插件可以注册：
-
-- Component 类型。
-- Editor 菜单项。
-- Editor 面板。
-- Asset importer。
-- Command。
-- MCP tool。
-
-第一阶段优先支持：
-
-- 注册命令。
-- 注册菜单项。
-- 注册组件类型。
+可注册：命令、菜单、**GameObject 子类**、**Component / Transform 子类**。  
+第一阶段优先命令 + 菜单 + 类型注册。
 
 ---
 
-## 8. MCP 操作设计
+## 8. MCP 与命令设计
 
-### 8.1 MCP 的定位
+命令 ADT + JSON 桥接。清单：
 
-Zeus 的 MCP 能力不是另写一套编辑器逻辑，而是对 `CommandRegistry` 的外部暴露。
-
-也就是说：
-
-- UI 调用 command。
-- 插件调用 command。
-- MCP tool 调用 command。
-
-### 8.2 Command Registry
-
-命令结构：
-
-```python
-class Command:
-  name: str
-  description: str
-
-  def execute(self, ctx: CommandContext, args: dict[str, str]) -> CommandResult: ...
-```
-
-命令结果：
-
-```python
-class CommandResult:
-  ok: bool
-  message: str
-  data: str
-```
-
-第一阶段可以先使用 `dict[str, str]` / JSON 字符串，避免复杂泛型 schema。
-
-### 8.3 初始命令清单
-
-工程命令：
-
-- `project.open`
-- `project.save`
-- `project.info`
-
-场景命令：
-
-- `scene.new`
-- `scene.open`
-- `scene.save`
-- `scene.list_entities`
-- `scene.create_entity`
-- `scene.delete_entity`
-- `scene.find_entity`
-
-实体命令：
-
-- `entity.rename`
-- `entity.set_position`
-- `entity.set_rotation`
-- `entity.set_scale`
-- `entity.add_component`
-- `entity.remove_component`
-- `entity.get_components`
-
-运行命令：
-
-- `play.start`
-- `play.pause`
-- `play.stop`
-- `play.step`
-
-编辑器命令：
-
-- `editor.select_entity`
-- `editor.focus_entity`
-- `editor.log`
-
-### 8.4 MCP server 初步形态
-
-第一阶段可以先做内部 JSON command bridge：
-
-```text
-stdin/stdout 或 local socket
-  request:  {"cmd": "scene.create_entity", "args": {"name": "Cube"}}
-  response: {"ok": true, "message": "...", "data": "..."}
-```
-
-之后再包装成正式 MCP server。
+- 工程 / 场景：同前（`scene.list_objects` / `scene.find_object` 等）。
+- 对象：`object.create` / `object.delete` / `object.rename` / `object.set_position`（作用在 root `Transform`）等。
+- 组件：`object.add_component` / `object.remove_component` / `object.get_components`。
+- 运行 / 编辑器：`play.*`、`editor.select_object` 等。
 
 ---
 
-## 9. 跳一跳 demo 设计
+## 9. 跳一跳 demo
 
-### 9.1 游戏对象
+### 9.1 推荐结构（双通道示例）
 
-实体：
+- `Player(GameObject)`：可含 FSM；默认挂 `MeshComponent` + 可选 `JumpMotor(Component)`。
+- `Platform(GameObject)`：`MeshComponent` + 落点范围（字段或组件）。
+- 相机：`GameObject` + `CameraComponent`（或 `FollowCamera(GameObject)`）。
+- `JumpGame`：分数与平台生成（World 脚本或管理器对象）。
 
-- `Player`
-  - Transform
-  - MeshRenderer
-  - JumpController
-  - SimpleCollider
-- `Platform`
-  - Transform
-  - MeshRenderer
-  - SimpleCollider
-- `Camera`
-  - Camera
-  - FollowTarget
-- `GameManager`
-  - JumpGameManager
+### 9.2–9.4
 
-### 9.2 Gameplay
-
-规则：
-
-- 玩家站在当前平台。
-- 按住鼠标蓄力。
-- 松开后按蓄力时间计算水平速度与竖直速度。
-- 玩家沿抛物线跳向下一个平台。
-- 落在平台上得分并生成下一个平台。
-- 落空则游戏结束。
-
-### 9.3 Physics 简化
-
-第一阶段不做完整物理引擎：
-
-- 玩家状态机：
-  - idle
-  - charging
-  - jumping
-  - failed
-- jumping 状态手动积分：
-  - velocity.y += gravity * dt
-  - position += velocity * dt
-- 碰撞检测：
-  - AABB 或圆形落点检测。
-  - 只检测玩家落脚点是否在平台范围内。
-
-### 9.4 Camera
-
-摄像机：
-
-- 斜俯视。
-- 跟随玩家和当前平台中心。
-- 玩家成功落地后平滑移动到新中心。
-
-### 9.5 Demo 验收
-
-Demo 完成标准：
-
-- 能从 Zeus Editor 点击 Play 运行。
-- 能蓄力跳跃。
-- 能连续生成平台。
-- 能统计分数。
-- 能判断失败。
-- 能通过 Inspector 调整：
-  - jump power
-  - gravity
-  - platform distance range
-  - platform size range
-- 能通过 MCP 命令重置游戏、查询分数、修改玩家位置。
+规则、简化物理、验收同前；**不必**第一阶段上 ECS。
 
 ---
 
 ## 10. 序列化与资源
 
-### 10.1 Scene 文件
-
-场景可先用 JSON：
-
 ```json
 {
   "name": "JumpDemo",
-  "entities": [
-    {
-      "id": "entity-1",
-      "name": "Player",
-      "transform": {
-        "position": [0, 1, 0],
-        "rotation": [0, 0, 0, 1],
-        "scale": [1, 1, 1]
-      },
-      "components": [
-        {"type": "MeshRenderer", "mesh": "cube", "material": "player"},
-        {"type": "JumpController", "jump_power": 8.0}
-      ]
-    }
-  ]
+  "root": {
+    "type": "GameObject",
+    "name": "Render",
+    "root_transform": {
+      "local_position": [0, 0, 0],
+      "local_rotation": [0, 0, 0, 1],
+      "local_scale": [1, 1, 1]
+    },
+    "components": [
+      {"type": "MeshComponent", "mesh": "cube", "material": "default"}
+    ],
+    "children": [
+      {
+        "type": "Player",
+        "name": "Player",
+        "root_transform": {"local_position": [0, 1, 0]},
+        "components": [
+          {"type": "MeshComponent", "mesh": "cube", "material": "player"},
+          {"type": "JumpMotor", "jump_power": 8.0}
+        ]
+      }
+    ]
+  }
 }
 ```
-
-### 10.2 Asset DB
-
-Asset DB 管理：
-
-- asset path
-- asset id
-- asset type
-- importer
-- loaded runtime object
-
-第一阶段可以只做 JSON 资源索引。
 
 ---
 
 ## 11. 与现有 Py2Cpp 模块的关系
 
-可优先复用：
-
-- `py2cpp.spatial`：向量、矩阵、transform 数学能力。
-- `py2cpp.ui`：编辑器面板与窗口基础能力。
-- `py2cpp.serde.json`：场景、项目、插件 manifest 序列化。
-- `py2cpp.io`：资源文件与路径。
-- `py2cpp.concur.thread` / `py2cpp.concur.task`：后续可用于后台任务，但第一阶段不强制。
-
-若现有能力不足，应优先补基础设施，而不是在 Zeus 内部堆重复 helper。
+| 模块 | 用途 |
+|------|------|
+| `py2cpp.spatial` | `zeus.Transform` 的数学与父子合成底座 |
+| `py2cpp.design.ecs` | 后期 SoA；保持 `ECS*` 前缀 |
+| `concur` / `serde` / `io` / `ui` / `weak` | Task、序列化、资源、编辑器、弱引用 |
 
 ---
 
 ## 12. 阶段计划
 
-### Phase 0：文档与原型确认
+### Phase 0
 
-- 完成本设计文档。
-- 确认 OpenGL 后端方案：GLFW 还是 Windows WGL。
-- 确认 Editor UI 基于现有 `py2cpp.ui` 的集成方式。
-- 确认 MCP 第一阶段是 JSON bridge 还是正式 MCP server。
+本文档；GLFW vs WGL；UI 嵌 GL 或独立窗；MCP JSON bridge。
 
-交付：
+### Phase 1：Runtime 骨架
 
-- `docs/zeus设计方案.md`
+- `World` / `GameObject` / `Component` / `Transform` / Task
+- 无渲染：`update`、组件生命周期、对象树
+- 场景 JSON 初版
 
-### Phase 1：Zeus Runtime 骨架
+### Phase 2：OpenGL
 
-新增：
-
-- `zeus/__init__.py`
-- `zeus/engine.py`
-- `zeus/project.py`
-- `zeus/core/*`
-- `zeus/scene/*`
-- `zeus/geometry/*`
-
-能力：
-
-- 创建场景。
-- 创建实体。
-- 添加组件。
-- 主循环 tick。
-- 日志。
-- JSON 场景保存/加载初版。
-
-验证：
-
-- 能运行无渲染的 scene update 测试。
-
-### Phase 2：OpenGL 最小渲染
-
-新增：
-
-- `zeus/platform/window.py`
-- `zeus/render/*`
-- `zeus/render/opengl/*`
-
-能力：
-
-- 创建窗口。
-- 清屏。
-- 渲染一个 cube。
-- Camera MVP。
-- MeshRenderer 组件。
-
-验证：
-
-- 运行 sample scene，显示 3D cube。
+- 窗口 + 清屏 + cube；`MeshComponent` + `CameraComponent`
 
 ### Phase 3：Editor MVP
 
-新增：
+- Hierarchy（对象 + 组件）/ Inspector / Play
 
-- `zeus/editor/*`
+### Phase 4–5：命令、插件、MCP
 
-能力：
+- 含 `add_component`；注册对象与组件类型
 
-- 编辑器窗口。
-- Toolbar。
-- Hierarchy。
-- Inspector。
-- Console。
-- Scene View。
-- Play / Stop。
+### Phase 6：跳一跳
 
-验证：
-
-- 能打开 demo scene。
-- 能选实体。
-- 能修改 Transform。
-- 能点击 Play 运行。
-
-### Phase 4：插件与命令系统
-
-新增：
-
-- `zeus/plugin/*`
-- `zeus/core/command.py`
-
-能力：
-
-- 加载 plugin manifest。
-- 注册命令。
-- 注册菜单项。
-- 注册组件类型。
-
-验证：
-
-- 示例插件能创建菜单项。
-- 示例插件能注册 `jump.reset` 命令。
-
-### Phase 5：MCP / 外部操作
-
-新增：
-
-- `zeus/mcp/*`
-
-能力：
-
-- JSON command bridge。
-- 基础 MCP tools 映射。
-- 查询/修改场景。
-- 控制 Play / Stop。
-
-验证：
-
-- 外部命令创建实体。
-- 外部命令修改 Transform。
-- 外部命令启动/停止 demo。
-
-### Phase 6：跳一跳 Demo
-
-新增：
-
-- `zeus/demos/jump/*`
-
-能力：
-
-- 平台生成。
-- 玩家跳跃。
-- 分数。
-- 失败判定。
-- 摄像机跟随。
-- 可编辑参数。
-
-验证：
-
-- Editor 中打开并运行。
-- 可玩一局完整流程。
+### Phase 7（可选）：ECS / prange
 
 ---
 
 ## 13. 技术风险
 
-### 13.1 OpenGL / 窗口依赖
-
-风险：
-
-- Py2Cpp 当前未必已有窗口 + OpenGL context 的完整 FFI。
-- GLFW 引入方式需要确定。
-
-应对：
-
-- 优先做最小 native backend。
-- native API 收敛在 `zeus/platform` 和 `zeus/render/opengl`。
-- 不让 OpenGL 调用扩散到游戏逻辑。
-
-### 13.2 编辑器视口嵌入
-
-风险：
-
-- 现有 `py2cpp.ui` 是否支持嵌入 OpenGL viewport 需要验证。
-
-应对：
-
-- 第一阶段允许独立 OpenGL 窗口 + Editor 控制面板。
-- 后续再做嵌入式 Scene View。
-
-### 13.3 插件动态加载
-
-风险：
-
-- Py2Cpp 编译型环境下动态加载 Python 插件并不等同 CPython import。
-
-应对：
-
-- 第一阶段插件可以是编译期注册。
-- manifest 用于发现和启用。
-- 后续再探索动态库或脚本解释层。
-
-### 13.4 MCP 与运行时状态一致性
-
-风险：
-
-- MCP 命令可能在 Play 状态修改场景，产生状态冲突。
-
-应对：
-
-- CommandContext 标记当前模式：edit / play / paused。
-- 每个命令声明允许模式。
-- 不允许的命令返回错误。
+- OpenGL / 视口嵌入 / 插件编译期注册 / Play 态命令权限：同前。
+- **命名冲突**：`zeus.Transform` vs `spatial.Transform3D` — 强制限定导入与文档用语。
+- **双通道滥用**：指南优先「可复用 → 组件；强绑定玩法 → 子类」；避免又继承又堆无意义组件。
+- **组件与对象双树**：对象树（子 GameObject）与 Transform 附件树职责写清，编辑器分层显示。
 
 ---
 
@@ -1057,70 +425,23 @@ Asset DB 管理：
 
 ### Runtime
 
-- [ ] 能创建 Engine。
-- [ ] 能创建 Scene。
-- [ ] 能创建 Entity。
-- [ ] 能添加 Component。
-- [ ] 能 update。
-- [ ] 能保存/加载 Scene。
+- [ ] `World`；`GameObject` 树 attach/find
+- [ ] 子类化 `GameObject` 可运行
+- [ ] `add_component` / `get_component`；`Transform` 附件
+- [ ] 保存/加载含组件列表的场景
 
-### Render
+### Render / Editor / Plugin / MCP / Jump
 
-- [ ] 能创建窗口。
-- [ ] 能创建 OpenGL context。
-- [ ] 能清屏。
-- [ ] 能编译 shader。
-- [ ] 能渲染 cube。
-- [ ] 能使用 Camera。
-
-### Editor
-
-- [ ] 有 Toolbar。
-- [ ] 有 Hierarchy。
-- [ ] 有 Inspector。
-- [ ] 有 Console。
-- [ ] 有 Scene View 或独立 viewport。
-- [ ] 能 Play / Stop。
-
-### Plugin
-
-- [ ] 能读取 manifest。
-- [ ] 能注册命令。
-- [ ] 能注册菜单项。
-- [ ] 能注册组件类型。
-
-### MCP
-
-- [ ] 能列出命令。
-- [ ] 能创建实体。
-- [ ] 能修改 Transform。
-- [ ] 能查询场景树。
-- [ ] 能启动/停止 Play。
-
-### Jump Demo
-
-- [ ] 能蓄力。
-- [ ] 能跳跃。
-- [ ] 能落点判定。
-- [ ] 能生成平台。
-- [ ] 能计分。
-- [ ] 能失败重置。
-- [ ] 能通过 Editor 修改参数。
-- [ ] 能通过 MCP 查询/控制。
+同前，用语改为 object / component；能改 root `Transform` 与组件字段。
 
 ---
 
 ## 15. 下一步建议
 
-建议下一步按以下顺序推进：
+1. 确认 GLFW 或 WGL。
+2. 落地 `./zeus`：`World` + `GameObject` + `Component` + `Transform` + Task。
+3. 清屏 + `MeshComponent` cube。
+4. Editor → 命令 → 跳一跳。
+5. 有数据后再上 ECS。
 
-1. 确认 OpenGL 后端选择：GLFW 或 Windows WGL。
-2. 创建 `./zeus` 目录和最小 Runtime 骨架。
-3. 加 `test/zeus/test_scene.py`，先验证无渲染场景逻辑。
-4. 接入最小窗口 + OpenGL 清屏。
-5. 渲染 cube。
-6. 做 Editor MVP。
-7. 做 command registry。
-8. 做跳一跳 demo。
-
-只有当 Runtime + Render + Editor 三条主线都能最小跑通后，再扩展插件和 MCP 的完整能力。
+**实现代码前**仍可对模块细节短确认；本文件已纳入 UE5 双通道与命名定案（`GameObject` / `Transform`）。

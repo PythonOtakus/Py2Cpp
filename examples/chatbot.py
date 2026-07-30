@@ -6,12 +6,6 @@
 - ``OPENAI_BASE_URL``：可选，例如 ``https://api.openai.com/v1`` 或兼容网关地址。
 - ``OPENAI_MODEL``：可选，默认 ``gpt-4o-mini``。
 - ``OPENAI_SYSTEM_PROMPT``：可选，默认英文助手提示词。
-
-DeepSeek 兼容别名：
-
-- ``DEEPSEEK_API_KEY``
-- ``DEEPSEEK_BASE_URL``：默认 ``https://api.deepseek.com``。
-- ``DEEPSEEK_MODEL``：默认 ``deepseek-v4-flash``。
 """
 from py2cpp import *
 from py2cpp.core.exceptions import EOFError, OSError, ValueError
@@ -42,11 +36,6 @@ def main() -> int:
   api_key: str = environ.get("OPENAI_API_KEY", "")
   base_url: str = environ.get("OPENAI_BASE_URL", "")
   model: str = environ.get("OPENAI_MODEL", _DEFAULT_MODEL)
-  if True:
-    api_key = "sk-f682443ac16c4f27861dc872137490d3"
-    base_url = "https://api.deepseek.com"
-    model = "deepseek-v4-flash"
-
   system_prompt: str = environ.get("OPENAI_SYSTEM_PROMPT", _DEFAULT_SYSTEM)
 
   if not api_key:

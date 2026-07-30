@@ -119,11 +119,40 @@ def write_field_storage(info: "ClassInfo", field: str, node: TypeNode | None) ->
     info.field_types.pop(field, None)
 
 
-def field_storage_cpp(info: "ClassInfo", field: str, *, fallback: str = "") -> str:
-  """字段存储 C++ 类型；只读 ``field_type_nodes``。"""
+def field_storage_cpp(
+  info: "ClassInfo",
+  field: str,
+  *,
+  fallback: str = "",
+  classes: dict[str, "ClassInfo"] | None = None,
+) -> str:
+  """字段存储 C++ 类型；只读 ``field_type_nodes``；可沿基类链查找。"""
   rendered = field_decl_cpp(info, field)
   if rendered is not None:
     return rendered
+  if classes:
+    seen: set[str] = set()
+    stack = list(info.bases)
+    while stack:
+      base_name = stack.pop()
+      if base_name in seen:
+        continue
+      seen.add(base_name)
+      base = classes.get(base_name)
+      if base is None:
+        for cand in classes.values():
+          if cand.name == base_name or cand.cpp_name() == base_name:
+            base = cand
+            break
+      if base is None:
+        continue
+      stack.extend(base.bases)
+      # mixin / protocol 不占存储；其方法体误收集的 void* 字段勿遮蔽真实基类类型
+      if base.is_mixin or base.is_annotation or base.is_protocol:
+        continue
+      got = field_storage_cpp(base, field, fallback="", classes=None)
+      if got:
+        return got
   return fallback
 
 

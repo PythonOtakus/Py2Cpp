@@ -550,7 +550,7 @@ def class_subscript_static_call_return_type(tr: Translator, info: ClassInfo, met
     return ret
 
 def type_context_ann_from_stack(tr: 'Translator') -> ast.expr | None:
-    """``AnnAssign`` / ``return`` 注解，供 ``new.方法(...)`` 解析目标类。"""
+    """``AnnAssign`` / ``return`` / 字段赋值目标注解，供 ``new.方法(...)`` 解析目标类。"""
     forced = getattr(tr, '_type_context_ann_stack', None)
     if forced:
         return forced[-1]
@@ -558,6 +558,10 @@ def type_context_ann_from_stack(tr: 'Translator') -> ast.expr | None:
     for node in reversed(tr._ast_node_stack):
         if isinstance(node, ast.AnnAssign) and node.annotation is not None:
             return node.annotation
+        if isinstance(node, ast.Assign) and len(node.targets) == 1:
+            ann = tr._annotation_expr_for_assign_target(node.targets[0])
+            if ann is not None:
+                return ann
         if isinstance(node, ast.Return) and ret_ann is None:
             if tr.current_method is not None and tr.current_method.returns is not None:
                 ret_ann = tr.current_method.returns
@@ -883,9 +887,12 @@ def try_emit_new_receiver_static_call(tr: Translator, node: ast.Call) -> str | N
     if not is_new_receiver_attr_call(node):
         return None
     ann = type_context_ann_from_stack(tr)
-    if ann is None:
-        raise NotImplementedError('new.方法(...) 需类型上下文：使用 ``x: T = new.方法(...)`` 或带返回类型注解的 ``return new.方法(...)``')
     method = node.func.attr
+    if ann is None:
+        raise NotImplementedError(
+            f'new.{method}(...) 需类型上下文：有字段/返回注解时对目标写 ``… = new.{method}(...)``；'
+            f'无法推断时写 ``Cls.{method}(...)``（勿仅为 ``new`` 造 ``x: T = new.{method}(...)`` 临时变量）'
+        )
     match ann:
         case ast.Subscript(value=ast.Name(id=cls_name), slice=sl):
             slice_node: ast.expr | None = sl
@@ -1299,7 +1306,10 @@ def emit_call_expr(tr: Translator, node: ast.Call):
                 target_cpp = tr._parse_type(ann, tr._active_type_params())
                 return _emit_cast_call(tr, target_cpp, node)
             if name == 'new':
-                raise NotImplementedError('new() 需类型上下文：使用 x: T = new(...) 或带返回类型注解的 return new(...)')
+                raise NotImplementedError(
+                    'new() 需类型上下文：有字段/返回注解时对目标写 ``… = new(...)`` / ``return new(...)``；'
+                    '无法推断时写 ``Cls(...)``（勿仅为 ``new`` 造 ``x: T = new(...)`` 临时变量）'
+                )
             if name in _DEDUCED_TEMPLATE_FUNCS:
                 return _emit_deduced_template_call(tr, name, node)
             if name == 'len':

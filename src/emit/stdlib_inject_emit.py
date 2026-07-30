@@ -8,6 +8,7 @@ from ..codegen.inject_template_emit import expanded_inject_template
 from ..constant.inject_discovery import (
   discover_module_paste_after_templates,
   discover_module_paste_before_templates,
+  discover_zeus_paste_after_templates,
 )
 from ..constant.inject_specs import (
   CLASS_PASTE_MODULE_REL,
@@ -89,19 +90,21 @@ def _paste_after_template_hook(
   template_rel: str,
   *,
   in_module: bool,
+  module_path: str | None = None,
+  templates_root: str | None = None,
 ) -> PasteHook:
-  impl = expanded_inject_template(template_rel)
-  module_path = stdlib_module_path(module_rel)
+  impl = expanded_inject_template(template_rel, templates_root)
+  mp = module_path if module_path is not None else stdlib_module_path(module_rel)
 
   if in_module:
 
     def hook(tr: Translator) -> None:
-      paste_cpp_in_module_inl(tr, module_path, impl)
+      paste_cpp_in_module_inl(tr, mp, impl)
 
     return hook
 
   def hook(tr: Translator) -> None:
-    paste_cpp_to_inl_target(tr, module_path, impl)
+    paste_cpp_to_inl_target(tr, mp, impl)
 
   return hook
 
@@ -135,6 +138,20 @@ def _build_paste_after_hooks() -> dict[str, PasteHook]:
       hooks[mp] = _chain_paste_hooks((hooks[mp], th))
     else:
       hooks[mp] = th
+
+  # Zeus：用户模块路径直接作 hook 键；注入写在模块 namespace 内（与 ui 等 in_module 一致）。
+  for module_rel, template_rel, templates_root in discover_zeus_paste_after_templates():
+    th = _paste_after_template_hook(
+      module_rel,
+      template_rel,
+      in_module=True,
+      module_path=module_rel,
+      templates_root=templates_root,
+    )
+    if module_rel in hooks:
+      hooks[module_rel] = _chain_paste_hooks((hooks[module_rel], th))
+    else:
+      hooks[module_rel] = th
 
   return hooks
 

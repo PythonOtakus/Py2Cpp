@@ -13,7 +13,9 @@ from .template_module_bindings import (
   validate_template_module_bindings,
 )
 
-_TEMPLATE_ROOT = Path(__file__).resolve().parents[2] / "templates"
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_TEMPLATE_ROOT = _REPO_ROOT / "templates"
+_ZEUS_TEMPLATE_ROOT = _REPO_ROOT / "zeus" / "templates"
 
 
 def discover_module_paste_after_templates() -> tuple[tuple[str, str, bool], ...]:
@@ -32,6 +34,25 @@ def discover_module_paste_after_templates() -> tuple[tuple[str, str, bool], ...]
     module_rel = module_rel_from_inject_template(rel)
     in_module = module_rel in PASTE_AFTER_IN_MODULE_MODULES
     out.append((module_rel, rel, in_module))
+  return tuple(out)
+
+
+def discover_zeus_paste_after_templates() -> tuple[tuple[str, str, str], ...]:
+  """``zeus/templates/**/+*.inl`` → ``(module_rel, template_rel, templates_root)``。
+
+  模块路径为用户模块 rel（如 ``platform/window``），**不**加 ``py2cpp/`` 前缀。
+  """
+  out: list[tuple[str, str, str]] = []
+  root = _ZEUS_TEMPLATE_ROOT
+  if not root.is_dir():
+    return tuple(out)
+  root = root.resolve()
+  for path in sorted(root.rglob("*.inl")):
+    rel = path.relative_to(root).as_posix()
+    if _inject_skip_template_rel(rel) or not _is_inject_inl_template_name(path.name):
+      continue
+    module_rel = module_rel_from_inject_template(rel)
+    out.append((module_rel, rel, str(root)))
   return tuple(out)
 
 

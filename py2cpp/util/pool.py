@@ -233,10 +233,8 @@ class Pool[T]:
         base: int = self._free_base(b)
         offset: int = self._free_data[base + top]
         self._free_top[b] = top
-        out: pool_slot_loc = new(b, offset)
-        return out
-    empty: pool_slot_loc = new(-1, -1)
-    return empty
+        return new(b, offset)
+    return new(-1, -1)
 
   def _skip_hi_append(self, pos: int):
     """新块 ``base`` 单调递增，插入恒在尾部；仅偶数下标进入跳表。"""

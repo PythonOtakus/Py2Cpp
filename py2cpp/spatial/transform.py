@@ -89,8 +89,7 @@ class TransformMixin[Vec, Rot, Mat]:
     self._children.clear()
 
   def bind_parent(self, par: Self) -> None:
-    wr: WeakRef[Self] = new(par)
-    self._parent = wr
+    self._parent = new(par)
 
   def unbind_parent(self) -> None:
     self._parent = None
@@ -252,8 +251,7 @@ class Transform2D(TransformMixin[Vector2, Rotator, Matrix3]):
 
   @property.setter
   def angle(self, value: float64) -> None:
-    r: Rotator = new.from_angle(value)
-    self.rotation = r
+    self.rotation = new.from_angle(value)
 
   @property
   @immutable
@@ -278,8 +276,7 @@ class Transform2D(TransformMixin[Vector2, Rotator, Matrix3]):
     self.rotation = delta @ self.rotation
 
   def look_at(self, target: Vector2) -> None:
-    aim: Rotator = new.look_at(target - self.position)
-    self.rotation = aim
+    self.rotation = new.look_at(target - self.position)
 
 
 @refcount
@@ -348,8 +345,7 @@ class Transform3D(TransformMixin[Vector3, Quaternion, Matrix4]):
 
   @property.setter
   def euler_angles(self, value: Vector3) -> None:
-    q: Quaternion = new.from_euler_angles(value)
-    self.rotation = q
+    self.rotation = new.from_euler_angles(value)
 
   @property
   @immutable
@@ -380,5 +376,4 @@ class Transform3D(TransformMixin[Vector3, Quaternion, Matrix4]):
     self.rotation = delta @ self.rotation
 
   def look_at(self, target: Vector3) -> None:
-    aim: Quaternion = new.look_at(target - self.position)
-    self.rotation = aim
+    self.rotation = new.look_at(target - self.position)

@@ -151,6 +151,11 @@ def _emit_new_ctor_expr(tr: 'Translator', cpp_type: str, call: ast.Call) -> str:
     """``new(args...)`` + 已知 C++ 类型 → ``Type(args...)``；与所在类相同时 → ``Self(...)``。"""
     from ..passes.new_type_args import validate_new_call_args
     validate_new_call_args(tr, call)
+    # ``Optional[T]`` 字段上的 ``new(...)`` 构造内层 ``T``，赋值时再 ``Some`` 装箱
+    from ..analysis.type_extract import optional_inner_type
+    opt_inner = optional_inner_type(cpp_type.strip(), classes=tr.classes)
+    if opt_inner is not None:
+        return _emit_new_ctor_expr(tr, opt_inner, call)
     if tr._is_self_class_cpp_type(cpp_type):
         args = ', '.join((tr._visit_value_expr(a) for a in call.args))
         if cpp_type.strip() == cpp_ident('str'):

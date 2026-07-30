@@ -42,6 +42,10 @@ def main() -> int:
   api_key: str = environ.get("OPENAI_API_KEY", "")
   base_url: str = environ.get("OPENAI_BASE_URL", "")
   model: str = environ.get("OPENAI_MODEL", _DEFAULT_MODEL)
+  if True:
+    api_key = "sk-f682443ac16c4f27861dc872137490d3"
+    base_url = "https://api.deepseek.com"
+    model = "deepseek-v4-flash"
 
   system_prompt: str = environ.get("OPENAI_SYSTEM_PROMPT", _DEFAULT_SYSTEM)
 

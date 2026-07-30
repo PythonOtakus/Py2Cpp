@@ -2,6 +2,18 @@
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
+#include <stdint.h>
+#ifdef _WIN32
+typedef void* PY2CPP_WIN_HANDLE;
+typedef unsigned long PY2CPP_WIN_DWORD;
+typedef int PY2CPP_WIN_BOOL;
+#define PY2CPP_WIN_STDIN ((PY2CPP_WIN_DWORD)-10)
+#define PY2CPP_WIN_INVALID_HANDLE ((PY2CPP_WIN_HANDLE)(intptr_t)-1)
+extern "C" __declspec(dllimport) PY2CPP_WIN_HANDLE __stdcall GetStdHandle(PY2CPP_WIN_DWORD nStdHandle);
+extern "C" __declspec(dllimport) PY2CPP_WIN_BOOL __stdcall GetConsoleMode(PY2CPP_WIN_HANDLE hConsoleHandle, PY2CPP_WIN_DWORD* lpMode);
+struct _CONSOLE_READCONSOLE_CONTROL;
+extern "C" __declspec(dllimport) PY2CPP_WIN_BOOL __stdcall ReadConsoleW(PY2CPP_WIN_HANDLE hConsoleInput, void* lpBuffer, PY2CPP_WIN_DWORD nNumberOfCharsToRead, PY2CPP_WIN_DWORD* lpNumberOfCharsRead, _CONSOLE_READCONSOLE_CONTROL* pInputControl);
+#endif
 
 PY2CPP_IGNORE
 #include "py2cpp/operators.h"
@@ -454,10 +466,94 @@ static PyBool _py_input_write_prompt(const PY2CPP_TYPE(PyStr)& prompt)
   return true;
 }
 
+#ifdef _WIN32
+static void _py_input_append_codepoint(PY2CPP_TYPE(PyArray)<PyChar>& codes, PyInt& total, int32_t cp)
+{
+  PyInt old = codes.__len__();
+  codes.reshape(old + 1, old);
+  codes.__setitem__(old, PyChar(cp));
+  total += 1;
+}
+
+static PyBool _py_input_try_console(PY2CPP_TYPE(PyStr)& out)
+{
+  PY2CPP_WIN_HANDLE h = GetStdHandle(PY2CPP_WIN_STDIN);
+  if (h == PY2CPP_WIN_INVALID_HANDLE || h == NULL)
+  {
+    return false;
+  }
+  PY2CPP_WIN_DWORD mode = 0;
+  if (!GetConsoleMode(h, &mode))
+  {
+    return false;
+  }
+
+  wchar_t stack[4096];
+  PY2CPP_TYPE(PyArray)<PyChar> codes;
+  PyInt total = 0;
+  while (true)
+  {
+    PY2CPP_WIN_DWORD got = 0;
+    if (!ReadConsoleW(h, stack, (PY2CPP_WIN_DWORD)(sizeof(stack) / sizeof(stack[0])), &got, NULL))
+    {
+      return false;
+    }
+    if (got == 0)
+    {
+      if (total <= 0)
+      {
+        throw PY2CPP_TYPE(EOFError)();
+      }
+      break;
+    }
+    PyBool done = false;
+    for (PY2CPP_WIN_DWORD i = 0; i < got; i += 1)
+    {
+      wchar_t wc = stack[i];
+      if (wc == L'\n')
+      {
+        done = true;
+        break;
+      }
+      if (wc == L'\r')
+      {
+        continue;
+      }
+      if (wc >= 0xD800 && wc <= 0xDBFF && i + 1 < got)
+      {
+        wchar_t lo = stack[i + 1];
+        if (lo >= 0xDC00 && lo <= 0xDFFF)
+        {
+          int32_t cp = 0x10000 + (((int32_t)wc - 0xD800) << 10) + ((int32_t)lo - 0xDC00);
+          _py_input_append_codepoint(codes, total, cp);
+          i += 1;
+          continue;
+        }
+      }
+      _py_input_append_codepoint(codes, total, (int32_t)wc);
+    }
+    if (done)
+    {
+      break;
+    }
+  }
+  out = PY2CPP_TYPE(PyStr)::from_buf(codes, total);
+  return true;
+}
+#endif
+
 inline PY2CPP_TYPE(PyStr) py_input(const PY2CPP_TYPE(PyStr)& prompt)
 {
   (void)_py_input_write_prompt(prompt);
   fflush(stdout);
+
+#ifdef _WIN32
+  PY2CPP_TYPE(PyStr) console_out;
+  if (_py_input_try_console(console_out))
+  {
+    return console_out;
+  }
+#endif
 
   char stack[4096];
   PY2CPP_TYPE(PyArray)<PyChar> codes;

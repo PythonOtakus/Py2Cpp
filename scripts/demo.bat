@@ -1,7 +1,9 @@
 @echo off
 setlocal EnableExtensions EnableDelayedExpansion
 chcp 65001 >nul
-set "ROOT=%~dp0.."
+set "SCRIPT_DIR=%~dp0"
+for %%I in ("%SCRIPT_DIR%.") do set "SCRIPT_DIR=%%~fI\"
+set "ROOT=%SCRIPT_DIR%.."
 cd /d "%ROOT%"
 
 set "PY=python"
@@ -41,13 +43,13 @@ if errorlevel 1 (
   exit /b 1
 )
 
-call :InitMSVC
+call "%SCRIPT_DIR%_init_msvc.bat"
 if errorlevel 1 (
   echo NOTE: MSVC not auto-configured. Run from "x64 Native Tools Command Prompt" if link fails.
   echo.
 )
 
-call "%~dp0_bootstrap_runtime.bat"
+call "%SCRIPT_DIR%_bootstrap_runtime.bat"
 if errorlevel 1 exit /b 1
 
 
@@ -81,11 +83,11 @@ set /a COUNT+=1
 echo === demo examples\!REL! ===
 set "EXE=!GEN_DIR!\!REL:.py=.exe!"
 set "OBJDIR=!GEN_DIR!\%%~p1"
-call "%~dp0_build_timing.bat" start
+call "%SCRIPT_DIR%_build_timing.bat" start
 %PY% main.py "examples\!REL!" -o generated -c --compiler cl --exe "!EXE!" !EXTRA!
 set "BUILD_ERR=!ERRORLEVEL!"
-call "%~dp0_build_timing.bat" end "examples\!REL!"
-call "%~dp0_clean_obj.bat" "!OBJDIR!" %%~n1
+call "%SCRIPT_DIR%_build_timing.bat" end "examples\!REL!"
+call "%SCRIPT_DIR%_clean_obj.bat" "!OBJDIR!" %%~n1
 if !BUILD_ERR! neq 0 (
   set "FAILED=!FAILED! !REL!(build)"
   echo.
@@ -106,37 +108,6 @@ if !RUN_ERR! neq 0 (
   echo OK: !EXE!
 )
 echo.
-exit /b 0
-
-:InitMSVC
-if defined VSCMD_VER exit /b 0
-where cl >nul 2>&1
-if not errorlevel 1 exit /b 0
-
-set "VCVARS="
-set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
-if exist "%VSWHERE%" (
-  for /f "usebackq tokens=*" %%i in (`"%VSWHERE%" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath 2^>nul`) do (
-    if exist "%%i\VC\Auxiliary\Build\vcvars64.bat" set "VCVARS=%%i\VC\Auxiliary\Build\vcvars64.bat"
-  )
-)
-
-if not defined VCVARS (
-  for %%p in (
-    "%ProgramFiles%\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
-    "%ProgramFiles%\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build\vcvars64.bat"
-    "%ProgramFiles%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
-    "%ProgramFiles%\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
-    "%ProgramFiles(x86)%\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"
-    "%ProgramFiles(x86)%\Microsoft Visual Studio\2019\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
-  ) do (
-    if exist %%p set "VCVARS=%%~p"
-  )
-)
-
-if not defined VCVARS exit /b 1
-echo Using MSVC: %VCVARS%
-call "%VCVARS%" >nul
 exit /b 0
 
 :NoMatch

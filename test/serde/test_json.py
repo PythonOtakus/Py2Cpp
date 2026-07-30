@@ -289,8 +289,8 @@ class JsonMemoryAppendQuotedTests(TestCaseMixin):
 
   @override
   def test(self):
-    samples: list[str] = ['', 'hi', 'a"b', 'back\\slash']
-    expects: list[str] = ['""', '"hi"', '"a\\"b"', '"back\\\\slash"']
+    samples: list[str] = ['', 'hi', 'a"b', 'back\\slash', "a\nb", "a\rb", "a\tb"]
+    expects: list[str] = ['""', '"hi"', '"a\\"b"', '"back\\\\slash"', '"a\\nb"', '"a\\rb"', '"a\\tb"']
     for i in range(len(samples)):
       buf: char[:] = new(128)
       at: int = JsonEncoder.append_quoted_at(buf, 0, samples[i])

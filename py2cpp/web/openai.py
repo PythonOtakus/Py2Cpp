@@ -1,12 +1,13 @@
 """OpenAI-compatible 最简聊天客户端。"""
 from ..builtins import *
-from ..core.exceptions import Exception
+from ..core.exceptions import Exception, ValueError
 from ..serde.json import JsonDecoder, JsonEncoder
 from .client import AsyncClientSession, ClientSession
 from .http import (
   ClientResponse,
   ClientStreamResponse,
   RequestOptions,
+  reason_phrase,
 )
 
 
@@ -52,6 +53,9 @@ class TLSUnavailableError(OpenAIError):
 
 class ToolCallError(OpenAIError):
   pass
+
+
+_DEFAULT_USER_AGENT: str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0"
 
 
 @copyable
@@ -142,6 +146,16 @@ def _normalize_base_url(base_url: str) -> str:
 
 
 @immutable
+def _looks_like_url(text: str) -> bool:
+  return text.startswith("http://") or text.startswith("https://")
+
+
+@immutable
+def _looks_like_api_key(text: str) -> bool:
+  return text.startswith("sk-")
+
+
+@immutable
 def _endpoint(base_url: str) -> str:
   return f"{_normalize_base_url(base_url)}/chat/completions"
 
@@ -161,6 +175,8 @@ def _request_options(
   headers: dict[str, str] = {}
   for k in default_headers:
     headers[k] = default_headers[k]
+  if "User-Agent" not in headers and "user-agent" not in headers:
+    headers["User-Agent"] = _DEFAULT_USER_AGENT
   headers["Accept"] = "application/json"
   headers["Content-Type"] = "application/json"
   if api_key:
@@ -260,9 +276,25 @@ def _object_string_field(dec: JsonDecoder @ref, field: str) -> str:
   while not dec.at_object_end():
     key: str = dec.load_key()
     if key == field:
-      return dec.load_str()
+      mark: int = dec.mark()
+      try:
+        return dec.load_str()
+      except ValueError:
+        dec.restore(mark)
+        dec.skip_value()
+        return ""
     dec.skip_value()
   return ""
+
+
+def _load_optional_str(dec: JsonDecoder @ref) -> str:
+  mark: int = dec.mark()
+  try:
+    return dec.load_str()
+  except ValueError:
+    dec.restore(mark)
+    dec.skip_value()
+    return ""
 
 
 def _skip_array_comma(dec: JsonDecoder @ref) -> None:
@@ -280,7 +312,7 @@ def _content_array_text(dec: JsonDecoder @ref) -> str:
     while not dec.at_object_end():
       key: str = dec.load_key()
       if key == "text":
-        out += dec.load_str()
+        out += _load_optional_str(dec)
       else:
         dec.skip_value()
   return out
@@ -331,7 +363,7 @@ def _response_text(raw_json: str) -> str:
   while not dec.at_object_end():
     key: str = dec.load_key()
     if key == "output_text":
-      return dec.load_str()
+      return _load_optional_str(dec)
     if key == "output":
       return _output_array_text(dec)
     dec.skip_value()
@@ -344,7 +376,7 @@ def _chat_content(raw_json: str) -> str:
   while not dec.at_object_end():
     key: str = dec.load_key()
     if key == "content":
-      return dec.load_str()
+      return _load_optional_str(dec)
     if key == "choices":
       return _first_choice_object_field_content(dec, "message")
     dec.skip_value()
@@ -359,9 +391,9 @@ def _responses_delta(raw_json: str) -> str:
   while not dec.at_object_end():
     key: str = dec.load_key()
     if key == "type":
-      typ = dec.load_str()
+      typ = _load_optional_str(dec)
     elif key == "delta":
-      delta = dec.load_str()
+      delta = _load_optional_str(dec)
     else:
       dec.skip_value()
   if typ == "response.output_text.delta":
@@ -379,7 +411,7 @@ def _responses_completed_id(raw_json: str) -> str:
   while not dec.at_object_end():
     key: str = dec.load_key()
     if key == "type":
-      typ = dec.load_str()
+      typ = _load_optional_str(dec)
     elif key == "response":
       rid = _object_string_field(dec, "id")
     else:
@@ -444,12 +476,51 @@ def _raise_for_status_code(status: int) -> None:
       raise APIError()
 
 
+@immutable
+def _status_ok(status: int) -> bool:
+  return status >= 200 and status < 300
+
+
+@immutable
+def _short_error_body(body: str) -> str:
+  text: str = body.replace("\r", " ")
+  text = text.replace("\n", " ")
+  if len(text) > 512:
+    return text[:512]
+  return text
+
+
+@immutable
+def _status_error_text(status: int, body: str) -> str:
+  out: str = f"HTTP {status} {reason_phrase(status)}"
+  detail: str = _short_error_body(body)
+  if detail:
+    out = f"{out}: {detail}"
+  return out
+
+
+@immutable
+def _response_error_text(resp: ClientResponse) -> str:
+  return _status_error_text(resp.status, resp.text())
+
+
+def _stream_error_text(resp: ClientStreamResponse) -> str:
+  return _status_error_text(resp.status, resp.text())
+
+
 def _raise_for_status(resp: ClientResponse) -> None:
   _raise_for_status_code(resp.status)
 
 
 def _raise_for_stream_status(resp: ClientStreamResponse) -> None:
   _raise_for_status_code(resp.status)
+
+
+@refcount
+class _OpenAIState:
+  """``OpenAI`` / ``Conversation`` 共享状态；生成器复制客户端时仍能回写错误信息。"""
+
+  last_error: str = ""
 
 
 @copyable
@@ -463,12 +534,31 @@ class Conversation:
   default_headers: dict[str, str] @optional = {}
   model: str = ""
   system: str = ""
+  _state: _OpenAIState @optional = new()
   messages: list[OpenAIMessage] @optional = []
   summary: str = ""
   last_response_id: str = ""
   max_history_chars: int = 12000
   compress_target_chars: int = 4000
   mcps: list[McpBase] @optional = []
+
+  def __post_init__(self):
+    if _looks_like_url(self.api_key) and not _looks_like_url(self.base_url):
+      old_key: str = self.api_key
+      self.api_key = self.base_url
+      self.base_url = old_key
+    self.base_url = _normalize_base_url(self.base_url)
+
+  @property
+  def last_error(self) -> str:
+    return self._state.last_error
+
+  @property.setter
+  def last_error(self, value: str) -> None:
+    self._state.last_error = value
+
+  def use_state(self, state: _OpenAIState) -> None:
+    self._state = state
 
   def add_mcp(self, mcp: McpBase) -> None:
     self.mcps.append(mcp)
@@ -515,6 +605,7 @@ class Conversation:
     return _request_options(self.api_key, self.default_headers, body, self.timeout)
 
   def chat(self, message: str, max_tokens: int = 0, temperature: float = -1.0) -> str:
+    self.last_error = ""
     self._maybe_compress()
     body: str = _build_responses_body(
       self.model,
@@ -531,6 +622,8 @@ class Conversation:
     opts: RequestOptions = self._options(body)
     session: ClientSession = new()
     resp: ClientResponse = session.request_options("POST", _responses_endpoint(self.base_url), opts)
+    if not _status_ok(resp.status):
+      self.last_error = _response_error_text(resp)
     _raise_for_status(resp)
     raw: str = resp.text()
     text: str = _response_text(raw)
@@ -545,6 +638,7 @@ class Conversation:
     return text
 
   def chat_stream(self, message: str, max_tokens: int = 0, temperature: float = -1.0) -> Generator[str, None, None]:
+    self.last_error = ""
     self._maybe_compress()
     body: str = _build_responses_body(
       self.model,
@@ -561,6 +655,8 @@ class Conversation:
     opts: RequestOptions = self._options(body)
     session: ClientSession = new()
     resp: ClientStreamResponse = session.stream_options("POST", _responses_endpoint(self.base_url), opts)
+    if not _status_ok(resp.status):
+      self.last_error = _stream_error_text(resp)
     _raise_for_stream_status(resp)
     text: str = ""
     rid: str = ""
@@ -596,9 +692,22 @@ class OpenAI:
   base_url: str = "https://api.openai.com/v1"
   timeout: float = 60.0
   default_headers: dict[str, str] @optional = {}
+  _state: _OpenAIState @optional = new()
 
   def __post_init__(self):
+    if _looks_like_url(self.api_key) and not _looks_like_url(self.base_url):
+      old_key: str = self.api_key
+      self.api_key = self.base_url
+      self.base_url = old_key
     self.base_url = _normalize_base_url(self.base_url)
+
+  @property
+  def last_error(self) -> str:
+    return self._state.last_error
+
+  @property.setter
+  def last_error(self, value: str) -> None:
+    self._state.last_error = value
 
   def conversation(
     self,
@@ -614,6 +723,7 @@ class OpenAI:
     conv.default_headers = {}
     for k in self.default_headers:
       conv.default_headers[k] = self.default_headers[k]
+    conv.use_state(self._state)
     conv.model = model
     conv.system = system
     conv.max_history_chars = max_history_chars
@@ -628,10 +738,13 @@ class OpenAI:
     max_tokens: int = 0,
     temperature: float = -1.0,
   ) -> str:
+    self.last_error = ""
     body: str = _build_chat_body(model, message, system, max_tokens, temperature, False)
     opts: RequestOptions = _request_options(self.api_key, self.default_headers, body, self.timeout)
     session: ClientSession = new()
     resp: ClientResponse = session.request_options("POST", _endpoint(self.base_url), opts)
+    if not _status_ok(resp.status):
+      self.last_error = _response_error_text(resp)
     _raise_for_status(resp)
     return _chat_content(resp.text())
 
@@ -643,10 +756,13 @@ class OpenAI:
     max_tokens: int = 0,
     temperature: float = -1.0,
   ) -> Generator[str, None, None]:
+    self.last_error = ""
     body: str = _build_chat_body(model, message, system, max_tokens, temperature, True)
     opts: RequestOptions = _request_options(self.api_key, self.default_headers, body, self.timeout)
     session: ClientSession = new()
     resp: ClientStreamResponse = session.stream_options("POST", _endpoint(self.base_url), opts)
+    if not _status_ok(resp.status):
+      self.last_error = _stream_error_text(resp)
     _raise_for_stream_status(resp)
     while True:
       line: str = resp.readline()
@@ -669,9 +785,22 @@ class AsyncOpenAI:
   base_url: str = "https://api.openai.com/v1"
   timeout: float = 60.0
   default_headers: dict[str, str] @optional = {}
+  _state: _OpenAIState @optional = new()
 
   def __post_init__(self):
+    if _looks_like_url(self.api_key) and not _looks_like_url(self.base_url):
+      old_key: str = self.api_key
+      self.api_key = self.base_url
+      self.base_url = old_key
     self.base_url = _normalize_base_url(self.base_url)
+
+  @property
+  def last_error(self) -> str:
+    return self._state.last_error
+
+  @property.setter
+  def last_error(self, value: str) -> None:
+    self._state.last_error = value
 
   async def chat(
     self,
@@ -681,9 +810,12 @@ class AsyncOpenAI:
     max_tokens: int = 0,
     temperature: float = -1.0,
   ) -> str:
+    self.last_error = ""
     body: str = _build_chat_body(model, message, system, max_tokens, temperature, False)
     opts: RequestOptions = _request_options(self.api_key, self.default_headers, body, self.timeout)
     session: AsyncClientSession = new()
     resp: ClientResponse = await session.request_options("POST", _endpoint(self.base_url), opts)
+    if not _status_ok(resp.status):
+      self.last_error = _response_error_text(resp)
     _raise_for_status(resp)
     return _chat_content(resp.text())

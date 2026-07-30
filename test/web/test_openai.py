@@ -2,7 +2,7 @@
 from py2cpp import *
 from py2cpp.concur.task import Task
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
-from py2cpp.web.http import ClientStreamResponse, Request, Response, StatusCode
+from py2cpp.web.http import ClientResponse, ClientStreamResponse, Request, RequestOptions, Response, StatusCode
 from py2cpp.web.openai import (
   AsyncOpenAI,
   Conversation,
@@ -20,6 +20,8 @@ from py2cpp.web.openai import (
   _response_id,
   _response_text,
   _responses_delta,
+  _request_options,
+  _status_error_text,
 )
 from py2cpp.web.socket import AsyncTcpSocket
 from py2cpp.web.stream import AsyncStreamReader, AsyncStreamWriter, StreamReader, StreamWriter
@@ -151,6 +153,30 @@ class OpenAIResponsesParseTests(TestCaseMixin):
     self.assertEqual(streamed, "ab")
 
 
+class OpenAIErrorTextTests(TestCaseMixin):
+  _test_tag = 39
+
+  @override
+  def test(self):
+    msg: str = _status_error_text(401, '{"error":{"message":"bad key"}}')
+    self.assertTrue("HTTP 401 Unauthorized" in msg)
+    self.assertTrue("bad key" in msg)
+
+
+class OpenAIRequestHeadersTests(TestCaseMixin):
+  _test_tag = 41
+
+  @override
+  def test(self):
+    headers: dict[str, str] = {}
+    opts: RequestOptions = _request_options("sk-test", headers, "{}", 1.0)
+    self.assertTrue("Mozilla/5.0" in opts.headers["User-Agent"])
+    self.assertEqual(opts.headers["Authorization"], "Bearer sk-test")
+    custom: dict[str, str] = {"User-Agent": "custom-client"}
+    opts2: RequestOptions = _request_options("sk-test", custom, "{}", 1.0)
+    self.assertEqual(opts2.headers["User-Agent"], "custom-client")
+
+
 class OpenAIConversationLocalTests(TestCaseMixin):
   _test_tag = 38
 
@@ -211,6 +237,19 @@ class ClientStreamChunkedLineTests(TestCaseMixin):
     self.assertEqual(resp.readline(), "data: one")
     self.assertEqual(resp.readline(), "")
     self.assertEqual(resp.readline(), "data: two")
+
+
+class ClientStreamTextTests(TestCaseMixin):
+  _test_tag = 45
+
+  @override
+  def test(self):
+    reader: StreamReader = new()
+    reader.load_bytes(b"plain body")
+    writer: StreamWriter = new.from_buffer()
+    head: ClientResponse = new(status=401)
+    resp: ClientStreamResponse = new.from_head(reader, writer, head)
+    self.assertEqual(resp.text(), "plain body")
 
 
 async def _serve_openai_chat(listener: AsyncTcpSocket) -> None:

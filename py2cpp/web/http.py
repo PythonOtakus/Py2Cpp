@@ -698,6 +698,20 @@ class ClientStreamResponse:
     line_b: bytes = self._state._reader.readuntil(b"\n")
     return _strip_line_end(line_b.decode())
 
+  def body(self) -> bytes:
+    """读取当前已缓冲的剩余 body。
+
+    HTTPS/WinHTTP 路径会先把 TLS body 完整读入内存；这里主要用于非 2xx
+    响应的错误摘要。普通 socket 流式响应若还未缓冲 body，则返回空。
+    """
+    n: int = self._state._reader.available()
+    if n <= 0:
+      return b""
+    return self._state._reader.readexactly(n)
+
+  def text(self) -> str:
+    return self.body().decode()
+
 
 @copyable
 class AsyncClientStreamResponse:

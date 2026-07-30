@@ -349,6 +349,14 @@ ClientResponse py2cpp::web::client::_https_request(const PyStr& method, UrlData 
 ClientStreamResponse py2cpp::web::client::_https_stream(const PyStr& method, UrlData url, PyBytes payload, PyFloat timeout)
 {
   ClientResponse head = ::py2cpp::web::client::_https_request(method, url, payload, timeout);
+  if (head.headers.__contains__(PyStr("Transfer-Encoding")))
+  {
+    head.headers.__delitem__(PyStr("Transfer-Encoding"));
+  }
+  if (head.headers.__contains__(PyStr("transfer-encoding")))
+  {
+    head.headers.__delitem__(PyStr("transfer-encoding"));
+  }
   StreamReader reader = StreamReader();
   reader.load_bytes(head.body);
   StreamWriter writer = StreamWriter::from_buffer();

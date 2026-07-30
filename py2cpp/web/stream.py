@@ -175,6 +175,11 @@ class StreamReader(CloseMixin):
   def _avail(self) -> int:
     return self._state._avail()
 
+  @immutable
+  def available(self) -> int:
+    """当前缓冲区内可立即读取的字节数。"""
+    return self._state._avail()
+
   def _fill(self) -> bool:
     return self._state._fill()
 

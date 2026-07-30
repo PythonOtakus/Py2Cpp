@@ -762,7 +762,7 @@ class JsonEncoder:
 
   @staticmethod
   def append_quoted_at(buf: char[:], at: int, s: str) -> int:
-    """JSON 引号字符串 → ``buf[at:]``（仅转义 ``\"`` / ``\\\\``，紧凑 encode 子集）。"""
+    """JSON 引号字符串 → ``buf[at:]``（紧凑 encode 子集）。"""
     sn: int = len(s)
     est: int = at + (sn * 2) + 2
     buf.reserve(est)
@@ -781,6 +781,28 @@ class JsonEncoder:
         buf[at] = ord("\\")
         at += 1
         buf[at] = ord("\\")
+        at += 1
+      elif c in "\n":
+        buf.reserve(at + 2)
+        buf[at] = ord("\\")
+        at += 1
+        buf[at] = ord("n")
+        at += 1
+      elif c in "\r":
+        buf.reserve(at + 2)
+        buf[at] = ord("\\")
+        at += 1
+        buf[at] = ord("r")
+        at += 1
+      elif c in "\t":
+        buf.reserve(at + 2)
+        buf[at] = ord("\\")
+        at += 1
+        buf[at] = ord("t")
+        at += 1
+      elif c < ord(" "):
+        buf.reserve(at + 1)
+        buf[at] = ord("?")
         at += 1
       else:
         buf.reserve(at + 1)

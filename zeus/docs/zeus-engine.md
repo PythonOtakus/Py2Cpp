@@ -1,6 +1,6 @@
 # Zeus 3D 游戏引擎设计方案
 
-> 状态：方案草案（tggame 场景图心智 + UE5 式「可继承对象 / 可挂组件」+ Py2Cpp 语法/性能优势）。本文只定义目标、边界、目录、模块与阶段计划；代码实现另开确认后再进入 `./zeus`。
+> 状态：**Phase 0–2 已落地**（`zeus\build.bat` 全绿）；本文为总设计与后续阶段计划。入口见仓库 [`zeus/README.md`](../README.md)。
 
 Zeus 是一个基于现有 Py2Cpp 能力实现的轻量 3D 游戏引擎。第一目标不是复制 Unity / Unreal 的完整体量，而是建立一套「可运行、可编辑、可扩展、可被工具操作」的引擎骨架，并用它完成类似微信小游戏《跳一跳》的 3D demo。
 
@@ -73,7 +73,7 @@ UI / 插件 / MCP 共用 `@union` 命令 + JSON 桥接。
 
 ### 2.5 独立项目化
 
-`zeus/docs`、`zeus/templates`、`zeus/ffi` 随 Zeus；根 `docs/zeus设计方案.md` 为总设计。
+`zeus/docs`（含本文）、`zeus/README.md`、`zeus/ffi` 随 Zeus；无 `zeus/templates` / `zeus/native`（平台与 GL 为纯 Python 组合 FFI）。
 
 ### 2.6 不重复造轮子
 
@@ -384,31 +384,110 @@ Inspector：对象字段 + 组件列表字段（含 root `Transform` TRS）。
 
 ## 12. 阶段计划
 
-### Phase 0
+进度约定：每阶段结束须 `zeus\build.bat`（或阶段新增测例）全绿；只改源树，不手改 `generated/`。
 
-本文档；GLFW vs WGL；UI 嵌 GL 或独立窗；MCP JSON bridge。
+### Phase 0 — 文档与选型（已完成）
 
-### Phase 1：Runtime 骨架
+- 本文档定案；布局 `zeus/src` + `zeus/ffi`；GLFW（非 WGL）为首版窗口后端。
+- MCP / UI 嵌 GL 列为后续，不阻塞 Runtime。
 
-- `World` / `GameObject` / `Component` / `Transform` / Task
-- 无渲染：`update`、组件生命周期、对象树
-- 场景 JSON 初版
+### Phase 1 — Runtime 骨架（已完成）
 
-### Phase 2：OpenGL
+| 交付 | 路径 / 测例 |
+|------|-------------|
+| `World` / Task 槽 | `src/world.py`、`src/task.py` |
+| `GameObject` / `Component` / `Transform` | `src/scene.py` |
+| 组件生命周期 + `kind` 查找 | `test_runtime`：`ComponentLifecycleTests` |
+| 简易重力 | `src/simple_world.py` |
+| 场景序列化烟测 | `SceneSerializeSmokeTests` |
 
-- 窗口 + 清屏 + cube；`MeshComponent` + `CameraComponent`
+验收：`test_runtime.exe` 失败数 0。
 
-### Phase 3：Editor MVP
+### Phase 2 — OpenGL 烟雾（已完成）
 
-- Hierarchy（对象 + 组件）/ Inspector / Play
+| 交付 | 路径 / 测例 |
+|------|-------------|
+| GLFW 窗（可 hidden） | `src/platform/window.py` + `ffi/glfw` |
+| 立即模式清屏 + 彩色 cube | `src/render/opengl/gl_device.py`、`src/render/mesh.py` |
+| `MeshComponent` / `CameraComponent` | `src/scene.py` |
 
-### Phase 4–5：命令、插件、MCP
+验收：`test_render.exe` 失败数 0（本机需 OpenGL 驱动）。
 
-- 含 `add_component`；注册对象与组件类型
+### Phase 3 — Editor MVP
 
-### Phase 6：跳一跳
+目标：可看、可选、可改、可 Play 的最小编辑器（依赖 Runtime；反向禁止）。
 
-### Phase 7（可选）：ECS / prange
+| 项 | 内容 |
+|----|------|
+| **Hierarchy** | `GameObject` 树；展开显示组件列表与 root `Transform` |
+| **Inspector** | 对象 `name`/`active`/`visible`；组件字段（含 TRS）；`add`/`remove` 组件入口 |
+| **Scene View** | 复用 Phase 2 渲染视口（可独立窗；UI 嵌 GL 可后置） |
+| **Toolbar** | Play / Pause / Stop → `World` 状态机 |
+| **工程** | 打开/保存场景 JSON（扩展 Phase 1 序列化：类型名、组件表、子树） |
+| **测例** | `test_editor_smoke`：无 UI 也可测命令层「选中 / 改字段 / Play 一步」 |
+
+**暂不实现（Phase 3）**：完整 Assets 浏览器、撤销栈、多视口、材质编辑器。
+
+**验收**：编辑器进程能加载场景 → 改 root 位移 → Play 若干帧 → 保存再加载一致。
+
+### Phase 4 — 命令系统
+
+目标：Editor / 插件 / MCP **共用**同一套命令 ADT（`@union` + JSON）。
+
+| 项 | 内容 |
+|----|------|
+| **命令表** | `project.*` / `scene.*` / `object.*` / `component.*` / `play.*` / `editor.*`（见 §8） |
+| **执行器** | `CommandBus.dispatch(cmd) -> Result`；Play 态限制写命令 |
+| **桥接** | JSON ↔ 命令（`serde`）；无第二套字符串协议 |
+| **测例** | `test_commands`：create/find/set_position/add_component/remove 往返 |
+
+**验收**：纯命令驱动即可完成「建对象 → 挂 Mesh → 改位姿 → 步进」；Editor UI 只发命令。
+
+### Phase 5 — 插件 + MCP
+
+| 项 | 内容 |
+|----|------|
+| **插件** | manifest（id/版本/入口）；生命周期 `on_load`/`on_unload`；注册菜单项与命令 |
+| **类型注册** | 插件可注册 `GameObject` 子类、`Component`/`Transform` 子类（编译期或表驱动，忌运行期任意 `eval`） |
+| **MCP** | 对外 JSON-RPC/stdio（或仓库既有 MCP 形态）包装同一 `CommandBus` |
+| **测例** | 示例插件注册一条命令；MCP 客户端发 `object.create` 成功 |
+
+**验收**：外部工具仅经 MCP/命令即可改场景，无需点 UI。
+
+### Phase 6 — 跳一跳 Demo
+
+| 项 | 内容 |
+|----|------|
+| **玩法** | `Player` / `Platform` / 蓄力跳跃 / 重力 / 落点判定 / 分数 |
+| **输入** | 键盘或鼠标（`platform/input`）；FSM：`idle`→`charging`→`jumping`→`landed`/`failed` |
+| **相机** | `CameraComponent` 跟随 |
+| **渲染** | 平台与角色 mesh + 纯色材质（仍可立即模式；可引入薄 shader 叶子） |
+| **入口** | `examples/jump` 或 `zeus/src/demos/jump` + `demo.bat` 式脚本 |
+| **测例** | headless：固定输入序列断言分数/落点；可选有窗烟雾 |
+
+**验收**：可玩一局；编辑器能改 `jump_power` 等字段并 Play 验证。
+
+### Phase 7（可选）— ECS / prange 热路径
+
+| 项 | 内容 |
+|----|------|
+| **边界** | 仅批量变换/物理候选数据进 `design.ecs` SoA；节点 API 不变 |
+| **桥接** | GameObject/组件字段 ↔ ECS 行映射表 |
+| **并行** | `prange` 更新候选子集 |
+| **测例** | 同玩法下 N 平台更新正确性；可选计时对比 |
+
+**验收**：玩法不强制改写为 ECS；开关或配置启用热路径后结果一致。
+
+### 阶段依赖（简图）
+
+```text
+Phase 0–2（已完成）
+    → Phase 3 Editor MVP
+    → Phase 4 命令（可与 3 尾部重叠：先 Bus 再挂 UI）
+    → Phase 5 插件 + MCP（依赖 4）
+    → Phase 6 跳一跳（依赖 2；编辑器用 3–4 更佳）
+    → Phase 7 ECS（可选，依赖 6 或独立微基准）
+```
 
 ---
 
@@ -418,30 +497,42 @@ Inspector：对象字段 + 组件列表字段（含 root `Transform` TRS）。
 - **命名冲突**：`zeus.Transform` vs `spatial.Transform3D` — 强制限定导入与文档用语。
 - **双通道滥用**：指南优先「可复用 → 组件；强绑定玩法 → 子类」；避免又继承又堆无意义组件。
 - **组件与对象双树**：对象树（子 GameObject）与 Transform 附件树职责写清，编辑器分层显示。
+- **FFI 宏**：`GL_*` / `GLFW_*` 与 C 头同名 — 译器 FFI glue 须 `#undef`（已落地，勿在业务改名绕行）。
 
 ---
 
 ## 14. 验收清单
 
-### Runtime
+### Runtime / Render（Phase 1–2）
 
-- [ ] `World`；`GameObject` 树 attach/find
-- [ ] 子类化 `GameObject` 可运行
-- [ ] `add_component` / `get_component`；`Transform` 附件
-- [ ] 保存/加载含组件列表的场景
+- [x] `World`；`GameObject` 树 attach/find
+- [x] 子类化组件（如 `ScoreBoard`）可 `on_update`
+- [x] `add_component` / `find_component`；`Transform` 附件与合成
+- [x] 场景序列化烟测；GLFW 清屏 + cube
 
-### Render / Editor / Plugin / MCP / Jump
+### Editor（Phase 3）
 
-同前，用语改为 object / component；能改 root `Transform` 与组件字段。
+- [ ] Hierarchy + Inspector + Play/Stop
+- [ ] 保存/加载含组件列表的场景，字段可改
+
+### 命令 / 插件 / MCP（Phase 4–5）
+
+- [ ] 命令总线覆盖 §8 清单核心子集
+- [ ] 示例插件注册；MCP 可改 root `Transform` 与组件字段
+
+### Jump / ECS（Phase 6–7）
+
+- [ ] 跳一跳可玩；编辑器可调参
+- [ ] （可选）ECS 热路径结果一致
 
 ---
 
 ## 15. 下一步建议
 
-1. 确认 GLFW 或 WGL。
-2. 落地 `./zeus`：`World` + `GameObject` + `Component` + `Transform` + Task。
-3. 清屏 + `MeshComponent` cube。
-4. Editor → 命令 → 跳一跳。
-5. 有数据后再上 ECS。
+1. **Phase 3**：场景 JSON 图式定稿 → Hierarchy/Inspector 最小 UI（或先做无 UI 的编辑命令测例）。
+2. **Phase 4**：落地 `CommandBus` + `@union` 命令，Editor 只发命令。
+3. **Phase 5**：manifest 插件 + MCP 包装同一总线。
+4. **Phase 6**：跳一跳 demo；输入与 FSM。
+5. 有 profiling 数据后再上 **Phase 7** ECS。
 
-**实现代码前**仍可对模块细节短确认；本文件已纳入 UE5 双通道与命名定案（`GameObject` / `Transform`）。
+实现新阶段前若改对外 API / 序列化格式，仍按 py2cpp-design「先问清再实现」对齐后再改 `zeus/src`。

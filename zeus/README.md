@@ -1,20 +1,27 @@
-# Zeus Phase 1–2 落地说明
+# Zeus
 
-## 布局（对齐 Py2Cpp：`src/` + FFI 叶子）
+基于 Py2Cpp 的轻量 3D 游戏引擎（GLFW + OpenGL）。
+
+- **总设计**：[docs/zeus-engine.md](docs/zeus-engine.md)
+- **构建**：`zeus\build.bat`（`test_runtime` + `test_render`）
+
+## 布局
 
 ```text
 zeus/
-  src/                 # Python 源（译器 project_root）
-  ffi/                 # 手写 GLFW/GL 子集 .pyi（经 ffi_layout 旁路）
-  test/                # 说明：可执行测例入口在 src/test_*.py
+  README.md            # 本文件
   docs/
+    zeus-engine.md     # 目标 / 对象模型 / Phase 计划
+  src/                 # Python 源（译器 project_root）
+  ffi/                 # 手写 GLFW/GL 子集 .pyi
+  test/                # 说明；可执行测例入口在 src/test_*.py
   third_party/glfw/
   generated/
   build.bat
   setup_deps.bat
 ```
 
-平台 / OpenGL 业务为**纯 Python**组合 `ffi.glfw.glfw3` / `ffi.gl.gl`；无 `zeus/templates`、`zeus/native`。
+平台 / OpenGL 为**纯 Python**组合 `ffi.glfw.glfw3` / `ffi.gl.gl`；无 `zeus/templates`、`zeus/native`。
 
 ## 依赖
 
@@ -26,15 +33,16 @@ zeus/
 
 无 PhysX；重力见 `zeus/src/simple_world.py`（`physics/` 为占位包）。
 
-## 构建
+## 当前进度
 
-```bat
-zeus\build.bat
-```
+| Phase | 内容 | 状态 |
+|-------|------|------|
+| 0–2 | 文档、Runtime 骨架、GLFW 清屏 + cube | **已完成**（`build.bat` 全绿） |
+| 3+ | Editor / 命令 / 插件 / MCP / 跳一跳 / ECS | 见 [docs/zeus-engine.md §12](docs/zeus-engine.md#12-阶段计划) |
 
-## 验收清单
+## Phase 1–2 验收
 
-- [x] Python 在 `zeus/src/`；C 叶子为 `zeus/ffi/**/*.pyi` + 纯 Python（无 `zeus/native/` / `zeus/templates/`）
+- [x] Python 在 `zeus/src/`；C 叶子为 `zeus/ffi/**/*.pyi` + 纯 Python
 - [x] `zeus/setup_deps.bat` 拉齐 GLFW
 - [x] `test_runtime.exe`：对象树 / 组件 / Transform / World / Mesh·Camera / 重力 / 序列化 — 失败数 0
 - [x] `test_render.exe`：隐藏 GLFW 窗 + 清屏 + 彩色 cube — 失败数 0

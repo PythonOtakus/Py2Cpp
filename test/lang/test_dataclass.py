@@ -30,7 +30,7 @@ class RefPoint:
 
 @copyable
 class WithFactory:
-  items: list[int] @optional = []
+  items: list[int] = []
 
 
 @dataclass

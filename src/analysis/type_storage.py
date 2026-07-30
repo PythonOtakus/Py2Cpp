@@ -88,8 +88,13 @@ def apply_refcount_storage_type_node(
   """``@refcount`` 树变换（与 ``ClassInfo.apply_refcount_storage_cpp_type`` 对齐）。"""
   from .ir import (
     CPP_DEQUE_PREFIX,
+    CPP_DICT_PREFIX,
+    CPP_FROZENDICT_PREFIX,
+    CPP_FROZENLIST_PREFIX,
+    CPP_FROZENSET_PREFIX,
     CPP_LIST_PREFIX,
     CPP_REFCount_PREFIX,
+    CPP_SET_PREFIX,
     CPP_TUPLE_PREFIX,
     cpp_refcount_type,
   )
@@ -102,6 +107,11 @@ def apply_refcount_storage_type_node(
 
   list_bare = CPP_LIST_PREFIX.rstrip("<")
   deque_bare = CPP_DEQUE_PREFIX.rstrip("<")
+  set_bare = CPP_SET_PREFIX.rstrip("<")
+  frozenset_bare = CPP_FROZENSET_PREFIX.rstrip("<")
+  frozenlist_bare = CPP_FROZENLIST_PREFIX.rstrip("<")
+  dict_bare = CPP_DICT_PREFIX.rstrip("<")
+  frozendict_bare = CPP_FROZENDICT_PREFIX.rstrip("<")
   tuple_bare = CPP_TUPLE_PREFIX.rstrip("<")
 
   if node.kind == TypeKind.SCALAR:
@@ -115,7 +125,16 @@ def apply_refcount_storage_type_node(
         return type_node_from_cpp_string(info.storage_cpp_type(), classes=classes)
     return node
 
-  if node.kind == TypeKind.TEMPLATE and node.name in (list_bare, deque_bare, tuple_bare):
+  if node.kind == TypeKind.TEMPLATE and node.name in (
+    list_bare,
+    deque_bare,
+    set_bare,
+    frozenset_bare,
+    frozenlist_bare,
+    dict_bare,
+    frozendict_bare,
+    tuple_bare,
+  ):
     new_args = tuple(
       apply_refcount_storage_type_node(a, classes) for a in node.args
     )

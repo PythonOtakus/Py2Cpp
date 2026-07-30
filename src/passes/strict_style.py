@@ -1,6 +1,6 @@
 """编码规范强检查（``--strict``，默认开启）。
 
-S01–S29 按 A–F 分组（见 ``docs/编码规范.md`` §1.1）；``S06`` 构造优先级用子码 ``S06a``–``S06e``；``S18`` 为覆盖基类 ``@virtual``/``@abstract`` 方法（含继承链上纯虚/虚声明）时子类须 ``@override``；**静态**：覆盖基类 ``@staticmethod``+``@override``，或模块内 ``func[Cls]`` 绑定之 ``@protocol`` 静态虚成员，亦须 ``@staticmethod``+``@override``（不检查 dunder；``@mixin`` 基类豁免）；``S27`` 为 import 布局；``S28`` 为堆/栈数组切片注解；``S29`` 为同类型反向 dunder；``S30`` 为继承顺序（mixin 在实体类前、至多一个实体基类）；``S31`` 禁止显式 ``RefCount``（含 ``RefCount()`` / ``RefCount[T]``；``@refcount`` 类与 ``T: refcount`` 须写 ``T``，清空用 ``new()``）；``S32`` 为 ``@dataclass`` 须至少一个非 ``@optional`` 实例字段；``S33`` 禁止类成员名 ``assign``/``build``/``select``（与译期专用 API 冲突）；``S34`` 禁止非字面量 ``ord``；``S35`` 禁止仅作类型转换且无再赋值的注解临时变量（勿 ``n: int = int(x); return n``）；``S36`` 禁止定长元组解包中未使用的具名绑定（须 ``_`` / ``*_``）；``S37`` 禁止显式 ``PyNone``（须写 ``None``；``py2cpp/core/none.py`` 豁免）；``S38`` 禁止 ``for x in …: yield x``（须 ``yield from …``；``async def`` 异步生成器豁免；``for`` ``else`` 分支除外）；``S41`` 禁止 ``return self._field`` 与 ``self._field = 形参`` 成对的手写 getter/setter（须 ``@property`` 或公有字段）；``S42`` 禁止 trivial ``@property`` getter + 顶层 ``self._field = value`` 与其它语句的 ``@property.setter``（须 ``@property.postsetter`` / 字段简写）。
+S01–S29 按 A–F 分组（见 ``docs/编码规范.md`` §1.1）；``S06`` 构造优先级用子码 ``S06a``–``S06e``；``S18`` 为覆盖基类 ``@virtual``/``@abstract`` 方法（含继承链上纯虚/虚声明）时子类须 ``@override``；**静态**：覆盖基类 ``@staticmethod``+``@override``，或模块内 ``func[Cls]`` 绑定之 ``@protocol`` 静态虚成员，亦须 ``@staticmethod``+``@override``（不检查 dunder；``@mixin`` 基类豁免）；``S27`` 为 import 布局；``S28`` 为堆/栈数组切片注解；``S29`` 为同类型反向 dunder；``S30`` 为继承顺序（mixin 在实体类前、至多一个实体基类）；``S31`` 禁止显式 ``RefCount``（含 ``RefCount()`` / ``RefCount[T]``；``@refcount`` 类与 ``T: refcount`` 须写 ``T``，清空用 ``new()``）；``S32`` 为 ``@dataclass`` 须至少一个非 ``@optional`` 实例字段；``S33`` 禁止类成员名 ``assign``/``build``/``select``（与译期专用 API 冲突）；``S34`` 禁止非字面量 ``ord``；``S35`` 禁止仅作类型转换且无再赋值的注解临时变量（勿 ``n: int = int(x); return n``）；``S36`` 禁止定长元组解包中未使用的具名绑定（须 ``_`` / ``*_``）；``S37`` 禁止显式 ``PyNone``（须写 ``None``；``py2cpp/core/none.py`` 豁免）；``S38`` 禁止 ``for x in …: yield x``（须 ``yield from …``；``async def`` 异步生成器豁免；``for`` ``else`` 分支除外）；``S41`` 禁止 ``return self._field`` 与 ``self._field = 形参`` 成对的手写 getter/setter（须 ``@property`` 或公有字段）；``S42`` 禁止 trivial ``@property`` getter + 顶层 ``self._field = value`` 与其它语句的 ``@property.setter``（须 ``@property.postsetter`` / 字段简写）；``S45`` 禁止非 ``@dataclass`` 字段使用 ``@optional``。
 检查 ``py2cpp/``、用户模块与 ``test/**``；``test/fail/`` 豁免；``# py2cpp: strict-off`` 可关单文件。
 
 内部 helper 前缀 ``_sNN_`` / ``_check_sNN_`` 与 §1.1 规则 ID 一致。
@@ -72,6 +72,7 @@ S41 = 'S41'
 S42 = 'S42'
 S43 = 'S43'
 S44 = 'S44'
+S45 = 'S45'
 _PRIMITIVE_CONVERT_CTORS = frozenset({'int', 'float', 'bool', 'char', 'byte', 'str', 'int64', 'float64', 'uint', 'uint64', 'uintptr'})
 _SLICE_ARRAY_ANN_ROOTS = frozenset({'array', 'array2d', 'array3d', 'stack_array', 'stack_array2d', 'stack_array3d'})
 _S20_MIN_DISPATCH_BRANCHES = 3
@@ -2456,8 +2457,17 @@ def _s44_frozen_optional_msg(class_name: str, field: str) -> str:
         reason='``frozen=True`` 等价全字段 ``@final``；``@optional`` 不进 ``__init__`` 形参，与 frozen 字段初始化冲突',
     )
 
+def _s45_optional_non_dataclass_msg(class_name: str, field: str) -> str:
+    return _strict_msg(
+        f'`class {class_name}` 非 dataclass 字段 ``{field}: T @optional``',
+        '去掉 ``@optional``；若需要自动构造参数控制，则给类加 ``@dataclass``',
+        '类体字段注解',
+        example='``@copyable class Opt: headers: dict[str, str] = {}``；或 ``@dataclass class Row: tags: list[str] @optional = []``',
+        reason='``@optional`` 只用于 ``@dataclass`` 生成 ``__init__`` 时排除该字段；普通类字段默认值直接由类体初始化承担',
+    )
+
 def check_s44_field_annotation_markers(tr: Translator) -> None:
-    """S44：禁止 ``T @final @optional``；``@dataclass(frozen=True)`` 禁止 ``T @optional``（须在 ``expand_dataclass`` 之前）。"""
+    """S44/S45：字段标记组合约束（须在 ``expand_dataclass`` 之前）。"""
     if not getattr(tr, 'strict', True):
         return
     from ..analysis.ir import iter_matmult_marker_names
@@ -2465,10 +2475,9 @@ def check_s44_field_annotation_markers(tr: Translator) -> None:
 
     violations: list[_Violation] = []
     for info in tr.classes.values():
-        if info.is_descriptor or info.is_mixin or info.is_protocol:
-            continue
         opts = _parse_dataclass_options(info.node)
         frozen = opts is not None and opts.frozen
+        is_dc = opts is not None
         for stmt in info.node.body:
             if not isinstance(stmt, ast.AnnAssign) or stmt.annotation is None:
                 continue
@@ -2479,6 +2488,10 @@ def check_s44_field_annotation_markers(tr: Translator) -> None:
             if 'final' in markers and 'optional' in markers:
                 violations.append(
                     _Violation(S44, _s44_final_optional_msg(name), stmt, info.module_path),
+                )
+            if (not is_dc) and 'optional' in markers:
+                violations.append(
+                    _Violation(S45, _s45_optional_non_dataclass_msg(info.name, name), stmt, info.module_path),
                 )
             if frozen and 'optional' in markers:
                 violations.append(

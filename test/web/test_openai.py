@@ -3,12 +3,33 @@ from py2cpp import *
 from py2cpp.concur.task import Task
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 from py2cpp.web.http import ClientStreamResponse, Request, Response, StatusCode
-from py2cpp.web.openai import AsyncOpenAI, _build_chat_body, _chat_content, _delta_content, _iter_sse_tokens
+from py2cpp.web.openai import (
+  AsyncOpenAI,
+  Conversation,
+  McpBase,
+  McpFuncCall,
+  McpServer,
+  OpenAI,
+  OpenAIMessage,
+  _build_chat_body,
+  _build_responses_body,
+  _chat_content,
+  _delta_content,
+  _iter_responses_sse_tokens,
+  _iter_sse_tokens,
+  _response_id,
+  _response_text,
+  _responses_delta,
+)
 from py2cpp.web.socket import AsyncTcpSocket
 from py2cpp.web.stream import AsyncStreamReader, AsyncStreamWriter, StreamReader, StreamWriter
 
 
 _CHAT_PORT: int = 18141
+
+
+def _local_mcp_echo(args_json: str) -> str:
+  return "echo:" + args_json
 
 
 class OpenAIChatBodyTests(TestCaseMixin):
@@ -64,6 +85,104 @@ class OpenAIDeltaParseTests(TestCaseMixin):
   def test(self):
     token: str = _delta_content('{"id":"x","choices":[{"index":0,"delta":{"content":"tok"}}]}')
     self.assertEqual(token, "tok")
+
+
+class OpenAIResponsesBodyTests(TestCaseMixin):
+  _test_tag = 36
+
+  @override
+  def test(self):
+    old_msg: OpenAIMessage = new("user", "old")
+    answer_msg: OpenAIMessage = new("assistant", "answer")
+    messages: list[OpenAIMessage] = [old_msg, answer_msg]
+    mcp: McpServer = new()
+    mcp.label = "docs"
+    mcp.url = "https://example.com/mcp"
+    fn: McpFuncCall = new()
+    fn.label = "local"
+    fn.name = "echo"
+    fn.description = "Echo local args"
+    fn.parameters_json = "{}"
+    fn.handler = _local_mcp_echo
+    mcps: list[McpBase] = [mcp, fn]
+    body: str = _build_responses_body(
+      "gpt-test",
+      "system",
+      "summary",
+      messages,
+      "next",
+      "resp_1",
+      mcps,
+      32,
+      0.25,
+      True,
+    )
+    self.assertTrue('"model":"gpt-test"' in body)
+    self.assertTrue('"previous_response_id":"resp_1"' in body)
+    self.assertTrue('"max_output_tokens":32' in body)
+    self.assertTrue('"stream":true' in body)
+    self.assertTrue('"type":"mcp"' in body)
+    self.assertTrue('"server_label":"docs"' in body)
+    self.assertTrue('"require_approval":"never"' in body)
+    self.assertTrue('"type":"function"' in body)
+    self.assertTrue('"name":"echo"' in body)
+    self.assertEqual(fn.call('{"x":1}'), 'echo:{"x":1}')
+    self.assertTrue("Conversation summary" in body)
+
+
+class OpenAIResponsesParseTests(TestCaseMixin):
+  _test_tag = 37
+
+  @override
+  def test(self):
+    raw: str = '{"id":"resp_1","output_text":"pong"}'
+    self.assertEqual(_response_id(raw), "resp_1")
+    self.assertEqual(_response_text(raw), "pong")
+    nested: str = '{"output":[{"content":[{"type":"output_text","text":"he"},{"type":"output_text","text":"llo"}]}]}'
+    self.assertEqual(_response_text(nested), "hello")
+    self.assertEqual(_responses_delta('{"type":"response.output_text.delta","delta":"tok"}'), "tok")
+    streamed: str = ""
+    for token in _iter_responses_sse_tokens(
+      'data: {"type":"response.output_text.delta","delta":"a"}\n\n'
+      'data: {"type":"response.output_text.delta","delta":"b"}\n\n'
+      'data: [DONE]\n\n'
+    ):
+      streamed += token
+    self.assertEqual(streamed, "ab")
+
+
+class OpenAIConversationLocalTests(TestCaseMixin):
+  _test_tag = 38
+
+  @override
+  def test(self):
+    client: OpenAI = new(base_url="http://127.0.0.1:1/v1")
+    conv: Conversation = client.conversation("gpt-test", system="sys", max_history_chars=16, compress_target_chars=12)
+    srv: McpServer = new()
+    srv.label = "docs"
+    srv.url = "https://example.com/mcp"
+    conv.add_mcp(srv)
+    fn: McpFuncCall = new()
+    fn.label = "local"
+    fn.name = "echo"
+    fn.handler = _local_mcp_echo
+    conv.add_mcp(fn)
+    self.assertEqual(conv.model, "gpt-test")
+    self.assertEqual(len(conv.mcps), 2)
+    self.assertEqual(conv.call_mcp("local", '{"x":1}'), 'echo:{"x":1}')
+    msg1: OpenAIMessage = new("user", "first")
+    msg2: OpenAIMessage = new("assistant", "second")
+    msg3: OpenAIMessage = new("user", "third")
+    msg4: OpenAIMessage = new("assistant", "fourth")
+    msg5: OpenAIMessage = new("user", "fifth")
+    conv.messages.append(msg1)
+    conv.messages.append(msg2)
+    conv.messages.append(msg3)
+    conv.messages.append(msg4)
+    conv.messages.append(msg5)
+    conv.compress()
+    self.assertTrue(len(conv.summary) <= 12)
+    self.assertEqual(len(conv.messages), 4)
 
 
 class ClientStreamChunkedLineTests(TestCaseMixin):

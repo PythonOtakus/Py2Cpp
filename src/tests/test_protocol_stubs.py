@@ -21,11 +21,11 @@ class ProtocolStubTests(unittest.TestCase):
     self.assertEqual(PROTOCOL_PARAMETRIC_RECEIVER, load_protocol_parametric_receiver())
     self.assertEqual(PROTOCOL_IMPL_ASSOC_RECEIVER, load_protocol_impl_assoc_receiver())
 
-  def test_param_erase_excludes_equatable_includes_navigatable(self):
+  def test_param_erase_excludes_equatable_and_runtime_erased_protocols(self):
     erase = load_protocol_param_erase()
     self.assertNotIn("Equatable", erase)
     self.assertIn("Comparable", erase)
-    self.assertIn("Navigatable", erase)
+    self.assertNotIn("Navigatable", erase)
     self.assertNotIn("Encoder", erase)
 
   def test_parametric_receiver_navigatable_only(self):
@@ -40,9 +40,11 @@ class ProtocolStubTests(unittest.TestCase):
         "Iterator",
         "Collection",
         "Container",
+        "Appendable",
         "Reversible",
         "AsyncIterable",
         "AsyncIterator",
+        "AsyncGenerator",
       }),
     )
 

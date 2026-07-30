@@ -69,6 +69,26 @@ def _returns_iter_result_of_param(ann: ast.expr | None, type_params: set[str]) -
       return False
 
 
+def _ann_refs_any_name(ann: ast.expr | None, names: set[str]) -> bool:
+  if ann is None:
+    return False
+  if isinstance(ann, ast.Name):
+    return ann.id in names
+  for child in ast.iter_child_nodes(ann):
+    if _ann_refs_any_name(child, names):
+      return True
+  return False
+
+
+def _method_arg_refs_any_name(method: ast.FunctionDef, names: set[str]) -> bool:
+  for arg in method.args.args:
+    if arg.arg == "self":
+      continue
+    if _ann_refs_any_name(arg.annotation, names):
+      return True
+  return False
+
+
 def _method_implies_assoc_receiver(method: ast.FunctionDef, type_params: set[str]) -> bool:
   ann = method.returns
   if method.name in ("__iter__", "__reversed__", "__aiter__"):
@@ -85,6 +105,36 @@ def _has_type_alias_to_param(node: ast.ClassDef, type_params: set[str]) -> bool:
     if isinstance(item, ast.TypeAlias) and isinstance(item.value, ast.Name):
       if item.value.id in type_params:
         return True
+  return False
+
+
+def _type_alias_names(node: ast.ClassDef) -> set[str]:
+  names: set[str] = set()
+  for item in node.body:
+    if isinstance(item, ast.TypeAlias):
+      names.add(item.name.id if isinstance(item.name, ast.Name) else ast.unparse(item.name))
+  return names
+
+
+def _single_type_param_used_as_method_arg(node: ast.ClassDef, type_params: set[str]) -> bool:
+  if len(type_params) != 1:
+    return False
+  for item in node.body:
+    if isinstance(item, ast.FunctionDef) and _method_arg_refs_any_name(item, type_params):
+      return True
+  return False
+
+
+def _single_assoc_alias_used_as_method_arg(node: ast.ClassDef) -> bool:
+  tparams = _type_param_names(node)
+  if len(tparams) != 1:
+    return False
+  aliases = _type_alias_names(node)
+  if not aliases:
+    return False
+  for item in node.body:
+    if isinstance(item, ast.FunctionDef) and _method_arg_refs_any_name(item, aliases):
+      return True
   return False
 
 
@@ -115,7 +165,10 @@ def load_protocol_parametric_receiver() -> frozenset[str]:
   out: set[str] = set()
   for node in _scan_protocol_classes():
     tparams = _type_param_names(node)
-    if tparams and _has_type_alias_to_param(node, tparams):
+    if tparams and (
+      _has_type_alias_to_param(node, tparams)
+      or _single_type_param_used_as_method_arg(node, tparams)
+    ):
       out.add(node.name)
   return frozenset(out)
 
@@ -125,7 +178,7 @@ def load_protocol_impl_assoc_receiver() -> frozenset[str]:
   """``Iterable[T]`` → ``Iterable_requires<Impl, T>``（双形参 SFINAE）。"""
   out: set[str] = set()
   for node in _scan_protocol_classes():
-    if node.name == "Container":
+    if _single_assoc_alias_used_as_method_arg(node):
       out.add(node.name)
       continue
     tparams = _type_param_names(node)

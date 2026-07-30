@@ -136,7 +136,7 @@ class _IoSlot(_SlotBase):
 class _GatherSlot[U](_SlotBase):
   """``Task.gather`` 聚合槽：``@property result -> list[U]``。"""
 
-  _results: list[U] @optional = []
+  _results: list[U] = []
   _pending: int64 = 0
 
   @property

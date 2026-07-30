@@ -11,7 +11,7 @@ class UIObject:
 
 
 class UIWidget(UIObject):
-  handle: int64 @optional = 0
+  handle: int64 = 0
 
 
 @dataclass(eq=False, repr=False)

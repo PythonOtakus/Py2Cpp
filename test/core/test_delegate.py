@@ -36,6 +36,10 @@ def _triple(x: int) -> int:
   return x + x + x
 
 
+def _prefix_text(s: str) -> str:
+  return "fn:" + s
+
+
 def add_inc(target: Func[int]) -> None:
   target += _inc
 
@@ -65,6 +69,31 @@ class HandlerBox:
 
 class SlotHolder:
   slot: Callable[[int], int]
+
+
+class TextSlotHolder:
+  slot: Callable[[str], str] = new()
+
+  def call(self, s: str) -> str:
+    return self.slot(s)
+
+
+@copyable
+class CopyBase:
+  label: str = ""
+
+
+@copyable
+class CopyChild(CopyBase):
+  value: int = 0
+
+
+@copyable
+class CopyCallableBox:
+  slot: Callable[[str], str] = new()
+
+  def call(self, s: str) -> str:
+    return self.slot(s)
 
 
 class SlotFactory:
@@ -165,6 +194,31 @@ class CallableFieldTests(TestCaseMixin):
     self.assertEqual(d(5), 6)
     d -= holder.slot
     self.assertFalse(d)
+    text: TextSlotHolder = new()
+    text.slot = lambda s: "lam:" + s
+    self.assertEqual(text.call("ok"), "lam:ok")
+    text.slot = _prefix_text
+    self.assertEqual(text.call("ok"), "fn:ok")
+
+
+class CopyableInheritanceCallableTests(TestCaseMixin):
+  _test_tag = 45
+
+  @override
+  def test(self):
+    child: CopyChild = new()
+    child.label = "base"
+    child.value = 7
+    copied: CopyChild = child
+    self.assertEqual(copied.label, "base")
+    self.assertEqual(copied.value, 7)
+    items: list[CopyChild] = []
+    items.append(child)
+    self.assertEqual(items[0].label, "base")
+    box: CopyCallableBox = new()
+    box.slot = lambda s: "copy:" + s
+    copied_box: CopyCallableBox = box
+    self.assertEqual(copied_box.call("ok"), "copy:ok")
 
 
 class DelegateParamTests(TestCaseMixin):

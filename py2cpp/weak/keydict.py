@@ -9,9 +9,9 @@ from .ref import WeakRef
 class WeakKeyDict[K: DictKey & refcount, V]:
   """键无外部强引用时条目自动移除（访问时惰性清理）。"""
 
-  _keys: list[WeakRef[K]] @optional = []
+  _keys: list[WeakRef[K]] = []
 
-  _values: list[V] @optional = []
+  _values: list[V] = []
 
   def __del__(self):
     self.clear()

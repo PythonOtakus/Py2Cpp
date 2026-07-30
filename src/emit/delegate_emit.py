@@ -91,11 +91,11 @@ def _module_function_cpp_name(tr: 'Translator', name: str) -> str:
     bound = binding_cpp_name(tr._effective_import_bindings(), name)
     if bound is not None:
         return bound
-    return cpp_param(name)
+    return qualify_symbol_in_module(tr._active_module_path(), cpp_param(name))
 
 def _emit_free_function_callable(tr: 'Translator', info: DelegateInfo, fn_cpp: str) -> str:
-    invoke = py_callable_free_invoke_ref(info.ret_cpp, info.params)
-    return _emit_callable_slot(info, f'reinterpret_cast<void*>({fn_cpp})', f'&{invoke}')
+    invoke = tr._ensure_py_callable_free_function_thunk(fn_cpp, info)
+    return _emit_callable_slot(info, 'nullptr', f'&{invoke}')
 
 def _class_info_for_type_receiver(tr: 'Translator', node: ast.expr) -> 'ClassInfo | None':
     match node:
@@ -113,8 +113,8 @@ def _emit_static_method_callable(tr: 'Translator', info: DelegateInfo, class_inf
         return None
     qual = qualify_symbol_in_module(class_info.module_path, class_info.cpp_name())
     method_cpp = tr._member_cpp_name(class_info, method)
-    invoke = py_callable_free_invoke_ref(info.ret_cpp, info.params)
-    return _emit_callable_slot(info, f'reinterpret_cast<void*>(&{qual}::{method_cpp})', f'&{invoke}')
+    invoke = tr._ensure_py_callable_free_function_thunk(f'&{qual}::{method_cpp}', info)
+    return _emit_callable_slot(info, 'nullptr', f'&{invoke}')
 
 def _emit_self_method_callable(tr: 'Translator', info: DelegateInfo, method: str) -> str | None:
     if tr.class_info is None or method not in tr.class_info.methods:

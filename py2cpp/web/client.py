@@ -14,6 +14,14 @@ from .socket import AsyncTcpSocket, TcpSocket
 from .stream import AsyncStreamReader, AsyncStreamWriter, StreamReader, StreamWriter
 
 
+@native
+def _https_request(method: str, url: UrlData, payload: bytes, timeout: float) -> ClientResponse: ...
+
+
+@native
+def _https_stream(method: str, url: UrlData, payload: bytes, timeout: float) -> ClientStreamResponse: ...
+
+
 @copyable
 class ClientSession:
   """短连接 HTTP/1.1 客户端（每次请求新建 TCP 连接）。"""
@@ -32,13 +40,15 @@ class ClientSession:
 
   def request(self, method: str, url: str, **options: RequestOptions) -> ClientResponse:
     pu = UrlData.parse(url)
+    payload: bytes = options.encode(method, pu)
+    if pu.scheme == "https":
+      return _https_request(method, pu, payload, options.timeout)
     sock: TcpSocket = new()
     if options.timeout > 0.0:
       sock.set_timeout(options.timeout)
     sock.connect(pu.host, pu.port)
     writer: StreamWriter = new.from_socket(sock)
     reader: StreamReader = new.from_socket(sock)
-    payload: bytes = options.encode(method, pu)
     writer.write(payload)
     writer.drain()
     resp: ClientResponse = new.read(reader)
@@ -48,13 +58,15 @@ class ClientSession:
 
   def request_options(self, method: str, url: str, options: RequestOptions) -> ClientResponse:
     pu = UrlData.parse(url)
+    payload: bytes = options.encode(method, pu)
+    if pu.scheme == "https":
+      return _https_request(method, pu, payload, options.timeout)
     sock: TcpSocket = new()
     if options.timeout > 0.0:
       sock.set_timeout(options.timeout)
     sock.connect(pu.host, pu.port)
     writer: StreamWriter = new.from_socket(sock)
     reader: StreamReader = new.from_socket(sock)
-    payload: bytes = options.encode(method, pu)
     writer.write(payload)
     writer.drain()
     resp: ClientResponse = new.read(reader)
@@ -64,13 +76,15 @@ class ClientSession:
 
   def stream_options(self, method: str, url: str, options: RequestOptions) -> ClientStreamResponse:
     pu = UrlData.parse(url)
+    payload: bytes = options.encode(method, pu)
+    if pu.scheme == "https":
+      return _https_stream(method, pu, payload, options.timeout)
     sock: TcpSocket = new()
     if options.timeout > 0.0:
       sock.set_timeout(options.timeout)
     sock.connect(pu.host, pu.port)
     writer: StreamWriter = new.from_socket(sock)
     reader: StreamReader = new.from_socket(sock)
-    payload: bytes = options.encode(method, pu)
     writer.write(payload)
     writer.drain()
     return new.from_streams(reader, writer)
@@ -88,11 +102,13 @@ class AsyncClientSession:
 
   async def request_options(self, method: str, url: str, options: RequestOptions) -> ClientResponse:
     pu = UrlData.parse(url)
+    payload: bytes = options.encode(method, pu)
+    if pu.scheme == "https":
+      return _https_request(method, pu, payload, options.timeout)
     sock: AsyncTcpSocket = new()
     await sock.connect(pu.host, pu.port)
     writer: AsyncStreamWriter = new.from_socket(sock)
     reader: AsyncStreamReader = new.from_socket(sock)
-    payload: bytes = options.encode(method, pu)
     wrote: int = await writer.write(payload)
     await writer.drain()
     resp: ClientResponse = await new.read_async(reader)
@@ -130,11 +146,13 @@ class AsyncClientSession:
 
   async def request(self, method: str, url: str, **options: RequestOptions) -> ClientResponse:
     pu = UrlData.parse(url)
+    payload: bytes = options.encode(method, pu)
+    if pu.scheme == "https":
+      return _https_request(method, pu, payload, options.timeout)
     sock: AsyncTcpSocket = new()
     await sock.connect(pu.host, pu.port)
     writer: AsyncStreamWriter = new.from_socket(sock)
     reader: AsyncStreamReader = new.from_socket(sock)
-    payload: bytes = options.encode(method, pu)
     wrote: int = await writer.write(payload)
     await writer.drain()
     resp: ClientResponse = await new.read_async(reader)

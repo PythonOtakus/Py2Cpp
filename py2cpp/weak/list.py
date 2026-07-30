@@ -8,7 +8,7 @@ from .ref import WeakRef
 class WeakList[T: refcount]:
   """``__getitem__(i)`` 按第 i 个**存活**元素计；死引用在访问时剔除。"""
 
-  _refs: list[WeakRef[T]] @optional = []
+  _refs: list[WeakRef[T]] = []
 
   def __del__(self):
     self.clear()

@@ -36,6 +36,15 @@ class StrictStyleTests(unittest.TestCase):
         )
       self.assertIn(f"[{rule}]", str(ctx.exception))
 
+  def test_s45_rejects_optional_outside_dataclass(self):
+    self._expect_strict_fail(
+      """@copyable
+class Opt:
+  xs: list[int] @optional = []
+""",
+      "S45",
+    )
+
   def test_s01_rejects_dunder_call(self):
     self._expect_strict_fail(
       """def main():

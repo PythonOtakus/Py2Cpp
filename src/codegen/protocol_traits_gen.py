@@ -326,8 +326,6 @@ def _parametric_assoc_template_name(
   member_specs: list[tuple[ProtocolMemberConstraint, str]] | None,
   protocol_type_params: list[str],
 ) -> str:
-  if protocol_name == "Navigatable":
-    return "Node"
   if member_specs and any(s.kind == "type_alias" and s.name == "Node" for s, _ in member_specs):
     return "Node"
   return protocol_type_params[0] if protocol_type_params else "Node"

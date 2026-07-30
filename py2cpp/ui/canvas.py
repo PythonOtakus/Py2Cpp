@@ -70,7 +70,7 @@ class UIPaintContext:
   zoom: float64 = 1.0
   font: UICanvasFont = new()
   _dc: int64 = 0
-  _cmds: list[DrawCmd, 0] @optional = []
+  _cmds: list[DrawCmd, 0] = []
 
   def begin_frame(
     self,

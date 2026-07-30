@@ -33,7 +33,7 @@ from pathlib import Path
 from typing import Callable
 from .analysis.analyzer import SemanticAnalyzer, TypeParser
 from .analysis.delegates import is_delegate_definition
-from .analysis.type_pred import is_delegate_type
+from .analysis.type_pred import is_delegate_type, is_py_callable_type
 from .codegen.delegate_gen import emit_delegate_class
 from .analysis.import_resolver import discover_translation_modules, iter_module_import_requests, resolve_import_target_path
 from .analysis.imports import ImportUsing
@@ -4526,6 +4526,44 @@ class Translator(ast.NodeVisitor):
         self._py_callable_thunk_names[key] = thunk_name
         return thunk_name
 
+    def _ensure_py_callable_free_function_thunk(self, fn_cpp: str, delegate_info) -> str:
+        slot_type = delegate_py_callable_type(delegate_info)
+        key = ('__free__', fn_cpp, slot_type)
+        existing = self._py_callable_thunk_names.get(key)
+        if existing is not None:
+            return existing
+        ret = delegate_info.ret_cpp
+        params = tuple(delegate_info.params)
+        param_decls = ', '.join((f'{p.cpp_type} {p.name}' for p in params))
+        param_args = ', '.join((p.name for p in params))
+        idx = len(self._py_callable_thunk_names)
+        safe = ''.join((ch if ch.isalnum() else '_' for ch in fn_cpp)).strip('_') or 'call'
+        thunk_name = f'py_callable_free_thunk_{idx}_{safe}'
+        body_lines: list[str] = [f"static {ret} {thunk_name}(void* _closure{(', ' + param_decls if param_decls else '')}) {{"]
+        call = f'{fn_cpp}({param_args})' if param_args else f'{fn_cpp}()'
+        if ret == 'void':
+            body_lines.append(f'  {call};')
+        else:
+            body_lines.append(f'  return {call};')
+        body_lines.append('}')
+        body_lines.append('')
+        self._py_callable_thunk_bodies.extend(body_lines)
+        self._py_callable_thunk_names[key] = thunk_name
+        return thunk_name
+
+    @staticmethod
+    def _py_callable_inline_free_function_thunk(fn_cpp: str, delegate_info) -> str:
+        ret = delegate_info.ret_cpp
+        param_decls = ', '.join((f'{p.cpp_type} {p.name}' for p in delegate_info.params))
+        param_names = ', '.join((p.name for p in delegate_info.params))
+        params = f'void* _closure{(", " + param_decls) if param_decls else ""}'
+        args = param_names
+        if ret == 'void':
+            body = f'{fn_cpp}({args});' if args else f'{fn_cpp}();'
+        else:
+            body = f'return {fn_cpp}({args});' if args else f'return {fn_cpp}();'
+        return f'+[]({params}) -> {ret} {{ (void)_closure; {body} }}'
+
     def _delegate_lambda_param_types(self, lam: ast.Lambda) -> list[tuple[str, str]]:
         tparams = self._active_type_params()
         pairs: list[tuple[str, str]] = []
@@ -4720,6 +4758,10 @@ class Translator(ast.NodeVisitor):
                             assign_val = f'static_cast<{ft_base}&&>({cpp_param(rhs_node.id)})'
                         else:
                             assign_val = self._coerce_expr_to_cpp_type(value, ft, rhs_node=rhs_node)
+                    if ft and rhs_node is not None:
+                        from .analysis.type_pred import is_py_callable_type
+                        if is_py_callable_type(ft):
+                            assign_val = self._visit_value_for_type(rhs_node, ft)
                     self.write_line(f'this->{self._attr_cpp_name(target, storage_attr)} = {assign_val};')
             case ast.Subscript(value=base_expr, slice=sl):
                 set_val = self._coerce_subscript_assign_value(base_expr, value)
@@ -4747,6 +4789,13 @@ class Translator(ast.NodeVisitor):
                     pt = scope_binding_storage_cpp(self.scope, rhs_node.id)
                     if pt and (not pt.endswith('*')) and (not is_refcount_type(pt)):
                         assign_val = f'&{cpp_param(rhs_node.id)}'
+                ft = self._field_cpp_type_for_attribute(val, attr) or ''
+                if ft and rhs_node is not None:
+                    from .analysis.type_pred import is_py_callable_type
+                    if is_py_callable_type(ft):
+                        assign_val = self._visit_value_for_type(rhs_node, ft)
+                    else:
+                        assign_val = self._coerce_expr_to_cpp_type(assign_val, ft, rhs_node=rhs_node)
                 if not self._emit_property_set(val, attr, assign_val, rhs_node=rhs_node):
                     self.write_line(f'{self.visit(target)} = {assign_val};')
             case _:
@@ -5465,6 +5514,32 @@ class Translator(ast.NodeVisitor):
         return cpp_union_static_call(cls_cpp, variant)
 
     def _visit_value_for_type(self, node: ast.expr, cpp_type: str) -> str:
+        if isinstance(node, ast.Name):
+            from .emit.delegate_emit import py_callable_type_to_delegate_params
+            parsed = py_callable_type_to_delegate_params(cpp_type)
+            if parsed is not None:
+                fn_info = self._module_function_info_for_name(node.id)
+                if fn_info is not None:
+                    from .analysis.delegates import DelegateInfo, DelegateParam
+                    from .analysis.module_namespace import qualify_symbol_in_module
+                    mp, func = fn_info
+                    sig = self._function_sig_for(mp, func)
+                    params = tuple(
+                        DelegateParam(arg.arg, sig.param_types.get(arg.arg, 'void*'))
+                        for arg in func.args.args
+                    )
+                    info = DelegateInfo(
+                        name='Callable',
+                        module_path=mp,
+                        type_params=(),
+                        func_template_names=(),
+                        params=params,
+                        ret_cpp=sig.ret_lead,
+                        node=func,
+                    )
+                    fn_cpp = qualify_symbol_in_module(mp, self._module_function_cpp_name(mp, func))
+                    thunk = self._py_callable_inline_free_function_thunk(fn_cpp, info)
+                    return f'{cpp_type}{{ nullptr, {thunk} }}'
         if isinstance(node, ast.Lambda):
             from .analysis.delegates import DelegateInfo
             from .emit.delegate_emit import py_callable_owned_lambda_expr, py_callable_type_to_delegate_params
@@ -6138,6 +6213,21 @@ class Translator(ast.NodeVisitor):
         if renamed is not None:
             return renamed
         return func.name
+
+    def _module_function_info_for_name(self, name: str) -> tuple[str, ast.FunctionDef] | None:
+        bound = binding_cpp_name(self._effective_import_bindings(), name)
+        for mp, func in self.module_functions:
+            if func.name in self.delegates:
+                continue
+            cpp_name = self._module_function_cpp_name(mp, func)
+            if func.name == name and mp == self._active_module_path():
+                return (mp, func)
+            if bound is not None and bound == qualify_symbol_in_module(mp, cpp_name):
+                return (mp, func)
+        for mp, func in self.module_functions:
+            if func.name == name and func.name not in self.delegates:
+                return (mp, func)
+        return None
 
     def _is_serializable_cpp_type(self, cpp_type: str) -> bool:
         t = cpp_type.strip()

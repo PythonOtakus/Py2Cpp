@@ -21,6 +21,19 @@ def _qual_name(tr: Translator, info: ClassInfo) -> str:
         return tr._class_method_qualifier(info)
     return info.cpp_specialization() if info.is_template() else info.cpp_name()
 
+def _copyable_base_infos(tr: Translator, info: ClassInfo) -> list[ClassInfo]:
+    """返回应由自动 ``__copy__`` 先委托拷贝的真实 C++ 基类。"""
+    out: list[ClassInfo] = []
+    for base in info.bases:
+        bi = tr.classes.get(base)
+        if bi is None:
+            continue
+        if bi.is_mixin or bi.is_annotation or bi.is_protocol:
+            continue
+        if bi.has_copy:
+            out.append(bi)
+    return out
+
 def emit_auto_copy(tr: Translator, info: ClassInfo) -> None:
     """按字段与 ``owned_fields`` 生成默认 ``__copy__``（深拷贝堆字段）。"""
     cpp = info.cpp_name()
@@ -31,6 +44,9 @@ def emit_auto_copy(tr: Translator, info: ClassInfo) -> None:
         with tr._use_block(f'void {qual}::__copy__(const {cpp}& other)'):
             if MOVE_STATE_FIELD in info.fields:
                 tr.write_line(f'this->{MOVE_STATE_FIELD} = false;')
+            for base_info in _copyable_base_infos(tr, info):
+                base_cpp = base_info.cpp_name()
+                tr.write_line(f'static_cast<{base_cpp}&>(*this).__copy__(static_cast<const {base_cpp}&>(other));')
             for field in info.fields:
                 if field.startswith('__ann__') or field == MOVE_STATE_FIELD:
                     continue

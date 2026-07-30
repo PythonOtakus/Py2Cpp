@@ -3234,10 +3234,28 @@ class ClassInfo:
     t = cpp_type.strip()
     if _type_pred().is_refcount_type(t):
       return t
-    for prefix in (CPP_LIST_PREFIX, CPP_DEQUE_PREFIX):
+    for prefix in (
+      CPP_LIST_PREFIX,
+      CPP_DEQUE_PREFIX,
+      CPP_SET_PREFIX,
+      CPP_FROZENSET_PREFIX,
+      CPP_FROZENLIST_PREFIX,
+    ):
       if t.startswith(prefix) and t.endswith(">"):
-        inner = ClassInfo.apply_refcount_storage_cpp_type(t[len(prefix) : -1], classes)
-        return f"{prefix}{inner}>"
+        parts = split_cpp_template_args(t[len(prefix) : -1])
+        if parts:
+          parts[0] = ClassInfo.apply_refcount_storage_cpp_type(parts[0].strip(), classes)
+          return f"{prefix}{', '.join(parts)}>"
+        return t
+    for prefix in (CPP_DICT_PREFIX, CPP_FROZENDICT_PREFIX):
+      if t.startswith(prefix) and t.endswith(">"):
+        parts = split_cpp_template_args(t[len(prefix) : -1])
+        if len(parts) >= 2:
+          inner = ", ".join(
+            ClassInfo.apply_refcount_storage_cpp_type(p.strip(), classes)
+            for p in parts
+          )
+          return f"{prefix}{inner}>"
     if _type_pred().is_tuple_type(t):
       parts = cpp_tuple_element_types(t)
       if parts:

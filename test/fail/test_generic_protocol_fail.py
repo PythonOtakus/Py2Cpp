@@ -7,7 +7,7 @@ class NotAppendable:
   n: int = 0
 
 
-def need_append[T: Appendable](x: T) -> int:
+def need_append[T: Appendable[int]](x: T) -> int:
   return 1
 
 

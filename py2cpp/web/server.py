@@ -85,9 +85,6 @@ class AsyncServer:
 
   _stopped: bool = False
 
-  def __init__(self):
-    self._stopped = False
-
   def stop(self) -> None:
     self._stopped = True
 

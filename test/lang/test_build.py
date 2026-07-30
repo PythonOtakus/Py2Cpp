@@ -18,7 +18,7 @@ class Team:
 
 @copyable
 class Org:
-  teams: list[Team] @optional = []
+  teams: list[Team] = []
 
 
 class BuildStructRootTests(TestCaseMixin):

@@ -994,7 +994,7 @@ class ThreadPool[R]:
 
   lock: Lock = new()
   work_queue: Queue[_WorkItem[R]] = new()
-  threads: list[Thread] @optional = []
+  threads: list[Thread] = []
   max_workers: int = 0
   thread_name_prefix: str
   shutdown_flag: atomic[bool] = new(False)

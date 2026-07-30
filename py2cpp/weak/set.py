@@ -9,7 +9,7 @@ from .ref import WeakRef
 class WeakSet[T: DictKey & refcount]:
   """元素无外部强引用时自动移除（访问时惰性清理）。"""
 
-  _refs: list[WeakRef[T]] @optional = []
+  _refs: list[WeakRef[T]] = []
 
   def __del__(self):
     self.clear()

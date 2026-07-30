@@ -67,13 +67,6 @@ class _StreamReaderState(
   _closed: bool = False
   _buf: byte[:] = b""
 
-  def __init__(self):
-    self._sock = TcpSocket()
-    self._pos = 0
-    self._live = False
-    self._closed = False
-    self._buf = b""
-
   def load_array(self, data: byte[:]) -> None:
     """把 ``byte[:]`` 载入内存读缓冲。"""
     n: int = len(data)
@@ -152,9 +145,6 @@ class StreamReader(CloseMixin):
 
   _state: _StreamReaderState = new()
 
-  def __init__(self):
-    self._state = new()
-
   @staticmethod
   def from_socket(sock: TcpSocket) -> Self:
     r: Self = new()
@@ -200,11 +190,10 @@ class StreamReader(CloseMixin):
 class StreamWriter(CloseMixin):
   """缓冲式写流。"""
 
-  def __init__(self):
-    self._sock: TcpSocket = new()
-    self._live: bool = False
-    self._closed: bool = False
-    self._buf: byte[:] = b""
+  _sock: TcpSocket = new()
+  _live: bool = False
+  _closed: bool = False
+  _buf: byte[:] = b""
 
   @staticmethod
   def from_socket(sock: TcpSocket) -> Self:
@@ -262,13 +251,6 @@ class _AsyncStreamReaderState(
   _live: bool = False
   _closed: bool = False
   _buf: byte[:] = b""
-
-  def __init__(self):
-    self._sock = AsyncTcpSocket()
-    self._pos = 0
-    self._live = False
-    self._closed = False
-    self._buf = b""
 
   def close(self) -> None:
     if self._closed:
@@ -332,9 +314,6 @@ class AsyncStreamReader:
 
   _state: _AsyncStreamReaderState = new()
 
-  def __init__(self):
-    self._state = new()
-
   @staticmethod
   def from_socket(sock: AsyncTcpSocket) -> Self:
     r: Self = new()
@@ -363,12 +342,6 @@ class _AsyncStreamWriterState(
   _live: bool = False
   _closed: bool = False
   _buf: byte[:] = b""
-
-  def __init__(self):
-    self._sock = AsyncTcpSocket()
-    self._live = False
-    self._closed = False
-    self._buf = b""
 
   async def write(self, data: bytes) -> int:
     if self._closed:
@@ -404,9 +377,6 @@ class AsyncStreamWriter:
   """异步缓冲式写流；绑定 ``AsyncTcpSocket``。"""
 
   _state: _AsyncStreamWriterState = new()
-
-  def __init__(self):
-    self._state = new()
 
   @staticmethod
   def from_socket(sock: AsyncTcpSocket) -> Self:

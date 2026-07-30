@@ -4,7 +4,7 @@ from ..core.exceptions import ValueError
 from ..serde.base64 import b64encode
 from ..text.bytes import bytes
 from .url import UrlData, _CRLF, _HEADER_END, merge_query, parse_ascii_int
-from .stream import StreamReader, StreamWriter
+from .stream import AsyncStreamReader, AsyncStreamWriter, StreamReader, StreamWriter
 
 
 @enum
@@ -331,6 +331,41 @@ class Request:
       req.body = reader.readexactly(clen)
     return req
 
+  @staticmethod
+  async def read_async(reader: AsyncStreamReader @ref) -> Self:
+    """异步自流读取完整 HTTP 请求。"""
+    block: bytes = await reader.readuntil(_HEADER_END)
+    lines: list[bytes] = _header_lines(block)
+    if not lines:
+      raise ValueError("empty request")
+    req: Self = new()
+    first: bytes = lines[0]
+    sp1: int = first.find(b" ")
+    if sp1 < 0:
+      raise ValueError("bad request line")
+    sp2: int = first.find(b" ", sp1 + 1)
+    if sp2 < 0:
+      raise ValueError("bad request line")
+    req.method = first[:sp1].decode()
+    req.path = first[sp1 + 1 : sp2].decode()
+    req.version = first[sp2 + 1 :].decode()
+    for i in range(1, len(lines)):
+      line: bytes = lines[i]
+      if not line:
+        break
+      key: str = _header_key(line)
+      val: str = _header_value(line)
+      if key:
+        req.headers[key] = val
+    clen: int = 0
+    if "Content-Length" in req.headers:
+      clen = parse_ascii_int(req.headers["Content-Length"])
+    elif "content-length" in req.headers:
+      clen = parse_ascii_int(req.headers["content-length"])
+    if clen > 0:
+      req.body = await reader.readexactly(clen)
+    return req
+
   @immutable
   def text(self) -> str:
     return self.body.decode()
@@ -378,6 +413,22 @@ class Response:
       writer.write(self.body)
     writer.drain()
 
+  async def write_async(self, writer: AsyncStreamWriter @ref) -> None:
+    """异步写出 HTTP 响应（``Connection: close``）。"""
+    if "Content-Length" not in self.headers and "content-length" not in self.headers:
+      self.headers["Content-Length"] = f"{len(self.body)}"
+    if "Connection" not in self.headers and "connection" not in self.headers:
+      self.headers["Connection"] = "close"
+    status_line: str = f"HTTP/1.1 {self.status} {reason_phrase(self.status)}\r\n"
+    wrote: int = await writer.write(status_line.encode())
+    for k in _header_keys(self.headers):
+      hdr: str = f"{k}: {self.headers[k]}\r\n"
+      wrote = await writer.write(hdr.encode())
+    wrote = await writer.write(_CRLF)
+    if self.body:
+      wrote = await writer.write(self.body)
+    await writer.drain()
+
 
 @dataclass(eq=False, repr=False)
 class ClientResponse:
@@ -418,6 +469,39 @@ class ClientResponse:
       clen = parse_ascii_int(resp.headers["content-length"])
     if clen > 0:
       resp.body = reader.readexactly(clen)
+    return resp
+
+  @staticmethod
+  async def read_async(reader: AsyncStreamReader @ref) -> Self:
+    block: bytes = await reader.readuntil(_HEADER_END)
+    lines: list[bytes] = _header_lines(block)
+    if not lines:
+      raise ValueError("empty response")
+    resp: Self = new()
+    first: bytes = lines[0]
+    sp1: int = first.find(b" ")
+    if sp1 < 0:
+      raise ValueError("bad status line")
+    sp2: int = first.find(b" ", sp1 + 1)
+    if sp2 < 0:
+      raise ValueError("bad status line")
+    status_part: bytes = first[sp1 + 1 : sp2]
+    resp.status = parse_ascii_int(status_part.decode())
+    for i in range(1, len(lines)):
+      line: bytes = lines[i]
+      if not line:
+        break
+      key: str = _header_key(line)
+      val: str = _header_value(line)
+      if key:
+        resp.headers[key] = val
+    clen: int = 0
+    if "Content-Length" in resp.headers:
+      clen = parse_ascii_int(resp.headers["Content-Length"])
+    elif "content-length" in resp.headers:
+      clen = parse_ascii_int(resp.headers["content-length"])
+    if clen > 0:
+      resp.body = await reader.readexactly(clen)
     return resp
 
   @immutable

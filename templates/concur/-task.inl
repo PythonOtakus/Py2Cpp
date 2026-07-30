@@ -4,11 +4,75 @@ PY2CPP_IGNORE
 #include "py2cpp/core/iter_result.h"
 #include "py2cpp/core/none.h"
 #include "py2cpp/core/refcount.h"
-#include <type_traits>
 PY2CPP_END
+
+#include <type_traits>
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#pragma comment(lib, "ws2_32.lib")
+#else
+#include <sys/types.h>
+#include <sys/select.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#endif
 
 namespace py2cpp_concur_task_detail
 {
+  inline bool io_ready(PyInt64 handle, PyInt events)
+  {
+    if (handle < 0)
+    {
+      return false;
+    }
+#ifdef _WIN32
+    SOCKET s = (SOCKET)(uintptr_t)handle;
+    if (s == INVALID_SOCKET)
+    {
+      return false;
+    }
+#else
+    int s = (int)handle;
+    if (s < 0)
+    {
+      return false;
+    }
+#endif
+    fd_set rfds;
+    fd_set wfds;
+    fd_set* rptr = NULL;
+    fd_set* wptr = NULL;
+    FD_ZERO(&rfds);
+    FD_ZERO(&wfds);
+    if ((events & IO_READ) != 0)
+    {
+      FD_SET(s, &rfds);
+      rptr = &rfds;
+    }
+    if ((events & IO_WRITE) != 0)
+    {
+      FD_SET(s, &wfds);
+      wptr = &wfds;
+    }
+    if (!rptr && !wptr)
+    {
+      return false;
+    }
+    struct timeval tv;
+    tv.tv_sec = 0;
+    tv.tv_usec = 0;
+#ifdef _WIN32
+    int rc = select(0, rptr, wptr, NULL, &tv);
+#else
+    int rc = select(s + 1, rptr, wptr, NULL, &tv);
+#endif
+    return rc > 0;
+  }
+
   template<typename YT, typename ST, typename RT>
   void coro_reset(PyCoroutine<YT, ST, RT>& coro)
   {
@@ -164,4 +228,23 @@ namespace py2cpp_concur_task_detail
       static_cast<const py2cpp::concur::task::_CoroSlot<RT>&>(*slot);
     return SlotResultCopy<RT>::apply(coro_slot.PY2CPP_GETTER(result)());
   }
+}
+
+template<typename _T>
+template<typename Coro>
+py2cpp::concur::task::Task<typename Coro::ReturnType>
+py2cpp::concur::task::Task<_T>::create(Coro coro)
+{
+  using R = typename Coro::ReturnType;
+  py2cpp::concur::task::Scheduler& sched =
+    py2cpp::concur::task::_require_scheduler();
+  PyRefCount<py2cpp::concur::task::_SlotBase> slot =
+    py2cpp_concur_task_detail::make_coro_slot_from_gen(coro);
+  PyInt64 tid = py2cpp::concur::task::_alloc_task_id();
+  slot->slot_id = tid;
+  sched._register_slot(slot);
+  sched._enqueue(tid);
+  py2cpp::concur::task::Task<R> t;
+  t.task_id = tid;
+  return t;
 }

@@ -15,9 +15,13 @@ TASK_CORO: int = 0
 TASK_SLEEP: int = 1
 TASK_GATHER: int = 2
 TASK_THREAD: int = 3
+TASK_IO: int = 4
 
 LOOP_TASK_WAIT: int = 0
 LOOP_TASK_POLL: int = 1
+
+IO_READ: int = 1
+IO_WRITE: int = 2
 
 
 @copyable
@@ -38,6 +42,13 @@ class _WaitLink:
 class _TimerEntry:
   wakeup_period: int64 = 0
   task_id: int64 = 0
+
+
+@dataclass
+class _IoWaitEntry:
+  task_id: int64 = 0
+  handle: int64 = 0
+  events: int = 0
 
 
 @dataclass
@@ -117,6 +128,11 @@ class _SleepSlot(_SlotBase):
 
 
 @refcount
+class _IoSlot(_SlotBase):
+  """``Task.wait_read`` / ``Task.wait_write`` IO 就绪槽（无协程体）。"""
+
+
+@refcount
 class _GatherSlot[U](_SlotBase):
   """``Task.gather`` 聚合槽：``@property result -> list[U]``。"""
 
@@ -189,6 +205,8 @@ def _gather_list_result[U](slot: _SlotBase) -> list[U]:
 def _slot_result[T](slot: _SlotBase) -> T:
   if slot.kind == TASK_SLEEP:
     return None
+  if slot.kind == TASK_IO:
+    return None
   if slot.kind == TASK_THREAD:
     ts: _ThreadSlot[T] @ref = cast(slot)
     return ts.get_result()
@@ -215,6 +233,11 @@ def _make_coro_slot_from_gen(gen) -> _SlotBase: ...
 @native
 @native_name("::py2cpp_concur_task_detail::slot_result_for_coro")
 def _slot_result_for_coro[Coro](slot: _SlotBase, _coro: Coro): ...
+
+
+@native
+@native_name("::py2cpp_concur_task_detail::io_ready")
+def _io_ready(handle: int64, events: int) -> bool: ...
 
 @copyable
 class _TaskAwaitIter[T]:
@@ -263,6 +286,7 @@ class Scheduler(friends=(Task, _TaskAwaitIter)):
   _slots: list[_SlotBase] = []
   _wait_links: list[_WaitLink] = []
   _timers: list[_TimerEntry] = []
+  _io_waits: list[_IoWaitEntry] = []
   _gather_links: list[_GatherChildLink] = []
 
   def __repr__(self) -> str:
@@ -275,6 +299,7 @@ class Scheduler(friends=(Task, _TaskAwaitIter)):
     self._slots = []
     self._wait_links = []
     self._timers = []
+    self._io_waits = []
     self._gather_links = []
 
   def slot_by_id(self, task_id: int64) -> _SlotBase:
@@ -283,7 +308,7 @@ class Scheduler(friends=(Task, _TaskAwaitIter)):
       slot: _SlotBase = self._slots[i]
       if slot.slot_id == task_id:
         return slot
-    raise RuntimeError("Task scheduler: unknown task id")
+    raise RuntimeError(f"Task scheduler: unknown task id {task_id}")
 
   def drop_all_slots(self) -> None:
     n: int64 = len(self._slots)
@@ -292,6 +317,7 @@ class Scheduler(friends=(Task, _TaskAwaitIter)):
       slot.release_coro()
     self._slots.clear()
     self._gather_links.clear()
+    self._io_waits.clear()
 
   def _slot_done_by_id(self, task_id: int64) -> bool:
     s: _SlotBase = self.slot_by_id(task_id)
@@ -324,6 +350,18 @@ class Scheduler(friends=(Task, _TaskAwaitIter)):
         self._finish_slot(t)
       else:
         self._enqueue(task_id)
+
+  def _register_io(self, task_id: int64, handle: int64, events: int) -> None:
+    entry: _IoWaitEntry = new()
+    entry.task_id = task_id
+    entry.handle = handle
+    entry.events = events
+    self._io_waits.append(entry)
+    if _io_ready(handle, events):
+      t: _SlotBase = self.slot_by_id(task_id)
+      if t.kind == TASK_IO and not t.is_done():
+        t.mark_done()
+        self._finish_slot(t)
 
   def _register_gather_child(
     self,
@@ -376,8 +414,26 @@ class Scheduler(friends=(Task, _TaskAwaitIter)):
         keep.append(entry)
     self._timers = keep
 
+  def _fire_io(self) -> None:
+    keep: list[_IoWaitEntry] = []
+    for i in range(len(self._io_waits)):
+      entry: _IoWaitEntry = self._io_waits[i]
+      t: _SlotBase = self.slot_by_id(entry.task_id)
+      if t.is_done():
+        continue
+      if _io_ready(entry.handle, entry.events):
+        if t.kind == TASK_IO:
+          t.mark_done()
+          self._finish_slot(t)
+        else:
+          self._enqueue(entry.task_id)
+      else:
+        keep.append(entry)
+    self._io_waits = keep
+
   def _tick(self) -> None:
     self.period_count += 1
+    self._fire_io()
     self._fire_timers()
 
   def _dispatch_handle(self, slot: _SlotBase, handle: LoopHandle) -> None:
@@ -491,6 +547,7 @@ class Task[T](friends=(Scheduler,)):
     sched._ready.clear()
     sched._wait_links.clear()
     sched._timers.clear()
+    sched._io_waits.clear()
     sched._gather_links.clear()
     sched.drop_all_slots()
     _sched.next_task_id = 1
@@ -532,6 +589,32 @@ class Task[T](friends=(Scheduler,)):
     sched._register_slot(slot)
     sched._enqueue(tid)
     t: Self = new()
+    t.task_id = tid
+    return t
+
+  @staticmethod
+  def wait_read(handle: int64) -> Task[None]:
+    sched: Scheduler @ref = _require_scheduler()
+    slot: _IoSlot = new()
+    tid: int64 = _alloc_task_id()
+    slot.slot_id = tid
+    slot.kind = TASK_IO
+    sched._register_slot(slot)
+    sched._register_io(tid, handle, IO_READ)
+    t: Task[None] = new()
+    t.task_id = tid
+    return t
+
+  @staticmethod
+  def wait_write(handle: int64) -> Task[None]:
+    sched: Scheduler @ref = _require_scheduler()
+    slot: _IoSlot = new()
+    tid: int64 = _alloc_task_id()
+    slot.slot_id = tid
+    slot.kind = TASK_IO
+    sched._register_slot(slot)
+    sched._register_io(tid, handle, IO_WRITE)
+    t: Task[None] = new()
     t.task_id = tid
     return t
 

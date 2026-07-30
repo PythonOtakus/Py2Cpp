@@ -8,7 +8,7 @@ async def coro_forty_two() -> int:
   return 42
 
 
-async def await_coro(c: Coroutine[None, None, int]) -> int:
+async def await_coro(c: Coroutine[LoopHandle, None, int]) -> int:
   return await c
 
 
@@ -26,9 +26,9 @@ async def sum_async_gen(g: AsyncGenerator[int, None]) -> int:
 
 @copyable
 class CoroHolder:
-  c: Coroutine[None, None, int]
+  c: Coroutine[LoopHandle, None, int]
 
-  def store(self, src: Coroutine[None, None, int]) -> None:
+  def store(self, src: Coroutine[LoopHandle, None, int]) -> None:
     self.c = src
 
   async def await_stored(self) -> int:
@@ -37,14 +37,14 @@ class CoroHolder:
 
 class CoroStreamBase:
   @virtual
-  async def stream(self) -> Coroutine[None, None, int]:
+  async def stream(self) -> Coroutine[LoopHandle, None, int]:
     return 42
 
 
 @copyable
 class CoroStreamA(CoroStreamBase):
   @override
-  async def stream(self) -> Coroutine[None, None, int]:
+  async def stream(self) -> Coroutine[LoopHandle, None, int]:
     return await coro_forty_two()
 
 

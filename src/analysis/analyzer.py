@@ -1690,6 +1690,12 @@ class SignatureBuilder:
           emit_default_arg=lambda e, t=None: self._default_cpp_arg(e, cpp_type=t),
           parse_param_type=_parse_new_param_type,
         )
+      case ast.Call(func=ast.Name(id=class_name), args=[], keywords=[]):
+        if class_name in self._classes:
+          from ..analysis.ir import strip_cpp_ref as _strip_cpp_ref
+          if cpp_type:
+            return f"{_strip_cpp_ref(cpp_type)}()"
+          return f"{self._classes[class_name].cpp_name()}()"
       case ast.Tuple(elts=elts):
         if cpp_type:
           tuple_prefix = f"{cpp_ident('tuple')}<"
@@ -2325,6 +2331,67 @@ class SignatureBuilder:
         return self._expr_for_decltype(stmt.value)
     return None
 
+  def _single_return_value(self, func: ast.FunctionDef) -> ast.expr | None:
+    """仅含可选 docstring + ``return expr`` 的薄转发函数。"""
+    body = list(func.body)
+    if (
+      body
+      and isinstance(body[0], ast.Expr)
+      and isinstance(body[0].value, ast.Constant)
+      and isinstance(body[0].value.value, str)
+    ):
+      body = body[1:]
+    if len(body) != 1:
+      return None
+    stmt = body[0]
+    if not isinstance(stmt, ast.Return) or stmt.value is None:
+      return None
+    return stmt.value
+
+  def _simple_self_field_method_return_parts(
+    self,
+    info: ClassInfo,
+    method: ast.FunctionDef,
+  ) -> tuple[str, str] | None:
+    """推断 ``return self.field.method(...)`` 的返回类型。
+
+    异步/生成器实现会产生宿主私有的 ``*_coroutine`` / ``*_generator`` 类型。
+    标准库 Python 不应显式标注这些内部类型；薄 wrapper 由这里复用目标
+    方法的已分析签名。
+    """
+    if method.returns is not None:
+      return None
+    expr = self._single_return_value(method)
+    if not isinstance(expr, ast.Call):
+      return None
+    if not isinstance(expr.func, ast.Attribute):
+      return None
+    recv = expr.func.value
+    if not (
+      isinstance(recv, ast.Attribute)
+      and isinstance(recv.value, ast.Name)
+      and recv.value.id == "self"
+    ):
+      return None
+    from .ir import class_info_for_cpp_type
+    from .type_emit import field_storage_cpp
+
+    field_t = field_storage_cpp(info, recv.attr)
+    if not field_t:
+      return None
+    target_t = ClassInfo.unwrap_refcount_type(field_t)
+    target = class_info_for_cpp_type(target_t, self._classes)
+    if target is None:
+      return None
+    target_sig = target.method_sigs.get(expr.func.attr)
+    if target_sig is None:
+      target_method = target.methods.get(expr.func.attr)
+      if target_method is None or (target is info and target_method is method):
+        return None
+      target_sig = self.build_method_sig(target, target_method)
+      target.method_sigs[expr.func.attr] = target_sig
+    return target_sig.ret_lead, target_sig.ret_trail
+
   def _storage_cpp_type(self, cpp_type: str) -> str:
     """``@refcount`` / ``@boxing`` 等在参数、局部、返回等处的一致命名。"""
     from .ir import cpp_fill_allocator_default_args
@@ -2554,6 +2621,9 @@ class SignatureBuilder:
     ):
       coro = func_ft.template_names[0]
       return f"typename {coro}::ReturnType", ""
+    inferred_forward = self._simple_self_field_method_return_parts(info, method)
+    if inferred_forward is not None:
+      return inferred_forward
     inferred = self._return_type_parts(
       method, func_ft, tparams, self_class=info.template_cpp_type(), info=info,
     )

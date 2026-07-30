@@ -11,6 +11,7 @@ from ..analysis.ir import (
   field_property_getter_return_ref,
   format_fn_sig,
   fn_noexcept_suffix,
+  strip_cpp_ref,
 )
 from ..analysis.type_emit import bind_scope_param, bind_scope_var, bind_scope_vararg, field_storage_cpp, method_impl_return_cpp, method_param_storage_cpp, method_param_types_map, sig_return_storage_cpp
 from .copy_move_emit import emit_auto_copy_move, emit_copy_move_special_members, emit_frozen_dataclass_assign
@@ -781,7 +782,7 @@ def _generator_host_init(info: ClassInfo) -> str | None:
     return None
   init = info.inits[0]
   args = [a for a in init.args.args if a.arg != "self"]
-  if len(args) != 1 or args[0].arg != "host":
+  if len(args) != 1 or args[0].arg not in ("host", "_py2cpp_host"):
     return None
   return field_storage_cpp(info, host_field)
 
@@ -797,8 +798,48 @@ def _coroutine_param_default_ctor_needed(info: ClassInfo) -> bool:
   if not info.inits:
     return False
   init = info.inits[0]
-  params = [a for a in init.args.args if a.arg not in ("self", "host")]
+  params = [
+    a for a in init.args.args
+    if a.arg not in ("self", "host", "_py2cpp_host")
+  ]
   return bool(params)
+
+
+def _coroutine_default_expr_for_type(ft: str) -> str:
+  base = strip_cpp_ref(ft).strip()
+  if base.startswith("const "):
+    base = base[len("const "):].strip()
+  if not base:
+    return "0"
+  if base.endswith("*"):
+    return "nullptr"
+  if base in {"PyBool", cpp_ident("bool"), "bool"}:
+    return "false"
+  if base in {
+    "PyInt",
+    cpp_ident("int"),
+    "PyInt64",
+    cpp_ident("int64"),
+    "PyUInt",
+    cpp_ident("uint"),
+    "PyUInt64",
+    cpp_ident("uint64"),
+    "PyByte",
+    cpp_ident("byte"),
+    "PyChar",
+    cpp_ident("char"),
+    "PyFloat",
+    cpp_ident("float"),
+    "PyFloat64",
+    cpp_ident("float64"),
+    "int",
+    "long",
+    "long long",
+    "unsigned",
+    "size_t",
+  }:
+    return "0"
+  return f"{base}()"
 
 
 def _emit_coroutine_param_default_ctor(tr: "Translator", info: ClassInfo) -> None:
@@ -823,7 +864,7 @@ def _emit_coroutine_param_default_ctor(tr: "Translator", info: ClassInfo) -> Non
       ):
         tr.write_line(f"this->{cpp_param(fname)} = false;")
     for arg in init.args.args:
-      if arg.arg in ("self", "host"):
+      if arg.arg in ("self", "host", "_py2cpp_host"):
         continue
       ft_node = field_type_node(info, arg.arg)
       if is_erased_protocol_storage_type(ft_node):
@@ -831,10 +872,9 @@ def _emit_coroutine_param_default_ctor(tr: "Translator", info: ClassInfo) -> Non
         tr.write_line(f"this->{cpp_param(arg.arg)} = {ft_base}();")
       else:
         ft = class_body_cpp(ft_node) if ft_node else field_storage_cpp(info, arg.arg)
-        if ft and ft in tr.classes:
-          tr.write_line(f"this->{cpp_param(arg.arg)} = {ft}();")
-        else:
-          tr.write_line(f"this->{cpp_param(arg.arg)} = 0;")
+        tr.write_line(
+          f"this->{cpp_param(arg.arg)} = {_coroutine_default_expr_for_type(ft)};"
+        )
     tr.indent_level -= 1
     tr.write_line("}")
     tr.write_line()

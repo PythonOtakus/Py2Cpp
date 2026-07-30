@@ -3,8 +3,15 @@ from __future__ import annotations
 import ast
 import textwrap
 from typing import TYPE_CHECKING
-from ..analysis.type_pred import is_byte_type, is_char_type, is_list_type, is_stack_array_type
-from ..analysis.type_pred import is_char_heap_array_type
+from ..analysis.type_pred import (
+  is_byte_heap_array_type,
+  is_byte_type,
+  is_bytes_type,
+  is_char_type,
+  is_char_heap_array_type,
+  is_list_type,
+  is_stack_array_type,
+)
 from ..analysis.ir import INT_FIELDS, cpp_ident, cpp_stack_array_var_decl, field_property_getter_return_ref, field_property_getter_returns_mutable_ref, format_fn_sig, fn_noexcept_suffix, is_stub_function_body, strip_cpp_ref
 from ..passes.descriptors import storage_field_for
 from ..passes.generators import GENERATOR_SUFFIX
@@ -353,6 +360,11 @@ def _emit_field_default_initializer(tr: 'Translator', cpp_type: str, default: as
     if isinstance(default, ast.Constant) and isinstance(default.value, str):
         if is_char_heap_array_type(cpp_type) and default.value == '':
             return f'{cpp_type}(0)'
+    if isinstance(default, ast.Constant) and default.value == b'':
+        if is_bytes_type(cpp_type):
+            return f"{cpp_ident('bytes')}()"
+        if is_byte_heap_array_type(cpp_type):
+            return f'{cpp_type}()'
     if isinstance(default, ast.Constant):
         return tr._literal(default.value, cpp_type=cpp_type)
     if isinstance(default, ast.UnaryOp) and isinstance(default.op, ast.USub) and isinstance(default.operand, ast.Constant) and isinstance(default.operand.value, int):

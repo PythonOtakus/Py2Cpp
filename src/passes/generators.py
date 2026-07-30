@@ -10,7 +10,7 @@ if TYPE_CHECKING:
   from ..translator import Translator
 
 from ..analysis.delegates import is_delegate_definition
-from ..analysis.ir import ClassInfo
+from ..analysis.ir import ClassInfo, iter_matmult_marker_names, strip_type_annotation_markers
 from ..constant.stdlib_layout import RUNTIME_PKG
 from ..analysis.runtime_symbols import (
   BUILTINS_CPP_RUNTIME_FUNCS,
@@ -273,7 +273,17 @@ def _coroutine_element_ann(coro_class: str, tr: Translator) -> ast.expr | None:
 
 
 def _infer_call_result_ann(expr: ast.expr, tr: Translator) -> ast.expr | None:
-  if not isinstance(expr, ast.Call) or not isinstance(expr.func, ast.Name):
+  if not isinstance(expr, ast.Call):
+    return None
+  if isinstance(expr.func, ast.Attribute) and isinstance(expr.func.value, ast.Name):
+    cls_name = expr.func.value.id
+    info = tr.classes.get(cls_name)
+    method = info.methods.get(expr.func.attr) if info is not None else None
+    if method is not None and method.returns is not None:
+      if isinstance(method.returns, ast.Name) and method.returns.id == "Self":
+        return ast.Name(id=cls_name)
+      return copy.deepcopy(method.returns)
+  if not isinstance(expr.func, ast.Name):
     return None
   name = expr.func.id
   if name == "anext" and len(expr.args) == 1:
@@ -341,7 +351,17 @@ def _coroutine_class_return_ann(coro_class: str, tr: Translator) -> ast.expr | N
   return None
 
 
-def _infer_await_completion_ann(inner: ast.expr, tr: Translator, body: list[ast.stmt] | None = None) -> ast.expr | None:
+def _infer_await_completion_ann(
+  inner: ast.expr,
+  tr: Translator,
+  body: list[ast.stmt] | None = None,
+  *,
+  host_class: str | None = None,
+  current_gen: str | None = None,
+  ann_body: list[ast.stmt] | None = None,
+  params: list[ast.arg] | None = None,
+  target_ann: ast.expr | None = None,
+) -> ast.expr | None:
   """``yield from ….__await__()`` 完成后的赋值类型（``await`` / ``__aenter__`` 等）。"""
   if isinstance(inner, ast.Call) and isinstance(inner.func, ast.Attribute):
     if inner.func.attr == "__aenter__":
@@ -369,17 +389,59 @@ def _infer_await_completion_ann(inner: ast.expr, tr: Translator, body: list[ast.
             return coro_ret
         return ast.Name(id=info.cpp_name())
     if inner.func.attr == "__await__":
-      return _infer_await_completion_ann(inner.func.value, tr, body)
+      return _infer_await_completion_ann(
+        inner.func.value,
+        tr,
+        body,
+        host_class=host_class,
+        current_gen=current_gen,
+        ann_body=ann_body,
+        params=params,
+        target_ann=target_ann,
+      )
   if isinstance(inner, ast.Call) and isinstance(inner.func, ast.Name):
     from ..passes.generators import COROUTINE_SUFFIX
     coro_name = f"{inner.func.id}{COROUTINE_SUFFIX}"
     ret = _coroutine_class_return_ann(coro_name, tr)
     if ret is not None:
       return ret
+  if isinstance(inner, ast.Call):
+    it_ann = _infer_iter_type(
+      inner,
+      tr,
+      body or [],
+      host_class=host_class,
+      current_gen=current_gen,
+      ann_body=ann_body,
+      params=params,
+      target_ann=target_ann,
+    )
+    if isinstance(it_ann, ast.Name):
+      ret = _coroutine_class_return_ann(it_ann.id, tr)
+      if ret is not None:
+        return ret
+    if (
+      isinstance(it_ann, ast.Subscript)
+      and isinstance(it_ann.value, ast.Name)
+      and it_ann.value.id == "_TaskAwaitIter"
+    ):
+      if isinstance(it_ann.slice, ast.Constant) and it_ann.slice.value is None:
+        return ast.Name(id="PyNone")
+      return copy.deepcopy(it_ann.slice)
   return None
 
 
-def _infer_yield_from_result_ann(expr: ast.expr, tr: Translator, body: list[ast.stmt] | None = None) -> ast.expr | None:
+def _infer_yield_from_result_ann(
+  expr: ast.expr,
+  tr: Translator,
+  body: list[ast.stmt] | None = None,
+  *,
+  host_class: str | None = None,
+  current_gen: str | None = None,
+  ann_body: list[ast.stmt] | None = None,
+  params: list[ast.arg] | None = None,
+  target_ann: ast.expr | None = None,
+) -> ast.expr | None:
   if not isinstance(expr, ast.YieldFrom):
     return None
   inner = expr.value
@@ -395,23 +457,60 @@ def _infer_yield_from_result_ann(expr: ast.expr, tr: Translator, body: list[ast.
       if isinstance(ta.slice, ast.Constant) and ta.slice.value is None:
         return ast.Name(id="PyNone")
       return copy.deepcopy(ta.slice)
-  completion = _infer_await_completion_ann(inner, tr, body)
+  completion = _infer_await_completion_ann(
+    inner,
+    tr,
+    body,
+    host_class=host_class,
+    current_gen=current_gen,
+    ann_body=ann_body,
+    params=params,
+    target_ann=target_ann,
+  )
   if completion is not None:
     return completion
   return None
 
 
-def _infer_hoisted_field_ann(name: str, body: list[ast.stmt], tr: Translator) -> ast.expr:
+def _infer_hoisted_field_ann(
+  name: str,
+  body: list[ast.stmt],
+  tr: Translator,
+  *,
+  host_class: str | None = None,
+  current_gen: str | None = None,
+  ann_body: list[ast.stmt] | None = None,
+  params: list[ast.arg] | None = None,
+  target_ann: ast.expr | None = None,
+) -> ast.expr:
   ann = _find_hoisted_assign_ann(name, body)
   if ann is not None:
     return copy.deepcopy(ann)
   val = _find_hoisted_assign_value(name, body)
   if val is not None:
     if isinstance(val, ast.Name):
-      src_ann = _infer_hoisted_field_ann(val.id, body, tr)
+      src_ann = _infer_hoisted_field_ann(
+        val.id,
+        body,
+        tr,
+        host_class=host_class,
+        current_gen=current_gen,
+        ann_body=ann_body,
+        params=params,
+        target_ann=target_ann,
+      )
       if not (isinstance(src_ann, ast.Name) and src_ann.id == "int"):
         return copy.deepcopy(src_ann)
-    yf_ann = _infer_yield_from_result_ann(val, tr, body)
+    yf_ann = _infer_yield_from_result_ann(
+      val,
+      tr,
+      body,
+      host_class=host_class,
+      current_gen=current_gen,
+      ann_body=ann_body,
+      params=params,
+      target_ann=target_ann,
+    )
     if yf_ann is not None:
       return yf_ann
     inferred = _infer_call_result_ann(val, tr)
@@ -420,6 +519,16 @@ def _infer_hoisted_field_ann(name: str, body: list[ast.stmt], tr: Translator) ->
   cls = _var_ctor_class(name, body, tr)
   if cls is not None:
     return ast.Name(id=cls)
+  for stmt in _iter_body_stmts(body):
+    if isinstance(stmt, ast.For) and isinstance(stmt.target, ast.Name):
+      if stmt.target.id == name:
+        it_ann = _infer_iter_type(stmt.iter, tr, body)
+        if (
+          isinstance(it_ann, ast.Subscript)
+          and isinstance(it_ann.value, ast.Name)
+          and it_ann.value.id == "list_iterator"
+        ):
+          return copy.deepcopy(it_ann.slice)
   return ast.Name(id="int")
 
 
@@ -481,6 +590,11 @@ def _iter_ann_from_param_storage_ann(param_ann: ast.expr) -> ast.expr:
   match param_ann:
     case ast.Subscript(value=ast.Name(id="list"), slice=elem):
       return _list_iterator_ann(elem)
+    case ast.Subscript(value=ast.Name(id="Task"), slice=elem):
+      return ast.Subscript(
+        value=ast.Name(id="_TaskAwaitIter"),
+        slice=copy.deepcopy(elem),
+      )
   return param_ann
 
 
@@ -490,11 +604,22 @@ def _scandir_iter_ann() -> ast.expr:
 
 
 def _module_function_return_ann(tr: Translator, module_path: str | None, name: str) -> ast.expr | None:
-  if module_path is None:
-    return None
-  for f_mp, func in tr.module_functions:
-    if f_mp == module_path and func.name == name and func.returns is not None:
+  module_functions = getattr(tr, "module_functions", ())
+  for f_mp, func in module_functions:
+    if (
+      module_path is not None
+      and f_mp == module_path
+      and func.name == name
+      and func.returns is not None
+    ):
       return copy.deepcopy(func.returns)
+  hits = [
+    func.returns
+    for _f_mp, func in module_functions
+    if func.name == name and func.returns is not None
+  ]
+  if len(hits) == 1:
+    return copy.deepcopy(hits[0])
   return None
 
 
@@ -524,6 +649,11 @@ def _task_await_iter_ann(inner: ast.expr, tr: Translator) -> ast.expr | None:
       value=ast.Name(id="_TaskAwaitIter"),
       slice=ast.Constant(value=None),
     )
+  if meth in ("wait_read", "wait_write"):
+    return ast.Subscript(
+      value=ast.Name(id="_TaskAwaitIter"),
+      slice=ast.Constant(value=None),
+    )
   if meth == "gather":
     return ast.Subscript(
       value=ast.Name(id="_TaskAwaitIter"),
@@ -549,6 +679,7 @@ def _infer_iter_type(
   current_gen: str | None = None,
   ann_body: list[ast.stmt] | None = None,
   params: list[ast.arg] | None = None,
+  target_ann: ast.expr | None = None,
 ) -> ast.expr:
   lookup_body = ann_body if ann_body is not None else body
   match expr:
@@ -558,9 +689,12 @@ def _infer_iter_type(
         return ta
       return _infer_iter_type(
         inner, tr, body, host_class=host_class, current_gen=current_gen,
-        params=params,
+        ann_body=ann_body, params=params, target_ann=target_ann,
       )
     case ast.Call(func=ast.Attribute(value=ast.Name(id="Task"), attr=meth)) if meth == "sleep":
+      none = ast.Constant(value=None)
+      return ast.Subscript(value=ast.Name(id="_TaskAwaitIter"), slice=none)
+    case ast.Call(func=ast.Attribute(value=ast.Name(id="Task"), attr=meth)) if meth in ("wait_read", "wait_write"):
       none = ast.Constant(value=None)
       return ast.Subscript(value=ast.Name(id="_TaskAwaitIter"), slice=none)
     case ast.Call(func=ast.Attribute(value=ast.Name(id="Task"), attr=meth)) if meth == "run_thread":
@@ -570,28 +704,26 @@ def _infer_iter_type(
       return ast.Subscript(value=ast.Name(id="_TaskAwaitIter"), slice=elem)
     case ast.Call(func=ast.Attribute(value=ast.Name(id="self"), attr=meth)):
       if host_class is not None:
-        coro_name = f"{host_class}_{meth}{COROUTINE_SUFFIX}"
-        if coro_name in tr.classes:
-          return ast.Name(id=coro_name)
+        return ast.Name(id=f"{host_class}_{meth}{COROUTINE_SUFFIX}")
     case ast.Call(
       func=ast.Attribute(
         value=ast.Attribute(value=ast.Name(id="self"), attr=host_field),
         attr=meth,
       ),
     ) if host_class is not None and host_field == _field_name("self"):
-      coro_name = f"{host_class}_{meth}{COROUTINE_SUFFIX}"
-      if coro_name in tr.classes:
-        return ast.Name(id=coro_name)
+      return ast.Name(id=f"{host_class}_{meth}{COROUTINE_SUFFIX}")
     case ast.Call(func=ast.Attribute(value=ast.Name(id=var), attr=meth)):
+      if var == "new":
+        target_cls = _class_name_from_ann(target_ann)
+        if target_cls is not None:
+          return ast.Name(id=f"{target_cls}_{meth}{COROUTINE_SUFFIX}")
       param_ann = _param_ann_by_name(params, var)
       cls_name = _class_name_from_ann(param_ann)
       if cls_name is not None:
         storage_ann = _method_coroutine_storage_ann(tr, cls_name, meth)
         if storage_ann is not None:
           return storage_ann
-        coro_name = f"{cls_name}_{meth}{COROUTINE_SUFFIX}"
-        if coro_name in tr.classes:
-          return ast.Name(id=coro_name)
+        return ast.Name(id=f"{cls_name}_{meth}{COROUTINE_SUFFIX}")
       if host_class is not None and var in ("Self", host_class):
         elem = _static_method_returns_list_elem(host_class, meth, tr)
         if elem is not None:
@@ -605,9 +737,23 @@ def _infer_iter_type(
           return ast.Name(id=gen_name)
       cls = _var_ctor_class(var, body, tr)
       if cls is not None:
-        coro_name = f"{cls}_{meth}{COROUTINE_SUFFIX}"
-        if coro_name in tr.classes or meth in ("__aenter__", "__aexit__"):
-          return ast.Name(id=coro_name)
+        return ast.Name(id=f"{cls}_{meth}{COROUTINE_SUFFIX}")
+    case ast.Call(
+      func=ast.Attribute(
+        value=ast.Attribute(
+          value=ast.Attribute(value=ast.Name(id="self"), attr=host_attr),
+          attr=field,
+        ),
+        attr=meth,
+      ),
+    ) if host_class is not None and host_attr == _field_name("self"):
+      field_ann = _host_field_ann(tr, host_class, field)
+      field_cls = _class_name_from_ann(field_ann)
+      if field_cls is not None:
+        storage_ann = _method_coroutine_storage_ann(tr, field_cls, meth)
+        if storage_ann is not None:
+          return storage_ann
+        return ast.Name(id=f"{field_cls}_{meth}{COROUTINE_SUFFIX}")
     case ast.Call(
       func=ast.Attribute(
         value=ast.Attribute(value=ast.Name(id="self"), attr=fname),
@@ -620,17 +766,55 @@ def _infer_iter_type(
         storage_ann = _method_coroutine_storage_ann(tr, cls_name, meth)
         if storage_ann is not None:
           return storage_ann
-        coro_name = f"{cls_name}_{meth}{COROUTINE_SUFFIX}"
-        if coro_name in tr.classes:
-          return ast.Name(id=coro_name)
+        return ast.Name(id=f"{cls_name}_{meth}{COROUTINE_SUFFIX}")
+      if fname.startswith("g_"):
+        local_ann = _find_hoisted_assign_ann(fname[2:], lookup_body)
+        local_cls = _class_name_from_ann(local_ann)
+        if local_cls is not None:
+          storage_ann = _method_coroutine_storage_ann(tr, local_cls, meth)
+          if storage_ann is not None:
+            return storage_ann
+          return ast.Name(id=f"{local_cls}_{meth}{COROUTINE_SUFFIX}")
+      if host_class is not None:
+        field_ann = _host_field_ann(tr, host_class, fname)
+        field_cls = _class_name_from_ann(field_ann)
+        if field_cls is not None:
+          storage_ann = _method_coroutine_storage_ann(tr, field_cls, meth)
+          if storage_ann is not None:
+            return storage_ann
+          return ast.Name(id=f"{field_cls}_{meth}{COROUTINE_SUFFIX}")
       cls = _field_ctor_class(fname, body, tr)
       if cls is None and host_class is not None and fname == _field_name("self"):
         cls = host_class
       if cls is not None:
-        coro_name = f"{cls}_{meth}{COROUTINE_SUFFIX}"
-        if coro_name in tr.classes or meth in ("__aenter__", "__aexit__"):
-          return ast.Name(id=coro_name)
+        return ast.Name(id=f"{cls}_{meth}{COROUTINE_SUFFIX}")
+    case ast.Call(
+      func=ast.Attribute(
+        value=ast.Subscript(
+          value=ast.Attribute(value=ast.Name(id="self"), attr=fname),
+          slice=ast.Constant(value=0),
+        ),
+        attr=meth,
+      ),
+    ):
+      param_ann = _param_ann_by_name(params, fname)
+      cls_name = _class_name_from_ann(param_ann)
+      if cls_name is not None:
+        storage_ann = _method_coroutine_storage_ann(tr, cls_name, meth)
+        if storage_ann is not None:
+          return storage_ann
+        return ast.Name(id=f"{cls_name}_{meth}{COROUTINE_SUFFIX}")
     case ast.Call(func=ast.Name(id=name)):
+      active_module_path = (
+        tr._active_module_path() if hasattr(tr, "_active_module_path") else None
+      )
+      ret_ann = _module_function_return_ann(tr, active_module_path, name)
+      if (
+        isinstance(ret_ann, ast.Subscript)
+        and isinstance(ret_ann.value, ast.Name)
+        and ret_ann.value.id == "list"
+      ):
+        return _list_iterator_ann(ret_ann.slice)
       cn = _iter_class_for_func(name, tr)
       if cn is not None:
         return ast.Name(id=cn)
@@ -670,9 +854,7 @@ def _infer_iter_type(
       if fname.startswith("g_"):
         ann = _find_hoisted_assign_ann(fname[2:], lookup_body)
         if ann is not None:
-          match ann:
-            case ast.Subscript(value=ast.Name(id="list"), slice=elem):
-              return _list_iterator_ann(elem)
+          return _iter_ann_from_param_storage_ann(ann)
     case ast.Name(id="xs"):
       return _list_iterator_ann(ast.Name(id="int"))
   return _list_iterator_ann(ast.Name(id="int"))
@@ -767,10 +949,14 @@ def _make_init(
   resume_body: list[ast.stmt],
   ann_body: list[ast.stmt],
   host_class: str | None = None,
+  current_gen: str | None = None,
   host_field: str | None = None,
+  ref_params: set[str] | None = None,
   tr: Translator,
 ) -> ast.FunctionDef:
   body: list[ast.stmt] = []
+  host_param = "_py2cpp_host"
+  ref_params = ref_params or set()
   body.append(
     ast.Assign(
       targets=[ast.Attribute(ast.Name(id="self"), _STATE_FIELD, ast.Store())],
@@ -820,7 +1006,7 @@ def _make_init(
         targets=[
           ast.Attribute(ast.Name(id="self"), host_field, ast.Store()),
         ],
-        value=ast.Name(id="host", ctx=ast.Load()),
+        value=ast.Name(id=host_param, ctx=ast.Load()),
       )
     )
   for arg in params:
@@ -828,11 +1014,21 @@ def _make_init(
       continue
     ann = arg.annotation or ast.Name(id="int")
     ann = _substitute_host_self_in_ann(ann, host_class, tr) or ann
+    value: ast.expr = ast.Name(id=arg.arg)
+    if arg.arg in ref_params:
+      field_ann = _ref_param_field_ann(ann)
+      if field_ann is not None:
+        ann = field_ann
+        value = ast.Call(
+          func=ast.Name(id="id", ctx=ast.Load()),
+          args=[ast.Name(id=arg.arg, ctx=ast.Load())],
+          keywords=[],
+        )
     body.append(
       ast.AnnAssign(
         target=ast.Attribute(ast.Name(id="self"), arg.arg, ast.Store()),
         annotation=copy.deepcopy(ann),
-        value=ast.Name(id=arg.arg),
+        value=value,
         simple=1,
       )
     )
@@ -846,7 +1042,17 @@ def _make_init(
           value=ast.Call(func=ast.Name(id=cls), args=[]),
         )
       )
-    elif _hoisted_field_needs_zero_init(_infer_hoisted_field_ann(name, ann_body, tr)):
+    elif _hoisted_field_needs_zero_init(
+      _infer_hoisted_field_ann(
+        name,
+        ann_body,
+        tr,
+        host_class=host_class,
+        current_gen=current_gen,
+        ann_body=ann_body,
+        params=params,
+      )
+    ):
       body.append(
         ast.Assign(
           targets=[ast.Attribute(ast.Name(id="self"), fname, ast.Store())],
@@ -860,7 +1066,7 @@ def _make_init(
       id=host_info.cpp_name() if host_info is not None else host_class,
       ctx=ast.Load(),
     )
-    init_params.append(ast.arg(arg="host", annotation=host_ann))
+    init_params.append(ast.arg(arg=host_param, annotation=host_ann))
   for arg in params:
     if arg.arg == "self":
       continue
@@ -898,6 +1104,15 @@ def _iter_field_uses_copy_from(
   ann = field_ann_ast(class_info, it_field)
   if ann is not None:
     return _yield_from_iter_uses_assign(ann)
+  for stmt in class_info.node.body:
+    if (
+      isinstance(stmt, ast.AnnAssign)
+      and isinstance(stmt.target, ast.Attribute)
+      and isinstance(stmt.target.value, ast.Name)
+      and stmt.target.value.id == "self"
+      and stmt.target.attr == it_field
+    ):
+      return _yield_from_iter_uses_assign(stmt.annotation)
   ft = field_storage_cpp(class_info, it_field)
   if ft:
     if "PyListIterator" in ft:
@@ -929,6 +1144,65 @@ def _yield_from_iter_uses_assign(ann: ast.expr) -> bool:
       return True
 
 
+def _target_ann_for_yield_from_field(
+  target: ast.expr,
+  *,
+  ann_body: list[ast.stmt] | None,
+  params: list[ast.arg] | None,
+) -> ast.expr | None:
+  lookup_body = ann_body or []
+  if isinstance(target, ast.Name):
+    ann = _find_hoisted_assign_ann(target.id, lookup_body)
+    if ann is not None:
+      return copy.deepcopy(ann)
+    return _param_ann_by_name(params, target.id)
+  if isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name):
+    if target.value.id == "self":
+      if target.attr.startswith("g_"):
+        ann = _find_hoisted_assign_ann(target.attr[2:], lookup_body)
+        if ann is not None:
+          return copy.deepcopy(ann)
+      return _param_ann_by_name(params, target.attr)
+  return None
+
+
+def _yield_from_target_ann_by_id(
+  body: list[ast.stmt],
+  *,
+  ann_body: list[ast.stmt] | None,
+  params: list[ast.arg] | None,
+) -> dict[int, ast.expr]:
+  out: dict[int, ast.expr] = {}
+
+  class V(ast.NodeVisitor):
+    def _record(self, target: ast.expr, value: ast.expr | None) -> None:
+      if not isinstance(value, ast.YieldFrom):
+        return
+      ann = _target_ann_for_yield_from_field(
+        target, ann_body=ann_body, params=params,
+      )
+      if ann is not None:
+        out[id(value)] = ann
+
+    def visit_Assign(self, node: ast.Assign) -> None:
+      if len(node.targets) == 1:
+        self._record(node.targets[0], node.value)
+      self.generic_visit(node)
+
+    def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
+      if node.value is not None:
+        ann = node.annotation or _target_ann_for_yield_from_field(
+          node.target, ann_body=ann_body, params=params,
+        )
+        if isinstance(node.value, ast.YieldFrom) and ann is not None:
+          out[id(node.value)] = copy.deepcopy(ann)
+      self.generic_visit(node)
+
+  for stmt in body:
+    V().visit(stmt)
+  return out
+
+
 def _yield_from_fields(
   body: list[ast.stmt],
   tr: Translator,
@@ -939,16 +1213,24 @@ def _yield_from_fields(
   params: list[ast.arg] | None = None,
 ) -> list[tuple[str, ast.expr]]:
   out: list[tuple[str, ast.expr]] = []
-  for node in ast.walk(ast.Module(body=body, type_ignores=[])):
-    if isinstance(node, ast.YieldFrom):
+  target_anns = _yield_from_target_ann_by_id(
+    body, ann_body=ann_body, params=params,
+  )
+
+  class V(ast.NodeVisitor):
+    def visit_YieldFrom(self, node: ast.YieldFrom) -> None:
       out.append((
         f"{_YF_PREFIX}{len(out)}_it",
         _infer_iter_type(
           node.value, tr, body,
           host_class=host_class, current_gen=current_gen, ann_body=ann_body,
-          params=params,
+          params=params, target_ann=target_anns.get(id(node)),
         ),
       ))
+      self.generic_visit(node)
+
+  for stmt in body:
+    V().visit(stmt)
   return out
 
 
@@ -964,6 +1246,8 @@ def _param_ann_by_name(params: list[ast.arg] | None, name: str) -> ast.expr | No
 def _class_name_from_ann(ann: ast.expr | None) -> str | None:
   if isinstance(ann, ast.Name):
     return ann.id
+  if isinstance(ann, ast.BinOp) and isinstance(ann.op, ast.MatMult):
+    return _class_name_from_ann(ann.left)
   return None
 
 
@@ -976,7 +1260,64 @@ def _host_field_ann(tr: Translator, host_class: str, field: str) -> ast.expr | N
   ann = field_ann_ast(info, field)
   if isinstance(ann, ast.expr):
     return copy.deepcopy(ann)
+  for stmt in info.node.body:
+    if (
+      isinstance(stmt, ast.AnnAssign)
+      and isinstance(stmt.target, ast.Name)
+      and stmt.target.id == field
+      and isinstance(stmt.annotation, ast.expr)
+    ):
+      return copy.deepcopy(stmt.annotation)
   return None
+
+
+def _class_method_node(
+  info: ClassInfo,
+  meth: str,
+) -> ast.FunctionDef | ast.AsyncFunctionDef | None:
+  method = info.methods.get(meth)
+  if method is not None:
+    return method
+  for stmt in info.node.body:
+    if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef)) and stmt.name == meth:
+      return stmt
+  return None
+
+
+def _single_return_value(func: ast.FunctionDef | ast.AsyncFunctionDef) -> ast.expr | None:
+  body = _strip_leading_docstring(list(func.body))
+  if len(body) != 1:
+    return None
+  stmt = body[0]
+  if not isinstance(stmt, ast.Return) or stmt.value is None:
+    return None
+  return stmt.value
+
+
+def _forwarded_method_iter_ann(
+  tr: Translator,
+  class_name: str,
+  method: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> ast.expr | None:
+  if method.returns is not None:
+    return None
+  expr = _single_return_value(method)
+  if not isinstance(expr, ast.Call):
+    return None
+  if not isinstance(expr.func, ast.Attribute):
+    return None
+  recv = expr.func.value
+  if not (
+    isinstance(recv, ast.Attribute)
+    and isinstance(recv.value, ast.Name)
+    and recv.value.id == "self"
+  ):
+    return None
+  field_ann = _host_field_ann(tr, class_name, recv.attr)
+  field_cls = _class_name_from_ann(field_ann)
+  if field_cls is None:
+    return None
+  return _method_coroutine_storage_ann(tr, field_cls, expr.func.attr)
 
 
 def _method_coroutine_storage_ann(
@@ -985,9 +1326,15 @@ def _method_coroutine_storage_ann(
   info = tr.classes.get(class_name)
   if info is None:
     return None
-  method = info.methods.get(meth)
-  if method is None or method.returns is None:
+  method = _class_method_node(info, meth)
+  if method is None:
     return None
+  if isinstance(method, ast.AsyncFunctionDef):
+    return ast.Name(id=f"{class_name}_{meth}{COROUTINE_SUFFIX}")
+  if method.returns is None:
+    return _forwarded_method_iter_ann(tr, class_name, method)
+  if isinstance(method.returns, ast.Name) and method.returns.id.endswith(COROUTINE_SUFFIX):
+    return copy.deepcopy(method.returns)
   if _parse_generator_ann(method.returns) is not None:
     return copy.deepcopy(method.returns)
   return None
@@ -1260,7 +1607,7 @@ def _make_send_method(send_ann: ast.expr, result_ann: ast.expr) -> ast.FunctionD
 def _is_async_generator_yield(yield_ann: ast.expr) -> bool:
   return not (
     isinstance(yield_ann, ast.Name)
-    and yield_ann.id in ("PyNone", "None")
+    and yield_ann.id in ("PyNone", "None", "LoopHandle")
   )
 
 
@@ -1356,6 +1703,7 @@ def _make_generator_class(
 ) -> ast.ClassDef:
   host_class = _host_class_from_gen_name(gen_name, func.name)
   params = [a for a in func.args.args if a.arg != "self"]
+  ref_params = {a.arg for a in params if _param_should_store_ref(a)}
   yield_ann = _host_substitute_ann(gtypes.yield_ann, host_class, tr)
   yf_fields = _yield_from_fields(
     body, tr, host_class=host_class, current_gen=gen_name, ann_body=ann_body,
@@ -1394,7 +1742,19 @@ def _make_generator_class(
   )
   for name in hoisted:
     fname = _field_name(name)
-    ann = _host_substitute_ann(_infer_hoisted_field_ann(name, ann_body, tr), host_class, tr)
+    ann = _host_substitute_ann(
+      _infer_hoisted_field_ann(
+        name,
+        ann_body,
+        tr,
+        host_class=host_class,
+        current_gen=gen_name,
+        ann_body=ann_body,
+        params=params,
+      ),
+      host_class,
+      tr,
+    )
     class_body.append(
       ast.AnnAssign(
         target=ast.Attribute(ast.Name(id="self"), fname, ast.Store()),
@@ -1450,7 +1810,9 @@ def _make_generator_class(
       resume_body=body,
       ann_body=ann_body,
       host_class=host_class,
+      current_gen=gen_name,
       host_field=host_field,
+      ref_params=ref_params,
       tr=tr,
     ),
   )
@@ -1504,6 +1866,48 @@ def _field_name(name: str) -> str:
   return f"g_{name}"
 
 
+def _is_slice_array_ann(ann: ast.expr | None) -> bool:
+  ann = strip_type_annotation_markers(ann)
+  return (
+    isinstance(ann, ast.Subscript)
+    and isinstance(ann.slice, ast.Slice)
+  )
+
+
+def _param_should_store_ref(arg: ast.arg) -> bool:
+  """状态机参数字段：显式 ``@ref`` 与 ``T[:]`` 参数保存指向调用方对象的指针。
+
+  普通函数形参里的 ``@ref`` 会生成 C++ ``T&``；展开成 coroutine/generator
+  状态机后，若继续把它作为值字段保存就会复制对象并丢失引用语义。
+  ``T[:]`` 在调用侧同样按引用传入（native recv 写入 caller buffer），
+  因此也必须保存为指针字段。
+  """
+  ann = arg.annotation
+  return (
+    "ref" in iter_matmult_marker_names(ann)
+    or _is_slice_array_ann(ann)
+  )
+
+
+def _ref_param_field_ann(ann: ast.expr | None) -> ast.expr | None:
+  base = strip_type_annotation_markers(ann)
+  if base is None:
+    return None
+  return ast.Subscript(
+    value=ast.Name(id="Pointer", ctx=ast.Load()),
+    slice=copy.deepcopy(base),
+    ctx=ast.Load(),
+  )
+
+
+def _param_ref_expr(field: str, ctx: ast.expr_context) -> ast.Subscript:
+  return ast.Subscript(
+    value=ast.Attribute(ast.Name(id="self", ctx=ast.Load()), field, ast.Load()),
+    slice=ast.Constant(value=0),
+    ctx=ctx,
+  )
+
+
 def _assign_self_field(field: str, value: ast.expr) -> ast.Assign:
   """``__resume`` 内写字段：类型已在生成器类体声明，勿 ``self.f: T = …``。"""
   return ast.Assign(
@@ -1517,20 +1921,25 @@ def _rewrite_params(
   params: set[str],
   *,
   host_field: str | None = None,
+  ref_params: set[str] | None = None,
 ) -> list[ast.stmt]:
+  ref_params = ref_params or set()
+
   class R(ast.NodeTransformer):
     def _field_for_param(self, name: str) -> str:
       if name == "self" and host_field:
         return host_field
       return name
 
+    def _target_for_param(self, name: str, ctx: ast.expr_context) -> ast.expr:
+      field = self._field_for_param(name)
+      if name in ref_params:
+        return _param_ref_expr(field, ctx)
+      return ast.Attribute(ast.Name(id="self", ctx=ast.Load()), field, ctx)
+
     def visit_Name(self, node: ast.Name) -> ast.expr:
       if node.id in params and isinstance(node.ctx, ast.Load):
-        return ast.Attribute(
-          ast.Name(id="self"),
-          self._field_for_param(node.id),
-          ast.Load(),
-        )
+        return self._target_for_param(node.id, ast.Load())
       return node
 
     def visit_Assign(self, node: ast.Assign) -> ast.stmt:
@@ -1539,13 +1948,7 @@ def _rewrite_params(
         t = node.targets[0]
         if t.id in params:
           return ast.Assign(
-            targets=[
-              ast.Attribute(
-                ast.Name(id="self"),
-                self._field_for_param(t.id),
-                ast.Store(),
-              )
-            ],
+            targets=[self._target_for_param(t.id, ast.Store())],
             value=self.visit(node.value),
           )
       return self.generic_visit(node)
@@ -1554,11 +1957,7 @@ def _rewrite_params(
       node = copy.deepcopy(node)
       if isinstance(node.target, ast.Name) and node.target.id in params:
         return ast.AugAssign(
-          target=ast.Attribute(
-            ast.Name(id="self"),
-            self._field_for_param(node.target.id),
-            ast.Store(),
-          ),
+          target=self._target_for_param(node.target.id, ast.Store()),
           op=node.op,
           value=self.visit(node.value),
         )
@@ -1569,10 +1968,12 @@ def _rewrite_params(
       if isinstance(node.target, ast.Name) and node.target.id in params:
         if node.value is None:
           return ast.Pass()
-        return _assign_self_field(
-          self._field_for_param(node.target.id),
-          self.visit(node.value),
-        )
+        if node.target.id in ref_params:
+          return ast.Assign(
+            targets=[self._target_for_param(node.target.id, ast.Store())],
+            value=self.visit(node.value),
+          )
+        return _assign_self_field(self._field_for_param(node.target.id), self.visit(node.value))
       return self.generic_visit(node)
 
   return [R().visit(s) for s in body]
@@ -1683,7 +2084,7 @@ def _is_task_scheduling_call(expr: ast.expr) -> bool:
     return False
   recv = inner.func.value
   if isinstance(recv, ast.Name) and recv.id == "Task":
-    return inner.func.attr in ("sleep", "gather", "create", "run_thread")
+    return inner.func.attr in ("sleep", "gather", "create", "run_thread", "wait_read", "wait_write")
   return False
 
 
@@ -1700,7 +2101,13 @@ def _body_uses_task_scheduling(body: list[ast.stmt]) -> bool:
 def coroutine_types_for(func: ast.FunctionDef, body: list[ast.stmt]) -> GeneratorTypes:
   parsed = _parse_generator_ann(_coroutine_return_ann(func))
   if parsed is not None:
-    if _body_uses_task_scheduling(body):
+    if (
+      _body_uses_task_scheduling(body)
+      or (
+        isinstance(parsed.yield_ann, ast.Name)
+        and parsed.yield_ann.id in ("PyNone", "None")
+      )
+    ):
       loop = ast.Name(id="LoopHandle")
       return GeneratorTypes(
         loop,
@@ -1783,10 +2190,14 @@ def _transform_function(
     coroutine_types_for(func, body) if is_coroutine else generator_types_for(func, body)
   )
   param_names = {a.arg for a in func.args.args}
+  ref_param_names = {
+    a.arg for a in func.args.args
+    if a.arg != "self" and _param_should_store_ref(a)
+  }
   hoisted = set(_collect_hoisted_names(body, param_names))
   host_class = _host_class_from_gen_name(gen_name, func.name)
   host_field = _field_name("self") if any(a.arg == "self" for a in func.args.args) else None
-  body = _rewrite_params(body, param_names, host_field=host_field)
+  body = _rewrite_params(body, param_names, host_field=host_field, ref_params=ref_param_names)
   body = _rewrite_hoisted(body, hoisted)
   body = _strip_hoisted_init_stmts(body, hoisted)
   body = _desugar_generator_yield_from_to_for(
@@ -1935,6 +2346,47 @@ def _register_generator_host_friend(
     host.friend_classes.append(gen_cls.name)
 
 
+def _auto_register_member_generator_friends(tr: Translator) -> None:
+  """类成员 ``async def`` / generator 的状态机类自动成为宿主类友元。
+
+  生成的 ``Host_method_coroutine`` / ``Host_method_generator`` 是宿主方法的
+  C++ 实现细节，会读取 ``self._…`` 持久化字段；标准库/用户代码不应手写这类
+  内部状态机类名到 ``friends=(...)``。
+  """
+  suffixes = (COROUTINE_SUFFIX, GENERATOR_SUFFIX)
+  hosts = [
+    info
+    for info in tr.classes.values()
+    if not (info.name.endswith(COROUTINE_SUFFIX) or info.name.endswith(GENERATOR_SUFFIX))
+  ]
+  for gen in tr.classes.values():
+    if not gen.name.endswith(suffixes):
+      continue
+    best: ClassInfo | None = None
+    best_len = -1
+    for host in hosts:
+      if host.module_path != gen.module_path:
+        continue
+      prefix = f"{host.name}_"
+      if not gen.name.startswith(prefix):
+        continue
+      rest = gen.name[len(prefix):]
+      meth = ""
+      if rest.endswith(COROUTINE_SUFFIX):
+        meth = rest[: -len(COROUTINE_SUFFIX)]
+      elif rest.endswith(GENERATOR_SUFFIX):
+        meth = rest[: -len(GENERATOR_SUFFIX)]
+      if not meth:
+        continue
+      if meth not in host.methods and meth not in host.method_overloads:
+        continue
+      if len(host.name) > best_len:
+        best = host
+        best_len = len(host.name)
+    if best is not None:
+      _register_generator_host_friend(best, gen.node)
+
+
 def expand_generators(tr: Translator) -> None:
   """``yield`` / ``yield from`` / ``async def`` → ``*_generator`` / ``*_coroutine``（在 ``@context`` 之前）。"""
   for module_path, tree in list(tr.module_asts.items()):
@@ -2014,6 +2466,8 @@ def expand_generators(tr: Translator) -> None:
     ast.fix_missing_locations(tree)
 
   _expand_classinfo_generators(tr)
+
+  _auto_register_member_generator_friends(tr)
 
   _sync_module_functions(tr)
 

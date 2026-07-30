@@ -221,6 +221,7 @@ class Translator(ast.NodeVisitor):
         self._py2cpp_stmt_dispatch_prepped: bool = False
         self.module_py_paths: dict[str, Path] = {}
         self._ast_node_stack: list[ast.AST] = []
+        self._type_context_ann_stack: list[ast.expr] = []
         self.current_class: str | None = None
         self.current_method: ast.FunctionDef | None = None
         self._self_type_class: ClassInfo | None = None
@@ -544,6 +545,17 @@ class Translator(ast.NodeVisitor):
             raise enhance_translation_exception(exc, self, node=node) from exc
         finally:
             self._ast_node_stack.pop()
+
+    @contextmanager
+    def _use_type_context_ann(self, ann: ast.expr | None):
+        if ann is None:
+            yield
+            return
+        self._type_context_ann_stack.append(ann)
+        try:
+            yield
+        finally:
+            self._type_context_ann_stack.pop()
 
     def _register_module_debug_file(self, module_path: str) -> None:
         """``--debug`` 日志中的路径与对应 ``.py`` 源文件一致。"""
@@ -1749,6 +1761,8 @@ class Translator(ast.NodeVisitor):
                 t = ft
         if not t:
             t = self._infer_expr_cpp_type(base_expr) or ''
+        if self._is_ptr_type(t):
+            return t.strip()[:-1].rstrip()
         return cpp_array_elem_type(t) or list_elem_type(t)
 
     def _dict_value_cpp_type(self, base_expr: ast.expr) -> str | None:
@@ -5143,8 +5157,11 @@ class Translator(ast.NodeVisitor):
             case _:
                 return False
 
-    def _debug_uses_ref_wrap(self, expr: str) -> bool:
-        """仅当整段表达式就是 ``(this->...).__getitem__(...)`` 时用引用包装。"""
+    def _debug_uses_ref_wrap(self, node: ast.Call, expr: str) -> bool:
+        """debug 包装不能改变引用返回值语义。"""
+        ret_t = (self._infer_expr_cpp_type(node) or '').strip()
+        if ret_t.endswith('&'):
+            return True
         import re
         e = expr.strip()
         return bool(re.match('^\\(this->[^)]+\\)\\.__getitem__\\([^)]*\\)$', e))
@@ -5155,7 +5172,7 @@ class Translator(ast.NodeVisitor):
         label = self._debug_call_label(node).replace('\\', '\\\\').replace('"', '\\"')
         if self._debug_call_is_void(node):
             return expr
-        if self._debug_uses_ref_wrap(expr):
+        if self._debug_uses_ref_wrap(node, expr):
             return f'_py2cpp_debug_wrap("{label}", {expr})'
         return f'_py2cpp_debug_wrap_val("{label}", {expr})'
 
@@ -5899,6 +5916,8 @@ class Translator(ast.NodeVisitor):
                     return op_t
             case ast.Subscript(value=value, slice=sl) if not isinstance(sl, ast.Slice):
                 vt = self._infer_expr_cpp_type(value)
+                if self._is_ptr_type(vt):
+                    return vt.strip()[:-1].rstrip()
                 if is_str_type(vt):
                     return cpp_ident('char')
                 if is_char_heap_array_type(vt) or is_byte_heap_array_type(vt):

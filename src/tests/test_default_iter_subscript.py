@@ -24,9 +24,11 @@ class DefaultIterSubscriptTests(unittest.TestCase):
       '''from py2cpp import *
 
 class Box:
+  @immutable
   def __len__(self) -> int:
     return 1
 
+  @immutable
   def __getitem__(self, i: int) -> int:
     return 7
 

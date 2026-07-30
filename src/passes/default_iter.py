@@ -187,12 +187,14 @@ def _make_iterator_next(element_ann: ast.expr | None) -> ast.FunctionDef:
       body=[ast.Raise(exc=ast.Call(func=ast.Name(id="StopIteration", ctx=ast.Load()), args=[]))],
       orelse=[],
     ),
-    ast.Assign(
-      targets=[ast.Name(id="value", ctx=ast.Store())],
+    ast.AnnAssign(
+      target=ast.Name(id="value", ctx=ast.Store()),
+      annotation=copy.deepcopy(element_ann) if element_ann is not None else ast.Name(id="int", ctx=ast.Load()),
       value=ast.Subscript(
         value=copy.deepcopy(self_host),
         slice=copy.deepcopy(self_index),
       ),
+      simple=1,
     ),
     ast.AugAssign(
       target=copy.deepcopy(self_index),

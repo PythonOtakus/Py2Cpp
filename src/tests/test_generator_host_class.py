@@ -1,7 +1,10 @@
 """类方法 ``*_generator`` 宿主类解析（``Self._…`` 静态调用）。"""
 import ast
 import copy
+import re
+import tempfile
 import unittest
+from pathlib import Path
 
 from src.passes.generators import (
   COROUTINE_SUFFIX,
@@ -14,9 +17,11 @@ from src.passes.generators import (
   _infer_iter_type,
   _list_ann_from_generator_name,
   _meth_host_from_generator_name,
+  _auto_register_member_generator_friends,
   _static_method_returns_list_elem,
   _yield_from_fields,
 )
+from src.translator import Translator
 
 
 class _HoistTr:
@@ -71,6 +76,20 @@ class _PathTr:
 
 
 class GeneratorHostClassTests(unittest.TestCase):
+  def _translate(self, src: str) -> str:
+    with tempfile.TemporaryDirectory() as tmp:
+      out = Path(tmp)
+      py = out / "mod.py"
+      py.write_text(src, encoding="utf-8")
+      h_path, cpp_path = Translator.translate_file(
+        str(py), output_dir=str(out), include_stdlib=True, strict=False,
+      )
+      return (
+        Path(h_path).read_text(encoding="utf-8")
+        + "\n"
+        + Path(cpp_path).read_text(encoding="utf-8")
+      )
+
   def test_infer_iter_type_self_async_method(self):
     expr = ast.Call(
       func=ast.Attribute(
@@ -313,6 +332,152 @@ class GeneratorHostClassTests(unittest.TestCase):
       body, tr, host_class="Path", current_gen=gen_name, ann_body=ann_body,
     )
     self.assertEqual(yf, [])
+
+  def test_member_coroutine_auto_registered_as_host_friend(self):
+    from src.analysis.ir import ClassInfo
+    from src.translator import Translator
+
+    host_cls = ast.ClassDef(
+      name="Reader",
+      bases=[],
+      keywords=[],
+      body=[
+        ast.FunctionDef(
+          name="_fill",
+          args=ast.arguments(
+            posonlyargs=[],
+            args=[ast.arg(arg="self")],
+            kwonlyargs=[],
+            kw_defaults=[],
+            defaults=[],
+          ),
+          body=[],
+          decorator_list=[],
+        ),
+      ],
+      decorator_list=[],
+    )
+    coro_cls = ast.ClassDef(
+      name=f"Reader__fill{COROUTINE_SUFFIX}",
+      bases=[],
+      keywords=[],
+      body=[],
+      decorator_list=[],
+    )
+    tr = Translator("m", "m.py", strict=False)
+    tr.classes = {
+      "Reader": ClassInfo(host_cls, "m"),
+      coro_cls.name: ClassInfo(coro_cls, "m"),
+    }
+
+    _auto_register_member_generator_friends(tr)
+
+    self.assertIn(coro_cls.name, tr.classes["Reader"].friend_classes)
+
+  def test_coroutine_slice_param_hoists_as_pointer_field(self):
+    cpp = self._translate(
+      '''
+from py2cpp import *
+from py2cpp.concur.task import Task
+
+async def fill(buf: byte[:]) -> int:
+  await Task.sleep(0)
+  buf[0] = 42
+  return buf[0]
+'''
+    )
+    self.assertIn("PyArray<PyByte, 0>* buf;", cpp)
+    self.assertIn("this->buf = (&(buf));", cpp)
+    self.assertIn("this->buf[0].__setitem__(0, PyByte(42));", cpp)
+
+  def test_coroutine_ref_param_hoists_as_pointer_field(self):
+    cpp = self._translate(
+      '''
+from py2cpp import *
+from py2cpp.concur.task import Task
+
+@copyable
+class Box:
+  value: int = 0
+
+async def fill(box: Box @ref) -> int:
+  await Task.sleep(0)
+  box.value = 42
+  return box.value
+'''
+    )
+    self.assertIn("Box* box;", cpp)
+    self.assertIn("this->box = (&(box));", cpp)
+    self.assertIn("this->box[0].value = 42;", cpp)
+
+  def test_coroutine_ref_param_method_await_keeps_child_coroutine_type(self):
+    cpp = self._translate(
+      '''
+from py2cpp import *
+from py2cpp.concur.task import Task
+
+@copyable
+class Reader:
+  async def read(self) -> int:
+    await Task.sleep(0)
+    return 7
+
+async def outer(reader: Reader @ref) -> int:
+  return await reader.read()
+'''
+    )
+    self.assertIn("Reader* reader;", cpp)
+    self.assertIn("Reader_read_coroutine _yf0_it;", cpp)
+    self.assertIn("((this->reader[0]).read()).__await__()", cpp)
+
+  def test_coroutine_wrapper_await_uses_forwarded_child_type(self):
+    cpp = self._translate(
+      '''
+from py2cpp import *
+
+@refcount
+class State:
+  async def read(self) -> int:
+    return 7
+
+@copyable
+class Reader:
+  _state: State = new()
+
+  def __init__(self):
+    self._state = new()
+
+  def read(self):
+    return self._state.read()
+
+async def outer(reader: Reader @ref) -> int:
+  return await reader.read()
+'''
+    )
+    self.assertIn("State_read_coroutine _yf0_it;", cpp)
+    self.assertNotIn("Reader_read_coroutine _yf0_it;", cpp)
+
+  def test_statement_await_before_value_await_does_not_skip_value_await(self):
+    cpp = self._translate(
+      '''
+from py2cpp import *
+from py2cpp.concur.task import Task
+
+async def no_op() -> None:
+  return None
+
+async def val() -> int:
+  await Task.sleep(0)
+  return 3
+
+async def outer() -> int:
+  await no_op()
+  x: int = await val()
+  return x
+'''
+    )
+    self.assertNotRegex(cpp, re.compile(r"continue;\\s*this->_state\\s*="))
+    self.assertIn("this->g_x = __yf", cpp)
 
 
 if __name__ == "__main__":

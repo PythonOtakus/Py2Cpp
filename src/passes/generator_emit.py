@@ -1,6 +1,7 @@
 """生成器 ``__resume``：``switch (_state)`` 状态机（``yield`` / ``yield from`` / ``return``）。"""
 from __future__ import annotations
 import ast
+import copy
 from contextlib import contextmanager
 from typing import TYPE_CHECKING
 from ..analysis.patterns import temp_name as _temp_name
@@ -9,6 +10,7 @@ if TYPE_CHECKING:
 from ..analysis.type_pred import is_list_type
 from ..analysis.type_extract import list_elem_type
 from ..analysis.ir import ClassInfo, cpp_iter_result_yield_expr, iter_result_done_cpp, iter_result_return_value_cpp, iter_result_value_cpp
+from ..analysis.type_emit import field_ann_ast
 from .generators import COROUTINE_SUFFIX, GENERATOR_SUFFIX, _FOR_PREFIX, _SEND_FIELD, _SEND_FLAG, _STATE_FIELD, _YF_PREFIX, _field_name, _is_async_generator_yield, async_for_needs_suspend, body_has_yield, _yield_from_iter_uses_assign, _iter_field_uses_copy_from
 
 def _stmt_list_ends_with_yield(body: list[ast.stmt]) -> bool:
@@ -187,8 +189,12 @@ class GeneratorSwitchEmitter:
     def _recv_target(self, target: ast.expr) -> ast.expr | None:
         if isinstance(target, ast.Name):
             return target
-        if isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name) and (target.value.id == 'self'):
-            return target
+        if isinstance(target, ast.Attribute):
+            cur: ast.expr = target
+            while isinstance(cur, ast.Attribute):
+                cur = cur.value
+            if isinstance(cur, ast.Name) and cur.id == 'self':
+                return target
         return None
 
     def _recv_from_yield_value(self, stmt: ast.stmt, value: ast.expr | None) -> tuple[ast.expr, ast.expr] | None:
@@ -237,6 +243,9 @@ class GeneratorSwitchEmitter:
         return (tgt, yf.value)
 
     def _emit_stmt(self, stmt: ast.stmt) -> None:
+        if self._resume_tail_state is not None:
+            self._state = self._resume_tail_state
+            self._resume_tail_state = None
         recv = self._recv_from_yield_stmt(stmt)
         if recv is not None:
             tgt, val = recv
@@ -249,9 +258,6 @@ class GeneratorSwitchEmitter:
             self._open_case_block(self._state)
             self._emit_yield_from(val, recv_target=tgt)
             return
-        if self._resume_tail_state is not None:
-            self._state = self._resume_tail_state
-            self._resume_tail_state = None
         self._open_case_block(self._state)
         match stmt:
             case ast.Expr(value=ast.Yield(value=v)):
@@ -301,7 +307,11 @@ class GeneratorSwitchEmitter:
             case ast.Pass():
                 pass
             case _:
-                self.tr.visit(stmt)
+                ctx: ast.expr | None = None
+                if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1:
+                    ctx = self._target_context_ann(stmt.targets[0])
+                with self.tr._use_type_context_ann(ctx):
+                    self.tr.visit(stmt)
 
     def _emit_return(self, node: ast.Return) -> None:
         self.tr._emit_active_finally()
@@ -309,7 +319,8 @@ class GeneratorSwitchEmitter:
         if node.value is None:
             self.tr.write_line(f'return {self.tr._iter_result_return_expr()};')
         else:
-            val = self.tr.visit(node.value)
+            with self.tr._use_type_context_ann(self._return_context_ann()):
+                val = self.tr.visit(node.value)
             self.tr.write_line(f'return {self.tr._result_return_done_expr(val)};')
 
     def _emit_yield(self, value: ast.expr | None, *, recv_target: ast.expr | None=None) -> None:
@@ -363,12 +374,106 @@ class GeneratorSwitchEmitter:
     def _yf_it_field_uses_assign(self, it_field: str) -> bool:
         return _iter_field_uses_copy_from(it_field, self._class_info)
 
+    @staticmethod
+    def _ann_is_none(ann: ast.expr | None) -> bool:
+        return (
+            isinstance(ann, ast.Constant) and ann.value is None
+        ) or (
+            isinstance(ann, ast.Name) and ann.id in ('None', 'PyNone')
+        )
+
+    def _outer_yield_ann_is_none(self) -> bool:
+        if self._class_info is None:
+            return False
+        alias = self._class_info.type_aliases.get('Element')
+        if alias is not None:
+            return self._ann_is_none(alias.value)
+        for stmt in self._class_info.node.body:
+            if (
+                isinstance(stmt, ast.TypeAlias)
+                and isinstance(stmt.name, ast.Name)
+                and stmt.name.id == 'Element'
+            ):
+                return self._ann_is_none(stmt.value)
+        return False
+
+    def _yield_from_iter_yields_none(self, it_field: str) -> bool:
+        if self._class_info is None:
+            return False
+        ann = field_ann_ast(self._class_info, it_field)
+        if (
+            isinstance(ann, ast.Subscript)
+            and isinstance(ann.value, ast.Name)
+            and ann.value.id in ('Coroutine', 'Generator', 'AsyncGenerator')
+        ):
+            sl = ann.slice
+            if isinstance(sl, ast.Tuple) and sl.elts:
+                return self._ann_is_none(sl.elts[0])
+        from ..analysis.type_emit import field_storage_cpp
+        ft = field_storage_cpp(self._class_info, it_field)
+        return bool(
+            ft
+            and (
+                ft.startswith('PyCoroutine<PyNone,')
+                or ft.startswith('PyGenerator<PyNone,')
+                or ft.startswith('PyAsyncGenerator<PyNone,')
+            )
+        )
+
+    def _target_context_ann(self, target: ast.expr | None) -> ast.expr | None:
+        if target is None:
+            return None
+        if isinstance(target, ast.Attribute) and not (
+            isinstance(target.value, ast.Name) and target.value.id == 'self'
+        ):
+            recv_ann = self._target_context_ann(target.value)
+            if isinstance(recv_ann, ast.Name):
+                info = self.tr.classes.get(recv_ann.id)
+                if info is not None:
+                    ann = field_ann_ast(info, target.attr)
+                    if ann is not None:
+                        return copy.deepcopy(ann)
+        if (
+            isinstance(target, ast.Attribute)
+            and isinstance(target.value, ast.Name)
+            and target.value.id == 'self'
+            and self._class_info is not None
+        ):
+            ann = field_ann_ast(self._class_info, target.attr)
+            if ann is not None:
+                return copy.deepcopy(ann)
+            for stmt in self._class_info.node.body:
+                if (
+                    isinstance(stmt, ast.AnnAssign)
+                    and isinstance(stmt.target, ast.Attribute)
+                    and isinstance(stmt.target.value, ast.Name)
+                    and stmt.target.value.id == 'self'
+                    and stmt.target.attr == target.attr
+                ):
+                    return copy.deepcopy(stmt.annotation)
+            return None
+        if isinstance(target, ast.Name):
+            t = self.tr._scope_storage(target.id)
+            info = self.tr._class_info_for_type(t)
+            if info is not None:
+                return ast.Name(id=info.name, ctx=ast.Load())
+        return None
+
+    def _return_context_ann(self) -> ast.expr | None:
+        if self._class_info is None:
+            return None
+        alias = self._class_info.type_aliases.get('ReturnType')
+        if alias is None:
+            return None
+        return copy.deepcopy(alias.value)
+
     def _emit_yield_from(self, value: ast.expr, *, recv_target: ast.expr | None=None) -> None:
         idx = self._yf_index
         self._yf_index += 1
         active = f'{_YF_PREFIX}{idx}_active'
         it_field = f'{_YF_PREFIX}{idx}_it'
-        src = self.tr.visit(value)
+        with self.tr._use_type_context_ann(self._target_context_ann(recv_target)):
+            src = self.tr.visit(value)
         sep = self.tr._member_access(src)
         iter_expr = f'({src}){sep}__iter__()'
         yf_state = self._alloc_state()
@@ -381,12 +486,18 @@ class GeneratorSwitchEmitter:
             if self._yf_it_field_uses_assign(it_field):
                 self.tr.write_line(f'this->{it_field}.copy_from({iter_expr});')
             else:
-                self.tr.write_line(f'this->{it_field} = std::move({iter_expr});')
+                self.tr.write_line(f'this->{it_field} = {iter_expr};')
             self.tr.write_line(f'this->{active} = true;')
         res = _temp_name('yf')
         self.tr.write_line(f'auto {res} = this->{it_field}.__next__();')
         with self.tr._use_block(f'if (!{iter_result_done_cpp(res)})'):
-            if self._is_async_generator_class():
+            if (
+                self._is_async_generator_class()
+                or (
+                    self._yield_from_iter_yields_none(it_field)
+                    and not self._outer_yield_ann_is_none()
+                )
+            ):
                 self.tr.write_line('continue;')
             else:
                 rt = self.tr._next_result_cpp_type()

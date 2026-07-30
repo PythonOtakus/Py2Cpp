@@ -79,7 +79,7 @@ def _annotation_class(ann: ast.expr | None) -> str | None:
   return None
 
 
-def _kwargs_options_sig(func: ast.FunctionDef) -> KwargsOptionsSig | None:
+def _kwargs_options_sig(func: ast.FunctionDef | ast.AsyncFunctionDef) -> KwargsOptionsSig | None:
   kw = func.args.kwarg
   if kw is None:
     return None
@@ -89,7 +89,7 @@ def _kwargs_options_sig(func: ast.FunctionDef) -> KwargsOptionsSig | None:
   return KwargsOptionsSig(options_class=cls, kw_param=kw.arg)
 
 
-def _expand_function_kwargs(func: ast.FunctionDef) -> KwargsOptionsSig | None:
+def _expand_function_kwargs(func: ast.FunctionDef | ast.AsyncFunctionDef) -> KwargsOptionsSig | None:
   sig = _kwargs_options_sig(func)
   if sig is None:
     return None
@@ -100,6 +100,9 @@ def _expand_function_kwargs(func: ast.FunctionDef) -> KwargsOptionsSig | None:
       arg=kw.arg,
       annotation=ast.Name(id=sig.options_class, ctx=ast.Load()),
     )
+  )
+  func.args.defaults.append(
+    ast.Call(func=ast.Name(id="new", ctx=ast.Load()), args=[])
   )
   func.args.kwarg = None
   ast.fix_missing_locations(func)
@@ -224,6 +227,11 @@ def _param_options_sig(
 ) -> KwargsOptionsSig | None:
   if method is None:
     return None
+  kw = method.args.kwarg
+  if kw is not None and kw.arg == param_name:
+    cls = _annotation_class(kw.annotation)
+    if cls is not None:
+      return KwargsOptionsSig(options_class=cls, kw_param=param_name)
   for arg in method.args.args:
     if arg.arg != param_name:
       continue
@@ -747,6 +755,20 @@ class _CallExpander:
     match expr:
       case ast.Call() as call:
         return self._flatten_call(call)
+      case ast.Await(value=value):
+        pre, new_val, changed = self._flatten_expr(value)
+        if not pre and not changed:
+          return [], expr, False
+        out = ast.Await(value=new_val)
+        ast.copy_location(out, expr)
+        return pre, out, True
+      case ast.YieldFrom(value=value):
+        pre, new_val, changed = self._flatten_expr(value)
+        if not pre and not changed:
+          return [], expr, False
+        out = ast.YieldFrom(value=new_val)
+        ast.copy_location(out, expr)
+        return pre, out, True
       case _:
         return [], expr, False
 
@@ -908,6 +930,18 @@ def _collect_func_sigs(tr: Translator) -> dict[tuple[str, ...], KwargsOptionsSig
       sig = _kwargs_options_sig(init)
       if sig is not None:
         sigs[(info.module_path, info.name, init.name)] = sig
+  for module_path, tree in tr.module_asts.items():
+    for stmt in tree.body:
+      if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        sig = _kwargs_options_sig(stmt)
+        if sig is not None:
+          sigs[(module_path, stmt.name)] = sig
+      elif isinstance(stmt, ast.ClassDef):
+        for inner in stmt.body:
+          if isinstance(inner, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            sig = _kwargs_options_sig(inner)
+            if sig is not None:
+              sigs[(module_path, stmt.name, inner.name)] = sig
   return sigs
 
 
@@ -934,6 +968,18 @@ def _expand_defs(tr: Translator, sigs: dict[tuple[str, ...], KwargsOptionsSig]) 
       key = (info.module_path, info.name, init.name)
       if key in sigs:
         _expand_function_kwargs(init)
+  for module_path, tree in tr.module_asts.items():
+    for stmt in tree.body:
+      if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        key = (module_path, stmt.name)
+        if key in sigs:
+          _expand_function_kwargs(stmt)
+      elif isinstance(stmt, ast.ClassDef):
+        for inner in stmt.body:
+          if isinstance(inner, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            key = (module_path, stmt.name, inner.name)
+            if key in sigs:
+              _expand_function_kwargs(inner)
 
 
 def _expand_all_call_sites(

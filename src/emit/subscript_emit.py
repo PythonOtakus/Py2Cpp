@@ -20,10 +20,7 @@ def _class_has_int_getitem(info) -> bool:
     return '__getitem__' in info.methods
 
 def _emit_ptr_subscript(tr: Translator, base: str, idx: str, ptr_type: str) -> str:
-    """指针下标：宿主类有 ``__getitem__`` 时走方法，否则 C 式 ``[idx]``。"""
-    info = tr._class_info_for_type(ptr_type)
-    if info is not None and _class_has_int_getitem(info):
-        return f'{base}->__getitem__({idx})'
+    """裸指针下标：始终发射 C 式 ``ptr[idx]``。"""
     return f'{base}[{idx}]'
 
 def container_view_elem_cpp(tr: Translator, receiver: ast.expr) -> str | None:
@@ -489,6 +486,19 @@ def visit_subscript(tr: Translator, node: ast.Subscript) -> str:
                 base_t = strip_cpp_type_qualifiers(ft).rstrip('*').strip()
                 if is_list_type(base_t) or is_deque_type(base_t) or is_frozenlist_type(base_t) or is_frozendict_type(base_t) or is_set_type(base_t) or is_frozenset_type(base_t):
                     return f'this->{node.value.attr}->__getitem__({idx})'
+                from ..analysis.ir import class_info_for_cpp_type
+
+                base_info = class_info_for_cpp_type(base_t, tr.classes)
+                if (
+                    base_info is not None
+                    and not (
+                        is_array_type(base_t)
+                        or is_stack_array_type(base_t)
+                        or is_span_type(base_t)
+                    )
+                    and _class_has_int_getitem(base_info)
+                ):
+                    return f'this->{fcpp}->__getitem__({idx})'
                 return _emit_ptr_subscript(tr, f'this->{node.value.attr}', idx, ft)
     if isinstance(node.value, ast.Name) and tr.scope:
         if scope_binding_storage_cpp(tr.scope, node.value.id) == 'c_str':

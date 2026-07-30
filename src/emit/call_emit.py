@@ -540,6 +540,9 @@ def class_subscript_static_call_return_type(tr: Translator, info: ClassInfo, met
 
 def type_context_ann_from_stack(tr: 'Translator') -> ast.expr | None:
     """``AnnAssign`` / ``return`` 注解，供 ``new.方法(...)`` 解析目标类。"""
+    forced = getattr(tr, '_type_context_ann_stack', None)
+    if forced:
+        return forced[-1]
     ret_ann: ast.expr | None = None
     for node in reversed(tr._ast_node_stack):
         if isinstance(node, ast.AnnAssign) and node.annotation is not None:
@@ -801,7 +804,7 @@ def _static_method_template_angle(tr: 'Translator', info: ClassInfo, method: str
     if method == 'create' and node.args and (len(tnames) >= 3):
         coro_t = _concrete_coroutine_cpp_type(tr, node.args[0])
         if coro_t:
-            return f'<typename {coro_t}::Element, typename {coro_t}::SendType, typename {coro_t}::ReturnType>'
+            return ''
     if method == 'gather' and node.args and (len(tnames) == 1):
         elem = _task_elem_type_from_expr(tr, node.args[0])
         if elem:
@@ -879,19 +882,21 @@ def try_emit_new_receiver_static_call(tr: Translator, node: ast.Call) -> str | N
             slice_node = None
         case _:
             raise NotImplementedError('new.方法(...) 的类型上下文须为具体类或 ``Cls[T]`` 注解')
+    context_cpp = tr._parse_storage_type(ann, tr._active_type_params())
     if cls_name == 'Self':
         info = tr._active_class_info()
         if info is None:
             raise NotImplementedError(f'new.{method}(...) 的 ``Self`` 须处于类方法体内')
         cls_name = info.name
     elif not tr._name_refers_to_class(cls_name):
-        raise NotImplementedError(f'new.{method}(...) 的注解类 {cls_name!r} 不可解析')
+        info = tr._class_info_for_type(context_cpp)
+        if info is None:
+            raise NotImplementedError(f'new.{method}(...) 的注解类 {cls_name!r} 不可解析')
+        cls_name = info.name
     else:
         info = tr._class_info_for_ref(cls_name)
     if info is None:
         raise NotImplementedError(f'new.{method}(...) 的注解类 {cls_name!r} 不可解析')
-    tparams = tr._active_type_params()
-    context_cpp = tr._parse_storage_type(ann, tparams)
     if info.is_union and method in union_variant_names(info):
         out = tr._emit_union_variant_ctor(cls_name, method, node, context_cpp=context_cpp, type_args_slice=slice_node)
         if out is not None:
@@ -1435,7 +1440,19 @@ def emit_call_expr(tr: Translator, node: ast.Call):
             if enum_ctor is not None:
                 return enum_ctor
             if name in tr.classes:
-                return emit_user_ctor(tr, name, args)
+                info = tr.classes[name]
+                ctor_param_types = tr._ordered_method_param_cpp_types(
+                    info, "__init__", call=node,
+                )
+                if not ctor_param_types and node.args:
+                    host_storage = field_storage_cpp(info, "g_self", fallback="")
+                    if host_storage:
+                        ctor_param_types = [host_storage]
+                ctor_args = (
+                    emit_call_args(tr, node, param_cpp_types=ctor_param_types)
+                    if ctor_param_types else args
+                )
+                return emit_user_ctor(tr, name, ctor_args)
             if ctor_cpp is not None:
                 return f'{ctor_cpp}({args})'
             if name == 'range':
@@ -1547,7 +1564,9 @@ def emit_call_expr(tr: Translator, node: ast.Call):
                             tpl = _static_method_template_angle(tr, info, attr, node)
                         if tpl:
                             callee = f'{callee}{tpl}'
-                        if attr == 'create' and node.args:
+                        if attr == 'create' and node.args and _concrete_coroutine_cpp_type(tr, node.args[0]):
+                            arg_str = tr._visit_value_expr(node.args[0])
+                        elif attr == 'create' and node.args:
                             arg_str = _emit_make_coroutine_from_arg(tr, node.args[0])
                         elif attr == 'gather' and tpl and node.args:
                             elem = tpl.strip('<>')

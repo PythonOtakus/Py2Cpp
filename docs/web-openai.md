@@ -10,9 +10,12 @@ text: str = client.chat("gpt-test", "ping")
 
 for token in client.chat_stream("gpt-test", "ping"):
   print(token)
+
+async_client: AsyncOpenAI = new(api_key="sk-test", base_url="http://127.0.0.1:18141/v1")
+text2: str = await async_client.chat("gpt-test", "ping")
 ```
 
-这次不保留 `client.responses.create(...)`、`client.chat.completions.create(...)`、`OpenAIResponse`、`ChatCompletion`、资源类和异步客户端等过度封装。
+这次不保留 `client.responses.create(...)`、`client.chat.completions.create(...)`、`OpenAIResponse`、`ChatCompletion`、资源类等过度封装。
 
 ## 当前范围
 
@@ -21,8 +24,10 @@ for token in client.chat_stream("gpt-test", "ping"):
 - `OpenAI`
 - `OpenAI.chat(model, message, system="", max_tokens=0, temperature=-1.0) -> str`
 - `OpenAI.chat_stream(model, message, system="", max_tokens=0, temperature=-1.0) -> Iterator[str]`
+- `AsyncOpenAI.chat(...) -> str`
 - API key、`base_url`、timeout、默认 headers
 - JSON 请求与响应解析
+- 同步 SSE 增量读取
 - 基础错误类型
 - 本地 fake server 测试
 
@@ -31,7 +36,7 @@ for token in client.chat_stream("gpt-test", "ping"):
 - TLS/HTTPS。当前 `py2cpp.web.ClientSession` 只建立普通 TCP 连接；真实 `https://api.openai.com/v1` 需要后续 TLS。
 - SDK 资源树。
 - tool calling、multimodal、文件上传、分页等完整 API。
-- 异步 `AsyncOpenAI`。
+- `AsyncOpenAI.chat_stream()`。当前 runtime 的 `AsyncGenerator` 尚不能安全表达“首次 yield 前需要 await 网络 IO”的流；待 async generator 协议补完后再开放。
 - 自动重试。
 
 ## HTTP 映射
@@ -71,7 +76,7 @@ POST {base_url}/chat/completions
 "stream": true
 ```
 
-第一阶段按固定 `Content-Length` 响应体解析 SSE 文本：
+`chat_stream()` 不再先读取完整响应体，而是在响应头之后逐行读取 SSE body；支持普通 `Connection: close` 流和 HTTP/1.1 `Transfer-Encoding: chunked`：
 
 ```text
 data: {"choices":[{"delta":{"content":"he"}}]}
@@ -81,7 +86,7 @@ data: {"choices":[{"delta":{"content":"llo"}}]}
 data: [DONE]
 ```
 
-每个 `delta.content` 作为一个 token yield。后续如果 `py2cpp.web` 支持真正增量读取和 chunked transfer，再把这里改成真正边读边产出。
+每个 `delta.content` 作为一个 token yield；收到 `data: [DONE]` 后关闭响应流。
 
 ## 错误模型
 
@@ -117,4 +122,3 @@ python main.py py2cpp\__init__.py -o generated --no-main
 build.bat web/test_openai --seq
 run.bat web/test_openai
 ```
-

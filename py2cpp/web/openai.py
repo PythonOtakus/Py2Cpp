@@ -2,8 +2,12 @@
 from ..builtins import *
 from ..core.exceptions import Exception
 from ..serde.json import JsonDecoder, JsonEncoder
-from .client import ClientSession
-from .http import ClientResponse, RequestOptions
+from .client import AsyncClientSession, ClientSession
+from .http import (
+  ClientResponse,
+  ClientStreamResponse,
+  RequestOptions,
+)
 
 
 class OpenAIError(Exception):
@@ -108,41 +112,51 @@ def _build_chat_body(
   return enc.take()
 
 
-@immutable
-def _json_string_after(raw_json: str, marker: str) -> str:
-  pos: int = raw_json.find(marker)
-  if pos < 0:
-    return ""
-  start: int = pos + len(marker)
-  tail: str = raw_json[start:]
-  dec: JsonDecoder = new.from_text(tail)
-  return dec.load_str()
-
-
-@immutable
-def _top_string_field(raw_json: str, field: str) -> str:
-  marker: str = f'"{field}":'
-  return _json_string_after(raw_json, marker)
-
-
-@immutable
-def _json_string_after_any(raw_json: str, first: str, second: str) -> str:
-  value: str = _json_string_after(raw_json, first)
-  if value:
-    return value
-  if second:
-    return _json_string_after(raw_json, second)
+def _object_string_field(dec: JsonDecoder @ref, field: str) -> str:
+  dec.begin_root_object()
+  while not dec.at_object_end():
+    key: str = dec.load_key()
+    if key == field:
+      return dec.load_str()
+    dec.skip_value()
   return ""
 
 
-@immutable
+def _first_choice_object_field_content(dec: JsonDecoder @ref, field: str) -> str:
+  dec.begin_array()
+  if dec.at_array_end():
+    return ""
+  dec.begin_root_object()
+  while not dec.at_object_end():
+    key: str = dec.load_key()
+    if key == field:
+      return _object_string_field(dec, "content")
+    dec.skip_value()
+  return ""
+
+
 def _chat_content(raw_json: str) -> str:
-  return _json_string_after_any(raw_json, '"content":', '')
+  dec: JsonDecoder = new.from_text(raw_json)
+  dec.begin_root_object()
+  while not dec.at_object_end():
+    key: str = dec.load_key()
+    if key == "content":
+      return dec.load_str()
+    if key == "choices":
+      return _first_choice_object_field_content(dec, "message")
+    dec.skip_value()
+  return ""
 
 
-@immutable
 def _delta_content(raw_json: str) -> str:
-  return _json_string_after_any(raw_json, '"delta":{"content":', '"content":')
+  dec: JsonDecoder = new.from_text(raw_json)
+  dec.begin_root_object()
+  while not dec.at_object_end():
+    key: str = dec.load_key()
+    if key == "choices":
+      return _first_choice_object_field_content(dec, "delta")
+    dec.skip_value()
+  return ""
 
 
 def _iter_sse_tokens(text: str) -> Generator[str, None, None]:
@@ -157,10 +171,10 @@ def _iter_sse_tokens(text: str) -> Generator[str, None, None]:
         yield token
 
 
-def _raise_for_status(resp: ClientResponse) -> None:
-  if resp.status >= 200 and resp.status < 300:
+def _raise_for_status_code(status: int) -> None:
+  if status >= 200 and status < 300:
     return
-  match resp.status:
+  match status:
     case 400:
       raise BadRequestError()
     case 401:
@@ -172,9 +186,17 @@ def _raise_for_status(resp: ClientResponse) -> None:
     case 429:
       raise RateLimitError()
     case _:
-      if resp.status >= 500:
+      if status >= 500:
         raise InternalServerError()
       raise APIError()
+
+
+def _raise_for_status(resp: ClientResponse) -> None:
+  _raise_for_status_code(resp.status)
+
+
+def _raise_for_stream_status(resp: ClientStreamResponse) -> None:
+  _raise_for_status_code(resp.status)
 
 
 @copyable
@@ -218,6 +240,46 @@ class OpenAI:
     body: str = _build_chat_body(model, message, system, max_tokens, temperature, True)
     opts: RequestOptions = _request_options(self.api_key, self.default_headers, body, self.timeout)
     session: ClientSession = new()
-    resp: ClientResponse = session.request_options("POST", _endpoint(self.base_url), opts)
+    resp: ClientStreamResponse = session.stream_options("POST", _endpoint(self.base_url), opts)
+    _raise_for_stream_status(resp)
+    while True:
+      line: str = resp.readline()
+      if line.startswith("data: "):
+        payload: str = line[6:]
+        if payload == "[DONE]":
+          resp.close()
+          return
+        token: str = _delta_content(payload)
+        if token:
+          yield token
+
+
+@copyable
+class AsyncOpenAI:
+  """最简异步 OpenAI-compatible 聊天客户端。"""
+
+  api_key: str = ""
+  base_url: str = "https://api.openai.com/v1"
+  timeout: float = 60.0
+  default_headers: dict[str, str] = {}
+
+  def __init__(self, api_key: str = "", base_url: str = "https://api.openai.com/v1", timeout: float = 60.0):
+    self.api_key = api_key
+    self.base_url = _normalize_base_url(base_url)
+    self.timeout = timeout
+    self.default_headers = {}
+
+  async def chat(
+    self,
+    model: str,
+    message: str,
+    system: str = "",
+    max_tokens: int = 0,
+    temperature: float = -1.0,
+  ) -> str:
+    body: str = _build_chat_body(model, message, system, max_tokens, temperature, False)
+    opts: RequestOptions = _request_options(self.api_key, self.default_headers, body, self.timeout)
+    session: AsyncClientSession = new()
+    resp: ClientResponse = await session.request_options("POST", _endpoint(self.base_url), opts)
     _raise_for_status(resp)
-    yield from _iter_sse_tokens(resp.text())
+    return _chat_content(resp.text())

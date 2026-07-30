@@ -55,26 +55,26 @@ def _bytes_range(buf: byte[:], start: int, n: int) -> bytes:
   return bytes(out)
 
 
-@copyable
-class StreamReader(CloseMixin):
-  """缓冲式读流；可绑定 ``TcpSocket`` 或纯内存（测试）。"""
+@refcount
+class _StreamReaderState(
+  friends=(StreamReader,),
+):
+  """``StreamReader`` 共享状态；复制 reader 时不复制底层 socket/缓冲。"""
+
+  _sock: TcpSocket = new()
+  _pos: int = 0
+  _live: bool = False
+  _closed: bool = False
+  _buf: byte[:] = b""
 
   def __init__(self):
-    self._sock: TcpSocket = new()
-    self._pos: int = 0
-    self._live: bool = False
-    self._closed: bool = False
-    self._buf: byte[:] = b""
+    self._sock = TcpSocket()
+    self._pos = 0
+    self._live = False
+    self._closed = False
+    self._buf = b""
 
-  @staticmethod
-  def from_socket(sock: TcpSocket) -> Self:
-    r: Self = new()
-    r._sock = sock
-    r._live = True
-    return r
-
-  @overload
-  def load_bytes(self, data: byte[:]) -> None:
+  def load_array(self, data: byte[:]) -> None:
     """把 ``byte[:]`` 载入内存读缓冲。"""
     n: int = len(data)
     self._buf.reshape(n, 0)
@@ -83,8 +83,7 @@ class StreamReader(CloseMixin):
     self._pos = 0
     self._live = False
 
-  @overload
-  def load_bytes(self, data: bytes) -> None:
+  def load_bytes_obj(self, data: bytes) -> None:
     """``bytes`` 载入内存读缓冲。"""
     n: int = len(data)
     self._buf.reshape(n, 0)
@@ -92,12 +91,6 @@ class StreamReader(CloseMixin):
       self._buf[i] = data[i]
     self._pos = 0
     self._live = False
-
-  @staticmethod
-  def from_bytes(data: byte[:]) -> Self:
-    r: Self = new()
-    r.load_bytes(data)
-    return r
 
   def close(self) -> None:
     if self._closed:
@@ -151,6 +144,56 @@ class StreamReader(CloseMixin):
         return out
       if not self._fill():
         raise RuntimeError("stream ended before readuntil")
+
+
+@copyable
+class StreamReader(CloseMixin):
+  """缓冲式读流；可绑定 ``TcpSocket`` 或纯内存（测试）。"""
+
+  _state: _StreamReaderState = new()
+
+  def __init__(self):
+    self._state = new()
+
+  @staticmethod
+  def from_socket(sock: TcpSocket) -> Self:
+    r: Self = new()
+    r._state._sock = sock
+    r._state._live = True
+    return r
+
+  @overload
+  def load_bytes(self, data: byte[:]) -> None:
+    """把 ``byte[:]`` 载入内存读缓冲。"""
+    self._state.load_array(data)
+
+  @overload
+  def load_bytes(self, data: bytes) -> None:
+    """``bytes`` 载入内存读缓冲。"""
+    self._state.load_bytes_obj(data)
+
+  @staticmethod
+  def from_bytes(data: byte[:]) -> Self:
+    r: Self = new()
+    r.load_bytes(data)
+    return r
+
+  def close(self) -> None:
+    self._state.close()
+
+  @immutable
+  def _avail(self) -> int:
+    return self._state._avail()
+
+  def _fill(self) -> bool:
+    return self._state._fill()
+
+  def readexactly(self, n: int) -> bytes:
+    return self._state.readexactly(n)
+
+  def readuntil(self, sep: bytes) -> bytes:
+    """读到 ``sep`` 末尾（含 ``sep``）。"""
+    return self._state.readuntil(sep)
 
 
 @copyable

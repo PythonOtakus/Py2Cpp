@@ -604,6 +604,36 @@ class JsonScanTryMatchKeyTests(TestCaseMixin):
     self.assertEqual(dec_r.pos, dec_n.pos)
 
 
+class JsonNestedNavigationTests(TestCaseMixin):
+  _test_tag = 214
+
+  @override
+  def test(self):
+    raw: str = '{"id":"cmpl-1","choices":[{"index":0,"message":{"role":"assistant","content":"pong"}}]}'
+    dec: JsonDecoder = new.from_text(raw)
+    dec.begin_root_object()
+    key: str = dec.load_key()
+    self.assertEqual(key, "id")
+    dec.skip_value()
+    key = dec.load_key()
+    self.assertEqual(key, "choices")
+    dec.begin_array()
+    self.assertFalse(dec.at_array_end())
+    dec.begin_root_object()
+    key = dec.load_key()
+    self.assertEqual(key, "index")
+    dec.skip_value()
+    key = dec.load_key()
+    self.assertEqual(key, "message")
+    dec.begin_root_object()
+    key = dec.load_key()
+    self.assertEqual(key, "role")
+    dec.skip_value()
+    key = dec.load_key()
+    self.assertEqual(key, "content")
+    self.assertEqual(dec.load_str(), "pong")
+
+
 class JsonScanTryBindTests(TestCaseMixin):
   _test_tag = 213
 

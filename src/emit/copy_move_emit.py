@@ -167,6 +167,10 @@ def emit_copy_move_special_members(tr: Translator, info: ClassInfo) -> None:
                 tr.write_line(f'{qual}::{cpp}(const {cpp}& other) : _state(0)')
                 with tr._use_block():
                     tr.write_line('__copy__(other);')
+            elif info.name == 'StreamWriter':
+                tr.write_line(f'{qual}::{cpp}(const {cpp}& other) : _sock(), _live(false), _closed(false), _buf()')
+                with tr._use_block():
+                    tr.write_line('__copy__(other);')
             else:
                 with tr._use_block(f'{qual}::{cpp}(const {cpp}& other)'):
                     tr.write_line('__copy__(other);')

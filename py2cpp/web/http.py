@@ -235,6 +235,65 @@ def _basic_auth_header(auth: BasicAuth) -> str:
   return f"Basic {token}"
 
 
+@immutable
+def parse_ascii_hex(s: str) -> int:
+  """解析 HTTP chunk-size 的十六进制前缀；遇到 ``;`` 扩展或空白停止。"""
+  out: int = 0
+  for i in range(len(s)):
+    c: char = s[i]
+    v: int = -1
+    if int(c) >= ord("0") and int(c) <= ord("9"):
+      v = int(c) - ord("0")
+    elif int(c) >= ord("a") and int(c) <= ord("f"):
+      v = int(c) - ord("a") + 10
+    elif int(c) >= ord("A") and int(c) <= ord("F"):
+      v = int(c) - ord("A") + 10
+    else:
+      return out
+    out = out * 16 + v
+  return out
+
+
+@immutable
+def _strip_line_end(line: str) -> str:
+  out: str = line
+  if out.endswith("\n"):
+    out = out[:-1]
+  if out.endswith("\r"):
+    out = out[:-1]
+  return out
+
+
+@immutable
+def _header_is_chunked(headers: dict[str, str]) -> bool:
+  val: str = ""
+  if "Transfer-Encoding" in headers:
+    val = headers["Transfer-Encoding"]
+  elif "transfer-encoding" in headers:
+    val = headers["transfer-encoding"]
+  if not val:
+    return False
+  return "chunked" in val or "Chunked" in val or "CHUNKED" in val
+
+
+@immutable
+def _bytes_from_buf(buf: byte[:], n: int) -> bytes:
+  out: byte[:] = new(n)
+  for i in range(n):
+    out[i] = buf[i]
+  return bytes(out)
+
+
+@immutable
+def _append_one(dst: byte[:] @ref, at: int, b: byte) -> int:
+  need: int = at + 1
+  n: int = len(dst)
+  if need > n:
+    dst.reshape(need, n)
+  dst[at] = b
+  return need
+
+
 @copyable
 class RequestOptions:
   """客户端出站请求选项（``headers`` / ``params`` / ``cookies`` / ``data`` / ``auth`` / ``timeout``）。"""
@@ -439,7 +498,7 @@ class ClientResponse:
   body: bytes @optional = b""
 
   @staticmethod
-  def read(reader: StreamReader @ref) -> Self:
+  def read_head(reader: StreamReader @ref) -> Self:
     block: bytes = reader.readuntil(_HEADER_END)
     lines: list[bytes] = _header_lines(block)
     if not lines:
@@ -462,6 +521,11 @@ class ClientResponse:
       val: str = _header_value(line)
       if key:
         resp.headers[key] = val
+    return resp
+
+  @staticmethod
+  def read(reader: StreamReader @ref) -> Self:
+    resp: Self = new.read_head(reader)
     clen: int = 0
     if "Content-Length" in resp.headers:
       clen = parse_ascii_int(resp.headers["Content-Length"])
@@ -469,6 +533,32 @@ class ClientResponse:
       clen = parse_ascii_int(resp.headers["content-length"])
     if clen > 0:
       resp.body = reader.readexactly(clen)
+    return resp
+
+  @staticmethod
+  async def read_head_async(reader: AsyncStreamReader @ref) -> Self:
+    block: bytes = await reader.readuntil(_HEADER_END)
+    lines: list[bytes] = _header_lines(block)
+    if not lines:
+      raise ValueError("empty response")
+    resp: Self = new()
+    first: bytes = lines[0]
+    sp1: int = first.find(b" ")
+    if sp1 < 0:
+      raise ValueError("bad status line")
+    sp2: int = first.find(b" ", sp1 + 1)
+    if sp2 < 0:
+      raise ValueError("bad status line")
+    status_part: bytes = first[sp1 + 1 : sp2]
+    resp.status = parse_ascii_int(status_part.decode())
+    for i in range(1, len(lines)):
+      line: bytes = lines[i]
+      if not line:
+        break
+      key: str = _header_key(line)
+      val: str = _header_value(line)
+      if key:
+        resp.headers[key] = val
     return resp
 
   @staticmethod
@@ -507,6 +597,191 @@ class ClientResponse:
   @immutable
   def text(self) -> str:
     return self.body.decode()
+
+
+@refcount
+class _ClientStreamResponseState(
+  friends=(ClientStreamResponse,),
+):
+  """``ClientStreamResponse`` 共享状态；返回/复制响应对象时不复制底层流。"""
+
+  status: int = 0
+  headers: dict[str, str] = {}
+  _reader: StreamReader = new()
+  _chunked: bool = False
+  _closed: bool = False
+  _done: bool = False
+  _chunk: bytes = b""
+  _chunk_pos: int = 0
+
+  def __init__(self):
+    self.status = 0
+    self.headers = {}
+    self._reader = StreamReader()
+    self._chunked = False
+    self._closed = False
+    self._done = False
+    self._chunk = b""
+    self._chunk_pos = 0
+
+
+@copyable
+class ClientStreamResponse:
+  """客户端流式 HTTP 响应；响应头已读，body 保持从 socket 增量读取。"""
+
+  _state: _ClientStreamResponseState = new()
+
+  def __init__(self):
+    self._state = new()
+
+  @property
+  def status(self) -> int:
+    return self._state.status
+
+  @property
+  def headers(self) -> dict[str, str]:
+    return self._state.headers
+
+  @staticmethod
+  def from_streams(reader: StreamReader @ref, writer: StreamWriter @ref) -> Self:
+    head: ClientResponse = new.read_head(reader)
+    return new.from_head(reader, writer, head)
+
+  @staticmethod
+  def from_head(reader: StreamReader @ref, writer: StreamWriter @ref, head: ClientResponse) -> Self:
+    out: Self = new()
+    out._state.status = head.status
+    out._state.headers = head.headers
+    out._state._reader = reader
+    out._state._chunked = _header_is_chunked(out._state.headers)
+    return out
+
+  def close(self) -> None:
+    if self._state._closed:
+      return
+    self._state._closed = True
+    self._state._reader.close()
+
+  def _read_next_chunk(self) -> bool:
+    if self._state._done:
+      return False
+    line_b: bytes = self._state._reader.readuntil(_CRLF)
+    line: str = _strip_line_end(line_b.decode())
+    size: int = parse_ascii_hex(line)
+    if size <= 0:
+      self._state._done = True
+      trailer: bytes = self._state._reader.readuntil(_CRLF)
+      return False
+    self._state._chunk = self._state._reader.readexactly(size)
+    self._state._chunk_pos = 0
+    crlf: bytes = self._state._reader.readexactly(2)
+    return True
+
+  def _read_chunked_line(self) -> str:
+    buf: byte[:] = b""
+    at: int = 0
+    while True:
+      while self._state._chunk_pos >= len(self._state._chunk):
+        if not self._read_next_chunk():
+          return _bytes_from_buf(buf, at).decode()
+      b: byte = self._state._chunk[self._state._chunk_pos]
+      self._state._chunk_pos += 1
+      if b == ord("\n"):
+        return _bytes_from_buf(buf, at).decode()
+      if b != ord("\r"):
+        at = _append_one(buf, at, b)
+
+  def readline(self) -> str:
+    """读取 body 中下一行（不含行尾）；chunked 响应会先解码 chunk。"""
+    if self._state._chunked:
+      return self._read_chunked_line()
+    line_b: bytes = self._state._reader.readuntil(b"\n")
+    return _strip_line_end(line_b.decode())
+
+
+@copyable
+class AsyncClientStreamResponse:
+  """异步客户端流式 HTTP 响应；响应头已读，body 保持 non-blocking 增量读取。"""
+
+  status: int = 0
+  headers: dict[str, str] = {}
+  _reader: AsyncStreamReader = new()
+  _writer: AsyncStreamWriter = new()
+  _chunked: bool = False
+  _closed: bool = False
+  _done: bool = False
+  _chunk: bytes = b""
+  _chunk_pos: int = 0
+
+  def __init__(self):
+    self.status = 0
+    self.headers = {}
+    self._reader = new()
+    self._writer = new()
+    self._chunked = False
+    self._closed = False
+    self._done = False
+    self._chunk = b""
+    self._chunk_pos = 0
+
+  @staticmethod
+  async def from_streams(reader: AsyncStreamReader @ref, writer: AsyncStreamWriter @ref) -> Self:
+    head: ClientResponse = await new.read_head_async(reader)
+    return new.from_head(reader, writer, head)
+
+  @staticmethod
+  def from_head(reader: AsyncStreamReader @ref, writer: AsyncStreamWriter @ref, head: ClientResponse) -> Self:
+    out: Self = new()
+    out.status = head.status
+    out.headers = head.headers
+    out._reader = reader
+    out._writer = writer
+    out._chunked = _header_is_chunked(out.headers)
+    return out
+
+  def close(self) -> None:
+    if self._closed:
+      return
+    self._closed = True
+    self._reader.close()
+    self._writer.close()
+
+  async def _read_next_chunk(self) -> bool:
+    if self._done:
+      return False
+    line_b: bytes = await self._reader.readuntil(_CRLF)
+    line: str = _strip_line_end(line_b.decode())
+    size: int = parse_ascii_hex(line)
+    if size <= 0:
+      self._done = True
+      trailer: bytes = await self._reader.readuntil(_CRLF)
+      return False
+    self._chunk = await self._reader.readexactly(size)
+    self._chunk_pos = 0
+    crlf: bytes = await self._reader.readexactly(2)
+    return True
+
+  async def _read_chunked_line(self) -> str:
+    buf: byte[:] = b""
+    at: int = 0
+    while True:
+      while self._chunk_pos >= len(self._chunk):
+        more: bool = await self._read_next_chunk()
+        if not more:
+          return _bytes_from_buf(buf, at).decode()
+      b: byte = self._chunk[self._chunk_pos]
+      self._chunk_pos += 1
+      if b == ord("\n"):
+        return _bytes_from_buf(buf, at).decode()
+      if b != ord("\r"):
+        at = _append_one(buf, at, b)
+
+  async def readline(self) -> str:
+    """异步读取 body 中下一行（不含行尾）；chunked 响应会先解码 chunk。"""
+    if self._chunked:
+      return await self._read_chunked_line()
+    line_b: bytes = await self._reader.readuntil(b"\n")
+    return _strip_line_end(line_b.decode())
 
 
 @immutable

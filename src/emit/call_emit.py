@@ -70,6 +70,17 @@ def _emit_deduced_template_call(tr: Translator, name: str, node: ast.Call) -> st
         return f'freeArray({buf})'
     raise ValueError(name)
 
+
+def _emit_input_typed_call(tr: Translator, elem_t: str, node: ast.Call) -> str:
+    if node.keywords:
+        raise NotImplementedError('input[T](...) 暂不支持关键字参数')
+    if len(node.args) > 1:
+        raise NotImplementedError('input[T](prompt) 至多一个位置参数')
+    if not node.args:
+        return f'::py_input_typed<{elem_t}>()'
+    prompt = tr._visit_value_expr(node.args[0])
+    return f'::py_input_typed<{elem_t}>({prompt})'
+
 def receiver_cpp_type_for_call(tr: Translator, receiver: ast.expr) -> str:
     """方法调用接收者的 C++ 类型（``self._coro`` 等字段优先于 ``@refcount`` ``self`` 句柄）。"""
     if isinstance(receiver, ast.Attribute):
@@ -1210,6 +1221,8 @@ def emit_call_expr(tr: Translator, node: ast.Call):
                 elem_t = tr._parse_type_args(sl, tparams)
             if name in _DEDUCED_TEMPLATE_FUNCS:
                 return _emit_deduced_template_call(tr, name, node)
+            if name == 'input':
+                return _emit_input_typed_call(tr, elem_t, node)
             if name == 'alloc':
                 if node.args:
                     raise NotImplementedError('alloc[T]() 仅分配单个对象；数组请用 allocArray[T](count)')

@@ -367,6 +367,14 @@ PY2CPP_TYPE(PyStr) format(PyFloat v, c_str format_spec = "");
 PY2CPP_TYPE(PyStr) format(PyBool v, c_str format_spec = "");
 PY2CPP_TYPE(PyStr) format(PyChar v, c_str format_spec = "");
 PY2CPP_TYPE(PyStr) format(const PY2CPP_TYPE(PyStr)& v, c_str format_spec = "");
+PY2CPP_TYPE(PyStr) py_input();
+PY2CPP_TYPE(PyStr) py_input(const PY2CPP_TYPE(PyStr)& prompt);
+
+template<typename T>
+T py_input_typed();
+
+template<typename T>
+T py_input_typed(const PY2CPP_TYPE(PyStr)& prompt);
 
 template<typename T>
 auto format(const T& obj, c_str format_spec) -> decltype(obj.__format__(PY2CPP_TYPE(PyStr)(format_spec ? format_spec : "")))

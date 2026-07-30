@@ -40,6 +40,7 @@ class BuiltinStubTests(unittest.TestCase):
     self.assertIn("__cmp__", names)
     self.assertIn("__truediv__", names)
     self.assertIn("hash", names)
+    self.assertIn("input", names)
     self.assertIsNotNone(builtin_global_call("__mod__"))
     self.assertIsNotNone(builtin_global_call("__truediv__"))
     self.assertIsNotNone(builtin_global_call("__floordiv__"))
@@ -84,6 +85,10 @@ class BuiltinStubTests(unittest.TestCase):
     self.assertEqual(
       lookup_module_function_cpp_name(RUNTIME_BUILTINS_MODULE, "virtual"),
       "py_virtual",
+    )
+    self.assertEqual(
+      lookup_module_function_cpp_name(RUNTIME_BUILTINS_MODULE, "input"),
+      "py_input",
     )
     self.assertEqual(
       lookup_module_function_cpp_name(stdlib_module_path("math"), "log"),

@@ -27,6 +27,7 @@ class ExceptionStubTests(unittest.TestCase):
       "KeyError",
       "ValueError",
       "AssertionError",
+      "EOFError",
     ):
       self.assertIn(name, CPP_EXCEPTION_TYPES, msg=name)
 

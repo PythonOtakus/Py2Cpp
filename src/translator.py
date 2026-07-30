@@ -5763,6 +5763,8 @@ class Translator(ast.NodeVisitor):
                 ctor = resolve_ctor_cpp_type(self, name)
                 if ctor:
                     return ctor
+            case ast.Call(func=ast.Subscript(value=ast.Name(id='input'), slice=sl), args=_):
+                return self._parse_type_args(sl, self._active_type_params())
             case ast.Call(func=ast.Attribute(attr='bytes_from_literal')):
                 return cpp_ident('bytes')
             case ast.Call(func=ast.Name(id='getattr'), args=[recv, attr]) if (field := static_field_name(attr)):

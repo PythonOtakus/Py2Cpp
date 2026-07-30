@@ -604,6 +604,16 @@ def format(value, format_spec: str = "") -> str:
   pass
 
 
+@global_call("py_*")
+def input[T = str](prompt: str = "") -> T:
+  """内置 input。
+
+  ``input()`` / ``input[str]()`` 读取 stdin 一行并去掉行尾换行；``input[int]()``
+  等标量特化走 C 层扫描（如 ``scanf("%d", &x)``）；未读到任何字符即 EOF 时抛 ``EOFError``。
+  """
+  return cast[T](prompt)
+
+
 def print(*args, sep: c_str = " ", end: c_str = "\n", flush: bool = False):
   """内置 print：普通实参 ``str(...)`` 后 ``fprintf``；f-string 实参 ``PyStr::format``（见 ``_emit_print``）。"""
   pass

@@ -139,6 +139,7 @@ __all__ = [
   "enumerate",
   "inline_range",
   "format",
+  "input",
   "print",
   "VarStack",
 ]

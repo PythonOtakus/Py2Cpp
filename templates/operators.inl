@@ -1,6 +1,7 @@
 
 #include <stdio.h>
 #include <math.h>
+#include <string.h>
 
 PY2CPP_IGNORE
 #include "py2cpp/operators.h"
@@ -422,6 +423,187 @@ inline PY2CPP_TYPE(PyStr) format(const PY2CPP_TYPE(PyStr)& v, c_str format_spec)
 {
   (void)format_spec;
   return v;
+}
+
+static PyBool _py_input_write_prompt(const PY2CPP_TYPE(PyStr)& prompt)
+{
+  PyInt n = prompt.__len__();
+  if (n <= 0)
+  {
+    return true;
+  }
+  char stack[4096];
+  int at = 0;
+  for (PyInt i = 0; i < n; i += 1)
+  {
+    if (at >= (int)sizeof(stack))
+    {
+      if (fwrite(stack, 1, (size_t)at, stdout) != (size_t)at)
+      {
+        return false;
+      }
+      at = 0;
+    }
+    stack[at] = (char)prompt.__getitem__(i);
+    at += 1;
+  }
+  if (at > 0 && fwrite(stack, 1, (size_t)at, stdout) != (size_t)at)
+  {
+    return false;
+  }
+  return true;
+}
+
+inline PY2CPP_TYPE(PyStr) py_input(const PY2CPP_TYPE(PyStr)& prompt)
+{
+  (void)_py_input_write_prompt(prompt);
+  fflush(stdout);
+
+  char stack[4096];
+  PY2CPP_TYPE(PyArray)<PyChar> codes;
+  PyInt total = 0;
+  while (true)
+  {
+    if (fgets(stack, (int)sizeof(stack), stdin) == nullptr)
+    {
+      if (total <= 0)
+      {
+        throw PY2CPP_TYPE(EOFError)();
+      }
+      break;
+    }
+    int n = (int)strlen(stack);
+    PyBool done = false;
+    if (n > 0 && stack[n - 1] == '\n')
+    {
+      done = true;
+      n -= 1;
+      if (n > 0 && stack[n - 1] == '\r')
+      {
+        n -= 1;
+      }
+    }
+    if (n > 0)
+    {
+      PyInt old = codes.__len__();
+      codes.reshape(old + n, old);
+      for (int i = 0; i < n; i += 1)
+      {
+        codes.__setitem__(old + i, (PyChar)(unsigned char)stack[i]);
+      }
+      total += n;
+    }
+    if (done)
+    {
+      break;
+    }
+  }
+  return PY2CPP_TYPE(PyStr)(codes);
+}
+
+inline PY2CPP_TYPE(PyStr) py_input()
+{
+  return py_input(PY2CPP_TYPE(PyStr)(""));
+}
+
+template<typename T>
+inline T _py_input_scan_value()
+{
+  T out = T();
+  static_assert(sizeof(T) == 0, "py_input_typed<T>: unsupported input type");
+  return out;
+}
+
+template<>
+inline PY2CPP_TYPE(PyStr) _py_input_scan_value<PY2CPP_TYPE(PyStr)>()
+{
+  return py_input();
+}
+
+template<>
+inline PyInt _py_input_scan_value<PyInt>()
+{
+  PyInt out = 0;
+  if (scanf("%d", &out) != 1)
+  {
+    if (feof(stdin))
+    {
+      throw PY2CPP_TYPE(EOFError)();
+    }
+    throw PY2CPP_TYPE(ValueError)();
+  }
+  return out;
+}
+
+template<>
+inline PyInt64 _py_input_scan_value<PyInt64>()
+{
+  PyInt64 out = 0;
+  if (scanf("%lld", &out) != 1)
+  {
+    if (feof(stdin))
+    {
+      throw PY2CPP_TYPE(EOFError)();
+    }
+    throw PY2CPP_TYPE(ValueError)();
+  }
+  return out;
+}
+
+template<>
+inline PyFloat _py_input_scan_value<PyFloat>()
+{
+  PyFloat out = 0;
+  if (scanf("%f", &out) != 1)
+  {
+    if (feof(stdin))
+    {
+      throw PY2CPP_TYPE(EOFError)();
+    }
+    throw PY2CPP_TYPE(ValueError)();
+  }
+  return out;
+}
+
+template<>
+inline PyFloat64 _py_input_scan_value<PyFloat64>()
+{
+  PyFloat64 out = 0;
+  if (scanf("%lf", &out) != 1)
+  {
+    if (feof(stdin))
+    {
+      throw PY2CPP_TYPE(EOFError)();
+    }
+    throw PY2CPP_TYPE(ValueError)();
+  }
+  return out;
+}
+
+template<typename T>
+inline T py_input_typed()
+{
+  return _py_input_scan_value<T>();
+}
+
+template<typename T>
+inline T py_input_typed(const PY2CPP_TYPE(PyStr)& prompt)
+{
+  (void)_py_input_write_prompt(prompt);
+  fflush(stdout);
+  return _py_input_scan_value<T>();
+}
+
+template<>
+inline PY2CPP_TYPE(PyStr) py_input_typed<PY2CPP_TYPE(PyStr)>()
+{
+  return py_input();
+}
+
+template<>
+inline PY2CPP_TYPE(PyStr) py_input_typed<PY2CPP_TYPE(PyStr)>(const PY2CPP_TYPE(PyStr)& prompt)
+{
+  return py_input(prompt);
 }
 
 inline PyInt64 _py_i64_mod(PyInt64 a, PyInt64 b) {

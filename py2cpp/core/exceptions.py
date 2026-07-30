@@ -23,6 +23,12 @@ class StopIteration(Exception):
   pass
 
 
+class EOFError(Exception):
+  """``input()`` 在未读取任何字符即遇到 EOF 时抛出。"""
+
+  pass
+
+
 class TypeError(Exception):
   pass
 

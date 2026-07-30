@@ -38,6 +38,22 @@ class ClientSession:
     writer.close()
     return resp
 
+  def request_options(self, method: str, url: str, options: RequestOptions) -> ClientResponse:
+    pu = UrlData.parse(url)
+    sock: TcpSocket = new()
+    if options.timeout > 0.0:
+      sock.set_timeout(options.timeout)
+    sock.connect(pu.host, pu.port)
+    writer: StreamWriter = new.from_socket(sock)
+    reader: StreamReader = new.from_socket(sock)
+    payload: bytes = options.encode(method, pu)
+    writer.write(payload)
+    writer.drain()
+    resp: ClientResponse = new.read(reader)
+    reader.close()
+    writer.close()
+    return resp
+
 
 @copyable
 class AsyncClientSession:
@@ -49,7 +65,7 @@ class AsyncClientSession:
   async def __aexit__(self):
     return None
 
-  async def _request_impl(self, method: str, url: str, options: RequestOptions) -> ClientResponse:
+  async def request_options(self, method: str, url: str, options: RequestOptions) -> ClientResponse:
     pu = UrlData.parse(url)
     sock: AsyncTcpSocket = new()
     await sock.connect(pu.host, pu.port)
@@ -64,10 +80,21 @@ class AsyncClientSession:
     return resp
 
   async def request(self, method: str, url: str, **options: RequestOptions) -> ClientResponse:
-    return await self._request_impl(method, url, options)
+    pu = UrlData.parse(url)
+    sock: AsyncTcpSocket = new()
+    await sock.connect(pu.host, pu.port)
+    writer: AsyncStreamWriter = new.from_socket(sock)
+    reader: AsyncStreamReader = new.from_socket(sock)
+    payload: bytes = options.encode(method, pu)
+    wrote: int = await writer.write(payload)
+    await writer.drain()
+    resp: ClientResponse = await new.read_async(reader)
+    reader.close()
+    writer.close()
+    return resp
 
   async def get(self, url: str, **options: RequestOptions) -> ClientResponse:
-    return await self._request_impl("GET", url, options)
+    return await self.request("GET", url, **options)
 
   async def post(self, url: str, **options: RequestOptions) -> ClientResponse:
-    return await self._request_impl("POST", url, options)
+    return await self.request("POST", url, **options)

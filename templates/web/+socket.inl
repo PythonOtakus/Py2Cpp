@@ -257,7 +257,10 @@ void PyTcpSocket::__copy__(const PyTcpSocket& other)
   PyTcpSocketState* next = _web_socket_state(other._state);
   _web_retain_state(next);
   PyTcpSocketState* old = _web_socket_state(_state);
-  _web_release_state(old);
+  if (old)
+  {
+    _web_release_state(old);
+  }
   _state = other._state;
 }
 

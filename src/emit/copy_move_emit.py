@@ -163,6 +163,10 @@ def emit_copy_move_special_members(tr: Translator, info: ClassInfo) -> None:
                 tr.write_line(f'{qual}::{cpp}(const {cpp}& other) : _block_size(512), _head(nullptr), _tail(nullptr), _len(0), __moved__(false)')
                 with tr._use_block():
                     tr.write_line('__copy__(other);')
+            elif cpp == 'PyTcpSocket':
+                tr.write_line(f'{qual}::{cpp}(const {cpp}& other) : _state(0)')
+                with tr._use_block():
+                    tr.write_line('__copy__(other);')
             else:
                 with tr._use_block(f'{qual}::{cpp}(const {cpp}& other)'):
                     tr.write_line('__copy__(other);')

@@ -8,7 +8,18 @@ PY2CPP_END
 
 #include <stdint.h>
 #include <string.h>
-#include "sqlite3.h"
+// 尖括号：勿用引号，否则 MSVC 会经已打开的 ``ffi/sqlite/sqlite3.h`` 目录命中生成头（guard 已定义 → C API 被跳过）
+#include <sqlite3.h>
+// C 宏与 FFI 命名空间内 ``static PyInt SQLITE_*`` 同名；统一走 ``ffi_sql::``，避免宏被其它头清掉后裸名未声明
+#ifdef SQLITE_OK
+#undef SQLITE_OK
+#endif
+#ifdef SQLITE_ROW
+#undef SQLITE_ROW
+#endif
+#ifdef SQLITE_DONE
+#undef SQLITE_DONE
+#endif
 
 namespace ffi_sql = ::ffi::sqlite::sqlite3;
 
@@ -40,7 +51,7 @@ static void _sql_bind_int_list(PyUInt64 stmt, const PY2CPP_TYPE(PyList)<PyInt>& 
   while ((i < n))
   {
     int v = params.__getitem__(i);
-    if (ffi_sql::sqlite3_bind_int(stmt, i + 1, v) != SQLITE_OK)
+    if (ffi_sql::sqlite3_bind_int(stmt, i + 1, v) != ffi_sql::SQLITE_OK)
     {
       _sql_throw_operational();
     }
@@ -144,7 +155,7 @@ void PySqliteConnection::_open_impl(PyStr path)
   char pbuf[4096];
   _sql_pystr_to_cbuf(path, pbuf, (int)sizeof(pbuf));
   PyUInt64 db = 0;
-  if (ffi_sql::sqlite3_open(pbuf, &db) != SQLITE_OK)
+  if (ffi_sql::sqlite3_open(pbuf, &db) != ffi_sql::SQLITE_OK)
   {
     if (db)
     {
@@ -177,7 +188,7 @@ void PySqliteConnection::commit()
     return;
   }
   c_str err = nullptr;
-  if (ffi_sql::sqlite3_exec(_db, "COMMIT", 0, 0, &err) != SQLITE_OK)
+  if (ffi_sql::sqlite3_exec(_db, "COMMIT", 0, 0, &err) != ffi_sql::SQLITE_OK)
   {
     if (err)
     {
@@ -198,7 +209,7 @@ void PySqliteConnection::rollback()
     return;
   }
   c_str err = nullptr;
-  if (ffi_sql::sqlite3_exec(_db, "ROLLBACK", 0, 0, &err) != SQLITE_OK)
+  if (ffi_sql::sqlite3_exec(_db, "ROLLBACK", 0, 0, &err) != ffi_sql::SQLITE_OK)
   {
     if (err)
     {
@@ -224,7 +235,7 @@ PySqliteCursor PySqliteConnection::execute(PY2CPP_TYPE(PyStr) sql, const PY2CPP_
   char sbuf[8192];
   _sql_pystr_to_cbuf(sql, sbuf, (int)sizeof(sbuf));
   PyUInt64 stmt = 0;
-  if (ffi_sql::sqlite3_prepare_v2(_db, sbuf, -1, &stmt, nullptr) != SQLITE_OK)
+  if (ffi_sql::sqlite3_prepare_v2(_db, sbuf, -1, &stmt, nullptr) != ffi_sql::SQLITE_OK)
   {
     _sql_throw_operational();
   }
@@ -233,7 +244,7 @@ PySqliteCursor PySqliteConnection::execute(PY2CPP_TYPE(PyStr) sql, const PY2CPP_
   if (!is_sel)
   {
     int rc = ffi_sql::sqlite3_step(stmt);
-    if ((rc != SQLITE_DONE) && (rc != SQLITE_ROW))
+    if ((rc != ffi_sql::SQLITE_DONE) && (rc != ffi_sql::SQLITE_ROW))
     {
       ffi_sql::sqlite3_finalize(stmt);
       _sql_throw_operational();
@@ -302,11 +313,11 @@ PY2CPP_TYPE(PyOptional)<PyTuple<PyInt>> PySqliteCursor::fetchone()
     return PY2CPP_TYPE(PyOptional)<PyTuple<PyInt>>::None_();
   }
   int rc = ffi_sql::sqlite3_step(_stmt);
-  if (rc == SQLITE_ROW)
+  if (rc == ffi_sql::SQLITE_ROW)
   {
     return PY2CPP_TYPE(PyOptional)<PyTuple<PyInt>>::Some(_sql_row_int1(_stmt));
   }
-  if (rc == SQLITE_DONE)
+  if (rc == ffi_sql::SQLITE_DONE)
   {
     _done = true;
     ffi_sql::sqlite3_finalize(_stmt);
@@ -327,12 +338,12 @@ PY2CPP_TYPE(PyList)<PyTuple<PyInt>> PySqliteCursor::fetchall()
   while (true)
   {
     int rc = ffi_sql::sqlite3_step(_stmt);
-    if (rc == SQLITE_ROW)
+    if (rc == ffi_sql::SQLITE_ROW)
     {
       out.append(_sql_row_int1(_stmt));
       continue;
     }
-    if (rc == SQLITE_DONE)
+    if (rc == ffi_sql::SQLITE_DONE)
     {
       break;
     }

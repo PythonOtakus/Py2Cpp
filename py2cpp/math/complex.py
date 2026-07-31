@@ -85,8 +85,7 @@ def log(z: complex) -> complex:
 @immutable
 def log(z: complex, base: float64) -> complex:
   core: complex = _log_core(z)
-  b: complex = new(base, 0.0)
-  denom: complex = _log_core(b)
+  denom: complex = _log_core(complex(base, 0.0))
   return core / denom
 
 

@@ -1,6 +1,6 @@
 """编码规范强检查（``--strict``，默认开启）。
 
-S01–S29 按 A–F 分组（见 ``docs/编码规范.md`` §1.1）；``S06`` 构造优先级用子码 ``S06a``–``S06e``；``S18`` 为覆盖基类 ``@virtual``/``@abstract`` 方法（含继承链上纯虚/虚声明）时子类须 ``@override``；**静态**：覆盖基类 ``@staticmethod``+``@override``，或模块内 ``func[Cls]`` 绑定之 ``@protocol`` 静态虚成员，亦须 ``@staticmethod``+``@override``（不检查 dunder；``@mixin`` 基类豁免）；``S27`` 为 import 布局；``S28`` 为堆/栈数组切片注解；``S29`` 为同类型反向 dunder；``S30`` 为继承顺序（mixin 在实体类前、至多一个实体基类）；``S31`` 禁止显式 ``RefCount``（含 ``RefCount()`` / ``RefCount[T]``；``@refcount`` 类与 ``T: refcount`` 须写 ``T``，清空用 ``new()``）；``S32`` 为 ``@dataclass`` 须至少一个非 ``@optional`` 实例字段；``S33`` 禁止类成员名 ``assign``/``build``/``select``（与译期专用 API 冲突）；``S34`` 禁止非字面量 ``ord``；``S35`` 禁止仅作类型转换且无再赋值的注解临时变量（勿 ``n: int = int(x); return n``）；``S36`` 禁止定长元组解包中未使用的具名绑定（须 ``_`` / ``*_``）；``S37`` 禁止显式 ``PyNone``（须写 ``None``；``py2cpp/core/none.py`` 豁免）；``S38`` 禁止 ``for x in …: yield x``（须 ``yield from …``；``async def`` 异步生成器豁免；``for`` ``else`` 分支除外）；``S41`` 禁止 ``return self._field`` 与 ``self._field = 形参`` 成对的手写 getter/setter（须 ``@property`` 或公有字段）；``S42`` 禁止 trivial ``@property`` getter + 顶层 ``self._field = value`` 与其它语句的 ``@property.setter``（须 ``@property.postsetter`` / 字段简写）；``S45`` 禁止非 ``@dataclass`` 字段使用 ``@optional``；``S46`` 禁止仅为 ``new`` 造类型上下文的注解临时变量（勿 ``sp: T = new(...); self.f = sp``，须 ``self.f = new(...)`` 或无法推断时 ``self.f = Cls(...)``）。
+S01–S29 按 A–F 分组（见 ``docs/编码规范.md`` §1.1）；``S06`` 构造优先级用子码 ``S06a``–``S06e``；``S18`` 为覆盖基类 ``@virtual``/``@abstract`` 方法（含继承链上纯虚/虚声明）时子类须 ``@override``；**静态**：覆盖基类 ``@staticmethod``+``@override``，或模块内 ``func[Cls]`` 绑定之 ``@protocol`` 静态虚成员，亦须 ``@staticmethod``+``@override``（不检查 dunder；``@mixin`` 基类豁免）；``S27`` 为 import 布局；``S28`` 为堆/栈数组切片注解；``S29`` 为同类型反向 dunder；``S30`` 为继承顺序（mixin 在实体类前、至多一个实体基类）；``S31`` 禁止显式 ``RefCount``（含 ``RefCount()`` / ``RefCount[T]``；``@refcount`` 类与 ``T: refcount`` 须写 ``T``，清空用 ``new()``）；``S32`` 为 ``@dataclass`` 须至少一个非 ``@optional`` 实例字段；``S33`` 禁止类成员名 ``assign``/``build``/``select``（与译期专用 API 冲突）；``S34`` 禁止非字面量 ``ord``；``S35`` 禁止仅作类型转换且无再赋值的注解临时变量（勿 ``n: int = int(x); return n``）；``S36`` 禁止定长元组解包中未使用的具名绑定（须 ``_`` / ``*_``）；``S37`` 禁止显式 ``PyNone``（须写 ``None``；``py2cpp/core/none.py`` 豁免）；``S38`` 禁止 ``for x in …: yield x``（须 ``yield from …``；``async def`` 异步生成器豁免；``for`` ``else`` 分支除外）；``S41`` 禁止 ``return self._field`` 与 ``self._field = 形参`` 成对的手写 getter/setter（须 ``@property`` 或公有字段）；``S42`` 禁止 trivial ``@property`` getter + 顶层 ``self._field = value`` 与其它语句的 ``@property.setter``（须 ``@property.postsetter`` / 字段简写）；``S45`` 禁止非 ``@dataclass`` 字段使用 ``@optional``；``S46`` 禁止仅为 ``new`` 造类型上下文的注解临时变量（勿 ``sp: T = new(...); self.f = sp`` / ``fn(sp)``，须 ``self.f = new(...)`` 或实参处 ``fn(Cls(...))`` / ``fn(Union.Variant(...))``）。
 检查 ``py2cpp/``、用户模块与 ``test/**``；``test/fail/`` 豁免；``# py2cpp: strict-off`` 可关单文件。
 
 内部 helper 前缀 ``_sNN_`` / ``_check_sNN_`` 与 §1.1 规则 ID 一致。
@@ -1438,7 +1438,10 @@ def _s46_ast_parents(root: ast.AST) -> dict[ast.AST, ast.AST]:
     return parents
 
 def _s46_is_pure_forward_use(name_node: ast.Name, parents: dict[ast.AST, ast.AST]) -> bool:
-    """``name`` 仅作为整表达式转发：``x = name`` / ``return name``。"""
+    """``name`` 仅作为整表达式转发：``x = name`` / ``return name`` / ``fn(name)`` / ``fn(k=name)``。
+
+    作为另一个 ``new(...)`` / ``new.meth(...)`` 的实参时不算（S06e 禁止嵌套 ``new``，须保留临时变量）。
+    """
     parent = parents.get(name_node)
     if parent is None:
         return False
@@ -1448,7 +1451,39 @@ def _s46_is_pure_forward_use(name_node: ast.Name, parents: dict[ast.AST, ast.AST
         return True
     if isinstance(parent, ast.Return) and parent.value is name_node:
         return True
-    return False
+    call: ast.Call | None = None
+    if isinstance(parent, ast.Call):
+        if any(arg is name_node for arg in parent.args) or any(kw.value is name_node for kw in parent.keywords):
+            call = parent
+    elif isinstance(parent, ast.keyword) and parent.value is name_node:
+        gp = parents.get(parent)
+        if isinstance(gp, ast.Call):
+            call = gp
+    if call is None:
+        return False
+    # 嵌套进另一个 new 构造：临时变量是 S06e 所需，非「仅为类型上下文」
+    if _is_new_ctor_expr(call):
+        return False
+    return True
+
+def _s46_rewrite_new_to_cls(new_text: str, cls: str) -> str:
+    """``new(...)`` / ``new.meth(...)`` → ``Cls(...)`` / ``Cls.meth(...)``（实参等无法用 ``new``）。"""
+    if new_text.startswith('new.'):
+        return f'{cls}.{new_text[4:]}'
+    if new_text.startswith('new('):
+        return f'{cls}{new_text[3:]}'
+    return f'{cls}(...)'
+
+def _s46_new_temp_msg(name: str, ann_text: str, new_text: str) -> str:
+    cls = ann_text if ann_text else 'Cls'
+    cls_form = _s46_rewrite_new_to_cls(new_text, cls)
+    return _strict_msg(
+        f'`{name}: {cls} = {new_text}; … = {name}` / `fn({name})`',
+        f'`… = {new_text}`（有类型上下文）或 `fn({cls_form})`（调用实参等无法推断时）',
+        '仅为 ``new`` 提供类型上下文的注解临时变量',
+        reason='禁止为用 ``new`` 而创建临时变量再立刻转发（含赋值、``return``、调用实参）；优先对目标直接 ``new``，嵌入表达式用具体类名构造（``@union`` 变体为 ``Union.Variant(...)``）',
+        example=f'`self.f = {new_text}` 或 `bus.dispatch({cls_form})`；勿 `{name}: {cls} = {new_text}; bus.dispatch({name})`',
+    )
 
 def _s46_find_stmt_list(stmts: list[ast.stmt], target: ast.stmt) -> tuple[list[ast.stmt], int] | None:
     for i, stmt in enumerate(stmts):
@@ -1480,16 +1515,6 @@ def _s46_find_stmt_list(stmts: list[ast.stmt], target: ast.stmt) -> tuple[list[a
                 return found
     return None
 
-def _s46_new_temp_msg(name: str, ann_text: str, new_text: str) -> str:
-    cls = ann_text if ann_text else 'Cls'
-    return _strict_msg(
-        f'`{name}: {cls} = {new_text}; … = {name}`',
-        f'`… = {new_text}`（有类型上下文）或 `… = {cls}(...)`（无法推断时）',
-        '仅为 ``new`` 提供类型上下文的注解临时变量',
-        reason='禁止为用 ``new`` 而创建临时变量再立刻转发赋值；优先对目标直接 ``new``，类型无法推断时用具体类名构造',
-        example=f'`self.f = {new_text}` 或 `self.f = {cls}(...)`；勿 `{name}: {cls} = {new_text}; self.f = {name}`',
-    )
-
 def _s46_check_new_type_context_temp(checker: _StrictStyleChecker, node: ast.AnnAssign) -> None:
     """S46：勿 ``sp: T = new(...); self.f = sp``（中间无其它语句）。"""
     if checker._s06_in_desugar_host():
@@ -1497,6 +1522,10 @@ def _s46_check_new_type_context_temp(checker: _StrictStyleChecker, node: ast.Ann
     if node.value is None or not _is_new_ctor_expr(node.value):
         return
     if not isinstance(node.target, ast.Name):
+        return
+    # 类型形参 ``U = new()`` 再 ``fn(u)``：实参处无法写 ``new()`` 也无法写具体类名，须保留临时变量
+    ann_root = _ann_root_name(node.annotation)
+    if ann_root is not None and ann_root in checker._scope_type_params:
         return
     func = checker._current_func
     if func is None:
@@ -1511,6 +1540,9 @@ def _s46_check_new_type_context_temp(checker: _StrictStyleChecker, node: ast.Ann
         if isinstance(n, ast.Name) and n.id == name and isinstance(n.ctx, ast.Load):
             loads.append(n)
     if not loads:
+        return
+    # 多处使用（如可写缓冲先 fill 再 encode）不是「仅为类型上下文再立刻转发」
+    if len(loads) > 1:
         return
     if not all(_s46_is_pure_forward_use(n, parents) for n in loads):
         return

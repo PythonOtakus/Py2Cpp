@@ -13,10 +13,11 @@ from .union_expand import (
 
 
 def _is_wildcard_pattern(pattern: ast.pattern) -> bool:
-  if isinstance(pattern, ast.MatchValue):
-    return pattern.value is None and pattern.kind is None
+  """``case _:`` → ``MatchAs()``（``name is None``）；与 ``match_case.is_wildcard_pattern`` 对齐。"""
   if isinstance(pattern, ast.MatchAs):
-    return pattern.name == "_" and pattern.pattern is None
+    if pattern.pattern is not None:
+      return False
+    return pattern.name in (None, "_")
   return False
 
 

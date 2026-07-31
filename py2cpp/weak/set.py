@@ -33,8 +33,7 @@ class WeakSet[T: DictKey & refcount]:
     self._compact()
     if obj in self:
       return
-    w: WeakRef[T] = new(obj)
-    self._refs.append(w)
+    self._refs.append(WeakRef[T](obj))
 
   def discard(self, obj: T) -> None:
     self._compact()

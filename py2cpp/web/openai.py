@@ -353,8 +353,7 @@ def _first_choice_object_field_content(dec: JsonDecoder @ref, field: str) -> str
 
 
 def _response_id(raw_json: str) -> str:
-  dec: JsonDecoder = new.from_text(raw_json)
-  return _object_string_field(dec, "id")
+  return _object_string_field(JsonDecoder.from_text(raw_json), "id")
 
 
 def _response_text(raw_json: str) -> str:

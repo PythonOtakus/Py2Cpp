@@ -216,8 +216,7 @@ class complex[T: Real = float]:
     w: Self = log(self)
     sr: T = w._real * exponent
     si: T = w._imag * exponent
-    scaled: Self = new(sr, si)
-    return exp(scaled)
+    return exp(Self(sr, si))
 
   @overload
   @immutable

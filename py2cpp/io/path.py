@@ -533,8 +533,7 @@ class Path:
 
   @immutable
   def samefile(self, other: str) -> bool:
-    other_p: Self = new(other)
-    return path_samefile(self._path, str(other_p))
+    return path_samefile(self._path, str(Self(other)))
 
   @immutable
   def owner(self) -> str:

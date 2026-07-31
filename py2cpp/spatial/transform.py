@@ -256,14 +256,12 @@ class Transform2D(TransformMixin[Vector2, Rotator, Matrix3]):
   @property
   @immutable
   def right(self) -> Vector2:
-    axis: Vector2 = new.right
-    return self.local_to_world_vector(axis)
+    return self.local_to_world_vector(Vector2.right)
 
   @property
   @immutable
   def down(self) -> Vector2:
-    axis: Vector2 = new.down
-    return self.local_to_world_vector(axis)
+    return self.local_to_world_vector(Vector2.down)
 
   def rotate(self, angle: float64) -> None:
     delta: Rotator = new.from_angle(angle)
@@ -350,20 +348,17 @@ class Transform3D(TransformMixin[Vector3, Quaternion, Matrix4]):
   @property
   @immutable
   def right(self) -> Vector3:
-    axis: Vector3 = new.right
-    return self.local_to_world_vector(axis)
+    return self.local_to_world_vector(Vector3.right)
 
   @property
   @immutable
   def down(self) -> Vector3:
-    axis: Vector3 = new.down
-    return self.local_to_world_vector(axis)
+    return self.local_to_world_vector(Vector3.down)
 
   @property
   @immutable
   def forward(self) -> Vector3:
-    axis: Vector3 = new.forward
-    return self.local_to_world_vector(axis)
+    return self.local_to_world_vector(Vector3.forward)
 
   def rotate(self, axis: Vector3, angle: float64) -> None:
     delta: Quaternion = new.from_axis_angle(axis, angle)

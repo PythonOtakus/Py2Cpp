@@ -285,8 +285,7 @@ class date:
 
   @immutable
   def strftime(self, fmt: str) -> str:
-    st: c_time = new(self.year, self.month, self.day, 0, 0, 0)
-    return strftime(fmt, st)
+    return strftime(fmt, c_time(self.year, self.month, self.day, 0, 0, 0))
 
   @immutable
   def toordinal(self) -> int:
@@ -332,8 +331,7 @@ class time:
 
   @immutable
   def strftime(self, fmt: str) -> str:
-    st: c_time = new(1900, 1, 1, self.hour, self.minute, self.second)
-    return strftime(fmt, st)
+    return strftime(fmt, c_time(1900, 1, 1, self.hour, self.minute, self.second))
 
 
 @copyable
@@ -529,15 +527,10 @@ class datetime:
 
   @immutable
   def strftime(self, fmt: str) -> str:
-    st: c_time = new(
-      self.year,
-      self.month,
-      self.day,
-      self.hour,
-      self.minute,
-      self.second,
+    return strftime(
+      fmt,
+      c_time(self.year, self.month, self.day, self.hour, self.minute, self.second),
     )
-    return strftime(fmt, st)
 
   @immutable
   def time(self) -> time:
@@ -545,15 +538,9 @@ class datetime:
 
   @immutable
   def timestamp(self) -> float64:
-    st: c_time = new(
-      self.year,
-      self.month,
-      self.day,
-      self.hour,
-      self.minute,
-      self.second,
+    base: float64 = mktime(
+      c_time(self.year, self.month, self.day, self.hour, self.minute, self.second),
     )
-    base: float64 = mktime(st)
     frac: float64 = self.microsecond * 1.0
     base += frac / 1000000.0
     return base

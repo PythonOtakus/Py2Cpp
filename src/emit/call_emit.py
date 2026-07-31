@@ -135,12 +135,17 @@ def class_info_from_receiver(tr: Translator, receiver: ast.expr) -> ClassInfo | 
 
 def specialize_param_cpp_types_from_context(info: ClassInfo, param_cpp_types: list[str], context_cpp: str) -> list[str]:
     """用 ``PyIterResult<Y,R>`` / ``PyCoroutine<Y,S,R>`` 等实例化形参占位符。"""
-    from ..analysis.ir import cpp_template_base_and_args, specialize_cpp_template_placeholders
+    from ..analysis.ir import ClassInfo as _CI, cpp_template_base_and_args, specialize_cpp_template_placeholders
     if not context_cpp or not info.type_params:
         return param_cpp_types
-    recv = context_cpp.strip()
+    # ``@refcount`` 接收者是 ``PyRefCount<ThreadPool<PyInt>>``：须先 unwrap，否则会把 ``R`` 误替成 ``ThreadPool<PyInt>``。
+    recv = _CI.unwrap_refcount_type(context_cpp.strip())
     parsed = cpp_template_base_and_args(recv)
-    class_cpp = parsed[0] if parsed else info.cpp_name()
+    class_cpp = info.cpp_name()
+    if parsed is not None:
+        base = parsed[0]
+        if base == class_cpp or base.endswith(f'::{class_cpp}'):
+            class_cpp = base
     return [specialize_cpp_template_placeholders(pt, class_cpp_name=class_cpp, type_params=list(info.type_params), recv_cpp=recv) for pt in param_cpp_types]
 
 def _specialize_call_param_cpp_types(tr: Translator, func: ast.expr, param_cpp_types: list[str] | None) -> list[str] | None:
@@ -1224,6 +1229,20 @@ def emit_call_expr(tr: Translator, node: ast.Call):
                 return mod_tpl
             if name == 'list':
                 elem_t = tr._parse_storage_type(sl, tparams)
+            elif name == 'WeakRef':
+                # 与字段 ``WeakRef[T]`` 存储一致：内层 ``T: refcount`` 用 unwrap，勿 ``PyWeakRef<T>``。
+                wr_ann = ast.Subscript(
+                    value=ast.Name(id='WeakRef', ctx=ast.Load()),
+                    slice=sl,
+                    ctx=ast.Load(),
+                )
+                full = tr._parse_storage_type(wr_ann, tparams)
+                wr_base = cpp_ident('WeakRef')
+                prefix = f'{wr_base}<'
+                if full.startswith(prefix) and full.endswith('>'):
+                    elem_t = full[len(prefix):-1]
+                else:
+                    elem_t = tr._parse_type_args(sl, tparams)
             else:
                 elem_t = tr._parse_type_args(sl, tparams)
             if name in _DEDUCED_TEMPLATE_FUNCS:

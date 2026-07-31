@@ -906,8 +906,7 @@ class Thread:
     handles: list[_ThreadHandle] = _ThreadHandle.actives
     threads: list[Self] = []
     for i in range(len(handles)):
-      thread: Self = new.from_handle(handles[i])
-      threads.append(thread)
+      threads.append(Self.from_handle(handles[i]))
     return threads
 
   @staticproperty
@@ -1013,8 +1012,7 @@ class ThreadPool[R]:
         raise BrokenThreadPool()
       if self.shutdown_flag.load():
         raise RuntimeError("cannot schedule new futures after shutdown")
-      item: _WorkItem[R] = new(future, fn)
-      self.work_queue.put(item)
+      self.work_queue.put(_WorkItem[R](future, fn))
       self._adjust_thread_count()
     finally:
       self.lock.release()

@@ -456,8 +456,7 @@ class MatrixMixin[Vec, Rot]:
 
   @property.setter
   def rotation(self, value: Rot) -> None:
-    m: Self = new.transform(self.position, value, self.scale)
-    self._copy_from(m)
+    self._copy_from(Self.transform(self.position, value, self.scale))
 
   @staticmethod
   @immutable
@@ -623,8 +622,7 @@ class Matrix3(MatrixMixin[Vector2, Rotator]):
 
   @property.setter
   def angle(self, value: float64) -> None:
-    m: Self = new.transform(self.position, Rotator.from_angle(value), self.scale)
-    self._copy_from(m)
+    self._copy_from(Self.transform(self.position, Rotator.from_angle(value), self.scale))
 
   @staticmethod
   @immutable
@@ -688,8 +686,7 @@ class Matrix4(MatrixMixin[Vector3, Quaternion]):
 
   @property.setter
   def euler_angles(self, value: Vector3) -> None:
-    m: Self = new.transform(self.position, Quaternion.from_euler_angles(value), self.scale)
-    self._copy_from(m)
+    self._copy_from(Self.transform(self.position, Quaternion.from_euler_angles(value), self.scale))
 
   @staticmethod
   @immutable

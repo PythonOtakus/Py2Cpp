@@ -29,8 +29,7 @@ class WeakList[T: refcount]:
     return False
 
   def append(self, obj: T) -> None:
-    w: WeakRef[T] = new(obj)
-    self._refs.append(w)
+    self._refs.append(WeakRef[T](obj))
 
   def __getitem__(self, index: int) -> T:
     self._compact()

@@ -4,6 +4,7 @@ from collections.abc import Sequence
 
 from ..constant.stdlib_layout import stdlib_header_include
 from ..constant.stdlib_modules import (
+  UMBRELLA_IO_LATE_IF_PRESENT,
   UMBRELLA_MSVC_COMPAT_BEFORE_MODULE,
   UMBRELLA_MSVC_UNDEF_MACROS,
   UMBRELLA_MSVC_UNDEF_MACROS_EARLY,
@@ -24,10 +25,18 @@ def build_py2cpp_umbrella_header(
   paths = expand_umbrella_include_paths(runtime_prefix, stdlib_modules)
   includes = [f'#include "{p}"' for p in paths]
   datetime_hdr = f'#include "{stdlib_header_include(UMBRELLA_MSVC_COMPAT_BEFORE_MODULE)}"'
-  split_at = len(includes)
+  io_late_hdrs = {
+    f'#include "{stdlib_header_include(m)}"' for m in UMBRELLA_IO_LATE_IF_PRESENT
+  }
+  split_datetime = len(includes)
   for i, line in enumerate(includes):
     if line == datetime_hdr:
-      split_at = i
+      split_datetime = i
+      break
+  split_io_late = len(includes)
+  for i, line in enumerate(includes):
+    if line in io_late_hdrs:
+      split_io_late = i
       break
   debug_block = ""
   if debug:
@@ -44,8 +53,9 @@ def build_py2cpp_umbrella_header(
       "source_note": f"templates/minimal.h（运行时万能头，聚合 {runtime_prefix}/*.h）",
       "runtime_prefix": runtime_prefix,
       "ctx_DebugBlock": debug_block,
-      "ctx_UmbrellaBodyBefore": "\n".join(includes[:split_at]),
-      "ctx_UmbrellaBodyAfter": "\n".join(includes[split_at:]),
+      "ctx_UmbrellaBodyBefore": "\n".join(includes[:split_datetime]),
+      "ctx_UmbrellaBodyMid": "\n".join(includes[split_datetime:split_io_late]),
+      "ctx_UmbrellaBodyIoLate": "\n".join(includes[split_io_late:]),
       "msvc_undef_macros_early": UMBRELLA_MSVC_UNDEF_MACROS_EARLY,
       "msvc_undef_macros": UMBRELLA_MSVC_UNDEF_MACROS,
     },

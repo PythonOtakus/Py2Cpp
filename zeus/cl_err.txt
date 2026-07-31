@@ -1,0 +1,158 @@
+test_editor_smoke.cpp
+generated\runtime\py2cpp/util/protocols.h(20): error C2039: "PyEnumerateIterator": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/protocols.h(13): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/protocols.h(20): error C2873: “PyEnumerateIterator”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/protocols.h(21): error C2039: "PyZipIterator": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/protocols.h(13): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/protocols.h(21): error C2873: “PyZipIterator”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/protocols.h(22): error C2039: "VarStack": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/protocols.h(13): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/protocols.h(22): error C2873: “VarStack”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/protocols.h(23): error C2039: "_EnumMroDec": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/protocols.h(13): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/protocols.h(23): error C2873: “_EnumMroDec”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/protocols.h(24): error C2039: "_MacroProbe": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/protocols.h(13): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/protocols.h(24): error C2873: “_MacroProbe”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/protocols.h(25): error C2039: "_UnionMroDec": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/protocols.h(13): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/protocols.h(25): error C2873: “_UnionMroDec”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/core/exceptions.h(24): error C2039: "PyEnumerateIterator": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/core/exceptions.h(16): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/core/exceptions.h(24): error C2873: “PyEnumerateIterator”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/core/exceptions.h(25): error C2039: "PyZipIterator": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/core/exceptions.h(16): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/core/exceptions.h(25): error C2873: “PyZipIterator”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/core/exceptions.h(26): error C2039: "VarStack": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/core/exceptions.h(16): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/core/exceptions.h(26): error C2873: “VarStack”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/core/exceptions.h(27): error C2039: "_EnumMroDec": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/core/exceptions.h(16): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/core/exceptions.h(27): error C2873: “_EnumMroDec”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/core/exceptions.h(28): error C2039: "_MacroProbe": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/core/exceptions.h(16): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/core/exceptions.h(28): error C2873: “_MacroProbe”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/core/exceptions.h(29): error C2039: "_UnionMroDec": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/core/exceptions.h(16): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/core/exceptions.h(29): error C2873: “_UnionMroDec”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/slice.h(21): error C2039: "PyEnumerateIterator": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/slice.h(13): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/slice.h(21): error C2873: “PyEnumerateIterator”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/slice.h(22): error C2039: "PyZipIterator": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/slice.h(13): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/slice.h(22): error C2873: “PyZipIterator”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/slice.h(23): error C2039: "VarStack": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/slice.h(13): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/slice.h(23): error C2873: “VarStack”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/slice.h(24): error C2039: "_EnumMroDec": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/slice.h(13): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/slice.h(24): error C2873: “_EnumMroDec”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/slice.h(25): error C2039: "_MacroProbe": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/slice.h(13): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/slice.h(25): error C2873: “_MacroProbe”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/slice.h(26): error C2039: "_UnionMroDec": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/slice.h(13): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/slice.h(26): error C2873: “_UnionMroDec”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/slice.inl(7): error C2039: "PyEnumerateIterator": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/slice.h(13): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/slice.inl(7): error C2873: “PyEnumerateIterator”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/slice.inl(8): error C2039: "PyZipIterator": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/slice.h(13): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/slice.inl(8): error C2873: “PyZipIterator”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/slice.inl(9): error C2039: "VarStack": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/slice.h(13): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/slice.inl(9): error C2873: “VarStack”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/slice.inl(10): error C2039: "_EnumMroDec": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/slice.h(13): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/slice.inl(10): error C2873: “_EnumMroDec”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/slice.inl(11): error C2039: "_MacroProbe": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/slice.h(13): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/slice.inl(11): error C2873: “_MacroProbe”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/slice.inl(12): error C2039: "_UnionMroDec": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/slice.h(13): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/slice.inl(12): error C2873: “_UnionMroDec”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/span.h(19): error C2039: "PyEnumerateIterator": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/slice.h(13): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/span.h(19): error C2873: “PyEnumerateIterator”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/span.h(20): error C2039: "PyZipIterator": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/slice.h(13): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/span.h(20): error C2873: “PyZipIterator”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/span.h(21): error C2039: "VarStack": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/slice.h(13): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/span.h(21): error C2873: “VarStack”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/span.h(22): error C2039: "_EnumMroDec": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/slice.h(13): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/span.h(22): error C2873: “_EnumMroDec”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/span.h(23): error C2039: "_MacroProbe": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/slice.h(13): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/span.h(23): error C2873: “_MacroProbe”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/span.h(24): error C2039: "_UnionMroDec": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/slice.h(13): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/span.h(24): error C2873: “_UnionMroDec”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/span.inl(7): error C2039: "PyEnumerateIterator": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/slice.h(13): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/span.inl(7): error C2873: “PyEnumerateIterator”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/span.inl(8): error C2039: "PyZipIterator": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/slice.h(13): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/span.inl(8): error C2873: “PyZipIterator”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/span.inl(9): error C2039: "VarStack": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/slice.h(13): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/span.inl(9): error C2873: “VarStack”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/span.inl(10): error C2039: "_EnumMroDec": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/slice.h(13): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/span.inl(10): error C2873: “_EnumMroDec”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/span.inl(11): error C2039: "_MacroProbe": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/slice.h(13): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/span.inl(11): error C2873: “_MacroProbe”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/span.inl(12): error C2039: "_UnionMroDec": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/slice.h(13): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/span.inl(12): error C2873: “_UnionMroDec”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/core/iter_result.h(40): error C2039: "PyEnumerateIterator": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/core/iter_result.h(12): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/core/iter_result.h(40): error C2873: “PyEnumerateIterator”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/core/iter_result.h(41): error C2039: "PyZipIterator": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/core/iter_result.h(12): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/core/iter_result.h(41): error C2873: “PyZipIterator”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/core/iter_result.h(42): error C2039: "VarStack": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/core/iter_result.h(12): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/core/iter_result.h(42): error C2873: “VarStack”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/core/iter_result.h(43): error C2039: "_EnumMroDec": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/core/iter_result.h(12): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/core/iter_result.h(43): error C2873: “_EnumMroDec”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/core/iter_result.h(44): error C2039: "_MacroProbe": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/core/iter_result.h(12): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/core/iter_result.h(44): error C2873: “_MacroProbe”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/core/iter_result.h(45): error C2039: "_UnionMroDec": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/core/iter_result.h(12): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/core/iter_result.h(45): error C2873: “_UnionMroDec”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/memory.h(27): error C2039: "PyEnumerateIterator": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/memory.h(17): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/memory.h(27): error C2873: “PyEnumerateIterator”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/memory.h(28): error C2039: "PyZipIterator": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/memory.h(17): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/memory.h(28): error C2873: “PyZipIterator”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/memory.h(29): error C2039: "VarStack": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/memory.h(17): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/memory.h(29): error C2873: “VarStack”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/memory.h(30): error C2039: "_EnumMroDec": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/memory.h(17): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/memory.h(30): error C2873: “_EnumMroDec”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/memory.h(31): error C2039: "_MacroProbe": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/memory.h(17): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/memory.h(31): error C2873: “_MacroProbe”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/memory.h(32): error C2039: "_UnionMroDec": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/memory.h(17): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/memory.h(32): error C2873: “_UnionMroDec”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/memory.inl(10): error C2039: "PyEnumerateIterator": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/memory.h(17): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/memory.inl(10): error C2873: “PyEnumerateIterator”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/memory.inl(11): error C2039: "PyZipIterator": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/memory.h(17): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/memory.inl(11): error C2873: “PyZipIterator”: 符号不能用在 using 声明中
+generated\runtime\py2cpp/util/memory.inl(12): error C2039: "VarStack": 不是 "py2cpp" 的成员
+generated\runtime\py2cpp/util/memory.h(17): note: 参见“py2cpp”的声明
+generated\runtime\py2cpp/util/memory.inl(12): fatal error C1003: 错误计数超过 100；正在停止编译
+正在生成代码...
+正在编译...
+sqlite3.c
+正在生成代码...

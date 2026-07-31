@@ -367,6 +367,17 @@ def write_per_module_headers(tr: Translator) -> None:
       f"#define {guard}",
       "",
     ]
+    # UI 等可能先于万能头 io-late ``#undef`` 拉入本头；在头内再清一轮 Win 宏（如 ``stat``）
+    if module_path in ("py2cpp/io/path", "py2cpp/io/file/path", "py2cpp/io/file"):
+      from ..constant.stdlib_modules import UMBRELLA_MSVC_UNDEF_MACROS
+
+      content.append("#ifdef _MSC_VER")
+      for macro in UMBRELLA_MSVC_UNDEF_MACROS:
+        content.append(f"#ifdef {macro}")
+        content.append(f"#undef {macro}")
+        content.append("#endif")
+      content.append("#endif")
+      content.append("")
     ma = tr.module_analysis.get(module_path, ModuleAnalysis(module_path))
     extra_includes: list[str] = []
     if module_path == _JSON_API_MODULE:
@@ -416,6 +427,9 @@ def write_per_module_headers(tr: Translator) -> None:
           if tr._is_ffi_module(module_path)
           else f"{module_path}.inl"
         )
+        thunk_decls = getattr(tr, "_py_callable_thunk_decls_by_module", {}).get(module_path, [])
+        if thunk_decls:
+          inl_tail.extend(["", *thunk_decls, ""])
         inl_tail.extend(["", f'#include "{inl_rel}"', ""])
         if module_path in _HEADER_INL_BEFORE_NS_CLOSE:
           content = insert_inl_before_namespace_close(content, module_path, inl_tail)

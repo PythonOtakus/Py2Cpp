@@ -2401,6 +2401,40 @@ def choose(x: int, y: int) -> int:
 """
     )
 
+  def test_s46_rejects_new_type_context_temp_call_arg(self):
+    self._expect_strict_fail(
+      """@union
+class Cmd:
+  @variant
+  class Go:
+    n: int
+
+def take(c: Cmd) -> int:
+  return 0
+
+def bad() -> int:
+  c: Cmd = new.Go(1)
+  return take(c)
+""",
+      "S46",
+    )
+
+  def test_s46_allows_union_variant_in_call_arg(self):
+    self._translate(
+      """@union
+class Cmd:
+  @variant
+  class Go:
+    n: int
+
+def take(c: Cmd) -> int:
+  return 0
+
+def ok() -> int:
+  return take(Cmd.Go(1))
+"""
+    )
+
   def test_s46_rejects_new_type_context_temp_assign(self):
     self._expect_strict_fail(
       """@copyable

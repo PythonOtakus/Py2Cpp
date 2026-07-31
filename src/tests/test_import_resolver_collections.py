@@ -66,6 +66,26 @@ class ImportResolverCollectionsTests(unittest.TestCase):
     )
     self.assertEqual(p, "py2cpp/text")
 
+  def test_user_subpackage_level2_to_project_root(self):
+    """``editor/inspector`` 上 ``from ..command`` → 工程根 ``command``（勿误判越界）。"""
+    rt = Path("py2cpp").resolve()
+    p = resolve_relative_module_path(
+      "editor/inspector",
+      level=2,
+      module="command",
+      runtime_root=rt,
+      project_root=Path("zeus/src").resolve(),
+    )
+    self.assertEqual(p, "command")
+    with self.assertRaises(ValueError):
+      resolve_relative_module_path(
+        "editor/inspector",
+        level=3,
+        module="command",
+        runtime_root=rt,
+        project_root=Path("zeus/src").resolve(),
+      )
+
   def test_discover_includes_set_via_py2cpp_star(self):
     mods = discover_translation_modules(
       Path("test/util/test_list.py").resolve(),

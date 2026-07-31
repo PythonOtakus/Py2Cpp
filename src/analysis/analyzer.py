@@ -2527,6 +2527,8 @@ class SignatureBuilder:
           return rt, ""
       cpp = resolve_host_cpp_type(method.returns.id, info.template_cpp_type())
       if cpp is not None:
+        # ``Self`` / 同名宿主 → 与形参/字段一致走 ``@refcount`` 存储层（勿裸 ``T``）
+        cpp = self._storage_cpp_type(cpp)
         if method.name in ("__enter__", "__iter__"):
           return f"{cpp}&", ""
         return cpp, ""
@@ -3462,20 +3464,29 @@ class SemanticAnalyzer:
       if any(d.module_path == module_path for d in tr.delegates.values()):
         if _delegate_h not in includes:
           includes.insert(0, _delegate_h)
-      for imp in tr.module_import_bindings.get(module_path, {}).values():
-        if imp.kind == "delegate":
-          from .type_deps import header_for_module
-
-          h = header_for_module(imp.module_path)
-          if h != own_header and h not in includes:
-            includes.append(h)
+      from .type_deps import header_for_module
+      from .import_resolver import is_runtime_module_path
       from ..constant.ffi_layout import ffi_header_include, is_ffi_module_path
 
       for imp in tr.module_import_bindings.get(module_path, {}).values():
+        if not imp.module_path or imp.module_path == module_path:
+          continue
         if is_ffi_module_path(imp.module_path):
           h = ffi_header_include(imp.module_path)
           if h not in includes:
             includes.append(h)
+          continue
+        if is_runtime_module_path(imp.module_path):
+          # stdlib 仍靠类型文本推导，避免函数 import 拉满头文件环。
+          if imp.kind == "delegate":
+            h = header_for_module(imp.module_path)
+            if h != own_header and h not in includes:
+              includes.append(h)
+          continue
+        # 用户工程：仅函数符号的跨模块 import 也须 #include 对端头。
+        h = header_for_module(imp.module_path)
+        if h != own_header and h not in includes:
+          includes.append(h)
       pre, forward, post = finalize_module_headers(module_path, includes)
       ma = tr.module_analysis[module_path]
       ma.includes = pre

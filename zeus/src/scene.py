@@ -8,6 +8,7 @@ from py2cpp.spatial.rotator import Quaternion
 from py2cpp.spatial.transform import Transform3D
 from py2cpp.spatial.vector import Vector3
 
+from .assets.fbx_ascii import read_fbx
 from .render.mesh import Mesh
 
 
@@ -37,6 +38,7 @@ class Component:
 
   kind: str = "Component"
   enabled: bool = True
+  asset_path: str = ""
   _owner: GameObject | None = None
 
   @property
@@ -155,7 +157,7 @@ class Transform(Component):
 
 @refcount
 class MeshComponent(Transform):
-  """``Transform`` + ``Mesh``。"""
+  """``Transform`` + ``Mesh``；模型资产路径为 ``.fbx``。"""
 
   has_mesh: bool = False
   mesh: Mesh = new()
@@ -164,6 +166,7 @@ class MeshComponent(Transform):
   def __init__(self):
     self.kind = "MeshComponent"
     self.enabled = True
+    self.asset_path = ""
     self._owner = None
     self.space = new("transform")
     self.has_mesh = False
@@ -173,6 +176,13 @@ class MeshComponent(Transform):
   def set_cube(self, size: float64) -> None:
     self.kind = "MeshComponent"
     self.mesh = new.colored_cube(size, self.color)
+    self.has_mesh = True
+    self.asset_path = ""
+
+  def load_fbx(self, path: str) -> None:
+    self.kind = "MeshComponent"
+    self.asset_path = path
+    self.mesh = read_fbx(path, self.color)
     self.has_mesh = True
 
 
@@ -237,6 +247,18 @@ class GameObject(GameNodeMixin):
   def child_count(self) -> int:
     return len(self._children)
 
+  def append_hierarchy_names(
+    self, names: list[str] @ref, depths: list[int] @ref, depth: int,
+  ) -> None:
+    """深度优先写出对象树（供编辑器 Hierarchy；避免对外暴露 ``_children``）。"""
+    names.append(self.name)
+    depths.append(depth)
+    for i in range(len(self._children)):
+      self._children[i].append_hierarchy_names(names, depths, depth + 1)
+
+  def child_at(self, index: int) -> Self:
+    return self._children[index]
+
   def attach(self, child: Self) -> None:
     self._children.append(child)
     child._parent = self
@@ -289,6 +311,9 @@ class GameObject(GameNodeMixin):
 
   def component_count(self) -> int:
     return len(self._components)
+
+  def component_at(self, index: int) -> Component:
+    return self._components[index]
 
   def _update(self, dt: float64) -> None:
     pass

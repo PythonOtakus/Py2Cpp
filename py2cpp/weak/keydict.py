@@ -50,8 +50,7 @@ class WeakKeyDict[K: DictKey & refcount, V]:
         if k is key:
           self._values[i] = value
           return
-    wk: WeakRef[K] = new(key)
-    self._keys.append(wk)
+    self._keys.append(WeakRef[K](key))
     self._values.append(value)
 
   def __delitem__(self, key: K) -> None:

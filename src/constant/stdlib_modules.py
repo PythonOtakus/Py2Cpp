@@ -71,7 +71,8 @@ UMBRELLA_PRIORITY_MODULES: tuple[str, ...] = (
 
 UMBRELLA_MSVC_COMPAT_BEFORE_MODULE = "system/datetime"
 
-# Win32 宏与 Py2Cpp 符号冲突；万能头 ``minimal.h`` 在 include 前 / ``datetime`` 前 / 末尾各 ``#undef`` 一轮。
+# Win32 宏与 Py2Cpp 符号冲突；万能头 ``minimal.h`` 在 include 前 / ``datetime`` 前 /
+# ``io`` late（path 等，UI 之后）前 / 末尾各 ``#undef`` 一轮。
 UMBRELLA_MSVC_UNDEF_MACROS_EARLY: tuple[str, ...] = (
   "Yield",
   "Return",
@@ -95,6 +96,17 @@ UMBRELLA_MSVC_UNDEF_MACROS: tuple[str, ...] = (
   "replace",
   # rpcndr.h：#define small char（变量名 small 会被展开）；勿 undef far/near（会弄坏 Win 头）
   "small",
+  # sys/stat.h / crt：Path.stat() 方法名与宏冲突（UI 拉入 windows.h 后）
+  "stat",
+  # sys/stat.h：``S_IFCHR`` 等为 ``0x2000`` 一类宏，``file::S_IFCHR`` 会变成 ``file::0x2000``（C2589）
+  "S_IFMT",
+  "S_IFDIR",
+  "S_IFCHR",
+  "S_IFBLK",
+  "S_IFREG",
+  "S_IFIFO",
+  "S_IFLNK",
+  "S_IFSOCK",
   "Yield",
   "Return",
 )

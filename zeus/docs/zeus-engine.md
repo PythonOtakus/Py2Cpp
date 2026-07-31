@@ -428,7 +428,7 @@ Inspector：对象字段 + 组件列表字段（含 root `Transform` TRS）。
 
 **暂不实现（Phase 3）**：完整 Assets 浏览器、撤销栈、多视口、材质编辑器。
 
-**验收**：编辑器进程能加载场景 → 改 root 位移 → Play 若干帧 → 保存再加载一致。
+**验收**：`test_editor_smoke.exe` 失败数 0（命令改位姿、JSON 往返、Hierarchy/Inspector UI 烟雾；Scene View 独立窗可后置）。
 
 ### Phase 4 — 命令系统
 
@@ -512,27 +512,31 @@ Phase 0–2（已完成）
 
 ### Editor（Phase 3）
 
-- [ ] Hierarchy + Inspector + Play/Stop
-- [ ] 保存/加载含组件列表的场景，字段可改
+- [x] Hierarchy + Inspector + Play/Stop（`py2cpp.ui` 最小双窗；`test_editor_smoke`）
+- [x] 保存/加载含组件列表的场景 JSON（`scene_io`）；Inspector 可改 name/active/visible/局部位移
+- [x] 精简 `CommandBus` + 核心 `@union` 命令（完备清单与 Play 写限制见 Phase 4）
 
 ### 命令 / 插件 / MCP（Phase 4–5）
 
-- [ ] 命令总线覆盖 §8 清单核心子集
-- [ ] 示例插件注册；MCP 可改 root `Transform` 与组件字段
+- [x] Play 态写限制；object create/delete/rename/set_* / add Mesh·Camera / play.* / editor.select / scene save·load（`.zas`）
+- [ ] 示例插件注册；MCP（**Phase 5 暂不做**）
 
 ### Jump / ECS（Phase 6–7）
 
-- [ ] 跳一跳可玩；编辑器可调参
-- [ ] （可选）ECS 热路径结果一致
+- [x] 跳一跳 headless：`JumpMotor` FSM + `PlatformPad` + 重力落点 + `test_jump` 满分蓄力得分
+- [x] 资产约定：场景 `.zas`；模型 `.fbx`（ASCII Vertices 子集）
+- [ ] 有窗可玩 demo / 编辑器调 `jump_power`（可后置）
+- [ ] （可选）ECS 热路径 — **Phase 7 暂不做**
 
 ---
 
 ## 15. 下一步建议
 
-1. **Phase 3**：场景 JSON 图式定稿 → Hierarchy/Inspector 最小 UI（或先做无 UI 的编辑命令测例）。
-2. **Phase 4**：落地 `CommandBus` + `@union` 命令，Editor 只发命令。
-3. **Phase 5**：manifest 插件 + MCP 包装同一总线。
-4. **Phase 6**：跳一跳 demo；输入与 FSM。
-5. 有 profiling 数据后再上 **Phase 7** ECS。
+1. 有窗跳一跳入口（`platform/input` 已有 space / 鼠标左键蓄力钩子）。
+2. 编辑器 Inspector 暴露 `JumpMotor.jump_power` 等字段并 Play 验证。
+3. 需要外部工具改场景时再做 **Phase 5** MCP。
+4. 有 profiling 数据后再上 **Phase 7** ECS。
+
+**资产后缀**：场景与引擎侧序列化资产统一 `.zas`（Zeus Asset）；网格模型通用 `.fbx`。
 
 实现新阶段前若改对外 API / 序列化格式，仍按 py2cpp-design「先问清再实现」对齐后再改 `zeus/src`。

@@ -85,6 +85,27 @@ def same(a: Widget, b: Widget) -> bool:
       compact = cpp.replace(" ", "")
       self.assertIn("(&(a))==(&(b))", compact)
 
+  def test_pointer_field_from_self_is_this_not_address_of_this(self):
+    src = """
+from py2cpp import *
+
+class Doc:
+  peer: Pointer[Self] = None
+
+  def wire(self) -> None:
+    self.peer = self
+"""
+    with tempfile.TemporaryDirectory() as tmp:
+      out = Path(tmp)
+      py = out / "mod.py"
+      py.write_text(src, encoding="utf-8")
+      _, cpp_path = Translator.translate_file(
+        str(py), output_dir=str(out), include_stdlib=True, strict=False,
+      )
+      compact = cpp_path.read_text(encoding="utf-8").replace(" ", "")
+      self.assertIn("this->peer=this", compact)
+      self.assertNotIn("=&this", compact)
+
 
 if __name__ == "__main__":
   unittest.main()

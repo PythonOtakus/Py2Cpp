@@ -14,6 +14,8 @@ GLFW_CONTEXT_VERSION_MINOR: int = 139267
 GLFW_PRESS: int = 1
 GLFW_RELEASE: int = 0
 GLFW_KEY_ESCAPE: int = 256
+GLFW_KEY_SPACE: int = 32
+GLFW_MOUSE_BUTTON_LEFT: int = 0
 
 @native
 @native_name("glfwInit")
@@ -60,3 +62,7 @@ def glfwWindowShouldClose(window: GLFWwindow_h) -> int: ...
 @native
 @native_name("glfwGetKey")
 def glfwGetKey(window: GLFWwindow_h, key: int) -> int: ...
+
+@native
+@native_name("glfwGetMouseButton")
+def glfwGetMouseButton(window: GLFWwindow_h, button: int) -> int: ...

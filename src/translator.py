@@ -204,6 +204,7 @@ class Translator(ast.NodeVisitor):
         self.per_module_source_lines: dict[str, list[str]] = {}
         self._py_callable_thunk_bodies: list[str] = []
         self._py_callable_thunk_names: dict[tuple[str, str, str], str] = {}
+        self._py_callable_thunk_decls_by_module: dict[str, list[str]] = {}
         self.lazy_param_default_exprs: dict[int, dict[str, ast.expr]] = {}
         self._lazy_lambda_counter = 0
         self._delegate_lambda_counter: int = 0
@@ -1579,7 +1580,16 @@ class Translator(ast.NodeVisitor):
             rhs_t = strip_cpp_ref(self._infer_expr_cpp_type(rhs_node) or '')
             if tgt.endswith('&') and rhs_t.endswith('*'):
                 return f'(*{expr})'
-            if tgt.endswith('*') and rhs_t and (not rhs_t.endswith('*')) and (not is_refcount_type(rhs_t)) and (not expr.startswith('&')) and isinstance(rhs_node, ast.Name):
+            # ``self`` 在成员函数里已是 ``this``（指针），勿再 ``&this``。
+            if (
+                tgt.endswith('*')
+                and rhs_t
+                and (not rhs_t.endswith('*'))
+                and (not is_refcount_type(rhs_t))
+                and (not expr.startswith('&'))
+                and isinstance(rhs_node, ast.Name)
+                and rhs_node.id != 'self'
+            ):
                 return f'&{expr}'
         return expr
 
@@ -4617,7 +4627,10 @@ class Translator(ast.NodeVisitor):
         thunk_name = f'{cls_cpp}_{method_cpp}_py_callable_thunk'
         cls_qual = qualify_symbol_in_module(class_info.module_path, cls_cpp)
         call_args = param_args if param_args else ''
-        body_lines: list[str] = [f"static {ret} {thunk_name}(void* ctx{(', ' + param_decls if param_decls else '')}) {{"]
+        # 非 static：声明写入类所属模块 ``.h``（``#include .inl`` 之前），定义在入口 ``.cpp``。
+        sig = f"{ret} {thunk_name}(void* ctx{(', ' + param_decls if param_decls else '')})"
+        self._py_callable_thunk_decls_by_module.setdefault(class_info.module_path, []).append(f'{sig};')
+        body_lines: list[str] = [f"{sig} {{"]
         invoke = f'static_cast<{cls_qual}*>(ctx)->{method_cpp}({call_args})'
         if ret == 'void':
             body_lines.append(f'  {invoke};')
@@ -5582,7 +5595,16 @@ class Translator(ast.NodeVisitor):
             args = self._parse_type_args(type_args_slice, set(info.type_params))
             return f'{info.cpp_name()}<{args}>'
         if context_cpp and '<' in context_cpp:
-            return context_cpp.strip()
+            # 仅当上下文是本 union 的实例化（如 ``BoxT[int]``）时采用；勿把
+            # ``Json.dumps`` 误匹配的 ``PyList<T>`` 形参当成构造目标类型。
+            from .analysis.ir import cpp_template_base_and_args
+            ctx = context_cpp.strip()
+            parsed = cpp_template_base_and_args(ctx)
+            cpp = info.cpp_name()
+            if parsed is not None:
+                base = parsed[0]
+                if base == cpp or base.endswith(f'::{cpp}'):
+                    return ctx
         if info.is_template():
             return info.template_cpp_type()
         return info.cpp_name()

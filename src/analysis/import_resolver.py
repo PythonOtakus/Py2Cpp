@@ -134,13 +134,14 @@ def resolve_relative_module_path(
           f"relative import with {level} leading dot(s) from {importer_path!r} "
           f"escapes above {RUNTIME_PKG!r} (step {step + 1}/{level - 1})",
         )
-      parent = module_path_package(base)
-      if not parent:
+      # 用户工程根路径为空串：``editor/foo`` 上 ``from ..command`` 升到根合法；
+      # 已在根再升一级才越界（对齐 PEP 328；``py2cpp`` 包根由上支 RUNTIME_PKG 拦截）。
+      if not base:
         raise ValueError(
           f"relative import with {level} leading dot(s) from {importer_path!r} "
-          f"escapes above package {base!r} (step {step + 1}/{level - 1})",
+          f"escapes above project root (step {step + 1}/{level - 1})",
         )
-      base = parent
+      base = module_path_package(base)
   if not module:
     return base
   tail = module.replace(".", "/")

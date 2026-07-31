@@ -76,6 +76,57 @@ echo === [zeus] run test_render ===
 "%ZEUS_ROOT%generated\zeus\src\test_render.exe"
 if errorlevel 1 exit /b 1
 
+echo === [zeus] translate test_editor_smoke ===
+%PY% main.py zeus\src\test_editor_smoke.py -o zeus\generated
+if errorlevel 1 exit /b 1
+
+echo === [zeus] compile test_editor_smoke ===
+cl /nologo /EHsc /utf-8 /std:c++14 ^
+  /I"%ZEUS_ROOT%generated" /I"%ZEUS_ROOT%generated\zeus\src" /I"%ZEUS_RUNTIME_INC%" /I"%PY2CPP_RUNTIME_INC%" /I"%SQLITE_INC%" ^
+  "%ZEUS_ROOT%generated\zeus\src\test_editor_smoke.cpp" ^
+  "%SQLITE_INC%\sqlite3.c" ^
+  /Fe:"%ZEUS_ROOT%generated\zeus\src\test_editor_smoke.exe" ^
+  /link /STACK:8388608 user32.lib gdi32.lib gdiplus.lib comdlg32.lib ole32.lib
+if errorlevel 1 exit /b 1
+
+echo === [zeus] run test_editor_smoke ===
+"%ZEUS_ROOT%generated\zeus\src\test_editor_smoke.exe"
+if errorlevel 1 exit /b 1
+
+echo === [zeus] translate test_commands ===
+%PY% main.py zeus\src\test_commands.py -o zeus\generated
+if errorlevel 1 exit /b 1
+
+echo === [zeus] compile test_commands ===
+cl /nologo /EHsc /utf-8 /std:c++14 ^
+  /I"%ZEUS_ROOT%generated" /I"%ZEUS_ROOT%generated\zeus\src" /I"%ZEUS_RUNTIME_INC%" /I"%PY2CPP_RUNTIME_INC%" /I"%SQLITE_INC%" ^
+  "%ZEUS_ROOT%generated\zeus\src\test_commands.cpp" ^
+  "%SQLITE_INC%\sqlite3.c" ^
+  /Fe:"%ZEUS_ROOT%generated\zeus\src\test_commands.exe" ^
+  /link /STACK:8388608
+if errorlevel 1 exit /b 1
+
+echo === [zeus] run test_commands ===
+"%ZEUS_ROOT%generated\zeus\src\test_commands.exe"
+if errorlevel 1 exit /b 1
+
+echo === [zeus] translate test_jump ===
+%PY% main.py zeus\src\test_jump.py -o zeus\generated
+if errorlevel 1 exit /b 1
+
+echo === [zeus] compile test_jump ===
+cl /nologo /EHsc /utf-8 /std:c++14 ^
+  /I"%ZEUS_ROOT%generated" /I"%ZEUS_ROOT%generated\zeus\src" /I"%ZEUS_RUNTIME_INC%" /I"%PY2CPP_RUNTIME_INC%" /I"%SQLITE_INC%" ^
+  "%ZEUS_ROOT%generated\zeus\src\test_jump.cpp" ^
+  "%SQLITE_INC%\sqlite3.c" ^
+  /Fe:"%ZEUS_ROOT%generated\zeus\src\test_jump.exe" ^
+  /link /STACK:8388608
+if errorlevel 1 exit /b 1
+
+echo === [zeus] run test_jump ===
+"%ZEUS_ROOT%generated\zeus\src\test_jump.exe"
+if errorlevel 1 exit /b 1
+
 echo.
 echo [zeus] ALL GREEN
 exit /b 0

@@ -2543,8 +2543,7 @@ class JsonDecoder:
       return self.str_assign_from_seg_ref(seg)
     copy_buf(buf, seg.at(), seg_len)
     dst: str = ""
-    owned: span[char] = new(buf, seg_len, 1)
-    dst.adopt_span(owned)
+    dst.adopt_span(span[char](buf, seg_len, 1))
     self.str_arena.release(buf)
     return dst
 

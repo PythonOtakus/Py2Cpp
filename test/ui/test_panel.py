@@ -5,75 +5,64 @@ from py2cpp.ui.meta import UIInvisibleMeta, UILabelMeta, UISliderMeta
 from py2cpp.ui.panel import UIPanelMixin
 from py2cpp.ui.window import UIWindow
 
-
 class PanelInvisibleTests(TestCaseMixin):
-  _test_tag = 2
+    _test_tag = 2
 
-  @override
-  def test(self):
-    cfg: PlayerConfig = new()
-    win: UIWindow = new()
-    cfg.draw_panel(win)
-    self.assertEqual(cfg._seed, 0)
-
+    @override
+    def test(self):
+        cfg: PlayerConfig = new()
+        cfg.draw_panel(UIWindow())
+        self.assertEqual(cfg._seed, 0)
 
 class PanelAutoExposeTests(TestCaseMixin):
-  _test_tag = 1
+    _test_tag = 1
 
-  @override
-  def test(self):
-    cfg: PlayerConfig = new()
-    win: UIWindow = new()
-    cfg.draw_panel(win)
-    self.assertEqual(cfg.hp, 50)
-    self.assertEqual(cfg.name, "hero")
-    self.assertTrue(cfg.enabled)
-
+    @override
+    def test(self):
+        cfg: PlayerConfig = new()
+        cfg.draw_panel(UIWindow())
+        self.assertEqual(cfg.hp, 50)
+        self.assertEqual(cfg.name, 'hero')
+        self.assertTrue(cfg.enabled)
 
 class PanelSliderTests(TestCaseMixin):
-  _test_tag = 3
+    _test_tag = 3
 
-  @override
-  def test(self):
-    cfg: PlayerConfig = new()
-    cfg.hp = 99
-    win: UIWindow = new()
-    cfg.draw_panel(win)
-    self.assertEqual(cfg.hp, 99)
-    cfg.hp = 200
-    self.assertEqual(cfg.hp, 200)
-
+    @override
+    def test(self):
+        cfg: PlayerConfig = new()
+        cfg.hp = 99
+        cfg.draw_panel(UIWindow())
+        self.assertEqual(cfg.hp, 99)
+        cfg.hp = 200
+        self.assertEqual(cfg.hp, 200)
 
 class PanelCreateTests(TestCaseMixin):
-  _test_tag = 4
+    _test_tag = 4
 
-  @override
-  def test(self):
-    cfg: PlayerConfig = new()
-    win: UIWindow = cfg.create_panel("My Panel", 480, 320)
-    self.assertTrue(win.handle != 0)
-    self.assertEqual(win.title, "My Panel")
-    win.close()
-    win2: UIWindow = cfg.create_panel()
-    self.assertTrue(win2.handle != 0)
-    self.assertEqual(win2.title, "PlayerConfig")
-    win2.close()
-
+    @override
+    def test(self):
+        cfg: PlayerConfig = new()
+        win: UIWindow = cfg.create_panel('My Panel', 480, 320)
+        self.assertTrue(win.handle != 0)
+        self.assertEqual(win.title, 'My Panel')
+        win.close()
+        win2: UIWindow = cfg.create_panel()
+        self.assertTrue(win2.handle != 0)
+        self.assertEqual(win2.title, 'PlayerConfig')
+        win2.close()
 
 @dataclass
 class PlayerConfig(UIPanelMixin, friends=(PanelInvisibleTests,)):
-  hp: int @UILabelMeta("HP") @UISliderMeta(0, 100) = 50
-  name: str @UILabelMeta("Name") = "hero"
-  enabled: bool = True
-  _seed: int @UIInvisibleMeta = 0
-
+    hp: int @ UILabelMeta('HP') @ UISliderMeta(0, 100) = 50
+    name: str @ UILabelMeta('Name') = 'hero'
+    enabled: bool = True
+    _seed: int @ UIInvisibleMeta = 0
 
 def main() -> int:
-  suite: TestSuite = TestSuite()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
-    suite.addTest(Class())
-  return TextTestRunner().run(suite)
-
-
-if __name__ == "__main__":
-  raise SystemExit(main())
+    suite: TestSuite = TestSuite()
+    for Class in TestCaseMixin.iter_subclasses(sort_const='_test_tag'):
+        suite.addTest(Class())
+    return TextTestRunner().run(suite)
+if __name__ == '__main__':
+    raise SystemExit(main())

@@ -19,6 +19,8 @@ from ffi.gl.gl import (
   glFrustum,
   glLoadIdentity,
   glMatrixMode,
+  glPopMatrix,
+  glPushMatrix,
   glRotatef,
   glTranslatef,
   glVertex3d,
@@ -80,3 +82,9 @@ class GLDevice:
       glVertex3d(x, y, z)
     glEnd()
     self.draw_count += 1
+
+  def draw_mesh_at(self, mesh: Mesh, x: float64, y: float64, z: float64) -> None:
+    glPushMatrix()
+    glTranslatef(x, y, z)
+    self.draw_mesh(mesh)
+    glPopMatrix()

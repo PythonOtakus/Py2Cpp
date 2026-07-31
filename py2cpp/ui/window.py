@@ -49,3 +49,13 @@ class UIWindow(UIWidget):
   def close(self) -> None:
     """销毁窗口（不阻塞；测试用）。"""
     ...
+
+  @native
+  def client_origin_screen(self) -> (int, int):
+    """客户区左上角的屏幕坐标 ``(x, y)``；未 ``show`` 时 ``(0, 0)``。"""
+    ...
+
+  @native
+  def client_size(self) -> (int, int):
+    """客户区宽高；未 ``show`` 时 ``(0, 0)``。"""
+    ...

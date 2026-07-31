@@ -29,6 +29,26 @@ PyInt UIApp::run()
   return (PyInt)0;
 }
 
+PyInt UIApp::pump()
+{
+  MSG msg;
+  if (!PeekMessageA(&msg, NULL, 0, 0, PM_REMOVE))
+  {
+    MsgWaitForMultipleObjects(0, NULL, FALSE, 16, QS_ALLINPUT);
+    if (!PeekMessageA(&msg, NULL, 0, 0, PM_REMOVE))
+    {
+      return (PyInt)2;
+    }
+  }
+  if (msg.message == WM_QUIT)
+  {
+    return (PyInt)0;
+  }
+  TranslateMessage(&msg);
+  DispatchMessageA(&msg);
+  return (PyInt)1;
+}
+
 PY2CPP_END_SCOPE
 
 #else
@@ -41,6 +61,11 @@ PyBool UIApp::is_available()
 }
 
 PyInt UIApp::run()
+{
+  return (PyInt)0;
+}
+
+PyInt UIApp::pump()
 {
   return (PyInt)0;
 }

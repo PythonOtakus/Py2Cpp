@@ -11,6 +11,9 @@ class UIStyle:
   text_color: (int, int, int) = (0, 0, 0)
   panel_color: (int, int, int) = (243, 243, 243)
   margin: (int, int) = (12, 10)
+  # 表单控件左缘额外偏移（一体窗右栏 Inspector 等）
+  form_origin_x: int = 0
+  form_origin_y: int = 0
   label_size: (int, int) = (88, 22)
   edit_size: (int, int) = (260, 22)
   slider_size: (int, int) = (260, 22)

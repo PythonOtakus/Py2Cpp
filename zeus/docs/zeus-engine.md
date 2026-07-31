@@ -421,14 +421,16 @@ Inspector：对象字段 + 组件列表字段（含 root `Transform` TRS）。
 |----|------|
 | **Hierarchy** | `GameObject` 树；展开显示组件列表与 root `Transform` |
 | **Inspector** | 对象 `name`/`active`/`visible`；组件字段（含 TRS）；`add`/`remove` 组件入口 |
-| **Scene View** | 复用 Phase 2 渲染视口（可独立窗；UI 嵌 GL 可后置） |
-| **Toolbar** | Play / Pause / Stop → `World` 状态机 |
+| **Scene View** | 主窗中栏：无边框 GLFW + `GLDevice` 绘制 `MeshComponent`（`editor/viewport.py`） |
+| **Toolbar** | 主窗顶栏 Play / Pause / Stop / Step → `World` 状态机 |
 | **工程** | 打开/保存场景 JSON（扩展 Phase 1 序列化：类型名、组件表、子树） |
 | **测例** | `test_editor_smoke`：无 UI 也可测命令层「选中 / 改字段 / Play 一步」 |
 
-**暂不实现（Phase 3）**：完整 Assets 浏览器、撤销栈、多视口、材质编辑器。
+**布局**：一体主窗 `EditorShell`（Toolbar | Hierarchy | Scene View | Inspector），入口 `zeus\editor.bat`。
 
-**验收**：`test_editor_smoke.exe` 失败数 0（命令改位姿、JSON 往返、Hierarchy/Inspector UI 烟雾；Scene View 独立窗可后置）。
+**暂不实现（Phase 3）**：完整 Assets 浏览器、撤销栈、多视口、材质编辑器、dock 拖拽。
+
+**验收**：`test_editor_smoke.exe` 失败数 0（命令改位姿、JSON 往返、一体窗 UI + Scene View 烟雾）。
 
 ### Phase 4 — 命令系统
 

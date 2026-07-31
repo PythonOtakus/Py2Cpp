@@ -140,12 +140,15 @@ class EditorUiSmokeTests(TestCaseMixin):
     shell: EditorShell = new()
     shell.session.dispatch(ZeusCommand.ObjectCreate("cube", ""))
     shell.session.dispatch(ZeusCommand.ObjectSetPosition("cube", 1.0, 0.0, 0.0))
+    shell.session.dispatch(ZeusCommand.ObjectAddMesh("cube", 1.0))
     shell.session.dispatch(ZeusCommand.EditorSelect("cube"))
     ok: bool = shell.open()
     self.assertTrue(ok)
-    self.assertTrue(shell.hier_win.handle != 0)
-    self.assertTrue(shell.insp_win.handle != 0)
+    self.assertTrue(shell.main_win.handle != 0)
     self.assertTrue(shell.hierarchy.handle != 0)
+    self.assertTrue(shell.toolbar.handle != 0)
+    self.assertTrue(shell.viewport.ready)
+    shell.viewport.render()
     shell.close()
 
 

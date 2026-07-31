@@ -9,6 +9,7 @@ type GLFWmonitor_h = uint64  # C: GLFWmonitor
 GLFW_FALSE: int = 0
 GLFW_TRUE: int = 1
 GLFW_VISIBLE: int = 131076
+GLFW_DECORATED: int = 131077
 GLFW_CONTEXT_VERSION_MAJOR: int = 139266
 GLFW_CONTEXT_VERSION_MINOR: int = 139267
 GLFW_PRESS: int = 1
@@ -66,3 +67,19 @@ def glfwGetKey(window: GLFWwindow_h, key: int) -> int: ...
 @native
 @native_name("glfwGetMouseButton")
 def glfwGetMouseButton(window: GLFWwindow_h, button: int) -> int: ...
+
+@native
+@native_name("glfwSetWindowPos")
+def glfwSetWindowPos(window: GLFWwindow_h, xpos: int, ypos: int) -> None: ...
+
+@native
+@native_name("glfwSetWindowSize")
+def glfwSetWindowSize(window: GLFWwindow_h, width: int, height: int) -> None: ...
+
+@native
+@native_name("glfwShowWindow")
+def glfwShowWindow(window: GLFWwindow_h) -> None: ...
+
+@native
+@native_name("glfwHideWindow")
+def glfwHideWindow(window: GLFWwindow_h) -> None: ...

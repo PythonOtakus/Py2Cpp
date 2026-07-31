@@ -68,6 +68,11 @@ class Component:
   def on_destroy(self) -> None:
     pass
 
+  @virtual
+  def mesh_for_draw(self) -> Mesh | None:
+    """Scene View 绘制：非网格组件返回 ``None``。"""
+    return None
+
 
 @refcount
 class Transform(Component):
@@ -184,6 +189,12 @@ class MeshComponent(Transform):
     self.asset_path = path
     self.mesh = read_fbx(path, self.color)
     self.has_mesh = True
+
+  @override
+  def mesh_for_draw(self) -> Mesh | None:
+    if not self.has_mesh:
+      return None
+    return self.mesh
 
 
 @refcount

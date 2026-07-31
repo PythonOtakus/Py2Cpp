@@ -15,3 +15,9 @@ class UIApp:
   def run() -> int:
     """``GetMessage`` 消息循环直至 ``PostQuitMessage``；等价 Qt ``QApplication::exec()``。"""
     ...
+
+  @staticmethod
+  @native
+  def pump() -> int:
+    """非阻塞泵一次：``0``=已退出，``1``=处理了消息，``2``=空闲（可渲染）。"""
+    ...

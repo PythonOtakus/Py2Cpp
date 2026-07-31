@@ -39,7 +39,7 @@ zeus/
 | Phase | 内容 | 状态 |
 |-------|------|------|
 | 0–2 | 文档、Runtime 骨架、GLFW 清屏 + cube | **已完成**（`build.bat` 全绿） |
-| 3 | Editor MVP（Hierarchy/Inspector/`CommandBus`/`.zas`/`test_editor_smoke`） | **已完成** |
+| 3 | Editor MVP（一体主窗 Hierarchy/Scene/Inspector/`CommandBus`/`.zas`） | **已完成** |
 | 4 | Play 写限制 + `test_commands`（建对象→Mesh→步进） | **必要子集已完成**（不做 Phase 5） |
 | 6 | 跳一跳 headless + `.fbx`/`.zas`（`test_jump`） | **可玩闭环已完成**（有窗 demo 可后置） |
 | 5 / 7 | 插件+MCP / ECS | **暂不做** |
@@ -50,7 +50,8 @@ zeus/
 - [x] `zeus/setup_deps.bat` 拉齐 GLFW
 - [x] `test_runtime.exe`：对象树 / 组件 / Transform / World / Mesh·Camera / 重力 / 序列化 — 失败数 0
 - [x] `test_render.exe`：隐藏 GLFW 窗 + 清屏 + 彩色 cube — 失败数 0
-- [x] `test_editor_smoke.exe`：命令 / `.zas` 往返 / Session / Inspector Apply / UI 烟雾 — 失败数 0
+- [x] `test_editor_smoke.exe`：命令 / `.zas` 往返 / Session / Inspector Apply / 一体窗+Scene View — 失败数 0
+- 打开编辑器：`zeus\editor.bat`（加载 `examples/jump_demo/scenes/main.zas`）
 - [x] `test_commands.exe`：Play 写限制 + 命令管线 — 失败数 0
 - [x] `test_jump.exe`：满蓄力落地得分 + FBX/ZAS 往返 — 失败数 0
 

@@ -82,12 +82,15 @@ if errorlevel 1 exit /b 1
 
 echo === [zeus] compile test_editor_smoke ===
 cl /nologo /EHsc /utf-8 /std:c++14 ^
-  /I"%ZEUS_ROOT%generated" /I"%ZEUS_ROOT%generated\zeus\src" /I"%ZEUS_RUNTIME_INC%" /I"%PY2CPP_RUNTIME_INC%" /I"%SQLITE_INC%" ^
+  /I"%ZEUS_ROOT%generated" /I"%ZEUS_ROOT%generated\zeus\src" /I"%ZEUS_RUNTIME_INC%" /I"%PY2CPP_RUNTIME_INC%" /I"%SQLITE_INC%" /I"%GLFW_INC%" ^
   "%ZEUS_ROOT%generated\zeus\src\test_editor_smoke.cpp" ^
   "%SQLITE_INC%\sqlite3.c" ^
   /Fe:"%ZEUS_ROOT%generated\zeus\src\test_editor_smoke.exe" ^
-  /link /STACK:8388608 user32.lib gdi32.lib gdiplus.lib comdlg32.lib ole32.lib
+  /link /STACK:33554432 /LIBPATH:"%GLFW_LIB%" %GLFW_LINK% opengl32.lib user32.lib gdi32.lib gdiplus.lib comdlg32.lib ole32.lib shell32.lib
 if errorlevel 1 exit /b 1
+if exist "%GLFW_LIB%\glfw3.dll" (
+  copy /Y "%GLFW_LIB%\glfw3.dll" "%ZEUS_ROOT%generated\zeus\src\glfw3.dll" >nul
+)
 
 echo === [zeus] run test_editor_smoke ===
 "%ZEUS_ROOT%generated\zeus\src\test_editor_smoke.exe"

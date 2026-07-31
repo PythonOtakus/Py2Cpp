@@ -185,7 +185,7 @@ void ui_theme_layout_metrics(
   const py2cpp::ui::style::UIStyle& st = ctx.style;
   if (pad_x)
   {
-    *pad_x = ui_theme_scale(st.margin.template get<0>());
+    *pad_x = ui_theme_scale(st.margin.template get<0>() + st.form_origin_x);
   }
   if (label_w)
   {
@@ -494,7 +494,8 @@ void UIWindow::show(PyInt width, PyInt height)
   _ui_set_ctx_hwnd(*this, panel);
   SetWindowLongPtrA(panel, GWLP_USERDATA, (LONG_PTR)this);
   ui_theme_attach_panel(panel, *this);
-  next_y = ui_theme_scale_ctx(*this, style.margin.template get<1>());
+  next_y = ui_theme_scale_ctx(
+      *this, style.margin.template get<1>() + style.form_origin_y);
   active_form = (PyInt64)0;
   ShowWindow(panel, show);
   UpdateWindow(panel);
@@ -600,6 +601,32 @@ void UIWindow::close()
   }
 }
 
+PyTuple<PyInt, PyInt> UIWindow::client_origin_screen()
+{
+  HWND panel = _ui_ctx_hwnd(*this);
+  if (!panel)
+  {
+    return PyTuple<PyInt, PyInt>(0, 0);
+  }
+  POINT pt;
+  pt.x = 0;
+  pt.y = 0;
+  ClientToScreen(panel, &pt);
+  return PyTuple<PyInt, PyInt>((PyInt)pt.x, (PyInt)pt.y);
+}
+
+PyTuple<PyInt, PyInt> UIWindow::client_size()
+{
+  HWND panel = _ui_ctx_hwnd(*this);
+  if (!panel)
+  {
+    return PyTuple<PyInt, PyInt>(0, 0);
+  }
+  RECT rc;
+  GetClientRect(panel, &rc);
+  return PyTuple<PyInt, PyInt>((PyInt)(rc.right - rc.left), (PyInt)(rc.bottom - rc.top));
+}
+
 PY2CPP_END_SCOPE
 
 #else
@@ -629,6 +656,16 @@ void UIWindow::close()
 {
   handle = (PyInt64)0;
   active_form = (PyInt64)0;
+}
+
+PyTuple<PyInt, PyInt> UIWindow::client_origin_screen()
+{
+  return PyTuple<PyInt, PyInt>(0, 0);
+}
+
+PyTuple<PyInt, PyInt> UIWindow::client_size()
+{
+  return PyTuple<PyInt, PyInt>(0, 0);
 }
 
 PY2CPP_END_SCOPE

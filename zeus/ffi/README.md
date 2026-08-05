@@ -1,6 +1,6 @@
 # Zeus 本地 FFI
 
-`zeus/ffi/**/*.pyi` 为 **生成物**（`AUTO-GENERATED`），勿手改。
+`zeus/ffi/**/*.pyi` 为 **生成物**（`AUTO-GENERATED`），勿手改。模块级符号一律 `Pyi_*`（与仓库根 `ffi/` 相同约定，见 [docs/c-ffi-pyi.md](../../docs/c-ffi-pyi.md)）。
 
 | 模块 | 源头 | 入口 |
 |------|------|------|
@@ -16,4 +16,4 @@ zeus\ffi.bat gl
 
 译器经 `ffi_layout` 的 `zeus/ffi` 旁路解析（与仓库根 `ffi/` 同 `module_path`）。Glue **allowlist** 仅业务实际调用的符号（见 `src/constant/ffi_layout.py`）。
 
-业务在 `zeus/src/platform` / `render/opengl` 用**显式 import**纯 Python 组合；禁止 `from ffi… import *`。不做 `glfw3native.h`。
+业务在 `zeus/src/platform` / `render/opengl` 用**显式 import**（如 `Pyi_glfwCreateWindow`）纯 Python 组合；禁止 `from ffi… import *`。不做 `glfw3native.h`。

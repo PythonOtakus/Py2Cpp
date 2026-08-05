@@ -24,7 +24,7 @@ Py2Cpp/
 │   │   ├── runtime_symbols.py   # 包根 AST 推导符号 + PyRange 限定构造
 │   │   └── stubs/               # AST loader（*_stubs.py）
 │   ├── passes/                  # 预处理脱糖
-│   ├── codegen/                 # 与单个 runtime .h/.inl 一一对应的 *_cpp 模板
+│   ├── codegen/                 # expand_py2cpp_template / umbrella / protocol_traits / mirror
 │   ├── emit/                    # AST 驱动生成（含 ffi_glue_emit）
 │   └── tests/                   # 译器单元测试
 ├── py2cpp/                      # 标准库 Python 规格（按域分目录）
@@ -151,7 +151,7 @@ Py2Cpp/
 | `exception_group_gen.py` | `ExcSlot` → `core/~exception_group_*` |
 | `brace_style.py` | Allman 大括号 |
 
-已迁 `templates/**` 的模块（`operators`、`io`、`memory`、`time` 等）不再保留独立 `*_cpp.py`；见 [codegen-templates.md](../../../docs/codegen-templates.md)。
+已迁 `templates/**` 的模块（`operators`、`io`、`memory`、`time` 等）不再保留独立 `templates/**`；见 [codegen-templates.md](../../../docs/codegen-templates.md)。
 
 ### 3.2 `src/emit/`（AST 生成）
 
@@ -198,8 +198,8 @@ Py2Cpp/
 | core | `core/protocols` | `py2cpp::core::protocols` | traits 在 `core/protocol_traits.h`（全局 include） |
 | core | `core/delegate` | 全局 / 特殊 | 用户 `@delegate` |
 | util | `util/array` … `set` | `py2cpp::util::<mod>` | `set` → 段名 **`py_set`** |
-| util | `util/memory` | `py2cpp::util::memory` | ``char[:]`` 原子 + ``*_ref``；``codegen/memory_cpp.py`` |
-| util | `util/tuple` | **全局** `PyTuple` | `src/codegen/tuple_cpp.py` |
+| util | `util/memory` | `py2cpp::util::memory` | ``char[:]`` 原子 + ``*_ref``；``templates/util/+memory.inl`` |
+| util | `util/tuple` | **全局** `PyTuple` | `templates/util/tuple.{h,inl}` |
 | util | `util/span` | 全局 / 特殊 | |
 | text | `text/str` | `py2cpp::text::str` | 最大模块；`Self._…` → `PyStr::_…` |
 | text | `text/bytes` | `py2cpp::text::bytes` | |
@@ -207,12 +207,12 @@ Py2Cpp/
 | io | `io/file` | `py2cpp::io::file` | 原包根 `os` 能力 |
 | io | `io/file/path` | `py2cpp::io::file::path` | `os.path` 函数 |
 | io | `io/path` | `py2cpp::io::path` | `Path`（pathlib 子集） |
-| system | `system/time` | `py2cpp::system::time` | `src/codegen/time_cpp.py` |
+| system | `system/time` | `py2cpp::system::time` | `templates/system/-time.inl` |
 | concur | `concur/task` | `py2cpp::concur::task` | |
 | test | `test/unittest` | `py2cpp::test::unittest` | 集成测显式 ``from py2cpp.test.unittest import TestCaseMixin, …``（非包根 star） |
 | serde | `serde/protocols` | `py2cpp::serde::protocols` | `Encoder` / `Decoder` |
 | serde | `serde/json` | `py2cpp::serde::json` | 单文件 `JsonEncoder`/`JsonDecoder`；`dumps` / `loads` |
-| ui | `ui/meta` … `ui/window` | `py2cpp::ui::<mod>` | Panel；``UIWindow`` Win32（``ui_window_cpp.py``）；``__init__.py`` 勿 re-export 子模块 |
+| ui | `ui/meta` … `ui/window` | `py2cpp::ui::<mod>` | Panel；``UIWindow`` Win32（``templates/ui/+window.inl``）；``__init__.py`` 勿 re-export 子模块 |
 
 包根 `from py2cpp import *` 再导出 `core`/`util`/`text` 符号；**不**自动拉入 `io`。`deque` 空局部：`out: deque[T] = []`，勿 `Self()`（`return Self()` 仍用于 `-> Self` 早退）。
 
@@ -585,7 +585,7 @@ python main.py <input.py> [-o DIR] [--no-stdlib] [--no-main] [--debug]
 | `test/io/file/test_file.py` | `build_all.bat` | ``os`` 磁盘 API（``getcwd``/``stat``/``listdir``/…） |
 | `test/io/file/test_path.py` | `build_all.bat` | ``os.path``（``join``/``splitext``/…） |
 | `test/io/test_path.py` | `build_all.bat` | `Path`、`/` |
-| `test/sql/test_sqlite.py` | `build.bat sql/test_sqlite`（**设计中**） | ``py2cpp/sql`` DB-API；见 [sql-orm.md](../../../docs/sql-orm.md) |
+| `test/sql/test_sqlite.py` | `build.bat sql/test_sqlite` | ``py2cpp/sql`` DB-API（P0 已落地）；见 [sql-orm.md](../../../docs/sql-orm.md) |
 | `test/sql/test_sql_orm.py` | `build.bat sql/test_sql_orm`（**设计中，P1**） | ``table[User]()`` + ``*Meta`` / ``all`` / ``get`` / ``append`` |
 | `test/sql/test_sql_orm_genexp.py` | `build.bat sql/test_sql_orm_genexp`（**设计中，P2**） | ``extend`` / ``execute(e.assign…)`` / ``collect`` / ``remove`` + ``SqlQuery[T]`` |
 | `test/sql/test_sql_orm_join.py` | `build.bat sql/test_sql_orm_join`（**设计中，P3**） | ``session.collect[RowT](Row(…) for o in orders for u in users if …)`` → ``SqlQuery[RowT]`` |
@@ -689,4 +689,4 @@ generated\test\misc\test_containers.exe
 
 ---
 
-*附录版本：2026-05-24（标准库域布局、译器 `src/`、废弃 `builtins/`）；实现变更以 `src/translator.py`、`constant/stdlib_layout.py`、`analysis/runtime_symbols.py` 与 `py2cpp/` 源码为准。*
+*附录版本：2026-08-05（标准库域布局、译器 `src/`、废弃 `builtins/`）；实现变更以 `src/translator.py`、`constant/stdlib_layout.py`、`analysis/runtime_symbols.py` 与 `py2cpp/` 源码为准。*

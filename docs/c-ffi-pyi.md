@@ -1,6 +1,6 @@
 # 第三方 C/C++ → Py2Cpp `.pyi`（FFI 声明）
 
-状态：**生成器 + 译器识别 + sqlite glue 试点已通**（`sqlite3.h` → `ffi/sqlite/sqlite3.pyi` → `ffi::sqlite::sqlite3`；模块级名统一 `Pyi_*`，`@native_name` 仍为 C 名；`using Pyi_T = ::T`；`.inl` 转发）。
+状态：**生成器 + 译器识别 + sqlite glue 试点已通**（`sqlite3.h` → `ffi/sqlite/sqlite3.pyi` → `ffi::sqlite::sqlite3`；模块级名统一 `Pyi_*`，`@native_name` 仍为 C 名；`using Pyi_T = ::T`；完整/不完整 struct、enum、Doxygen→PEP 257 docstring；`.inl` 转发）。
 
 ## 1. 目标
 
@@ -10,10 +10,11 @@
 - 函数仍标 **`@native`**（体为 `...`）
 - **包含头文件解析到的全部公开 API**（函数 + 可求值常量宏 + 不透明句柄 typedef）
 - 与 Python 关键字冲突时：Python 侧别名 + **`@native_name("原 C 标识符")`**
-- **不透明/完整结构体**：空或带字段的 **`@native` 类**（类名 = C 标签）；指针 **`Pointer[T]`**；typedef **`type B = A`**
+- **不透明/完整结构体 / 枚举**：模块级 **`Pyi_X`** 的 `@native` 类（`@native_name` = C 标签/路径）；指针 **`Pointer[Pyi_X]`**；typedef **`type Pyi_B = Pyi_A`**；未知/匿名字段 **`None  # C: …`**
+- 有 C 注释时写入 **PEP 257 docstring**（§7.1）；无注释则仅 `...`
 - 构建机允许依赖 **libclang**（`clang` Python 包 + 自带/系统 `libclang`）
 
-**本阶段已做**：`@native`→C glue（sqlite）；`+sqlite.inl` 改调 `ffi::…`。**仍未做**：整份删模板、Win32 glue、业务层全面 Python 化。
+**本阶段已做**：`@native`→C glue（sqlite）；`+sqlite.inl` 改调 `ffi::…`；结构体字段 / 枚举常量 / docstring。**仍未做**：整份删模板、Win32 全量 glue、业务层全面 Python 化。
 
 ## 2. 分层（与业务 API 分离）
 
@@ -224,7 +225,7 @@ sqlite amalgamation：默认 **不**传递收集（仅主文件），常量仍�
 
 | 类型 | 例子 | 与 `.pyi` 的关系 |
 |------|------|------------------|
-| 薄 C 转发候选 | `+sqlite.inl` 内对 `sqlite3_open` / `step` 等直调 | 将来可改调 `ffi/sqlite/sqlite3.pyi`；异常、`PyStr` 转换、bind 循环应**下沉 Python 组合**，勿整份模板直接删 |
+| 薄 C 转发候选 | `+sqlite.inl` 内叶子已调 `::ffi::sqlite::sqlite3::Pyi_*` | 异常、`PyStr` 转换、bind 循环仍应**下沉 Python 组合**，勿整份模板直接删 |
 | 平台 API + 大量胶水 | `+canvas.inl`、`+window.inl`、`+menu.inl`…（`windows.h` / GDI+ / 消息循环） | `ffi/windows.pyi` 只解决符号目录；WndProc、双缓冲、句柄生命周期仍要手写或 Python 组合 + 少量 `@native` |
 | libc / 语言运行时 | `+io.inl`、`-time.inl`、`+str.inl`、`util/+memory` | **不属于**第三方库 FFI 替换范围 |
 | 译器基础设施 | `operators.*`、`protocol_traits`、`tuple`、异常 ctor | 与 C 库无关，不在迁移范围 |
@@ -232,10 +233,10 @@ sqlite amalgamation：默认 **不**传递收集（仅主文件），常量仍�
 **迁移原则**：
 
 - **现在**：不能全量迁移；砍模板会断 UI / SQL / IO。
-- **以后**（译器吃 `.pyi` + 自动 glue 之后）：优先试点 **sqlite 直调叶子**；Win32 仅显式 import 子集，**保留** window/canvas 组合层（模板或等价 Python）。
+- **sqlite 叶子**已走 `.pyi` + 自动 glue；Win32 / UI 仅显式 import 子集，**保留** window/canvas 组合层（模板或等价 Python）。
 - **永远不宜**：凡带 `#include <windows.h>` 的模板整文件换成 `windows.pyi`。
 
-**已完成下一刀**：识别 + sqlite glue + `+sqlite.inl` 经 `ffi::`；**不要**一次迁 UI。
+**已完成**：识别 + sqlite glue + `+sqlite.inl` 经 `ffi::`；**不要**一次迁 UI。
 
 ## 12. 译器接入（识别 + glue + sqlite 试点）
 
@@ -246,7 +247,8 @@ sqlite amalgamation：默认 **不**传递收集（仅主文件），常量仍�
 | module_path | `ffi/windows`、`ffi/sqlite/sqlite3` |
 | 生成物 | `generated/runtime/ffi/….h` + 有 C 头映射时 `.inl`（`#include "ffi/…"`） |
 | C++ 命名空间 | `ffi::…`（**不**挂 `py2cpp::`；`ffi/sqlite/sqlite3` → `ffi::sqlite::sqlite3`） |
-| 结构体 | `using Pyi_X = ::X`；签名 `Pyi_X` / `Pointer[Pyi_X]`；无 `struct ::Tag` |
+| 结构体 / 枚举 | `using Pyi_X = ::X`；签名 `Pyi_X` / `Pointer[Pyi_X]`；枚举成员作常量；无 `struct ::Tag` |
+| docstring | 仅 `.pyi` 可读性；**不**编进 glue（§7.1） |
 | Umbrella | **不**进 `minimal.h` / bootstrap bulk；仅 import 闭包写入 |
 | Star-import | **禁止** `from ffi… import *`（strict / 解析期报错，§10） |
 | S27 | FFI 模块允许 `from py2cpp.builtins import *`（生成器风格） |
@@ -257,9 +259,9 @@ sqlite amalgamation：默认 **不**传递收集（仅主文件），常量仍�
 
 ## 13. 后续（未做）
 
-1. 更多库的 `ffi_c_header_include` 映射与 glue（Win32 慎全量）  
+1. 更多库的 `ffi_c_header_include` 映射与 glue（Win32 慎全量；Zeus GLFW/GL 已有 `.pyi` + allowlist）  
 2. sqlite 组合层进一步下沉 Python（缩小 `+sqlite.inl`）  
-3. C++ 头（重载/类/模板）；完整 `struct` 字段布局（见 §4）  
+3. C++ 头（重载/类/模板）进 `.pyi`  
 4. Win32 宏函数（如 `MAKEINTRESOURCE`）与宽/窄别名；可选子系统拆分 / allowlist  
 
 ## 14. 相关文件

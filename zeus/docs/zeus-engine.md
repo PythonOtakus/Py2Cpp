@@ -1,6 +1,6 @@
 # Zeus 3D 游戏引擎设计方案
 
-> 状态：**Phase 0–2 已落地**（`zeus\build.bat` 全绿）；本文为总设计与后续阶段计划。入口见仓库 [`zeus/README.md`](../README.md)。
+> 状态：**Phase 0–6+ 核心已落地**（`zeus\build.bat` 全绿；Editor / Jump / commands 见 [`zeus/README.md`](../README.md)）；Phase 5/7（插件+MCP / ECS）**暂不做**。本文为总设计与阶段计划。
 
 Zeus 是一个基于现有 Py2Cpp 能力实现的轻量 3D 游戏引擎。第一目标不是复制 Unity / Unreal 的完整体量，而是建立一套「可运行、可编辑、可扩展、可被工具操作」的引擎骨架，并用它完成类似微信小游戏《跳一跳》的 3D demo。
 

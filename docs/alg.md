@@ -151,7 +151,7 @@ py2cpp/
 
 - `py2cpp/alg/<mod>.py` 新增模块（``src/constant/stdlib_discovery.py`` 遍历自动发现；必要时调整 ``constant/stdlib_modules`` 的 ``UMBRELLA_PREFIX_TIERS`` / ``constant/header_fixups_data`` 的 ``MODULE_HEADER_FIXUPS``）；
 - `py2cpp/__init__.py` → 域再导出与 `__all__`（若对外暴露）；
-- `src/codegen/umbrella_gen.py` → `py2cpp.h` include `alg/*.h`（注意顺序，全量 `build_all.bat` 验证）。
+- `src/codegen/umbrella_gen.py` → `minimal.h` include `alg/*.h`（注意顺序，全量 `build_all.bat` 验证）。
 
 ---
 
@@ -468,7 +468,7 @@ class ChunkDeque[T]:
 | 复用 | 不手写与 `str`/`dict` 等价的扫描逻辑；整数循环用 `for i in range(n)` |
 | 切片/布尔 | `buf[:k]`、`not seq` |
 | 静态辅助 | `Self._helper()`（对齐 `StringMixin._norm_end`） |
-| 冲突 | Win 宏/译器问题在 `py2cpp.h` 或译器根因修，不改业务 API |
+| 冲突 | Win 宏/译器问题在 `minimal.h` 或译器根因修，不改业务 API |
 | Native | 业务 **零 `@native`**；仅叶子可 `@native`（本域预期不需要） |
 
 **类命名**：公开类名采用短 PascalCase（如 `FenTree`、`MonoQueue`、`SegTree`）；模块文件为 snake_case（`fen_tree.py` 等）。C++ 名由 `CPP_RENAME` 映射（若需 `PyHeap` 等）。
@@ -622,7 +622,7 @@ __all__ = [
 
 | 风险 | 缓解 |
 |------|------|
-| `py2cpp.h` include 顺序 | 新增 `alg` 域后全量 `build_all.bat` |
+| `minimal.h` include 顺序 | 新增 `alg` 域后全量 `build_all.bat` |
 | 泛型 `Comparable` / `Integral` 约束 | 参考 `dict[K: DictKey]`；失败用 `static_assert` |
 | 线段树递归深度 | 迭代实现或固定 `4*n` 数组 |
 | Trie 节点内存 | 优先 `dict` 子节点；稠密字符集再评估 `@boxing` |

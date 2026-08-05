@@ -1,6 +1,6 @@
 # Codegen C++ 模板：七宏（`BEGIN` / `END` / `EVAL` / `EXEC` / `ECHO` / `INCLUDE` / `TYPE`）
 
-> **状态**：试点落地（`expand_py2cpp_template` + `memory` / `bytes` / `umbrella` / `protocol_traits` / `protocol_erase` 等）；其余大段 f-string 仍过渡  
+> **状态**：`templates/**` 为 `@native` 叶子真相源（`expand_py2cpp_template` / `stdlib_mirror_codegen` / inject paste）；旧 `src/codegen/*_cpp.py` **已删除**  
 > **受众**：维护 `templates/**`、`*_gen.py`、编写 `@native` 叶子 C++ 的开发者  
 > **关联**：[参考手册 §8 生成风格](./参考手册.md#85-protocol-与-sfin-约束)、[编码规范 §9.4 Native 原子化](./编码规范.md#94-native-原子化基础设施)、用户译器 `inline_range`（`src/passes/inline_range.py`）
 
@@ -23,7 +23,7 @@
 
 ## 1. 背景与动机
 
-Py2Cpp 标准库中大量 `@native` 实现写在 `src/codegen/*_cpp.py`：用 Python **f-string** 拼 C++，再经 `stdlib_inject_emit.paste_cpp_to_inl_target` 写入 `generated/runtime/py2cpp/**/*.inl`。
+Py2Cpp 标准库中大量 `@native` 实现写在仓库根 `templates/**`（`+*.inl` / `-*.inl` / 镜像 `.h`）：经七宏展开与 inject paste 写入 `generated/runtime/py2cpp/**/*.inl`。（历史曾用 `src/codegen/*_cpp.py` f-string，已全部迁出。）
 
 | 痛点 | 说明 |
 |------|------|
@@ -132,9 +132,9 @@ for i in range(10):
   print(f'cout << "i: " << {i} << endl;')
 ```
 
-差别：`print` → `__py2cpp_echo`；`PY2CPP_EVAL(i)` → `{i}`；由工具从模板自动生成 Python，**不要求**在 `*_cpp.py` 里维护平行 f-string。
+差别：`print` → `__py2cpp_echo`；`PY2CPP_EVAL(i)` → `{i}`；由工具从模板自动生成 Python，**不要求**在 `templates/**` 里维护平行 f-string。
 
-更多与 `sqlite_cpp.py` / `io_cpp.py` 对照的完整示例见 [§15 具体示例](#15-具体示例对照仓库现行-_cpppy)。**七宏单文件对照表**：[`templates/~test/~syntax_showcase.inl`](../templates/~test/~syntax_showcase.inl)（由 `src/tests/test_expand_py2cpp_template.py` 展开验证）。
+更多与 `templates/sql/+sqlite.inl` / `templates/+io.inl` 对照的完整示例见 [§15 具体示例](#15-具体示例对照仓库现行-_cpppy)。**七宏单文件对照表**：[`templates/~test/~syntax_showcase.inl`](../templates/~test/~syntax_showcase.inl)（由 `src/tests/test_expand_py2cpp_template.py` 展开验证）。
 
 ---
 
@@ -150,7 +150,7 @@ expand_py2cpp_template.py               # 扫描 PY2CPP_* → 生成 Python → 
         ↓
 kr_to_allman（brace_style.py）          # Allman 大括号
         ↓
-*_cpp.py 的 SQLITE_IMPL 等常量
+templates/** 的 SQLITE_IMPL 等常量
         ↓
 stdlib_inject_emit.paste_cpp_to_inl_target
         ↓
@@ -320,7 +320,7 @@ else
 
 | | `inline_range`（用户 Python） | `PY2CPP_BEGIN/END`（codegen 模板） |
 |--|------------------------------|-------------------------------------|
-| 时机 | 译器 pass，用户模块 AST | bootstrap / 注入前，`*_cpp.py` 模板 |
+| 时机 | 译器 pass，用户模块 AST | bootstrap / 注入前，`templates/**` 模板 |
 | 循环语义 | CPython `for` + `range` | **同一套**：展开器生成的 Python 里的 `for` |
 | 条件语义 | 编译期 `if` 折叠（`inline_range` 等） | **同一套**：展开器生成的 `if` / `elif` / `else` + `exec` 或 C++ 回退 |
 | 发射 | 译器 `visit_*` → C++ AST | `__py2cpp_echo` 收集字符串 → 粘贴进 `.inl` |
@@ -367,9 +367,9 @@ else
    - **`+` 前缀（inject 片段）**：文件名须为 **单扩展名** ``+<stem>.inl`` 或 ``+<stem>.h``（排除 ``+stem.inl.h`` 等）。**不**镜像落盘；推断规则：父目录 + ``+`` 后 stem → 模块 rel（``util/+memory.inl`` → ``util/memory``）。分两条路径（详见 [§8.3](#83-注入模板命名与路径定案)）：
    - **`+<stem>.inl`（paste_after）**：``discover_module_paste_after_templates`` → 译期 paste 进对应模块 ``.inl`` 尾部（或 ``PASTE_AFTER_IN_MODULE_MODULES`` 内模块套 namespace 写入）。
    - **`+<stem>.h`（类头 inject）**：``discover_class_header_inject_templates`` → ``PY2CPP_INJECT_CLASS`` 块展开后注入 **同名** ``generated/.../<stem>.h`` 类体尾部。
-   - **codegen 专用 ``+*.inl``**：登记在 ``inject_specs.CODEGEN_INJECT_TEMPLATE_RELS``（无 ``py2cpp/<rel>.py``、不参与 paste_after）；由 ``*_cpp.py`` 直接 ``expand_template`` 拼进聚合产物（如 ``operators.inl``）。
+   - **codegen 专用 ``+*.inl``**：登记在 ``inject_specs.CODEGEN_INJECT_TEMPLATE_RELS``（无 ``py2cpp/<rel>.py``、不参与 paste_after）；由 ``templates/**`` 直接 ``expand_template`` 拼进聚合产物（如 ``operators.inl``）。
    **须**在 ``py2cpp/`` 存在同名模块（codegen 专用条目除外）。paste 段 ``using namespace`` 与 ``BEGIN_SCOPE`` 规则见下。
-4. **`-` 前缀（paste_before inject）**：文件名以 `-` 开头（如 `templates/system/-time.inl`）**不**镜像落盘；由 `discover_module_paste_before_templates` 扫描，在译 Python 体 **之前** paste 进模块 `.inl`（与旧 `PASTE_BEFORE_SPECS` + `*_cpp.py` 同语义）。推断规则同 `+`（`system/-time.inl` → `system/time`）。
+4. **`-` 前缀（paste_before inject）**：文件名以 `-` 开头（如 `templates/system/-time.inl`）**不**镜像落盘；由 `discover_module_paste_before_templates` 扫描，在译 Python 体 **之前** paste 进模块 `.inl`（与旧 `PASTE_BEFORE_SPECS` + `templates/**` 同语义）。推断规则同 `+`（`system/-time.inl` → `system/time`）。
    **paste 段 C++ 命名**：目标模块 ``.inl`` preamble 有 ``using namespace py2cpp::…``；**类外成员**写 ``Class::method``；**模块级自由函数**须包在 ``PY2CPP_BEGIN_SCOPE`` … ``END_SCOPE`` 内再写短名（否则会变成全局 ``::fn`` 与头文件声明冲突）；跨模块写全限定名或同级段（``window::UIWindow``）。
 5. **无前缀**：与 §1 镜像规则相同；`expand_mirror_to_generated` 处理 ``*.inl`` 与 ``*.h``（跳过 ``~macro/``、``~test/``、``~`` / ``+`` / ``-`` 文件名）。**须**有对应 `py2cpp/<rel>.py`。``STDLIB_MIRROR_CODEGEN_RELS``（现行 ``util/tuple``）额外包 guard / 注释壳。
 6. **`PY2CPP_INCLUDE(path)`**：`path` 为 **相对当前模板文件所在目录** 的路径（支持 `../`、`./`、同目录文件名）；规范化后须落在 `templates/` 树内。示例：
@@ -377,7 +377,7 @@ else
    - 同文件内 `PY2CPP_INCLUDE("../~helpers.inl")` → `templates/~helpers.inl`
    - `templates/io/io.inl` 内 `PY2CPP_INCLUDE("../sql/~bind.inl")` → 跨子目录引用
    - 路径字符串使用正斜杠 `/`（与仓库内路径一致）；`~` 仅表示「INCLUDE-only、不落盘」文件名前缀，与 `..` 无关。
-7. **过渡**：尚未迁完的片段仍可留在 `*_cpp.py` f-string；迁完后由 `expand_py2cpp_template` 批量或按模块展开镜像树，或由 ``+`` / ``-`` ``*.inl`` / ``+*.h`` + inject 发现 paste。
+7. **已完成迁移**：叶子 C++ 写在 `templates/**`；由 `expand_py2cpp_template` / `+`·`-` inject 发现 paste 进 `generated/runtime/py2cpp/**`。
 8. **类级 ``.inl`` paste（遗留）**：``CLASS_PASTE_SPECS`` / ``CLASS_PASTE_TEMPLATE_SPECS`` 已清空；``io``、``web/socket``、``text/str`` 等均改为 ``+<stem>.inl`` paste_after 或 ``+<stem>.h`` 类头 inject。类名与模块 stem 不一致时仍可用 ``CLASS_PASTE_TEMPLATE_SPECS`` + ``CLASS_PASTE_MODULE_REL`` 在类 emit 时 paste，但模块级尾 paste **优先** ``+`` 命名。
 
 ```text
@@ -419,17 +419,17 @@ Py2Cpp/                              # 仓库根
     expand_py2cpp_template.py        # 扫描 templates/ → 写 generated 镜像（跳过 ~ / + / -）
     inject_template_emit.py          # expanded_inject_template（+*.inl paste）
     template_module_bindings.py      # 镜像 / + 模板 ↔ py2cpp 模块校验
-    sqlite_cpp.py                    # 过渡：expand + paste；或仅注册 inject 元数据
+    templates/sql/+sqlite.inl                    # paste_after → sql/sqlite.inl
     brace_style.py                   # 已有：kr_to_allman
 ```
 
 可选：`build*.bat` 结束时自动运行 `scripts/gen_compile_commands.py`，将 ``generated/**`` 与 ``templates/**`` 写入根目录 ``compile_commands.json``。
 
-`stdlib_inject_emit.py` / `inject_specs.py` / `inject_discovery.py`：`+*.inl` 由发现 + `expanded_inject_template` paste；``util/tuple`` 由 ``expand_mirror_to_generated`` 写 ``templates/util/tuple.{h,inl}``；其余 STDLIB_CODEGEN 模块过渡期仍由 `*_cpp.py` 拼常量再 `paste_cpp_to_inl_target`。
+`stdlib_inject_emit.py` / `inject_specs.py` / `inject_discovery.py`：`+*.inl` 由发现 + `expanded_inject_template` paste；``util/tuple`` 由 ``expand_mirror_to_generated`` 写 ``templates/util/tuple.{h,inl}``；其它模块同路径镜像或 `-*.inl` paste_before。
 
 ### 8.1 `ctx` 命名空间（模板变量）
 
-由 `*_cpp.py` 的 `render_template(ctx)` 传入，例如：
+由 `templates/**` 的 `render_template(ctx)` 传入，例如：
 
 | 键 | 含义 |
 |----|------|
@@ -447,7 +447,7 @@ Py2Cpp/                              # 仓库根
 |------|------|------|
 | 按用户 `@delegate` 生成子类 | `delegate_gen.emit_delegate_class` → 用户 `.h` / `.cpp` | 静态骨架迁 `templates/~delegate.inl`（或 `templates/delegate/~base.inl`）；**译器** `translate_file` 内仍调 `render` / `emit_delegate_class` 拼 **当次** 委托类型 |
 | 万能头 `minimal.h` | `umbrella_gen.build_py2cpp_umbrella_header(stdlib_modules, …)` | 保留 Python 组装（动态 include 列表 + MSVC 块插入点），**不**强行镜像为单 `.inl` |
-| 成员访问宏 | `member_access_cpp` 预处理器 `##` | 保留独立头模板或 `*_cpp.py`；与七宏无关 |
+| 成员访问宏 | `member_access_cpp` 预处理器 `##` | 保留独立头模板或 `templates/**`；与七宏无关 |
 | 异常前向声明 | `exceptions_cpp.emit_exception_forward_decls(tr)` | 译器写流，非 paste `.inl` |
 
 **`~` 非镜像模板**规则：
@@ -779,11 +779,11 @@ buf[1] = 2;
 
 ## 12. 实施顺序（建议）
 
-1. `expand_py2cpp_template.py` + 单测（`for` 常量界 + `PY2CPP_EVAL`；`if` 链静态消除与回退）。
-2. ``~macro/<rel>.h`` + 模板目录 clangd 配置（桩支持 `if` / `elif` / `else` 空块）。
-3. 从 `sqlite_cpp.py` 迁一条循环或 `if` 分派作试点。
-4. 运行时界 / 运行时条件回退 + 复用 `inline_range` / `static_reflect` 求值工具。
-5. 按需迁移其他 `*_cpp.py` 大段 f-string。
+1. ~~`expand_py2cpp_template.py` + 单测~~（已落地）
+2. ~~``~macro/<rel>.h`` + 模板目录 clangd 配置~~（已落地）
+3. ~~`templates/sql/+sqlite.inl` 等试点~~（`*_cpp.py` 已全部迁出）
+4. 运行时界 / 运行时条件回退 + 复用 `inline_range` / `static_reflect` 求值工具（按需继续加强）
+5. 新叶子一律写 `templates/**`，勿再引入 `src/codegen/*_cpp.py`
 
 ---
 
@@ -856,7 +856,7 @@ cout << "i: " << 1 << endl;
 
 ### 15.2 `_sql_bind_int_list`：运行时界 → C++ `while` 回退
 
-现行 `sqlite_cpp.py` 用手写 `while`：
+现行 `templates/sql/+sqlite.inl` 用手写 `while`：
 
 ```cpp
 static void _sql_bind_int_list(sqlite3_stmt* stmt, const PyList<PyInt>& params) {
@@ -885,13 +885,13 @@ static void _sql_bind_int_list(sqlite3_stmt* stmt, const PY2CPP_TYPE(PyList)<PY2
 }
 ```
 
-说明：`EVAL(i+1)` 在回退路径为 C++ `(i + 1)`；`params.__getitem__(i)` 为模板内 **直接 C++**（与现行 `sqlite_cpp` 一致）。
+说明：`EVAL(i+1)` 在回退路径为 C++ `(i + 1)`；`params.__getitem__(i)` 为模板内 **直接 C++**（与 `templates/sql/+sqlite.inl` 一致）。
 
 ---
 
 ### 15.3 `_sql_pystr_to_cbuf`：编译期小界完全展开
 
-现行 `while ((i < n))` 拷贝 `PyChar` → `char`（`sqlite_cpp.py` 同类逻辑）。
+现行 `while ((i < n))` 拷贝 `PyChar` → `char`（`templates/sql/+sqlite.inl` 同类逻辑）。
 
 **模板**（`n` 为运行时变量 → **回退** `while`）：
 
@@ -1191,7 +1191,7 @@ if ((cap > 1))
 
 ---
 
-### 15.11 `sqlite_cpp.py` 侧组装（不变流水线）
+### 15.11 `templates/sql/+sqlite.inl` 侧组装
 
 ```python
 from src.codegen.expand_py2cpp_template import expand_template
@@ -1210,13 +1210,13 @@ def render_sqlite_impl() -> str:
 SQLITE_IMPL = render_sqlite_impl()
 ```
 
-迁完后可改为 `expand_all_templates()` 直接写 `generated/runtime/py2cpp/sql/sqlite.inl`；`sqlite_cpp.py` 仅保留 inject 注册与 `_INCLUDES` 等外壳。
+迁完后可改为 `expand_all_templates()` 直接写 `generated/runtime/py2cpp/sql/sqlite.inl`；`templates/sql/+sqlite.inl` 仅保留 inject 注册与 `_INCLUDES` 等外壳。
 
 ---
 
 ### 15.12 对照总表（七宏）
 
-| 场景 | 现行 `*_cpp.py` | 七宏 |
+| 场景 | 现行 `templates/**` | 七宏 |
 |------|-----------------|------|
 | 固定次循环 | `for _ in range(k): lines.append(f'…')` | `BEGIN(for)` + `EVAL` |
 | 运行时 `n` | 手写 `while ((i < n))` | `BEGIN(for i in range(0,n))` → 自动回退 |

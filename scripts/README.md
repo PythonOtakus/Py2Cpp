@@ -36,6 +36,6 @@ MSVC / 翻译构建与仓库维护脚本；在仓库根目录执行（脚本内�
 | `scan_strict_violations.py` | bootstrap runtime 并收集 `--strict` 违规 |
 | `_gen_compile_commands.bat` | 生成根目录 `compile_commands.json` / `compile_flags.txt`（`build*.bat` 结束时自动调用） |
 | `gen_compile_commands.py` | 生成 `compile_commands.json`（`generated/**` + `templates/**`）与 `compile_flags.txt` |
-| `gen_c_ffi.py` | C 头 → Py2Cpp `.pyi` CLI（核心 `src/tools/c_ffi_pyi.py`；见 [docs/c-ffi-pyi.md](../docs/c-ffi-pyi.md)） |
+| `gen_c_ffi.py` | C 头 → Py2Cpp `.pyi` CLI（核心 `src/tools/c_ffi_pyi.py`；模块级 `Pyi_*`；见 [docs/c-ffi-pyi.md](../docs/c-ffi-pyi.md)） |
 
 仓库根目录保留同名转发（如 `build_all.bat` → `scripts\build_all.bat`），便于在根目录直接调用。

@@ -1,6 +1,6 @@
 # SQL / ORM：DB-API + 静态反射表映射规范
 
-> **状态**：设计中（尚未落地）  
+> **状态**：**P0 DB-API 已落地**（`protocols.py` + `sqlite.py` + `templates/sql/+sqlite.inl` + `test/sql/test_sqlite.py`）；**ORM P1+ 设计中**（尚无 `orm.py` / `session.py`）。  
 > **约束**：符合 [编码规范.md](./编码规范.md)；**不新增** `@table` 等装饰器或译器 pass；ORM 仅复用既有 `@annotation` *Meta、`@dataclass`、`Self.iter_fields` / `Self.get_annotation[Meta](field)`（与 `ui/panel` 同构）；Native 原子化（业务零 `@native`，C++ 仅叶子）；不引入 STL；**暂不支持** SQLAlchemy 级 Query DSL / relationship / migration 框架。
 
 ---
@@ -48,7 +48,7 @@ templates/               # 模板根：镜像 generated/runtime/py2cpp/**（见 
   sql/~bind.inl          # 同目录 INCLUDE：~bind.inl
 
 src/codegen/
-  sqlite_cpp.py        # 过渡：expand + paste；迁完后可仅 inject 注册
+  templates/sql/+sqlite.inl        # C 叶子（paste / inject；已迁出旧 *_cpp.py）
   expand_py2cpp_template.py
   # 未来：postgres_cpp.py 等
 
@@ -77,7 +77,7 @@ Session.table[Entity]() → Table[Entity]（ORM 入口；Self = Entity）
         ↓
 Connection + Dialect（protocols.py 契约；sqlite.py 首实现）
         ↓
-@native 叶子（sqlite_cpp.py → sqlite.inl → third_party/sqlite/sqlite3.c）
+@native 叶子（templates/sql/+sqlite.inl → sqlite.inl → third_party/sqlite/sqlite3.c）
 ```
 
 ```mermaid
@@ -117,7 +117,7 @@ flowchart TB
 | **Session** | `session.py` | …；P3 ``collect[T](query: SqlQuery[T])`` 联表 |
 | **Table[T]** | `session.py` | ``create_schema``/``append``/``get``/``all``；P2 ``extend``/``collect``/``remove``/``execute``（``SqlQuery[T]`` + genexp） |
 | **后端** | `sqlite.py` | `connect()`、`SqliteConnection`、`SqliteDialect`、异常树 |
-| **Native** | `sqlite_cpp.py` | 仅 `@native` 叶子（open/prepare/step/bind/column/…） |
+| **Native** | `templates/sql/+sqlite.inl` | 仅 `@native` 叶子（open/prepare/step/bind/column/…） |
 
 **扩展新数据库**：实现 `XxxConnection` + `XxxDialect` 满足 `protocols.py`；`orm.py` / 用户 `@dataclass` 表类 / `Session` API **不变**。
 
@@ -662,7 +662,7 @@ class Dialect:
 | **`SqlQuery[T]` + ``orm_sql_query_emit``** | 新增 | genexp → 内联 ``SqlQuery[T]``（``from``/``where``/``binds``/``set_sql``/``select_sql``/…）；**单入口**；各 DML 方法 Phase B 格式化 |
 | **`Optional[T]`** | `analyzer` 已有 | ORM 读写字段是否 Optional |
 | stdlib 发现 | `stdlib_discovery.py` | 注册 `py2cpp/sql/` |
-| umbrella / `py2cpp.h` | `umbrella_gen.py` 等 | include `sql/sqlite.inl` |
+| umbrella / `minimal.h` | `umbrella_gen.py` 等 | include `sql/sqlite.inl` |
 | 链接 | `compile.py` | `extra_sources`: `third_party/sqlite/sqlite3.c`；`-I third_party/sqlite` |
 
 若类级 `@TableMeta("…")` 在实现期遇译器/分析限制，**在基础设施层补**（与 Panel 字段 `@annotation` 同待遇），**不得**引入 `@table` 绕行。
@@ -704,7 +704,7 @@ class Dialect:
 ## 12. 实施分期
 
 ```text
-P0  protocols.py + sqlite.py + sqlite_cpp.py + test/sql/test_sqlite.py
+P0  protocols.py + sqlite.py + templates/sql/+sqlite.inl + test/sql/test_sqlite.py
 
 P1  orm.py + session.py（Session + Table[T]）+ test/sql/test_sql_orm.py
     （*Meta、iter_fields helper、table[T]()、create_schema/append/get/all、Optional、IgnoreMeta）

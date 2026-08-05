@@ -1,5 +1,7 @@
 # py2cpp.web 异步接口设计
 
+> **状态**：核心 async socket / HTTP（`AsyncTcpSocket`、`Task.wait_read`/`wait_write`、`test/web/test_*_async.py`）**已落地**；边界与演进见下文。
+
 ## 目标
 
 `py2cpp.web` 的异步接口基于真正的 non-blocking socket，而不是把同步 HTTP 包进 `Task.run_thread()`。异步接口与同步接口放在同一模块文件中：

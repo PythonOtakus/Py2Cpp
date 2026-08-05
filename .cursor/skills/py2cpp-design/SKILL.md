@@ -39,7 +39,7 @@ description: >-
 1. **判据**：若某函数可无损写成「纯 Python + 更小的 `@native`」，则**不得**对该函数标 `@native`；语义落在 Python 组合层。
 2. **`util/memory`**：``copy_buf`` / ``buf_to_str`` / ``load_u64_le`` / ``load_u64_le_bytes`` 为 ``@native``（各带 ``*_ref``）；缓冲扩容见 ``array.reserve``。
 3. **`serde/json`**：``JsonEncoder`` 静态 ``append_*`` / ``fast_encode`` 纯 Python + ``JsonDecoder`` 实例 decode 组合（``load_u64_le`` 来自 ``util/memory``，``span``→``str`` 用 ``str.from_codes_span``）；``@serializable`` codegen 直调 ``dec.parse_int_at_ascii()`` / ``dec.str_assign_from_seg(seg)``。**无** ``json_scan_cpp``。
-4. **C++ 可无损删除**：关掉 ``memory_cpp`` 注入后仍靠 Python 组合 + 叶子 ``*_ref`` 全绿（性能可降）。
+4. **C++ 可无损删除**：关掉 ``templates/util/+memory.inl`` 注入后仍靠 Python 组合 + 叶子 ``*_ref`` 全绿（性能可降）。
 5. **第三方 C FFI**：仓库根 ``ffi/**/*.pyi``（生成器产出）→ 译器按需写 ``generated/runtime/ffi/…``，C++ ``ffi::…``（**不**挂 ``py2cpp::``、**不**进 ``minimal.h``）。模块级符号一律 ``Pyi_``；结构体 ``@native`` 类 + ``Pointer[T]``（C++ ``using Pyi_X = ::X``，``.pyi`` 只声明）；glue ``#include <c_header>``。详规 [c-ffi-pyi.md](../../../docs/c-ffi-pyi.md) / 编码规范 §9.4；查阅表 [reference §5.3](./reference.md#53-第三方-c-ffiffipyi)。**禁止** star-import、批量删 UI ``templates/**``。
 
 ---
@@ -181,7 +181,7 @@ generated\test\misc\test_containers.exe
 用户要什么？
 ├─ 标准库 API/语义（list.append、str.split…）
 │    → py2cpp/<域>/*.py（如 util/list.py、text/str.py）或包根 py2cpp/__init__.py
-│    → 必要时 src/codegen/*_cpp.py（手写模板，如 tuple_cpp）
+│    → 必要时 `templates/<域>/+*.inl`（或 `-*.inl`）并在 inject / STDLIB_CODEGEN 登记
 │    → 重译 runtime + 相关 test_*.py
 ├─ 新语法 / 新语句 / 新表达式形式
 │    → src/translator.py（visit_* / _emit_*）
@@ -225,7 +225,7 @@ generated\test\misc\test_containers.exe
 ### 2.1 模板类 / `.inl`
 
 - 有类型参数的类：声明在 `.h`，实现在 `.inl`（由译器写入，勿在 `.h` 末尾重复 include 破坏顺序）。
-- `tuple`：逻辑在 `src/codegen/tuple_cpp.py`，Python 侧 `py2cpp/util/tuple.py` 仅为薄声明。
+- `tuple`：逻辑在 `templates/util/tuple.{h,inl}`，Python 侧 `py2cpp/util/tuple.py` 仅为薄声明。
 - `str` 的 `format` / `%`：声明 ``templates/text/+str.h``（``PY2CPP_INJECT_CLASS`` 类尾）；实现 ``templates/text/+str.inl``（paste_after）；标量 ``format`` 见 ``templates/+operators.inl``。``__mod__`` 还须 ``protocol_traits.h`` + ``operators.h`` 且声明带 `template<typename... Args>`。详见 [codegen-templates.md §8.3](../../../docs/codegen-templates.md#83-注入模板命名与路径定案)。
 
 ---

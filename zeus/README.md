@@ -24,7 +24,7 @@ zeus/
   setup_deps.bat
 ```
 
-平台 / OpenGL 为**纯 Python**组合 `ffi.glfw.glfw3` / `ffi.gl.gl`；无 `zeus/templates`、`zeus/native`。
+平台 / OpenGL 为**纯 Python**组合 `ffi.glfw.glfw3` / `ffi.gl.gl`（符号 `Pyi_*`）；无 `zeus/templates`、`zeus/native`。
 重生成 FFI：`zeus\ffi.bat`（或 `zeus\ffi.bat --check`）。
 
 ## 依赖

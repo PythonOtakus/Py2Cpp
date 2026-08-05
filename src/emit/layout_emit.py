@@ -384,6 +384,21 @@ def write_per_module_headers(tr: Translator) -> None:
       for inc in _JSON_API_EXTRA_HEADER_INCLUDES:
         if inc not in ma.includes:
           extra_includes.append(inc)
+    from ..constant.ffi_layout import ffi_c_header_include
+
+    if tr._is_ffi_module(module_path):
+      c_inc = ffi_c_header_include(module_path)
+      if c_inc:
+        norm = module_path.replace("\\", "/").strip("/")
+        if norm == "ffi/gl/gl":
+          content.append("#ifdef _WIN32")
+          content.append("#ifndef WIN32_LEAN_AND_MEAN")
+          content.append("#define WIN32_LEAN_AND_MEAN")
+          content.append("#endif")
+          content.append("#include <windows.h>")
+          content.append("#endif")
+        content.append(f"#include <{c_inc}>")
+        content.append("")
     for inc in list(extra_includes) + list(ma.includes):
       content.append(format_include_line(inc))
     if module_path in PROTOCOL_TRAITS_SOURCE_MODULE_PATHS:

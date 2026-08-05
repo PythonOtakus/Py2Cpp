@@ -25,7 +25,7 @@ def main(argv: list[str] | None = None) -> int:
     "header",
     nargs="?",
     default=None,
-    help="Input .h path, or bare name `windows` / `windows.h` (auto-finds Windows Kits)",
+    help="Input .h path, or bare name `windows` / `gl` (auto-finds Windows Kits)",
   )
   ap.add_argument(
     "--header",

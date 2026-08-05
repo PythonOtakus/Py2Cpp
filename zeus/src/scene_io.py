@@ -61,7 +61,9 @@ def _dump_component(enc: JsonEncoder @ref, c: Component) -> None:
       enc.dump_float(100.0)
     case "JumpMotor":
       enc.dump_key("jump_power")
-      enc.dump_float(8.0)
+      enc.dump_float(c.inspect_float("jump_power"))
+      enc.dump_key("max_charge")
+      enc.dump_float(c.inspect_float("max_charge"))
     case "PlatformPad":
       enc.dump_key("half_x")
       enc.dump_float(1.0)
@@ -192,6 +194,7 @@ def _load_component(go: GameObject, dec: JsonDecoder @ref) -> None:
   z_near: float64 = 0.1
   z_far: float64 = 100.0
   jump_power: float64 = 8.0
+  max_charge: float64 = 1.2
   half_x: float64 = 1.0
   half_z: float64 = 1.0
   dec.skip_spaces()
@@ -213,6 +216,8 @@ def _load_component(go: GameObject, dec: JsonDecoder @ref) -> None:
         z_far = dec.parse_float_at()
       case "jump_power":
         jump_power = dec.parse_float_at()
+      case "max_charge":
+        max_charge = dec.parse_float_at()
       case "half_x":
         half_x = dec.parse_float_at()
       case "half_z":
@@ -236,6 +241,7 @@ def _load_component(go: GameObject, dec: JsonDecoder @ref) -> None:
     case "JumpMotor":
       jm: JumpMotor = new()
       jm.jump_power = jump_power
+      jm.max_charge = max_charge
       go.add_component(jm)
     case "PlatformPad":
       pad: PlatformPad = new()

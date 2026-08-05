@@ -507,6 +507,14 @@ class TypeParser:
       if callable_t:
         return callable_t
       if isinstance(node.value, ast.Name) and node.value.id == "Pointer":
+        # 嵌套 ``Pointer[Pointer[T]]`` 须得到 ``T**``（勿因内层已以 ``*`` 结尾而吞掉一层）
+        if (
+          isinstance(node.slice, ast.Subscript)
+          and isinstance(node.slice.value, ast.Name)
+          and node.slice.value.id == "Pointer"
+        ):
+          inner = self.parse_type(node.slice, type_params, self_class=self_class)
+          return f"{inner}*"
         inner = self.parse_type(node.slice, type_params, self_class=self_class)
         return inner if inner.endswith("*") else f"{inner}*"
       if isinstance(node.value, ast.Name) and node.value.id == "slice":
@@ -2150,8 +2158,9 @@ class SignatureBuilder:
     bare = cpp_type.strip()
     if bare.endswith("&"):
       bare = bare[:-1].strip()
+    # ``Pointer[T]`` / ``T*``：按值传指针，勿剥 ``*`` 后按用户类再加 ``&``（会得到 ``T*&``）
     if bare.endswith("*"):
-      bare = bare[:-1].strip()
+      return False
     if bare.startswith("const "):
       bare = bare[6:].strip()
     if info is not None and bare in info.type_aliases:
@@ -2199,12 +2208,12 @@ class SignatureBuilder:
     if cpp_type.endswith("&"):
       return f"{cpp_type} {name}"
     if pass_by_ref:
+      if cpp_type.rstrip().endswith("*"):
+        return f"{cpp_type} {name}"
       if is_str_type(cpp_type):
         ps = cpp_ident("str")
         return f"const {ps}& {name}"
       if is_container_type(cpp_type):
-        if cpp_type.rstrip().endswith("*"):
-          return f"{cpp_type} {name}"
         return f"const {cpp_type}& {name}"
       if const_ref:
         return f"const {cpp_type}& {name}"

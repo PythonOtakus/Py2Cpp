@@ -4,27 +4,28 @@ from __future__ import annotations
 from py2cpp import *
 from py2cpp.spatial.color import Color
 from ffi.gl.gl import (
-  GL_COLOR_BUFFER_BIT,
-  GL_DEPTH_BUFFER_BIT,
-  GL_DEPTH_TEST,
-  GL_MODELVIEW,
-  GL_PROJECTION,
-  GL_TRIANGLES,
-  glBegin,
-  glClear,
-  glClearColor,
-  glColor3d,
-  glEnable,
-  glEnd,
-  glFrustum,
-  glLoadIdentity,
-  glMatrixMode,
-  glPopMatrix,
-  glPushMatrix,
-  glRotatef,
-  glTranslatef,
-  glVertex3d,
-  glViewport,
+  Pyi_GL_COLOR_BUFFER_BIT,
+  Pyi_GL_DEPTH_BUFFER_BIT,
+  Pyi_GL_DEPTH_TEST,
+  Pyi_GL_LINES,
+  Pyi_GL_MODELVIEW,
+  Pyi_GL_PROJECTION,
+  Pyi_GL_TRIANGLES,
+  Pyi_glBegin,
+  Pyi_glClear,
+  Pyi_glClearColor,
+  Pyi_glColor3d,
+  Pyi_glEnable,
+  Pyi_glEnd,
+  Pyi_glFrustum,
+  Pyi_glLoadIdentity,
+  Pyi_glMatrixMode,
+  Pyi_glPopMatrix,
+  Pyi_glPushMatrix,
+  Pyi_glRotatef,
+  Pyi_glTranslatef,
+  Pyi_glVertex3d,
+  Pyi_glViewport,
 )
 
 from ..mesh import Mesh
@@ -47,29 +48,29 @@ class GLDevice:
     self.clear_a = color.a
 
   def clear(self) -> None:
-    glClearColor(self.clear_r, self.clear_g, self.clear_b, self.clear_a)
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+    Pyi_glClearColor(self.clear_r, self.clear_g, self.clear_b, self.clear_a)
+    Pyi_glClear(Pyi_GL_COLOR_BUFFER_BIT | Pyi_GL_DEPTH_BUFFER_BIT)
 
   def begin_frame(self, width: int, height: int) -> None:
-    glViewport(0, 0, width, height)
-    glEnable(GL_DEPTH_TEST)
-    glMatrixMode(GL_PROJECTION)
-    glLoadIdentity()
+    Pyi_glViewport(0, 0, width, height)
+    Pyi_glEnable(Pyi_GL_DEPTH_TEST)
+    Pyi_glMatrixMode(Pyi_GL_PROJECTION)
+    Pyi_glLoadIdentity()
     aspect: float64 = 1.0
     if height != 0:
       aspect = width / height
-    glFrustum(-aspect, aspect, -1.0, 1.0, 1.0, 100.0)
-    glMatrixMode(GL_MODELVIEW)
-    glLoadIdentity()
-    glTranslatef(0.0, 0.0, -4.0)
-    glRotatef(25.0, 1.0, 0.0, 0.0)
-    glRotatef(35.0, 0.0, 1.0, 0.0)
+    Pyi_glFrustum(-aspect, aspect, -1.0, 1.0, 1.0, 100.0)
+    Pyi_glMatrixMode(Pyi_GL_MODELVIEW)
+    Pyi_glLoadIdentity()
+    Pyi_glTranslatef(0.0, 0.0, -4.0)
+    Pyi_glRotatef(25.0, 1.0, 0.0, 0.0)
+    Pyi_glRotatef(35.0, 0.0, 1.0, 0.0)
 
   def draw_mesh(self, mesh: Mesh) -> None:
     n: int = mesh.vertex_count
     if n <= 0:
       return
-    glBegin(GL_TRIANGLES)
+    Pyi_glBegin(Pyi_GL_TRIANGLES)
     for i in range(n):
       base: int = i * 6
       x: float64 = mesh.vertices[base]
@@ -78,13 +79,30 @@ class GLDevice:
       r: float64 = mesh.vertices[base + 3]
       g: float64 = mesh.vertices[base + 4]
       b: float64 = mesh.vertices[base + 5]
-      glColor3d(r, g, b)
-      glVertex3d(x, y, z)
-    glEnd()
+      Pyi_glColor3d(r, g, b)
+      Pyi_glVertex3d(x, y, z)
+    Pyi_glEnd()
     self.draw_count += 1
 
   def draw_mesh_at(self, mesh: Mesh, x: float64, y: float64, z: float64) -> None:
-    glPushMatrix()
-    glTranslatef(x, y, z)
+    Pyi_glPushMatrix()
+    Pyi_glTranslatef(x, y, z)
     self.draw_mesh(mesh)
-    glPopMatrix()
+    Pyi_glPopMatrix()
+
+  def draw_translate_gizmo(self, x: float64, y: float64, z: float64, axis_len: float64) -> None:
+    """选中物体处的 RGB 平移 gizmo（立即模式线段）。"""
+    Pyi_glPushMatrix()
+    Pyi_glTranslatef(x, y, z)
+    Pyi_glBegin(Pyi_GL_LINES)
+    Pyi_glColor3d(1.0, 0.2, 0.2)
+    Pyi_glVertex3d(0.0, 0.0, 0.0)
+    Pyi_glVertex3d(axis_len, 0.0, 0.0)
+    Pyi_glColor3d(0.2, 1.0, 0.2)
+    Pyi_glVertex3d(0.0, 0.0, 0.0)
+    Pyi_glVertex3d(0.0, axis_len, 0.0)
+    Pyi_glColor3d(0.2, 0.4, 1.0)
+    Pyi_glVertex3d(0.0, 0.0, 0.0)
+    Pyi_glVertex3d(0.0, 0.0, axis_len)
+    Pyi_glEnd()
+    Pyi_glPopMatrix()

@@ -1,7 +1,15 @@
 """双列表单布局（``UIFormLayout``）；Win32 挂载由 codegen 注入。"""
 
 from ..builtins import *
-from .widget import UICheckBox, UIIntEdit, UILineEdit, UIPushButton, UISlider, UIWidget
+from .widget import (
+  UICheckBox,
+  UIFloatEdit,
+  UIIntEdit,
+  UILineEdit,
+  UIPushButton,
+  UISlider,
+  UIWidget,
+)
 from .window import UIWindow
 
 
@@ -24,6 +32,10 @@ class UIFormLayout:
 
   @native
   def add_int_edit(self, label: str, widget: UIIntEdit @ref) -> None:
+    ...
+
+  @native
+  def add_float_edit(self, label: str, widget: UIFloatEdit @ref) -> None:
     ...
 
   @native
@@ -61,6 +73,10 @@ class UIFormLayout:
     ...
 
   @native
+  def row_float(self, index: int) -> float64:
+    ...
+
+  @native
   def set_row_bool(self, index: int, value: bool) -> None:
     ...
 
@@ -70,6 +86,10 @@ class UIFormLayout:
 
   @native
   def set_row_int(self, index: int, value: int) -> None:
+    ...
+
+  @native
+  def set_row_float(self, index: int, value: float64) -> None:
     ...
 
   @native
@@ -85,6 +105,11 @@ class UIFormLayout:
   @native
   def push_row_int(self, index: int, value: int) -> None:
     """写对应 int edit / slider ``value__set``。"""
+    ...
+
+  @native
+  def push_row_float(self, index: int, value: float64) -> None:
+    """写对应 float edit ``value__set``。"""
     ...
 
   @native

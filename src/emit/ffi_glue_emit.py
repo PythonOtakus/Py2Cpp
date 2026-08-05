@@ -1,7 +1,6 @@
 """``ffi/**/*.pyi`` 的 ``@native`` / ``@native_name`` → 薄 ``.inl`` 转发到 C 符号。
 
-命名空间为 ``ffi::…``（不挂 ``py2cpp::``）。句柄按 ``uint64`` 存；
-``Pointer[opaque]`` 出参经临时 C 指针再写回。
+命名空间为 ``ffi::…``（不挂 ``py2cpp::``）。结构体类型为 ``Pyi_*``（``using`` 到 C）；glue 对指针/按值尽量直传。
 
 默认仅对 ``ffi_glue_allowlist`` 内符号生成体（避免全量 ``uintptr``/回调签名在 MSVC 上 C2664）；
 未列入的声明仍留在 ``.h``，调用时链接期报错。
@@ -22,7 +21,6 @@ from ..analysis.module_namespace import namespace_qualifier_for_module
 from ..constant.ffi_layout import (
   ffi_c_header_include,
   ffi_glue_allowlist,
-  ffi_opaque_c_tag,
   is_ffi_module_path,
 )
 
@@ -45,7 +43,7 @@ _SCALAR_CAST: dict[str, str] = {
 
 @dataclass(frozen=True)
 class _Ann:
-  kind: str  # void|scalar|cstr|opaque|ptr_opaque|ptr_scalar|ptr_cstr|ptr_ptr|unsupported
+  kind: str  # void|scalar|cstr|struct|fn|ptr_struct|ptr_scalar|ptr_cstr|ptr_ptr|unsupported
   name: str = ""
 
 
@@ -61,8 +59,11 @@ def _parse_ann(node: ast.expr | None) -> _Ann:
       return _Ann("cstr")
     if node.id in _SCALAR_CAST:
       return _Ann("scalar", node.id)
-    return _Ann("opaque", node.id)
+    # 按值结构体 / 历史 *_h 名（剥后缀得 C 标签）
+    return _Ann("struct", node.id)
   if isinstance(node, ast.Subscript) and isinstance(node.value, ast.Name):
+    if node.value.id == "Function":
+      return _Ann("fn")
     if node.value.id != "Pointer":
       return _Ann("unsupported")
     sl = node.slice
@@ -71,8 +72,9 @@ def _parse_ann(node: ast.expr | None) -> _Ann:
         return _Ann("ptr_cstr")
       if sl.id in _SCALAR_CAST:
         return _Ann("ptr_scalar", sl.id)
-      return _Ann("ptr_opaque", sl.id)
+      return _Ann("ptr_struct", sl.id)
     if isinstance(sl, ast.Subscript):
+      # Pointer[Pointer[T]] → 直接传 T**
       return _Ann("ptr_ptr")
   return _Ann("unsupported")
 
@@ -85,27 +87,32 @@ def _c_name(func: ast.FunctionDef) -> str:
 def _emit_arg_expr(pname: str, ann: _Ann, *, c_name: str) -> tuple[list[str], str]:
   if ann.kind == "cstr":
     return [], pname
+  if ann.kind == "fn":
+    # C 回调签名与 Py Function 指针布局一致但类型名不同，按需收窄
+    if c_name == "sqlite3_exec" and pname == "callback":
+      return [], (
+        f"reinterpret_cast<int(__cdecl*)(void*,int,char**,char**)>({pname})"
+      )
+    return [], pname
   if ann.kind == "scalar":
     if ann.name == "uintptr":
-      # 回调 / void* / 销毁器：统一经 void* 再交 C（允许 list 内函数自行收窄）
-      if c_name == "sqlite3_exec" and pname in ("callback", "arg3"):
-        if pname == "callback":
-          return [], (
-            f"reinterpret_cast<int(__cdecl*)(void*,int,char**,char**)>"
-            f"(static_cast<uintptr_t>({pname}))"
-          )
+      # void* / 上下文指针：统一经 void* 再交 C
+      if c_name == "sqlite3_exec" and pname == "arg3":
         return [], f"reinterpret_cast<void*>(static_cast<uintptr_t>({pname}))"
       return [], f"reinterpret_cast<void*>(static_cast<uintptr_t>({pname}))"
     return [], pname
-  if ann.kind == "opaque":
-    # Python 句柄为 ``*_h``（``sqlite3_h``）；``struct`` 须用 C 标签（``sqlite3``）
-    c_tag = ffi_opaque_c_tag(ann.name)
-    return [], f"(struct {c_tag}*)(uintptr_t){pname}"
-  if ann.kind == "ptr_opaque":
-    tmp = f"__ffi_o_{pname}"
-    c_tag = ffi_opaque_c_tag(ann.name)
-    return [f"struct {c_tag}* {tmp} = nullptr;"], f"&{tmp}"
+  if ann.kind == "struct":
+    # 按值传递；若误传不完整类型会在 C++ 编译期失败
+    return [], pname
+  if ann.kind == "ptr_struct":
+    # 已是 Pyi_T*（using → C）；直传
+    return [], pname
   if ann.kind == "ptr_scalar":
+    # PyFloat* / PyFloat64* → C float* / double*（与 py2cpp 标量宽度一致）
+    if ann.name == "float":
+      return [], f"reinterpret_cast<float*>({pname})"
+    if ann.name == "float64":
+      return [], f"reinterpret_cast<double*>({pname})"
     return [], pname
   if ann.kind == "ptr_cstr":
     # ``c_str*`` ≈ ``const char**``；个别 API（如 ``sqlite3_exec`` errmsg）要 ``char**``
@@ -113,39 +120,54 @@ def _emit_arg_expr(pname: str, ann: _Ann, *, c_name: str) -> tuple[list[str], st
       return [], f"reinterpret_cast<char**>(static_cast<void*>({pname}))"
     return [], f"reinterpret_cast<const char**>(static_cast<void*>({pname}))"
   if ann.kind == "ptr_ptr":
-    return [], f"(void*){pname}"
+    return [], pname
   if ann.kind == "unsupported":
     return [], f"reinterpret_cast<void*>(static_cast<uintptr_t>({pname}))"
   return [], pname
 
 
 def _emit_out_writes(pname: str, ann: _Ann) -> list[str]:
-  if ann.kind == "ptr_opaque":
-    tmp = f"__ffi_o_{pname}"
-    return [f"if ({pname}) {{ *{pname} = (PyUInt64)(uintptr_t){tmp}; }}"]
+  _ = (pname, ann)
   return []
 
 
 def _ret_store_type(ann: _Ann, fallback: str) -> str:
   if ann.kind == "void":
     return "void"
-  if ann.kind == "opaque":
-    return "PyUInt64"
+  if ann.kind == "struct":
+    return fallback
   if ann.kind == "cstr":
     return "c_str"
+  if ann.kind == "fn":
+    return fallback
   if ann.kind == "scalar":
     return _SCALAR_CAST.get(ann.name, fallback)
   return fallback
 
 
 def _wrap_c_call_as_ret(c_call: str, ann: _Ann, store: str) -> str:
-  if ann.kind == "opaque":
-    return f"(PyUInt64)(uintptr_t)({c_call})"
   if ann.kind == "cstr":
     return f"(c_str)({c_call})"
+  if ann.kind == "fn":
+    return f"({store})({c_call})"
   if ann.kind == "scalar":
     return f"({store})({c_call})"
+  if ann.kind == "struct":
+    return f"({store})({c_call})"
   return f"({store})({c_call})"
+
+
+def _qualify_pyi_types(cpp_type: str, ns: str) -> str:
+  """``.inl`` 在命名空间闭合后包含：返回类型在限定名之前，须写 ``ns::Pyi_*``。"""
+  if not ns or not cpp_type:
+    return cpp_type
+  import re
+
+  return re.sub(
+    r"(?<![:\w])(Pyi_[A-Za-z0-9_]+)",
+    rf"{ns}::\1",
+    cpp_type,
+  )
 
 
 def emit_ffi_module_glue(tr: Translator, module_path: str) -> None:
@@ -187,7 +209,7 @@ def emit_ffi_module_glue(tr: Translator, module_path: str) -> None:
     if "::" in cpp_name:
       continue
     qname = f"{ns}::{cpp_name}" if ns else cpp_name
-    ret = tr._sig_return_storage(fsig)
+    ret = _qualify_pyi_types(tr._sig_return_storage(fsig), ns)
     params = tr._function_sig_params_impl(fsig.params)
     sig = "inline " + format_fn_sig(ret, fsig.ret_trail, qname, params)
     ret_ann = _parse_ann(func.returns)
@@ -232,10 +254,15 @@ def emit_ffi_module_glue(tr: Translator, module_path: str) -> None:
     and node.target.id != "__all__"
   ]
   if const_names:
-    lines.append("// 撤销 C 头对 FFI 常量同名宏的再定义")
+    lines.append("// 撤销 C 头对 FFI 常量对应宏的再定义（Pyi_X → X）")
+    seen_c: set[str] = set()
     for name in const_names:
-      lines.append(f"#ifdef {name}")
-      lines.append(f"#undef {name}")
+      c_macro = name[4:] if name.startswith("Pyi_") else name
+      if c_macro in seen_c:
+        continue
+      seen_c.add(c_macro)
+      lines.append(f"#ifdef {c_macro}")
+      lines.append(f"#undef {c_macro}")
       lines.append("#endif")
     lines.append("")
 

@@ -1629,7 +1629,14 @@ def split_cpp_param_list(params: str) -> list[str]:
 
 
 def format_fn_sig(lead: str, trail: str, name: str, params: str) -> str:
-  """拼接函数签名片段，例如 ``void foo(int x)`` 或 ``auto f(T x) -> decltype(...)``。"""
+  """拼接函数签名片段，例如 ``void foo(int x)`` 或 ``auto f(T x) -> decltype(...)``。
+
+  返回类型为函数指针（``Ret (*)(Args)``）时用尾返回类型，避免
+  ``void (*)() foo(...)`` 这种非法声明（须 ``void (*foo(...))()`` 或 ``auto foo(...) -> void (*)()``）。
+  """
+  lead_s = (lead or "").strip()
+  if format_cpp_callable_var_decl(lead_s, "_") is not None:
+    return f"auto {name}({params}){trail} -> {lead_s}"
   return f"{lead} {name}({params}){trail}"
 
 
@@ -3097,6 +3104,11 @@ class ClassInfo:
 
   def cpp_name(self) -> str:
     if self.cpp_rename:
+      # FFI @native 结构体：Python 名（Pyi_*）即 C++ 名；native_name 仅供 using → C 标签
+      from ..constant.ffi_layout import is_ffi_c_struct_class
+
+      if is_ffi_c_struct_class(self):
+        return cpp_ident(self.name)
       return cpp_ident(self.cpp_rename)
     return cpp_ident(self.name)
 

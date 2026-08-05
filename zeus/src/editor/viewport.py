@@ -1,15 +1,17 @@
-"""Scene View：GLFW 无边框窗 + ``GLDevice`` 绘制场景 Mesh。"""
+"""Scene View：GLFW 无边框窗 + ``GLDevice`` + 平移 gizmo。"""
 from __future__ import annotations
 
 from py2cpp import *
 from py2cpp.spatial.color import Color
 from py2cpp.spatial.vector import Vector3
 
-from ..command import CommandBus
+from ..command import CommandBus, ZeusCommand
 from ..platform.window import Window
 from ..render.mesh import Mesh
 from ..render.opengl.gl_device import GLDevice
 from ..scene import Component, GameObject
+from ..world import WORLD_PLAYING
+from .gizmo import TranslateGizmo
 
 
 @refcount
@@ -19,12 +21,14 @@ class SceneViewport:
   win: Window = new()
   device: GLDevice = new()
   bus: CommandBus = new()
+  gizmo: TranslateGizmo = new()
   ready: bool = False
 
   def __init__(self):
     self.win = new()
     self.device = new()
     self.bus = new()
+    self.gizmo = new()
     self.ready = False
 
   def bind_bus(self, bus: CommandBus) -> None:
@@ -40,6 +44,7 @@ class SceneViewport:
       return False
     self.win.make_current()
     self.device.set_clear_color(Color(0.18, 0.19, 0.22, 1.0))
+    self.gizmo.ensure()
     self.ready = True
     return True
 
@@ -48,6 +53,14 @@ class SceneViewport:
       return
     self.win.set_bounds_screen(x, y, width, height)
 
+  def _selected_go(self) -> GameObject | None:
+    name: str = self.bus.selected
+    if not name:
+      return None
+    if self.bus.world.root.name == name:
+      return self.bus.world.root
+    return self.bus.world.root.find(name)
+
   def render(self) -> None:
     if not self.ready:
       return
@@ -55,9 +68,22 @@ class SceneViewport:
     self.win.poll()
     w: int = self.win.width
     h: int = self.win.height
+    if self.bus.world.state != WORLD_PLAYING:
+      sel: GameObject | None = self._selected_go()
+      if sel is not None:
+        origin: Vector3 = sel.root.local_position
+        moved, new_pos = self.gizmo.update(self.win, origin, w, h)
+        if moved:
+          self.bus.dispatch(
+            ZeusCommand.ObjectSetPosition(sel.name, new_pos.x, new_pos.y, new_pos.z)
+          )
     self.device.begin_frame(w, h)
     self.device.clear()
     self._draw_go(self.bus.world.root)
+    if self.bus.world.state != WORLD_PLAYING:
+      sel2: GameObject | None = self._selected_go()
+      if sel2 is not None:
+        self.gizmo.draw(self.device, sel2.root.local_position)
     self.win.swap()
 
   def _draw_go(self, go: GameObject) -> None:

@@ -17,7 +17,7 @@ Py2Cpp/
 │   ├── compile.py               # -c 编译；test/ 默认不链 py2cpp.cpp
 │   ├── constant/                # 静态表：模块/类/方法名、布局、umbrella、FFI、inject…
 │   │   ├── stdlib_layout.py     # 逻辑模块路径 → #include / ::
-│   │   ├── ffi_layout.py        # ffi/**/*.pyi → generated/runtime/ffi/；句柄 *_h
+│   │   ├── ffi_layout.py        # ffi/**/*.pyi → generated/runtime/ffi/；using Pyi_X = ::X
 │   │   └── mixin.py             # @mixin 方法名契约
 │   ├── tools/c_ffi_pyi.py       # libclang → ffi/**/*.pyi（CLI：ffi.bat / scripts/gen_c_ffi.py）
 │   ├── analysis/
@@ -258,10 +258,11 @@ Py2Cpp/
 
 | 项 | 约定 |
 |----|------|
-| 源 | 仓库根 `ffi/`（`ffi.bat` / `scripts/gen_c_ffi.py` → `src/tools/c_ffi_pyi.py`） |
-| 句柄别名 | `type sqlite3_h = uint64`（`*_h`；**永不**与 C 标签同名）；glue 用 `struct sqlite3*`（`ffi_opaque_c_tag`） |
+| 源 | 仓库根 `ffi/`（`ffi.bat`）；Zeus 旁路 `zeus/ffi/`（`zeus\ffi.bat` → 同 `ffi/…` module_path） |
+| 结构体 / 枚举 | 模块级 `Pyi_*`；`@native_name`=C 标签；`using Pyi_X = ::X`；枚举成员作常量；未知字段 `None # C: …` |
+| docstring | C Doxygen → PEP 257（`def`/`class` 下 `"""…"""`）；不进 C++ glue；见 [c-ffi-pyi §7.1](../../../docs/c-ffi-pyi.md#71-c-注释--python-docstring) |
 | C++ | `ffi::…`（**不**挂 `py2cpp::`）；`#include <c_header>` 尖括号防同目录自包含 |
-| 业务 | `py2cpp/sql/sqlite.py` import 拉闭包；`templates/sql/+sqlite.inl` 调 `::ffi::sqlite::sqlite3::…` |
+| 业务 | `py2cpp/sql/sqlite.py` / Zeus `platform`·`render` import 拉闭包；glue allowlist 见 `ffi_layout` |
 | 禁止 | `from ffi… import *`；把全量 `windows.pyi` 塞进 `minimal.h`；手改 `AUTO-GENERATED` `.pyi` |
 
 回归：`python -m unittest src.tests.test_ffi_import`；`build.bat sql/test_sqlite`。

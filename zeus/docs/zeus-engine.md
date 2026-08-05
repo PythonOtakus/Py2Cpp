@@ -73,7 +73,7 @@ UI / 插件 / MCP 共用 `@union` 命令 + JSON 桥接。
 
 ### 2.5 独立项目化
 
-`zeus/docs`（含本文）、`zeus/README.md`、`zeus/ffi` 随 Zeus；无 `zeus/templates` / `zeus/native`（平台与 GL 为纯 Python 组合 FFI）。
+`zeus/docs`（含本文）、`zeus/README.md`、`zeus/ffi` 随 Zeus；无 `zeus/templates` / `zeus/native`（平台与 GL 为纯 Python 组合 FFI）。`zeus/ffi/**/*.pyi` 由 `zeus\ffi.bat` 从 GLFW / `GL/gl.h` 生成，勿手改。
 
 ### 2.6 不重复造轮子
 
@@ -527,17 +527,16 @@ Phase 0–2（已完成）
 
 - [x] 跳一跳 headless：`JumpMotor` FSM + `PlatformPad` + 重力落点 + `test_jump` 满分蓄力得分
 - [x] 资产约定：场景 `.zas`；模型 `.fbx`（ASCII Vertices 子集）
-- [ ] 有窗可玩 demo / 编辑器调 `jump_power`（可后置）
+- [x] 有窗可玩 demo（`zeus\demo.bat`）/ 编辑器调 `jump_power`（`UIFloatEdit` + `ComponentSetFloat`）+ Scene 平移 gizmo
 - [ ] （可选）ECS 热路径 — **Phase 7 暂不做**
 
 ---
 
 ## 15. 下一步建议
 
-1. 有窗跳一跳入口（`platform/input` 已有 space / 鼠标左键蓄力钩子）。
-2. 编辑器 Inspector 暴露 `JumpMotor.jump_power` 等字段并 Play 验证。
-3. 需要外部工具改场景时再做 **Phase 5** MCP。
-4. 有 profiling 数据后再上 **Phase 7** ECS。
+1. 脚本模板（Create Component 骨架）— 待定。
+2. 需要外部工具改场景时再做 **Phase 5** MCP。
+3. 有 profiling 数据后再上 **Phase 7** ECS。
 
 **资产后缀**：场景与引擎侧序列化资产统一 `.zas`（Zeus Asset）；网格模型通用 `.fbx`。
 

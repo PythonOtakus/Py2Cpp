@@ -2,7 +2,8 @@ from ..builtins import *
 from ..core.exceptions import Exception
 from .protocols import Connection, Cursor, Dialect
 # 翻译闭包拉取 FFI 声明 + glue（``templates/sql/+sqlite.inl`` 经 ``ffi::sqlite::sqlite3`` 调 C）
-from ffi.sqlite.sqlite3 import sqlite3_open as _ffi_sqlite3_open
+from ffi.sqlite.sqlite3 import Pyi_sqlite3, Pyi_sqlite3_stmt
+from ffi.sqlite.sqlite3 import Pyi_sqlite3_open as _ffi_sqlite3_open
 
 
 class Error(Exception):
@@ -58,10 +59,10 @@ class SqliteDialect:
 class SqliteCursor:
   """``sqlite3.Cursor`` 子集；当前行由 C++ 侧 ``sqlite3_stmt`` 持有。"""
 
-  _stmt: uint64
+  _stmt: Pointer[Pyi_sqlite3_stmt]
   _done: bool
 
-  def __init__(self, stmt: uint64): ...
+  def __init__(self, stmt: Pointer[Pyi_sqlite3_stmt]): ...
 
   def __del__(self): ...
 
@@ -76,7 +77,7 @@ class SqliteCursor:
 @uncopyable
 @native_name("Py*")
 class SqliteConnection:
-  _db: uint64
+  _db: Pointer[Pyi_sqlite3]
   _closed: bool
 
   def __init__(self): ...

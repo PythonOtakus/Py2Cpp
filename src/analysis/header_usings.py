@@ -18,7 +18,9 @@ def _skip_class_for_header_using(info: ClassInfo) -> bool:
     return True
   if info.outer_class is not None and info.outer_class.is_union:
     return True
-  return info.name in TYPE_MARKER_CLASSES
+  if info.name in TYPE_MARKER_CLASSES:
+    return True
+  return False
 
 
 def build_header_usings_index(

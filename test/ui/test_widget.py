@@ -3,7 +3,14 @@ from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 from py2cpp.ui.meta import UIButtonMeta, UILabelMeta
 from py2cpp.ui.panel import UIPanelMixin
-from py2cpp.ui.widget import UICheckBox, UIIntEdit, UILineEdit, UIPushButton, UISlider
+from py2cpp.ui.widget import (
+  UICheckBox,
+  UIFloatEdit,
+  UIIntEdit,
+  UILineEdit,
+  UIPushButton,
+  UISlider,
+)
 
 
 class UICheckBoxNoWindowTests(TestCaseMixin):
@@ -34,6 +41,17 @@ class UIIntEditNoWindowTests(TestCaseMixin):
     ie: UIIntEdit = new()
     ie.value = 42
     self.assertEqual(ie.value, 42)
+
+
+class UIFloatEditNoWindowTests(TestCaseMixin):
+  _test_tag = 35
+
+  @override
+  def test(self):
+    fe: UIFloatEdit = new()
+    fe.value = 3.5
+    self.assertTrue(fe.value > 3.4)
+    self.assertTrue(fe.value < 3.6)
 
 
 class UISliderNoWindowTests(TestCaseMixin):

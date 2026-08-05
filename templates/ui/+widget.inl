@@ -94,6 +94,23 @@ void UIIntEdit::_sync_to_native()
   }
 }
 
+void UIFloatEdit::_sync_to_native()
+{
+  HWND ctrl = (HWND)(INT_PTR)handle;
+  if (!ctrl)
+  {
+    return;
+  }
+  char want[64];
+  snprintf(want, sizeof(want), "%.6g", (double)value__value);
+  char cur[64];
+  _ui_widget_read_edit_text(ctrl, cur, (int)sizeof(cur));
+  if (strcmp(cur, want) != 0)
+  {
+    SetWindowTextA(ctrl, want);
+  }
+}
+
 void UISlider::_sync_to_native()
 {
   HWND ctrl = (HWND)(INT_PTR)handle;
@@ -124,6 +141,10 @@ void UILineEdit::_sync_to_native()
 }
 
 void UIIntEdit::_sync_to_native()
+{
+}
+
+void UIFloatEdit::_sync_to_native()
 {
 }
 

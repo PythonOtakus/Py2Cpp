@@ -26,7 +26,7 @@ except ImportError as e:  # pragma: no cover
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FFI_ROOT = REPO_ROOT / "ffi"
 
-from ..constant.ffi_layout import ffi_opaque_py_name  # noqa: E402
+# FFI 布局常量（本生成器不再使用 *_h 句柄别名）
 
 # 空/属性类宏：不发射为 Python 常量
 _SKIP_MACRO_NAMES = frozenset({
@@ -80,15 +80,338 @@ _SKIP_MACRO_PREFIXES = (
 )
 
 
+PYI_PREFIX = "Pyi_"
+
+_PYI_ANN_BUILTINS = frozenset({
+  "None",
+  "int",
+  "int64",
+  "uint",
+  "uint64",
+  "uintptr",
+  "float",
+  "float64",
+  "bool",
+  "byte",
+  "char",
+  "str",
+  "bytes",
+  "c_str",
+  "Self",
+  "object",
+})
+
+
+def _is_c_ident(name: str | None) -> bool:
+  return bool(name) and name.isidentifier()
+
+
+def pyi_export_name(c_name: str) -> str:
+  """模块级导出名：``Pyi_`` + C 标识符。"""
+  if not _is_c_ident(c_name):
+    return f"{PYI_PREFIX}_anon"
+  if c_name.startswith(PYI_PREFIX):
+    return c_name
+  return f"{PYI_PREFIX}{c_name}"
+
+
+def pyi_c_name_from_export(py_name: str) -> str:
+  """``Pyi_sqlite3`` → ``sqlite3``。"""
+  if py_name.startswith(PYI_PREFIX):
+    return py_name[len(PYI_PREFIX):]
+  return py_name
+
+
+def _rewrite_identifiers_in_ann(ann: str, known: set[str]) -> str:
+  def repl(m: re.Match[str]) -> str:
+    w = m.group(0)
+    if w in _PYI_ANN_BUILTINS or w in ("Self", "Function", "Pointer"):
+      return w
+    if w in known and _is_c_ident(w):
+      return pyi_export_name(w)
+    return w
+
+  return re.sub(r"\b[A-Za-z_][A-Za-z0-9_]*\b", repl, ann)
+
+
+def _shorten_c_type_comment(detail: str) -> str:
+  """去掉 clang ``unnamed at C:\\…\\file.h:line`` 绝对路径，保留简短描述。"""
+  s = detail.strip()
+  if not s:
+    return "unknown"
+  s = re.sub(
+    r"\bunnamed (?:struct|union|enum) at [^:]+:\d+:\d+",
+    "unnamed",
+    s,
+    flags=re.IGNORECASE,
+  )
+  s = re.sub(r"\bat [A-Za-z]:\\[^\)]+", "at <sdk>", s)
+  s = re.sub(r"\s+", " ", s).strip()
+  if len(s) > 120:
+    s = s[:117] + "..."
+  return s
+
+
+def _is_valid_pyi_ann(ann: str) -> bool:
+  """注解须为合法 Python 类型表达式（禁止 clang spelling / 空格路径）。"""
+  a = ann.strip()
+  if not a:
+    return False
+  if a in _PYI_ANN_BUILTINS or a == "Self":
+    return True
+  if a.startswith(PYI_PREFIX) and a.isidentifier():
+    return True
+  if a.startswith("Pointer[") and a.endswith("]"):
+    return _is_valid_pyi_ann(a[len("Pointer[") : -1])
+  if a.startswith("Function["):
+    return True
+  return False
+
+
+def _sanitize_pyi_ann(ann: str, cmt: str = "") -> tuple[str, str]:
+  """非法注解 → ``None`` + ``C: …`` 注释。"""
+  if _is_valid_pyi_ann(ann):
+    return ann, cmt
+  detail = ann if ann and ann != "None" else (cmt or "unknown")
+  if detail.startswith("C:"):
+    detail = detail[2:].strip()
+  if detail.startswith("unmapped:"):
+    detail = detail[len("unmapped:") :].strip()
+  return "None", f"C: {_shorten_c_type_comment(detail)}"
+
+
+def _cursor_doc(cursor) -> str:
+  """从 libclang cursor 取 C 注释并转为 Python docstring 正文（无三引号）。"""
+  try:
+    raw = cursor.raw_comment
+  except Exception:
+    raw = None
+  try:
+    brief = cursor.brief_comment
+  except Exception:
+    brief = None
+  return doxygen_to_python_docstring(raw, brief) or ""
+
+
+def _clean_doxygen_refs(text: str) -> str:
+  """``@ref Name`` / ``[text](@ref x)`` → 纯文本；去掉多余反引号包裹的简单标识。"""
+  s = text
+  s = re.sub(r"\[([^\]]+)\]\(@ref\s+[^)]+\)", r"\1", s)
+  s = re.sub(r"@ref\s+(\w+)", r"\1", s)
+  return s
+
+
+def _unwrap_c_comment(raw: str) -> str:
+  """剥 ``/*! … */`` / ``/** … */`` / ``//`` 行前缀。"""
+  lines_out: list[str] = []
+  for line in raw.splitlines():
+    ln = line
+    ln = re.sub(r"^\s*/\*+[!]?", "", ln)
+    ln = re.sub(r"\*/\s*$", "", ln)
+    ln = re.sub(r"^\s*//+!?\s?", "", ln)
+    # `` *  @param`` → ``@param``（剥 ``*`` 后吃掉全部前导空白）
+    ln = re.sub(r"^\s*\*\s*", "", ln)
+    ln = ln.strip()
+    lines_out.append(ln)
+  return "\n".join(lines_out).strip()
+
+
+_DOXY_SECTION_TAGS = {
+  "errors": "Errors",
+  "error": "Errors",
+  "thread_safety": "Thread safety",
+  "threadsafety": "Thread safety",
+  "sa": "See also",
+  "see": "See also",
+  "since": "Since",
+  "note": "Note",
+  "remark": "Note",
+  "remarks": "Note",
+  "warning": "Warning",
+  "bug": "Bug",
+  "todo": "Todo",
+  "pointer_lifetime": "Pointer lifetime",
+  "reentrancy": "Reentrancy",
+}
+
+
+def doxygen_to_python_docstring(
+  raw: str | None,
+  brief: str | None = None,
+) -> str | None:
+  """Doxygen / 块注释 → PEP 257 风格正文（Google 小节：Args / Returns / …）。"""
+  brief_s = (brief or "").strip()
+  if not raw and not brief_s:
+    return None
+  body = _unwrap_c_comment(raw) if raw else ""
+  body = _clean_doxygen_refs(body)
+
+  # 去掉独立 @ingroup / @ingroup* 行（分类标签，对 Python 文档无用）
+  body = re.sub(r"(?m)^\s*@ingroup\w*\s+\S+\s*$", "", body)
+
+  params: list[tuple[str, str]] = []
+  returns = ""
+  sections: list[tuple[str, str]] = []
+  desc_chunks: list[str] = []
+
+  # 按 @tag 切块（保留顺序）
+  parts = re.split(r"(?m)^\s*(?=@\w+)", body) if body else []
+  for part in parts:
+    part = part.strip()
+    if not part:
+      continue
+    m = re.match(
+      r"@param(?:\[[^\]]*\])?\s+(\w+)\s+(.*)",
+      part,
+      flags=re.DOTALL,
+    )
+    if m:
+      params.append((m.group(1), re.sub(r"\s+", " ", m.group(2).strip())))
+      continue
+    m = re.match(r"@returns?\s+(.*)", part, flags=re.DOTALL | re.IGNORECASE)
+    if m:
+      returns = re.sub(r"\s+", " ", m.group(1).strip())
+      continue
+    m = re.match(r"@brief\s+(.*)", part, flags=re.DOTALL | re.IGNORECASE)
+    if m:
+      b = re.sub(r"\s+", " ", m.group(1).strip())
+      if b and not brief_s:
+        brief_s = b
+      elif b and brief_s and b != brief_s:
+        desc_chunks.append(b)
+      continue
+    m = re.match(r"@(\w+)\s*(.*)", part, flags=re.DOTALL)
+    if m:
+      tag = m.group(1).lower()
+      rest = re.sub(r"\s+", " ", m.group(2).strip())
+      if tag in ("xmlns", "ingroup*", "xmlnsname", "code", "endcode", "callback_signature") or tag.startswith("glfw"):
+        continue
+      title = _DOXY_SECTION_TAGS.get(tag)
+      if title and rest:
+        sections.append((title, rest))
+      elif title and not rest:
+        continue
+      elif rest:
+        desc_chunks.append(rest)
+      continue
+    # 无 tag 的前言 = 详述
+    cleaned = re.sub(r"\n{3,}", "\n\n", part).strip()
+    if cleaned:
+      desc_chunks.append(cleaned)
+
+  if not brief_s and desc_chunks:
+    # 取第一段作 brief
+    first = desc_chunks[0]
+    if "\n\n" in first:
+      brief_s, rest0 = first.split("\n\n", 1)
+      brief_s = re.sub(r"\s+", " ", brief_s.strip())
+      desc_chunks[0] = rest0.strip()
+    else:
+      brief_s = re.sub(r"\s+", " ", first.strip())
+      desc_chunks = desc_chunks[1:]
+
+  out_lines: list[str] = []
+  if brief_s:
+    out_lines.append(brief_s)
+  for chunk in desc_chunks:
+    chunk = chunk.strip()
+    if not chunk:
+      continue
+    # 段落内换行压成空格；保留空行分段
+    for para in re.split(r"\n\s*\n", chunk):
+      para = re.sub(r"\s*\n\s*", " ", para.strip())
+      if not para:
+        continue
+      # GLFW 等常把 brief 再写一遍作首段 → 去重
+      if brief_s and para == brief_s:
+        continue
+      if brief_s and para.startswith(brief_s + " "):
+        para = para[len(brief_s) :].lstrip()
+        if not para:
+          continue
+      if out_lines:
+        out_lines.append("")
+      out_lines.append(para)
+
+  if params:
+    if out_lines:
+      out_lines.append("")
+    out_lines.append("Args:")
+    for pname, pdesc in params:
+      out_lines.append(f"  {pname}: {pdesc}")
+  if returns:
+    if out_lines:
+      out_lines.append("")
+    out_lines.append("Returns:")
+    out_lines.append(f"  {returns}")
+  for title, text in sections:
+    if out_lines:
+      out_lines.append("")
+    out_lines.append(f"{title}:")
+    out_lines.append(f"  {text}")
+
+  doc = "\n".join(out_lines).strip()
+  if not doc:
+    return None
+  # 避免破坏三引号
+  doc = doc.replace('"""', "'''")
+  return doc
+
+
+def _emit_docstring_lines(doc: str, indent: str = "  ") -> list[str]:
+  """``indent\"\"\"…\"\"\"`` 多行块（PEP 257：收尾引号独占一行）。"""
+  doc = doc.strip("\n")
+  if not doc:
+    return []
+  lines = doc.split("\n")
+  if len(lines) == 1 and "\\" not in lines[0]:
+    return [f'{indent}"""{lines[0]}"""']
+  out = [f'{indent}"""']
+  for ln in lines:
+    out.append(f"{indent}{ln}" if ln else "")
+  out.append(f'{indent}"""')
+  return out
+
+
 @dataclass
-class OpaqueType:
-  """``c_name`` 为 C 标签；``.pyi`` 写 ``type {py_name} = uint64``（``*_h`` 后缀）。"""
+class FieldDef:
+
+  name: str
+  ann: str
+  comment: str = ""
+
+
+@dataclass
+class StructDef:
+  """C ``struct``/``union`` → ``@native`` 类；类名 = 结构体定义名（匿名 typedef 用 typedef 名）。
+
+  ``c_cpp_path``：C++ 中的限定名（嵌套如 ``sqlite3_index_info::sqlite3_index_orderby``），
+  写入 ``@native_name`` / ``using Pyi_X = ::path``。
+  """
 
   c_name: str
+  incomplete: bool
+  is_union: bool = False
+  fields: list[FieldDef] = field(default_factory=list)
+  c_cpp_path: str = ""
+  doc: str = ""
 
-  @property
-  def py_name(self) -> str:
-    return ffi_opaque_py_name(self.c_name)
+
+@dataclass
+class EnumDef:
+  """C ``enum`` → 空 ``@native`` 类（方案 A）；C++ ``using Pyi_E = ::E``。"""
+
+  c_name: str
+  c_cpp_path: str = ""
+  doc: str = ""
+
+
+@dataclass
+class TypeAliasDef:
+  """``typedef struct A B`` → ``type B = A``（``.pyi`` 仅声明）。"""
+
+  py_name: str
+  target: str
 
 
 @dataclass
@@ -112,12 +435,15 @@ class FuncDef:
   py_name: str
   ret: str
   params: list[ParamDef] = field(default_factory=list)
-  comment: str = ""
+  comment: str = ""  # 类型映射旁注（少用）
+  doc: str = ""  # Python docstring 正文（无三引号）
 
 
 @dataclass
 class FfiModel:
-  opaques: list[OpaqueType] = field(default_factory=list)
+  structs: list[StructDef] = field(default_factory=list)
+  enums: list[EnumDef] = field(default_factory=list)
+  aliases: list[TypeAliasDef] = field(default_factory=list)
   consts: list[ConstDef] = field(default_factory=list)
   funcs: list[FuncDef] = field(default_factory=list)
 
@@ -160,17 +486,41 @@ def find_windows_sdk_um_windows_h() -> Path | None:
   return sorted(hits)[-1]
 
 
+def find_windows_sdk_um_gl_h() -> Path | None:
+  """返回最新 Windows Kits ``um/gl/GL.h``（固定功能 OpenGL），找不到则 ``None``。"""
+  bases = [
+    Path(r"C:\Program Files (x86)\Windows Kits\10\Include"),
+    Path(r"C:\Program Files\Windows Kits\10\Include"),
+  ]
+  hits: list[Path] = []
+  for base in bases:
+    if base.is_dir():
+      hits.extend(base.glob("*/um/gl/GL.h"))
+      hits.extend(base.glob("*/um/gl/gl.h"))
+  if not hits:
+    return None
+  return sorted(hits)[-1]
+
+
 def resolve_header_path(header: Path | str) -> Path:
-  """解析 ``--header``：存在则用之；``windows.h`` / ``windows`` 则查找 SDK。"""
+  """解析 ``--header``：存在则用之；``windows`` / ``gl`` 等裸名则查找 SDK。"""
   p = Path(header)
   if p.is_file():
     return p.resolve()
-  key = p.name.lower() if p.name else str(header).lower()
-  if key in {"windows.h", "windows"}:
+  key = str(header).replace("\\", "/").lower().strip()
+  name = p.name.lower() if p.name else key
+  if key in {"windows.h", "windows"} or name in {"windows.h", "windows"}:
     found = find_windows_sdk_um_windows_h()
     if found is None:
       raise FileNotFoundError(
         "windows.h not found under Windows Kits; pass a full path with --header"
+      )
+    return found.resolve()
+  if key in {"gl", "gl.h", "gl/gl.h"} or name in {"gl.h", "gl"}:
+    found = find_windows_sdk_um_gl_h()
+    if found is None:
+      raise FileNotFoundError(
+        "GL/gl.h not found under Windows Kits; pass a full path with --header"
       )
     return found.resolve()
   raise FileNotFoundError(f"header not found: {header}")
@@ -202,7 +552,8 @@ def default_clang_args(header: Path) -> list[str]:
   header = header.resolve()
   args: list[str] = []
   ver = windows_sdk_version_root(header)
-  if ver is not None or header.name.lower() == "windows.h":
+  hname = header.name.lower()
+  if ver is not None or hname in {"windows.h", "gl.h"}:
     if ver is None:
       wh = find_windows_sdk_um_windows_h()
       ver = windows_sdk_version_root(wh) if wh else None
@@ -225,6 +576,12 @@ def default_clang_args(header: Path) -> list[str]:
         d = ver / sub
         if d.is_dir():
           args.append(f"-I{d}")
+    # GL/gl.h 依赖 WINGDIAPI/APIENTRY（通常由 windows.h 提供）；单独解析时给桩
+    if hname == "gl.h":
+      args.extend([
+        "-DWINGDIAPI=",
+        "-DAPIENTRY=__stdcall",
+      ])
   return args
 
 
@@ -237,6 +594,10 @@ def _collect_roots(header: Path) -> list[Path]:
     roots.append(ver.resolve())
   try:
     roots.append((REPO_ROOT / "third_party").resolve())
+  except Exception:
+    pass
+  try:
+    roots.append((REPO_ROOT / "zeus" / "third_party").resolve())
   except Exception:
     pass
   roots.append(header.parent.resolve())
@@ -311,38 +672,350 @@ def _is_incomplete_record(t) -> bool:
     decl = t.get_declaration()
     if decl is None or not decl.kind:
       return False
-    if decl.kind == CursorKind.STRUCT_DECL:
+    if decl.kind in (CursorKind.STRUCT_DECL, CursorKind.UNION_DECL):
       return not any(True for _ in decl.get_children() if _.kind == CursorKind.FIELD_DECL)
     return False
   decl = t.get_declaration()
   if decl is None:
     return True
-  if decl.kind != CursorKind.STRUCT_DECL and decl.kind != CursorKind.UNION_DECL:
+  if decl.kind not in (CursorKind.STRUCT_DECL, CursorKind.UNION_DECL):
     return False
   return not any(c.kind == CursorKind.FIELD_DECL for c in decl.get_children())
 
 
 def _record_name(t) -> str | None:
+  """具名 struct/union 标签；匿名（clang ``unnamed at …`` spelling）→ ``None``。"""
   t = _canonical(t)
   decl = t.get_declaration()
-  if decl is not None and decl.spelling:
+  if decl is not None and _is_c_ident(decl.spelling):
     return decl.spelling
   sp = _type_spelling(t)
-  m = re.match(r"(?:const\s+)?(?:struct|union)\s+(\w+)", sp)
-  if m:
+  m = re.match(r"(?:const\s+)?(?:struct|union)\s+(\w+)\s*$", sp)
+  if m and _is_c_ident(m.group(1)):
     return m.group(1)
   if t.kind == TypeKind.TYPEDEF:
-    return t.get_declaration().spelling or None
+    tn = t.get_declaration().spelling or ""
+    return tn if _is_c_ident(tn) else None
+  return None
+
+
+def _enum_tag_name(t) -> str | None:
+  """具名 enum 标签；匿名 → ``None``。"""
+  t = _canonical(t)
+  if t.kind != TypeKind.ENUM:
+    return None
+  decl = t.get_declaration()
+  if decl is not None and _is_c_ident(decl.spelling):
+    return decl.spelling
+  return None
+
+
+def _record_cpp_path(cursor) -> str:
+  """嵌套 ``struct`` 的 C++ 限定名（``Outer::Inner``）；顶层为标签名。
+
+  C 中嵌套 tag 的 ``semantic_parent`` 常为翻译单元（文件作用域），但 ``#include`` 进 C++ 后
+  嵌套类型落在外层类内，故必须走 ``lexical_parent``。
+  """
+  parts: list[str] = []
+  cur = cursor
+  while cur is not None:
+    try:
+      kind = cur.kind
+    except Exception:
+      break
+    if kind == CursorKind.TRANSLATION_UNIT:
+      break
+    if kind in (CursorKind.STRUCT_DECL, CursorKind.UNION_DECL):
+      sp = cur.spelling or ""
+      if sp and sp.isidentifier():
+        parts.append(sp)
+    try:
+      nxt = cur.lexical_parent
+    except Exception:
+      break
+    if nxt is None or nxt == cur:
+      break
+    cur = nxt
+  if not parts:
+    return cursor.spelling or ""
+  return "::".join(reversed(parts))
+
+
+def _record_decl_cursor(t):
+  t = _canonical(t)
+  decl = t.get_declaration()
+  if decl is not None and decl.kind in (CursorKind.STRUCT_DECL, CursorKind.UNION_DECL):
+    return decl
   return None
 
 
 class TypeMapper:
   def __init__(self) -> None:
-    self.opaques: dict[str, None] = {}
+    # c_name → StructDef（收集中可变）
+    self.structs: dict[str, StructDef] = {}
+    # c_name → EnumDef
+    self.enums: dict[str, EnumDef] = {}
+    # typedef 名 → 目标结构体/枚举类名（无 Pyi_ 前缀）
+    self.aliases: dict[str, str] = {}
+    self._collecting: set[str] = set()
 
-  def note_opaque(self, name: str) -> None:
-    if name and name.isidentifier():
-      self.opaques[name] = None
+  def note_struct(
+    self,
+    name: str,
+    *,
+    incomplete: bool,
+    is_union: bool = False,
+    fields: list[FieldDef] | None = None,
+    c_cpp_path: str | None = None,
+    doc: str = "",
+  ) -> None:
+    if not _is_c_ident(name):
+      return
+    path = (c_cpp_path or name).strip() or name
+    if not _is_c_ident(path.split("::")[-1]):
+      path = name
+    prev = self.structs.get(name)
+    if prev is None:
+      self.structs[name] = StructDef(
+        c_name=name,
+        incomplete=incomplete,
+        is_union=is_union,
+        fields=list(fields or []),
+        c_cpp_path=path,
+        doc=doc,
+      )
+      return
+    if not prev.c_cpp_path or path.count("::") < prev.c_cpp_path.count("::"):
+      prev.c_cpp_path = path
+    if doc and not prev.doc:
+      prev.doc = doc
+    if prev.incomplete and not incomplete:
+      prev.incomplete = False
+      prev.is_union = is_union
+      if fields:
+        prev.fields = list(fields)
+    elif not prev.fields and fields:
+      prev.fields = list(fields)
+      prev.incomplete = incomplete
+
+  def note_enum(self, name: str, *, c_cpp_path: str | None = None, doc: str = "") -> None:
+    if not _is_c_ident(name):
+      return
+    path = (c_cpp_path or name).strip() or name
+    if "::" in path and not all(_is_c_ident(p) for p in path.split("::")):
+      path = name
+    prev = self.enums.get(name)
+    if prev is None:
+      self.enums[name] = EnumDef(c_name=name, c_cpp_path=path, doc=doc)
+      return
+    if not prev.c_cpp_path or path.count("::") < prev.c_cpp_path.count("::"):
+      prev.c_cpp_path = path
+    if doc and not prev.doc:
+      prev.doc = doc
+
+  def note_alias(self, py_name: str, target: str) -> None:
+    if (
+      py_name
+      and target
+      and py_name != target
+      and _is_c_ident(py_name)
+      and _is_c_ident(target)
+    ):
+      self.aliases[py_name] = target
+
+  def known_type_names(self) -> set[str]:
+    return set(self.structs) | set(self.enums) | set(self.aliases)
+
+  def _map_function_proto(self, t) -> tuple[str, str]:
+    """C 函数类型或函数指针 → ``Function[[Args…], Ret]``（``void`` 返回为 ``None``）。"""
+    t = _canonical(t)
+    if t.kind == TypeKind.POINTER:
+      return self._map_function_proto(t.get_pointee())
+    if t.kind == TypeKind.TYPEDEF:
+      return self._map_function_proto(_canonical(t))
+    if t.kind == TypeKind.ELABORATED:
+      can = _canonical(t)
+      if can is not t:
+        return self._map_function_proto(can)
+    if t.kind != TypeKind.FUNCTIONPROTO:
+      return "uintptr", "not-fn"
+    try:
+      result = t.get_result()
+    except Exception:
+      result = None
+    if result is None or result.kind == TypeKind.VOID:
+      ret_py = "None"
+    else:
+      ret_py, _ = self.map(result, is_return=True)
+      if ret_py == "None":
+        ret_py = "None"
+    arg_anns: list[str] = []
+    try:
+      args_types = list(t.argument_types())
+    except Exception:
+      args_types = []
+    for at in args_types:
+      if at.kind == TypeKind.VOID:
+        continue
+      a, _ = self.map(at, is_return=False)
+      arg_anns.append(a)
+    args_body = ", ".join(arg_anns)
+    return f"Function[[{args_body}], {ret_py}]", "fn ptr"
+
+  def _ensure_record_from_type(self, t) -> str | None:
+    """登记结构体并返回 Python 类型名（优先 typedef 名，否则 tag）。"""
+    t0 = t
+    if t.kind == TypeKind.TYPEDEF:
+      tname = t.get_declaration().spelling or ""
+      if not _is_c_ident(tname):
+        tname = ""
+      can = _canonical(t)
+      rn = _record_name(can)
+      decl = _record_decl_cursor(can)
+      incomplete = _is_incomplete_record(can)
+      is_union = bool(decl and decl.kind == CursorKind.UNION_DECL)
+      path = _record_cpp_path(decl) if decl is not None else None
+      if rn:
+        self.note_struct(rn, incomplete=incomplete, is_union=is_union, c_cpp_path=path)
+        if tname and tname != rn:
+          self.note_alias(tname, rn)
+          return pyi_export_name(tname)
+        return pyi_export_name(rn)
+      if tname:
+        # 匿名 struct/union 的 typedef
+        fields = self._collect_fields(decl) if decl and not incomplete else []
+        self.note_struct(
+          tname,
+          incomplete=incomplete or not fields,
+          is_union=is_union,
+          fields=fields,
+          c_cpp_path=tname,
+        )
+        return pyi_export_name(tname)
+      return None
+    rn = _record_name(t0)
+    if not rn:
+      return None
+    decl = _record_decl_cursor(t0)
+    incomplete = _is_incomplete_record(t0)
+    is_union = bool(decl and decl.kind == CursorKind.UNION_DECL)
+    fields = self._collect_fields(decl) if decl and not incomplete else []
+    path = _record_cpp_path(decl) if decl is not None else rn
+    self.note_struct(
+      rn,
+      incomplete=incomplete or is_union or not fields,
+      is_union=is_union,
+      fields=[] if (incomplete or is_union) else fields,
+      c_cpp_path=path,
+    )
+    return pyi_export_name(rn)
+
+  def _ensure_enum_from_type(self, t) -> str | None:
+    """登记枚举并返回 Python 类型名（优先 typedef 公开名，否则 enum 标签）。"""
+    if t is None:
+      return None
+    if t.kind == TypeKind.TYPEDEF:
+      tname = t.get_declaration().spelling or ""
+      if not _is_c_ident(tname):
+        return None
+      can = _canonical(t)
+      if can.kind != TypeKind.ENUM:
+        return None
+      tag = _enum_tag_name(can)
+      if tag:
+        self.note_enum(tag)
+        if tname != tag:
+          self.note_alias(tname, tag)
+          return pyi_export_name(tname)
+        return pyi_export_name(tag)
+      # typedef enum { … } Name
+      self.note_enum(tname, c_cpp_path=tname)
+      return pyi_export_name(tname)
+    if t.kind == TypeKind.ELABORATED:
+      sp = (_type_spelling(t) or "").strip()
+      can = _canonical(t)
+      if can.kind == TypeKind.ENUM:
+        tag = _enum_tag_name(can)
+        if _is_c_ident(sp) and sp not in ("enum",):
+          if tag and tag != sp:
+            self.note_enum(tag)
+            self.note_alias(sp, tag)
+            return pyi_export_name(sp)
+          self.note_enum(sp)
+          return pyi_export_name(sp)
+        if tag:
+          self.note_enum(tag)
+          return pyi_export_name(tag)
+      decl = t.get_declaration()
+      if decl is not None and decl.kind == CursorKind.TYPEDEF_DECL:
+        return self._ensure_enum_from_type(decl.type)
+      return self._ensure_enum_from_type(can) if can is not t else None
+    tag = _enum_tag_name(t)
+    if tag:
+      self.note_enum(tag)
+      return pyi_export_name(tag)
+    return None
+
+  def _add_enum_constants(
+    self,
+    enum_decl,
+    *,
+    enum_py: str,
+    resolved_consts: dict[str, ConstDef],
+    seen_consts: set[str],
+  ) -> None:
+    if enum_decl is None or not enum_py:
+      return
+    for ch in enum_decl.get_children():
+      if ch.kind != CursorKind.ENUM_CONSTANT_DECL:
+        continue
+      c_name = ch.spelling or ""
+      if not _is_c_ident(c_name):
+        continue
+      try:
+        val = int(ch.enum_value)
+      except Exception:
+        continue
+      py_name = pyi_export_name(c_name)
+      seen_consts.add(c_name)
+      resolved_consts[c_name] = ConstDef(
+        name=c_name,
+        py_name=py_name,
+        native=c_name,
+        ann=enum_py,
+        value=str(val),
+      )
+
+  def _collect_fields(self, decl) -> list[FieldDef]:
+    if decl is None:
+      return []
+    key = decl.spelling or f"anon@{id(decl)}"
+    if key in self._collecting:
+      return []
+    self._collecting.add(key)
+    try:
+      out: list[FieldDef] = []
+      for ch in decl.get_children():
+        if ch.kind != CursorKind.FIELD_DECL:
+          continue
+        fname = ch.spelling or ""
+        if not fname or not fname.isidentifier():
+          continue
+        try:
+          if ch.is_bitfield():
+            continue
+        except Exception:
+          pass
+        ann, cmt = self.map(ch.type, is_return=False)
+        known = self.known_type_names()
+        ann2 = _rewrite_identifiers_in_ann(ann, known)
+        ann2, cmt2 = _sanitize_pyi_ann(ann2, cmt)
+        if keyword.iskeyword(fname):
+          fname = fname + "_"
+        out.append(FieldDef(name=fname, ann=ann2, comment=cmt2))
+      return out
+    finally:
+      self._collecting.discard(key)
 
   def map(self, t, *, is_return: bool = False) -> tuple[str, str]:
     """返回 (annotation, optional_comment)。"""
@@ -353,6 +1026,23 @@ class TypeMapper:
     if k == TypeKind.VOID:
       return "None", ""
 
+    # MSVC/SDK 常把 typedef 别名标成 ELABORATED（如 GLfloat / 枚举 typedef）
+    if k == TypeKind.ELABORATED:
+      en = self._ensure_enum_from_type(t)
+      if en:
+        return en, ""
+      can = _canonical(t)
+      if can.kind == TypeKind.RECORD or _is_incomplete_record(can):
+        py = self._ensure_record_from_type(t)
+        if py:
+          return py, ""
+        # 匿名嵌套 union/struct：合法字段用 None
+        sp = _type_spelling(t) or _type_spelling(can)
+        kind_word = "union" if "union" in sp.lower() else "struct"
+        return "None", f"C: unnamed {kind_word}"
+      if can is not t and can.kind != TypeKind.ELABORATED:
+        return self.map(can, is_return=is_return)
+
     if k == TypeKind.TYPEDEF:
       name = t.get_declaration().spelling or ""
       can = _canonical(t)
@@ -362,12 +1052,12 @@ class TypeMapper:
         return "uint64", ""
       if name in ("sqlite3_filename",):
         return "c_str", ""
-      # Win32 常见句柄 / 指针宽度别名
+      # Win32 句柄 / void* 宽度别名（函数指针 FARPROC/PROC 等走 Function，不在此列）
       if name in (
         "HANDLE", "HWND", "HINSTANCE", "HMODULE", "HICON", "HCURSOR", "HBRUSH",
         "HDC", "HMENU", "HBITMAP", "HFONT", "HPEN", "HRGN", "HTREEITEM",
         "HGLOBAL", "HLOCAL", "HKEY", "HMONITOR", "HDESK", "HWINSTA",
-        "PVOID", "LPVOID", "LPCVOID", "FARPROC", "NEARPROC", "PROC",
+        "PVOID", "LPVOID", "LPCVOID",
         "WPARAM", "LPARAM", "LRESULT", "ULONG_PTR", "LONG_PTR", "UINT_PTR",
         "DWORD_PTR", "SIZE_T", "SSIZE_T", "INT_PTR",
       ):
@@ -378,13 +1068,18 @@ class TypeMapper:
         if name in ("DWORD", "UINT", "ULONG"):
           return "uint", name
         return "int", name
+      if can.kind == TypeKind.ENUM:
+        py = self._ensure_enum_from_type(t)
+        if py:
+          return py, ""
       if can.kind == TypeKind.POINTER and can.get_pointee().kind == TypeKind.FUNCTIONPROTO:
-        return "uintptr", f"fn typedef {name}"
+        return self._map_function_proto(can.get_pointee())
       if can.kind == TypeKind.FUNCTIONPROTO:
-        return "uintptr", f"fn typedef {name}"
-      if name and _is_incomplete_record(can):
-        self.note_opaque(name)
-        return ffi_opaque_py_name(name), ""
+        return self._map_function_proto(can)
+      if can.kind in (TypeKind.RECORD, TypeKind.ELABORATED) or _is_incomplete_record(can):
+        py = self._ensure_record_from_type(t)
+        if py:
+          return py, ""
       return self.map(can, is_return=is_return)
 
     if k in (TypeKind.POINTER, TypeKind.LVALUEREFERENCE, TypeKind.RVALUEREFERENCE):
@@ -393,7 +1088,14 @@ class TypeMapper:
       if pk == TypeKind.FUNCTIONPROTO or (
         pk == TypeKind.TYPEDEF and _canonical(pointee).kind == TypeKind.FUNCTIONPROTO
       ):
-        return "uintptr", "fn ptr"
+        return self._map_function_proto(pointee)
+      if pk == TypeKind.ELABORATED:
+        can_p = _canonical(pointee)
+        if can_p.kind == TypeKind.FUNCTIONPROTO or (
+          can_p.kind == TypeKind.POINTER
+          and can_p.get_pointee().kind == TypeKind.FUNCTIONPROTO
+        ):
+          return self._map_function_proto(can_p)
       psp = _type_spelling(pointee).replace("const ", "").strip()
       if pk in (TypeKind.CHAR_S, TypeKind.CHAR_U, TypeKind.SCHAR, TypeKind.UCHAR):
         return "c_str", ""
@@ -405,28 +1107,53 @@ class TypeMapper:
         tname = pointee.get_declaration().spelling or ""
         if tname in ("WCHAR", "CHAR", "TCHAR"):
           return "c_str", ""
+      # GLfloat* / GLdouble* 等：ELABORATED/TYPEDEF 标量先映成 Pointer[float]/Pointer[float64]
+      if pk in (TypeKind.TYPEDEF, TypeKind.ELABORATED):
+        inner_ann, inner_cmt = self.map(pointee, is_return=False)
+        if inner_ann.startswith("Function["):
+          return inner_ann, inner_cmt
+        if inner_ann in (
+          "float",
+          "float64",
+          "int",
+          "int64",
+          "uint",
+          "uint64",
+          "uintptr",
+          "bool",
+          "byte",
+          "char",
+        ):
+          return f"Pointer[{inner_ann}]", inner_cmt
+        if inner_ann.startswith("Pointer[") or (
+          inner_ann.isidentifier() and not inner_ann.startswith("Function")
+        ):
+          return f"Pointer[{inner_ann}]", inner_cmt
       if pk in (TypeKind.RECORD, TypeKind.ELABORATED, TypeKind.TYPEDEF) or _is_incomplete_record(pointee):
-        rn = _record_name(pointee)
-        if rn:
-          self.note_opaque(rn)
         inner = _canonical(pointee)
         if inner.kind == TypeKind.POINTER:
-          return "Pointer[uint64]", "out handle"
-        if rn:
-          return ffi_opaque_py_name(rn), ""
-        # typedef HANDLE* etc.
+          # T** → Pointer[Pointer[T]]
+          inner_ann, inner_cmt = self.map(pointee, is_return=False)
+          return f"Pointer[{inner_ann}]", inner_cmt or "out ptr"
+        py = self._ensure_record_from_type(pointee)
+        if py:
+          return f"Pointer[{py}]", ""
         if pk == TypeKind.TYPEDEF:
           ann, cmt = self.map(pointee, is_return=False)
-          if ann in ("uintptr", "uint64") or ann.isidentifier():
+          if ann.startswith("Function["):
+            return ann, cmt
+          if ann in ("uintptr", "uint64") or ann.isidentifier() or ann.startswith("Pointer["):
             return f"Pointer[{ann}]", cmt
-        return "uint64", "opaque*"
+        return "uintptr", "opaque*"
       inner_ann, cmt = self.map(pointee, is_return=False)
       if inner_ann == "None":
         return "uintptr", cmt
+      if inner_ann.startswith("Function["):
+        return inner_ann, cmt
       return f"Pointer[{inner_ann}]", cmt
 
     if k == TypeKind.FUNCTIONPROTO:
-      return "uintptr", "fn"
+      return self._map_function_proto(t)
 
     if k in (TypeKind.BOOL,):
       return "bool", ""
@@ -448,25 +1175,34 @@ class TypeMapper:
       if bits >= 64:
         return "uint64", ""
       return "uint", ""
-    if k in (TypeKind.FLOAT, TypeKind.DOUBLE, TypeKind.LONGDOUBLE):
+    if k == TypeKind.FLOAT:
+      return "float", ""
+    if k in (TypeKind.DOUBLE, TypeKind.LONGDOUBLE):
       return "float64", ""
     if k == TypeKind.ENUM:
-      return "int", "enum"
+      py = self._ensure_enum_from_type(t)
+      if py:
+        return py, ""
+      return "None", "C: unnamed enum"
     if k in (TypeKind.CONSTANTARRAY, TypeKind.INCOMPLETEARRAY, TypeKind.VARIABLEARRAY):
       elem = t.element_type
       ann, cmt = self.map(elem, is_return=False)
+      ann, cmt = _sanitize_pyi_ann(ann, cmt or "array")
+      if ann == "None":
+        return "None", cmt or "C: array"
       return f"Pointer[{ann}]", cmt or "array"
-    if k in (TypeKind.RECORD, TypeKind.ELABORATED):
-      rn = _record_name(t)
-      if rn:
-        self.note_opaque(rn)
-        return ffi_opaque_py_name(rn), "by-value record→handle alias"
-      return "uint64", "record"
+    if k == TypeKind.RECORD:
+      py = self._ensure_record_from_type(t)
+      if py:
+        return py, ""
+      sp = _type_spelling(t)
+      kind_word = "union" if "union" in sp.lower() else "struct"
+      return "None", f"C: unnamed {kind_word}"
 
     sp = _type_spelling(t)
     if "va_list" in sp:
       return "uintptr", "va_list"
-    return "uintptr", f"unmapped:{sp or k.name}"
+    return "None", f"C: {_shorten_c_type_comment(sp or k.name)}"
 
 
 def _macro_literal(tokens: list[str]) -> tuple[str, str] | None:
@@ -496,7 +1232,38 @@ def _macro_literal(tokens: list[str]) -> tuple[str, str] | None:
     return "int", m.group(1)
   if re.fullmatch(r"[+-]?(?:0x[0-9A-Fa-f]+|\d+)", cleaned):
     return "int", cleaned
+  # 单标识符别名：#define GLFW_MOUSE_BUTTON_LEFT GLFW_MOUSE_BUTTON_1
+  if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", cleaned) and cleaned != name:
+    return "alias", cleaned
   return None
+
+
+def _resolve_macro_aliases(
+  pending: list[tuple[str, str, str | None]],
+  resolved: dict[str, ConstDef],
+) -> None:
+  """把 ``alias`` 宏解析到已有数值常量；多轮直到不动。"""
+  progress = True
+  while progress and pending:
+    progress = False
+    still: list[tuple[str, str, str | None]] = []
+    for name, ref, native in pending:
+      if name in resolved:
+        continue
+      target = resolved.get(ref)
+      if target is None:
+        still.append((name, ref, native))
+        continue
+      py_name = pyi_export_name(name)
+      resolved[name] = ConstDef(
+        name=name,
+        py_name=py_name,
+        native=name if native is None else native,
+        ann=target.ann,
+        value=target.value,
+      )
+      progress = True
+    pending[:] = still
 
 
 def _want_const_name(name: str, *, sqlite_mode: bool) -> bool:
@@ -549,23 +1316,60 @@ def collect_model(
   model = FfiModel()
   seen_funcs: set[str] = set()
   seen_consts: set[str] = set()
+  resolved_consts: dict[str, ConstDef] = {}
+  alias_pending: list[tuple[str, str, str | None]] = []
 
   for c in tu.cursor.walk_preorder():
     if not _file_in_scope(c.location.file, header, roots, include_deps=include_deps):
       continue
     kind = c.kind
 
-    if kind == CursorKind.STRUCT_DECL and c.spelling:
-      if _is_incomplete_record(c.type):
-        mapper.note_opaque(c.spelling)
+    if kind in (CursorKind.STRUCT_DECL, CursorKind.UNION_DECL) and _is_c_ident(c.spelling):
+      incomplete = _is_incomplete_record(c.type)
+      is_union = kind == CursorKind.UNION_DECL
+      fields: list[FieldDef] = []
+      if not incomplete and not is_union:
+        fields = mapper._collect_fields(c)
+      # union / 无字段 → 空 @native 类（类体 ...）
+      as_empty = incomplete or is_union or not fields
+      mapper.note_struct(
+        c.spelling,
+        incomplete=as_empty,
+        is_union=is_union,
+        fields=[] if as_empty else fields,
+        c_cpp_path=_record_cpp_path(c),
+        doc=_cursor_doc(c),
+      )
       continue
 
-    if kind == CursorKind.TYPEDEF_DECL and c.spelling:
+    if kind == CursorKind.ENUM_DECL and _is_c_ident(c.spelling):
+      mapper.note_enum(
+        c.spelling,
+        c_cpp_path=_record_cpp_path(c) or c.spelling,
+        doc=_cursor_doc(c),
+      )
+      mapper._add_enum_constants(
+        c,
+        enum_py=pyi_export_name(c.spelling),
+        resolved_consts=resolved_consts,
+        seen_consts=seen_consts,
+      )
+      continue
+
+    if kind == CursorKind.TYPEDEF_DECL and _is_c_ident(c.spelling):
       can = _canonical(c.type)
-      if _is_incomplete_record(can) or (
-        can.kind == TypeKind.RECORD and _is_incomplete_record(can)
-      ):
-        mapper.note_opaque(c.spelling)
+      if can.kind == TypeKind.ENUM:
+        enum_py = mapper._ensure_enum_from_type(c.type)
+        enum_decl = can.get_declaration()
+        if enum_py and enum_decl is not None:
+          mapper._add_enum_constants(
+            enum_decl,
+            enum_py=enum_py,
+            resolved_consts=resolved_consts,
+            seen_consts=seen_consts,
+          )
+      elif can.kind in (TypeKind.RECORD, TypeKind.ELABORATED) or _is_incomplete_record(can):
+        mapper._ensure_record_from_type(c.type)
       continue
 
     if kind == CursorKind.MACRO_DEFINITION:
@@ -580,8 +1384,16 @@ def collect_model(
         continue
       ann, val = lit
       seen_consts.add(name)
-      py_name, native = _py_ident(name)
-      model.consts.append(ConstDef(name=name, py_name=py_name, native=native, ann=ann, value=val))
+      _base, _ = _py_ident(name)
+      py_name = pyi_export_name(_base if _base == name else name)
+      # 常量始终保留 C 宏名供 #undef / 文档
+      native = name
+      if ann == "alias":
+        alias_pending.append((name, val, native))
+        continue
+      resolved_consts[name] = ConstDef(
+        name=name, py_name=py_name, native=native, ann=ann, value=val
+      )
       continue
 
     if kind != CursorKind.FUNCTION_DECL:
@@ -595,13 +1407,15 @@ def collect_model(
     if c_name.startswith("operator"):
       continue
     seen_funcs.add(c_name)
-    py_name, _ = _py_ident(c_name)
+    py_name = pyi_export_name(c_name)
     ret_ann, ret_cmt = mapper.map(c.result_type, is_return=True)
+    ret_ann, ret_cmt = _sanitize_pyi_ann(ret_ann, ret_cmt)
     params: list[ParamDef] = []
     used: set[str] = set()
     for i, arg in enumerate(c.get_arguments()):
       raw = arg.spelling or f"arg{i}"
-      pann, _pc = mapper.map(arg.type, is_return=False)
+      pann, pc = mapper.map(arg.type, is_return=False)
+      pann, _ = _sanitize_pyi_ann(pann, pc)
       pname, _ = _py_ident(raw)
       base = pname
       n = 2
@@ -616,7 +1430,8 @@ def collect_model(
         len(args_types) == 1 and args_types[0].kind == TypeKind.VOID
       ):
         for i, at in enumerate(args_types):
-          pann, _ = mapper.map(at, is_return=False)
+          pann, pc = mapper.map(at, is_return=False)
+          pann, _ = _sanitize_pyi_ann(pann, pc)
           params.append(ParamDef(py_name=f"arg{i}", ann=pann))
     model.funcs.append(
       FuncDef(
@@ -625,13 +1440,83 @@ def collect_model(
         ret=ret_ann,
         params=params,
         comment=ret_cmt,
+        doc=_cursor_doc(c),
       )
     )
 
-  model.opaques = [OpaqueType(n) for n in sorted(mapper.opaques)]
-  model.consts.sort(key=lambda x: x.name)
+  _resolve_macro_aliases(alias_pending, resolved_consts)
+  # 确保 alias 目标结构体/枚举已登记
+  for _alias, target in list(mapper.aliases.items()):
+    if target not in mapper.structs and target not in mapper.enums:
+      mapper.note_struct(target, incomplete=True)
+  # 枚举常量注解优先 typedef 公开名（``typedef enum _E {…} E`` → ``Pyi_E``）
+  tag_to_public: dict[str, str] = {}
+  for alias, target in mapper.aliases.items():
+    if target in mapper.enums and alias not in mapper.enums:
+      tag_to_public.setdefault(target, alias)
+  for const in resolved_consts.values():
+    if not const.ann.startswith(PYI_PREFIX):
+      continue
+    tag = pyi_c_name_from_export(const.ann)
+    pub = tag_to_public.get(tag)
+    if pub:
+      const.ann = pyi_export_name(pub)
+  model.structs = sorted(mapper.structs.values(), key=lambda s: s.c_name)
+  model.enums = sorted(mapper.enums.values(), key=lambda e: e.c_name)
+  model.aliases = [
+    TypeAliasDef(py_name=pyi_export_name(a), target=pyi_export_name(tgt))
+    for a, tgt in sorted(mapper.aliases.items())
+    if tgt in mapper.structs or tgt in mapper.enums or _is_c_ident(tgt)
+  ]
+  model.consts = sorted(resolved_consts.values(), key=lambda x: x.name)
   model.funcs.sort(key=lambda x: x.c_name)
   return model
+
+
+def _rewrite_self_ann(ann: str, c_name: str) -> str:
+  """同类字段注解：``Pointer[Pyi_Foo]`` / ``Pyi_Foo`` → ``Self``（满足 S15）。"""
+  if not c_name:
+    return ann
+  py = pyi_export_name(c_name)
+  ann = re.sub(rf"\b{re.escape(py)}\b", "Self", ann)
+  ann = re.sub(rf"\b{re.escape(c_name)}\b", "Self", ann)
+  return ann
+
+
+def _render_struct(st: StructDef) -> list[str]:
+  py_cls = pyi_export_name(st.c_name)
+  native = st.c_cpp_path or st.c_name
+  lines: list[str] = [
+    "@native",
+    f'@native_name("{native}")',
+    f"class {py_cls}:",
+  ]
+  if st.doc:
+    lines.extend(_emit_docstring_lines(st.doc))
+  if st.incomplete or not st.fields:
+    kind = "union" if st.is_union else "incomplete struct"
+    lines.append(f"  ...  # C {kind}")
+    return lines
+  for fd in st.fields:
+    ann = _rewrite_self_ann(fd.ann, st.c_name)
+    ann, cmt_body = _sanitize_pyi_ann(ann, fd.comment)
+    cmt = f"  # {cmt_body}" if cmt_body else ""
+    lines.append(f"  {fd.name}: {ann}{cmt}")
+  return lines
+
+
+def _render_enum(en: EnumDef) -> list[str]:
+  py_cls = pyi_export_name(en.c_name)
+  native = en.c_cpp_path or en.c_name
+  lines = [
+    "@native",
+    f'@native_name("{native}")',
+    f"class {py_cls}:",
+  ]
+  if en.doc:
+    lines.extend(_emit_docstring_lines(en.doc))
+  lines.append("  ...  # C enum")
+  return lines
 
 
 def render_pyi(header: Path, model: FfiModel) -> str:
@@ -651,25 +1536,45 @@ def render_pyi(header: Path, model: FfiModel) -> str:
     "from py2cpp.builtins import *",
     "",
     "# ---------------------------------------------------------------------------",
-    "# Opaque handles (incomplete struct → *_h alias = uint64; C tag in comment)",
+    "# Structs / unions（模块名 Pyi_*；@native_name 为 C 标签；C++ using 别名，不生成新 struct）",
     "# ---------------------------------------------------------------------------",
     "",
   ]
-  for op in model.opaques:
-    lines.append(f"type {op.py_name} = uint64  # C: {op.c_name}")
-  if model.opaques:
+  for st in model.structs:
+    lines.extend(_render_struct(st))
+    lines.append("")
+  if model.enums:
+    lines.extend([
+      "# ---------------------------------------------------------------------------",
+      "# Enums（空 @native 类；C++ using Pyi_E = ::E；成员见 Constants）",
+      "# ---------------------------------------------------------------------------",
+      "",
+    ])
+    for en in model.enums:
+      lines.extend(_render_enum(en))
+      lines.append("")
+  if model.aliases:
+    lines.extend([
+      "# ---------------------------------------------------------------------------",
+      "# Typedef aliases（type Pyi_Alias = Pyi_StructTag / Pyi_EnumTag）",
+      "# ---------------------------------------------------------------------------",
+      "",
+    ])
+    for al in model.aliases:
+      lines.append(f"type {al.py_name} = {al.target}")
     lines.append("")
 
   lines.extend([
     "# ---------------------------------------------------------------------------",
-    "# Constants (#define)",
+    "# Constants（#define 与 enum 成员）",
     "# ---------------------------------------------------------------------------",
     "",
   ])
   for c in model.consts:
     if c.native:
       lines.append(f"# C: {c.native}")
-    lines.append(f"{c.py_name}: {c.ann} = {c.value}")
+    ann, _ = _sanitize_pyi_ann(c.ann, "")
+    lines.append(f"{c.py_name}: {ann} = {c.value}")
   if model.consts:
     lines.append("")
 
@@ -685,11 +1590,14 @@ def render_pyi(header: Path, model: FfiModel) -> str:
     args = ", ".join(f"{p.py_name}: {p.ann}" for p in fn.params)
     comment = f"  # {fn.comment}" if fn.comment else ""
     lines.append(f"def {fn.py_name}({args}) -> {fn.ret}:{comment}")
+    if fn.doc:
+      lines.extend(_emit_docstring_lines(fn.doc))
     lines.append("  ...")
     lines.append("")
 
   lines.append(
-    f"# stats: opaques={len(model.opaques)} consts={len(model.consts)} funcs={len(model.funcs)}"
+    f"# stats: structs={len(model.structs)} enums={len(model.enums)} "
+    f"aliases={len(model.aliases)} consts={len(model.consts)} funcs={len(model.funcs)}"
   )
   lines.append("")
   return "\n".join(lines)
@@ -718,19 +1626,52 @@ def run_checks(model: FfiModel, text: str, *, header: Path) -> list[str]:
         errs.append(f"missing function {need}")
     if "SQLITE_OK" not in {c.name for c in model.consts}:
       errs.append("missing SQLITE_OK")
-    if "type sqlite3_h = uint64" not in text:
-      errs.append("missing opaque alias type sqlite3_h")
-    if re.search(r"(?m)^type sqlite3 = uint64", text):
-      errs.append("opaque alias must not reuse C tag name sqlite3")
+    if "class Pyi_sqlite3:" not in text:
+      errs.append("missing @native class Pyi_sqlite3")
+    if '@native_name("sqlite3")' not in text:
+      errs.append("sqlite3 class must keep @native_name")
+    if "Pointer[Pyi_sqlite3]" not in text:
+      errs.append("sqlite3* should map to Pointer[Pyi_sqlite3]")
+    if "Pyi_SQLITE_OK" not in text:
+      errs.append("constants must use Pyi_ prefix")
+    if "type sqlite3_h =" in text or "class sqlite3_h" in text:
+      errs.append("legacy *_h handle alias must not appear")
   else:
-    # Win32 / 通用：至少要有一批函数
-    if len(model.funcs) < 100:
-      errs.append(f"too few funcs for non-sqlite header: {len(model.funcs)}")
-    # windows.h 伞头应带上 CreateWindowExW 或 MessageBoxW 等
     names = {f.c_name for f in model.funcs}
-    if header.name.lower() == "windows.h":
-      if not ({"MessageBoxW", "CreateWindowExW", "GetMessageW"} & names):
-        errs.append("windows.h pyi missing core UI symbols (MessageBoxW/CreateWindowExW/GetMessageW)")
+    hname = header.name.lower()
+    if hname in {"glfw3.h"}:
+      if len(model.funcs) < 50:
+        errs.append(f"too few funcs for glfw3.h: {len(model.funcs)}")
+      for need in ("glfwInit", "glfwCreateWindow", "glfwPollEvents", "glfwTerminate"):
+        if need not in names:
+          errs.append(f"missing function {need}")
+      const_names = {c.name for c in model.consts}
+      if "GLFW_MOUSE_BUTTON_LEFT" not in const_names:
+        errs.append("missing alias const GLFW_MOUSE_BUTTON_LEFT")
+      if "class Pyi_GLFWwindow:" not in text:
+        errs.append("missing @native class Pyi_GLFWwindow")
+      if "Pointer[Pyi_GLFWwindow]" not in text:
+        errs.append("GLFWwindow* should map to Pointer[Pyi_GLFWwindow]")
+      if "GLFWwindow_h" in text:
+        errs.append("legacy GLFWwindow_h must not appear")
+    elif hname in {"gl.h"}:
+      if len(model.funcs) < 30:
+        errs.append(f"too few funcs for GL/gl.h: {len(model.funcs)}")
+      for need in ("glClear", "glBegin", "glVertex3d", "glMatrixMode"):
+        if need not in names:
+          errs.append(f"missing function {need}")
+      if "GL_TRIANGLES" not in {c.name for c in model.consts}:
+        errs.append("missing GL_TRIANGLES")
+    else:
+      # Win32 / 通用：至少要有一批函数
+      if len(model.funcs) < 100:
+        errs.append(f"too few funcs for non-sqlite header: {len(model.funcs)}")
+      # windows.h 伞头应带上 CreateWindowExW 或 MessageBoxW 等
+      if hname == "windows.h":
+        if not ({"MessageBoxW", "CreateWindowExW", "GetMessageW"} & names):
+          errs.append(
+            "windows.h pyi missing core UI symbols (MessageBoxW/CreateWindowExW/GetMessageW)"
+          )
   return errs
 
 
@@ -764,7 +1705,8 @@ def generate_pyi(
   )
   text = render_pyi(header_path, model)
   print(
-    f"[gen_c_ffi] opaques={len(model.opaques)} consts={len(model.consts)} funcs={len(model.funcs)}"
+    f"[gen_c_ffi] structs={len(model.structs)} enums={len(model.enums)} "
+    f"aliases={len(model.aliases)} consts={len(model.consts)} funcs={len(model.funcs)}"
   )
 
   errs = run_checks(model, text, header=header_path)

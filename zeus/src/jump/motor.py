@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from py2cpp import *
 from py2cpp.spatial.vector import Vector3
+from py2cpp.ui.meta import UIInvisibleMeta, UILabelMeta
 
 from ..scene import Component
 from ..simple_world import SimpleBody
@@ -19,13 +20,13 @@ JUMP_FAILED: int = 4
 class JumpMotor(Component):
   """按住蓄力、松开起跳；落地由 ``JumpGame`` 判定。"""
 
-  jump_power: float64 = 8.0
-  max_charge: float64 = 1.2
-  charge: float64 = 0.0
-  state: int = 0
-  body: SimpleBody = new()
-  forward_x: float64 = 1.0
-  forward_z: float64 = 0.0
+  jump_power: float64 @UILabelMeta("Jump Power") = 8.0
+  max_charge: float64 @UILabelMeta("Max Charge") = 1.2
+  charge: float64 @UIInvisibleMeta = 0.0
+  state: int @UIInvisibleMeta = 0
+  body: SimpleBody @UIInvisibleMeta = new()
+  forward_x: float64 @UIInvisibleMeta = 1.0
+  forward_z: float64 @UIInvisibleMeta = 0.0
 
   def __init__(self):
     self.kind = "JumpMotor"
@@ -79,3 +80,21 @@ class JumpMotor(Component):
   def ready_next(self) -> None:
     if self.state == JUMP_LANDED:
       self.state = JUMP_IDLE
+
+  @override
+  def inspect_float(self, field: str) -> float64:
+    if field == "jump_power":
+      return self.jump_power
+    if field == "max_charge":
+      return self.max_charge
+    return 0.0
+
+  @override
+  def set_inspect_float(self, field: str, value: float64) -> bool:
+    if field == "jump_power":
+      self.jump_power = value
+      return True
+    if field == "max_charge":
+      self.max_charge = value
+      return True
+    return False

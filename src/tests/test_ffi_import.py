@@ -14,6 +14,7 @@ from src.analysis.module_namespace import namespace_qualifier_for_module
 from src.constant.ffi_layout import (
   FFI_ROOT,
   find_ffi_source_file,
+  ffi_c_struct_using_target,
   ffi_header_include,
   ffi_opaque_c_tag,
   ffi_opaque_py_name,
@@ -21,17 +22,36 @@ from src.constant.ffi_layout import (
 )
 from src.constant.paths import _REPO_ROOT
 from src.constant.stdlib_layout import RUNTIME_PKG
+from src.analysis.ir import ClassInfo
+import ast
 
 
 class TestFfiOpaqueNames(unittest.TestCase):
-  def test_h_suffix_roundtrip(self) -> None:
+  def test_legacy_h_suffix_roundtrip(self) -> None:
     for c in ("sqlite3", "sqlite3_stmt", "Fts5Context", "sqlite3_api_routines"):
       py = ffi_opaque_py_name(c)
       self.assertNotEqual(py, c)
       self.assertTrue(py.endswith("_h"))
       self.assertEqual(ffi_opaque_c_tag(py), c)
-    self.assertEqual(ffi_opaque_py_name("sqlite3"), "sqlite3_h")
-    self.assertEqual(ffi_opaque_py_name("sqlite3_stmt"), "sqlite3_stmt_h")
+
+  def test_using_target(self) -> None:
+    node = ast.ClassDef(
+      name="Pyi_sqlite3",
+      bases=[],
+      keywords=[],
+      body=[ast.Pass()],
+      decorator_list=[
+        ast.Name(id="native", ctx=ast.Load()),
+        ast.Call(
+          func=ast.Name(id="native_name", ctx=ast.Load()),
+          args=[ast.Constant(value="sqlite3")],
+          keywords=[],
+        ),
+      ],
+    )
+    info = ClassInfo(node, module_path="ffi/sqlite/sqlite3")
+    self.assertEqual(ffi_c_struct_using_target(info), "::sqlite3")
+    self.assertEqual(info.cpp_name(), "Pyi_sqlite3")
 
 
 class TestFfiLayout(unittest.TestCase):
@@ -72,7 +92,7 @@ class TestFfiLayout(unittest.TestCase):
     req = ImportRequest(
       level=0,
       module="ffi.sqlite.sqlite3",
-      names=(("sqlite3_open", None),),
+      names=(("Pyi_sqlite3_open", None),),
       is_star=False,
       is_plain_import=False,
     )
@@ -122,15 +142,25 @@ class TestFfiTranslateGlue(unittest.TestCase):
       self.assertNotIn("namespace lib", text)
       self.assertNotIn("namespace py2cpp\n{\n  namespace ffi", text)
       self.assertIn('#include "ffi/sqlite/sqlite3.inl"', text)
+      self.assertIn("#include <sqlite3.h>", text)
+      self.assertNotIn("class sqlite3", text)
+      self.assertNotIn("struct ::sqlite3", text)
+      self.assertIn("using Pyi_sqlite3 = ::sqlite3;", text)
+      self.assertIn("Pyi_sqlite3_open", text)
+      self.assertIn("Pyi_SQLITE_OK", text)
+      # 嵌套 C 结构体：using 右侧须带外层限定
+      self.assertIn(
+        "using Pyi_sqlite3_index_orderby = ::sqlite3_index_info::sqlite3_index_orderby;",
+        text,
+      )
       inl = header.with_suffix(".inl")
       self.assertTrue(inl.is_file(), msg=f"missing glue {inl}")
       inl_text = inl.read_text(encoding="utf-8")
       self.assertIn("py2cpp FFI glue", inl_text)
       self.assertIn("#include <sqlite3.h>", inl_text)
       self.assertIn("::sqlite3_open", inl_text)
-      self.assertIn("struct sqlite3*", inl_text)
+      self.assertIn("Pyi_sqlite3", inl_text)
       self.assertIn("inline", inl_text)
-      # 试点白名单：不全量生成易 C2664 的回调 API
       self.assertNotIn("sqlite3_auto_extension", inl_text)
 
 

@@ -1,11 +1,12 @@
-"""仓库根 ``ffi/**/*.pyi`` 布局（第三方 C FFI 声明面）。
+"""仓库根 ``ffi/**/*.pyi`` 与 Zeus 旁路 ``zeus/ffi/**/*.pyi`` 布局（第三方 C FFI 声明面）。
 
-Python：``import ffi.windows`` / ``from ffi.sqlite.sqlite3 import …``
-内部 module_path：``ffi/windows``、``ffi/sqlite/sqlite3``
+Python：``import ffi.windows`` / ``from ffi.sqlite.sqlite3 import …`` / ``from ffi.glfw.glfw3 import …``
+内部 module_path：``ffi/windows``、``ffi/sqlite/sqlite3``、``ffi/glfw/glfw3``
 生成物：``generated/runtime/ffi/…``（``#include "ffi/…"``；与 ``py2cpp/`` 并列）
 C++ 命名空间：``ffi::…``（见 ``module_namespace``；不挂 ``py2cpp::``）
 
 不进 ``STDLIB_REL_PATHS`` / ``minimal.h`` 默认 bulk；仅被 import 时参与翻译。
+Zeus：``zeus\\ffi.bat`` 重生成 ``zeus/ffi/glfw``、``zeus/ffi/gl``（勿手改 AUTO-GENERATED）。
 """
 from __future__ import annotations
 
@@ -40,8 +41,42 @@ _FFI_GLUE_ALLOWLIST: dict[str, frozenset[str] | None] = {
     "sqlite3_exec",
     "sqlite3_free",
   }),
-  "ffi/glfw/glfw3": None,
-  "ffi/gl/gl": None,
+  # Zeus：.pyi 全量生成，glue 仅业务实际调用（回调/Pointer 签名勿全量转发）
+  "ffi/glfw/glfw3": frozenset({
+    "glfwInit",
+    "glfwTerminate",
+    "glfwWindowHint",
+    "glfwCreateWindow",
+    "glfwDestroyWindow",
+    "glfwMakeContextCurrent",
+    "glfwSwapBuffers",
+    "glfwPollEvents",
+    "glfwWindowShouldClose",
+    "glfwGetKey",
+    "glfwGetMouseButton",
+    "glfwGetCursorPos",
+    "glfwSetWindowPos",
+    "glfwSetWindowSize",
+    "glfwShowWindow",
+    "glfwHideWindow",
+  }),
+  "ffi/gl/gl": frozenset({
+    "glClearColor",
+    "glClear",
+    "glViewport",
+    "glEnable",
+    "glMatrixMode",
+    "glLoadIdentity",
+    "glFrustum",
+    "glTranslatef",
+    "glRotatef",
+    "glPushMatrix",
+    "glPopMatrix",
+    "glBegin",
+    "glEnd",
+    "glColor3d",
+    "glVertex3d",
+  }),
 }
 
 
@@ -123,26 +158,43 @@ def ffi_glue_allowlist(module_path: str) -> frozenset[str] | None:
 
 
 def ffi_cpp_namespace_segment(segment: str) -> str:
-  """FFI 路径段 → C++ 命名空间标识（与路径段一致；句柄别名见 ``ffi_opaque_py_name``）。"""
+  """FFI 路径段 → C++ 命名空间标识（与路径段一致）。"""
   return segment
 
 
+def ffi_pyi_prefix() -> str:
+  return "Pyi_"
+
+
+def ffi_c_struct_using_target(info: object) -> str:
+  """``using Pyi_sqlite3 = ::sqlite3`` 右侧：全局 C typedef/标签名。"""
+  tag = getattr(info, "cpp_rename", None) or ""
+  if not tag:
+    name = getattr(info, "name", "") or ""
+    pref = ffi_pyi_prefix()
+    tag = name[len(pref):] if name.startswith(pref) else name
+  return f"::{tag}"
+
+
+def is_ffi_c_struct_class(info: object) -> bool:
+  """``ClassInfo``：FFI 模块内 ``@native`` 类视为 C struct/enum 声明面（``using`` 别名，无新定义）。"""
+  module_path = getattr(info, "module_path", "") or ""
+  return bool(getattr(info, "is_native", False) and is_ffi_module_path(module_path))
+
+
+# 兼容旧名（已废弃 *_h 句柄模型）
 _OPAQUE_PY_SUFFIX = "_h"
 
 
 def ffi_opaque_py_name(c_tag: str) -> str:
-  """C 不完整 struct/typedef 标签 → Python 句柄别名（加 ``_h``，永不与 C 标签同名）。
-
-  ``sqlite3`` → ``sqlite3_h``；``sqlite3_stmt`` → ``sqlite3_stmt_h``。
-  用后缀而非 PascalCase，以便 ``Fts5Context`` 等 CamelCase 标签可无损反查。
-  """
+  """已废弃：历史 ``*_h`` 句柄名。新代码直接用结构体类名。"""
   if c_tag.endswith(_OPAQUE_PY_SUFFIX):
     return c_tag
   return f"{c_tag}{_OPAQUE_PY_SUFFIX}"
 
 
 def ffi_opaque_c_tag(py_name: str) -> str:
-  """``ffi_opaque_py_name`` 的逆：glue 里 ``struct T*`` 须用 C 标签名。"""
+  """``ffi_opaque_py_name`` 的逆；亦接受无后缀的结构体类名。"""
   if py_name.endswith(_OPAQUE_PY_SUFFIX) and len(py_name) > len(_OPAQUE_PY_SUFFIX):
     return py_name[: -len(_OPAQUE_PY_SUFFIX)]
   return py_name

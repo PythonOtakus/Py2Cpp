@@ -3,26 +3,26 @@ from __future__ import annotations
 
 from py2cpp import *
 from ffi.glfw.glfw3 import (
-  GLFW_CONTEXT_VERSION_MAJOR,
-  GLFW_CONTEXT_VERSION_MINOR,
-  GLFW_DECORATED,
-  GLFW_FALSE,
-  GLFW_TRUE,
-  GLFW_VISIBLE,
-  GLFWwindow_h,
-  glfwCreateWindow,
-  glfwDestroyWindow,
-  glfwHideWindow,
-  glfwInit,
-  glfwMakeContextCurrent,
-  glfwPollEvents,
-  glfwSetWindowPos,
-  glfwSetWindowSize,
-  glfwShowWindow,
-  glfwSwapBuffers,
-  glfwTerminate,
-  glfwWindowHint,
-  glfwWindowShouldClose,
+  Pyi_GLFW_CONTEXT_VERSION_MAJOR,
+  Pyi_GLFW_CONTEXT_VERSION_MINOR,
+  Pyi_GLFW_DECORATED,
+  Pyi_GLFW_FALSE,
+  Pyi_GLFW_TRUE,
+  Pyi_GLFW_VISIBLE,
+  Pyi_GLFWwindow,
+  Pyi_glfwCreateWindow,
+  Pyi_glfwDestroyWindow,
+  Pyi_glfwHideWindow,
+  Pyi_glfwInit,
+  Pyi_glfwMakeContextCurrent,
+  Pyi_glfwPollEvents,
+  Pyi_glfwSetWindowPos,
+  Pyi_glfwSetWindowSize,
+  Pyi_glfwShowWindow,
+  Pyi_glfwSwapBuffers,
+  Pyi_glfwTerminate,
+  Pyi_glfwWindowHint,
+  Pyi_glfwWindowShouldClose,
 )
 
 
@@ -31,9 +31,9 @@ _glfw_refcount: int = 0
 
 @refcount
 class Window:
-  """GLFW 顶层窗口；句柄存 ``handle``（``GLFWwindow*`` 作 ``uint64``）。"""
+  """GLFW 顶层窗口；``handle`` 为 ``GLFWwindow*``。"""
 
-  handle: uint64 = 0
+  handle: Pointer[Pyi_GLFWwindow] = None
   width: int = 0
   height: int = 0
   title: str = "Zeus"
@@ -52,33 +52,35 @@ class Window:
   ) -> bool:
     global _glfw_refcount
     if _glfw_refcount == 0:
-      if glfwInit() == 0:
+      if Pyi_glfwInit() == 0:
         return False
     _glfw_refcount += 1
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2)
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1)
-    vis: int = GLFW_FALSE if hidden else GLFW_TRUE
-    glfwWindowHint(GLFW_VISIBLE, vis)
-    dec: int = GLFW_TRUE if decorated else GLFW_FALSE
-    glfwWindowHint(GLFW_DECORATED, dec)
-    win: GLFWwindow_h = glfwCreateWindow(width, height, title, 0, 0)
-    if win == 0:
+    Pyi_glfwWindowHint(Pyi_GLFW_CONTEXT_VERSION_MAJOR, 2)
+    Pyi_glfwWindowHint(Pyi_GLFW_CONTEXT_VERSION_MINOR, 1)
+    vis: int = Pyi_GLFW_FALSE if hidden else Pyi_GLFW_TRUE
+    Pyi_glfwWindowHint(Pyi_GLFW_VISIBLE, vis)
+    dec: int = Pyi_GLFW_TRUE if decorated else Pyi_GLFW_FALSE
+    Pyi_glfwWindowHint(Pyi_GLFW_DECORATED, dec)
+    win: Pointer[Pyi_GLFWwindow] = Pyi_glfwCreateWindow(
+      width, height, title, None, None
+    )
+    if win is None:
       _glfw_refcount -= 1
       if _glfw_refcount == 0:
-        glfwTerminate()
+        Pyi_glfwTerminate()
       return False
     self.handle = win
     self.width = width
     self.height = height
     self.title = new(title)
     self.should_close = False
-    glfwMakeContextCurrent(win)
+    Pyi_glfwMakeContextCurrent(win)
     return True
 
   def set_bounds_screen(self, x: int, y: int, width: int, height: int) -> None:
     """屏幕坐标下移动/缩放（无边框视口对齐主窗中栏）。"""
-    win: GLFWwindow_h = self.handle
-    if win == 0:
+    win: Pointer[Pyi_GLFWwindow] = self.handle
+    if win is None:
       return
     if width < 1:
       width = 1
@@ -86,42 +88,42 @@ class Window:
       height = 1
     self.width = width
     self.height = height
-    glfwSetWindowPos(win, x, y)
-    glfwSetWindowSize(win, width, height)
+    Pyi_glfwSetWindowPos(win, x, y)
+    Pyi_glfwSetWindowSize(win, width, height)
 
   def show_window(self) -> None:
-    win: GLFWwindow_h = self.handle
-    if win != 0:
-      glfwShowWindow(win)
+    win: Pointer[Pyi_GLFWwindow] = self.handle
+    if win is not None:
+      Pyi_glfwShowWindow(win)
 
   def hide_window(self) -> None:
-    win: GLFWwindow_h = self.handle
-    if win != 0:
-      glfwHideWindow(win)
+    win: Pointer[Pyi_GLFWwindow] = self.handle
+    if win is not None:
+      Pyi_glfwHideWindow(win)
 
   def poll(self) -> None:
-    glfwPollEvents()
-    win: GLFWwindow_h = self.handle
-    if win != 0:
-      self.should_close = glfwWindowShouldClose(win) != 0
+    Pyi_glfwPollEvents()
+    win: Pointer[Pyi_GLFWwindow] = self.handle
+    if win is not None:
+      self.should_close = Pyi_glfwWindowShouldClose(win) != 0
 
   def swap(self) -> None:
-    win: GLFWwindow_h = self.handle
-    if win != 0:
-      glfwSwapBuffers(win)
+    win: Pointer[Pyi_GLFWwindow] = self.handle
+    if win is not None:
+      Pyi_glfwSwapBuffers(win)
 
   def destroy(self) -> None:
     global _glfw_refcount
-    win: GLFWwindow_h = self.handle
-    if win != 0:
-      glfwDestroyWindow(win)
-      self.handle = 0
+    win: Pointer[Pyi_GLFWwindow] = self.handle
+    if win is not None:
+      Pyi_glfwDestroyWindow(win)
+      self.handle = None
       _glfw_refcount -= 1
       if _glfw_refcount <= 0:
         _glfw_refcount = 0
-        glfwTerminate()
+        Pyi_glfwTerminate()
 
   def make_current(self) -> None:
-    win: GLFWwindow_h = self.handle
-    if win != 0:
-      glfwMakeContextCurrent(win)
+    win: Pointer[Pyi_GLFWwindow] = self.handle
+    if win is not None:
+      Pyi_glfwMakeContextCurrent(win)

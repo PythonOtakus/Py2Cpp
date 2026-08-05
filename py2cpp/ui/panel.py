@@ -3,7 +3,14 @@
 from ..builtins import *
 from .layout import UIFormLayout
 from .meta import UIInvisibleMeta, UIButtonMeta, UILabelMeta, UISliderMeta
-from .widget import UICheckBox, UIIntEdit, UILineEdit, UISlider, UIPushButton
+from .widget import (
+  UICheckBox,
+  UIFloatEdit,
+  UIIntEdit,
+  UILineEdit,
+  UIPushButton,
+  UISlider,
+)
 from .app import UIApp
 from .window import UIWindow
 
@@ -30,6 +37,9 @@ class UIPanelMixin:
     self.panel_sync_from_form()
 
   def panel_on_int_changed(self, _: int) -> None:
+    self.panel_sync_from_form()
+
+  def panel_on_float_changed(self, _: float64) -> None:
     self.panel_sync_from_form()
 
   def _form_add_slider(
@@ -76,6 +86,15 @@ class UIPanelMixin:
     form.add_int_edit(label, ie)
 
   @overload
+  def _form_add_value(
+    self, form: UIFormLayout @ref, field: str, label: str, value: float64
+  ) -> None:
+    fe: UIFloatEdit = new()
+    fe.value = value
+    fe.value_changed += self.panel_on_float_changed
+    form.add_float_edit(label, fe)
+
+  @overload
   def _row_value(self, form: UIFormLayout @ref, row: int, _: bool) -> bool:
     return form.row_bool(row)
 
@@ -88,6 +107,10 @@ class UIPanelMixin:
     return form.row_int(row)
 
   @overload
+  def _row_value(self, form: UIFormLayout @ref, row: int, _: float64) -> float64:
+    return form.row_float(row)
+
+  @overload
   def _push_widget_row(self, form: UIFormLayout @ref, row: int, value: bool) -> None:
     form.push_row_bool(row, value)
 
@@ -98,6 +121,10 @@ class UIPanelMixin:
   @overload
   def _push_widget_row(self, form: UIFormLayout @ref, row: int, value: int) -> None:
     form.push_row_int(row, value)
+
+  @overload
+  def _push_widget_row(self, form: UIFormLayout @ref, row: int, value: float64) -> None:
+    form.push_row_float(row, value)
 
   def panel_sync_to_form(self) -> None:
     """宿主字段 → 控件 ``__set``（postsetter 内 ``_sync_to_native`` 更新 Win32）。"""

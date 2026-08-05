@@ -10,6 +10,7 @@ from .inspector import InspectorPanel
 from .session import EditorSession
 from .toolbar import ToolbarView
 from .viewport import SceneViewport
+from ..world import WORLD_PLAYING
 
 MAIN_W: int = 1280
 MAIN_H: int = 720
@@ -126,6 +127,8 @@ class EditorShell:
         break
       if code == 2:
         self.layout()
+        if self.session.bus.world.state == WORLD_PLAYING:
+          self.session.bus.world.step()
         self.viewport.render()
     self.close()
     return 0

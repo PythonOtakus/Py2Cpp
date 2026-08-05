@@ -109,6 +109,8 @@ from .constant.stdlib_discovery import STDLIB_REL_PATH_SET, STDLIB_REL_PATHS
 from .constant.ffi_layout import (
   ffi_header_include,
   ffi_runtime_module_path,
+  ffi_c_struct_using_target,
+  is_ffi_c_struct_class,
   is_ffi_module_path,
 )
 from .constant.stdlib_layout import CORE_PKG, RUNTIME_PKG, is_on_demand_stdlib_rel, stdlib_header_include, stdlib_module_path
@@ -6221,6 +6223,12 @@ class Translator(ast.NodeVisitor):
                     for info in module_classes:
                         if info.is_enum:
                             continue
+                        if is_ffi_c_struct_class(info):
+                            # .pyi 只声明：using Pyi_X = ::CTag（不生成新 struct）
+                            self.write_line(
+                              f'using {info.cpp_name()} = {ffi_c_struct_using_target(info)};'
+                            )
+                            continue
                         self._emit_template_prefix(info)
                         self.write_line(f'class {info.cpp_name()};')
                     self.write_line()
@@ -6237,6 +6245,8 @@ class Translator(ast.NodeVisitor):
                 if not self._is_stdlib_module(module_path):
                     self._emit_module_delegates(module_path)
                     for info in module_classes:
+                        if is_ffi_c_struct_class(info):
+                            continue  # 已在前方 using 发出
                         _emit_class_declaration(self, info)
                     if module_path == self.entry_module_path:
                         self._emit_module_function_decls(module_path, skip_main=True)
@@ -6322,6 +6332,10 @@ class Translator(ast.NodeVisitor):
         if func.name == 'main' and module_path != self.entry_module_path:
             stem = module_path.rsplit('/', 1)[-1]
             return f'{stem}_main'
+        from .constant.ffi_layout import is_ffi_module_path
+        # FFI：Python 名（Pyi_*）即 C++ 包装名；@native_name 仅 glue 调真实 C 符号
+        if is_ffi_module_path(module_path):
+            return func.name
         from .analysis.stubs.builtin_stubs import function_cpp_rename
         from .analysis.stubs.class_stubs import lookup_module_function_cpp_name
         mapped = lookup_module_function_cpp_name(module_path, func.name)
@@ -6398,13 +6412,16 @@ class Translator(ast.NodeVisitor):
                 name = node.target.id
                 if name == '__all__':
                     continue
+                undef_name = name
+                if self._is_ffi_module(module_path) and name.startswith('Pyi_'):
+                    undef_name = name[4:]
                 t = self._parse_type(node.annotation, [])
                 is_const = is_const_type_annotation(node.annotation)
                 if node.value is not None and self._is_new_call(node.value) and (not is_const):
                     val = _emit_new_ctor_expr(self, t, node.value)
                     if self._is_ffi_module(module_path):
-                        self.write_line(f'#ifdef {name}')
-                        self.write_line(f'#undef {name}')
+                        self.write_line(f'#ifdef {undef_name}')
+                        self.write_line(f'#undef {undef_name}')
                         self.write_line('#endif')
                     self.write_line(f'static {t} {name} = {val};')
                     continue
@@ -6430,8 +6447,8 @@ class Translator(ast.NodeVisitor):
                 const_kw = 'const ' if is_const else ''
                 # C 头宏（如 GL_COLOR_BUFFER_BIT / GLFW_TRUE）会污染同名声明；FFI 模块先 #undef
                 if self._is_ffi_module(module_path):
-                    self.write_line(f'#ifdef {name}')
-                    self.write_line(f'#undef {name}')
+                    self.write_line(f'#ifdef {undef_name}')
+                    self.write_line(f'#undef {undef_name}')
                     self.write_line('#endif')
                 self.write_line(f'static {const_kw}{t} {name} = {val};')
             self.write_line()

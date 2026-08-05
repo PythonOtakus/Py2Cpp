@@ -4,7 +4,7 @@ from __future__ import annotations
 from py2cpp import *
 from py2cpp.spatial.vector import Vector3
 
-from .scene import CameraComponent, GameObject, MeshComponent
+from .scene import CameraComponent, Component, GameObject, MeshComponent
 from .scene_io import scene_from_json, scene_load, scene_save, scene_to_json
 from .world import WORLD_PLAYING, WORLD_STOPPED, World
 
@@ -62,6 +62,13 @@ class ZeusCommand:
   class ObjectRemoveComponent:
     name: str
     kind: str
+
+  @variant
+  class ComponentSetFloat:
+    name: str
+    kind: str
+    field: str
+    value: float64
 
   @variant
   class PlayStart:
@@ -233,6 +240,16 @@ class CommandBus:
           return self._fail("not found")
         if not rem_obj.remove_component(kind):
           return self._fail("component not found")
+        return self._ok()
+      case new.ComponentSetFloat(name, kind, field, value):
+        float_obj: GameObject | None = self._find(name)
+        if float_obj is None:
+          return self._fail("not found")
+        float_comp: Component | None = float_obj.find_component(kind)
+        if float_comp is None:
+          return self._fail("component not found")
+        if not float_comp.set_inspect_float(field, value):
+          return self._fail("field not found")
         return self._ok()
       case new.PlayStart:
         self.world.play()

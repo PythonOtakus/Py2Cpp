@@ -51,6 +51,18 @@ class UIIntEdit(UIWidget):
 
 
 @dataclass(eq=False, repr=False)
+class UIFloatEdit(UIWidget):
+  value_changed: UIValueChanged[float64] = new()
+
+  @native
+  def _sync_to_native(self) -> None:
+    """``handle`` 非 0 时将 ``value__value`` 写回 Win32 edit。"""
+    ...
+
+  value: float64 @property.postsetter(_sync_to_native, value_changed) = 0.0
+
+
+@dataclass(eq=False, repr=False)
 class UISlider(UIWidget):
   lo: int = 0
   hi: int = 100

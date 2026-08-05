@@ -10,6 +10,7 @@ from .command import CommandBus, CommandResult, ZeusCommand
 from .editor.inspector import InspectorPanel
 from .editor.session import EditorSession
 from .editor.shell import EditorShell
+from .jump.motor import JumpMotor
 from .scene import GameObject
 from .world import WORLD_PLAYING, WORLD_STOPPED
 from py2cpp.spatial.vector import Vector3
@@ -116,9 +117,9 @@ class InspectorApplyTests(TestCaseMixin):
     panel.bind_bus(bus)
     panel.load_from_selection()
     self.assertEqual(panel.object_name, "hero")
-    panel.pos_x = "9"
-    panel.pos_y = "8"
-    panel.pos_z = "7"
+    panel.pos_x = 9.0
+    panel.pos_y = 8.0
+    panel.pos_z = 7.0
     panel.active = False
     panel.apply()
     go: GameObject | None = bus.world.root.find("hero")
@@ -128,6 +129,33 @@ class InspectorApplyTests(TestCaseMixin):
     self.assertTrue(almost(pos.x, 9.0))
     self.assertTrue(almost(pos.y, 8.0))
     self.assertTrue(almost(pos.z, 7.0))
+
+
+class InspectorJumpMotorTests(TestCaseMixin):
+  _test_tag = 7
+
+  @override
+  def test(self):
+    bus: CommandBus = new()
+    bus.dispatch(ZeusCommand.ObjectCreate("player", ""))
+    bus.dispatch(ZeusCommand.EditorSelect("player"))
+    go: GameObject | None = bus.world.root.find("player")
+    self.assertTrue(go is not None)
+    motor: JumpMotor = new()
+    motor.jump_power = 5.5
+    go.add_component(motor)
+    panel: InspectorPanel = new()
+    panel.bind_bus(bus)
+    panel.load_from_selection()
+    self.assertTrue(almost(panel.jump_power, 5.5))
+    panel.jump_power = 7.0
+    panel.apply()
+    self.assertTrue(almost(motor.jump_power, 7.0))
+    r: CommandResult = bus.dispatch(
+      ZeusCommand.ComponentSetFloat("player", "JumpMotor", "max_charge", 2.0)
+    )
+    self.assertTrue(r.ok)
+    self.assertTrue(almost(motor.max_charge, 2.0))
 
 
 class EditorUiSmokeTests(TestCaseMixin):

@@ -73,6 +73,16 @@ class Component:
     """Scene View 绘制：非网格组件返回 ``None``。"""
     return None
 
+  @virtual
+  def inspect_float(self, field: str) -> float64:
+    """Inspector：可读浮点字段；未知字段返回 ``0``。"""
+    return 0.0
+
+  @virtual
+  def set_inspect_float(self, field: str, value: float64) -> bool:
+    """Inspector：写浮点字段；未知字段返回 ``False``。"""
+    return False
+
 
 @refcount
 class Transform(Component):

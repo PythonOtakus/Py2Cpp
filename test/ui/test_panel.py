@@ -37,6 +37,17 @@ class PanelSliderTests(TestCaseMixin):
         cfg.hp = 200
         self.assertEqual(cfg.hp, 200)
 
+class PanelFloatTests(TestCaseMixin):
+    _test_tag = 5
+
+    @override
+    def test(self):
+        cfg: PlayerConfig = new()
+        cfg.speed = 2.5
+        cfg.draw_panel(UIWindow())
+        self.assertTrue(cfg.speed > 2.4)
+        self.assertTrue(cfg.speed < 2.6)
+
 class PanelCreateTests(TestCaseMixin):
     _test_tag = 4
 
@@ -53,10 +64,11 @@ class PanelCreateTests(TestCaseMixin):
         win2.close()
 
 @dataclass
-class PlayerConfig(UIPanelMixin, friends=(PanelInvisibleTests,)):
+class PlayerConfig(UIPanelMixin, friends=(PanelInvisibleTests, PanelFloatTests,)):
     hp: int @ UILabelMeta('HP') @ UISliderMeta(0, 100) = 50
     name: str @ UILabelMeta('Name') = 'hero'
     enabled: bool = True
+    speed: float64 @ UILabelMeta('Speed') = 1.0
     _seed: int @ UIInvisibleMeta = 0
 
 def main() -> int:

@@ -172,6 +172,9 @@ class TypeNode:
       case TypeKind.POINTER:
         assert self.inner is not None
         inner = self.inner.render(policy)
+        # 嵌套 Pointer 的 inner 已是 POINTER 节点时须再加 ``*``
+        if self.inner.kind == TypeKind.POINTER:
+          return f"{inner}*"
         if inner.endswith("*"):
           return inner
         return f"{inner}*"

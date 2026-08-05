@@ -54,6 +54,7 @@ enum UIRowKind {
   UI_ROW_LINE_EDIT = 1,
   UI_ROW_INT_EDIT = 2,
   UI_ROW_SLIDER = 3,
+  UI_ROW_FLOAT_EDIT = 4,
 };
 
 struct UIRowEntry
@@ -64,11 +65,13 @@ struct UIRowEntry
   PyBool bval;
   PyStr sval;
   PyInt ival;
+  PyFloat64 fval;
   PyInt lo;
   PyInt hi;
   py2cpp::ui::widget::UICheckBox checkbox;
   py2cpp::ui::widget::UILineEdit line_edit;
   py2cpp::ui::widget::UIIntEdit int_edit;
+  py2cpp::ui::widget::UIFloatEdit float_edit;
   py2cpp::ui::widget::UISlider slider;
 };
 
@@ -335,6 +338,12 @@ static void _ui_row_sync_from_native(UIRowEntry& row)
       row.ival = (PyInt)atoi(buf);
       break;
     }
+    case UI_ROW_FLOAT_EDIT: {
+      char buf[64];
+      _ui_read_edit_text(row.ctrl, buf, (int)sizeof(buf));
+      row.fval = (PyFloat64)atof(buf);
+      break;
+    }
     case UI_ROW_SLIDER: {
       LRESULT pos = SendMessageA(row.ctrl, TBM_GETPOS, 0, 0);
       row.ival = _ui_clamp_int((PyInt)pos, row.lo, row.hi);
@@ -373,6 +382,12 @@ static void _ui_row_sync_to_native(UIRowEntry& row)
       SetWindowTextA(row.ctrl, vbuf);
       break;
     }
+    case UI_ROW_FLOAT_EDIT: {
+      char vbuf[64];
+      snprintf(vbuf, sizeof(vbuf), "%.6g", (double)row.fval);
+      SetWindowTextA(row.ctrl, vbuf);
+      break;
+    }
     case UI_ROW_SLIDER: {
       int want = _ui_clamp_int(row.ival, row.lo, row.hi);
       LRESULT pos = SendMessageA(row.ctrl, TBM_GETPOS, 0, 0);
@@ -408,6 +423,9 @@ static void _ui_row_mount_widget_handle(UIRowEntry& row)
       break;
     case UI_ROW_INT_EDIT:
       widget = reinterpret_cast<py2cpp::ui::widget::UIWidget*>(&row.int_edit);
+      break;
+    case UI_ROW_FLOAT_EDIT:
+      widget = reinterpret_cast<py2cpp::ui::widget::UIWidget*>(&row.float_edit);
       break;
     case UI_ROW_SLIDER:
       widget = reinterpret_cast<py2cpp::ui::widget::UIWidget*>(&row.slider);
@@ -458,6 +476,18 @@ static void _ui_mount_row(py2cpp::ui::window::UIWindow& win, UIRowEntry& row)
           win, NULL, NULL, NULL, NULL, NULL, &edit_w, &edit_h, NULL, NULL);
       char vbuf[32];
       snprintf(vbuf, sizeof(vbuf), "%d", (int)row.ival);
+      row.ctrl = _ui_create_edit(parent, vbuf, edit_w, edit_h);
+      _ui_layout_row(win, row.label, row.ctrl, edit_w, edit_h);
+      _ui_row_mount_widget_handle(row);
+      break;
+    }
+    case UI_ROW_FLOAT_EDIT: {
+      PyInt edit_w = 0;
+      PyInt edit_h = 0;
+      py2cpp::ui::window::ui_theme_layout_metrics(
+          win, NULL, NULL, NULL, NULL, NULL, &edit_w, &edit_h, NULL, NULL);
+      char vbuf[64];
+      snprintf(vbuf, sizeof(vbuf), "%.6g", (double)row.fval);
       row.ctrl = _ui_create_edit(parent, vbuf, edit_w, edit_h);
       _ui_layout_row(win, row.label, row.ctrl, edit_w, edit_h);
       _ui_row_mount_widget_handle(row);
@@ -547,6 +577,10 @@ static void _ui_row_fire_value_changed(UIRowEntry& row)
       row.int_edit.PY2CPP_SETTER(value)(row.ival);
       break;
     }
+    case UI_ROW_FLOAT_EDIT: {
+      row.float_edit.PY2CPP_SETTER(value)(row.fval);
+      break;
+    }
     case UI_ROW_SLIDER: {
       row.slider.PY2CPP_SETTER(value)(row.ival);
       break;
@@ -608,7 +642,9 @@ UIFormLayout* form = reinterpret_cast<UIFormLayout*>((void*)(INT_PTR)win.active_
   UIFormState& st = _ui_form_state(*form);
   UIRowEntry* row = _ui_form_find_row_by_ctrl(st, ctrl_id);
   if ((!row)
-      || ((row->kind != UI_ROW_LINE_EDIT) && (row->kind != UI_ROW_INT_EDIT)))
+      || ((row->kind != UI_ROW_LINE_EDIT)
+          && (row->kind != UI_ROW_INT_EDIT)
+          && (row->kind != UI_ROW_FLOAT_EDIT)))
       {
     return false;
   }
@@ -681,6 +717,7 @@ void UIFormLayout::add_checkbox(PyStr label, py2cpp::ui::widget::UICheckBox& wid
   row.bval = widget.PY2CPP_GETTER(checked)();
   row.sval = PyStr("");
   row.ival = 0;
+  row.fval = 0.0;
   row.lo = 0;
   row.hi = 0;
   row.checkbox = widget;
@@ -697,6 +734,7 @@ void UIFormLayout::add_line_edit(PyStr label, py2cpp::ui::widget::UILineEdit& wi
   row.bval = false;
   row.sval = widget.PY2CPP_GETTER(text)();
   row.ival = 0;
+  row.fval = 0.0;
   row.lo = 0;
   row.hi = 0;
   row.line_edit = widget;
@@ -713,9 +751,27 @@ void UIFormLayout::add_int_edit(PyStr label, py2cpp::ui::widget::UIIntEdit& widg
   row.bval = false;
   row.sval = PyStr("");
   row.ival = widget.PY2CPP_GETTER(value)();
+  row.fval = 0.0;
   row.lo = 0;
   row.hi = 0;
   row.int_edit = widget;
+  st.rows.append(row);
+}
+
+void UIFormLayout::add_float_edit(PyStr label, py2cpp::ui::widget::UIFloatEdit& widget)
+{
+  UIFormState& st = _ui_form_state(*this);
+  UIRowEntry row;
+  row.kind = UI_ROW_FLOAT_EDIT;
+  row.label = label;
+  row.ctrl = NULL;
+  row.bval = false;
+  row.sval = PyStr("");
+  row.ival = 0;
+  row.fval = widget.PY2CPP_GETTER(value)();
+  row.lo = 0;
+  row.hi = 0;
+  row.float_edit = widget;
   st.rows.append(row);
 }
 
@@ -729,6 +785,7 @@ void UIFormLayout::add_slider(PyStr label, py2cpp::ui::widget::UISlider& widget)
   row.bval = false;
   row.sval = PyStr("");
   row.ival = widget.PY2CPP_GETTER(value)();
+  row.fval = 0.0;
   row.lo = widget.lo;
   row.hi = widget.hi;
   row.slider = widget;
@@ -850,6 +907,21 @@ PyInt UIFormLayout::row_int(PyInt index)
   return (PyInt)0;
 }
 
+PyFloat64 UIFormLayout::row_float(PyInt index)
+{
+  UIFormState& st = _ui_form_state(*this);
+  if ((index < 0) || (index >= st.rows.__len__()))
+  {
+    return (PyFloat64)0.0;
+  }
+  UIRowEntry& row = st.rows.__getitem__(index);
+  if (row.kind != UI_ROW_FLOAT_EDIT)
+  {
+    return (PyFloat64)0.0;
+  }
+  return row.fval;
+}
+
 void UIFormLayout::set_row_bool(PyInt index, PyBool value)
 {
   UIFormState& st = _ui_form_state(*this);
@@ -892,6 +964,21 @@ void UIFormLayout::set_row_int(PyInt index, PyInt value)
   {
     row.ival = value;
   }
+}
+
+void UIFormLayout::set_row_float(PyInt index, PyFloat64 value)
+{
+  UIFormState& st = _ui_form_state(*this);
+  if ((index < 0) || (index >= st.rows.__len__()))
+  {
+    return;
+  }
+  UIRowEntry& row = st.rows.__getitem__(index);
+  if (row.kind != UI_ROW_FLOAT_EDIT)
+  {
+    return;
+  }
+  row.fval = value;
 }
 
 void UIFormLayout::push_row_bool(PyInt index, PyBool value)
@@ -945,6 +1032,22 @@ void UIFormLayout::push_row_int(PyInt index, PyInt value)
     row.ival = value;
     row.slider.PY2CPP_SETTER(value)(value);
   }
+}
+
+void UIFormLayout::push_row_float(PyInt index, PyFloat64 value)
+{
+  UIFormState& st = _ui_form_state(*this);
+  if ((index < 0) || (index >= st.rows.__len__()))
+  {
+    return;
+  }
+  UIRowEntry& row = st.rows.__getitem__(index);
+  if (row.kind != UI_ROW_FLOAT_EDIT)
+  {
+    return;
+  }
+  row.fval = value;
+  row.float_edit.PY2CPP_SETTER(value)(value);
 }
 
 PY2CPP_END_SCOPE
@@ -1006,6 +1109,12 @@ void UIFormLayout::add_int_edit(PyStr label, py2cpp::ui::widget::UIIntEdit& widg
   (void)widget;
 }
 
+void UIFormLayout::add_float_edit(PyStr label, py2cpp::ui::widget::UIFloatEdit& widget)
+{
+  (void)label;
+  (void)widget;
+}
+
 void UIFormLayout::add_slider(PyStr label, py2cpp::ui::widget::UISlider& widget)
 {
   (void)label;
@@ -1056,6 +1165,12 @@ PyInt UIFormLayout::row_int(PyInt index)
   return (PyInt)0;
 }
 
+PyFloat64 UIFormLayout::row_float(PyInt index)
+{
+  (void)index;
+  return (PyFloat64)0.0;
+}
+
 void UIFormLayout::set_row_bool(PyInt index, PyBool value)
 {
   (void)index;
@@ -1074,6 +1189,12 @@ void UIFormLayout::set_row_int(PyInt index, PyInt value)
   (void)value;
 }
 
+void UIFormLayout::set_row_float(PyInt index, PyFloat64 value)
+{
+  (void)index;
+  (void)value;
+}
+
 void UIFormLayout::push_row_bool(PyInt index, PyBool value)
 {
   (void)index;
@@ -1087,6 +1208,12 @@ void UIFormLayout::push_row_str(PyInt index, PyStr value)
 }
 
 void UIFormLayout::push_row_int(PyInt index, PyInt value)
+{
+  (void)index;
+  (void)value;
+}
+
+void UIFormLayout::push_row_float(PyInt index, PyFloat64 value)
 {
   (void)index;
   (void)value;

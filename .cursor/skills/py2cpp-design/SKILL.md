@@ -40,7 +40,7 @@ description: >-
 2. **`util/memory`**：``copy_buf`` / ``buf_to_str`` / ``load_u64_le`` / ``load_u64_le_bytes`` 为 ``@native``（各带 ``*_ref``）；缓冲扩容见 ``array.reserve``。
 3. **`serde/json`**：``JsonEncoder`` 静态 ``append_*`` / ``fast_encode`` 纯 Python + ``JsonDecoder`` 实例 decode 组合（``load_u64_le`` 来自 ``util/memory``，``span``→``str`` 用 ``str.from_codes_span``）；``@serializable`` codegen 直调 ``dec.parse_int_at_ascii()`` / ``dec.str_assign_from_seg(seg)``。**无** ``json_scan_cpp``。
 4. **C++ 可无损删除**：关掉 ``memory_cpp`` 注入后仍靠 Python 组合 + 叶子 ``*_ref`` 全绿（性能可降）。
-5. **第三方 C FFI**：仓库根 ``ffi/**/*.pyi``（生成器产出）→ 译器按需写 ``generated/runtime/ffi/…``，C++ ``ffi::…``（**不**挂 ``py2cpp::``、**不**进 ``minimal.h``）。句柄别名 ``*_h``（如 ``sqlite3_h``）；glue ``#include <c_header>`` + ``struct`` C 标签。详规 [c-ffi-pyi.md](../../../docs/c-ffi-pyi.md) / 编码规范 §9.4；查阅表 [reference §5.3](./reference.md#53-第三方-c-ffiffipyi)。**禁止** star-import、批量删 UI ``templates/**``。
+5. **第三方 C FFI**：仓库根 ``ffi/**/*.pyi``（生成器产出）→ 译器按需写 ``generated/runtime/ffi/…``，C++ ``ffi::…``（**不**挂 ``py2cpp::``、**不**进 ``minimal.h``）。模块级符号一律 ``Pyi_``；结构体 ``@native`` 类 + ``Pointer[T]``（C++ ``using Pyi_X = ::X``，``.pyi`` 只声明）；glue ``#include <c_header>``。详规 [c-ffi-pyi.md](../../../docs/c-ffi-pyi.md) / 编码规范 §9.4；查阅表 [reference §5.3](./reference.md#53-第三方-c-ffiffipyi)。**禁止** star-import、批量删 UI ``templates/**``。
 
 ---
 
@@ -281,7 +281,7 @@ generated\test\misc\test_containers.exe
 |------|------|
 | 用户模块 `a/b.py` | `namespace a { namespace b { … } }` |
 | 标准库 `py2cpp/util/list` | `namespace py2cpp { namespace util { namespace list { … } } }` |
-| FFI `ffi/sqlite/sqlite3` | `namespace ffi { namespace sqlite { namespace sqlite3 { … } } }`（路径段 = 段名；句柄用 `*_h`） |
+| FFI `ffi/sqlite/sqlite3` | `namespace ffi { namespace sqlite { namespace sqlite3 { … } } }`（路径段 = 段名；`using Pyi_X = ::X`） |
 | `set` 模块 | C++ 段名 **`py_set`**（`py2cpp::util::py_set`） |
 | `.inl` 实现 | runtime 的 `.inl` **不**套 namespace，用全限定 `py2cpp::util::list::…` |
 | `tuple` / `delegate` / `refcount` | 全局或特殊模块，见 `module_namespace.MODULES_WITHOUT_CPP_NAMESPACE` |
@@ -325,7 +325,7 @@ generated\test\misc\test_containers.exe
 | `py_open` / `format` 未解析 | 确认 `io.inl`、`minimal.h` 含 `operators.inl` |
 | `DictKey_check` / traits 未定义 | `dict`/`str` 依赖 `protocol_traits.h`，勿只 include 被拆空的 `protocols.h` |
 | `PyRange` 找不到 | 确认已 include `minimal.h`；用 `(::py2cpp::util::range::PyRange)(n)`；勿依赖未验证的 namespace 尾 shim |
-| FFI C API「找不到」/ 自包含 | glue 须 `#include <sqlite3.h>`（尖括号）；句柄别名须 `*_h`，cast 用 C 标签；见 c-ffi-pyi.md |
+| FFI C API「找不到」/ 自包含 | glue 须 `#include <sqlite3.h>`（尖括号）；类型为 `using Pyi_X = ::X` / `Pointer[Pyi_X]`，见 c-ffi-pyi.md |
 | MSVC `C2059` 在 `.add` / `isdisjoint()` | 变量名勿用 `far`/`near`（Win 宏）；`isascii` 调用前需 `#undef`（见 `minimal.h` 尾部） |
 | `PyTuple` / `Args` 编译错 | `protocol_traits` 中 `__mod__` 前须有 `template<typename... Args>`；`PyTuple` 在全局，勿误写 `py2cpp::PyTuple` |
 | 头文件循环 include | `str.h`↔`list.h`：按参考手册 §8.5 拆 `protocol_traits`、调整 include |

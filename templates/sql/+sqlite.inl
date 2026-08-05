@@ -44,14 +44,14 @@ static PyStr _sql_cbuf_to_pystr(const char* buf, int n)
   return PyStr(codes);
 }
 
-static void _sql_bind_int_list(PyUInt64 stmt, const PY2CPP_TYPE(PyList)<PyInt>& params)
+static void _sql_bind_int_list(struct sqlite3_stmt* stmt, const PY2CPP_TYPE(PyList)<PyInt>& params)
 {
   int n = params.__len__();
   int i = 0;
   while ((i < n))
   {
     int v = params.__getitem__(i);
-    if (ffi_sql::sqlite3_bind_int(stmt, i + 1, v) != ffi_sql::SQLITE_OK)
+    if (ffi_sql::Pyi_sqlite3_bind_int(stmt, i + 1, v) != ffi_sql::Pyi_SQLITE_OK)
     {
       _sql_throw_operational();
     }
@@ -98,9 +98,9 @@ static void _sql_pystr_to_cbuf(const PyStr& s, char* buf, int cap)
   buf[n] = '\0';
 }
 
-static PyTuple<PyInt> _sql_row_int1(PyUInt64 stmt)
+static PyTuple<PyInt> _sql_row_int1(struct sqlite3_stmt* stmt)
 {
-  int v = ffi_sql::sqlite3_column_int(stmt, 0);
+  int v = ffi_sql::Pyi_sqlite3_column_int(stmt, 0);
   return PyTuple<PyInt>(v);
 }
 
@@ -125,7 +125,7 @@ PySqliteConnection& PySqliteConnection::operator=(PySqliteConnection&& other)
   {
     if ((_db != 0) && (!_closed))
     {
-      ffi_sql::sqlite3_close(_db);
+      ffi_sql::Pyi_sqlite3_close(_db);
     }
     _db = other._db;
     _closed = other._closed;
@@ -139,7 +139,7 @@ PySqliteConnection::~PySqliteConnection()
 {
   if ((_db != 0) && (!_closed))
   {
-    ffi_sql::sqlite3_close(_db);
+    ffi_sql::Pyi_sqlite3_close(_db);
     _db = 0;
     _closed = true;
   }
@@ -149,17 +149,17 @@ void PySqliteConnection::_open_impl(PyStr path)
 {
   if ((_db != 0) && (!_closed))
   {
-    ffi_sql::sqlite3_close(_db);
+    ffi_sql::Pyi_sqlite3_close(_db);
     _db = 0;
   }
   char pbuf[4096];
   _sql_pystr_to_cbuf(path, pbuf, (int)sizeof(pbuf));
-  PyUInt64 db = 0;
-  if (ffi_sql::sqlite3_open(pbuf, &db) != ffi_sql::SQLITE_OK)
+  struct sqlite3* db = nullptr;
+  if (ffi_sql::Pyi_sqlite3_open(pbuf, &db) != ffi_sql::Pyi_SQLITE_OK)
   {
     if (db)
     {
-      ffi_sql::sqlite3_close(db);
+      ffi_sql::Pyi_sqlite3_close(db);
     }
     _sql_throw_operational();
   }
@@ -171,7 +171,7 @@ void PySqliteConnection::close()
 {
   if ((_db != 0) && (!_closed))
   {
-    ffi_sql::sqlite3_close(_db);
+    ffi_sql::Pyi_sqlite3_close(_db);
     _db = 0;
   }
   _closed = true;
@@ -183,16 +183,16 @@ void PySqliteConnection::commit()
   {
     _sql_throw_operational();
   }
-  if (ffi_sql::sqlite3_get_autocommit(_db))
+  if (ffi_sql::Pyi_sqlite3_get_autocommit(_db))
   {
     return;
   }
   c_str err = nullptr;
-  if (ffi_sql::sqlite3_exec(_db, "COMMIT", 0, 0, &err) != ffi_sql::SQLITE_OK)
+  if (ffi_sql::Pyi_sqlite3_exec(_db, "COMMIT", 0, 0, &err) != ffi_sql::Pyi_SQLITE_OK)
   {
     if (err)
     {
-      ffi_sql::sqlite3_free((PyUPtr)(uintptr_t)err);
+      ffi_sql::Pyi_sqlite3_free((PyUPtr)(uintptr_t)err);
     }
     _sql_throw_operational();
   }
@@ -204,16 +204,16 @@ void PySqliteConnection::rollback()
   {
     _sql_throw_operational();
   }
-  if (ffi_sql::sqlite3_get_autocommit(_db))
+  if (ffi_sql::Pyi_sqlite3_get_autocommit(_db))
   {
     return;
   }
   c_str err = nullptr;
-  if (ffi_sql::sqlite3_exec(_db, "ROLLBACK", 0, 0, &err) != ffi_sql::SQLITE_OK)
+  if (ffi_sql::Pyi_sqlite3_exec(_db, "ROLLBACK", 0, 0, &err) != ffi_sql::Pyi_SQLITE_OK)
   {
     if (err)
     {
-      ffi_sql::sqlite3_free((PyUPtr)(uintptr_t)err);
+      ffi_sql::Pyi_sqlite3_free((PyUPtr)(uintptr_t)err);
     }
     _sql_throw_operational();
   }
@@ -234,8 +234,8 @@ PySqliteCursor PySqliteConnection::execute(PY2CPP_TYPE(PyStr) sql, const PY2CPP_
   }
   char sbuf[8192];
   _sql_pystr_to_cbuf(sql, sbuf, (int)sizeof(sbuf));
-  PyUInt64 stmt = 0;
-  if (ffi_sql::sqlite3_prepare_v2(_db, sbuf, -1, &stmt, nullptr) != ffi_sql::SQLITE_OK)
+  struct sqlite3_stmt* stmt = 0;
+  if (ffi_sql::Pyi_sqlite3_prepare_v2(_db, sbuf, -1, &stmt, nullptr) != ffi_sql::Pyi_SQLITE_OK)
   {
     _sql_throw_operational();
   }
@@ -243,14 +243,14 @@ PySqliteCursor PySqliteConnection::execute(PY2CPP_TYPE(PyStr) sql, const PY2CPP_
   PyBool is_sel = _sql_stmt_is_select(sbuf);
   if (!is_sel)
   {
-    int rc = ffi_sql::sqlite3_step(stmt);
-    if ((rc != ffi_sql::SQLITE_DONE) && (rc != ffi_sql::SQLITE_ROW))
+    int rc = ffi_sql::Pyi_sqlite3_step(stmt);
+    if ((rc != ffi_sql::Pyi_SQLITE_DONE) && (rc != ffi_sql::Pyi_SQLITE_ROW))
     {
-      ffi_sql::sqlite3_finalize(stmt);
+      ffi_sql::Pyi_sqlite3_finalize(stmt);
       _sql_throw_operational();
     }
-    ffi_sql::sqlite3_finalize(stmt);
-    return PySqliteCursor((unsigned long long)0);
+    ffi_sql::Pyi_sqlite3_finalize(stmt);
+    return PySqliteCursor(nullptr);
   }
   return PySqliteCursor(stmt);
 }
@@ -267,10 +267,10 @@ void PySqliteConnection::executemany(PY2CPP_TYPE(PyStr) sql, const PY2CPP_TYPE(P
   }
 }
 
-PySqliteCursor::PySqliteCursor(unsigned long long stmt)
+PySqliteCursor::PySqliteCursor(struct sqlite3_stmt* stmt)
 {
   _stmt = stmt;
-  _done = (stmt == 0);
+  _done = (stmt == nullptr);
 }
 
 PySqliteCursor::PySqliteCursor(PySqliteCursor&& other)
@@ -287,7 +287,7 @@ PySqliteCursor& PySqliteCursor::operator=(PySqliteCursor&& other)
   {
     if (_stmt != 0)
     {
-      ffi_sql::sqlite3_finalize(_stmt);
+      ffi_sql::Pyi_sqlite3_finalize(_stmt);
     }
     _stmt = other._stmt;
     _done = other._done;
@@ -301,7 +301,7 @@ PySqliteCursor::~PySqliteCursor()
 {
   if (_stmt != 0)
   {
-    ffi_sql::sqlite3_finalize(_stmt);
+    ffi_sql::Pyi_sqlite3_finalize(_stmt);
     _stmt = 0;
   }
 }
@@ -312,15 +312,15 @@ PY2CPP_TYPE(PyOptional)<PyTuple<PyInt>> PySqliteCursor::fetchone()
   {
     return PY2CPP_TYPE(PyOptional)<PyTuple<PyInt>>::None_();
   }
-  int rc = ffi_sql::sqlite3_step(_stmt);
-  if (rc == ffi_sql::SQLITE_ROW)
+  int rc = ffi_sql::Pyi_sqlite3_step(_stmt);
+  if (rc == ffi_sql::Pyi_SQLITE_ROW)
   {
     return PY2CPP_TYPE(PyOptional)<PyTuple<PyInt>>::Some(_sql_row_int1(_stmt));
   }
-  if (rc == ffi_sql::SQLITE_DONE)
+  if (rc == ffi_sql::Pyi_SQLITE_DONE)
   {
     _done = true;
-    ffi_sql::sqlite3_finalize(_stmt);
+    ffi_sql::Pyi_sqlite3_finalize(_stmt);
     _stmt = 0;
     return PY2CPP_TYPE(PyOptional)<PyTuple<PyInt>>::None_();
   }
@@ -337,20 +337,20 @@ PY2CPP_TYPE(PyList)<PyTuple<PyInt>> PySqliteCursor::fetchall()
   }
   while (true)
   {
-    int rc = ffi_sql::sqlite3_step(_stmt);
-    if (rc == ffi_sql::SQLITE_ROW)
+    int rc = ffi_sql::Pyi_sqlite3_step(_stmt);
+    if (rc == ffi_sql::Pyi_SQLITE_ROW)
     {
       out.append(_sql_row_int1(_stmt));
       continue;
     }
-    if (rc == ffi_sql::SQLITE_DONE)
+    if (rc == ffi_sql::Pyi_SQLITE_DONE)
     {
       break;
     }
     _sql_throw_operational();
   }
   _done = true;
-  ffi_sql::sqlite3_finalize(_stmt);
+  ffi_sql::Pyi_sqlite3_finalize(_stmt);
   _stmt = 0;
   return out;
 }

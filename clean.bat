@@ -6,7 +6,7 @@ cd /d "%ROOT%"
 
 echo [py2cpp] clean: minimal release prep
 echo   keep root: .gitattributes .clangd compile_flags.txt main.py README.md *.bat
-echo   remove other root files / generated / templates\~macro / .cache / all __pycache__
+echo   remove other root files / generated / templates\~macro / .cache / zeus generated state / all __pycache__
 echo.
 
 set "N_ROOT=0"
@@ -50,6 +50,21 @@ if exist "%ROOT%_test_temp" (
   rmdir /s /q "%ROOT%_test_temp" 2>nul
 )
 
+rem Zeus local/generated state; keep zeus source, docs, scripts, ffi and tracked third_party files.
+for %%D in ("%ROOT%zeus\generated" "%ROOT%zeus\templates\~macro" "%ROOT%zeus\.cache" "%ROOT%zeus\_test_temp") do (
+  if exist "%%~D\" (
+    echo rmdir /s /q "%%~D"
+    rmdir /s /q "%%~D" 2>nul
+  )
+)
+
+for %%F in ("%ROOT%zeus\compile_commands.json" "%ROOT%zeus\compile_flags.txt") do (
+  if exist "%%~F" (
+    echo del "%%~F"
+    del /f /q "%%~F" 2>nul
+  )
+)
+
 set "N_CACHE=0"
 for /d /r "%ROOT%" %%D in (__pycache__) do (
   if exist "%%D\" (
@@ -60,5 +75,5 @@ for /d /r "%ROOT%" %%D in (__pycache__) do (
 )
 
 echo.
-echo done: !N_ROOT! root file(s) removed; !N_CACHE! __pycache__ dir(s); generated, templates\~macro, .cache and _test_temp cleared
+echo done: !N_ROOT! root file(s) removed; !N_CACHE! __pycache__ dir(s); root and zeus generated state cleared
 exit /b 0

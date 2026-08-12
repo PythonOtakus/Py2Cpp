@@ -1,33 +1,39 @@
 # py2cpp.serde.yaml
 
-`py2cpp.serde.yaml` 是 Py2Cpp 自有的 YAML 序列化模块。Python 3.13 标准库本身不包含 YAML，因此该模块提供面向配置文件和静态类型对象的轻量实现，API 参考常用 PyYAML 习惯并遵循 YAML 1.2 Core Schema 的常用子集。
+`py2cpp.serde.yaml` 为 Py2Cpp 提供静态类型 YAML 配置读写。Python 3.13 标准库本身不含 YAML；此模块将 YAML 先规范化为 JSON，再复用 `py2cpp.serde.json.Json` 的泛型解码、`@serializable` 与错误路径。
 
 ## API
 
 ```python
 from py2cpp.serde.yaml import Yaml
 
-value: dict[str, int] = Yaml.loads[dict[str, int]]("a: 1\nb: 2\n")
-text: str = Yaml.dumps(value)
+config: dict[str, int] = Yaml.loads[dict[str, int]]("a: 1\nb: 2\n")
+documents: list[dict[str, int]] = Yaml.loads_all[dict[str, int]](source)
+text: str = Yaml.dumps(config)
 
-items: list[int] = Yaml.load_string[list[int]](stream)
-Yaml.dump(items, file)
+item: dict[str, int] = Yaml.load[dict[str, int]](file)
+items: list[dict[str, int]] = Yaml.load_all[dict[str, int]](file)
+Yaml.dump(config, file)
 ```
 
-本模块不提供全局 `load`/`dump` 函数，统一通过 `Yaml` 静态方法调用。`load`/`dump` 面向 `TextIOWrapper`，`load_string`/`dump_string` 面向 `StringIO`。
+没有模块级 `load` / `dump` 函数；所有入口均属于 `Yaml`。`load` / `load_all` / `dump` 接受 `TextIOWrapper`，`load_string` / `load_all_string` / `dump_string` 接受 `StringIO`。
 
-## 实现边界
+## 已支持的 YAML 输入
 
-解析阶段先将 YAML 规范化成 JSON 文本，再复用 `py2cpp.serde.json.Json` 的泛型解码器。因此基础标量、`list[T]`、`dict[str, T]` 以及已有 `@serializable` 数据类沿用 JSON 的类型映射和错误处理路径。`Yaml.dumps` 当前输出 JSON-compatible YAML（JSON 是 YAML 1.2 的合法子集），保证稳定、可被 YAML 1.2 解析器读取。
+- block mapping 与 block sequence，可任意嵌套；
+- flow sequence 与 JSON-compatible flow YAML；
+- `#` 注释、`---` / `...` 多文档标记，以及跳过 `%YAML` 等指令行；
+- Core Schema 常用标量：`null` / `~`、布尔、带正负号整数、浮点、`.inf`、`.nan`；
+- 单引号、双引号与 `\n` / `\r` / `\t` / `\"` / `\\` 转义；
+- `|` / `>` 块标量及 `-`、`+` chomping 指示符；
+- 标准标量标签 `!!str`、`!!int`、`!!float`、`!!bool`；
+- anchors / aliases（`&name`、`*name`）与 mapping merge（`<<: *base`、`<<: [*a, *b]`）；
+- JSON bridge 的递归泛型容器，例如 `dict[str, dict[str, int]]` 与 `list[list[int]]`。
 
-当前支持：
+`Yaml.dumps` 输出 JSON-compatible YAML；JSON 是 YAML 1.2 的合法子集，因此输出稳定且可由标准 YAML 解析器读取。
 
-- block mapping 和 block sequence；
-- flow mapping/sequence（简单嵌套结构）；
-- `#` 注释、文档标记 `---`/`...`；
-- null（`null`、`~`）、布尔、整数、浮点、`.inf`、`.nan`；
-- 单引号、双引号及常用转义；
-- literal `|` 与 folded `>` 多行字符串；
-- `@serializable` 数据类通过 JSON bridge 读写。
+## 有意限制
 
-当前不实现 YAML 标签、锚点/别名、复杂 key、二进制标签、自定义构造器和完整 YAML 1.2 指令集。遇到不支持的语法会抛出 `YamlScannerError`、`YamlParserError`、`YamlConstructorError` 或 `YamlRepresenterError`（均继承 `YamlError`）。
+该实现面向静态配置，不构造通用 YAML 图：复杂 key（`? key`）、循环 alias、别名共享对象身份、二进制与时间戳构造器、锚点跨文档引用、完整 flow mapping，以及任意自定义 tag 构造器会抛出 YAML 异常或不被接受。非标准单值局部 tag 仅作为值标签剥离后按基础标量处理，不注册对象构造器。
+
+异常类型为 `YamlScannerError`、`YamlParserError`、`YamlConstructorError`、`YamlRepresenterError`，均继承 `YamlError`。

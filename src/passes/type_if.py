@@ -1237,12 +1237,43 @@ def _dispatch_pick_name(func: ast.FunctionDef) -> str:
   return py2cpp_emit_symbol("type_if", safe, str(func.lineno), "pick")
 
 
+def _type_if_instance_receiver(
+  tr: Translator,
+  func: ast.FunctionDef,
+  sig: FunctionSig | MethodSig,
+) -> tuple[str, str, str | None]:
+  """返回静态分派 helper 所需的显式实例接收者。
+
+  ``type if`` 的分支体会移入嵌套静态 helper，不能再引用外围成员函数的
+  ``this``。实例方法因此将当前对象作为 ``self`` 指针传入；模块函数与
+  静态方法保持原有无接收者调用约定。
+  """
+  if (
+    not isinstance(sig, MethodSig)
+    or sig.is_static
+    or not func.args.args
+    or func.args.args[0].arg != "self"
+    or tr.class_info is None
+  ):
+    return "", "", None
+  const_prefix = "const " if sig.is_const else ""
+  return f"{const_prefix}{tr.class_info.cpp_specialization()}* self", "this", "self"
+
+
 def _call_params(
-  func: ast.FunctionDef, sig: FunctionSig | MethodSig,
-) -> tuple[str, str]:
+  tr: Translator,
+  func: ast.FunctionDef,
+  sig: FunctionSig | MethodSig,
+) -> tuple[str, str, str | None]:
+  receiver_impl, receiver_call, receiver_cpp = _type_if_instance_receiver(
+    tr, func, sig,
+  )
   skip = frozenset({"self", "cls"})
   parts_impl: list[str] = []
   parts_call: list[str] = []
+  if receiver_impl:
+    parts_impl.append(receiver_impl)
+    parts_call.append(receiver_call)
   for arg in func.args.args:
     if arg.arg in skip:
       continue
@@ -1250,7 +1281,7 @@ def _call_params(
     pname = cpp_param(arg.arg)
     parts_impl.append(f"{pt} {pname}")
     parts_call.append(pname)
-  return ", ".join(parts_impl), ", ".join(parts_call)
+  return ", ".join(parts_impl), ", ".join(parts_call), receiver_cpp
 
 
 def _template_params_for(tr: Translator, func: ast.FunctionDef) -> set[str]:
@@ -1378,17 +1409,21 @@ def _emit_call_body(
   extra_tparams: tuple[str, ...],
   type_param: str,
   concrete_bind: str | None = None,
+  self_cpp: str | None = None,
 ) -> None:
   prev_extra = set(tr._type_if_extra_params)
   prev_bind = tr._type_if_concrete_bind
+  prev_self = tr._type_if_self_cpp
   tr._type_if_extra_params |= set(extra_tparams)
   if concrete_bind is not None:
     tr._type_if_concrete_bind = (type_param, concrete_bind)
+  tr._type_if_self_cpp = self_cpp
   try:
     tr._emit_body(body)
   finally:
     tr._type_if_extra_params = prev_extra
     tr._type_if_concrete_bind = prev_bind
+    tr._type_if_self_cpp = prev_self
 
 
 def _emit_struct_with_call(
@@ -1402,6 +1437,7 @@ def _emit_struct_with_call(
   extra_tparams: tuple[str, ...],
   type_param: str,
   concrete_bind: str | None = None,
+  self_cpp: str | None = None,
 ) -> None:
   for line in header_lines:
     tr.write_line(line)
@@ -1419,6 +1455,7 @@ def _emit_struct_with_call(
         extra_tparams=extra_tparams,
         type_param=type_param,
         concrete_bind=concrete_bind,
+        self_cpp=self_cpp,
       )
   tr.write_line("};")
   tr.write_line()
@@ -1433,6 +1470,7 @@ def _emit_spliced_call(
   splice_spec: _SpliceSpec,
   params_impl: str,
   extra_tparams: tuple[str, ...] = (),
+  self_cpp: str | None = None,
 ) -> None:
   body = _spliced_function_body(plan.func, plan.chains, splice_spec)
   type_param = plan.master_chain.type_param
@@ -1447,8 +1485,8 @@ def _emit_spliced_call(
     extra_tparams=extra_tparams,
     type_param=type_param,
     concrete_bind=concrete_bind,
+    self_cpp=self_cpp,
   )
-
 
 def _emit_concrete_specialization(
   tr: Translator,
@@ -1458,10 +1496,15 @@ def _emit_concrete_specialization(
   plan: TypeIfFunctionPlan,
   sig: FunctionSig | MethodSig,
   params_impl: str,
+  self_cpp: str | None = None,
 ) -> None:
   concrete_params = _concrete_params_impl(
     plan.func, sig, plan.master_chain.type_param, pat.cpp_type,
   )
+  if self_cpp is not None:
+    const_prefix = "const " if sig.is_const else ""
+    receiver = f"{const_prefix}{tr.class_info.cpp_specialization()}* {self_cpp}"
+    concrete_params = f"{receiver}, {concrete_params}" if concrete_params else receiver
   if pat.extra_template_params:
     tdecl = ", ".join(f"typename {p}" for p in pat.extra_template_params)
     header = [
@@ -1483,6 +1526,7 @@ def _emit_concrete_specialization(
     splice_spec=splice_spec,
     params_impl=concrete_params,
     extra_tparams=pat.extra_template_params,
+    self_cpp=self_cpp,
   )
 
 
@@ -1494,6 +1538,7 @@ def _emit_is_not_specialization(
   plan: TypeIfFunctionPlan,
   sig: FunctionSig | MethodSig,
   params_impl: str,
+  self_cpp: str | None = None,
 ) -> None:
   if pat.extra_template_params:
     raise ValueError("``T is not …`` 不支持形参化类型模式")
@@ -1509,6 +1554,7 @@ def _emit_is_not_specialization(
     header_lines=header,
     splice_spec=_IsNotEnableIfSpec(pat.cpp_type),
     params_impl=params_impl,
+    self_cpp=self_cpp,
   )
 
 
@@ -1526,6 +1572,7 @@ def _emit_not_in_specialization(
   plan: TypeIfFunctionPlan,
   sig: FunctionSig | MethodSig,
   params_impl: str,
+  self_cpp: str | None = None,
 ) -> None:
   for pat in patterns:
     if pat.extra_template_params:
@@ -1542,6 +1589,7 @@ def _emit_not_in_specialization(
     header_lines=header,
     splice_spec=_NotInEnableIfSpec(tuple(patterns)),
     params_impl=params_impl,
+    self_cpp=self_cpp,
   )
 
 
@@ -1561,7 +1609,7 @@ def emit_type_if_dispatch(
     _validate_chain(extra)
 
   pick = _dispatch_pick_name(plan.func)
-  params_impl, _ = _call_params(plan.func, sig)
+  params_impl, _, self_cpp = _call_params(tr, plan.func, sig)
   tr.write_line("template<typename T, typename = void>")
   tr.write_line(f"struct {pick};")
   tr.write_line()
@@ -1574,6 +1622,7 @@ def emit_type_if_dispatch(
         plan=plan,
         sig=sig,
         params_impl=params_impl,
+        self_cpp=self_cpp,
       )
       continue
     if _branch_not_in(br):
@@ -1584,6 +1633,7 @@ def emit_type_if_dispatch(
         plan=plan,
         sig=sig,
         params_impl=params_impl,
+        self_cpp=self_cpp,
       )
       continue
     for pat in branch_emit_patterns(br, chain.type_param):
@@ -1594,6 +1644,7 @@ def emit_type_if_dispatch(
         plan=plan,
         sig=sig,
         params_impl=params_impl,
+        self_cpp=self_cpp,
       )
   header = [
     "template<typename T>",
@@ -1608,6 +1659,7 @@ def emit_type_if_dispatch(
         plan=plan,
         sig=sig,
         params_impl=params_impl,
+        self_cpp=self_cpp,
       )
     elif len(chain.branches) == 1 and _branch_not_in(chain.branches[0]):
       for pat in chain.branches[0].or_groups[0][0].patterns:
@@ -1618,6 +1670,7 @@ def emit_type_if_dispatch(
           plan=plan,
           sig=sig,
           params_impl=params_impl,
+          self_cpp=self_cpp,
         )
     else:
       _emit_spliced_call(
@@ -1627,6 +1680,7 @@ def emit_type_if_dispatch(
         header_lines=header,
         splice_spec=_DefaultElseSpec(),
         params_impl=params_impl,
+        self_cpp=self_cpp,
       )
   else:
     for line in header:
@@ -1704,7 +1758,7 @@ def emit_type_if_return(
   plan: TypeIfFunctionPlan,
   pick: str,
 ) -> None:
-  _, call_args = _call_params(func, sig)
+  _, call_args, _ = _call_params(tr, func, sig)
   tp = plan.master_chain.type_param
   prologue = _prologue_stmts_before_type_if(func, plan.master_chain.head)
   if prologue:

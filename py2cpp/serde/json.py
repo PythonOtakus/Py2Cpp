@@ -1684,6 +1684,41 @@ class JsonDecoder:
   def load_generic[T](self) -> T:
     return T.deserialize(self)
 
+  def load_value[T](self) -> T:
+    """递归解码一个值，供泛型容器元素复用。"""
+    if T is int:
+      return self.load_int()
+    elif T is varint:
+      return self.load_varint()
+    elif T is float:
+      return self.load_float()
+    elif T is str:
+      return self.load_str()
+    elif T is bool:
+      return self.load_bool()
+    elif T is list[int]:
+      return self.load_list_int()
+    elif T is list[varint]:
+      return self.load_list_varint()
+    elif T is list[str]:
+      return self.load_list_str()
+    elif T is list[float]:
+      return self.load_list_float()
+    elif T is list[...]:
+      return self.load_container[T]()
+    elif T is dict[str, int]:
+      return self.load_dict_str_int()
+    elif T is dict[str, varint]:
+      return self.load_dict_str_varint()
+    elif T is dict[str, str]:
+      return self.load_dict_str_str()
+    elif T is dict[str, float]:
+      return self.load_dict_str_float()
+    elif T is dict[str, ...]:
+      return self.load_container[T]()
+    else:
+      return self.load_generic[T]()
+
   def load_list_element[U](self) -> list[U]:
     out: list[U] = []
     self.begin_array()
@@ -1694,7 +1729,7 @@ class JsonDecoder:
     if est > 0:
       out.capacity = est
     while True:
-      out.append(U.deserialize(self))
+      out.append(self.load_value[U]())
       self.skip_spaces()
       if self.at_array_end():
         return out
@@ -1713,7 +1748,7 @@ class JsonDecoder:
     while True:
       k: str = self.load_key()
       self.skip_spaces()
-      v: V = V.deserialize(self)
+      v: V = self.load_value[V]()
       out[k] = v
       self.skip_spaces()
       n = self.src_len()

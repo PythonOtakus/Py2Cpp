@@ -239,6 +239,9 @@ class Translator(ast.NodeVisitor):
         self.generator_methods: set[tuple[str, str, str]] = set()
         self._type_if_extra_params: set[str] = set()
         self._type_if_concrete_bind: tuple[str, str] | None = None
+        # ``type if`` 的分派分支会被提升到静态 helper。实例方法在该
+        # helper 内以显式指针接收者访问，而非错误地引用外围 ``this``。
+        self._type_if_self_cpp: str | None = None
         self._literal_target_ann: ast.expr | None = None
 
     @staticmethod
@@ -2341,6 +2344,12 @@ class Translator(ast.NodeVisitor):
 
     def _member_access_sep(self, receiver_expr: ast.expr, recv_cpp: str | None=None) -> str:
         """按接收者表达式的 C++ 类型选 ``.`` / ``->``（链式 ``cur.prev.next`` 等）。"""
+        if (
+            self._type_if_self_cpp is not None
+            and isinstance(receiver_expr, ast.Name)
+            and receiver_expr.id == 'self'
+        ):
+            return '->'
         t = self._infer_expr_cpp_type(receiver_expr)
         if self._uses_ptr_access(t):
             return '->'
@@ -5522,6 +5531,8 @@ class Translator(ast.NodeVisitor):
         if node.id == 'self':
             if self._genexp_inline_self_cpp is not None:
                 return self._genexp_inline_self_cpp
+            if self._type_if_self_cpp is not None:
+                return self._type_if_self_cpp
             return 'this'
         if node.id == '__name__':
             return self._emit_dunder_name()

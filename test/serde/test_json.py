@@ -92,6 +92,10 @@ class JsonContainerTests(TestCaseMixin):
         self.assertEqual(Json.dumps(d), '{"a":1,"b":2}')
         d2: dict[str, int] = Json.loads('{"a":1,"b":2}')
         self.assertEqual(d2['b'], 2)
+        nested_dict: dict[str, dict[str, int]] = Json.loads[dict[str, dict[str, int]]]('{"outer":{"value":7}}')
+        self.assertEqual(nested_dict['outer']['value'], 7)
+        nested_list: list[list[int]] = Json.loads[list[list[int]]]('[[1,2],[3,4]]')
+        self.assertEqual(nested_list[1][0], 3)
         items: list[str] = []
         items.append('x')
         items.append('y')

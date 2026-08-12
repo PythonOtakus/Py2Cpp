@@ -48,6 +48,13 @@ def dispatch_deque(d: deque[int]) -> int:
       return -1
 
 
+def dispatch_char(c: char) -> int:
+  match c:
+    case "a" | "b":
+      return 1
+    case _:
+      return 0
+
 def dispatch_str_tag(s: str) -> int:
   match s:
     case ["<", *body, ">"]:
@@ -90,6 +97,15 @@ class MatchDequeTests(TestCaseMixin):
     q: deque[int] = [1, 9, 2, 4]
     self.assertEqual(dispatch_deque(q), 7)
 
+
+class MatchCharOrTests(TestCaseMixin):
+  _test_tag = 25
+
+  @override
+  def test(self):
+    self.assertEqual(dispatch_char("a"[0]), 1)
+    self.assertEqual(dispatch_char("b"[0]), 1)
+    self.assertEqual(dispatch_char("c"[0]), 0)
 
 class MatchStrSequenceTests(TestCaseMixin):
   _test_tag = 30

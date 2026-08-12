@@ -139,6 +139,12 @@ def _captures_mapping(pattern: ast.MatchMapping, subject_cpp: str) -> dict[str, 
 
 
 def _branch_kind(pattern: ast.pattern) -> str | None:
+  if isinstance(pattern, ast.MatchValue):
+    if isinstance(pattern.value, ast.Constant):
+      return "literal"
+    return None
+  if isinstance(pattern, ast.MatchSingleton):
+    return "literal"
   if (
     isinstance(pattern, ast.MatchClass)
     and isinstance(pattern.cls, ast.Name)
@@ -181,6 +187,8 @@ def _captures_for_branch(
     raise NotImplementedError(
       f"MatchOr 各支须同为 new / 序列 / 映射模式，不支持: {ast.dump(pattern)}",
     )
+  if kind == "literal":
+    return {}
   if kind == "new":
     assert isinstance(pattern, ast.MatchClass)
     if pattern.patterns:

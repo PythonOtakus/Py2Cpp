@@ -40,6 +40,11 @@ UMBRELLA_PREFIX_TIERS: tuple[str, ...] = (
 )
 
 UMBRELLA_PRIORITY_MODULES: tuple[str, ...] = (
+  "io/file",
+  "io/file/path",
+  "io/path",
+  "serde/json",
+  "serde/yaml",
   "alg/protocols",
   "ui/meta",
   "ui/style",
@@ -111,11 +116,7 @@ UMBRELLA_MSVC_UNDEF_MACROS: tuple[str, ...] = (
   "Return",
 )
 
-UMBRELLA_IO_LATE_IF_PRESENT: tuple[str, ...] = (
-  "io/file",
-  "io/file/path",
-  "io/path",
-)
+UMBRELLA_IO_LATE_IF_PRESENT: tuple[str, ...] = ()
 
 STR_POST_CLASS_MODULES: frozenset[str] = frozenset({
   "text/bytes",

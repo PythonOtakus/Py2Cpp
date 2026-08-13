@@ -120,7 +120,7 @@ builds:
 - `and`、`or`、`not`；
 - 条件表达式 `a if condition else b`；
 - 下标、`.items()`、`.keys()`、`.values()`、`len(...)`、`range(...)`；
-- 标量函数 `$name(...)` 与导入模块的 `module.$name(...)`；
+- 标量函数 `$name(...)`，以及通过 `@from` 绑定到当前作用域的导入符号；
 - f-string：`f"prefix_{$name}"`。
 
 禁止任意属性访问、任意函数调用、导入、lambda、生成器和副作用表达式；仅允许本节列出的标量函数、容器查询和控制流辅助函数。容器片段不可作为标量表达式调用。允许的上下文对象字段应由 `PymlContext` 白名单注册。
@@ -341,7 +341,7 @@ plugins = ["bootstrap", *base_plugins(), "diagnostics", "editor_tools"]
 ```
 
 - `@expand` 的结果必须匹配当前容器：mapping 中必须是 mapping，sequence 中必须是 list；
-- 操作数可为 `$value`、`@inline $name(args)` 的结果、无参 `@inline $name()` 的结果、受限下标访问或导入模块符号 `module.$name(args)`；
+- 操作数可为 `$value`、`@inline $name(args)` 的结果、无参 `@inline $name()` 的结果、受限下标访问，或通过 `@from` 绑定的导入符号；
 - mapping 中，`@expand` 可与普通 `key: value` 任意交错；sequence 中，`@expand` 可与 `- value` 任意交错；
 - 同一容器可多次使用 `@expand`，但 mapping 与 sequence 元素不可混用；
 - `@expand` 标记不进入展开后的 YAML；

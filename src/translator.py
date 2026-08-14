@@ -5073,9 +5073,9 @@ class Translator(ast.NodeVisitor):
         """``if``/``while`` 条件：``and``/``or`` 用 ``&&``/``||``，勿用值语义的 ``?:``。"""
         match node:
             case ast.BoolOp(op=ast.And(), values=vals):
-                return ' && '.join((self._bool_test_condition(v) for v in vals))
+                return ' && '.join((f'({self._bool_test_condition(v)})' for v in vals))
             case ast.BoolOp(op=ast.Or(), values=vals):
-                return ' || '.join((self._bool_test_condition(v) for v in vals))
+                return ' || '.join((f'({self._bool_test_condition(v)})' for v in vals))
             case ast.UnaryOp(op=ast.Not(), operand=op):
                 inner = self._bool_test_condition(op)
                 if inner.isidentifier() or inner in ('true', 'false'):

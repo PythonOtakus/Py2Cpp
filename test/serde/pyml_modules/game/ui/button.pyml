@@ -1,0 +1,6 @@
+@inline $button($text, $color: "blue"):
+  text: = $text
+  color: = $color
+
+@def $twice($value):
+  @return $value * 2

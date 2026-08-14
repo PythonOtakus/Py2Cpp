@@ -2,7 +2,7 @@
 from ..builtins import *
 from ..core.exceptions import Exception, ValueError
 from ..io import StringIO, TextIOWrapper
-from ..io.path import Path
+from ..io.file.path import exists, join, realpath
 from .json import JsonEncoder
 from .yaml import Yaml
 
@@ -185,6 +185,31 @@ def _pyml_find_operator(text: str, op: str) -> int:
   return -1
 
 
+@immutable
+def _pyml_outer_parentheses(text: str) -> bool:
+  if len(text) < 2 or not text.startswith("(") or not text.endswith(")"):
+    return False
+  quote: char = 0
+  depth: int = 0
+  for i in range(len(text)):
+    c: char = text[i]
+    match c:
+      case q if q in "'\"":
+        if not quote:
+          quote = q
+        elif quote == q:
+          quote = 0
+      case q if not quote and q == ord("("):
+        depth += 1
+      case q if not quote and q == ord(")"):
+        depth -= 1
+        if not depth and i != len(text) - 1:
+          return False
+      case _:
+        pass
+  return not quote and not depth
+
+
 class _PymlExpander:
   source_name: str = "<string>"
   lines: list[_PymlLine] = []
@@ -194,7 +219,9 @@ class _PymlExpander:
   run_kind: int = 0
   call_stack: list[str] = []
   context: PymlContext
-  module_cache: dict[str, dict[str, _PymlValue]] = {}
+  # Cache source text, never callable indexes tied to an importing line table.
+  # Every importer rebases begin/end into its own line table.
+  module_cache: dict[str, str] = {}
   import_stack: list[str] = []
 
   def __init__(self, source: str, context: PymlContext):
@@ -209,6 +236,7 @@ class _PymlExpander:
     self.import_stack = []
     if context.module_name:
       self.source_name = context.module_name
+      self.import_stack.append(context.module_name)
     for raw in source.splitlines():
       clean: str = _pyml_strip_comment(raw.replace("\t", "  "))
       if not clean.strip():
@@ -216,7 +244,6 @@ class _PymlExpander:
       self.lines.append(_PymlLine(_pyml_indent(clean), clean.strip(), len(self.lines) + 1))
 
   def _fail(self, line: _PymlLine, message: str):
-    print("PyML[" + str(line.number) + "]: " + message)
     raise PymlError()
 
   def _subtree_end(self, start: int, indent: int, end: int) -> int:
@@ -257,33 +284,53 @@ class _PymlExpander:
 
   def _load_module(self, line: _PymlLine, spec: str) -> dict[str, _PymlValue]:
     name: str = self._module_name(line, spec)
-    if name in self.module_cache:
-      return self.module_cache[name]
     if name in self.import_stack:
       self._fail(line, "module import cycle")
     if not self.context.module_root:
       self._fail(line, "module import requires module_root")
-    path: Path = new(self.context.module_root)
+    path: str = self.context.module_root
     for part in name.split("."):
-      path = path / part
-    path = path.with_suffix(".pyml").resolve()
-    if self.context.allowed_root and not path.is_relative_to(self.context.allowed_root):
-      self._fail(line, "module import escapes allowed root")
-    if not path.exists():
+      path = join(path, part)
+    path += ".pyml"
+    path = realpath(path)
+    if self.context.allowed_root:
+      allowed: str = realpath(self.context.allowed_root)
+      if path != allowed and not path.startswith(allowed + "\\") and not path.startswith(allowed + "/"):
+        self._fail(line, "module import escapes allowed root")
+    if not exists(path):
       self._fail(line, "module not found")
     child_context: PymlContext = new(
       module_name=name,
       module_root=self.context.module_root,
       allowed_root=self.context.allowed_root,
     )
+    source: str = ""
+    if name in self.module_cache:
+      source = self.module_cache[name]
+    else:
+      fp: TextIOWrapper = new(path)
+      source = fp.read()
+      fp.close()
+      self.module_cache[name] = source
     self.import_stack.append(name)
-    child: Self = new(path.read_text(), child_context)
+    child: Self = new(source, child_context)
     child.module_cache = self.module_cache
     child.import_stack = self.import_stack
     child.expand()
     self.import_stack.pop()
-    exports: dict[str, _PymlValue] = child.symbols.copy()
-    self.module_cache[name] = exports
+    offset: int = len(self.lines)
+    for child_line in child.lines:
+      self.lines.append(child_line)
+    exports: dict[str, _PymlValue] = {}
+    for export_name in child.symbols:
+      export_value: _PymlValue = child.symbols[export_name]
+      match export_value:
+        case new.Def(p, d, b, e, ind, captured):
+          exports[export_name] = _PymlValue.Def(p, d, b + offset, e + offset, ind, captured)
+        case new.Inline(p, d, b, e, ind, captured):
+          exports[export_name] = _PymlValue.Inline(p, d, b + offset, e + offset, ind, captured)
+        case _:
+          exports[export_name] = export_value
     return exports
 
   def _import_symbols(self, line: _PymlLine, text: str):
@@ -379,6 +426,68 @@ class _PymlExpander:
     if raw and (raw[0] == ord("-") or (raw[0] >= ord("0") and raw[0] <= ord("9"))):
       return new.Integer(raw)
     return new.String(_pyml_quote(raw))
+
+  def _block_literal(self, begin: int, end: int, parent_indent: int) -> _PymlValue:
+    """Preserve an indented YAML variable block as an expression container."""
+    kind: int = 0
+    for i in range(begin, end):
+      line: _PymlLine = self.lines[i]
+      if line.indent != parent_indent + 2:
+        continue
+      if line.text.startswith("- "):
+        kind = 2
+      elif _pyml_find_colon(line.text) >= 0:
+        kind = 1
+      else:
+        self._fail(line, "invalid block literal")
+      break
+    if not kind:
+      empty_keys: list[str] = []
+      empty_values: list[str] = []
+      return new.Mapping(empty_keys, empty_values)
+    if kind == 2:
+      parts: list[str] = []
+      i: int = begin
+      while i < end:
+        line: _PymlLine = self.lines[i]
+        if line.indent != parent_indent + 2:
+          i += 1
+          continue
+        if not line.text.startswith("- "):
+          self._fail(line, "mixed block literal")
+        child: int = i + 1
+        after: int = self._subtree_end(child, line.indent, end)
+        rhs: str = line.text[2:len(line.text)].strip()
+        if child < after:
+          if rhs:
+            self._fail(line, "sequence item cannot have both value and body")
+          rhs = self._value_text(self._block_literal(child, after, line.indent))
+        parts.append(rhs if rhs else "null")
+        i = after
+      return new.Sequence(parts)
+    keys: list[str] = []
+    values: list[str] = []
+    i: int = begin
+    while i < end:
+      line: _PymlLine = self.lines[i]
+      if line.indent != parent_indent + 2:
+        i += 1
+        continue
+      at: int = _pyml_find_colon(line.text)
+      if at < 0 or line.text.startswith("- "):
+        self._fail(line, "mixed block literal")
+      child: int = i + 1
+      after: int = self._subtree_end(child, line.indent, end)
+      key: str = line.text[:at].strip()
+      rhs: str = line.text[at + 1:len(line.text)].strip()
+      if child < after:
+        if rhs:
+          self._fail(line, "mapping item cannot have both value and body")
+        rhs = self._value_text(self._block_literal(child, after, line.indent))
+      keys.append(key)
+      values.append(rhs if rhs else "null")
+      i = after
+    return new.Mapping(keys, values)
 
   def _symbol(self, line: _PymlLine, name: str) -> _PymlValue:
     if name not in self.symbols:
@@ -528,8 +637,8 @@ class _PymlExpander:
     old_returned: bool = self.returned
     old_return: _PymlValue = self.result_value
     old_kind: int = self.run_kind
-    self.symbols = closure.copy()
     args: dict[str, _PymlValue] = self._bind_call(line, params, defaults, text[open_at + 1:-1])
+    self.symbols = closure.copy()
     for param in params:
       self.symbols[param] = args[param]
     self.returned = False
@@ -573,6 +682,22 @@ class _PymlExpander:
     right: _PymlValue = self._expr(line, right_text)
     left_raw: str = self._value_text(left)
     right_raw: str = self._value_text(right)
+    match left:
+      case new.Sequence(left_parts):
+        match right:
+          case new.Sequence(right_parts):
+            if op != "+":
+              self._fail(line, "invalid sequence operator")
+            parts: list[str] = []
+            for part in left_parts:
+              parts.append(part)
+            for part in right_parts:
+              parts.append(part)
+            return new.Sequence(parts)
+          case _:
+            self._fail(line, "invalid sequence operator")
+      case _:
+        pass
     is_string: bool = False
     match left:
       case new.String(_):
@@ -707,6 +832,8 @@ class _PymlExpander:
 
   def _expr(self, line: _PymlLine, text: str) -> _PymlValue:
     expr: str = text.strip()
+    if _pyml_outer_parentheses(expr):
+      return self._expr(line, expr[1:len(expr) - 1])
     if_marker: int = expr.find(" if ")
     if if_marker >= 0:
       else_marker: int = expr.find(" else ", if_marker + 4)
@@ -733,14 +860,14 @@ class _PymlExpander:
       return new.Boolean("false" if self._truth(value) else "true")
     compare_ops: list[str] = ["==", "!=", "<=", ">=", "<", ">"]
     for compare_op in compare_ops:
-      compare_at: int = expr.find(" " + compare_op + " ")
+      compare_at: int = _pyml_find_operator(expr, compare_op)
       if compare_at >= 0:
-        return self._compare(line, expr[:compare_at], expr[compare_at + len(compare_op) + 2:], compare_op)
+        return self._compare(line, expr[:compare_at], expr[compare_at + len(compare_op):], compare_op)
     ops: list[str] = ["+", "-", "*", "/", "%"]
     for op in ops:
-      at: int = expr.find(" " + op + " ")
+      at: int = _pyml_find_operator(expr, op)
       if at >= 0:
-        return self._binary(line, expr[:at], expr[at + 3:], op)
+        return self._binary(line, expr[:at], expr[at + 1:], op)
     if expr.startswith("len(") and expr.endswith(")"):
       value: _PymlValue = self._expr(line, expr[4:-1])
       match value:
@@ -827,15 +954,18 @@ class _PymlExpander:
       start: int = 0
       stop: int = 0
       step: int = 1
-      if len(args) == 1:
+      argc: int = len(args)
+      if argc < 1 or argc > 3:
+        self._fail(line, "range expects one to three arguments")
+      elif argc == 1:
         stop = int(self._value_text(self._expr(line, args[0])))
-      elif len(args) == 2:
-        start = int(self._value_text(self._expr(line, args[0])))
-        stop = int(self._value_text(self._expr(line, args[1])))
       else:
         start = int(self._value_text(self._expr(line, args[0])))
         stop = int(self._value_text(self._expr(line, args[1])))
-        step = int(self._value_text(self._expr(line, args[2])))
+        if argc == 3:
+          step = int(self._value_text(self._expr(line, args[2])))
+      if not step:
+        self._fail(line, "range step cannot be zero")
       parts: list[str] = []
       for i in range(start, stop, step):
         parts.append(str(i))
@@ -845,6 +975,18 @@ class _PymlExpander:
   def _emit_value(self, value: _PymlValue, indent: int, out: list[str] @ref):
     for raw in self._value_text(value).splitlines():
       out.append(" " * indent + raw)
+
+  def _run_directive_body(self, begin: int, end: int, indent: int, out: list[str] @ref):
+    """Run a directive body at its parent indentation and isolate document scope."""
+    emitted: list[str] = []
+    old_symbols: dict[str, _PymlValue] = self.symbols
+    if not self.run_kind:
+      self.symbols = old_symbols.copy()
+    self._run(begin, end, indent + 2, emitted)
+    if not self.run_kind:
+      self.symbols = old_symbols
+    for text in emitted:
+      out.append(text[2:len(text)])
 
   def _run(self, begin: int, end: int, indent: int, out: list[str] @ref):
     i: int = begin
@@ -905,7 +1047,7 @@ class _PymlExpander:
         if colon < 0:
           self._fail(line, "invalid variable binding")
         name: str = text[:colon].strip()
-        rhs: str = text[colon + 1:].strip()
+        rhs: str = text[colon + 1:len(text)].strip()
         if rhs.startswith("+="):
           current: _PymlValue = self._symbol(line, name)
           self.symbols[name] = self._binary(line, self._value_text(current), rhs[2:], "+")
@@ -926,17 +1068,14 @@ class _PymlExpander:
         elif rhs:
           self.symbols[name] = self._literal(rhs)
         else:
-          raw: list[str] = []
-          for j in range(child, after):
-            raw.append(" " * (self.lines[j].indent - indent - 2) + self.lines[j].text)
-          self.symbols[name] = self._literal("\n".join(raw))
+          self.symbols[name] = self._block_literal(child, after, indent)
         i = after
         continue
       if text.startswith("@if ") and text.endswith(":"):
         cond: _PymlValue = self._expr(line, text[4:-1])
         matched: bool = self._truth(cond)
         if matched:
-          self._run(child, after, indent + 2, out)
+          self._run_directive_body(child, after, indent, out)
         branch: int = after
         while branch < end and self.lines[branch].indent == indent:
           alternate: _PymlLine = self.lines[branch]
@@ -947,13 +1086,13 @@ class _PymlExpander:
             if not matched:
               alternate_cond: _PymlValue = self._expr(alternate, alternate_text[6:-1])
               if self._truth(alternate_cond):
-                self._run(alternate_child, alternate_after, indent + 2, out)
+                self._run_directive_body(alternate_child, alternate_after, indent, out)
                 matched = True
             branch = alternate_after
             continue
           if alternate_text == "@else:":
             if not matched:
-              self._run(alternate_child, alternate_after, indent + 2, out)
+              self._run_directive_body(alternate_child, alternate_after, indent, out)
               matched = True
             branch = alternate_after
             break
@@ -987,6 +1126,9 @@ class _PymlExpander:
         if not is_sequence:
           self._fail(line, "for expects sequence")
         for raw in parts:
+          old_symbols: dict[str, _PymlValue] = self.symbols
+          if not self.run_kind:
+            self.symbols = old_symbols.copy()
           if len(names) == 1:
             self.symbols[names[0]] = self._literal(raw)
           else:
@@ -999,7 +1141,9 @@ class _PymlExpander:
                   self.symbols[names[j]] = self._literal(tuple_parts[j])
               case _:
                 self._fail(line, "for unpacking expects sequence")
-          self._run(child, after, indent + 2, out)
+          self._run_directive_body(child, after, indent, out)
+          if not self.run_kind:
+            self.symbols = old_symbols
         i = after
         continue
       if text.startswith("@expand "):
@@ -1034,7 +1178,12 @@ class _PymlExpander:
         key: str = text[:colon].strip()
         rhs: str = text[colon + 1:].strip()
         if key.startswith("="):
-          key = self._value_text(self._expr(line, key[1:]))
+          key_value: _PymlValue = self._expr(line, key[1:])
+          match key_value:
+            case new.Integer(_) | new.Float(_) | new.String(_) | new.Boolean(_) | new.Null():
+              key = self._value_text(key_value)
+            case _:
+              self._fail(line, "dynamic key must be scalar")
           if len(key) >= 2 and key[0] == ord('"'):
             key = key[1:-1]
         if rhs.startswith("="):
@@ -1047,7 +1196,7 @@ class _PymlExpander:
       if text.startswith("- "):
         if self.run_kind == 1:
           self._fail(line, "scalar function cannot emit YAML")
-        rhs: str = text[2:].strip()
+        rhs: str = text[2:len(text)].strip()
         if rhs.startswith("="):
           rhs = self._value_text(self._expr(line, rhs[1:]))
         out.append(" " * indent + "- " + rhs)
@@ -1057,9 +1206,58 @@ class _PymlExpander:
         continue
       self._fail(line, "unsupported PyML statement")
 
+  def _fold_mapping_updates(self, out: list[str]) -> list[str]:
+    """Fold duplicate mapping keys with dict.update last-write-wins semantics."""
+    result: list[str] = []
+    i: int = 0
+    while i < len(out):
+      raw: str = out[i]
+      indent: int = _pyml_indent(raw)
+      text: str = raw[indent:len(raw)]
+      at: int = _pyml_find_colon(text)
+      if at < 0 or text.startswith("- "):
+        result.append(raw)
+        i += 1
+        continue
+      after: int = i + 1
+      while after < len(out) and _pyml_indent(out[after]) > indent:
+        after += 1
+      key: str = text[:at].strip()
+      previous: int = -1
+      for j in range(len(result) - 1, -1, -1):
+        candidate: str = result[j]
+        candidate_indent: int = _pyml_indent(candidate)
+        if candidate_indent < indent:
+          break
+        candidate_text: str = candidate[candidate_indent:len(candidate)]
+        candidate_at: int = _pyml_find_colon(candidate_text)
+        if candidate_indent == indent and candidate_at >= 0 and not candidate_text.startswith("- ") and candidate_text[:candidate_at].strip() == key:
+          previous = j
+          break
+      if previous >= 0:
+        remove_end: int = previous + 1
+        while remove_end < len(result) and _pyml_indent(result[remove_end]) > indent:
+          remove_end += 1
+        kept: list[str] = []
+        for j in range(len(result)):
+          if j < previous or j >= remove_end:
+            kept.append(result[j])
+        result = kept
+      result.append(out[i])
+      if i + 1 < after:
+        children: list[str] = []
+        for j in range(i + 1, after):
+          children.append(out[j])
+        children = self._fold_mapping_updates(children)
+        for child_line in children:
+          result.append(child_line)
+      i = after
+    return result
+
   def expand(self) -> str:
     out: list[str] = []
     self._run(0, len(self.lines), 0, out)
+    out = self._fold_mapping_updates(out)
     return "\n".join(out) + ("\n" if out else "")
 
 

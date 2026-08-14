@@ -16,6 +16,7 @@ for %%F in ("%ROOT%*") do (
   ) else (
     set "KEEP=0"
     if /i "%%~nxF"==".gitattributes" set "KEEP=1"
+    if /i "%%~nxF"==".gitignore" set "KEEP=1"
     if /i "%%~nxF"==".clangd" set "KEEP=1"
     if /i "%%~nxF"=="compile_flags.txt" set "KEEP=1"
     if /i "%%~nxF"=="main.py" set "KEEP=1"

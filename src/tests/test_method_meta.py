@@ -199,11 +199,11 @@ class MethodMetaTests(unittest.TestCase):
       '''
       class M:
         def build(self):
-          return_type = Self.get_return_type("fire")
-          if return_type is not None:
-            x: str = return_type
+          if Self.get_method_return_type("fire") is bool:
+            x: bool = True
           for param in Self.iter_method_params("fire"):
-            tid: str = Self.get_param_type("fire", param)
+            if Self.get_method_param_type("fire", param) is int:
+              x: int = 1
       '''
     )
     host_src = textwrap.dedent(
@@ -219,8 +219,8 @@ class MethodMetaTests(unittest.TestCase):
     self.assertIsNotNone(expanded)
     assert expanded is not None
     dump = ast.dump(expanded, include_attributes=False)
-    self.assertIn("value='bool'", dump)
-    self.assertIn("value='int'", dump)
+    self.assertIn("value=True", dump)
+    self.assertIn("annotation=Name(id='int'", dump)
 
 
 if __name__ == "__main__":

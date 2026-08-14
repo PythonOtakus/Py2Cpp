@@ -22,6 +22,7 @@ from .match_case import (
   expand_iter_fields_meta,
   expand_str_annotation_match,
   extract_field_annotation_meta,
+  fold_self_get_field_type_calls,
   is_simple_match,
 )
 from .method_meta import (
@@ -231,7 +232,13 @@ def expand_iter_fields_subscript_loop(
   unrolled: list[ast.stmt] = []
   for field_name in fields:
     renames = {field_var: ast.Constant(value=field_name)}
-    unrolled.extend(_clone_body_replace_names(for_node.body, renames, known_fields=known))
+    cloned = _clone_body_replace_names(for_node.body, renames, known_fields=known)
+    cloned = fold_self_get_field_type_calls(
+      cloned,
+      lambda name: field_ann_ast(host, name),
+      known_fields=known,
+    )
+    unrolled.extend(cloned)
   out = copy.deepcopy(method)
   out.body = method.body[:for_idx] + unrolled + method.body[for_idx + 1 :]
   return out
@@ -476,13 +483,13 @@ def _mixin_method_has_unsupported_after_expand(method: ast.FunctionDef) -> bool:
         if node.func.attr in (
           "iter_fields",
           "enum_fields",
-          "get_annotation",
-          "get_annotations",
+          "get_field_annotation",
+          "get_field_annotations",
           "iter_methods",
           "get_method_annotation",
           "iter_method_params",
-          "get_param_type",
-          "get_return_type",
+          "get_method_param_type",
+          "get_method_return_type",
         ):
           return True
       recv = None

@@ -58,7 +58,7 @@ class FlowNodeMeta:
 **引脚（由签名 + 本注解自动生成，见 §6）**：
 
 - Exec：**In** `execute`、**Out** `then`
-- Data：每个形参（除 `self`）→ **In**；若 `Self.get_return_type(method) is not None` → **Out** `Return Value`
+- Data：每个形参（除 `self`）→ **In**；若 `Self.get_method_return_type(method) is not None` → **Out** `Return Value`
 
 ---
 
@@ -136,9 +136,9 @@ class FlowEventMeta:
 |-----|------|----------|
 | 方法名列表 | `Self.iter_methods[FlowNodeMeta](mro=True, public_only=…, glob=…)` | 已有；带 `@FlowNodeMeta` 的方法名（声明序） |
 | 形参名 | `Self.iter_method_params(method)` | `for param in Self.iter_method_params(method):` → 展开为各形参标识符；**跳过 `self`** |
-| 形参类型 | `Self.get_param_type(method, param)` | 折叠为 **`str` 字面量** type_id（见 §6.2）；无注解 → `"object"` |
-| 返回类型 | `Self.get_return_type(method)` | 折叠为 **`str` 字面量或 `None` 常量**；`-> None` 或无返回注解 → **`None`** |
-| 是否有返回值 | `Self.get_return_type(method) is not None` | 与 `is None` 由 `static_reflect` / 常量比较折叠为 `True`/`False` |
+| 形参类型 | `Self.get_method_param_type(method, param)` | 折叠为类型本身；通过 `T is int` 等类型分派转换为 Flow type_id |
+| 返回类型 | `Self.get_method_return_type(method)` | 折叠为类型本身或 `None`；`-> None` 或无返回注解 → **`None`** |
+| 是否有返回值 | `Self.get_method_return_type(method) is not None` | 译期折叠为 `True`/`False` |
 
 ### 4.1 用法示例（`_ensure_flow_catalog` 内）
 
@@ -147,9 +147,10 @@ for method in Self.iter_methods[FlowNodeMeta](mro=True):
   meta = Self.get_method_annotation[FlowNodeMeta](method)
   ...
   for param in Self.iter_method_params(method):
-    type_id: str = Self.get_param_type(method, param)
+    if Self.get_method_param_type(method, param) is int:
+      type_id: str = "int"
     catalog.add_data_in_pin(kind_id, param, type_id)
-  return_type = Self.get_return_type(method)
+  return_type = Self.get_method_return_type(method)
   if return_type is not None:
     catalog.add_data_out_pin(kind_id, "Return Value", return_type)
 ```

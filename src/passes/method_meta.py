@@ -212,8 +212,8 @@ def _is_iter_method_params_call(node: ast.expr) -> bool:
   )
 
 
-def _is_get_param_type_call(node: ast.expr) -> tuple[str, str] | None:
-  """``Self.get_param_type(method, param)`` → ``(method, param)`` 常量名。"""
+def _is_get_method_param_type_call(node: ast.expr) -> tuple[str, str] | None:
+  """``Self.get_method_param_type(method, param)`` → 常量名对。"""
   if not isinstance(node, ast.Call):
     return None
   func = node.func
@@ -221,7 +221,7 @@ def _is_get_param_type_call(node: ast.expr) -> tuple[str, str] | None:
     isinstance(func, ast.Attribute)
     and isinstance(func.value, ast.Name)
     and func.value.id == "Self"
-    and func.attr == "get_param_type"
+    and func.attr == "get_method_param_type"
     and len(node.args) == 2
   ):
     return None
@@ -232,7 +232,7 @@ def _is_get_param_type_call(node: ast.expr) -> tuple[str, str] | None:
   return m, p
 
 
-def _is_get_return_type_call(node: ast.expr) -> str | None:
+def _is_get_method_return_type_call(node: ast.expr) -> str | None:
   if not isinstance(node, ast.Call):
     return None
   func = node.func
@@ -240,7 +240,7 @@ def _is_get_return_type_call(node: ast.expr) -> str | None:
     isinstance(func, ast.Attribute)
     and isinstance(func.value, ast.Name)
     and func.value.id == "Self"
-    and func.attr == "get_return_type"
+    and func.attr == "get_method_return_type"
     and len(node.args) == 1
   ):
     return None
@@ -289,60 +289,74 @@ def expand_iter_method_params_loop(
   return out
 
 
-def _fold_method_signature_expr(node: ast.expr, host: ClassInfo) -> ast.expr | None:
-  parsed = _is_get_param_type_call(node)
+def _strip_all_annotation_markers(ann: ast.expr | None) -> ast.expr | None:
+  out = copy.deepcopy(ann)
+  while isinstance(out, ast.BinOp) and isinstance(out.op, ast.MatMult):
+    out = out.left
+  return out
+
+
+def _method_param_type_ast(host: ClassInfo, method_name: str, param_name: str) -> ast.expr:
+  method = host.methods.get(method_name)
+  if method is not None:
+    for arg in method.args.posonlyargs + method.args.args + method.args.kwonlyargs:
+      if arg.arg == param_name:
+        return _strip_all_annotation_markers(arg.annotation) or ast.Name(id="object", ctx=ast.Load())
+  return ast.Name(id="object", ctx=ast.Load())
+
+
+def _method_return_type_ast(host: ClassInfo, method_name: str) -> ast.expr:
+  method = host.methods.get(method_name)
+  if method is None or method.returns is None:
+    return ast.Constant(value=None)
+  return _strip_all_annotation_markers(method.returns) or ast.Constant(value=None)
+
+
+def _method_type_query(node: ast.expr, host: ClassInfo) -> ast.expr | None:
+  parsed = _is_get_method_param_type_call(node)
   if parsed is not None:
-    m, p = parsed
-    return ast.Constant(value=method_param_type_id(host, m, p))
-  m = _is_get_return_type_call(node)
-  if m is not None:
-    tid = method_return_type_id(host, m)
-    if tid is None:
-      return ast.Constant(value=None)
-    return ast.Constant(value=tid)
+    return _method_param_type_ast(host, *parsed)
+  method = _is_get_method_return_type_call(node)
+  if method is not None:
+    return _method_return_type_ast(host, method)
   return None
 
 
+class _MethodTypeFolder(ast.NodeTransformer):
+  def __init__(self, host: ClassInfo):
+    self.host = host
+
+  def visit_Compare(self, node: ast.Compare) -> ast.expr:
+    if len(node.ops) == 1 and len(node.comparators) == 1:
+      left = _method_type_query(node.left, self.host)
+      right = _method_type_query(node.comparators[0], self.host)
+      if left is not None or right is not None:
+        lhs = left if left is not None else node.left
+        rhs = right if right is not None else node.comparators[0]
+        same = ast.dump(lhs, include_attributes=False) == ast.dump(rhs, include_attributes=False)
+        if isinstance(node.ops[0], (ast.Is, ast.Eq)):
+          return ast.Constant(value=same)
+        if isinstance(node.ops[0], (ast.IsNot, ast.NotEq)):
+          return ast.Constant(value=not same)
+    return self.generic_visit(node)
+
+  def visit_Call(self, node: ast.Call) -> ast.expr:
+    folded = _method_type_query(node, self.host)
+    if folded is not None:
+      return ast.copy_location(folded, node)
+    return self.generic_visit(node)
+
+
 def _fold_method_signature_in_body(body: list[ast.stmt], host: ClassInfo) -> list[ast.stmt]:
-  out: list[ast.stmt] = []
-  for stmt in body:
-    if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1:
-      folded = _fold_method_signature_expr(stmt.value, host)
-      if folded is not None:
-        out.append(
-          ast.Assign(
-            targets=[copy.deepcopy(stmt.targets[0])],
-            value=folded,
-          )
-        )
-        continue
-    if isinstance(stmt, ast.AnnAssign) and stmt.value is not None:
-      folded = _fold_method_signature_expr(stmt.value, host)
-      if folded is not None:
-        out.append(
-          ast.AnnAssign(
-            target=copy.deepcopy(stmt.target),
-            annotation=copy.deepcopy(stmt.annotation),
-            value=folded,
-            simple=stmt.simple,
-          )
-        )
-        continue
-    if isinstance(stmt, ast.If):
-      stmt = copy.deepcopy(stmt)
-      stmt.body = _fold_method_signature_in_body(stmt.body, host)
-      stmt.orelse = _fold_method_signature_in_body(stmt.orelse, host)
-      out.append(stmt)
-      continue
-    out.append(stmt)
-  return out
+  folder = _MethodTypeFolder(host)
+  return [folder.visit(copy.deepcopy(stmt)) for stmt in body]
 
 
 def expand_method_signature_reflect(
   method: ast.FunctionDef,
   host: ClassInfo,
 ) -> ast.FunctionDef | None:
-  """展开 ``iter_method_params`` 并折叠 ``get_param_type`` / ``get_return_type``。"""
+  """展开 ``iter_method_params`` 并折叠方法参数/返回类型反射。"""
   out = copy.deepcopy(method)
   changed = True
   while changed:

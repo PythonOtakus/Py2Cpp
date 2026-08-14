@@ -1,4 +1,4 @@
-"""``UIPanelMixin``：``Self.iter_fields(public_only=True)`` + ``Self.get_annotation[Meta]`` 译期展开。"""
+"""``UIPanelMixin``：``Self.iter_fields(public_only=True)`` + ``Self.get_field_annotation[Meta]`` 译期展开。"""
 
 from ..builtins import *
 from .layout import UIFormLayout
@@ -130,10 +130,10 @@ class UIPanelMixin:
     """宿主字段 → 控件 ``__set``（postsetter 内 ``_sync_to_native`` 更新 Win32）。"""
     row: int = 0
     for field in Self.iter_fields(public_only=True):
-      invisible = Self.get_annotation[UIInvisibleMeta](field)
+      invisible = Self.get_field_annotation[UIInvisibleMeta](field)
       if invisible is not None:
         continue
-      slider = Self.get_annotation[UISliderMeta](field)
+      slider = Self.get_field_annotation[UISliderMeta](field)
       if slider is not None:
         self._panel_form.push_row_int(row, getattr(self, field))
       else:
@@ -146,13 +146,13 @@ class UIPanelMixin:
     self._panel_form.clear()
     for field in Self.iter_fields(public_only=True):
       label: str = field
-      ui_label = Self.get_annotation[UILabelMeta](field)
+      ui_label = Self.get_field_annotation[UILabelMeta](field)
       if ui_label is not None:
         label = ui_label.text
-      invisible = Self.get_annotation[UIInvisibleMeta](field)
+      invisible = Self.get_field_annotation[UIInvisibleMeta](field)
       if invisible is not None:
         continue
-      slider = Self.get_annotation[UISliderMeta](field)
+      slider = Self.get_field_annotation[UISliderMeta](field)
       if slider is not None:
         self._form_add_slider(
           self._panel_form,
@@ -185,10 +185,10 @@ class UIPanelMixin:
   def _sync_fields_from_form(self) -> None:
     row: int = 0
     for field in Self.iter_fields(public_only=True):
-      invisible = Self.get_annotation[UIInvisibleMeta](field)
+      invisible = Self.get_field_annotation[UIInvisibleMeta](field)
       if invisible is not None:
         continue
-      slider = Self.get_annotation[UISliderMeta](field)
+      slider = Self.get_field_annotation[UISliderMeta](field)
       if slider is not None:
         setattr(self, field, self._panel_form.row_int(row))
       else:

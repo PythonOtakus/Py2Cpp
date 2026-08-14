@@ -71,7 +71,7 @@ class MetaScanMixin:
   def meta_field_count(self) -> int:
     count: int = 0
     for field in Self.iter_fields(public_only=True):
-      tagged = Self.get_annotation[Meta](field)
+      tagged = Self.get_field_annotation[Meta](field)
       if tagged is not None:
         count += 1
     return count
@@ -81,6 +81,22 @@ class MetaTaggedRow(MetaScanMixin):
   title: str @Meta = "hello"
   score: int @Meta = 1
   note: str = "plain"
+
+
+@mixin
+class FieldTypeMixin:
+  def tagged_total(self) -> int:
+    total: int = 0
+    for field in Self.iter_fields[TagMeta]():
+      value: Self.get_field_type(field) = getattr(self, field)
+      total += value
+    return total
+
+
+class TypedTaggedInts(FieldTypeMixin):
+  first: int @TagMeta = 7
+  second: int @TagMeta = 9
+  ignored: str = "ignored"
 
 
 @mixin
@@ -134,6 +150,15 @@ class IterAnnotatedFieldsContainerTests(TestCaseMixin):
   def test(self):
     store: MarkedStore = new()
     self.assertEqual(store.marked_field_count(), 2)
+
+
+class FieldTypeReflectTests(TestCaseMixin):
+  _test_tag = 25
+
+  @override
+  def test(self):
+    row: TypedTaggedInts = new()
+    self.assertEqual(row.tagged_total(), 16)
 
 
 class IterFieldsGetAnnotationTests(TestCaseMixin):

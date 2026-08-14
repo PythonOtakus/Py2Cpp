@@ -10,7 +10,7 @@ class UIInvisibleMeta:
 @annotation
 @dataclass
 class UILabelMeta:
-  """覆盖显示标签；``name @UILabelMeta("显示名")``；用 ``Self.get_annotation[UILabelMeta](field)`` 读取 ``.text``。"""
+  """覆盖显示标签；``name @UILabelMeta("显示名")``；用 ``Self.get_field_annotation[UILabelMeta](field)`` 读取 ``.text``。"""
 
   text: str
 

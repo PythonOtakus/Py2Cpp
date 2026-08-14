@@ -20,6 +20,19 @@ class UIFlowMixin:
   _flow_runtime: FlowRuntime = new()
   _flow_win: UIWindow = new()
 
+  @staticmethod
+  def _flow_type_id[T]() -> str:
+    if T is bool:
+      return "bool"
+    elif T is int:
+      return "int"
+    elif T is float or T is float64:
+      return "float"
+    elif T is str:
+      return "str"
+    else:
+      return "object"
+
   def _flow_pin_exec_in(self) -> FlowPinSpec:
     p: FlowPinSpec = new()
     p.name = "execute"
@@ -78,11 +91,9 @@ class UIFlowMixin:
         pins.append(self._flow_pin_exec_in())
         pins.append(self._flow_pin_exec_out())
         for param in Self.iter_method_params(method):
-          type_id: str = Self.get_param_type(method, param)
-          pins.append(self._flow_pin_data_in(param, type_id))
-        return_type = Self.get_return_type(method)
-        if return_type is not None:
-          pins.append(self._flow_pin_data_out("Return Value", return_type))
+          pins.append(self._flow_pin_data_in(param, self._flow_type_id[Self.get_method_param_type(method, param)]()))
+        if Self.get_method_return_type(method) is not None:
+          pins.append(self._flow_pin_data_out("Return Value", self._flow_type_id[Self.get_method_return_type(method)]()))
         self._register_flow_node(method, title, category, FlowNodeKind.Callable, pins)
     for method in Self.iter_methods[FlowPureMeta](mro=True):
       if Self.get_method_annotation[FlowPureMeta](method) is None or not Self.get_method_annotation[FlowPureMeta](method).hidden:
@@ -93,11 +104,9 @@ class UIFlowMixin:
           category = Self.get_method_annotation[FlowPureMeta](method).category
         pins: list[FlowPinSpec, 0] = []
         for param in Self.iter_method_params(method):
-          type_id: str = Self.get_param_type(method, param)
-          pins.append(self._flow_pin_data_in(param, type_id))
-        return_type = Self.get_return_type(method)
-        if return_type is not None:
-          pins.append(self._flow_pin_data_out("Return Value", return_type))
+          pins.append(self._flow_pin_data_in(param, self._flow_type_id[Self.get_method_param_type(method, param)]()))
+        if Self.get_method_return_type(method) is not None:
+          pins.append(self._flow_pin_data_out("Return Value", self._flow_type_id[Self.get_method_return_type(method)]()))
         self._register_flow_node(method, title, category, FlowNodeKind.Pure, pins)
     for method in Self.iter_methods[FlowEventMeta](mro=True):
       if Self.get_method_annotation[FlowEventMeta](method) is None or not Self.get_method_annotation[FlowEventMeta](method).hidden:

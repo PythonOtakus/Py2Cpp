@@ -1,4 +1,4 @@
-"""``expand_iter_fields_meta``：``Self.get_annotation[Meta](field)`` 折叠。"""
+"""``expand_iter_fields_meta``：``Self.get_field_annotation[Meta](field)`` 折叠。"""
 from __future__ import annotations
 
 import ast
@@ -6,14 +6,14 @@ import textwrap
 import unittest
 
 from src.analysis.ir import ClassInfo
-from src.passes.match_case import expand_iter_fields_meta, parse_self_get_annotation_meta
+from src.passes.match_case import expand_iter_fields_meta, parse_self_get_field_annotation_meta
 
 
 class ExpandIterFieldsMetaTests(unittest.TestCase):
-  def test_parse_get_annotation_subscript(self):
-    mod = ast.parse("Self.get_annotation[UILabelMeta](field)")
+  def test_parse_get_field_annotation_subscript(self):
+    mod = ast.parse("Self.get_field_annotation[UILabelMeta](field)")
     expr = mod.body[0].value
-    parsed = parse_self_get_annotation_meta(expr)
+    parsed = parse_self_get_field_annotation_meta(expr)
     self.assertIsNotNone(parsed)
     assert parsed is not None
     self.assertEqual(parsed[0], "UILabelMeta")
@@ -27,11 +27,11 @@ class ExpandIterFieldsMetaTests(unittest.TestCase):
         def draw(self, ctx):
           for field in Self.iter_fields(public_only=True):
             label: str = field
-            ui_label = Self.get_annotation[UILabelMeta](field)
+            ui_label = Self.get_field_annotation[UILabelMeta](field)
             if ui_label is not None:
               label = ui_label.text
-            invisible = Self.get_annotation[UIInvisibleMeta](field)
-            slider = Self.get_annotation[UISliderMeta](field)
+            invisible = Self.get_field_annotation[UIInvisibleMeta](field)
+            slider = Self.get_field_annotation[UISliderMeta](field)
             if invisible is not None:
               pass
             elif slider is not None:
@@ -64,7 +64,7 @@ class ExpandIterFieldsMetaTests(unittest.TestCase):
       class UIPanelMixin:
         def sync(self, win):
           for field in Self.iter_fields(public_only=True):
-            invisible = Self.get_annotation[UIInvisibleMeta](field)
+            invisible = Self.get_field_annotation[UIInvisibleMeta](field)
             if invisible is None:
               setattr(self, field, win.synced(getattr(self, field)))
       '''

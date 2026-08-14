@@ -1,7 +1,7 @@
 # SQL / ORM：DB-API + 静态反射表映射规范
 
 > **状态**：**P0 DB-API 已落地**（`protocols.py` + `sqlite.py` + `templates/sql/+sqlite.inl` + `test/sql/test_sqlite.py`）；**ORM P1+ 设计中**（尚无 `orm.py` / `session.py`）。  
-> **约束**：符合 [编码规范.md](./编码规范.md)；**不新增** `@table` 等装饰器或译器 pass；ORM 仅复用既有 `@annotation` *Meta、`@dataclass`、`Self.iter_fields` / `Self.get_annotation[Meta](field)`（与 `ui/panel` 同构）；Native 原子化（业务零 `@native`，C++ 仅叶子）；不引入 STL；**暂不支持** SQLAlchemy 级 Query DSL / relationship / migration 框架。
+> **约束**：符合 [编码规范.md](./编码规范.md)；**不新增** `@table` 等装饰器或译器 pass；ORM 仅复用既有 `@annotation` *Meta、`@dataclass`、`Self.iter_fields` / `Self.get_field_annotation[Meta](field)`（与 `ui/panel` 同构）；Native 原子化（业务零 `@native`，C++ 仅叶子）；不引入 STL；**暂不支持** SQLAlchemy 级 Query DSL / relationship / migration 框架。
 
 ---
 
@@ -537,7 +537,7 @@ def table_name() -> str:
 @staticmethod
 def create_schema_sql() -> str:
   for field in Self.iter_fields(public_only=True):
-    if Self.get_annotation[IgnoreMeta](field) is not None:
+    if Self.get_field_annotation[IgnoreMeta](field) is not None:
       continue
     ...
 ```
@@ -554,7 +554,7 @@ def create_schema_sql() -> str:
 
 ```python
 for field in Self.iter_fields(public_only=True):
-  if Self.get_annotation[IgnoreMeta](field) is not None:
+  if Self.get_field_annotation[IgnoreMeta](field) is not None:
     continue
   ...
 ```

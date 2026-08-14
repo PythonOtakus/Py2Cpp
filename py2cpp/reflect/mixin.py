@@ -5,10 +5,10 @@
 
 翻译期辅助（由 ``passes/`` 展开，**非** CPython 运行时语义）：
 
-- ``Self.iter_fields()`` / ``Self.iter_fields[Ann]()`` / ``enum_fields(public_only=…)`` / ``get_annotation(...)`` / ``get_annotations(...)``（``glob=`` 粗筛字段名）
+- ``Self.iter_fields()`` / ``Self.iter_fields[Ann]()`` / ``enum_fields(public_only=…)`` / ``get_field_annotation(...)`` / ``get_field_annotations(...)``（``glob=`` 粗筛字段名）
 - ``VarStack`` + ``s: VarStack = new()`` + ``s.push(…)`` / ``s.pop()`` / ``s.top()`` + ``new(*s)`` / ``fn(*s)`` / ``(*s,)``（译期展开为 ``__vs_{name}N``；``pop`` 不回收编号，``*s`` 仅含逻辑栈剩余项；``top()`` 可读栈顶且可跨内层作用域；声明与 ``push``/``pop``/``*s`` 须同块作用域，``Self.iter_fields`` / ``enum_fields`` 循环体除外）
 - ``Self.iter_methods()`` / ``Self.iter_methods[Ann]()`` / ``get_method_annotation[AnnMeta](method)``（``glob=`` 粗筛方法名）
-- ``Self.get_annotation[AnnMeta](field)`` → 字段上该 ``@`` 标记（无则 ``None``）；``.text`` / ``.lo`` 等译期折叠
+- ``Self.get_field_annotation[AnnMeta](field)`` → 字段上该 ``@`` 标记（无则 ``None``）；``.text`` / ``.lo`` 等译期折叠
 - ``Mixin.iter_subclasses()`` / ``iter_subclasses(sort_const="_test_tag")`` → 入口 ``main`` 内 ``suite.addTest(Host())``（``expand_test_discovery``）
 """
 from __future__ import annotations
@@ -103,7 +103,7 @@ def mixin(cls):
       yield idx, field
 
   @classmethod
-  def get_annotation(cls, field: str):
+  def get_field_annotation(cls, field: str):
     try:
       src = inspect.getsource(cls.__init__)
       tree = ast.parse(src)
@@ -124,8 +124,8 @@ def mixin(cls):
     return None
 
   @classmethod
-  def get_annotations(cls, field: str):
-    """翻译期：字段 ``T @A @B`` 上各 ``@`` 标记（自外向内）；``for ann in Self.get_annotations(field):`` 由译器展开。"""
+  def get_field_annotations(cls, field: str):
+    """翻译期：字段 ``T @A @B`` 上各 ``@`` 标记（自外向内）；``for ann in Self.get_field_annotations(field):`` 由译器展开。"""
     return []
 
   @classmethod
@@ -144,13 +144,13 @@ def mixin(cls):
     return []
 
   @classmethod
-  def get_param_type(cls, method: str, param: str) -> str:
-    """翻译期：形参 type_id（``"int"`` / ``"object"`` 等）。"""
-    return "object"
+  def get_method_param_type(cls, method: str, param: str):
+    """翻译期：形参基础类型；可写 ``Self.get_method_param_type(m, p) is int``。"""
+    pass
 
   @classmethod
-  def get_return_type(cls, method: str) -> str | None:
-    """翻译期：返回 type_id；``-> None`` / 无注解 → ``None``。"""
+  def get_method_return_type(cls, method: str):
+    """翻译期：返回基础类型；无返回注解或 ``-> None`` 时为 ``None``。"""
     return None
 
   @classmethod
@@ -177,12 +177,12 @@ def mixin(cls):
 
   cls.iter_fields = iter_fields
   cls.enum_fields = enum_fields
-  cls.get_annotation = get_annotation
-  cls.get_annotations = get_annotations
+  cls.get_field_annotation = get_field_annotation
+  cls.get_field_annotations = get_field_annotations
   cls.iter_methods = iter_methods
   cls.get_method_annotation = get_method_annotation
   cls.iter_method_params = iter_method_params
-  cls.get_param_type = get_param_type
-  cls.get_return_type = get_return_type
+  cls.get_method_param_type = get_method_param_type
+  cls.get_method_return_type = get_method_return_type
   cls.iter_subclasses = iter_subclasses
   return cls

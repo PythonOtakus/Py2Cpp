@@ -13,7 +13,7 @@ from .fstring_emit import emit_format_expr, plan_format_literal
 from .binop_emit import _identity_addr_expr
 from .literal_map_lookup_emit import try_emit_dict_literal_get
 from .numeric_cast_emit import try_emit_float_ctor, try_emit_int_ctor, try_emit_numeric_ctor, try_emit_primitive_ctor
-from .literal_sequence_lookup_emit import try_emit_str_literal_find_call
+from .literal_sequence_lookup_emit import try_emit_str_literal_find_call, try_emit_str_literal_striplines_call
 from ..passes.static_reflect import static_field_name
 from ..passes.union_expand import union_variant_names, union_variant_param_cpp_types
 from ..emit.layout_config_emit import _JSON_API_METHODS_NEED_TYPE_ARG
@@ -1655,6 +1655,10 @@ def emit_call_expr(tr: Translator, node: ast.Call):
                 return try_emit_dict_literal_get(tr, val, node.args[0], node.args[1])
             if isinstance(val, ast.Constant) and isinstance(val.value, str) and (attr in ('find', 'index', 'rfind', 'rindex')):
                 return try_emit_str_literal_find_call(tr, val.value, attr, node)
+            if isinstance(val, ast.Constant) and isinstance(val.value, str) and attr == 'striplines':
+                inline = try_emit_str_literal_striplines_call(val.value, node)
+                if inline is not None:
+                    return inline
             if attr == '__getitem__' and len(node.args) == 1:
                 const_get = tr._try_pytuple_const_subscript(val, node.args[0])
                 if const_get is not None:

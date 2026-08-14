@@ -97,6 +97,23 @@ class StrStripTests(TestCaseMixin):
     self.assertEqual("spam spam".replace("spam", "x", 1), "x spam")
 
 
+class StrStriplinesTests(TestCaseMixin):
+  _test_tag = 51
+
+  @override
+  def test(self):
+    source: str = """
+      root:
+        child: 1
+
+      tail: 2
+    """
+    self.assertEqual(source.striplines(), "root:\n  child: 1\n\ntail: 2")
+    self.assertEqual(source.striplines(3), "   root:\n     child: 1\n\n   tail: 2")
+    self.assertEqual("\n\n   \n\t\n".striplines(), "")
+    self.assertEqual("""\n    literal\n      inline\n    """.striplines(1), " literal\n   inline")
+
+
 class StrSplitTests(TestCaseMixin):
   _test_tag = 60
 

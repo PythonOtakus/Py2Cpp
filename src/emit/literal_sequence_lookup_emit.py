@@ -20,6 +20,49 @@ _STR_FIND_METHODS = frozenset({'find', 'index', 'rfind', 'rindex'})
 _STR_END_SENTINEL = -2147483648
 _MAX_INLINE_HAYSTACK = 64
 
+def _striplines_literal(text: str, min_indent: int) -> str:
+    lines = text.splitlines()
+    begin = 0
+    end = len(lines)
+    while begin < end and not lines[begin].strip():
+        begin += 1
+    while end > begin and not lines[end - 1].strip():
+        end -= 1
+    if begin >= end:
+        return ''
+    common: int | None = None
+    for line in lines[begin:end]:
+        if not line.strip():
+            continue
+        indent = 0
+        while indent < len(line) and line[indent] == ' ':
+            indent += 1
+        common = indent if common is None else min(common, indent)
+    if common is None:
+        return ''
+    prefix = ' ' * min_indent
+    return '\n'.join((prefix + line[common:] if line.strip() else '' for line in lines[begin:end]))
+
+def try_emit_str_literal_striplines_call(text: str, node: ast.Call) -> str | None:
+    """Fold ``"literal".striplines([constant])`` into one PyStr literal."""
+    if len(node.args) > 1:
+        return None
+    min_indent_node: ast.expr | None = None
+    if node.args:
+        min_indent_node = node.args[0]
+    for keyword in node.keywords:
+        if keyword.arg != 'min_indent' or min_indent_node is not None:
+            return None
+        min_indent_node = keyword.value
+    min_indent = 0
+    if min_indent_node is not None:
+        if not isinstance(min_indent_node, ast.Constant) or not isinstance(min_indent_node.value, int) or isinstance(min_indent_node.value, bool):
+            return None
+        min_indent = min_indent_node.value
+    if min_indent < 0:
+        return None
+    return str_cpp_from_literal(_striplines_literal(text, min_indent))
+
 def list_literal_has_starred(node: ast.List) -> bool:
     return any((isinstance(e, ast.Starred) for e in node.elts))
 

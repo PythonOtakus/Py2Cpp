@@ -494,6 +494,184 @@ class _PymlExpander:
       self._fail(line, "undefined " + name)
     return self.symbols[name]
 
+  def _access_steps(self, line: _PymlLine, text: str) -> list[str]:
+    """Parse $root.property[index] paths without permitting arbitrary attributes."""
+    if not text.startswith("$"):
+      self._fail(line, "access path requires $")
+    first_end: int = 1
+    while first_end < len(text) and text[first_end] not in ".[":
+      first_end += 1
+    root: str = text[:first_end]
+    if len(root) < 2 or not root[1:len(root)].isidentifier():
+      self._fail(line, "invalid access root")
+    steps: list[str] = [root]
+    i: int = first_end
+    while i < len(text):
+      if text[i] == ord("."):
+        end: int = i + 1
+        while end < len(text) and text[end] not in ".[":
+          end += 1
+        name: str = text[i + 1:end]
+        if not name.isidentifier():
+          self._fail(line, "invalid property access")
+        steps.append("." + name)
+        i = end
+      elif text[i] == ord("["):
+        end: int = i + 1
+        depth: int = 1
+        quote: char = 0
+        while end < len(text) and depth:
+          c: char = text[end]
+          match c:
+            case q if q in "'\"":
+              if not quote:
+                quote = q
+              elif quote == q:
+                quote = 0
+            case q if not quote and q == ord("["):
+              depth += 1
+            case q if not quote and q == ord("]"):
+              depth -= 1
+            case _:
+              pass
+          end += 1
+        if depth:
+          self._fail(line, "unterminated subscript")
+        index: str = text[i + 1:end - 1].strip()
+        if not index:
+          self._fail(line, "empty subscript")
+        steps.append("[" + index + "]")
+        i = end
+      else:
+        self._fail(line, "invalid access path")
+    return steps
+
+  def _mapping_key(self, value: _PymlValue) -> str:
+    raw: str = self._value_text(value)
+    match value:
+      case new.String(_) if len(raw) >= 2:
+        return raw[1:len(raw) - 1]
+      case new.Integer(_) | new.Float(_) | new.Boolean(_) | new.Null():
+        return raw
+      case _:
+        return ""
+
+  def _mapping_find(self, keys: list[str], key: str) -> int:
+    for i in range(len(keys)):
+      raw: str = keys[i]
+      if len(raw) >= 2 and ((raw.startswith("\"") and raw.endswith("\"")) or (raw.startswith("'") and raw.endswith("'"))):
+        raw = raw[1:len(raw) - 1]
+      if raw == key:
+        return i
+    return -1
+
+  def _access_read(self, line: _PymlLine, text: str) -> _PymlValue:
+    steps: list[str] = self._access_steps(line, text)
+    value: _PymlValue = self._symbol(line, steps[0])
+    for i in range(1, len(steps)):
+      step: str = steps[i]
+      if step.startswith("."):
+        key: str = step[1:len(step)]
+        match value:
+          case new.Mapping(keys, values):
+            at: int = self._mapping_find(keys, key)
+            if at < 0:
+              self._fail(line, "mapping key not found")
+            value = self._literal(values[at])
+          case _:
+            self._fail(line, "property access expects mapping")
+      else:
+        index: _PymlValue = self._expr(line, step[1:len(step) - 1])
+        match value:
+          case new.Sequence(parts):
+            match index:
+              case new.Integer(raw):
+                at: int = int(raw)
+                if at < 0:
+                  at += len(parts)
+                if at < 0 or at >= len(parts):
+                  self._fail(line, "sequence index out of range")
+                value = self._literal(parts[at])
+              case _:
+                self._fail(line, "sequence index must be integer")
+          case new.Mapping(keys, values):
+            key = self._mapping_key(index)
+            if not key:
+              self._fail(line, "mapping index must be scalar")
+            at = self._mapping_find(keys, key)
+            if at < 0:
+              self._fail(line, "mapping key not found")
+            value = self._literal(values[at])
+          case _:
+            self._fail(line, "subscript expects collection")
+    return value
+
+  def _access_replace(self, line: _PymlLine, value: _PymlValue, steps: list[str], pos: int, replacement: _PymlValue) -> _PymlValue:
+    if pos >= len(steps):
+      return replacement
+    step: str = steps[pos]
+    if step.startswith("."):
+      key: str = step[1:len(step)]
+      match value:
+        case new.Mapping(keys, values):
+          next_keys: list[str] = keys.copy()
+          next_values: list[str] = values.copy()
+          at: int = self._mapping_find(next_keys, key)
+          if at < 0:
+            if pos != len(steps) - 1:
+              self._fail(line, "mapping key not found")
+            next_keys.append(key)
+            next_values.append(self._value_text(replacement))
+          else:
+            next_value: _PymlValue = self._literal(next_values[at])
+            next_values[at] = self._value_text(self._access_replace(line, next_value, steps, pos + 1, replacement))
+          return new.Mapping(next_keys, next_values)
+        case _:
+          self._fail(line, "property assignment expects mapping")
+    index: _PymlValue = self._expr(line, step[1:len(step) - 1])
+    match value:
+      case new.Sequence(parts):
+        match index:
+          case new.Integer(raw):
+            at: int = int(raw)
+            if at < 0:
+              at += len(parts)
+            if at < 0 or at >= len(parts):
+              self._fail(line, "sequence index out of range")
+            next_parts: list[str] = parts.copy()
+            next_value: _PymlValue = self._literal(next_parts[at])
+            next_parts[at] = self._value_text(self._access_replace(line, next_value, steps, pos + 1, replacement))
+            return new.Sequence(next_parts)
+          case _:
+            self._fail(line, "sequence index must be integer")
+      case new.Mapping(keys, values):
+        key: str = self._mapping_key(index)
+        if not key:
+          self._fail(line, "mapping index must be scalar")
+        next_keys: list[str] = keys.copy()
+        next_values: list[str] = values.copy()
+        at: int = self._mapping_find(next_keys, key)
+        if at < 0:
+          if pos != len(steps) - 1:
+            self._fail(line, "mapping key not found")
+          next_keys.append(key)
+          next_values.append(self._value_text(replacement))
+        else:
+          next_value: _PymlValue = self._literal(next_values[at])
+          next_values[at] = self._value_text(self._access_replace(line, next_value, steps, pos + 1, replacement))
+        return new.Mapping(next_keys, next_values)
+      case _:
+        self._fail(line, "subscript assignment expects collection")
+    return replacement
+
+  def _access_write(self, line: _PymlLine, text: str, value: _PymlValue):
+    steps: list[str] = self._access_steps(line, text)
+    if len(steps) == 1:
+      self.symbols[steps[0]] = value
+      return
+    root: _PymlValue = self._symbol(line, steps[0])
+    self.symbols[steps[0]] = self._access_replace(line, root, steps, 1, value)
+
   def _value_text(self, value: _PymlValue) -> str:
     match value:
       case new.Integer(raw) | new.Float(raw) | new.String(raw) | new.Boolean(raw):
@@ -879,33 +1057,9 @@ class _PymlExpander:
           return new.Integer(str(len(raw) - 2))
         case _:
           self._fail(line, "len expects collection")
-    if expr.startswith("$") and expr.endswith("]"):
-      bracket: int = expr.rfind("[")
-      if bracket > 1:
-        target: _PymlValue = self._expr(line, expr[:bracket])
-        index: _PymlValue = self._expr(line, expr[bracket + 1:-1])
-        key: str = self._value_text(index)
-        match index:
-          case new.String(raw) if len(raw) >= 2:
-            key = raw[1:-1]
-          case _:
-            pass
-        match target:
-          case new.Sequence(parts):
-            return self._literal(parts[int(key)])
-          case new.Mapping(keys, values):
-            for i in range(len(keys)):
-              map_key: str = keys[i]
-              if (map_key.startswith("\"") and map_key.endswith("\"")) or (map_key.startswith("'") and map_key.endswith("'")):
-                map_key = map_key[1:-1]
-              if map_key == key:
-                return self._literal(values[i])
-            self._fail(line, "mapping key not found")
-          case _:
-            self._fail(line, "subscript expects collection")
     if expr.startswith("$") and expr.endswith(")") and "." in expr:
       dot: int = expr.rfind(".")
-      receiver: _PymlValue = self._expr(line, expr[:dot])
+      receiver: _PymlValue = self._access_read(line, expr[:dot])
       method: str = expr[dot + 1:]
       if method not in {"keys()", "values()", "items()"}:
         self._fail(line, "unsupported collection method")
@@ -923,7 +1077,7 @@ class _PymlExpander:
         case _:
           self._fail(line, "collection method expects mapping")
     if expr.startswith("$") and expr.find(" ") < 0 and expr.find("(") < 0:
-      return self._symbol(line, expr)
+      return self._access_read(line, expr)
     if expr.startswith("$") and expr.endswith(")") and expr.find("(") >= 2:
       return self._call(line, expr, False)
     if expr.startswith("f\"") and expr.endswith('"'):
@@ -1048,27 +1202,30 @@ class _PymlExpander:
           self._fail(line, "invalid variable binding")
         name: str = text[:colon].strip()
         rhs: str = text[colon + 1:len(text)].strip()
+        steps: list[str] = self._access_steps(line, name)
+        if child < after and len(steps) != 1:
+          self._fail(line, "nested access assignment cannot have body")
         if rhs.startswith("+="):
-          current: _PymlValue = self._symbol(line, name)
-          self.symbols[name] = self._binary(line, self._value_text(current), rhs[2:], "+")
+          current: _PymlValue = self._access_read(line, name)
+          self._access_write(line, name, self._binary(line, self._value_text(current), rhs[2:], "+"))
         elif rhs.startswith("-="):
-          current: _PymlValue = self._symbol(line, name)
-          self.symbols[name] = self._binary(line, self._value_text(current), rhs[2:], "-")
+          current = self._access_read(line, name)
+          self._access_write(line, name, self._binary(line, self._value_text(current), rhs[2:], "-"))
         elif rhs.startswith("*="):
-          current: _PymlValue = self._symbol(line, name)
-          self.symbols[name] = self._binary(line, self._value_text(current), rhs[2:], "*")
+          current = self._access_read(line, name)
+          self._access_write(line, name, self._binary(line, self._value_text(current), rhs[2:], "*"))
         elif rhs.startswith("/="):
-          current: _PymlValue = self._symbol(line, name)
-          self.symbols[name] = self._binary(line, self._value_text(current), rhs[2:], "/")
+          current = self._access_read(line, name)
+          self._access_write(line, name, self._binary(line, self._value_text(current), rhs[2:], "/"))
         elif rhs.startswith("%="):
-          current: _PymlValue = self._symbol(line, name)
-          self.symbols[name] = self._binary(line, self._value_text(current), rhs[2:], "%")
+          current = self._access_read(line, name)
+          self._access_write(line, name, self._binary(line, self._value_text(current), rhs[2:], "%"))
         elif rhs.startswith("="):
-          self.symbols[name] = self._expr(line, rhs[1:])
+          self._access_write(line, name, self._expr(line, rhs[1:]))
         elif rhs:
-          self.symbols[name] = self._literal(rhs)
+          self._access_write(line, name, self._literal(rhs))
         else:
-          self.symbols[name] = self._block_literal(child, after, indent)
+          self._access_write(line, name, self._block_literal(child, after, indent))
         i = after
         continue
       if text.startswith("@if ") and text.endswith(":"):

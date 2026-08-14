@@ -88,6 +88,7 @@ class BytesStripTests(TestCaseMixin):
     self.assertEqual(ws.strip(), b"hi")
     self.assertEqual(b"pre_hook".removeprefix(b"pre_"), b"hook")
     self.assertEqual(b"file.txt".removesuffix(b".txt"), b"file")
+    self.assertEqual(b"\n  a\n    b\n".striplines(1), b" a\n   b")
 
 
 class BytesJoinDecodeTests(TestCaseMixin):

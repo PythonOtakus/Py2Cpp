@@ -699,6 +699,42 @@ class StringMixin[T: oneof[char, byte]]:
     return self.lstrip(chars).rstrip(chars)
 
   @immutable
+  def striplines(self, min_indent: int = 0) -> Self:
+    """???????????????????? ``min_indent`` ????"""
+    if min_indent < 0:
+      raise ValueError("min_indent must be non-negative")
+    lines: list[Self] = self.splitlines()
+    begin: int = 0
+    end: int = len(lines)
+    while begin < end and not lines[begin].strip():
+      begin += 1
+    while end > begin and not lines[end - 1].strip():
+      end -= 1
+    if begin >= end:
+      return new()
+    common: int = -1
+    for i in range(begin, end):
+      line: Self = lines[i]
+      if not line.strip():
+        continue
+      indent: int = 0
+      while indent < len(line) and line._data[indent] == ord(" "):
+        indent += 1
+      if common < 0 or indent < common:
+        common = indent
+    if common < 0:
+      return new()
+    prefix: Self = Self._from_code(ord(" ")) * min_indent
+    out: list[Self] = []
+    for i in range(begin, end):
+      line: Self = lines[i]
+      if line.strip():
+        out.append(prefix + line._sub(common, len(line)))
+      else:
+        out.append(Self())
+    return Self._from_code(ord("\n")).join(out)
+
+  @immutable
   @overload
   def split(self, maxsplit: int = -1) -> list[Self]:
     return self.split(Self(), maxsplit)

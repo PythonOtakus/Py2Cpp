@@ -12,7 +12,7 @@ PY2CPP_END
 
 PY2CPP_BEGIN_SCOPE
 
-void UITooltipHost::attach(window::UIWindow& win)
+void PyUITooltipHost::attach(window::PyUIWindow& win)
 {
   InitCommonControls();
   HWND parent = (HWND)(INT_PTR)win.handle;
@@ -36,7 +36,7 @@ void UITooltipHost::attach(window::UIWindow& win)
   this->handle = (PyInt64)((INT_PTR)tip);
 }
 
-void UITooltipHost::show_at_client(window::UIWindow& win, PyStr text, PyInt cx, PyInt cy)
+void PyUITooltipHost::showAtClient(window::PyUIWindow& win, PyStr text, PyInt cx, PyInt cy)
 {
   HWND tip = (HWND)(INT_PTR)this->handle;
   HWND parent = (HWND)(INT_PTR)win.handle;
@@ -45,7 +45,7 @@ void UITooltipHost::show_at_client(window::UIWindow& win, PyStr text, PyInt cx, 
     return;
   }
   char tbuf[512];
-  text.copy_to_span(PySpan<PyByte>((PyByte*)tbuf, (PyInt)sizeof(tbuf), 1));
+  text.copyToSpan(PySpan<PyByte>((PyByte*)tbuf, (PyInt)sizeof(tbuf), 1));
   TOOLINFOA ti;
   memset(&ti, 0, sizeof(ti));
   ti.cbSize = sizeof(ti);
@@ -57,7 +57,7 @@ void UITooltipHost::show_at_client(window::UIWindow& win, PyStr text, PyInt cx, 
   SendMessageA(tip, TTM_TRACKACTIVATE, (WPARAM)TRUE, (LPARAM)&ti);
 }
 
-void UITooltipHost::hide()
+void PyUITooltipHost::hide()
 {
   HWND tip = (HWND)(INT_PTR)this->handle;
   if (!tip)
@@ -76,12 +76,12 @@ PY2CPP_END_SCOPE
 
 PY2CPP_BEGIN_SCOPE
 
-void UITooltipHost::attach(window::UIWindow& win)
+void PyUITooltipHost::attach(window::PyUIWindow& win)
 {
   (void)win;
 }
 
-void UITooltipHost::show_at_client(window::UIWindow& win, PyStr text, PyInt cx, PyInt cy)
+void PyUITooltipHost::showAtClient(window::PyUIWindow& win, PyStr text, PyInt cx, PyInt cy)
 {
   (void)win;
   (void)text;
@@ -89,7 +89,7 @@ void UITooltipHost::show_at_client(window::UIWindow& win, PyStr text, PyInt cx, 
   (void)cy;
 }
 
-void UITooltipHost::hide()
+void PyUITooltipHost::hide()
 {
 }
 

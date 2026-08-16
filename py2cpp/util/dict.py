@@ -1,8 +1,8 @@
 """``dict[Key, Value]`` / ``frozendict[Key, Value]``：链式哈希表，插入序与 Python 3.13 ``dict`` API 对齐。
 
-``FrozenDictMixin`` 为二者共享核心；``dict_entry`` 为共用桶节点。
-键 ``Key`` 须满足 ``DictKey``。``dict`` 可变；``{}`` / ``dict()``。
-``frozendict`` 不可变；空表 ``{}``；拷贝 ``new(dict|frozendict)``；``init_from_*``。
+``FrozenDictMixin`` 为二者共享核心；``DictEntryUnsafe`` 为共用桶节点。
+键 ``Key`` 须满足 ``DictKeyType``。``dict`` 可变；``{}`` / ``dict()``。
+``frozendict`` 不可变；空表 ``{}``；拷贝 ``new(dict|frozendict)``；``initFrom*``。
 可变 ``dict`` 的迭代器 / view 对宿主做 ``copy()`` 快照；``frozendict`` 按值持有宿主。
 内部 ``copy`` / ``update`` / ``__copy__`` 等按 ``_order`` 下标遍历；``class dict(friends=(frozendict, …))`` 要求本模块内 ``frozendict`` 已定义（见文件内声明顺序）。勿 ``for k in other``（会与 ``__iter__``→``copy`` 互递归栈溢出）。
 """
@@ -10,31 +10,30 @@ from ..builtins import *
 from .list import list
 from ..core.exceptions import KeyError, StopIteration, ValueError
 from .mixins import ContainerMixin
-from .protocols import DictKey
+from .protocols import DictKeyType
 
 
 @boxing
-@native_name("PyDictEntry")
-class dict_entry[Key: DictKey, Value]:
-  def __init__(self, key: Key, value: Value, next_entry: Self):
+class DictEntryUnsafe[Key: DictKeyType, Value]:
+  def __init__(self, key: Key, value: Value, nextEntry: Self):
     self.key: Key = key
     self.value: Value = value
-    self.next: Self = next_entry
+    self.next: Self = nextEntry
 
 
 @mixin
-class FrozenDictMixin[Key: DictKey, Value]:
+class FrozenDictMixin[Key: DictKeyType, Value]:
   """映射共享核心（``dict`` / ``frozendict``）；宿主须声明 ``_capacity``、``_size``、``_order``、``_values``、``_buckets``。"""
 
   def __del__(self):
-    self._clear_entries()
+    self._clearEntries()
 
   def __copy__(self, other: Self):
-    self._ensure_active()
+    self._ensureActive()
     if other.__moved__:
       raise ValueError("move from moved container")
     if self._size > 0:
-      self._clear_entries()
+      self._clearEntries()
     else:
       self._order.clear()
       self._values.clear()
@@ -43,20 +42,20 @@ class FrozenDictMixin[Key: DictKey, Value]:
     self._buckets = new(self._capacity)
     for i in range(len(other._order)):
       k: Key = other._order[i]
-      self._insert_new(k, other[k])
+      self._insertNew(k, other[k])
 
   def __move__(self, other: Self):
-    self._ensure_active()
+    self._ensureActive()
     if other.__moved__:
       raise ValueError("move from moved container")
     if self._size > 0:
-      self._clear_entries()
+      self._clearEntries()
     self._capacity = other._capacity
     self._size = other._size
     self._order = other._order
     self._values = other._values
     self._buckets = other._buckets
-    other._reset_after_move()
+    other._resetAfterMove()
 
   @immutable
   def __bool__(self) -> bool:
@@ -78,32 +77,32 @@ class FrozenDictMixin[Key: DictKey, Value]:
 
   @immutable
   def __len__(self) -> int:
-    self._ensure_active()
+    self._ensureActive()
     return self._size
 
   @immutable
-  def key_at(self, index: int) -> Key:
+  def keyAt(self, index: int) -> Key:
     """插入序第 ``index`` 个键（O(1)；JSON 等热路径勿 ``for k in d`` 触发迭代器 ``copy()``）。"""
-    self._ensure_active()
+    self._ensureActive()
     return self._order[index]
 
   @immutable
-  def value_at(self, index: int) -> Value:
+  def valueAt(self, index: int) -> Value:
     """插入序第 ``index`` 个值（O(1)；与 ``_order`` 同步的 ``_values``）。"""
-    self._ensure_active()
+    self._ensureActive()
     return self._values[index]
 
   @immutable
   def __getitem__(self, key: Key) -> Value:
-    self._ensure_active()
-    node: dict_entry[Key, Value] = self._find_node(key)
+    self._ensureActive()
+    node: DictEntryUnsafe[Key, Value] = self._findNode(key)
     if node is None:
       raise KeyError("key not found")
     return node.value
 
   @immutable
   def __contains__(self, key: Key) -> bool:
-    return self._find_node(key) is not None
+    return self._findNode(key) is not None
 
   @immutable
   def get(self, key: Key, default: Value @lazy = None) -> Value:
@@ -113,12 +112,12 @@ class FrozenDictMixin[Key: DictKey, Value]:
       return None
     return default
 
-  def _clear_entries(self):
+  def _clearEntries(self):
     for b in range(self._capacity):
-      cur: dict_entry[Key, Value] = self._buckets[b]
+      cur: DictEntryUnsafe[Key, Value] = self._buckets[b]
       while cur is not None:
-        nxt: dict_entry[Key, Value] = cur.next
-        self._free_entry(cur)
+        nxt: DictEntryUnsafe[Key, Value] = cur.next
+        self._freeEntry(cur)
         cur = nxt
       self._buckets[b] = None
     self._size = 0
@@ -126,16 +125,16 @@ class FrozenDictMixin[Key: DictKey, Value]:
     self._values.clear()
 
   @immutable
-  def _find_node(self, key: Key) -> dict_entry[Key, Value]:
+  def _findNode(self, key: Key) -> DictEntryUnsafe[Key, Value]:
     idx: int = self._index(key)
-    cur: dict_entry[Key, Value] = self._buckets[idx]
+    cur: DictEntryUnsafe[Key, Value] = self._buckets[idx]
     while cur is not None:
       if cur.key == key:
         return cur
       cur = cur.next
     return None
 
-  def _free_entry(self, node: dict_entry[Key, Value]):
+  def _freeEntry(self, node: DictEntryUnsafe[Key, Value]):
     destroy(node)
     free(node)
 
@@ -146,18 +145,18 @@ class FrozenDictMixin[Key: DictKey, Value]:
       h = -h
     return h % self._capacity
 
-  def _insert_new(self, key: Key, value: Value) -> None:
-    self._ensure_active()
-    if self._find_node(key) is not None:
+  def _insertNew(self, key: Key, value: Value) -> None:
+    self._ensureActive()
+    if self._findNode(key) is not None:
       return
     idx: int = self._index(key)
-    entry = dict_entry[Key, Value](key, value, self._buckets[idx])
+    entry = DictEntryUnsafe[Key, Value](key, value, self._buckets[idx])
     self._buckets[idx] = entry
     self._size += 1
     self._order.append(key)
     self._values.append(value)
 
-  def _reset_after_move(self):
+  def _resetAfterMove(self):
     self._size = 0
     self._order = new()
     self._values = new()
@@ -165,7 +164,7 @@ class FrozenDictMixin[Key: DictKey, Value]:
 
 
 @mixin
-class FrozenDictKeyIteratorMixin[Key: DictKey, Value]:
+class FrozenDictKeyIteratorMixin[Key: DictKeyType, Value]:
   """插入序键迭代；宿主 ``__init__`` 须设 ``_dct``、``_index=0``。"""
 
   def __iter__(self):
@@ -180,7 +179,7 @@ class FrozenDictKeyIteratorMixin[Key: DictKey, Value]:
 
 
 @mixin
-class FrozenDictKeyReverseIteratorMixin[Key: DictKey, Value]:
+class FrozenDictKeyReverseIteratorMixin[Key: DictKeyType, Value]:
   """插入序反向键迭代；宿主 ``__init__`` 须设 ``_dct``、``_index=len(dct)-1``。"""
 
   def __iter__(self):
@@ -195,7 +194,7 @@ class FrozenDictKeyReverseIteratorMixin[Key: DictKey, Value]:
 
 
 @mixin
-class FrozenDictValuesIteratorMixin[Key: DictKey, Value]:
+class FrozenDictValuesIteratorMixin[Key: DictKeyType, Value]:
   """插入序值迭代；宿主 ``__init__`` 须设 ``_dct``、``_index=0``。"""
 
   def __iter__(self):
@@ -210,7 +209,7 @@ class FrozenDictValuesIteratorMixin[Key: DictKey, Value]:
 
 
 @mixin
-class FrozenDictItemsIteratorMixin[Key: DictKey, Value]:
+class FrozenDictItemsIteratorMixin[Key: DictKeyType, Value]:
   """插入序项迭代；宿主 ``__init__`` 须设 ``_dct``、``_index=0``。"""
 
   def __iter__(self):
@@ -225,7 +224,7 @@ class FrozenDictItemsIteratorMixin[Key: DictKey, Value]:
 
 
 @mixin
-class FrozenDictKeysViewMixin[Key: DictKey, Value]:
+class FrozenDictKeysViewMixin[Key: DictKeyType, Value]:
   @immutable
   def __bool__(self) -> bool:
     return bool(self._dct)
@@ -235,76 +234,69 @@ class FrozenDictKeysViewMixin[Key: DictKey, Value]:
     return len(self._dct)
 
 
-@native_name("PyFrozenDictKeyIterator")
-class frozendict_key_iterator[Key: DictKey, Value](FrozenDictKeyIteratorMixin[Key, Value]):
+class FrozenDictKeyIterator[Key: DictKeyType, Value](FrozenDictKeyIteratorMixin[Key, Value]):
   def __init__(self, dct: frozendict[Key, Value]):
     self._dct: frozendict[Key, Value] = dct
     self._index: int = 0
 
 
-@native_name("PyFrozenDictKeyReverseIterator")
-class frozendict_key_reverse_iterator[Key: DictKey, Value](FrozenDictKeyReverseIteratorMixin[Key, Value]):
+class FrozenDictKeyReverseIterator[Key: DictKeyType, Value](FrozenDictKeyReverseIteratorMixin[Key, Value]):
   def __init__(self, dct: frozendict[Key, Value]):
     self._dct: frozendict[Key, Value] = dct
     self._index: int = len(self._dct) - 1
 
 
-@native_name("PyFrozenDictValuesIterator")
-class frozendict_values_iterator[Key: DictKey, Value](FrozenDictValuesIteratorMixin[Key, Value]):
+class FrozenDictValuesIterator[Key: DictKeyType, Value](FrozenDictValuesIteratorMixin[Key, Value]):
   def __init__(self, dct: frozendict[Key, Value]):
     self._dct: frozendict[Key, Value] = dct
     self._index: int = 0
 
 
-@native_name("PyFrozenDictItemsIterator")
-class frozendict_items_iterator[Key: DictKey, Value](FrozenDictItemsIteratorMixin[Key, Value]):
+class FrozenDictItemsIterator[Key: DictKeyType, Value](FrozenDictItemsIteratorMixin[Key, Value]):
   def __init__(self, dct: frozendict[Key, Value]):
     self._dct: frozendict[Key, Value] = dct
     self._index: int = 0
 
 
-@native_name("PyFrozenDictKeysView")
-class frozendict_keys_view[Key: DictKey, Value](FrozenDictKeysViewMixin[Key, Value]):
+class FrozenDictKeysView[Key: DictKeyType, Value](FrozenDictKeysViewMixin[Key, Value]):
   def __init__(self, dct: frozendict[Key, Value]):
     self._dct: frozendict[Key, Value] = dct
 
-  def __iter__(self) -> frozendict_key_iterator[Key, Value]:
+  def __iter__(self) -> FrozenDictKeyIterator[Key, Value]:
     return new(self._dct)
 
-  def __reversed__(self) -> frozendict_key_reverse_iterator[Key, Value]:
+  def __reversed__(self) -> FrozenDictKeyReverseIterator[Key, Value]:
     return new(self._dct)
 
 
-@native_name("PyFrozenDictValuesView")
-class frozendict_values_view[Key: DictKey, Value](FrozenDictKeysViewMixin[Key, Value]):
+class FrozenDictValuesView[Key: DictKeyType, Value](FrozenDictKeysViewMixin[Key, Value]):
   def __init__(self, dct: frozendict[Key, Value]):
     self._dct: frozendict[Key, Value] = dct
 
-  def __iter__(self) -> frozendict_values_iterator[Key, Value]:
+  def __iter__(self) -> FrozenDictValuesIterator[Key, Value]:
     return new(self._dct)
 
 
-@native_name("PyFrozenDictItemsView")
-class frozendict_items_view[Key: DictKey, Value](FrozenDictKeysViewMixin[Key, Value]):
+class FrozenDictItemsView[Key: DictKeyType, Value](FrozenDictKeysViewMixin[Key, Value]):
   def __init__(self, dct: frozendict[Key, Value]):
     self._dct: frozendict[Key, Value] = dct
 
-  def __iter__(self) -> frozendict_items_iterator[Key, Value]:
+  def __iter__(self) -> FrozenDictItemsIterator[Key, Value]:
     return new(self._dct)
 
 
 @native_name("PyFrozenDict")
-class frozendict[Key: DictKey, Value](
+class frozendict[Key: DictKeyType, Value](
   FrozenDictMixin[Key, Value],
   ContainerMixin,
   friends=(
-    frozendict_key_iterator,
-    frozendict_key_reverse_iterator,
-    frozendict_values_iterator,
-    frozendict_items_iterator,
-    frozendict_keys_view,
-    frozendict_values_view,
-    frozendict_items_view,
+    FrozenDictKeyIterator,
+    FrozenDictKeyReverseIterator,
+    FrozenDictValuesIterator,
+    FrozenDictItemsIterator,
+    FrozenDictKeysView,
+    FrozenDictValuesView,
+    FrozenDictItemsView,
   ),
 ):
   __repr__ = __str__
@@ -314,7 +306,7 @@ class frozendict[Key: DictKey, Value](
     self._size: int = 0
     self._order: list[Key] = []
     self._values: list[Value] = []
-    self._buckets: dict_entry[Key, Value][:] = new(self._capacity)
+    self._buckets: DictEntryUnsafe[Key, Value][:] = new(self._capacity)
 
   @immutable
   def __str__(self) -> str:
@@ -330,11 +322,11 @@ class frozendict[Key: DictKey, Value](
     return out + "})"
 
   @immutable
-  def __iter__(self) -> frozendict_key_iterator[Key, Value]:
+  def __iter__(self) -> FrozenDictKeyIterator[Key, Value]:
     return new(self)
 
   @immutable
-  def __reversed__(self) -> frozendict_key_reverse_iterator[Key, Value]:
+  def __reversed__(self) -> FrozenDictKeyReverseIterator[Key, Value]:
     return new(self)
 
   @property
@@ -344,113 +336,105 @@ class frozendict[Key: DictKey, Value](
 
   @immutable
   def copy(self) -> Self:
-    self._ensure_active()
+    self._ensureActive()
     out: Self = {}
-    out.init_from_frozendict(self)
+    out.initFromFrozendict(self)
     return out
 
   @immutable
-  def items(self) -> frozendict_items_view[Key, Value]:
+  def items(self) -> FrozenDictItemsView[Key, Value]:
     return new(self)
 
   @immutable
-  def keys(self) -> frozendict_keys_view[Key, Value]:
+  def keys(self) -> FrozenDictKeysView[Key, Value]:
     return new(self)
 
   @immutable
-  def values(self) -> frozendict_values_view[Key, Value]:
+  def values(self) -> FrozenDictValuesView[Key, Value]:
     return new(self)
 
-  def init_from_dict(self, other: dict[Key, Value]) -> None:
-    self._clear_entries()
+  def initFromDict(self, other: dict[Key, Value]) -> None:
+    self._clearEntries()
     for i in range(len(other._order)):
       k: Key = other._order[i]
-      self._insert_new(k, other[k])
+      self._insertNew(k, other[k])
 
-  def init_from_frozendict(self, other: Self) -> None:
-    self._clear_entries()
+  def initFromFrozendict(self, other: Self) -> None:
+    self._clearEntries()
     for i in range(len(other._order)):
       k: Key = other._order[i]
-      self._insert_new(k, other[k])
+      self._insertNew(k, other[k])
 
 
-@native_name("PyDictKeyIterator")
-class dict_key_iterator[Key: DictKey, Value](FrozenDictKeyIteratorMixin[Key, Value]):
+class DictKeyIterator[Key: DictKeyType, Value](FrozenDictKeyIteratorMixin[Key, Value]):
   def __init__(self, dct: dict[Key, Value]):
     self._dct: dict[Key, Value] = dct.copy()
     self._index: int = 0
 
 
-@native_name("PyDictKeyReverseIterator")
-class dict_key_reverse_iterator[Key: DictKey, Value](FrozenDictKeyReverseIteratorMixin[Key, Value]):
+class DictKeyReverseIterator[Key: DictKeyType, Value](FrozenDictKeyReverseIteratorMixin[Key, Value]):
   def __init__(self, dct: dict[Key, Value]):
     self._dct: dict[Key, Value] = dct.copy()
     self._index: int = len(self._dct) - 1
 
 
-@native_name("PyDictValuesIterator")
-class dict_values_iterator[Key: DictKey, Value](FrozenDictValuesIteratorMixin[Key, Value]):
+class DictValuesIterator[Key: DictKeyType, Value](FrozenDictValuesIteratorMixin[Key, Value]):
   def __init__(self, dct: dict[Key, Value]):
     self._dct: dict[Key, Value] = dct.copy()
     self._index: int = 0
 
 
-@native_name("PyDictItemsIterator")
-class dict_items_iterator[Key: DictKey, Value](FrozenDictItemsIteratorMixin[Key, Value]):
+class DictItemsIterator[Key: DictKeyType, Value](FrozenDictItemsIteratorMixin[Key, Value]):
   def __init__(self, dct: dict[Key, Value]):
     self._dct: dict[Key, Value] = dct.copy()
     self._index: int = 0
 
 
-@native_name("PyDictKeysView")
-class dict_keys_view[Key: DictKey, Value](FrozenDictKeysViewMixin[Key, Value]):
+class DictKeysView[Key: DictKeyType, Value](FrozenDictKeysViewMixin[Key, Value]):
   def __init__(self, dct: dict[Key, Value]):
     self._dct: dict[Key, Value] = dct.copy()
 
-  def __iter__(self) -> dict_key_iterator[Key, Value]:
+  def __iter__(self) -> DictKeyIterator[Key, Value]:
     return new(self._dct)
 
-  def __reversed__(self) -> dict_key_reverse_iterator[Key, Value]:
+  def __reversed__(self) -> DictKeyReverseIterator[Key, Value]:
     return new(self._dct)
 
 
-@native_name("PyDictValuesView")
-class dict_values_view[Key: DictKey, Value](FrozenDictKeysViewMixin[Key, Value]):
+class DictValuesView[Key: DictKeyType, Value](FrozenDictKeysViewMixin[Key, Value]):
   def __init__(self, dct: dict[Key, Value]):
     self._dct: dict[Key, Value] = dct.copy()
 
-  def __iter__(self) -> dict_values_iterator[Key, Value]:
+  def __iter__(self) -> DictValuesIterator[Key, Value]:
     return new(self._dct)
 
 
-@native_name("PyDictItemsView")
-class dict_items_view[Key: DictKey, Value](FrozenDictKeysViewMixin[Key, Value]):
+class DictItemsView[Key: DictKeyType, Value](FrozenDictKeysViewMixin[Key, Value]):
   def __init__(self, dct: dict[Key, Value]):
     self._dct: dict[Key, Value] = dct.copy()
 
-  def __iter__(self) -> dict_items_iterator[Key, Value]:
+  def __iter__(self) -> DictItemsIterator[Key, Value]:
     return new(self._dct)
 
 
-@native_name("PyDict")
-class dict[Key: DictKey, Value](
+class dict[Key: DictKeyType, Value](
   FrozenDictMixin[Key, Value],
   ContainerMixin,
   friends=(
-    dict_key_iterator,
-    dict_key_reverse_iterator,
-    dict_values_iterator,
-    dict_items_iterator,
-    dict_keys_view,
-    dict_values_view,
-    dict_items_view,
+    DictKeyIterator,
+    DictKeyReverseIterator,
+    DictValuesIterator,
+    DictItemsIterator,
+    DictKeysView,
+    DictValuesView,
+    DictItemsView,
     frozendict,
   ),
 ):
   __repr__ = __str__
 
   @staticmethod
-  def fromkeys(keys: list[Key], value: Value) -> Self:
+  def fromKeys(keys: list[Key], value: Value) -> Self:
     d: Self = {}
     for k in keys:
       d[k] = value
@@ -461,18 +445,18 @@ class dict[Key: DictKey, Value](
     self._size: int = 0
     self._order: list[Key] = []
     self._values: list[Value] = []
-    self._buckets: dict_entry[Key, Value][:] = new(self._capacity)
+    self._buckets: DictEntryUnsafe[Key, Value][:] = new(self._capacity)
 
   def __copy__(self, other: Self):
     """深拷贝条目（避免默认成员拷贝共享 ``_buckets`` 链）。
 
-    复制构造时 ``_buckets`` 尚未分配（C++ 为 ``nullptr``），不可调 ``_clear_entries``。
+    复制构造时 ``_buckets`` 尚未分配（C++ 为 ``nullptr``），不可调 ``_clearEntries``。
     """
-    self._ensure_active()
+    self._ensureActive()
     if other.__moved__:
       raise ValueError("move from moved container")
     if self._size > 0:
-      self._clear_entries()
+      self._clearEntries()
     else:
       self._order.clear()
       self._values.clear()
@@ -481,7 +465,7 @@ class dict[Key: DictKey, Value](
     self._buckets = new(self._capacity)
     for i in range(len(other._order)):
       k: Key = other._order[i]
-      self._insert_new(k, other[k])
+      self._insertNew(k, other[k])
 
   @immutable
   def __str__(self) -> str:
@@ -497,12 +481,12 @@ class dict[Key: DictKey, Value](
     return out + "}"
 
   @immutable
-  def __format__(self, format_spec: str) -> str:
+  def __format__(self, formatSpec: str) -> str:
     return str(self)
 
   def __setitem__(self, key: Key, value: Value):
-    self._ensure_active()
-    node: dict_entry[Key, Value] = self._find_node(key)
+    self._ensureActive()
+    node: DictEntryUnsafe[Key, Value] = self._findNode(key)
     if node is not None:
       node.value = value
       n: int = len(self._order)
@@ -512,21 +496,21 @@ class dict[Key: DictKey, Value](
           return
       return
     idx: int = self._index(key)
-    entry = dict_entry[Key, Value](key, value, self._buckets[idx])
+    entry = DictEntryUnsafe[Key, Value](key, value, self._buckets[idx])
     self._buckets[idx] = entry
     self._size += 1
     self._order.append(key)
     self._values.append(value)
-    self._maybe_grow()
+    self._maybeGrow()
 
   def __delitem__(self, key: Key):
-    self._pop_key(key)
+    self._popKey(key)
 
   @immutable
-  def __iter__(self) -> dict_key_iterator[Key, Value]:
+  def __iter__(self) -> DictKeyIterator[Key, Value]:
     return new(self)
 
-  def __reversed__(self) -> dict_key_reverse_iterator[Key, Value]:
+  def __reversed__(self) -> DictKeyReverseIterator[Key, Value]:
     return new(self)
 
   @property
@@ -558,37 +542,37 @@ class dict[Key: DictKey, Value](
     return self
 
   def clear(self):
-    self._clear_entries()
+    self._clearEntries()
 
   @immutable
   def copy(self) -> Self:
-    self._ensure_active()
+    self._ensureActive()
     out: Self = {}
     out.update(self)
     return out
 
   @immutable
-  def items(self) -> dict_items_view[Key, Value]:
+  def items(self) -> DictItemsView[Key, Value]:
     return new(self)
 
   @immutable
-  def keys(self) -> dict_keys_view[Key, Value]:
+  def keys(self) -> DictKeysView[Key, Value]:
     return new(self)
 
   def pop(self, key: Key) -> Value:
     if key not in self:
       raise KeyError("pop")
-    return self._pop_key(key)
+    return self._popKey(key)
 
-  def popitem(self) -> (Key, Value):
+  def popItem(self) -> (Key, Value):
     if not self:
-      raise KeyError("popitem")
+      raise KeyError("popItem")
     key: Key = self._order.pop()
     val: Value = self._values.pop()
-    self._erase_key(key)
+    self._eraseKey(key)
     return (key, val)
 
-  def setdefault(self, key: Key, default: Value) -> Value:
+  def setDefault(self, key: Key, default: Value) -> Value:
     if key in self:
       return self[key]
     self[key] = default
@@ -601,21 +585,21 @@ class dict[Key: DictKey, Value](
       self[k] = other[k]
 
   @immutable
-  def values(self) -> dict_values_view[Key, Value]:
+  def values(self) -> DictValuesView[Key, Value]:
     return new(self)
 
-  def _erase_key(self, key: Key):
+  def _eraseKey(self, key: Key):
     """从哈希链删除 ``key``（不修改 ``order``）。"""
     idx: int = self._index(key)
-    prev: dict_entry[Key, Value] = None
-    cur: dict_entry[Key, Value] = self._buckets[idx]
+    prev: DictEntryUnsafe[Key, Value] = None
+    cur: DictEntryUnsafe[Key, Value] = self._buckets[idx]
     while cur is not None:
       if cur.key == key:
         if prev is None:
           self._buckets[idx] = cur.next
         else:
           prev.next = cur.next
-        self._free_entry(cur)
+        self._freeEntry(cur)
         self._size -= 1
         return
       prev = cur
@@ -623,18 +607,18 @@ class dict[Key: DictKey, Value](
     raise KeyError("key not found")
 
   @immutable
-  def _load_limit(self) -> int:
+  def _loadLimit(self) -> int:
     return (self._capacity * 2) // 3 + 1
 
-  def _maybe_grow(self):
-    if self._size < self._load_limit():
+  def _maybeGrow(self):
+    if self._size < self._loadLimit():
       return
-    new_cap: int = self._capacity * 2
-    if new_cap < 8:
-      new_cap = 8
-    self._rehash(new_cap)
+    newCap: int = self._capacity * 2
+    if newCap < 8:
+      newCap = 8
+    self._rehash(newCap)
 
-  def _order_remove(self, key: Key):
+  def _orderRemove(self, key: Key):
     n: int = len(self._order)
     for i in range(n):
       if self._order[i] == key:
@@ -646,22 +630,22 @@ class dict[Key: DictKey, Value](
         return
     raise KeyError("key not in order")
 
-  def _pop_key(self, key: Key) -> Value:
+  def _popKey(self, key: Key) -> Value:
     """从哈希表与 ``order`` 同步移除 ``key`` 并返回值。"""
     val: Value = self[key]
-    self._erase_key(key)
-    self._order_remove(key)
+    self._eraseKey(key)
+    self._orderRemove(key)
     return val
 
-  def _rehash(self, new_cap: int):
-    scratch_k: list[Key] = []
+  def _rehash(self, newCap: int):
+    scratchK: list[Key] = []
     for i in range(len(self._order)):
-      scratch_k.append(self._order[i])
-    scratch_v: list[Value] = []
+      scratchK.append(self._order[i])
+    scratchV: list[Value] = []
     for i in range(len(self._order)):
-      scratch_v.append(self._values[i])
-    self._clear_entries()
-    self._capacity = new_cap
-    self._buckets = new(new_cap)
-    for i in range(len(scratch_k)):
-      self[scratch_k[i]] = scratch_v[i]
+      scratchV.append(self._values[i])
+    self._clearEntries()
+    self._capacity = newCap
+    self._buckets = new(newCap)
+    for i in range(len(scratchK)):
+      self[scratchK[i]] = scratchV[i]

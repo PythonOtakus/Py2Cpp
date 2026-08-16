@@ -6,11 +6,11 @@ from ..core.exceptions import ValueError
 @mixin
 class ContainerMixin:
   @immutable
-  def _ensure_active(self) -> None:
+  def _ensureActive(self) -> None:
     if self.__moved__:
       raise ValueError("container used after move")
 
   @immutable
-  def _ensure_other_active(self, other: Self) -> None:
+  def _ensureOtherActive(self, other: Self) -> None:
     if other.__moved__:
       raise ValueError("move from moved container")

@@ -4,7 +4,7 @@
 
 参考 https://docs.python.org/3.13/library/cmath.html 与 ``Modules/cmathmodule.c``。
 组合逻辑为纯 Python，实部/虚部经 ``float64`` 与 ``py2cpp.math`` libm；返回值均为 ``complex``。
-``Inf``/``NaN``/``Infj``/``NaNj`` 与 ``isfinite``/``isInf``/``isNaN`` 见 ``complex`` 类型静态成员（同 ``float`` 标量策略）。
+``Inf``/``NaN``/``Infj``/``NaNj`` 与 ``isFinite``/``isInf``/``isNaN`` 见 ``complex`` 类型静态成员（同 ``float`` 标量策略）。
 """
 from __future__ import annotations
 
@@ -52,7 +52,7 @@ def rect(r: float64, phi: float64) -> complex:
 
 
 @immutable
-def _log_core(z: complex) -> complex:
+def _logCore(z: complex) -> complex:
   xr: float64 = z.real
   xi: float64 = z.imag
   mod: float64 = hypot(xr, xi)
@@ -77,15 +77,15 @@ def exp(z: complex) -> complex:
 @native_name("cmath_*")
 @immutable
 def log(z: complex) -> complex:
-  return _log_core(z)
+  return _logCore(z)
 
 
 @overload
 @native_name("cmath_*")
 @immutable
 def log(z: complex, base: float64) -> complex:
-  core: complex = _log_core(z)
-  denom: complex = _log_core(complex(base, 0.0))
+  core: complex = _logCore(z)
+  denom: complex = _logCore(complex(base, 0.0))
   return core / denom
 
 
@@ -93,14 +93,14 @@ def log(z: complex, base: float64) -> complex:
 @immutable
 def log10(z: complex) -> complex:
   ln10: complex = new(_rm.log(10.0), 0.0)
-  return _log_core(z) / ln10
+  return _logCore(z) / ln10
 
 
 @native_name("cmath_*")
 @immutable
 def sqrt(z: complex) -> complex:
   half: complex = new(0.5, 0)
-  return exp(half * _log_core(z))
+  return exp(half * _logCore(z))
 
 
 # ---------------------------------------------------------------------------
@@ -151,27 +151,27 @@ def asin(z: complex) -> complex:
   zz: complex = z * z
   inner: complex = _i * z + sqrt(one - zz)
   w: complex = log(inner)
-  neg_i: complex = -_i
-  return neg_i * w
+  negI: complex = -_i
+  return negI * w
 
 
 @native_name("cmath_*")
 @immutable
 def acos(z: complex) -> complex:
   half: float64 = 0.5 * pi
-  half_pi: complex = new(half, 0.0)
-  return half_pi - asin(z)
+  halfPi: complex = new(half, 0.0)
+  return halfPi - asin(z)
 
 
 @native_name("cmath_*")
 @immutable
 def atan(z: complex) -> complex:
   one: complex = new(1, 0)
-  half_i: complex = new(0, 0.5)
+  halfI: complex = new(0, 0.5)
   num: complex = one - _i * z
   denom: complex = one + _i * z
   ratio: complex = num / denom
-  return half_i * log(ratio)
+  return halfI * log(ratio)
 
 
 # ---------------------------------------------------------------------------
@@ -230,11 +230,11 @@ def atanh(z: complex) -> complex:
 
 
 @immutable
-def isclose(
+def isClose(
   a: complex,
   b: complex,
-  rel_tol: float64 = 1e-09,
-  abs_tol: float64 = 0.0,
+  relTol: float64 = 1e-09,
+  absTol: float64 = 0.0,
 ) -> bool:
   if a == b:
     return True
@@ -243,12 +243,12 @@ def isclose(
   if complex.isNaN(a) or complex.isNaN(b):
     return False
   diff: float64 = abs(a - b)
-  scale_a: float64 = abs(a)
-  scale_b: float64 = abs(b)
-  scale: float64 = scale_a
-  if scale_b > scale:
-    scale = scale_b
-  tol: float64 = rel_tol * scale
-  if abs_tol > tol:
-    tol = abs_tol
+  scaleA: float64 = abs(a)
+  scaleB: float64 = abs(b)
+  scale: float64 = scaleA
+  if scaleB > scale:
+    scale = scaleB
+  tol: float64 = relTol * scale
+  if absTol > tol:
+    tol = absTol
   return diff <= tol

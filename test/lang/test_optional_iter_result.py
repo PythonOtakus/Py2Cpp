@@ -1,12 +1,12 @@
 """``Optional[T]`` / ``IterResult[Y,R]``（``@union``）与 ``done`` / ``value`` 属性。"""
 from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
-from py2cpp.core.iter_result import IterResult, result_done
+from py2cpp.core.iter_result import IterResult, resultDone
 from py2cpp.core.optional import Optional
 from py2cpp.core.result import Result
 
 
-def optional_some_value(opt: Optional[int]) -> int:
+def optionalSomeValue(opt: Optional[int]) -> int:
   match opt:
     case None:
       return -1
@@ -14,7 +14,7 @@ def optional_some_value(opt: Optional[int]) -> int:
       return v
 
 
-def optional_literal_match(opt: Optional[int]) -> int:
+def optionalLiteralMatch(opt: Optional[int]) -> int:
   match opt:
     case None:
       return 0
@@ -24,33 +24,33 @@ def optional_literal_match(opt: Optional[int]) -> int:
       return 2
 
 
-def iter_yield_value(step: IterResult[int, int]) -> int:
+def iterYieldValue(step: IterResult[int, int]) -> int:
   if step.done:
     return -1
   return step.value
 
 
-def iter_return_value(step: IterResult[int, int]) -> int:
+def iterReturnValue(step: IterResult[int, int]) -> int:
   if step.done:
-    return step.return_value
+    return step.returnValue
   return 0
 
 
-def optional_unbox(opt: Optional[int]) -> int:
+def optionalUnbox(opt: Optional[int]) -> int:
   return opt.value
 
 
-def optional_from_value(v: int) -> Optional[int]:
+def optionalFromValue(v: int) -> Optional[int]:
   out: Optional[int] = v
   return out
 
 
-def optional_none() -> Optional[int]:
+def optionalNone() -> Optional[int]:
   out: Optional[int] = None
   return out
 
 
-def optional_none_or_value(v: int | None) -> int:
+def optionalNoneOrValue(v: int | None) -> int:
   x: Optional[int] = v
   if x is None:
     return -1
@@ -59,15 +59,15 @@ def optional_none_or_value(v: int | None) -> int:
   return 0
 
 
-def echo_yield_value[Y, R](v: IterResult[Y, R].YieldValue) -> IterResult[Y, R].YieldValue:
+def echoYieldValue[Y, R](v: IterResult[Y, R].YieldValue) -> IterResult[Y, R].YieldValue:
   return v
 
 
-def echo_opt_value[T](v: Optional[T].Value) -> Optional[T].Value:
+def echoOptValue[T](v: Optional[T].Value) -> Optional[T].Value:
   return v
 
 
-def ok_value_tag[T]() -> int:
+def okValueTag[T]() -> int:
   if T is Result[int, ValueError]:
     return 1
   elif T is Result[str, ValueError]:
@@ -77,51 +77,51 @@ def ok_value_tag[T]() -> int:
 
 
 class OptionalSomeTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
-    self.assertEqual(optional_some_value(optional_from_value(7)), 7)
-    self.assertEqual(optional_some_value(optional_none()), -1)
-    self.assertEqual(optional_literal_match(optional_none()), 0)
-    self.assertEqual(optional_literal_match(optional_from_value(7)), 1)
-    self.assertEqual(optional_literal_match(optional_from_value(3)), 2)
+    self.assertEqual(optionalSomeValue(optionalFromValue(7)), 7)
+    self.assertEqual(optionalSomeValue(optionalNone()), -1)
+    self.assertEqual(optionalLiteralMatch(optionalNone()), 0)
+    self.assertEqual(optionalLiteralMatch(optionalFromValue(7)), 1)
+    self.assertEqual(optionalLiteralMatch(optionalFromValue(3)), 2)
 
 
 class OptionalBoxUnboxTests(TestCaseMixin):
-  _test_tag = 5
+  _testTag = 5
 
   @override
   def test(self):
     a: Optional[int] = 7
-    self.assertEqual(optional_unbox(a), 7)
+    self.assertEqual(optionalUnbox(a), 7)
     b: Optional[int] = None
     self.assertTrue(b is None)
     self.assertFalse(b is not None)
-    c: Optional[int] = optional_from_value(9)
-    self.assertEqual(optional_unbox(c), 9)
-    self.assertEqual(optional_none_or_value(3), 3)
-    self.assertEqual(optional_none_or_value(None), -1)
+    c: Optional[int] = optionalFromValue(9)
+    self.assertEqual(optionalUnbox(c), 9)
+    self.assertEqual(optionalNoneOrValue(3), 3)
+    self.assertEqual(optionalNoneOrValue(None), -1)
 
 
 class IterResultPropertyTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
     y: IterResult[int, int] = IterResult[int, int].Yield(3)
     self.assertFalse(y.done)
-    self.assertEqual(iter_yield_value(y), 3)
-    done: IterResult[int, int] = result_done[int, int]()
+    self.assertEqual(iterYieldValue(y), 3)
+    done: IterResult[int, int] = resultDone[int, int]()
     self.assertTrue(done.done)
-    self.assertEqual(iter_return_value(done), 0)
+    self.assertEqual(iterReturnValue(done), 0)
     ret: IterResult[int, int] = IterResult[int, int].Return(99)
     self.assertTrue(ret.done)
-    self.assertEqual(iter_return_value(ret), 99)
-    self.assertEqual(echo_yield_value[int, int](5), 5)
-    self.assertEqual(echo_opt_value(11), 11)
-    self.assertEqual(ok_value_tag[Result[int, ValueError]](), 1)
-    self.assertEqual(ok_value_tag[Result[str, ValueError]](), 2)
+    self.assertEqual(iterReturnValue(ret), 99)
+    self.assertEqual(echoYieldValue[int, int](5), 5)
+    self.assertEqual(echoOptValue(11), 11)
+    self.assertEqual(okValueTag[Result[int, ValueError]](), 1)
+    self.assertEqual(okValueTag[Result[str, ValueError]](), 2)
 
 
 def main() -> int:

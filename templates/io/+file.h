@@ -8,11 +8,11 @@ namespace io
 namespace file
 {
 
-class ScandirIterator
+class PyScandirIterator
 {
 PY2CPP_END
 
-PY2CPP_INJECT_CLASS(ScandirIterator)
+PY2CPP_INJECT_CLASS(PyScandirIterator)
 public:
 PY2CPP_END
 

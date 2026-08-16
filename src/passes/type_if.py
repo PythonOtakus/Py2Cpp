@@ -1542,10 +1542,11 @@ def _emit_is_not_specialization(
 ) -> None:
   if pat.extra_template_params:
     raise ValueError("``T is not …`` 不支持形参化类型模式")
-  cond = f"!std::is_same<T, {pat.cpp_type}>::value"
+  tp = plan.master_chain.type_param
+  cond = f"!std::is_same<{tp}, {pat.cpp_type}>::value"
   header = [
-    "template<typename T>",
-    f"struct {pick}<T, typename std::enable_if<{cond}, void>::type>",
+    f"template<typename {tp}>",
+    f"struct {pick}<{tp}, typename std::enable_if<{cond}, void>::type>",
   ]
   _emit_spliced_call(
     tr,
@@ -1558,8 +1559,8 @@ def _emit_is_not_specialization(
   )
 
 
-def _not_in_enable_if_cond(patterns: list[TypePattern]) -> str:
-  parts = [f"std::is_same<T, {p.cpp_type}>::value" for p in patterns]
+def _not_in_enable_if_cond(patterns: list[TypePattern], type_param: str) -> str:
+  parts = [f"std::is_same<{type_param}, {p.cpp_type}>::value" for p in patterns]
   inner = " || ".join(parts)
   return f"!({inner})"
 
@@ -1577,10 +1578,11 @@ def _emit_not_in_specialization(
   for pat in patterns:
     if pat.extra_template_params:
       raise ValueError("``T not in …`` 不支持形参化类型模式")
-  cond = _not_in_enable_if_cond(patterns)
+  tp = plan.master_chain.type_param
+  cond = _not_in_enable_if_cond(patterns, tp)
   header = [
-    "template<typename T>",
-    f"struct {pick}<T, typename std::enable_if<{cond}, void>::type>",
+    f"template<typename {tp}>",
+    f"struct {pick}<{tp}, typename std::enable_if<{cond}, void>::type>",
   ]
   _emit_spliced_call(
     tr,
@@ -1610,7 +1612,8 @@ def emit_type_if_dispatch(
 
   pick = _dispatch_pick_name(plan.func)
   params_impl, _, self_cpp = _call_params(tr, plan.func, sig)
-  tr.write_line("template<typename T, typename = void>")
+  tp = chain.type_param
+  tr.write_line(f"template<typename {tp}, typename = void>")
   tr.write_line(f"struct {pick};")
   tr.write_line()
   for br in chain.branches:
@@ -1647,8 +1650,8 @@ def emit_type_if_dispatch(
         self_cpp=self_cpp,
       )
   header = [
-    "template<typename T>",
-    f"struct {pick}<T, void>",
+    f"template<typename {tp}>",
+    f"struct {pick}<{tp}, void>",
   ]
   if chain.else_body is not None:
     if len(chain.branches) == 1 and _branch_is_not(chain.branches[0]):
@@ -1692,7 +1695,7 @@ def emit_type_if_dispatch(
     with tr._use_indent():
       with tr._use_block(sig_call):
         tr.write_line(
-          'static_assert(sizeof(T) == 0, "类型 if 未覆盖该 T 且无 else 分支");'
+          f'static_assert(sizeof({tp}) == 0, "类型 if 未覆盖该 {tp} 且无 else 分支");'
         )
     tr.write_line("};")
     tr.write_line()

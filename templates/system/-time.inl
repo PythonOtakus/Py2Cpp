@@ -89,7 +89,7 @@ PyFloat64 monotonic()
 #endif
 }
 
-PyFloat64 perf_counter()
+PyFloat64 perfCounter()
 {
 #ifdef _WIN32
   LARGE_INTEGER freq;
@@ -113,7 +113,7 @@ PyFloat64 perf_counter()
 #endif
 }
 
-PyFloat64 process_time()
+PyFloat64 processTime()
 {
 #ifdef _WIN32
   FILETIME create;
@@ -136,22 +136,22 @@ PyFloat64 process_time()
 #endif
 }
 
-static c_time _py_tm_to_struct(const struct tm* pt, int is_dst)
+static CTime _py_tm_to_struct(const struct tm* pt, int is_dst)
 {
   if (!pt)
   {
-    return c_time(1970, 1, 1, 0, 0, 0);
+    return CTime(1970, 1, 1, 0, 0, 0);
   }
-c_time st(
+CTime st(
     pt->tm_year + 1900,
     pt->tm_mon + 1,
     pt->tm_mday,
     pt->tm_hour,
     pt->tm_min,
     pt->tm_sec);
-  st.tm_wday = pt->tm_wday;
-  st.tm_yday = pt->tm_yday + 1;
-  st.tm_isdst = is_dst;
+  st.tmWday = pt->tm_wday;
+  st.tmYday = pt->tm_yday + 1;
+  st.tmIsdst = is_dst;
   return st;
 }
 
@@ -165,31 +165,31 @@ static int _py_day_of_week(int y, int m, int d)
   return (y + y / 4 - y / 100 + y / 400 + t[m - 1] + d) % 7;
 }
 
-static void _py_struct_to_tm(const c_time& st, struct tm* pt)
+static void _py_struct_to_tm(const CTime& st, struct tm* pt)
 {
   if (!pt)
   {
     return;
   }
   memset(pt, 0, sizeof(struct tm));
-  pt->tm_year = st.tm_year - 1900;
-  pt->tm_mon = st.tm_mon - 1;
-  pt->tm_mday = st.tm_mday;
-  pt->tm_hour = st.tm_hour;
-  pt->tm_min = st.tm_min;
-  pt->tm_sec = st.tm_sec;
-  pt->tm_wday = _py_day_of_week(st.tm_year, st.tm_mon, st.tm_mday);
-  pt->tm_isdst = st.tm_isdst;
+  pt->tm_year = st.tmYear - 1900;
+  pt->tm_mon = st.tmMon - 1;
+  pt->tm_mday = st.tmMday;
+  pt->tm_hour = st.tmHour;
+  pt->tm_min = st.tmMin;
+  pt->tm_sec = st.tmSec;
+  pt->tm_wday = _py_day_of_week(st.tmYear, st.tmMon, st.tmMday);
+  pt->tm_isdst = st.tmIsdst;
 }
 
-PyStr py_strftime(const PyStr& format, c_time st)
+PyStr pyStrftime(const PyStr& format, CTime st)
 {
   struct tm t;
   _py_struct_to_tm(st, &t);
   char buf[256];
   buf[0] = '\0';
   char fmt[128];
-  format.copy_to_span(PySpan<PyByte>((PyByte*)fmt, (PyInt)sizeof(fmt), 1));
+  format.copyToSpan(PySpan<PyByte>((PyByte*)fmt, (PyInt)sizeof(fmt), 1));
   size_t n = ::strftime(buf, sizeof(buf), fmt, &t);
   if (n == 0)
   {
@@ -198,7 +198,7 @@ PyStr py_strftime(const PyStr& format, c_time st)
   return PyStr(buf);
 }
 
-c_time gmtime(PyFloat64 secs)
+CTime gmTime(PyFloat64 secs)
 {
   time_t t = (time_t)((double)secs);
   struct tm buf;
@@ -214,7 +214,7 @@ c_time gmtime(PyFloat64 secs)
   return _py_tm_to_struct(pt, -1);
 }
 
-c_time localtime(PyFloat64 secs)
+CTime localTime(PyFloat64 secs)
 {
   time_t t = (time_t)((double)secs);
   struct tm buf;
@@ -235,7 +235,7 @@ c_time localtime(PyFloat64 secs)
   return _py_tm_to_struct(pt, is_dst);
 }
 
-PyFloat64 py_mktime(c_time st)
+PyFloat64 py_mkTime(CTime st)
 {
   struct tm t;
   _py_struct_to_tm(st, &t);
@@ -247,14 +247,14 @@ PyFloat64 py_mktime(c_time st)
   return (PyFloat64)((double)out);
 }
 
-c_time gmtime_now()
+CTime gmTimeNow()
 {
-  return gmtime(py_time());
+  return gmTime(py_time());
 }
 
-c_time localtime_now()
+CTime localTimeNow()
 {
-  return localtime(py_time());
+  return localTime(py_time());
 }
 
 PY2CPP_END_SCOPE

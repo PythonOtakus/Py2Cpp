@@ -23,7 +23,7 @@ class Rect:
     self._width: float64 = width
     self._height: float64 = height
 
-  def _copy_from(self, src: Self) -> None:
+  def _copyFrom(self, src: Self) -> None:
     self._x = src._x
     self._y = src._y
     self._width = src._width
@@ -31,13 +31,13 @@ class Rect:
 
   @staticmethod
   @immutable
-  def from_pos_size(pos: Vector2, size: Vector2) -> Self:
+  def fromPosSize(pos: Vector2, size: Vector2) -> Self:
     return new(pos.x, pos.y, size.x, size.y)
 
   @staticmethod
   @immutable
-  def from_min_max(pos_min: Vector2, pos_max: Vector2) -> Self:
-    return new(pos_min.x, pos_min.y, pos_max.x - pos_min.x, pos_max.y - pos_min.y)
+  def fromMinMax(posMin: Vector2, posMax: Vector2) -> Self:
+    return new(posMin.x, posMin.y, posMax.x - posMin.x, posMax.y - posMin.y)
 
   @property
   @immutable
@@ -97,48 +97,48 @@ class Rect:
 
   @property
   @immutable
-  def x_min(self) -> float64:
+  def xMin(self) -> float64:
     if self._width < 0.0:
       return self._x + self._width
     return self._x
 
   @property
   @immutable
-  def y_min(self) -> float64:
+  def yMin(self) -> float64:
     if self._height < 0.0:
       return self._y + self._height
     return self._y
 
   @property
   @immutable
-  def x_max(self) -> float64:
+  def xMax(self) -> float64:
     if self._width < 0.0:
       return self._x
     return self._x + self._width
 
   @property
   @immutable
-  def y_max(self) -> float64:
+  def yMax(self) -> float64:
     if self._height < 0.0:
       return self._y
     return self._y + self._height
 
   @property
   @immutable
-  def pos_min(self) -> Vector2:
-    return new(self.x_min, self.y_min)
+  def posMin(self) -> Vector2:
+    return new(self.xMin, self.yMin)
 
   @property
   @immutable
-  def pos_max(self) -> Vector2:
-    return new(self.x_max, self.y_max)
+  def posMax(self) -> Vector2:
+    return new(self.xMax, self.yMax)
 
   @property
   @immutable
   def center(self) -> Vector2:
     return new(
-      (self.x_min + self.x_max) * 0.5,
-      (self.y_min + self.y_max) * 0.5,
+      (self.xMin + self.xMax) * 0.5,
+      (self.yMin + self.yMax) * 0.5,
     )
 
   @property.setter
@@ -200,10 +200,10 @@ class Rect:
   @immutable
   def contains(self, point: Vector2) -> bool:
     return (
-      self.x_min <= point.x
-      and point.x <= self.x_max
-      and self.y_min <= point.y
-      and point.y <= self.y_max
+      self.xMin <= point.x
+      and point.x <= self.xMax
+      and self.yMin <= point.y
+      and point.y <= self.yMax
     )
 
   @immutable
@@ -213,37 +213,37 @@ class Rect:
   @immutable
   def overlaps(self, other: Self) -> bool:
     return not (
-      self.x_max < other.x_min
-      or other.x_max < self.x_min
-      or self.y_max < other.y_min
-      or other.y_max < self.y_min
+      self.xMax < other.xMin
+      or other.xMax < self.xMin
+      or self.yMax < other.yMin
+      or other.yMax < self.yMin
     )
 
   @immutable
   def embraces(self, other: Self) -> bool:
     return (
-      self.x_min <= other.x_min
-      and other.x_max <= self.x_max
-      and self.y_min <= other.y_min
-      and other.y_max <= self.y_max
+      self.xMin <= other.xMin
+      and other.xMax <= self.xMax
+      and self.yMin <= other.yMin
+      and other.yMax <= self.yMax
     )
 
   @immutable
   def intersect(self, other: Self) -> Self:
     if not self.overlaps(other):
       return new()
-    x0: float64 = self.x_min
-    if other.x_min > x0:
-      x0 = other.x_min
-    y0: float64 = self.y_min
-    if other.y_min > y0:
-      y0 = other.y_min
-    x1: float64 = self.x_max
-    if other.x_max < x1:
-      x1 = other.x_max
-    y1: float64 = self.y_max
-    if other.y_max < y1:
-      y1 = other.y_max
+    x0: float64 = self.xMin
+    if other.xMin > x0:
+      x0 = other.xMin
+    y0: float64 = self.yMin
+    if other.yMin > y0:
+      y0 = other.yMin
+    x1: float64 = self.xMax
+    if other.xMax < x1:
+      x1 = other.xMax
+    y1: float64 = self.yMax
+    if other.yMax < y1:
+      y1 = other.yMax
     return new(x0, y0, x1 - x0, y1 - y0)
 
   @immutable
@@ -254,18 +254,18 @@ class Rect:
       return new(b._x, b._y, b._width, b._height)
     if not b:
       return new(a._x, a._y, a._width, a._height)
-    x0: float64 = a.x_min
-    if b.x_min < x0:
-      x0 = b.x_min
-    y0: float64 = a.y_min
-    if b.y_min < y0:
-      y0 = b.y_min
-    x1: float64 = a.x_max
-    if b.x_max > x1:
-      x1 = b.x_max
-    y1: float64 = a.y_max
-    if b.y_max > y1:
-      y1 = b.y_max
+    x0: float64 = a.xMin
+    if b.xMin < x0:
+      x0 = b.xMin
+    y0: float64 = a.yMin
+    if b.yMin < y0:
+      y0 = b.yMin
+    x1: float64 = a.xMax
+    if b.xMax > x1:
+      x1 = b.xMax
+    y1: float64 = a.yMax
+    if b.yMax > y1:
+      y1 = b.yMax
     return new(x0, y0, x1 - x0, y1 - y0)
 
   @immutable
@@ -273,7 +273,7 @@ class Rect:
     return self.intersect(other)
 
   def __iand__(self, other: Self) -> Self:
-    self._copy_from(self.intersect(other))
+    self._copyFrom(self.intersect(other))
     return self
 
   @immutable
@@ -281,49 +281,49 @@ class Rect:
     return self.union(other)
 
   def __ior__(self, other: Self) -> Self:
-    self._copy_from(self.union(other))
+    self._copyFrom(self.union(other))
     return self
 
   @immutable
-  def apply_matrix(self, matrix: Matrix3) -> Self:
+  def applyMatrix(self, matrix: Matrix3) -> Self:
     """变换四角后取 AABB 外包。"""
-    p0: Vector2 = new(self.x_min, self.y_min)
-    p1: Vector2 = new(self.x_max, self.y_min)
-    p2: Vector2 = new(self.x_min, self.y_max)
-    p3: Vector2 = new(self.x_max, self.y_max)
-    c0: Vector2 = matrix.apply_to_point(p0)
-    c1: Vector2 = matrix.apply_to_point(p1)
-    c2: Vector2 = matrix.apply_to_point(p2)
-    c3: Vector2 = matrix.apply_to_point(p3)
-    min_x: float64 = c0.x
-    max_x: float64 = c0.x
-    min_y: float64 = c0.y
-    max_y: float64 = c0.y
-    if c1.x < min_x:
-      min_x = c1.x
-    if c1.x > max_x:
-      max_x = c1.x
-    if c1.y < min_y:
-      min_y = c1.y
-    if c1.y > max_y:
-      max_y = c1.y
-    if c2.x < min_x:
-      min_x = c2.x
-    if c2.x > max_x:
-      max_x = c2.x
-    if c2.y < min_y:
-      min_y = c2.y
-    if c2.y > max_y:
-      max_y = c2.y
-    if c3.x < min_x:
-      min_x = c3.x
-    if c3.x > max_x:
-      max_x = c3.x
-    if c3.y < min_y:
-      min_y = c3.y
-    if c3.y > max_y:
-      max_y = c3.y
-    return new(min_x, min_y, max_x - min_x, max_y - min_y)
+    p0: Vector2 = new(self.xMin, self.yMin)
+    p1: Vector2 = new(self.xMax, self.yMin)
+    p2: Vector2 = new(self.xMin, self.yMax)
+    p3: Vector2 = new(self.xMax, self.yMax)
+    c0: Vector2 = matrix.applyToPoint(p0)
+    c1: Vector2 = matrix.applyToPoint(p1)
+    c2: Vector2 = matrix.applyToPoint(p2)
+    c3: Vector2 = matrix.applyToPoint(p3)
+    minX: float64 = c0.x
+    maxX: float64 = c0.x
+    minY: float64 = c0.y
+    maxY: float64 = c0.y
+    if c1.x < minX:
+      minX = c1.x
+    if c1.x > maxX:
+      maxX = c1.x
+    if c1.y < minY:
+      minY = c1.y
+    if c1.y > maxY:
+      maxY = c1.y
+    if c2.x < minX:
+      minX = c2.x
+    if c2.x > maxX:
+      maxX = c2.x
+    if c2.y < minY:
+      minY = c2.y
+    if c2.y > maxY:
+      maxY = c2.y
+    if c3.x < minX:
+      minX = c3.x
+    if c3.x > maxX:
+      maxX = c3.x
+    if c3.y < minY:
+      minY = c3.y
+    if c3.y > maxY:
+      maxY = c3.y
+    return new(minX, minY, maxX - minX, maxY - minY)
 
   @immutable
   def __repr__(self) -> str:

@@ -1,19 +1,19 @@
-"""``PyCoroutine[Y,S,R]`` 擦除：形参/字段/``@virtual`` 返回；``-> Coroutine`` 仍为具体 ``*_coroutine``。"""
+"""``PyCoroutine[Y,S,R]`` 擦除：形参/字段/``@virtual`` 返回；``-> CoroutineType`` 仍为具体 ``*_coroutine``。"""
 from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 from py2cpp.concur.task import Task, LoopHandle
 
-async def coro_forty_two() -> int:
+async def coroFortyTwo() -> int:
     return 42
 
-async def await_coro(c: Coroutine[LoopHandle, None, int]) -> int:
+async def awaitCoro(c: CoroutineType[LoopHandle, None, int]) -> int:
     return await c
 
-async def async_gen_pair() -> AsyncGenerator[int, None]:
+async def asyncGenPair() -> AsyncGeneratorType[int, None]:
     yield 1
     yield 2
 
-async def sum_async_gen(g: AsyncGenerator[int, None]) -> int:
+async def sumAsyncGen(g: AsyncGeneratorType[int, None]) -> int:
     total: int = 0
     async for x in g:
         total += x
@@ -21,63 +21,63 @@ async def sum_async_gen(g: AsyncGenerator[int, None]) -> int:
 
 @copyable
 class CoroHolder:
-    c: Coroutine[LoopHandle, None, int]
+    c: CoroutineType[LoopHandle, None, int]
 
-    def store(self, src: Coroutine[LoopHandle, None, int]) -> None:
+    def store(self, src: CoroutineType[LoopHandle, None, int]) -> None:
         self.c = src
 
-    async def await_stored(self) -> int:
+    async def awaitStored(self) -> int:
         return await self.c
 
 class CoroStreamBase:
 
     @virtual
-    async def stream(self) -> Coroutine[LoopHandle, None, int]:
+    async def stream(self) -> CoroutineType[LoopHandle, None, int]:
         return 42
 
 @copyable
 class CoroStreamA(CoroStreamBase):
 
     @override
-    async def stream(self) -> Coroutine[LoopHandle, None, int]:
-        return await coro_forty_two()
+    async def stream(self) -> CoroutineType[LoopHandle, None, int]:
+        return await coroFortyTwo()
 
-async def await_override_stream(a: CoroStreamA) -> int:
+async def awaitOverrideStream(a: CoroStreamA) -> int:
     return await a.stream()
 
 class CoroEraseParamTests(TestCaseMixin):
-    _test_tag = 1
+    _testTag = 1
 
     @override
     def test(self):
-        self.assertEqual(Task.run(await_coro(coro_forty_two())), 42)
+        self.assertEqual(Task.run(awaitCoro(coroFortyTwo())), 42)
 
 class CoroEraseFieldTests(TestCaseMixin):
-    _test_tag = 10
+    _testTag = 10
 
     @override
     def test(self):
         h: CoroHolder = new()
-        h.store(coro_forty_two())
-        self.assertEqual(Task.run(h.await_stored()), 42)
+        h.store(coroFortyTwo())
+        self.assertEqual(Task.run(h.awaitStored()), 42)
 
 class CoroEraseOverrideTests(TestCaseMixin):
-    _test_tag = 20
+    _testTag = 20
 
     @override
     def test(self):
-        self.assertEqual(Task.run(await_override_stream(CoroStreamA())), 42)
+        self.assertEqual(Task.run(awaitOverrideStream(CoroStreamA())), 42)
 
 class CoroEraseAsyncForTests(TestCaseMixin):
-    _test_tag = 30
+    _testTag = 30
 
     @override
     def test(self):
-        self.assertEqual(Task.run(sum_async_gen(async_gen_pair())), 3)
+        self.assertEqual(Task.run(sumAsyncGen(asyncGenPair())), 3)
 
 def main() -> int:
     suite: TestSuite = new()
-    for Class in TestCaseMixin.iter_subclasses(sort_const='_test_tag'):
+    for Class in TestCaseMixin.iterSubclasses(sortConst='_testTag'):
         suite.addTest(Class())
     runner: TextTestRunner = new()
     return runner.run(suite)

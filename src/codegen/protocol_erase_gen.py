@@ -4,6 +4,7 @@ from __future__ import annotations
 from ..analysis.stubs.protocol_erase_stubs import (
   ProtocolEraseMethod,
   ProtocolEraseSpec,
+  erased_protocol_cpp_name,
   erased_protocol_make_fn,
   protocol_erase_specs_for_header,
 )
@@ -15,7 +16,7 @@ _PREAMBLE_TEMPLATE = "core/~protocol_erase_preamble.inl"
 
 
 def _base_name(spec: ProtocolEraseSpec) -> str:
-  return f"Py{spec.name}"
+  return erased_protocol_cpp_name(spec.name)
 
 
 def _tpl_decl(spec: ProtocolEraseSpec) -> str:
@@ -46,7 +47,7 @@ def _emit_public_method(spec: ProtocolEraseSpec, method: ProtocolEraseMethod) ->
   params_decl = ", ".join(f"{t} {n}" for n, t in method.params)
   lines: list[str] = []
   if (
-    spec.name == "Iterator"
+    spec.name == "IteratorType"
     and method.name == "__iter__"
     and not method.params
   ):
@@ -56,7 +57,7 @@ def _emit_public_method(spec: ProtocolEraseSpec, method: ProtocolEraseMethod) ->
     lines.append("  }")
     return "\n".join(lines)
   if (
-    spec.name == "AsyncIterator"
+    spec.name == "AsyncIteratorType"
     and method.name == "__aiter__"
     and not method.params
   ):
@@ -85,9 +86,9 @@ def _emit_public_method(spec: ProtocolEraseSpec, method: ProtocolEraseMethod) ->
 
 
 def _identity_protocol_method_names(spec: ProtocolEraseSpec) -> frozenset[str]:
-  if spec.name == "Iterator":
+  if spec.name == "IteratorType":
     return frozenset({"__iter__"})
-  if spec.name == "AsyncIterator":
+  if spec.name == "AsyncIteratorType":
     return frozenset({"__aiter__"})
   return frozenset()
 
@@ -125,7 +126,7 @@ def _emit_model_thunk(
       else f"    return {recv}{method.name}();"
     )
     if (
-      spec.name == "Iterable"
+      spec.name == "IterableType"
       and method.name == "__iter__"
       and len(spec.type_params) == 1
     ):

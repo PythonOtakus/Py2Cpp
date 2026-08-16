@@ -10,8 +10,8 @@ def prange(
   stop: int,
   *,
   schedule: str = "static",
-  num_threads: int = 0,
-  chunksize: int = 0,
+  numThreads: int = 0,
+  chunkSize: int = 0,
   th: int = 0,
 ):
   ...
@@ -24,8 +24,8 @@ def prange(
   step: int = 1,
   *,
   schedule: str = "static",
-  num_threads: int = 0,
-  chunksize: int = 0,
+  numThreads: int = 0,
+  chunkSize: int = 0,
   th: int = 0,
 ):
   ...

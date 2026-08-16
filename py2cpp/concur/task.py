@@ -1,7 +1,7 @@
 """单线程协作式 ``Task`` 调度（C# ``Task`` 风格：``Task.run`` / ``await Task.sleep`` / ``Task.gather``）。
 
-``period`` 为每帧时长（秒）；``Task.period_count`` 为当前帧计数；``Task.duration = period_count * period``。
-``Task.run_thread`` 参考 Python 3.13 ``asyncio.to_thread``，把阻塞 callable 放入 OS 线程并以 ``Task`` 等待结果。
+``period`` 为每帧时长（秒）；``Task.periodCount`` 为当前帧计数；``Task.duration = periodCount * period``。
+``Task.runThread`` 参考 Python 3.13 ``asyncio.to_thread``，把阻塞 callable 放入 OS 线程并以 ``Task`` 等待结果。
 """
 from ..builtins import *
 from ..core.exceptions import RuntimeError
@@ -9,19 +9,19 @@ from ..core.iter_result import IterResult
 from .thread import Future, ThreadPool
 
 
-_PERIOD_DEFAULT: float64 = 1.0 / 60.0
+_PeriodDefault: float64 = 1.0 / 60.0
 
-TASK_CORO: int = 0
-TASK_SLEEP: int = 1
-TASK_GATHER: int = 2
-TASK_THREAD: int = 3
-TASK_IO: int = 4
+TaskCoro: int = 0
+TaskSleep: int = 1
+TaskGather: int = 2
+TaskThread: int = 3
+TaskIo: int = 4
 
-LOOP_TASK_WAIT: int = 0
-LOOP_TASK_POLL: int = 1
+LoopTaskWait: int = 0
+LoopTaskPoll: int = 1
 
-IO_READ: int = 1
-IO_WRITE: int = 2
+IoRead: int = 1
+IoWrite: int = 2
 
 
 @copyable
@@ -29,47 +29,47 @@ class LoopHandle:
   """协程挂起时交给调度器的句柄（``await Task.*`` 路径）。"""
 
   kind: int = 0
-  target_id: int64 = 0
+  targetId: int64 = 0
 
 
 @dataclass
 class _WaitLink:
-  target_id: int64 = 0
-  waiter_id: int64 = 0
+  targetId: int64 = 0
+  waiterId: int64 = 0
 
 
 @dataclass
 class _TimerEntry:
-  wakeup_period: int64 = 0
-  task_id: int64 = 0
+  wakeupPeriod: int64 = 0
+  taskId: int64 = 0
 
 
 @dataclass
 class _IoWaitEntry:
-  task_id: int64 = 0
+  taskId: int64 = 0
   handle: int64 = 0
   events: int = 0
 
 
 @dataclass
 class _GatherChildLink:
-  gather_slot_id: int64 = 0
-  child_index: int64 = 0
-  child_id: int64 = 0
+  gatherSlotId: int64 = 0
+  childIndex: int64 = 0
+  childId: int64 = 0
 
 
 @refcount
 class _SlotBase(friends=(Scheduler, Task, _TaskAwaitIter)):
   """调度器任务槽基类（``list[_SlotBase]`` 多态池）。"""
 
-  slot_id: int64 = 0
+  slotId: int64 = 0
   kind: int = 0
   _done: bool = False
 
-  def mark_done(self) -> None:
+  def markDone(self) -> None:
     self._done = True
 
-  def is_done(self) -> bool:
+  def isDone(self) -> bool:
     return self._done
 
   @virtual
@@ -77,49 +77,49 @@ class _SlotBase(friends=(Scheduler, Task, _TaskAwaitIter)):
     raise RuntimeError("Task scheduler: slot advance not supported")
 
   @virtual
-  def release_coro(self) -> None:
+  def releaseCoro(self) -> None:
     pass
 
   @virtual
-  def on_child_done(self, child: Self, child_index: int64) -> None:
+  def onChildDone(self, child: Self, childIndex: int64) -> None:
     pass
 
 
 @refcount
-class _CoroSlot[R](_SlotBase):
+class _CoroSlot[Value](_SlotBase):
   """协程任务槽：``@property result -> R``。"""
 
-  _coro: Coroutine[LoopHandle, None, R]
-  _use_send: bool = False
-  _result: R
+  _coro: CoroutineType[LoopHandle, None, Value]
+  _useSend: bool = False
+  _result: Value
 
-  def __init__(self, coro: Coroutine[LoopHandle, None, R]):
+  def __init__(self, coro: CoroutineType[LoopHandle, None, Value]):
     self._coro = coro
-    self._use_send = False
+    self._useSend = False
 
   @property
-  def result(self) -> R:
+  def result(self) -> Value:
     return self._result
 
   @override
   def advance(self) -> IterResult[LoopHandle, None]:
-    if self._use_send:
-      step: IterResult[LoopHandle, R] = self._coro.send(None)
+    if self._useSend:
+      step: IterResult[LoopHandle, Value] = self._coro.send(None)
       if step.done:
-        self._result = step.return_value
+        self._result = step.returnValue
         return new.Return(None)
       return new.Yield(step.value)
     step = next(self._coro)
     if step.done:
-      self._result = step.return_value
+      self._result = step.returnValue
       return new.Return(None)
-    self._use_send = True
+    self._useSend = True
     return new.Yield(step.value)
 
   @override
-  def release_coro(self) -> None:
-    _coro_reset(self._coro)
-    self._use_send = False
+  def releaseCoro(self) -> None:
+    _coroReset(self._coro)
+    self._useSend = False
 
 
 @refcount
@@ -129,127 +129,127 @@ class _SleepSlot(_SlotBase):
 
 @refcount
 class _IoSlot(_SlotBase):
-  """``Task.wait_read`` / ``Task.wait_write`` IO 就绪槽（无协程体）。"""
+  """``Task.waitRead`` / ``Task.waitWrite`` IO 就绪槽（无协程体）。"""
 
 
 @refcount
-class _GatherSlot[U](_SlotBase):
+class _GatherSlot[Item](_SlotBase):
   """``Task.gather`` 聚合槽：``@property result -> list[U]``。"""
 
-  _results: list[U] = []
+  _results: list[Item] = []
   _pending: int64 = 0
 
   @property
-  def result(self) -> list[U]:
+  def result(self) -> list[Item]:
     return self._results
 
-  def setup(self, results: list[U], pending: int64) -> None:
+  def setup(self, results: list[Item], pending: int64) -> None:
     self._results = results
     self._pending = pending
     if pending == 0:
-      self.mark_done()
+      self.markDone()
 
   @override
-  def on_child_done(self, child: _SlotBase, child_index: int64) -> None:
-    self._results[child_index] = _slot_result[U](child)
+  def onChildDone(self, child: _SlotBase, childIndex: int64) -> None:
+    self._results[childIndex] = _slotResult[Item](child)
     self._pending -= 1
     if self._pending == 0:
-      self.mark_done()
+      self.markDone()
 
 
 @refcount
-class _ThreadSlot[R](_SlotBase):
-  """``Task.run_thread`` 线程槽：完成后从 ``Future`` 读取 ``result``。"""
+class _ThreadSlot[Value](_SlotBase):
+  """``Task.runThread`` 线程槽：完成后从 ``Future`` 读取 ``result``。"""
 
-  _future: Future[R]
-  _pool: ThreadPool[R]
+  _future: Future[Value]
+  _pool: ThreadPool[Value]
 
-  def __init__(self, future: Future[R], pool: ThreadPool[R]):
+  def __init__(self, future: Future[Value], pool: ThreadPool[Value]):
     self._future = future
     self._pool = pool
 
-  def get_result(self) -> R:
+  def getResult(self) -> Value:
     return self._future.result(timeout=0.0)
 
   @override
   def advance(self) -> IterResult[LoopHandle, None]:
     if self._future.done():
-      self.mark_done()
+      self.markDone()
       return new.Return(None)
     h: LoopHandle = new()
-    h.kind = LOOP_TASK_POLL
-    h.target_id = self.slot_id
+    h.kind = LoopTaskPoll
+    h.targetId = self.slotId
     return new.Yield(h)
 
   @override
-  def release_coro(self) -> None:
+  def releaseCoro(self) -> None:
     self._pool.shutdown()
 
 
-def _make_coro_slot[R](coro: Coroutine[LoopHandle, None, R]) -> _SlotBase:
-  slot: _CoroSlot[R] = new(coro)
-  slot.kind = TASK_CORO
+def _makeCoroSlot[Value](coro: CoroutineType[LoopHandle, None, Value]) -> _SlotBase:
+  slot: _CoroSlot[Value] = new(coro)
+  slot.kind = TaskCoro
   return slot
 
 
-def _gather_slot_setup[U](slot: _SlotBase, results: list[U], pending: int64) -> None:
-  gs: _GatherSlot[U] @ref = cast(slot)
+def _gatherSlotSetup[Item](slot: _SlotBase, results: list[Item], pending: int64) -> None:
+  gs: _GatherSlot[Item] @ref = cast(slot)
   gs.setup(results, pending)
 
 
-def _gather_list_result[U](slot: _SlotBase) -> list[U]:
-  gs: _GatherSlot[U] @ref = cast(slot)
+def _gatherListResult[Item](slot: _SlotBase) -> list[Item]:
+  gs: _GatherSlot[Item] @ref = cast(slot)
   return gs.result.copy()
 
 
-def _slot_result[T](slot: _SlotBase) -> T:
-  if slot.kind == TASK_SLEEP:
+def _slotResult[Value](slot: _SlotBase) -> Value:
+  if slot.kind == TaskSleep:
     return None
-  if slot.kind == TASK_IO:
+  if slot.kind == TaskIo:
     return None
-  if slot.kind == TASK_THREAD:
-    ts: _ThreadSlot[T] @ref = cast(slot)
-    return ts.get_result()
-  if T is list[...]:
-    if slot.kind == TASK_GATHER:
-      return _gather_list_result[T.Element](slot)
-    cs: _CoroSlot[T] @ref = cast(slot)
+  if slot.kind == TaskThread:
+    ts: _ThreadSlot[Value] @ref = cast(slot)
+    return ts.getResult()
+  if Value is list[...]:
+    if slot.kind == TaskGather:
+      return _gatherListResult[Value.Element](slot)
+    cs: _CoroSlot[Value] @ref = cast(slot)
     return cs.result.copy()
   else:
-    cs: _CoroSlot[T] @ref = cast(slot)
+    cs: _CoroSlot[Value] @ref = cast(slot)
     return cs.result
 
 
 @native
 @native_name("::py2cpp_concur_task_detail::coro_reset")
-def _coro_reset[Y, S, R](coro: Coroutine[Y, S, R] @ref) -> None: ...
+def _coroReset[Y, S, Value](coro: CoroutineType[Y, S, Value] @ref) -> None: ...
 
 
 @native
 @native_name("::py2cpp_concur_task_detail::make_coro_slot_from_gen")
-def _make_coro_slot_from_gen(gen) -> _SlotBase: ...
+def _makeCoroSlotFromGen(gen) -> _SlotBase: ...
 
 
 @native
 @native_name("::py2cpp_concur_task_detail::slot_result_for_coro")
-def _slot_result_for_coro[Coro](slot: _SlotBase, _coro: Coro): ...
+def _slotResultForCoro[Coro](slot: _SlotBase, _coro: Coro): ...
 
 
 @native
 @native_name("::py2cpp_concur_task_detail::io_ready")
-def _io_ready(handle: int64, events: int) -> bool: ...
+def _ioReady(handle: int64, events: int) -> bool: ...
 
 @copyable
-class _TaskAwaitIter[T]:
+class _TaskAwaitIter[Value]:
   """``await task`` → ``yield from task.__await__()``。"""
 
-  owner_id: int64 = 0
-  target_id: int64 = 0
+  ownerId: int64 = 0
+  targetId: int64 = 0
   sent: bool = False
 
-  def copy_from(self, other: Self) -> None:
-    self.owner_id = other.owner_id
-    self.target_id = other.target_id
+  def copyFrom(self, other: Self) -> None:
+    self.ownerId = other.ownerId
+    self.targetId = other.targetId
     self.sent = other.sent
 
   def __iter__(self) -> Self:
@@ -258,214 +258,214 @@ class _TaskAwaitIter[T]:
   def __await__(self) -> Self:
     return self
 
-  def __next__(self) -> IterResult[LoopHandle, T]:
+  def __next__(self) -> IterResult[LoopHandle, Value]:
     if not self.sent:
       self.sent = True
       h: LoopHandle = new()
-      h.kind = LOOP_TASK_WAIT
-      h.target_id = self.target_id
+      h.kind = LoopTaskWait
+      h.targetId = self.targetId
       return new.Yield(h)
-    sched: Scheduler @ref = _require_scheduler()
-    slot: _SlotBase = sched.slot_by_id(self.target_id)
-    if not slot.is_done():
+    sched: Scheduler @ref = _requireScheduler()
+    slot: _SlotBase = sched.slotById(self.targetId)
+    if not slot.isDone():
       h: LoopHandle = new()
-      h.kind = LOOP_TASK_WAIT
-      h.target_id = self.target_id
+      h.kind = LoopTaskWait
+      h.targetId = self.targetId
       return new.Yield(h)
-    return new.Return(_slot_result[T](slot))
+    return new.Return(_slotResult[Value](slot))
 
-  def send(self, _unused: None) -> IterResult[LoopHandle, T]:
+  def send(self, _unused: None) -> IterResult[LoopHandle, Value]:
     return next(self)
 
 
 @copyable
 class Scheduler(friends=(Task, _TaskAwaitIter)):
   period: float64 = 0.0
-  period_count: int64 = 0
+  periodCount: int64 = 0
   _ready: list[int64] = []
   _slots: list[_SlotBase] = []
-  _wait_links: list[_WaitLink] = []
+  _waitLinks: list[_WaitLink] = []
   _timers: list[_TimerEntry] = []
-  _io_waits: list[_IoWaitEntry] = []
-  _gather_links: list[_GatherChildLink] = []
+  _ioWaits: list[_IoWaitEntry] = []
+  _gatherLinks: list[_GatherChildLink] = []
 
   def __repr__(self) -> str:
     return "<Scheduler>"
 
   def __init__(self, period: float64 = 0.0):
     self.period = period
-    self.period_count = 0
+    self.periodCount = 0
     self._ready = []
     self._slots = []
-    self._wait_links = []
+    self._waitLinks = []
     self._timers = []
-    self._io_waits = []
-    self._gather_links = []
+    self._ioWaits = []
+    self._gatherLinks = []
 
-  def slot_by_id(self, task_id: int64) -> _SlotBase:
+  def slotById(self, taskId: int64) -> _SlotBase:
     n: int64 = len(self._slots)
     for i in range(n):
       slot: _SlotBase = self._slots[i]
-      if slot.slot_id == task_id:
+      if slot.slotId == taskId:
         return slot
-    raise RuntimeError(f"Task scheduler: unknown task id {task_id}")
+    raise RuntimeError(f"Task scheduler: unknown task id {taskId}")
 
-  def drop_all_slots(self) -> None:
+  def dropAllSlots(self) -> None:
     n: int64 = len(self._slots)
     for i in range(n):
       slot: _SlotBase = self._slots[i]
-      slot.release_coro()
+      slot.releaseCoro()
     self._slots.clear()
-    self._gather_links.clear()
-    self._io_waits.clear()
+    self._gatherLinks.clear()
+    self._ioWaits.clear()
 
-  def _slot_done_by_id(self, task_id: int64) -> bool:
-    s: _SlotBase = self.slot_by_id(task_id)
-    return s.is_done()
+  def _slotDoneById(self, taskId: int64) -> bool:
+    s: _SlotBase = self.slotById(taskId)
+    return s.isDone()
 
-  def _enqueue(self, task_id: int64) -> None:
-    self._ready.append(task_id)
+  def _enqueue(self, taskId: int64) -> None:
+    self._ready.append(taskId)
 
-  def _register_slot(self, slot: _SlotBase) -> None:
+  def _registerSlot(self, slot: _SlotBase) -> None:
     self._slots.append(slot)
 
-  def _add_wait(self, waiter_id: int64, target_id: int64) -> None:
+  def _addWait(self, waiterId: int64, targetId: int64) -> None:
     link: _WaitLink = new()
-    link.target_id = target_id
-    link.waiter_id = waiter_id
-    self._wait_links.append(link)
-    target: _SlotBase = self.slot_by_id(target_id)
-    if target.is_done():
-      self._enqueue(waiter_id)
+    link.targetId = targetId
+    link.waiterId = waiterId
+    self._waitLinks.append(link)
+    target: _SlotBase = self.slotById(targetId)
+    if target.isDone():
+      self._enqueue(waiterId)
 
-  def _register_timer(self, task_id: int64, wakeup_period: int64) -> None:
+  def _registerTimer(self, taskId: int64, wakeupPeriod: int64) -> None:
     entry: _TimerEntry = new()
-    entry.wakeup_period = wakeup_period
-    entry.task_id = task_id
+    entry.wakeupPeriod = wakeupPeriod
+    entry.taskId = taskId
     self._timers.append(entry)
-    if wakeup_period <= self.period_count:
-      t: _SlotBase = self.slot_by_id(task_id)
-      if t.kind == TASK_SLEEP:
-        t.mark_done()
-        self._finish_slot(t)
+    if wakeupPeriod <= self.periodCount:
+      t: _SlotBase = self.slotById(taskId)
+      if t.kind == TaskSleep:
+        t.markDone()
+        self._finishSlot(t)
       else:
-        self._enqueue(task_id)
+        self._enqueue(taskId)
 
-  def _register_io(self, task_id: int64, handle: int64, events: int) -> None:
+  def _registerIo(self, taskId: int64, handle: int64, events: int) -> None:
     entry: _IoWaitEntry = new()
-    entry.task_id = task_id
+    entry.taskId = taskId
     entry.handle = handle
     entry.events = events
-    self._io_waits.append(entry)
-    if _io_ready(handle, events):
-      t: _SlotBase = self.slot_by_id(task_id)
-      if t.kind == TASK_IO and not t.is_done():
-        t.mark_done()
-        self._finish_slot(t)
+    self._ioWaits.append(entry)
+    if _ioReady(handle, events):
+      t: _SlotBase = self.slotById(taskId)
+      if t.kind == TaskIo and not t.isDone():
+        t.markDone()
+        self._finishSlot(t)
 
-  def _register_gather_child(
+  def _registerGatherChild(
     self,
-    gather_slot_id: int64,
-    child_index: int64,
-    child_id: int64,
+    gatherSlotId: int64,
+    childIndex: int64,
+    childId: int64,
   ) -> None:
     link: _GatherChildLink = new()
-    link.gather_slot_id = gather_slot_id
-    link.child_index = child_index
-    link.child_id = child_id
-    self._gather_links.append(link)
+    link.gatherSlotId = gatherSlotId
+    link.childIndex = childIndex
+    link.childId = childId
+    self._gatherLinks.append(link)
 
-  def _wake_waiters(self, target_id: int64) -> None:
+  def _wakeWaiters(self, targetId: int64) -> None:
     keep: list[_WaitLink] = []
-    for i in range(len(self._wait_links)):
-      link: _WaitLink = self._wait_links[i]
-      if link.target_id == target_id:
-        self._enqueue(link.waiter_id)
+    for i in range(len(self._waitLinks)):
+      link: _WaitLink = self._waitLinks[i]
+      if link.targetId == targetId:
+        self._enqueue(link.waiterId)
       else:
         keep.append(link)
-    self._wait_links = keep
+    self._waitLinks = keep
 
-  def _finish_slot(self, slot: _SlotBase) -> None:
-    self._wake_waiters(slot.slot_id)
-    if slot.kind == TASK_GATHER:
+  def _finishSlot(self, slot: _SlotBase) -> None:
+    self._wakeWaiters(slot.slotId)
+    if slot.kind == TaskGather:
       return
-    for i in range(len(self._gather_links)):
-      link: _GatherChildLink = self._gather_links[i]
-      if link.child_id != slot.slot_id:
+    for i in range(len(self._gatherLinks)):
+      link: _GatherChildLink = self._gatherLinks[i]
+      if link.childId != slot.slotId:
         continue
-      parent: _SlotBase = self.slot_by_id(link.gather_slot_id)
-      parent.on_child_done(slot, link.child_index)
-      if parent.is_done():
-        self._finish_slot(parent)
+      parent: _SlotBase = self.slotById(link.gatherSlotId)
+      parent.onChildDone(slot, link.childIndex)
+      if parent.isDone():
+        self._finishSlot(parent)
 
-  def _fire_timers(self) -> None:
+  def _fireTimers(self) -> None:
     keep: list[_TimerEntry] = []
     for i in range(len(self._timers)):
       entry: _TimerEntry = self._timers[i]
-      if entry.wakeup_period <= self.period_count:
-        t: _SlotBase = self.slot_by_id(entry.task_id)
-        if t.kind == TASK_SLEEP and not t.is_done():
-          t.mark_done()
-          self._finish_slot(t)
+      if entry.wakeupPeriod <= self.periodCount:
+        t: _SlotBase = self.slotById(entry.taskId)
+        if t.kind == TaskSleep and not t.isDone():
+          t.markDone()
+          self._finishSlot(t)
         else:
-          if not t.is_done():
-            self._enqueue(entry.task_id)
+          if not t.isDone():
+            self._enqueue(entry.taskId)
       else:
         keep.append(entry)
     self._timers = keep
 
-  def _fire_io(self) -> None:
+  def _fireIo(self) -> None:
     keep: list[_IoWaitEntry] = []
-    for i in range(len(self._io_waits)):
-      entry: _IoWaitEntry = self._io_waits[i]
-      t: _SlotBase = self.slot_by_id(entry.task_id)
-      if t.is_done():
+    for i in range(len(self._ioWaits)):
+      entry: _IoWaitEntry = self._ioWaits[i]
+      t: _SlotBase = self.slotById(entry.taskId)
+      if t.isDone():
         continue
-      if _io_ready(entry.handle, entry.events):
-        if t.kind == TASK_IO:
-          t.mark_done()
-          self._finish_slot(t)
+      if _ioReady(entry.handle, entry.events):
+        if t.kind == TaskIo:
+          t.markDone()
+          self._finishSlot(t)
         else:
-          self._enqueue(entry.task_id)
+          self._enqueue(entry.taskId)
       else:
         keep.append(entry)
-    self._io_waits = keep
+    self._ioWaits = keep
 
   def _tick(self) -> None:
-    self.period_count += 1
-    self._fire_io()
-    self._fire_timers()
+    self.periodCount += 1
+    self._fireIo()
+    self._fireTimers()
 
-  def _dispatch_handle(self, slot: _SlotBase, handle: LoopHandle) -> None:
-    if handle.kind == LOOP_TASK_WAIT:
-      self._add_wait(slot.slot_id, handle.target_id)
+  def _dispatchHandle(self, slot: _SlotBase, handle: LoopHandle) -> None:
+    if handle.kind == LoopTaskWait:
+      self._addWait(slot.slotId, handle.targetId)
       return
-    if handle.kind == LOOP_TASK_POLL:
-      self._register_timer(handle.target_id, self.period_count + 1)
+    if handle.kind == LoopTaskPoll:
+      self._registerTimer(handle.targetId, self.periodCount + 1)
       return
     raise RuntimeError("Task scheduler: unknown loop handle kind")
 
   def pump(self) -> None:
-    self._run_once()
+    self._runOnce()
 
-  def _run_once(self) -> None:
+  def _runOnce(self) -> None:
     if not self._ready:
       self._tick()
       return
-    task_id: int64 = self._ready.pop(0)
-    slot: _SlotBase = self.slot_by_id(task_id)
-    if slot.is_done():
+    taskId: int64 = self._ready.pop(0)
+    slot: _SlotBase = self.slotById(taskId)
+    if slot.isDone():
       return
-    if slot.kind not in {TASK_CORO, TASK_THREAD}:
+    if slot.kind not in {TaskCoro, TaskThread}:
       return
     step: IterResult[LoopHandle, None] = slot.advance()
     if step.done:
-      slot.mark_done()
-      self._finish_slot(slot)
+      slot.markDone()
+      self._finishSlot(slot)
     else:
-      self._dispatch_handle(slot, step.value)
+      self._dispatchHandle(slot, step.value)
 
-  def _secs_to_periods(self, secs: float64) -> int64:
+  def _secsToPeriods(self, secs: float64) -> int64:
     if secs <= 0.0:
       return 1
     n: float64 = secs / self.period
@@ -479,208 +479,208 @@ class Scheduler(friends=(Task, _TaskAwaitIter)):
 
 @dataclass(eq=False, repr=False)
 class _SchedState:
-  have_scheduler: bool = False
+  haveScheduler: bool = False
   scheduler: Scheduler = new()
-  next_task_id: int64 = 1
+  nextTaskId: int64 = 1
 
   def __repr__(self) -> str:
-    return f"_SchedState(have_scheduler={self.have_scheduler}, next_task_id={self.next_task_id})"
+    return f"_SchedState(haveScheduler={self.haveScheduler}, nextTaskId={self.nextTaskId})"
 
 
 _sched: _SchedState = new()
 
 
-def _require_scheduler() -> Scheduler @ref:
-  if not _sched.have_scheduler:
+def _requireScheduler() -> Scheduler @ref:
+  if not _sched.haveScheduler:
     raise RuntimeError("Task: no running scheduler (use Task.run)")
   return _sched.scheduler
 
 
-def _alloc_task_id() -> int64:
-  tid: int64 = _sched.next_task_id
-  _sched.next_task_id += 1
+def _allocTaskId() -> int64:
+  tid: int64 = _sched.nextTaskId
+  _sched.nextTaskId += 1
   return tid
 
 
 @copyable
-class Task[T](friends=(Scheduler,)):
+class Task[Value](friends=(Scheduler,)):
   """协作式任务句柄；静态 API 对齐 C# ``Task``。"""
 
-  task_id: int64 = 0
+  taskId: int64 = 0
 
   def _slot(self) -> _SlotBase:
-    sched: Scheduler @ref = _require_scheduler()
-    return sched.slot_by_id(self.task_id)
+    sched: Scheduler @ref = _requireScheduler()
+    return sched.slotById(self.taskId)
 
   @property
   def done(self) -> bool:
     s: _SlotBase = self._slot()
-    return s.is_done()
+    return s.isDone()
 
-  def result(self) -> T:
+  def result(self) -> Value:
     if not self.done:
       raise RuntimeError("Task.result: task is not done")
     slot: _SlotBase = self._slot()
-    return _slot_result[T](slot)
+    return _slotResult[Value](slot)
 
-  def __await__(self) -> _TaskAwaitIter[T]:
-    it: _TaskAwaitIter[T] = new()
-    it.owner_id = self.task_id
-    it.target_id = self.task_id
+  def __await__(self) -> _TaskAwaitIter[Value]:
+    it: _TaskAwaitIter[Value] = new()
+    it.ownerId = self.taskId
+    it.targetId = self.taskId
     return it
 
   @staticmethod
-  def _wakeup_period(secs: float64) -> int64:
-    sched: Scheduler @ref = _require_scheduler()
-    extra: int64 = sched._secs_to_periods(secs)
-    return sched.period_count + extra
+  def _wakeupPeriod(secs: float64) -> int64:
+    sched: Scheduler @ref = _requireScheduler()
+    extra: int64 = sched._secsToPeriods(secs)
+    return sched.periodCount + extra
 
   @staticmethod
   @immutable
   def run[Coro](main: Coro, period: float64 = 0.016666666666666666):
     """运行 ``main`` 直至完成并返回其 ``return`` 值。"""
-    if _sched.have_scheduler:
+    if _sched.haveScheduler:
       raise RuntimeError("Task.run: already running")
     sched: Scheduler @ref = _sched.scheduler
     sched.period = period
-    sched.period_count = 0
+    sched.periodCount = 0
     sched._ready.clear()
-    sched._wait_links.clear()
+    sched._waitLinks.clear()
     sched._timers.clear()
-    sched._io_waits.clear()
-    sched._gather_links.clear()
-    sched.drop_all_slots()
-    _sched.next_task_id = 1
-    _sched.have_scheduler = True
-    root_slot: _SlotBase = _make_coro_slot_from_gen(main)
-    root_slot.slot_id = _alloc_task_id()
-    root_id: int64 = root_slot.slot_id
-    sched._register_slot(root_slot)
-    sched._enqueue(root_id)
-    while not sched._slot_done_by_id(root_id):
+    sched._ioWaits.clear()
+    sched._gatherLinks.clear()
+    sched.dropAllSlots()
+    _sched.nextTaskId = 1
+    _sched.haveScheduler = True
+    rootSlot: _SlotBase = _makeCoroSlotFromGen(main)
+    rootSlot.slotId = _allocTaskId()
+    rootId: int64 = rootSlot.slotId
+    sched._registerSlot(rootSlot)
+    sched._enqueue(rootId)
+    while not sched._slotDoneById(rootId):
       sched.pump()
-    _sched.have_scheduler = False
-    root: _SlotBase = sched.slot_by_id(root_id)
-    root.release_coro()
-    return _slot_result_for_coro[Coro](root, main)
+    _sched.haveScheduler = False
+    root: _SlotBase = sched.slotById(rootId)
+    root.releaseCoro()
+    return _slotResultForCoro[Coro](root, main)
 
   @staticmethod
-  def create[Y, S, R](coro: Coroutine[Y, S, R]) -> Task[R]:
-    sched: Scheduler @ref = _require_scheduler()
-    slot: _SlotBase = _make_coro_slot(coro)
-    tid: int64 = _alloc_task_id()
-    slot.slot_id = tid
-    sched._register_slot(slot)
+  def create[Y, S, Result](coro: CoroutineType[Y, S, Result]) -> Task[Result]:
+    sched: Scheduler @ref = _requireScheduler()
+    slot: _SlotBase = _makeCoroSlot(coro)
+    tid: int64 = _allocTaskId()
+    slot.slotId = tid
+    sched._registerSlot(slot)
     sched._enqueue(tid)
-    t: Task[R] = new()
-    t.task_id = tid
+    t: Task[Result] = new()
+    t.taskId = tid
     return t
 
   @staticmethod
-  def run_thread(fn: Callable[[], T]) -> Self:
+  def runThread(fn: Callable[[], Value]) -> Self:
     """在线程中运行阻塞 callable，并返回可 ``await`` 的 ``Task[T]``。"""
-    sched: Scheduler @ref = _require_scheduler()
-    pool: ThreadPool[T] = new(1, "Task.run_thread")
-    future: Future[T] = pool.submit(fn)
-    slot: _ThreadSlot[T] = new(future, pool)
-    tid: int64 = _alloc_task_id()
-    slot.slot_id = tid
-    slot.kind = TASK_THREAD
-    sched._register_slot(slot)
+    sched: Scheduler @ref = _requireScheduler()
+    pool: ThreadPool[Value] = new(1, "Task.runThread")
+    future: Future[Value] = pool.submit(fn)
+    slot: _ThreadSlot[Value] = new(future, pool)
+    tid: int64 = _allocTaskId()
+    slot.slotId = tid
+    slot.kind = TaskThread
+    sched._registerSlot(slot)
     sched._enqueue(tid)
     t: Self = new()
-    t.task_id = tid
+    t.taskId = tid
     return t
 
   @staticmethod
-  def wait_read(handle: int64) -> Task[None]:
-    sched: Scheduler @ref = _require_scheduler()
+  def waitRead(handle: int64) -> Task[None]:
+    sched: Scheduler @ref = _requireScheduler()
     slot: _IoSlot = new()
-    tid: int64 = _alloc_task_id()
-    slot.slot_id = tid
-    slot.kind = TASK_IO
-    sched._register_slot(slot)
-    sched._register_io(tid, handle, IO_READ)
+    tid: int64 = _allocTaskId()
+    slot.slotId = tid
+    slot.kind = TaskIo
+    sched._registerSlot(slot)
+    sched._registerIo(tid, handle, IoRead)
     t: Task[None] = new()
-    t.task_id = tid
+    t.taskId = tid
     return t
 
   @staticmethod
-  def wait_write(handle: int64) -> Task[None]:
-    sched: Scheduler @ref = _require_scheduler()
+  def waitWrite(handle: int64) -> Task[None]:
+    sched: Scheduler @ref = _requireScheduler()
     slot: _IoSlot = new()
-    tid: int64 = _alloc_task_id()
-    slot.slot_id = tid
-    slot.kind = TASK_IO
-    sched._register_slot(slot)
-    sched._register_io(tid, handle, IO_WRITE)
+    tid: int64 = _allocTaskId()
+    slot.slotId = tid
+    slot.kind = TaskIo
+    sched._registerSlot(slot)
+    sched._registerIo(tid, handle, IoWrite)
     t: Task[None] = new()
-    t.task_id = tid
+    t.taskId = tid
     return t
 
   @staticmethod
   def sleep(secs: float64) -> Task[None]:
-    sched: Scheduler @ref = _require_scheduler()
+    sched: Scheduler @ref = _requireScheduler()
     slot: _SleepSlot = new()
-    tid: int64 = _alloc_task_id()
-    slot.slot_id = tid
-    slot.kind = TASK_SLEEP
-    sched._register_slot(slot)
-    wakeup: int64 = Self._wakeup_period(secs)
-    sched._register_timer(tid, wakeup)
+    tid: int64 = _allocTaskId()
+    slot.slotId = tid
+    slot.kind = TaskSleep
+    sched._registerSlot(slot)
+    wakeup: int64 = Self._wakeupPeriod(secs)
+    sched._registerTimer(tid, wakeup)
     t: Task[None] = new()
-    t.task_id = tid
+    t.taskId = tid
     return t
 
   @staticmethod
-  def gather[U](*tasks: Task[U][:]) -> Task[list[U]]:
-    sched: Scheduler @ref = _require_scheduler()
+  def gather[Item](*tasks: Task[Item][:]) -> Task[list[Item]]:
+    sched: Scheduler @ref = _requireScheduler()
     n: int64 = len(tasks)
-    slot: _GatherSlot[U] = new()
-    gid: int64 = _alloc_task_id()
-    slot.slot_id = gid
-    slot.kind = TASK_GATHER
-    sched._register_slot(slot)
-    results: list[U] = []
+    slot: _GatherSlot[Item] = new()
+    gid: int64 = _allocTaskId()
+    slot.slotId = gid
+    slot.kind = TaskGather
+    sched._registerSlot(slot)
+    results: list[Item] = []
     pending: int64 = 0
-    placeholder: U = new()
+    placeholder: Item = new()
     for i in range(n):
-      child: Task[U] = tasks[i]
-      child_slot: _SlotBase = sched.slot_by_id(child.task_id)
-      if child_slot.is_done():
-        results.append(_slot_result[U](child_slot))
+      child: Task[Item] = tasks[i]
+      childSlot: _SlotBase = sched.slotById(child.taskId)
+      if childSlot.isDone():
+        results.append(_slotResult[Item](childSlot))
       else:
         results.append(placeholder)
         pending += 1
-    _gather_slot_setup[U](sched.slot_by_id(gid), results, pending)
+    _gatherSlotSetup[Item](sched.slotById(gid), results, pending)
     for i in range(n):
-      child: Task[U] = tasks[i]
-      sched._register_gather_child(gid, i, child.task_id)
-    t: Task[list[U]] = new()
-    t.task_id = gid
+      child: Task[Item] = tasks[i]
+      sched._registerGatherChild(gid, i, child.taskId)
+    t: Task[list[Item]] = new()
+    t.taskId = gid
     return t
 
   @staticproperty
   @immutable
-  def period_count() -> int64:
-    if not _sched.have_scheduler:
+  def periodCount() -> int64:
+    if not _sched.haveScheduler:
       return 0
-    return _require_scheduler().period_count
+    return _requireScheduler().periodCount
 
   @staticproperty
   @immutable
   def duration() -> float64:
-    if not _sched.have_scheduler:
+    if not _sched.haveScheduler:
       return 0.0
-    sched: Scheduler @ref = _require_scheduler()
-    pc: int64 = sched.period_count
+    sched: Scheduler @ref = _requireScheduler()
+    pc: int64 = sched.periodCount
     return float64(pc) * sched.period
 
 
-type TaskPayloadOf[T, _R = ...] = _R if T is Task[_R] else T
+type TaskPayloadOf[Value, _R = ...] = _R if Value is Task[_R] else Value
 
-type GatherElemOf[T, _U = ...] = (
-  _U if T is list[_U]
-  else _U if T is Task[list[_U]]
-  else T
+type GatherElemOf[Value, _U = ...] = (
+  _U if Value is list[_U]
+  else _U if Value is Task[list[_U]]
+  else Value
 )

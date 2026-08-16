@@ -3,7 +3,7 @@
 from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 from py2cpp.web.http import (
-  StatusCode,
+  StatusCodeEnum,
   Request,
   RequestOptions,
   Response,
@@ -11,11 +11,11 @@ from py2cpp.web.http import (
 )
 from py2cpp.web.server import RouteGetMeta, ServerMixin
 from py2cpp.web.stream import StreamReader, StreamWriter
-from py2cpp.web.url import UrlData, merge_query
+from py2cpp.web.url import UrlData, mergeQuery
 
 
 class ParseUrlTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
@@ -24,12 +24,12 @@ class ParseUrlTests(TestCaseMixin):
     self.assertEqual(pu.port, 8080)
     self.assertEqual(pu.path, "/hello")
     self.assertEqual(pu.query, "x=1")
-    merged: str = merge_query("x=1", {"y": "2"})
+    merged: str = mergeQuery("x=1", {"y": "2"})
     self.assertEqual(merged, "x=1&y=2")
 
 
 class HttpRoundtripTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
@@ -37,26 +37,26 @@ class HttpRoundtripTests(TestCaseMixin):
     pu = UrlData.parse("http://127.0.0.1/ping")
     raw: bytes = opts.encode("GET", pu)
     reader: StreamReader = new()
-    reader.load_bytes(raw)
+    reader.loadBytes(raw)
     req: Request = new.read(reader)
     self.assertEqual(req.method, "GET")
     self.assertEqual(req.path, "/ping")
     self.assertEqual(req.host(), "127.0.0.1")
     self.assertEqual(req.headers["User-Agent"], "py2cpp-test")
 
-    resp: Response = new.text_response("pong", StatusCode.OK)
-    writer: StreamWriter = new.from_buffer()
+    resp: Response = new.textResponse("pong", StatusCodeEnum.Ok)
+    writer: StreamWriter = new.fromBuffer()
     resp.write(writer)
-    out: bytes = writer.take_bytes()
+    out: bytes = writer.takeBytes()
     r2: StreamReader = new()
-    r2.load_bytes(out)
+    r2.loadBytes(out)
     got = ClientResponse.read(r2)
     self.assertEqual(got.status, 200)
     self.assertEqual(got.text(), "pong")
 
 
 class RequestOptionsParamsTests(TestCaseMixin):
-  _test_tag = 15
+  _testTag = 15
 
   @override
   def test(self):
@@ -64,13 +64,13 @@ class RequestOptionsParamsTests(TestCaseMixin):
     pu = UrlData.parse("http://127.0.0.1/search?x=1")
     raw: bytes = opts.encode("GET", pu)
     reader: StreamReader = new()
-    reader.load_bytes(raw)
+    reader.loadBytes(raw)
     req: Request = new.read(reader)
     self.assertEqual(req.path, "/search?x=1&q=hi&page=1")
 
 
 class RequestOptionsCookiesAuthTests(TestCaseMixin):
-  _test_tag = 17
+  _testTag = 17
 
   @override
   def test(self):
@@ -81,7 +81,7 @@ class RequestOptionsCookiesAuthTests(TestCaseMixin):
     pu = UrlData.parse("http://127.0.0.1/api")
     raw: bytes = opts.encode("GET", pu)
     reader: StreamReader = new()
-    reader.load_bytes(raw)
+    reader.loadBytes(raw)
     req: Request = new.read(reader)
     self.assertEqual(req.headers["Cookie"], "sid=abc")
     self.assertEqual(req.headers["Authorization"], "Basic YWxpY2U6c2VjcmV0")
@@ -90,11 +90,11 @@ class RequestOptionsCookiesAuthTests(TestCaseMixin):
 class HelloApp(ServerMixin):
   @RouteGetMeta("/hello")
   def hello(self, request: Request) -> Response:
-    return new.text_response("hello", StatusCode.OK)
+    return new.textResponse("hello", StatusCodeEnum.Ok)
 
 
 class ServerDispatchTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
@@ -103,12 +103,12 @@ class ServerDispatchTests(TestCaseMixin):
     opts: RequestOptions = new()
     raw: bytes = opts.encode("GET", pu)
     reader: StreamReader = new()
-    reader.load_bytes(raw)
-    writer: StreamWriter = new.from_buffer()
-    app.handle_streams(reader, writer)
-    out: bytes = writer.take_bytes()
+    reader.loadBytes(raw)
+    writer: StreamWriter = new.fromBuffer()
+    app.handleStreams(reader, writer)
+    out: bytes = writer.takeBytes()
     r2: StreamReader = new()
-    r2.load_bytes(out)
+    r2.loadBytes(out)
     got = ClientResponse.read(r2)
     self.assertEqual(got.status, 200)
     self.assertEqual(got.text(), "hello")

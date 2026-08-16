@@ -1,6 +1,6 @@
 """JSON 同质子集 + ``JsonEncoder`` / ``JsonDecoder``（``@serializable`` 默认后端）。
 
-单文件：encode/decode 快路径为类方法；``load_u64_le`` 等叶子见 ``util/memory``，``span``→``str`` 用 ``str.from_span``。
+单文件：encode/decode 快路径为类方法；``loadU64Le`` 等叶子见 ``util/memory``，``span``→``str`` 用 ``str.fromSpan``。
 """
 from __future__ import annotations
 
@@ -9,26 +9,26 @@ from ..util.dict import dict
 from ..util.list import list
 from ..util.arena import Arena
 from ..util.memory import (
-  copy_buf,
-  copy_buf_ref,
-  load_u64_le,
+  copyBuf,
+  copyBufRef,
+  loadU64Le,
 )
 from ..util.span import span
 from ..core.exceptions import OSError, ValueError
 from ..io.file import replace
 from ..numeric.varint import varint
 from ..io import StringIO, TextIOWrapper
-from ..io.protocols import TextReader, TextWriter
+from ..io.protocols import TextReaderType, TextWriterType
 from ..text import str
 
 
-_EMPTY: str = ""
-_JSON_KEY_TAG: str = "tag"
-_JSON_KEY_PAYLOAD: str = "payload"
+_Empty: str = ""
+_JsonKeyTag: str = "tag"
+_JsonKeyPayload: str = "payload"
 
-_ADD8: uint64 = 0x4646464646464646
-_SUB8: uint64 = 0x3030303030303030
-_MASK8: uint64 = 0x8080808080808080
+_Add8: uint64 = 0x4646464646464646
+_Sub8: uint64 = 0x3030303030303030
+_Mask8: uint64 = 0x8080808080808080
 
 
 class JSONDecodeError(ValueError):
@@ -39,10 +39,10 @@ class JSONDecodeError(ValueError):
 
 @dataclass(eq=False)
 class JsonEncoder:
-  """JSON ``Encoder`` 实现；union 变体为 ``{"tag":…,"payload":{…}}``。
+  """JSON ``EncoderType`` 实现；union 变体为 ``{"tag":…,"payload":{…}}``。
 
   默认在内部 ``char[:]`` 缓冲累积；``take()`` 移动取出 ``str``（``Json.dumps`` 快路径），
-  ``finish()`` 经 ``str.from_buf`` 拷贝返回；``flush_to`` 直写 ``TextWriter``（``Json.dump``）。
+  ``finish()`` 经 ``str.fromBuf`` 拷贝返回；``flushTo`` 直写 ``TextWriterType``（``Json.dump``）。
   """
 
   sep: str = ""
@@ -63,7 +63,7 @@ class JsonEncoder:
       return
     self._buf.reshape(end, n)
 
-  def grow_buf(self, end: int) -> None:
+  def growBuf(self, end: int) -> None:
     """预扩容内部 ``char[:]`` 缓冲（``end`` 为目标 ``_at`` 上界）。"""
     self._ensure(end)
 
@@ -73,32 +73,32 @@ class JsonEncoder:
       return
     end: int = self._at + len(piece)
     self._ensure(end)
-    self._at = piece.copy_to(self._buf, self._at)
+    self._at = piece.copyTo(self._buf, self._at)
 
-  def _strip_trailing_comma(self) -> None:
+  def _stripTrailingComma(self) -> None:
     if self._at > 0 and self._buf[self._at - 1] == ord(","):
       self._at -= 1
 
-  def _newline_indent(self) -> str:
+  def _newlineIndent(self) -> str:
     if not self._pretty():
       return ""
     n: int = self.depth * self.indent
-    pad_parts: list[str] = []
+    padParts: list[str] = []
     for _ in range(n):
-      pad_parts.append(" ")
-    return "\n" + str.concat(pad_parts)
+      padParts.append(" ")
+    return "\n" + str.concat(padParts)
 
-  def _comma_sep(self) -> str:
+  def _commaSep(self) -> str:
     if not self._pretty():
       return ","
-    return "," + self._newline_indent()
+    return "," + self._newlineIndent()
 
-  def comma_sep(self) -> str:
-    return self._comma_sep()
+  def commaSep(self) -> str:
+    return self._commaSep()
 
   @staticmethod
   @immutable
-  def encode_str(s: str) -> str:
+  def encodeStr(s: str) -> str:
     parts: list[str] = ['"']
     n: int = len(s)
     for i in range(n):
@@ -121,19 +121,19 @@ class JsonEncoder:
 
   @staticmethod
   @immutable
-  def _encode_bool(obj: bool) -> str:
+  def _encodeBool(obj: bool) -> str:
     if obj:
       return "true"
     return "false"
 
   @staticmethod
   @immutable
-  def _encode_float(obj: float) -> str:
+  def _encodeFloat(obj: float) -> str:
     return str(obj)
 
   @staticmethod
   @immutable
-  def _encode_int(obj: int) -> str:
+  def _encodeInt(obj: int) -> str:
     if obj == 0:
       return "0"
     neg: bool = obj < 0
@@ -156,19 +156,19 @@ class JsonEncoder:
 
   @staticmethod
   @immutable
-  def _encode_list_int(obj: list[int]) -> str:
+  def _encodeListInt(obj: list[int]) -> str:
     parts: list[str] = ["["]
     n: int = len(obj)
     for i in range(n):
       if i > 0:
         parts.append(",")
-      parts.append(Self._encode_int(obj[i]))
+      parts.append(Self._encodeInt(obj[i]))
     parts.append("]")
     return str.concat(parts)
 
   @staticmethod
   @immutable
-  def _encode_list_varint(obj: list[varint]) -> str:
+  def _encodeListVarint(obj: list[varint]) -> str:
     parts: list[str] = ["["]
     n: int = len(obj)
     for i in range(n):
@@ -180,89 +180,89 @@ class JsonEncoder:
 
   @staticmethod
   @immutable
-  def _encode_list_float(obj: list[float]) -> str:
+  def _encodeListFloat(obj: list[float]) -> str:
     parts: list[str] = ["["]
     n: int = len(obj)
     for i in range(n):
       if i > 0:
         parts.append(",")
-      parts.append(Self._encode_float(obj[i]))
+      parts.append(Self._encodeFloat(obj[i]))
     parts.append("]")
     return str.concat(parts)
 
   @staticmethod
   @immutable
-  def _encode_list_str(obj: list[str]) -> str:
+  def _encodeListStr(obj: list[str]) -> str:
     parts: list[str] = ["["]
     n: int = len(obj)
     for i in range(n):
       if i > 0:
         parts.append(",")
-      parts.append(Self.encode_str(obj[i]))
+      parts.append(Self.encodeStr(obj[i]))
     parts.append("]")
     return str.concat(parts)
 
   @staticmethod
   @immutable
-  def _encode_dict_str_int(obj: dict[str, int]) -> str:
+  def _encodeDictStrInt(obj: dict[str, int]) -> str:
     parts: list[str] = ["{"]
     n: int = len(obj)
     for i in range(n):
       if i > 0:
         parts.append(",")
-      k: str = obj.key_at(i)
-      parts.append(Self.encode_str(k))
+      k: str = obj.keyAt(i)
+      parts.append(Self.encodeStr(k))
       parts.append(":")
-      parts.append(Self._encode_int(obj.value_at(i)))
+      parts.append(Self._encodeInt(obj.valueAt(i)))
     parts.append("}")
     return str.concat(parts)
 
   @staticmethod
   @immutable
-  def _encode_dict_str_varint(obj: dict[str, varint]) -> str:
+  def _encodeDictStrVarint(obj: dict[str, varint]) -> str:
     parts: list[str] = ["{"]
     n: int = len(obj)
     for i in range(n):
       if i > 0:
         parts.append(",")
-      k: str = obj.key_at(i)
-      parts.append(Self.encode_str(k))
+      k: str = obj.keyAt(i)
+      parts.append(Self.encodeStr(k))
       parts.append(":")
-      parts.append(str(obj.value_at(i)))
+      parts.append(str(obj.valueAt(i)))
     parts.append("}")
     return str.concat(parts)
 
   @staticmethod
   @immutable
-  def _encode_dict_str_float(obj: dict[str, float]) -> str:
+  def _encodeDictStrFloat(obj: dict[str, float]) -> str:
     parts: list[str] = ["{"]
     n: int = len(obj)
     for i in range(n):
       if i > 0:
         parts.append(",")
-      k: str = obj.key_at(i)
-      parts.append(Self.encode_str(k))
+      k: str = obj.keyAt(i)
+      parts.append(Self.encodeStr(k))
       parts.append(":")
-      parts.append(Self._encode_float(obj.value_at(i)))
+      parts.append(Self._encodeFloat(obj.valueAt(i)))
     parts.append("}")
     return str.concat(parts)
 
   @staticmethod
   @immutable
-  def _encode_dict_str_str(obj: dict[str, str]) -> str:
+  def _encodeDictStrStr(obj: dict[str, str]) -> str:
     parts: list[str] = ["{"]
     n: int = len(obj)
     for i in range(n):
       if i > 0:
         parts.append(",")
-      k: str = obj.key_at(i)
-      parts.append(Self.encode_str(k))
+      k: str = obj.keyAt(i)
+      parts.append(Self.encodeStr(k))
       parts.append(":")
-      parts.append(Self.encode_str(obj.value_at(i)))
+      parts.append(Self.encodeStr(obj.valueAt(i)))
     parts.append("}")
     return str.concat(parts)
 
-  def begin_object(self) -> None:
+  def beginObject(self) -> None:
     if not self._pretty():
       if self.depth == 0:
         if self._at == 0:
@@ -298,13 +298,13 @@ class JsonEncoder:
       self.sep = ""
     self.depth += 1
     if self._pretty():
-      self.sep = self._newline_indent()
+      self.sep = self._newlineIndent()
 
-  def end_object(self) -> None:
+  def endObject(self) -> None:
     self.depth -= 1
     if not self._pretty():
       if self.depth > 0:
-        self._strip_trailing_comma()
+        self._stripTrailingComma()
       self._ensure(self._at + 1)
       self._buf[self._at] = ord("}")
       self._at += 1
@@ -312,14 +312,14 @@ class JsonEncoder:
         self.sep = ","
       return
     if self._pretty():
-      self.push(self._newline_indent())
+      self.push(self._newlineIndent())
     elif self.depth > 0:
-      self._strip_trailing_comma()
+      self._stripTrailingComma()
     self.push("}")
     if self.depth > 0:
-      self.sep = self._comma_sep()
+      self.sep = self._commaSep()
 
-  def begin_array(self) -> None:
+  def beginArray(self) -> None:
     if not self._pretty():
       if self.sep:
         self.push(self.sep)
@@ -334,61 +334,61 @@ class JsonEncoder:
     self.sep = ""
     self.depth += 1
     if self._pretty():
-      self.sep = self._newline_indent()
+      self.sep = self._newlineIndent()
 
-  def end_array(self) -> None:
+  def endArray(self) -> None:
     self.depth -= 1
     if not self._pretty():
       if self.depth > 0:
-        self._strip_trailing_comma()
+        self._stripTrailingComma()
       self._ensure(self._at + 1)
       self._buf[self._at] = ord("]")
       self._at += 1
       self.sep = ","
       return
     if self._pretty():
-      self.push(self._newline_indent())
+      self.push(self._newlineIndent())
     elif self.depth > 0:
-      self._strip_trailing_comma()
+      self._stripTrailingComma()
     self.push("]")
-    self.sep = self._comma_sep()
+    self.sep = self._commaSep()
 
-  def dump_key(self, name: str) -> None:
+  def dumpKey(self, name: str) -> None:
     if not self._pretty():
       if self.sep:
         self.push(self.sep)
       end: int = self._at + len(name) * 2 + 3
       self._ensure(end)
-      self._at = Self.append_quoted_at(self._buf, self._at, name)
+      self._at = Self.appendQuotedAt(self._buf, self._at, name)
       self._buf[self._at] = ord(":")
       self._at += 1
       self.sep = ""
       return
     colon: str = ": "
     self.push(self.sep)
-    self.push(Self.encode_str(name))
+    self.push(Self.encodeStr(name))
     self.push(colon)
     self.sep = ""
 
-  def dump_int(self, value: int) -> None:
+  def dumpInt(self, value: int) -> None:
     if not self._pretty():
       if self.sep:
         self.push(self.sep)
       self._ensure(self._at + 24)
-      self._at = Self.append_int_at(self._buf, self._at, value)
+      self._at = Self.appendIntAt(self._buf, self._at, value)
       self.sep = ","
       return
     self.push(self.sep)
-    self.push(Self._encode_int(value))
-    self.sep = self._comma_sep()
+    self.push(Self._encodeInt(value))
+    self.sep = self._commaSep()
 
-  def dump_varint(self, value: varint) -> None:
+  def dumpVarint(self, value: varint) -> None:
     if self.sep:
       self.push(self.sep)
     self.push(str(value))
-    self.sep = "," if not self._pretty() else self._comma_sep()
+    self.sep = "," if not self._pretty() else self._commaSep()
 
-  def dump_float(self, value: float) -> None:
+  def dumpFloat(self, value: float) -> None:
     if not self._pretty():
       if self.sep:
         self.push(self.sep)
@@ -396,10 +396,10 @@ class JsonEncoder:
       self.sep = ","
       return
     self.push(self.sep)
-    self.push(Self._encode_float(value))
-    self.sep = self._comma_sep()
+    self.push(Self._encodeFloat(value))
+    self.sep = self._commaSep()
 
-  def dump_bool(self, value: bool) -> None:
+  def dumpBool(self, value: bool) -> None:
     if not self._pretty():
       if self.sep:
         self.push(self.sep)
@@ -427,69 +427,69 @@ class JsonEncoder:
       self.sep = ","
       return
     self.push(self.sep)
-    self.push(Self._encode_bool(value))
-    self.sep = self._comma_sep()
+    self.push(Self._encodeBool(value))
+    self.sep = self._commaSep()
 
-  def dump_str(self, value: str) -> None:
+  def dumpStr(self, value: str) -> None:
     if not self._pretty():
       if self.sep:
         self.push(self.sep)
       end: int = self._at + len(value) * 2 + 3
       self._ensure(end)
-      self._at = Self.append_quoted_at(self._buf, self._at, value)
+      self._at = Self.appendQuotedAt(self._buf, self._at, value)
       self.sep = ","
       return
     self.push(self.sep)
-    self.push(Self.encode_str(value))
-    self.sep = self._comma_sep()
+    self.push(Self.encodeStr(value))
+    self.sep = self._commaSep()
 
-  def dump_field_int(self, key: str, value: int) -> None:
+  def dumpFieldInt(self, key: str, value: int) -> None:
     if self._pretty():
-      self.dump_key(key)
-      self.dump_int(value)
+      self.dumpKey(key)
+      self.dumpInt(value)
       return
     if self.sep:
       self.push(self.sep)
-    self._at = Self.append_quoted_at(self._buf, self._at, key)
+    self._at = Self.appendQuotedAt(self._buf, self._at, key)
     self._buf[self._at] = ord(":")
     self._at += 1
-    self._at = Self.append_int_at(self._buf, self._at, value)
+    self._at = Self.appendIntAt(self._buf, self._at, value)
     self.sep = ","
 
-  def dump_field_varint(self, key: str, value: varint) -> None:
+  def dumpFieldVarint(self, key: str, value: varint) -> None:
     if self._pretty():
-      self.dump_key(key)
-      self.dump_varint(value)
+      self.dumpKey(key)
+      self.dumpVarint(value)
       return
     if self.sep:
       self.push(self.sep)
-    self._at = Self.append_quoted_at(self._buf, self._at, key)
+    self._at = Self.appendQuotedAt(self._buf, self._at, key)
     self._buf[self._at] = ord(":")
     self._at += 1
-    self._at = str(value).copy_to(self._buf, self._at)
+    self._at = str(value).copyTo(self._buf, self._at)
     self.sep = ","
 
-  def dump_field_str(self, key: str, value: str) -> None:
+  def dumpFieldStr(self, key: str, value: str) -> None:
     if self._pretty():
-      self.dump_key(key)
-      self.dump_str(value)
+      self.dumpKey(key)
+      self.dumpStr(value)
       return
     if self.sep:
       self.push(self.sep)
-    self._at = Self.append_quoted_at(self._buf, self._at, key)
+    self._at = Self.appendQuotedAt(self._buf, self._at, key)
     self._buf[self._at] = ord(":")
     self._at += 1
-    self._at = Self.append_quoted_at(self._buf, self._at, value)
+    self._at = Self.appendQuotedAt(self._buf, self._at, value)
     self.sep = ","
 
-  def dump_field_bool(self, key: str, value: bool) -> None:
+  def dumpFieldBool(self, key: str, value: bool) -> None:
     if self._pretty():
-      self.dump_key(key)
-      self.dump_bool(value)
+      self.dumpKey(key)
+      self.dumpBool(value)
       return
     if self.sep:
       self.push(self.sep)
-    self._at = Self.append_quoted_at(self._buf, self._at, key)
+    self._at = Self.appendQuotedAt(self._buf, self._at, key)
     self._buf[self._at] = ord(":")
     self._at += 1
     self._ensure(self._at + 5)
@@ -515,14 +515,14 @@ class JsonEncoder:
       self._at += 1
     self.sep = ","
 
-  def dump_field_list_int(self, key: str, value: list[int]) -> None:
+  def dumpFieldListInt(self, key: str, value: list[int]) -> None:
     if self._pretty():
-      self.dump_key(key)
-      self.dump_list_int(value)
+      self.dumpKey(key)
+      self.dumpListInt(value)
       return
     if self.sep:
       self.push(self.sep)
-    self._at = Self.append_quoted_at(self._buf, self._at, key)
+    self._at = Self.appendQuotedAt(self._buf, self._at, key)
     self._buf[self._at] = ord(":")
     self._at += 1
     if not value:
@@ -532,17 +532,17 @@ class JsonEncoder:
       self._buf[self._at] = ord("]")
       self._at += 1
     else:
-      self._at = Self.append_list_at(self._buf, self._at, value)
+      self._at = Self.appendListAt(self._buf, self._at, value)
     self.sep = ","
 
-  def dump_field_list_str(self, key: str, value: list[str]) -> None:
+  def dumpFieldListStr(self, key: str, value: list[str]) -> None:
     if self._pretty():
-      self.dump_key(key)
-      self.dump_list_str(value)
+      self.dumpKey(key)
+      self.dumpListStr(value)
       return
     if self.sep:
       self.push(self.sep)
-    self._at = Self.append_quoted_at(self._buf, self._at, key)
+    self._at = Self.appendQuotedAt(self._buf, self._at, key)
     self._buf[self._at] = ord(":")
     self._at += 1
     if not value:
@@ -552,17 +552,17 @@ class JsonEncoder:
       self._buf[self._at] = ord("]")
       self._at += 1
     else:
-      self._at = Self.append_list_at(self._buf, self._at, value)
+      self._at = Self.appendListAt(self._buf, self._at, value)
     self.sep = ","
 
-  def dump_field_list_float(self, key: str, value: list[float]) -> None:
+  def dumpFieldListFloat(self, key: str, value: list[float]) -> None:
     if self._pretty():
-      self.dump_key(key)
-      self.dump_list_float(value)
+      self.dumpKey(key)
+      self.dumpListFloat(value)
       return
     if self.sep:
       self.push(self.sep)
-    self._at = Self.append_quoted_at(self._buf, self._at, key)
+    self._at = Self.appendQuotedAt(self._buf, self._at, key)
     self._buf[self._at] = ord(":")
     self._at += 1
     if not value:
@@ -572,17 +572,17 @@ class JsonEncoder:
       self._buf[self._at] = ord("]")
       self._at += 1
     else:
-      self._at = Self.append_list_at(self._buf, self._at, value)
+      self._at = Self.appendListAt(self._buf, self._at, value)
     self.sep = ","
 
-  def dump_field_list_varint(self, key: str, value: list[varint]) -> None:
+  def dumpFieldListVarint(self, key: str, value: list[varint]) -> None:
     if self._pretty():
-      self.dump_key(key)
-      self.dump_list_varint(value)
+      self.dumpKey(key)
+      self.dumpListVarint(value)
       return
     if self.sep:
       self.push(self.sep)
-    self._at = Self.append_quoted_at(self._buf, self._at, key)
+    self._at = Self.appendQuotedAt(self._buf, self._at, key)
     self._buf[self._at] = ord(":")
     self._at += 1
     if not value:
@@ -592,15 +592,15 @@ class JsonEncoder:
       self._buf[self._at] = ord("]")
       self._at += 1
     else:
-      self._at = Self.append_list_varint_at(self._buf, self._at, value)
+      self._at = Self.appendListVarintAt(self._buf, self._at, value)
     self.sep = ","
 
-  def dump_list_int(self, value: list[int]) -> None:
+  def dumpListInt(self, value: list[int]) -> None:
     if self.sep:
       self.push(self.sep)
     if self._pretty():
-      self.push(Self._encode_list_int(value))
-      self.sep = self._comma_sep()
+      self.push(Self._encodeListInt(value))
+      self.sep = self._commaSep()
       return
     if not value:
       self._ensure(self._at + 2)
@@ -609,15 +609,15 @@ class JsonEncoder:
       self._buf[self._at] = ord("]")
       self._at += 1
     else:
-      self._at = Self.append_list_at(self._buf, self._at, value)
+      self._at = Self.appendListAt(self._buf, self._at, value)
     self.sep = ","
 
-  def dump_list_float(self, value: list[float]) -> None:
+  def dumpListFloat(self, value: list[float]) -> None:
     if self.sep:
       self.push(self.sep)
     if self._pretty():
-      self.push(Self._encode_list_float(value))
-      self.sep = self._comma_sep()
+      self.push(Self._encodeListFloat(value))
+      self.sep = self._commaSep()
       return
     if not value:
       self._ensure(self._at + 2)
@@ -626,15 +626,15 @@ class JsonEncoder:
       self._buf[self._at] = ord("]")
       self._at += 1
     else:
-      self._at = Self.append_list_at(self._buf, self._at, value)
+      self._at = Self.appendListAt(self._buf, self._at, value)
     self.sep = ","
 
-  def dump_list_varint(self, value: list[varint]) -> None:
+  def dumpListVarint(self, value: list[varint]) -> None:
     if self.sep:
       self.push(self.sep)
     if self._pretty():
-      self.push(Self._encode_list_varint(value))
-      self.sep = self._comma_sep()
+      self.push(Self._encodeListVarint(value))
+      self.sep = self._commaSep()
       return
     if not value:
       self._ensure(self._at + 2)
@@ -643,15 +643,15 @@ class JsonEncoder:
       self._buf[self._at] = ord("]")
       self._at += 1
     else:
-      self._at = Self.append_list_varint_at(self._buf, self._at, value)
+      self._at = Self.appendListVarintAt(self._buf, self._at, value)
     self.sep = ","
 
-  def dump_list_str(self, value: list[str]) -> None:
+  def dumpListStr(self, value: list[str]) -> None:
     if self.sep:
       self.push(self.sep)
     if self._pretty():
-      self.push(Self._encode_list_str(value))
-      self.sep = self._comma_sep()
+      self.push(Self._encodeListStr(value))
+      self.sep = self._commaSep()
       return
     if not value:
       self._ensure(self._at + 2)
@@ -660,55 +660,55 @@ class JsonEncoder:
       self._buf[self._at] = ord("]")
       self._at += 1
     else:
-      self._at = Self.append_list_at(self._buf, self._at, value)
+      self._at = Self.appendListAt(self._buf, self._at, value)
     self.sep = ","
 
-  def dump_dict_str_int(self, value: dict[str, int]) -> None:
+  def dumpDictStrInt(self, value: dict[str, int]) -> None:
     self.push(self.sep)
     if self._pretty():
-      self.push(Self._encode_dict_str_int(value))
+      self.push(Self._encodeDictStrInt(value))
     else:
-      self.push(Self.fast_encode(value))
-    self.sep = self._comma_sep()
+      self.push(Self.fastEncode(value))
+    self.sep = self._commaSep()
 
-  def dump_dict_str_varint(self, value: dict[str, varint]) -> None:
+  def dumpDictStrVarint(self, value: dict[str, varint]) -> None:
     self.push(self.sep)
     if self._pretty():
-      self.push(Self._encode_dict_str_varint(value))
+      self.push(Self._encodeDictStrVarint(value))
     else:
-      self.push(Self.fast_encode(value))
-    self.sep = self._comma_sep()
+      self.push(Self.fastEncode(value))
+    self.sep = self._commaSep()
 
-  def dump_dict_str_str(self, value: dict[str, str]) -> None:
+  def dumpDictStrStr(self, value: dict[str, str]) -> None:
     self.push(self.sep)
     if self._pretty():
-      self.push(Self._encode_dict_str_str(value))
+      self.push(Self._encodeDictStrStr(value))
     else:
-      self.push(Self.fast_encode(value))
-    self.sep = self._comma_sep()
+      self.push(Self.fastEncode(value))
+    self.sep = self._commaSep()
 
-  def dump_dict_str_float(self, value: dict[str, float]) -> None:
+  def dumpDictStrFloat(self, value: dict[str, float]) -> None:
     self.push(self.sep)
     if self._pretty():
-      self.push(Self._encode_dict_str_float(value))
+      self.push(Self._encodeDictStrFloat(value))
     else:
-      self.push(Self.fast_encode(value))
-    self.sep = self._comma_sep()
+      self.push(Self.fastEncode(value))
+    self.sep = self._commaSep()
 
-  def begin_variant(self, tag: str) -> None:
-    self.begin_object()
-    self.dump_field_str(_JSON_KEY_TAG, tag)
-    self.dump_key(_JSON_KEY_PAYLOAD)
-    self.begin_object()
+  def beginVariant(self, tag: str) -> None:
+    self.beginObject()
+    self.dumpFieldStr(_JsonKeyTag, tag)
+    self.dumpKey(_JsonKeyPayload)
+    self.beginObject()
 
-  def end_variant(self) -> None:
-    self.end_object()
-    self.end_object()
+  def endVariant(self) -> None:
+    self.endObject()
+    self.endObject()
 
   def finish(self) -> str:
     if self._at == 0:
       return ""
-    return str.from_buf(self._buf, self._at)
+    return str.fromBuf(self._buf, self._at)
 
   def take(self) -> str:
     """移动取出内部 ``char[:]`` 为 ``str``（``finish`` 的无拷贝路径）。"""
@@ -721,19 +721,19 @@ class JsonEncoder:
     return str(self._buf)
 
   @overload
-  def flush_to(self, fp: StringIO) -> None:
+  def flushTo(self, fp: StringIO) -> None:
     if self._at == 0:
       return
     fp.write(self._buf, self._at)
 
   @overload
-  def flush_to(self, fp: TextIOWrapper) -> None:
+  def flushTo(self, fp: TextIOWrapper) -> None:
     if self._at == 0:
       return
     fp.write(self._buf, self._at)
 
   @staticmethod
-  def append_int_at(buf: char[:], at: int, obj: int) -> int:
+  def appendIntAt(buf: char[:], at: int, obj: int) -> int:
     """十进制 ``int`` → ``buf[at:]``，返回新尾下标（JSON 紧凑路径语义）。"""
     if obj == 0:
       buf.reserve(at + 1)
@@ -761,7 +761,7 @@ class JsonEncoder:
 
 
   @staticmethod
-  def append_quoted_at(buf: char[:], at: int, s: str) -> int:
+  def appendQuotedAt(buf: char[:], at: int, s: str) -> int:
     """JSON 引号字符串 → ``buf[at:]``（紧凑 encode 子集）。"""
     sn: int = len(s)
     est: int = at + (sn * 2) + 2
@@ -815,19 +815,19 @@ class JsonEncoder:
 
 
   @staticmethod
-  def append_varint_at(buf: char[:], at: int, obj: varint) -> int:
+  def appendVarintAt(buf: char[:], at: int, obj: varint) -> int:
     """``varint`` 十进制文本 → ``buf[at:]``（``str(obj)`` 语义）。"""
-    return str(obj).copy_to(buf, at)
+    return str(obj).copyTo(buf, at)
 
 
   @staticmethod
-  def append_float_at(buf: char[:], at: int, obj: float) -> int:
+  def appendFloatAt(buf: char[:], at: int, obj: float) -> int:
     """``float`` 文本 → ``buf[at:]``（``str(obj)`` 语义）。"""
-    return str(obj).copy_to(buf, at)
+    return str(obj).copyTo(buf, at)
 
 
   @staticmethod
-  def append_list_int_at(buf: char[:], at: int, obj: list[int]) -> int:
+  def appendListIntAt(buf: char[:], at: int, obj: list[int]) -> int:
     """JSON ``list[int]`` → ``buf[at:]``，返回新尾下标。"""
     cnt: int = len(obj)
     buf.reserve(at + (cnt * 12) + 2)
@@ -837,14 +837,14 @@ class JsonEncoder:
       if i > 0:
         buf[at] = ord(",")
         at += 1
-      at = Self.append_int_at(buf, at, obj[i])
+      at = Self.appendIntAt(buf, at, obj[i])
     buf[at] = ord("]")
     at += 1
     return at
 
 
   @staticmethod
-  def append_list_str_at(buf: char[:], at: int, obj: list[str]) -> int:
+  def appendListStrAt(buf: char[:], at: int, obj: list[str]) -> int:
     """JSON ``list[str]`` → ``buf[at:]``，返回新尾下标。"""
     cnt: int = len(obj)
     est: int = at + 2
@@ -857,14 +857,14 @@ class JsonEncoder:
       if i > 0:
         buf[at] = ord(",")
         at += 1
-      at = Self.append_quoted_at(buf, at, obj[i])
+      at = Self.appendQuotedAt(buf, at, obj[i])
     buf[at] = ord("]")
     at += 1
     return at
 
 
   @staticmethod
-  def append_list_float_at(buf: char[:], at: int, obj: list[float]) -> int:
+  def appendListFloatAt(buf: char[:], at: int, obj: list[float]) -> int:
     """JSON ``list[float]`` → ``buf[at:]``，返回新尾下标。"""
     cnt: int = len(obj)
     est: int = at + 2
@@ -877,14 +877,14 @@ class JsonEncoder:
       if i > 0:
         buf[at] = ord(",")
         at += 1
-      at = Self.append_float_at(buf, at, obj[i])
+      at = Self.appendFloatAt(buf, at, obj[i])
     buf[at] = ord("]")
     at += 1
     return at
 
 
   @staticmethod
-  def append_list_varint_at(buf: char[:], at: int, obj: list[varint]) -> int:
+  def appendListVarintAt(buf: char[:], at: int, obj: list[varint]) -> int:
     """JSON ``list[varint]`` → ``buf[at:]``，返回新尾下标。"""
     cnt: int = len(obj)
     est: int = at + 2
@@ -897,7 +897,7 @@ class JsonEncoder:
       if i > 0:
         buf[at] = ord(",")
         at += 1
-      at = Self.append_varint_at(buf, at, obj[i])
+      at = Self.appendVarintAt(buf, at, obj[i])
     buf[at] = ord("]")
     at += 1
     return at
@@ -906,26 +906,26 @@ class JsonEncoder:
   @staticmethod
   @overload
   @staticmethod
-  def append_list_at(buf: char[:], at: int, obj: list[int]) -> int:
-    return Self.append_list_int_at(buf, at, obj)
+  def appendListAt(buf: char[:], at: int, obj: list[int]) -> int:
+    return Self.appendListIntAt(buf, at, obj)
 
 
   @staticmethod
   @overload
   @staticmethod
-  def append_list_at(buf: char[:], at: int, obj: list[str]) -> int:
-    return Self.append_list_str_at(buf, at, obj)
+  def appendListAt(buf: char[:], at: int, obj: list[str]) -> int:
+    return Self.appendListStrAt(buf, at, obj)
 
 
   @staticmethod
   @overload
   @staticmethod
-  def append_list_at(buf: char[:], at: int, obj: list[float]) -> int:
-    return Self.append_list_float_at(buf, at, obj)
+  def appendListAt(buf: char[:], at: int, obj: list[float]) -> int:
+    return Self.appendListFloatAt(buf, at, obj)
 
 
   @staticmethod
-  def _append_dict_str_int_at(buf: char[:], at: int, obj: dict[str, int]) -> int:
+  def _appendDictStrIntAt(buf: char[:], at: int, obj: dict[str, int]) -> int:
     cnt: int = len(obj)
     buf.reserve(at + (cnt * 32) + 2)
     buf[at] = ord("{")
@@ -936,23 +936,23 @@ class JsonEncoder:
         buf[at] = ord(",")
         at += 1
       first = False
-      k: str = obj.key_at(i)
-      at = Self.append_quoted_at(buf, at, k)
+      k: str = obj.keyAt(i)
+      at = Self.appendQuotedAt(buf, at, k)
       buf[at] = ord(":")
       at += 1
-      at = Self.append_int_at(buf, at, obj.value_at(i))
+      at = Self.appendIntAt(buf, at, obj.valueAt(i))
     buf[at] = ord("}")
     at += 1
     return at
 
 
   @staticmethod
-  def _append_dict_str_str_at(buf: char[:], at: int, obj: dict[str, str]) -> int:
+  def _appendDictStrStrAt(buf: char[:], at: int, obj: dict[str, str]) -> int:
     cnt: int = len(obj)
     est: int = at + 2
     for i in range(cnt):
-      k: str = obj.key_at(i)
-      v: str = obj.value_at(i)
+      k: str = obj.keyAt(i)
+      v: str = obj.valueAt(i)
       est += (len(k) * 2) + (len(v) * 2) + 5
     buf.reserve(est)
     buf[at] = ord("{")
@@ -963,23 +963,23 @@ class JsonEncoder:
         buf[at] = ord(",")
         at += 1
       first = False
-      k: str = obj.key_at(i)
-      at = Self.append_quoted_at(buf, at, k)
+      k: str = obj.keyAt(i)
+      at = Self.appendQuotedAt(buf, at, k)
       buf[at] = ord(":")
       at += 1
-      at = Self.append_quoted_at(buf, at, obj.value_at(i))
+      at = Self.appendQuotedAt(buf, at, obj.valueAt(i))
     buf[at] = ord("}")
     at += 1
     return at
 
 
   @staticmethod
-  def _append_dict_str_varint_at(buf: char[:], at: int, obj: dict[str, varint]) -> int:
+  def _appendDictStrVarintAt(buf: char[:], at: int, obj: dict[str, varint]) -> int:
     cnt: int = len(obj)
     est: int = at + 2
     for i in range(cnt):
-      k: str = obj.key_at(i)
-      est += (len(k) * 2) + len(str(obj.value_at(i))) + 5
+      k: str = obj.keyAt(i)
+      est += (len(k) * 2) + len(str(obj.valueAt(i))) + 5
     buf.reserve(est)
     buf[at] = ord("{")
     at += 1
@@ -989,23 +989,23 @@ class JsonEncoder:
         buf[at] = ord(",")
         at += 1
       first = False
-      k: str = obj.key_at(i)
-      at = Self.append_quoted_at(buf, at, k)
+      k: str = obj.keyAt(i)
+      at = Self.appendQuotedAt(buf, at, k)
       buf[at] = ord(":")
       at += 1
-      at = Self.append_varint_at(buf, at, obj.value_at(i))
+      at = Self.appendVarintAt(buf, at, obj.valueAt(i))
     buf[at] = ord("}")
     at += 1
     return at
 
 
   @staticmethod
-  def _append_dict_str_float_at(buf: char[:], at: int, obj: dict[str, float]) -> int:
+  def _appendDictStrFloatAt(buf: char[:], at: int, obj: dict[str, float]) -> int:
     cnt: int = len(obj)
     est: int = at + 2
     for i in range(cnt):
-      k: str = obj.key_at(i)
-      est += (len(k) * 2) + len(str(obj.value_at(i))) + 5
+      k: str = obj.keyAt(i)
+      est += (len(k) * 2) + len(str(obj.valueAt(i))) + 5
     buf.reserve(est)
     buf[at] = ord("{")
     at += 1
@@ -1015,130 +1015,130 @@ class JsonEncoder:
         buf[at] = ord(",")
         at += 1
       first = False
-      k: str = obj.key_at(i)
-      at = Self.append_quoted_at(buf, at, k)
+      k: str = obj.keyAt(i)
+      at = Self.appendQuotedAt(buf, at, k)
       buf[at] = ord(":")
       at += 1
-      at = Self.append_float_at(buf, at, obj.value_at(i))
+      at = Self.appendFloatAt(buf, at, obj.valueAt(i))
     buf[at] = ord("}")
     at += 1
     return at
   @staticmethod
   @overload
   @staticmethod
-  def fast_encode(obj: list[int]) -> str:
+  def fastEncode(obj: list[int]) -> str:
     cnt: int = len(obj)
     buf: char[:] = new((cnt * 12) + 2)
-    at: int = Self.append_list_int_at(buf, 0, obj)
-    return str.from_buf(buf, at)
+    at: int = Self.appendListIntAt(buf, 0, obj)
+    return str.fromBuf(buf, at)
 
 
   @staticmethod
   @overload
   @staticmethod
-  def fast_encode(obj: list[str]) -> str:
+  def fastEncode(obj: list[str]) -> str:
     cnt: int = len(obj)
     est: int = 2
     for i in range(cnt):
       est += (len(obj[i]) * 2) + 3
     buf: char[:] = new(est)
-    at: int = Self.append_list_str_at(buf, 0, obj)
-    return str.from_buf(buf, at)
+    at: int = Self.appendListStrAt(buf, 0, obj)
+    return str.fromBuf(buf, at)
 
 
   @staticmethod
   @overload
   @staticmethod
-  def fast_encode(obj: list[float]) -> str:
+  def fastEncode(obj: list[float]) -> str:
     cnt: int = len(obj)
     est: int = 2
     for i in range(cnt):
       est += len(str(obj[i])) + 1
     buf: char[:] = new(est)
-    at: int = Self.append_list_float_at(buf, 0, obj)
-    return str.from_buf(buf, at)
+    at: int = Self.appendListFloatAt(buf, 0, obj)
+    return str.fromBuf(buf, at)
 
 
   @staticmethod
   @overload
   @staticmethod
-  def fast_encode(obj: list[varint]) -> str:
+  def fastEncode(obj: list[varint]) -> str:
     cnt: int = len(obj)
     est: int = 2
     for i in range(cnt):
       est += len(str(obj[i])) + 1
     buf: char[:] = new(est)
-    at: int = Self.append_list_varint_at(buf, 0, obj)
-    return str.from_buf(buf, at)
+    at: int = Self.appendListVarintAt(buf, 0, obj)
+    return str.fromBuf(buf, at)
 
 
   @staticmethod
   @overload
   @staticmethod
-  def fast_encode(obj: dict[str, int]) -> str:
+  def fastEncode(obj: dict[str, int]) -> str:
     cnt: int = len(obj)
     buf: char[:] = new((cnt * 32) + 2)
-    at: int = Self._append_dict_str_int_at(buf, 0, obj)
-    return str.from_buf(buf, at)
+    at: int = Self._appendDictStrIntAt(buf, 0, obj)
+    return str.fromBuf(buf, at)
 
 
   @staticmethod
   @overload
   @staticmethod
-  def fast_encode(obj: dict[str, str]) -> str:
+  def fastEncode(obj: dict[str, str]) -> str:
     cnt: int = len(obj)
     est: int = 2
     for i in range(cnt):
-      k: str = obj.key_at(i)
-      v: str = obj.value_at(i)
+      k: str = obj.keyAt(i)
+      v: str = obj.valueAt(i)
       est += (len(k) * 2) + (len(v) * 2) + 5
     buf: char[:] = new(est)
-    at: int = Self._append_dict_str_str_at(buf, 0, obj)
-    return str.from_buf(buf, at)
+    at: int = Self._appendDictStrStrAt(buf, 0, obj)
+    return str.fromBuf(buf, at)
 
 
   @staticmethod
   @overload
   @staticmethod
-  def fast_encode(obj: dict[str, varint]) -> str:
+  def fastEncode(obj: dict[str, varint]) -> str:
     cnt: int = len(obj)
     est: int = 2
     for i in range(cnt):
-      k: str = obj.key_at(i)
-      est += (len(k) * 2) + len(str(obj.value_at(i))) + 5
+      k: str = obj.keyAt(i)
+      est += (len(k) * 2) + len(str(obj.valueAt(i))) + 5
     buf: char[:] = new(est)
-    at: int = Self._append_dict_str_varint_at(buf, 0, obj)
-    return str.from_buf(buf, at)
+    at: int = Self._appendDictStrVarintAt(buf, 0, obj)
+    return str.fromBuf(buf, at)
 
 
   @staticmethod
   @overload
   @staticmethod
-  def fast_encode(obj: dict[str, float]) -> str:
+  def fastEncode(obj: dict[str, float]) -> str:
     cnt: int = len(obj)
     est: int = 2
     for i in range(cnt):
-      k: str = obj.key_at(i)
-      est += (len(k) * 2) + len(str(obj.value_at(i))) + 5
+      k: str = obj.keyAt(i)
+      est += (len(k) * 2) + len(str(obj.valueAt(i))) + 5
     buf: char[:] = new(est)
-    at: int = Self._append_dict_str_float_at(buf, 0, obj)
-    return str.from_buf(buf, at)
+    at: int = Self._appendDictStrFloatAt(buf, 0, obj)
+    return str.fromBuf(buf, at)
 
 
 @copyable
 @dataclass(eq=False, repr=False)
 class JsonDecoder:
-  """JSON ``Decoder`` 实现；游标保存在 ``pos``。"""
+  """JSON ``DecoderType`` 实现；游标保存在 ``pos``。"""
 
   s: str = ""
   pos: int = 0
-  ascii_bind_done: bool = False
-  ascii_ok: bool = False
-  ascii_len: int = 0
-  ascii_bytes: Pointer[char] = None
-  ascii_bytes_owned: bool = False
-  str_arena: Arena = new()
-  str_arena_active: bool = False
+  asciiBindDone: bool = False
+  asciiOk: bool = False
+  asciiLen: int = 0
+  asciiBytes: Pointer[char] = None
+  asciiBytesOwned: bool = False
+  strArena: Arena = new()
+  strArenaActive: bool = False
 
   def __repr__(self) -> str:
     return f"JsonDecoder(s={self.s!r}, pos={self.pos})"
@@ -1146,42 +1146,42 @@ class JsonDecoder:
   def __copy__(self, other: Self):
     self.s = other.s
     self.pos = other.pos
-    self.ascii_bind_done = False
-    self.ascii_ok = False
-    self.ascii_len = 0
-    self.ascii_bytes = None
-    self.ascii_bytes_owned = False
-    self.str_arena.reset()
-    self.str_arena_active = False
+    self.asciiBindDone = False
+    self.asciiOk = False
+    self.asciiLen = 0
+    self.asciiBytes = None
+    self.asciiBytesOwned = False
+    self.strArena.reset()
+    self.strArenaActive = False
 
   @staticmethod
   @immutable
-  def _is_ws_byte(c: int) -> bool:
+  def _isWsByte(c: int) -> bool:
     return c in {9, 10, 13, 32}
 
   @staticmethod
   @immutable
-  def _chunk_byte(chunk: uint64, k: int) -> int:
+  def _chunkByte(chunk: uint64, k: int) -> int:
     sh: uint64 = k * 8
     return int((chunk >> sh) & 0xFF)
 
   @staticmethod
   @immutable
-  def _chunk_all_ws(chunk: uint64) -> bool:
+  def _chunkAllWs(chunk: uint64) -> bool:
     for k in range(8):
-      if not Self._is_ws_byte(Self._chunk_byte(chunk, k)):
+      if not Self._isWsByte(Self._chunkByte(chunk, k)):
         return False
     return True
 
   @staticmethod
   @immutable
-  def _swar_is8digits(chunk: uint64) -> bool:
-    t: uint64 = ((chunk + _ADD8) | (chunk - _SUB8)) & _MASK8
+  def _swarIs8digits(chunk: uint64) -> bool:
+    t: uint64 = ((chunk + _Add8) | (chunk - _Sub8)) & _Mask8
     return not t
 
   @staticmethod
   @immutable
-  def _swar_parse8(chunk: uint64) -> int:
+  def _swarParse8(chunk: uint64) -> int:
     mask: uint64 = 0x000000FF000000FF
     mul1: uint64 = 0x000F424000000064
     mul2: uint64 = 0x0000271000000001
@@ -1195,38 +1195,38 @@ class JsonDecoder:
   def fail(self, msg: str) -> int:
     raise JSONDecodeError()
 
-  def try_bind_ascii(self) -> None:
-    """尝试绑定 ASCII 字节视图（纯 Python；``ord`` / ``src_char`` 译后内联）。"""
-    if self.ascii_bind_done:
+  def tryBindAscii(self) -> None:
+    """尝试绑定 ASCII 字节视图（纯 Python；``ord`` / ``srcChar`` 译后内联）。"""
+    if self.asciiBindDone:
       return
-    self.ascii_bind_done = True
-    n: int = self.src_len()
+    self.asciiBindDone = True
+    n: int = self.srcLen()
     if n <= 0:
       return
     for i in range(n):
-      c: char = self.src_char(i)
+      c: char = self.srcChar(i)
       if int(c) < 0 or int(c) > 127:
-        self.ascii_ok = False
+        self.asciiOk = False
         return
-    self.ascii_bytes = self.s.view.at(0)
-    self.ascii_bytes_owned = False
-    self.ascii_len = n
-    self.ascii_ok = True
+    self.asciiBytes = self.s.view.at(0)
+    self.asciiBytesOwned = False
+    self.asciiLen = n
+    self.asciiOk = True
 
-  def release_ascii(self) -> None:
+  def releaseAscii(self) -> None:
     """释放 ASCII 视图标志。"""
-    self.ascii_ok = False
-    self.ascii_bind_done = False
-    self.ascii_len = 0
-    self.ascii_bytes = None
-    self.ascii_bytes_owned = False
+    self.asciiOk = False
+    self.asciiBindDone = False
+    self.asciiLen = 0
+    self.asciiBytes = None
+    self.asciiBytesOwned = False
 
-  def skip_ws(self) -> None:
-    """跳过 JSON 空白（``_skip_ws`` 公开入口）。"""
-    self._skip_ws()
+  def skipWs(self) -> None:
+    """跳过 JSON 空白（``_skipWs`` 公开入口）。"""
+    self._skipWs()
 
-  def _skip_ws(self) -> None:
-    src: span[char] = self.src_view()
+  def _skipWs(self) -> None:
+    src: span[char] = self.srcView()
     n: int = len(src)
     for j in range(self.pos, n):
       if src[j] not in "\t\n\r ":
@@ -1234,20 +1234,20 @@ class JsonDecoder:
         return
     self.pos = n
 
-  def expect_char(self, ch: str) -> None:
+  def expectChar(self, ch: str) -> None:
     if self.pos >= len(self.s) or self.s[self.pos] not in ch:
       self.fail("unexpected char")
     self.pos += 1
 
-  def _parse_string_value(self, out: list[str] @ref) -> None:
-    self._skip_ws()
+  def _parseStringValue(self, out: list[str] @ref) -> None:
+    self._skipWs()
     if self.pos >= len(self.s) or self.s[self.pos] not in '"':
       self.fail("expected string")
     self.pos += 1
     parts: list[str] = []
     while self.pos < len(self.s):
       if self.s[self.pos] in '"':
-        out.append(_EMPTY.join(parts))
+        out.append(_Empty.join(parts))
         self.pos += 1
         return
       if self.s[self.pos] in "\\":
@@ -1274,9 +1274,9 @@ class JsonDecoder:
       self.pos += 1
     self.fail("unterminated string")
 
-  def _scan_json_number(self, start_out: list[int] @ref, end_out: list[int] @ref) -> None:
+  def _scanJsonNumber(self, startOut: list[int] @ref, endOut: list[int] @ref) -> None:
     """写入数字 token 的 ``[start, end)``（``end`` 为首个非数字字符下标）。"""
-    self._skip_ws()
+    self._skipWs()
     i: int = self.pos
     if i >= len(self.s):
       self.fail("expected number")
@@ -1313,49 +1313,49 @@ class JsonDecoder:
         if self.s[j] not in "0123456789":
           break
         i = j + 1
-    start_out.append(start)
-    end_out.append(i)
+    startOut.append(start)
+    endOut.append(i)
     self.pos = i
 
-  def _parse_int_value(self, out: list[int] @ref) -> None:
-    start_out: list[int] = []
-    end_out: list[int] = []
-    self._scan_json_number(start_out, end_out)
-    start: int = start_out[0]
-    end: int = end_out[0]
+  def _parseIntValue(self, out: list[int] @ref) -> None:
+    startOut: list[int] = []
+    endOut: list[int] = []
+    self._scanJsonNumber(startOut, endOut)
+    start: int = startOut[0]
+    end: int = endOut[0]
     for j in range(start, end):
       if self.s[j] in ".eE":
         self.fail("expected int")
     tok: str = self.s[start:end]
     out.append(int(tok))
 
-  def _parse_varint_value(self, out: list[varint] @ref) -> None:
-    start_out: list[int] = []
-    end_out: list[int] = []
-    self._scan_json_number(start_out, end_out)
-    start: int = start_out[0]
-    end: int = end_out[0]
+  def _parseVarintValue(self, out: list[varint] @ref) -> None:
+    startOut: list[int] = []
+    endOut: list[int] = []
+    self._scanJsonNumber(startOut, endOut)
+    start: int = startOut[0]
+    end: int = endOut[0]
     for j in range(start, end):
       if self.s[j] in ".eE":
         self.fail("expected int")
     tok: str = self.s[start:end]
     out.append(varint(tok))
 
-  def _parse_float_value(self, out: list[float] @ref) -> None:
-    start_out: list[int] = []
-    end_out: list[int] = []
-    self._scan_json_number(start_out, end_out)
-    start: int = start_out[0]
-    end: int = end_out[0]
+  def _parseFloatValue(self, out: list[float] @ref) -> None:
+    startOut: list[int] = []
+    endOut: list[int] = []
+    self._scanJsonNumber(startOut, endOut)
+    start: int = startOut[0]
+    end: int = endOut[0]
     tok: str = self.s[start:end]
     out.append(float(tok))
 
-  def _skip_number_value(self) -> None:
+  def _skipNumberValue(self) -> None:
     _buf: list[float] = []
-    self._parse_float_value(_buf)
+    self._parseFloatValue(_buf)
 
-  def _parse_bool_value(self, out: list[bool] @ref) -> None:
-    self._skip_ws()
+  def _parseBoolValue(self, out: list[bool] @ref) -> None:
+    self._skipWs()
     if self.pos + 4 <= len(self.s) and self.s[self.pos : self.pos + 4] == "true":
       out.append(True)
       self.pos += 4
@@ -1366,8 +1366,8 @@ class JsonDecoder:
       return
     self.fail("expected bool")
 
-  def _skip_string_value(self) -> None:
-    """跳过 JSON 字符串字面量（不构造 ``str``，``skip_value`` / 数组导航热路径）。"""
+  def _skipStringValue(self) -> None:
+    """跳过 JSON 字符串字面量（不构造 ``str``，``skipValue`` / 数组导航热路径）。"""
     if self.pos >= len(self.s) or self.s[self.pos] not in '"':
       self.fail("expected string")
     self.pos += 1
@@ -1383,24 +1383,24 @@ class JsonDecoder:
       self.pos += 1
     self.fail("unterminated string")
 
-  def _skip_value(self) -> None:
-    if self.try_skip_value_ascii():
+  def _skipValue(self) -> None:
+    if self.trySkipValueAscii():
       return
-    self._skip_ws()
+    self._skipWs()
     if self.pos >= len(self.s):
       self.fail("empty input")
     ch: char = self.s[self.pos]
     match ch:
       case '"':
-        self._skip_string_value()
+        self._skipStringValue()
         return
       case 't':
-        _skip_bb: list[bool] = []
-        self._parse_bool_value(_skip_bb)
+        _skipBb: list[bool] = []
+        self._parseBoolValue(_skipBb)
         return
       case 'f':
-        _skip_bf: list[bool] = []
-        self._parse_bool_value(_skip_bf)
+        _skipBf: list[bool] = []
+        self._parseBoolValue(_skipBf)
         return
       case 'n':
         if self.pos + 4 <= len(self.s) and self.s[self.pos : self.pos + 4] == "null":
@@ -1408,15 +1408,15 @@ class JsonDecoder:
           return
         self.fail("expected null")
       case '-' | '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9':
-        self._skip_number_value()
+        self._skipNumberValue()
         return
       case '[':
         depth: int = 0
         for _ in range(len(self.s)):
           if self.pos >= len(self.s):
             break
-          ch_arr: char = self.s[self.pos]
-          match ch_arr:
+          chArr: char = self.s[self.pos]
+          match chArr:
             case '[':
               depth += 1
             case ']':
@@ -1425,7 +1425,7 @@ class JsonDecoder:
                 self.pos += 1
                 return
             case '"':
-              self._skip_string_value()
+              self._skipStringValue()
               continue
             case _:
               pass
@@ -1436,8 +1436,8 @@ class JsonDecoder:
         for _ in range(len(self.s)):
           if self.pos >= len(self.s):
             break
-          ch_obj: char = self.s[self.pos]
-          match ch_obj:
+          chObj: char = self.s[self.pos]
+          match chObj:
             case '{':
               depth2 += 1
             case '}':
@@ -1446,7 +1446,7 @@ class JsonDecoder:
                 self.pos += 1
                 return
             case '"':
-              self._skip_string_value()
+              self._skipStringValue()
               continue
             case _:
               pass
@@ -1456,34 +1456,34 @@ class JsonDecoder:
         self.fail("bad value")
 
   @staticmethod
-  def from_text(text: str) -> Self:
+  def fromText(text: str) -> Self:
     dec: Self = new()
     dec.s = text
     dec.pos = 0
     return dec
 
-  def src_view(self) -> span[char]:
+  def srcView(self) -> span[char]:
     """输入 ``s`` 码点只读视图（``serde`` 热路径）。"""
     return self.s.view
 
-  def src_len(self) -> int:
-    """``src_view`` 长度（供生成 C++ 快路径，勿经 ``PyStr.__getitem__``）。"""
-    return len(self.src_view())
+  def srcLen(self) -> int:
+    """``srcView`` 长度（供生成 C++ 快路径，勿经 ``PyStr.__getitem__``）。"""
+    return len(self.srcView())
 
-  def src_char(self, i: int) -> char:
+  def srcChar(self, i: int) -> char:
     """``_src_view[i]``（``i`` 与 ``pos`` 同属输入 ``s``）。"""
-    return self.src_view()[i]
+    return self.srcView()[i]
 
-  def src_ascii_ok(self) -> bool:
+  def srcAsciiOk(self) -> bool:
     """输入是否已绑定紧凑 ASCII 字节视图（仅 ``loads`` 热路径 C++ 使用）。"""
-    return self.ascii_ok
+    return self.asciiOk
 
-  def enable_str_arena(self) -> None:
-    """``loads`` 热路径：按需启用 ``str_arena``（纯 ``int``/``list[int]`` 等勿调用）。"""
-    self.str_arena_active = True
-    sl: int = self.src_len()
+  def enableStrArena(self) -> None:
+    """``loads`` 热路径：按需启用 ``strArena``（纯 ``int``/``list[int]`` 等勿调用）。"""
+    self.strArenaActive = True
+    sl: int = self.srcLen()
     if sl > 0:
-      self.str_arena.reserve(sl // 2)
+      self.strArena.reserve(sl // 2)
 
   def mark(self) -> int:
     return self.pos
@@ -1491,88 +1491,88 @@ class JsonDecoder:
   def restore(self, m: int) -> None:
     self.pos = m
 
-  def _slice_at(self, start: int, end: int) -> span[char]:
+  def _sliceAt(self, start: int, end: int) -> span[char]:
     """半开区间 ``[start, end)``，下标与 ``pos`` 同属 ``s``。"""
-    return self.src_view()[start:end]
+    return self.srcView()[start:end]
 
-  def skip_empty_array(self) -> None:
+  def skipEmptyArray(self) -> None:
     """假定游标已在 ``[``；若为 ``[]`` 则跳过并返回。"""
-    self._skip_ws()
-    n: int = self.src_len()
-    if self.pos < n and self.src_char(self.pos) in "[":
-      if self.pos + 1 < n and self.src_char(self.pos + 1) in "]":
+    self._skipWs()
+    n: int = self.srcLen()
+    if self.pos < n and self.srcChar(self.pos) in "[":
+      if self.pos + 1 < n and self.srcChar(self.pos + 1) in "]":
         self.pos += 2
         return
     self.fail("expected empty array")
 
-  def load_str_span(self) -> span[char]:
+  def loadStrSpan(self) -> span[char]:
     """无转义 JSON 字符串：返回码点视图；有转义则物化后取其 ``codes.view``。"""
-    self._skip_ws()
-    return self._load_str_span_bound()
+    self._skipWs()
+    return self._loadStrSpanBound()
 
-  def _load_str_span_bound(self) -> span[char]:
-    return self.load_str_span_ascii()
+  def _loadStrSpanBound(self) -> span[char]:
+    return self.loadStrSpanAscii()
 
-  def skip_spaces(self) -> None:
-    self._skip_ws()
+  def skipSpaces(self) -> None:
+    self._skipWs()
 
-  def read_quoted(self) -> str:
+  def readQuoted(self) -> str:
     buf: list[str] = []
-    self._parse_string_value(buf)
+    self._parseStringValue(buf)
     return buf[0]
 
-  def begin_root_object(self) -> None:
-    self._skip_ws()
-    self.expect_char("{")
+  def beginRootObject(self) -> None:
+    self._skipWs()
+    self.expectChar("{")
 
-  def try_match_key(self, expected: str) -> bool:
+  def tryMatchKey(self, expected: str) -> bool:
     """无转义键：原位匹配 ``,"expected":``，不匹配则恢复游标（不分配 ``key``）。"""
-    if self.ascii_ok:
-      return self._try_match_key_ascii_bound(expected)
-    return self._try_match_key_chars(expected)
+    if self.asciiOk:
+      return self._tryMatchKeyAsciiBound(expected)
+    return self._tryMatchKeyChars(expected)
 
-  def _try_match_key_chars(self, expected: str) -> bool:
-    """非 ASCII 文档上的 ``try_match_key``（``src_char`` 路径）。"""
+  def _tryMatchKeyChars(self, expected: str) -> bool:
+    """非 ASCII 文档上的 ``tryMatchKey``（``srcChar`` 路径）。"""
     mark: int = self.pos
-    self._skip_ws()
-    n: int = self.src_len()
-    if self.pos < n and self.src_char(self.pos) in ",":
+    self._skipWs()
+    n: int = self.srcLen()
+    if self.pos < n and self.srcChar(self.pos) in ",":
       self.pos += 1
-      self._skip_ws()
-      n = self.src_len()
-    if self.pos >= n or self.src_char(self.pos) not in '"':
+      self._skipWs()
+      n = self.srcLen()
+    if self.pos >= n or self.srcChar(self.pos) not in '"':
       self.pos = mark
       return False
     self.pos += 1
     elen: int = len(expected)
     for i in range(elen):
-      if self.pos >= n or self.src_char(self.pos) != expected[i]:
+      if self.pos >= n or self.srcChar(self.pos) != expected[i]:
         self.pos = mark
         return False
       self.pos += 1
-    if self.pos >= n or self.src_char(self.pos) not in '"':
+    if self.pos >= n or self.srcChar(self.pos) not in '"':
       self.pos = mark
       return False
     self.pos += 1
-    self._skip_ws()
-    n = self.src_len()
-    if self.pos >= n or self.src_char(self.pos) not in ":":
+    self._skipWs()
+    n = self.srcLen()
+    if self.pos >= n or self.srcChar(self.pos) not in ":":
       self.pos = mark
       return False
     self.pos += 1
     return True
 
-  def skip_field(self) -> None:
-    if self.try_skip_field_ascii():
+  def skipField(self) -> None:
+    if self.trySkipFieldAscii():
       return
-    _k: str = self.load_key()
-    self.skip_value()
+    _k: str = self.loadKey()
+    self.skipValue()
 
-  def load_key(self) -> str:
-    self._skip_ws()
+  def loadKey(self) -> str:
+    self._skipWs()
     if self.pos < len(self.s) and self.s[self.pos] == ord(","):
       self.pos += 1
-      self._skip_ws()
+      self._skipWs()
     if self.pos >= len(self.s) or self.s[self.pos] != ord('"'):
       self.fail("expected string key")
     self.pos += 1
@@ -1582,253 +1582,253 @@ class JsonDecoder:
       c: char = self.s[self.pos]
       if c == ord('"'):
         key = self.s[start:self.pos]
-        key.cache_hash(h)
+        key.cacheHash(h)
         self.pos += 1
-        self._skip_ws()
-        self.expect_char(":")
+        self._skipWs()
+        self.expectChar(":")
         return key
       if c == ord("\\"):
         self.pos = start - 1
         kbuf2: list[str] = []
-        self._parse_string_value(kbuf2)
+        self._parseStringValue(kbuf2)
         key = kbuf2[0]
-        self._skip_ws()
-        self.expect_char(":")
+        self._skipWs()
+        self.expectChar(":")
         return key
       h = h * 31 + int(c)
       self.pos += 1
     self.fail("unterminated string")
     return ""
 
-  def skip_value(self) -> None:
-    self._skip_value()
+  def skipValue(self) -> None:
+    self._skipValue()
 
-  def _parse_int_at(self) -> int:
-    n: int = self.src_len()
+  def _parseIntAt(self) -> int:
+    n: int = self.srcLen()
     neg: bool = False
-    if self.pos < n and self.src_char(self.pos) in "-":
+    if self.pos < n and self.srcChar(self.pos) in "-":
       neg = True
       self.pos += 1
     val: int = 0
-    any_d: bool = False
+    anyD: bool = False
     while self.pos < n:
-      c: char = self.src_char(self.pos)
+      c: char = self.srcChar(self.pos)
       if c not in "0123456789":
         break
       val *= 10
       val += int(c) - ord("0")
-      any_d = True
+      anyD = True
       self.pos += 1
-    if not any_d:
+    if not anyD:
       self.fail("expected int")
     if neg:
       val = -val
     return val
 
-  def parse_int_at(self) -> int:
+  def parseIntAt(self) -> int:
     """假定游标已在 JSON 数值首字符；不跳过前导空白。"""
-    return self._parse_int_at()
+    return self._parseIntAt()
 
-  def _parse_int_at_bound(self) -> int:
-    """ASCII 快路径：``scan.parse_int_at_ascii`` 叶子。"""
-    return self.parse_int_at_ascii()
+  def _parseIntAtBound(self) -> int:
+    """ASCII 快路径：``scan.parseIntAtAscii`` 叶子。"""
+    return self.parseIntAtAscii()
 
-  def _skip_ws_bound(self) -> None:
-    """ASCII bound 空白跳过：``scan.skip_ws_bound`` 叶子。"""
-    self.skip_ws_bound()
+  def _skipWsBound(self) -> None:
+    """ASCII bound 空白跳过：``scan.skipWsBound`` 叶子。"""
+    self.skipWsBound()
 
-  def _str_assign_from_seg_bound(self, seg: span[char]) -> str:
-    """``seg`` → 新 ``str``（``scan.str_assign_from_seg`` 叶子）。"""
-    return self.str_assign_from_seg(seg)
+  def _strAssignFromSegBound(self, seg: span[char]) -> str:
+    """``seg`` → 新 ``str``（``scan.strAssignFromSeg`` 叶子）。"""
+    return self.strAssignFromSeg(seg)
 
-  def _str_assign_from_seg_slot_bound(self, slot: Pointer[str], seg: span[char]) -> None:
-    init(slot, self.str_assign_from_seg(seg))
+  def _strAssignFromSegSlotBound(self, slot: Pointer[str], seg: span[char]) -> None:
+    init(slot, self.strAssignFromSeg(seg))
 
-  def _try_match_key_ascii_bound(self, expected: str) -> bool:
+  def _tryMatchKeyAsciiBound(self, expected: str) -> bool:
     mark: int = self.pos
-    self._skip_ws_bound()
-    n: int = self.src_len()
-    if self.pos < n and self.src_char(self.pos) in ",":
+    self._skipWsBound()
+    n: int = self.srcLen()
+    if self.pos < n and self.srcChar(self.pos) in ",":
       self.pos += 1
-      self._skip_ws_bound()
-      n = self.src_len()
-    if self.pos >= n or self.src_char(self.pos) not in '"':
+      self._skipWsBound()
+      n = self.srcLen()
+    if self.pos >= n or self.srcChar(self.pos) not in '"':
       self.pos = mark
       return False
     self.pos += 1
     elen: int = len(expected)
     for i in range(elen):
-      if self.pos >= n or self.src_char(self.pos) != expected[i]:
+      if self.pos >= n or self.srcChar(self.pos) != expected[i]:
         self.pos = mark
         return False
       self.pos += 1
-    if self.pos >= n or self.src_char(self.pos) not in '"':
+    if self.pos >= n or self.srcChar(self.pos) not in '"':
       self.pos = mark
       return False
     self.pos += 1
-    self._skip_ws_bound()
-    n = self.src_len()
-    if self.pos >= n or self.src_char(self.pos) not in ":":
+    self._skipWsBound()
+    n = self.srcLen()
+    if self.pos >= n or self.srcChar(self.pos) not in ":":
       self.pos = mark
       return False
     self.pos += 1
     return True
 
-  def load_container[T](self) -> T:
+  def loadContainer[Root](self) -> Root:
     """``list[…]`` / ``dict[str, …]`` wildcard 容器（``Json.loads`` 分派）。"""
-    if T is list[...]:
-      return self.load_list_element[T.Element]()
-    elif T is dict[str, ...]:
-      return self.load_dict_element[T.Value]()
+    if Root is list[...]:
+      return self.loadListElement[Root.Element]()
+    elif Root is dict[str, ...]:
+      return self.loadDictElement[Root.Value]()
 
-  def load_generic[T](self) -> T:
-    return T.deserialize(self)
+  def loadGeneric[Root](self) -> Root:
+    return Root.deserialize(self)
 
-  def load_value[T](self) -> T:
+  def loadValue[Root](self) -> Root:
     """递归解码一个值，供泛型容器元素复用。"""
-    if T is int:
-      return self.load_int()
-    elif T is varint:
-      return self.load_varint()
-    elif T is float:
-      return self.load_float()
-    elif T is str:
-      return self.load_str()
-    elif T is bool:
-      return self.load_bool()
-    elif T is list[int]:
-      return self.load_list_int()
-    elif T is list[varint]:
-      return self.load_list_varint()
-    elif T is list[str]:
-      return self.load_list_str()
-    elif T is list[float]:
-      return self.load_list_float()
-    elif T is list[...]:
-      return self.load_container[T]()
-    elif T is dict[str, int]:
-      return self.load_dict_str_int()
-    elif T is dict[str, varint]:
-      return self.load_dict_str_varint()
-    elif T is dict[str, str]:
-      return self.load_dict_str_str()
-    elif T is dict[str, float]:
-      return self.load_dict_str_float()
-    elif T is dict[str, ...]:
-      return self.load_container[T]()
+    if Root is int:
+      return self.loadInt()
+    elif Root is varint:
+      return self.loadVarint()
+    elif Root is float:
+      return self.loadFloat()
+    elif Root is str:
+      return self.loadStr()
+    elif Root is bool:
+      return self.loadBool()
+    elif Root is list[int]:
+      return self.loadListInt()
+    elif Root is list[varint]:
+      return self.loadListVarint()
+    elif Root is list[str]:
+      return self.loadListStr()
+    elif Root is list[float]:
+      return self.loadListFloat()
+    elif Root is list[...]:
+      return self.loadContainer[Root]()
+    elif Root is dict[str, int]:
+      return self.loadDictStrInt()
+    elif Root is dict[str, varint]:
+      return self.loadDictStrVarint()
+    elif Root is dict[str, str]:
+      return self.loadDictStrStr()
+    elif Root is dict[str, float]:
+      return self.loadDictStrFloat()
+    elif Root is dict[str, ...]:
+      return self.loadContainer[Root]()
     else:
-      return self.load_generic[T]()
+      return self.loadGeneric[Root]()
 
-  def load_list_element[U](self) -> list[U]:
+  def loadListElement[U](self) -> list[U]:
     out: list[U] = []
-    self.begin_array()
-    self.skip_spaces()
-    if self.at_array_end():
+    self.beginArray()
+    self.skipSpaces()
+    if self.atArrayEnd():
       return out
-    est: int = (self.src_len() - self.pos) // 48
+    est: int = (self.srcLen() - self.pos) // 48
     if est > 0:
       out.capacity = est
     while True:
-      out.append(self.load_value[U]())
-      self.skip_spaces()
-      if self.at_array_end():
+      out.append(self.loadValue[U]())
+      self.skipSpaces()
+      if self.atArrayEnd():
         return out
-      self.expect_char(",")
-      self.skip_spaces()
+      self.expectChar(",")
+      self.skipSpaces()
 
-  def load_dict_element[V](self) -> dict[str, V]:
+  def loadDictElement[V](self) -> dict[str, V]:
     out: dict[str, V] = {}
-    self.skip_spaces()
-    self.expect_char("{")
-    self.skip_spaces()
-    n: int = self.src_len()
-    if self.pos < n and self.src_char(self.pos) in "}":
+    self.skipSpaces()
+    self.expectChar("{")
+    self.skipSpaces()
+    n: int = self.srcLen()
+    if self.pos < n and self.srcChar(self.pos) in "}":
       self.pos += 1
       return out
     while True:
-      k: str = self.load_key()
-      self.skip_spaces()
-      v: V = self.load_value[V]()
+      k: str = self.loadKey()
+      self.skipSpaces()
+      v: V = self.loadValue[V]()
       out[k] = v
-      self.skip_spaces()
-      n = self.src_len()
-      if self.pos < n and self.src_char(self.pos) in "}":
+      self.skipSpaces()
+      n = self.srcLen()
+      if self.pos < n and self.srcChar(self.pos) in "}":
         self.pos += 1
         return out
-      self.expect_char(",")
-      self.skip_spaces()
+      self.expectChar(",")
+      self.skipSpaces()
 
-  def _parse_varint_at(self) -> varint:
-    n: int = self.src_len()
+  def _parseVarintAt(self) -> varint:
+    n: int = self.srcLen()
     start: int = self.pos
-    if self.pos < n and self.src_char(self.pos) in "-":
+    if self.pos < n and self.srcChar(self.pos) in "-":
       self.pos += 1
-    any_d: bool = False
+    anyD: bool = False
     while self.pos < n:
-      c: char = self.src_char(self.pos)
+      c: char = self.srcChar(self.pos)
       if c not in "0123456789":
         break
-      any_d = True
+      anyD = True
       self.pos += 1
-    if not any_d:
+    if not anyD:
       self.fail("expected int")
     tok: str = self.s[start:self.pos]
     return new(tok)
 
-  def parse_varint_at(self) -> varint:
+  def parseVarintAt(self) -> varint:
     """假定游标已在 JSON 数值首字符；不跳过前导空白。"""
-    return self._parse_varint_at()
+    return self._parseVarintAt()
 
-  def parse_float_at(self) -> float:
+  def parseFloatAt(self) -> float:
     """假定游标已在 JSON 数值首字符；不跳过前导空白。"""
     fbuf: list[float] = []
-    self._parse_float_value(fbuf)
+    self._parseFloatValue(fbuf)
     return fbuf[0]
 
-  def parse_bool_at(self) -> bool:
+  def parseBoolAt(self) -> bool:
     """假定游标已在 ``true``/``false`` 首字符。"""
-    return self._parse_bool_at()
+    return self._parseBoolAt()
 
-  def load_list_int_value(self) -> list[int]:
+  def loadListIntValue(self) -> list[int]:
     """假定游标已在 ``[``。"""
-    return self._load_list_int_at()
+    return self._loadListIntAt()
 
-  def load_list_varint_value(self) -> list[varint]:
+  def loadListVarintValue(self) -> list[varint]:
     """假定游标已在 ``[``。"""
-    return self._load_list_varint_at()
+    return self._loadListVarintAt()
 
-  def load_list_str_value(self) -> list[str]:
+  def loadListStrValue(self) -> list[str]:
     """假定游标已在 ``[``。"""
-    return self._load_list_str_at()
+    return self._loadListStrAt()
 
-  def load_list_float_value(self) -> list[float]:
+  def loadListFloatValue(self) -> list[float]:
     """假定游标已在 ``[``。"""
-    return self._load_list_float_at()
+    return self._loadListFloatAt()
 
-  def load_int(self) -> int:
-    self._skip_ws()
-    return self._parse_int_at()
+  def loadInt(self) -> int:
+    self._skipWs()
+    return self._parseIntAt()
 
-  def load_varint(self) -> varint:
-    self._skip_ws()
-    return self._parse_varint_at()
+  def loadVarint(self) -> varint:
+    self._skipWs()
+    return self._parseVarintAt()
 
-  def load_float(self) -> float:
-    self._skip_ws()
+  def loadFloat(self) -> float:
+    self._skipWs()
     fbuf: list[float] = []
-    self._parse_float_value(fbuf)
+    self._parseFloatValue(fbuf)
     return fbuf[0]
 
-  def load_string_slow(self) -> str:
+  def loadStringSlow(self) -> str:
     """含转义等复杂 JSON 字符串。"""
     sbuf: list[str] = []
-    self._parse_string_value(sbuf)
+    self._parseStringValue(sbuf)
     return sbuf[0]
 
-  def load_str(self) -> str:
-    self._skip_ws()
+  def loadStr(self) -> str:
+    self._skipWs()
     if self.pos >= len(self.s) or self.s[self.pos] != ord('"'):
-      return self.load_string_slow()
+      return self.loadStringSlow()
     self.pos += 1
     start: int = self.pos
     while self.pos < len(self.s):
@@ -1838,12 +1838,12 @@ class JsonDecoder:
         return raw
       if self.s[self.pos] == ord("\\"):
         self.pos = start - 1
-        return self.load_string_slow()
+        return self.loadStringSlow()
       self.pos += 1
     self.fail("unterminated string")
     return ""
 
-  def _parse_bool_at(self) -> bool:
+  def _parseBoolAt(self) -> bool:
     if self.pos + 4 <= len(self.s) and self.s[self.pos : self.pos + 4] == "true":
       self.pos += 4
       return True
@@ -1853,522 +1853,522 @@ class JsonDecoder:
     self.fail("expected bool")
     return False
 
-  def load_bool(self) -> bool:
+  def loadBool(self) -> bool:
     bbuf: list[bool] = []
-    self._parse_bool_value(bbuf)
+    self._parseBoolValue(bbuf)
     return bbuf[0]
 
-  def _prealloc_list_ascii(self, out: list[int] @ref, bytes_per_elem: int) -> None:
-    est: int = (self.ascii_len - self.pos) // bytes_per_elem
+  def _preallocListAscii(self, out: list[int] @ref, bytesPerElem: int) -> None:
+    est: int = (self.asciiLen - self.pos) // bytesPerElem
     if est > 0:
       out.capacity = est
 
-  def _prealloc_dict_ascii(self, out: dict[str, int] @ref, bytes_per_entry: int) -> None:
-    est: int = (self.ascii_len - self.pos) // bytes_per_entry
+  def _preallocDictAscii(self, out: dict[str, int] @ref, bytesPerEntry: int) -> None:
+    est: int = (self.asciiLen - self.pos) // bytesPerEntry
     if est > 0:
       cap: int = est * 3 // 2 + 1
       if cap < 8:
         cap = 8
       out.capacity = cap
 
-  def _ascii_byte_is(self, n: int, ch: str) -> bool:
+  def _asciiByteIs(self, n: int, ch: str) -> bool:
     if self.pos >= n:
       return False
     ec: char = ch[0]
-    if self.ascii_ok:
-      return self.byte_at(self.pos) == int(ec)
-    return self.src_char(self.pos) == ec
+    if self.asciiOk:
+      return self.byteAt(self.pos) == int(ec)
+    return self.srcChar(self.pos) == ec
 
-  def _load_list_int_ascii_loop(self, out: list[int] @ref) -> None:
-    n: int = self.ascii_len
-    self._prealloc_list_ascii(out, 6)
+  def _loadListIntAsciiLoop(self, out: list[int] @ref) -> None:
+    n: int = self.asciiLen
+    self._preallocListAscii(out, 6)
     while True:
-      slot: Pointer[int] = out.serde_push_slot()
-      init(slot, self._parse_int_at_bound())
-      out.serde_commit_push()
-      self._skip_ws_bound()
-      n = self.ascii_len
-      if self._ascii_byte_is(n, "]"):
+      slot: Pointer[int] = out.serdePushSlot()
+      init(slot, self._parseIntAtBound())
+      out.serdeCommitPush()
+      self._skipWsBound()
+      n = self.asciiLen
+      if self._asciiByteIs(n, "]"):
         self.pos += 1
         return
-      if self.pos >= n or not self._ascii_byte_is(n, ","):
+      if self.pos >= n or not self._asciiByteIs(n, ","):
         self.fail("expected , or ]")
       self.pos += 1
-      self._skip_ws_bound()
+      self._skipWsBound()
 
-  def _load_list_int_ascii_loop_ref(self, out: list[int] @ref) -> None:
+  def _loadListIntAsciiLoopRef(self, out: list[int] @ref) -> None:
     while True:
-      out.append(self.parse_int_at())
-      self.skip_ws()
-      if self.pos < self.src_len() and self.src_char(self.pos) in "]":
+      out.append(self.parseIntAt())
+      self.skipWs()
+      if self.pos < self.srcLen() and self.srcChar(self.pos) in "]":
         self.pos += 1
         return
-      self.expect_char(",")
-      self.skip_ws()
+      self.expectChar(",")
+      self.skipWs()
 
-  def _load_list_str_ascii_loop(self, out: list[str] @ref) -> None:
-    n: int = self.ascii_len
-    est: int = (self.ascii_len - self.pos) // 8
+  def _loadListStrAsciiLoop(self, out: list[str] @ref) -> None:
+    n: int = self.asciiLen
+    est: int = (self.asciiLen - self.pos) // 8
     if est > 0:
       out.capacity = est
     while True:
-      seg: span[char] = self._load_str_span_bound()
-      slot: Pointer[str] = out.serde_push_slot()
-      self._str_assign_from_seg_slot_bound(slot, seg)
-      out.serde_commit_push()
-      self._skip_ws_bound()
-      n = self.ascii_len
-      if self._ascii_byte_is(n, "]"):
+      seg: span[char] = self._loadStrSpanBound()
+      slot: Pointer[str] = out.serdePushSlot()
+      self._strAssignFromSegSlotBound(slot, seg)
+      out.serdeCommitPush()
+      self._skipWsBound()
+      n = self.asciiLen
+      if self._asciiByteIs(n, "]"):
         self.pos += 1
         return
-      if self.pos >= n or not self._ascii_byte_is(n, ","):
+      if self.pos >= n or not self._asciiByteIs(n, ","):
         self.fail("expected , or ]")
       self.pos += 1
-      self._skip_ws_bound()
+      self._skipWsBound()
 
-  def _load_list_str_ascii_loop_ref(self, out: list[str] @ref) -> None:
+  def _loadListStrAsciiLoopRef(self, out: list[str] @ref) -> None:
     while True:
-      out.append(self.load_str())
-      self.skip_ws()
-      if self.pos < self.src_len() and self.src_char(self.pos) in "]":
+      out.append(self.loadStr())
+      self.skipWs()
+      if self.pos < self.srcLen() and self.srcChar(self.pos) in "]":
         self.pos += 1
         return
-      self.expect_char(",")
-      self.skip_ws()
+      self.expectChar(",")
+      self.skipWs()
 
-  def _dict_str_int_push_ascii(self, out: dict[str, int] @ref) -> None:
-    kseg: span[char] = self._load_str_span_bound()
-    k: str = self._str_assign_from_seg_bound(kseg)
-    self._skip_ws_bound()
-    n: int = self.ascii_len
-    if self.pos >= n or not self._ascii_byte_is(n, ":"):
+  def _dictStrIntPushAscii(self, out: dict[str, int] @ref) -> None:
+    kseg: span[char] = self._loadStrSpanBound()
+    k: str = self._strAssignFromSegBound(kseg)
+    self._skipWsBound()
+    n: int = self.asciiLen
+    if self.pos >= n or not self._asciiByteIs(n, ":"):
       self.fail("expected :")
     self.pos += 1
-    out[k] = self._parse_int_at_bound()
+    out[k] = self._parseIntAtBound()
 
-  def _dict_str_int_push_ascii_ref(self, out: dict[str, int] @ref) -> None:
-    seg: span[char] = self.load_str_span()
-    k: str = str.from_span(seg)
-    self.skip_ws()
-    self.expect_char(":")
-    out[k] = self.parse_int_at()
+  def _dictStrIntPushAsciiRef(self, out: dict[str, int] @ref) -> None:
+    seg: span[char] = self.loadStrSpan()
+    k: str = str.fromSpan(seg)
+    self.skipWs()
+    self.expectChar(":")
+    out[k] = self.parseIntAt()
 
-  def _load_dict_str_int_ascii_loop(self, out: dict[str, int] @ref) -> None:
-    n: int = self.ascii_len
-    self._prealloc_dict_ascii(out, 12)
+  def _loadDictStrIntAsciiLoop(self, out: dict[str, int] @ref) -> None:
+    n: int = self.asciiLen
+    self._preallocDictAscii(out, 12)
     while True:
-      self._dict_str_int_push_ascii(out)
-      self._skip_ws_bound()
-      n = self.ascii_len
-      if self._ascii_byte_is(n, "}"):
+      self._dictStrIntPushAscii(out)
+      self._skipWsBound()
+      n = self.asciiLen
+      if self._asciiByteIs(n, "}"):
         self.pos += 1
         return
-      if self.pos >= n or not self._ascii_byte_is(n, ","):
+      if self.pos >= n or not self._asciiByteIs(n, ","):
         self.fail("expected , or }")
       self.pos += 1
-      self._skip_ws_bound()
+      self._skipWsBound()
 
-  def _load_dict_str_int_ascii_loop_ref(self, out: dict[str, int] @ref) -> None:
+  def _loadDictStrIntAsciiLoopRef(self, out: dict[str, int] @ref) -> None:
     while True:
-      self._dict_str_int_push_ascii_ref(out)
-      self.skip_ws()
-      if self.pos < self.src_len() and self.src_char(self.pos) in "}":
+      self._dictStrIntPushAsciiRef(out)
+      self.skipWs()
+      if self.pos < self.srcLen() and self.srcChar(self.pos) in "}":
         self.pos += 1
         return
-      self.expect_char(",")
-      self.skip_ws()
+      self.expectChar(",")
+      self.skipWs()
 
-  def _dict_str_str_push_ascii(self, out: dict[str, str] @ref) -> None:
-    kseg: span[char] = self._load_str_span_bound()
-    k: str = self._str_assign_from_seg_bound(kseg)
-    self._skip_ws_bound()
-    n: int = self.ascii_len
-    if self.pos >= n or not self._ascii_byte_is(n, ":"):
+  def _dictStrStrPushAscii(self, out: dict[str, str] @ref) -> None:
+    kseg: span[char] = self._loadStrSpanBound()
+    k: str = self._strAssignFromSegBound(kseg)
+    self._skipWsBound()
+    n: int = self.asciiLen
+    if self.pos >= n or not self._asciiByteIs(n, ":"):
       self.fail("expected :")
     self.pos += 1
-    vseg: span[char] = self._load_str_span_bound()
-    v: str = self._str_assign_from_seg_bound(vseg)
+    vseg: span[char] = self._loadStrSpanBound()
+    v: str = self._strAssignFromSegBound(vseg)
     out[k] = v
 
-  def _dict_str_str_push_ascii_ref(self, out: dict[str, str] @ref) -> None:
-    kseg: span[char] = self.load_str_span()
-    k: str = str.from_span(kseg)
-    self.skip_ws()
-    self.expect_char(":")
-    vseg: span[char] = self.load_str_span()
-    v: str = str.from_span(vseg)
+  def _dictStrStrPushAsciiRef(self, out: dict[str, str] @ref) -> None:
+    kseg: span[char] = self.loadStrSpan()
+    k: str = str.fromSpan(kseg)
+    self.skipWs()
+    self.expectChar(":")
+    vseg: span[char] = self.loadStrSpan()
+    v: str = str.fromSpan(vseg)
     out[k] = v
 
-  def _load_dict_str_str_ascii_loop(self, out: dict[str, str] @ref) -> None:
-    n: int = self.ascii_len
-    est: int = (self.ascii_len - self.pos) // 14
+  def _loadDictStrStrAsciiLoop(self, out: dict[str, str] @ref) -> None:
+    n: int = self.asciiLen
+    est: int = (self.asciiLen - self.pos) // 14
     if est > 0:
       cap: int = est * 3 // 2 + 1
       if cap < 8:
         cap = 8
       out.capacity = cap
     while True:
-      self._dict_str_str_push_ascii(out)
-      self._skip_ws_bound()
-      n = self.ascii_len
-      if self._ascii_byte_is(n, "}"):
+      self._dictStrStrPushAscii(out)
+      self._skipWsBound()
+      n = self.asciiLen
+      if self._asciiByteIs(n, "}"):
         self.pos += 1
         return
-      if self.pos >= n or not self._ascii_byte_is(n, ","):
+      if self.pos >= n or not self._asciiByteIs(n, ","):
         self.fail("expected , or }")
       self.pos += 1
-      self._skip_ws_bound()
+      self._skipWsBound()
 
-  def _load_dict_str_str_ascii_loop_ref(self, out: dict[str, str] @ref) -> None:
+  def _loadDictStrStrAsciiLoopRef(self, out: dict[str, str] @ref) -> None:
     while True:
-      self._dict_str_str_push_ascii_ref(out)
-      self.skip_ws()
-      if self.pos < self.src_len() and self.src_char(self.pos) in "}":
+      self._dictStrStrPushAsciiRef(out)
+      self.skipWs()
+      if self.pos < self.srcLen() and self.srcChar(self.pos) in "}":
         self.pos += 1
         return
-      self.expect_char(",")
-      self.skip_ws()
+      self.expectChar(",")
+      self.skipWs()
 
-  def _dict_str_varint_push_ascii(self, out: dict[str, varint] @ref) -> None:
-    kseg: span[char] = self._load_str_span_bound()
-    k: str = self._str_assign_from_seg_bound(kseg)
-    self._skip_ws_bound()
-    n: int = self.ascii_len
-    if self.pos >= n or not self._ascii_byte_is(n, ":"):
+  def _dictStrVarintPushAscii(self, out: dict[str, varint] @ref) -> None:
+    kseg: span[char] = self._loadStrSpanBound()
+    k: str = self._strAssignFromSegBound(kseg)
+    self._skipWsBound()
+    n: int = self.asciiLen
+    if self.pos >= n or not self._asciiByteIs(n, ":"):
       self.fail("expected :")
     self.pos += 1
-    out[k] = self.parse_varint_at()
+    out[k] = self.parseVarintAt()
 
-  def _dict_str_varint_push_ascii_ref(self, out: dict[str, varint] @ref) -> None:
-    seg: span[char] = self.load_str_span()
-    k: str = str.from_span(seg)
-    self.skip_ws()
-    self.expect_char(":")
-    out[k] = self.parse_varint_at()
+  def _dictStrVarintPushAsciiRef(self, out: dict[str, varint] @ref) -> None:
+    seg: span[char] = self.loadStrSpan()
+    k: str = str.fromSpan(seg)
+    self.skipWs()
+    self.expectChar(":")
+    out[k] = self.parseVarintAt()
 
-  def _load_dict_str_varint_ascii_loop(self, out: dict[str, varint] @ref) -> None:
-    n: int = self.ascii_len
-    est: int = (self.ascii_len - self.pos) // 12
+  def _loadDictStrVarintAsciiLoop(self, out: dict[str, varint] @ref) -> None:
+    n: int = self.asciiLen
+    est: int = (self.asciiLen - self.pos) // 12
     if est > 0:
       cap: int = est * 3 // 2 + 1
       if cap < 8:
         cap = 8
       out.capacity = cap
     while True:
-      self._dict_str_varint_push_ascii(out)
-      self._skip_ws_bound()
-      n = self.ascii_len
-      if self._ascii_byte_is(n, "}"):
+      self._dictStrVarintPushAscii(out)
+      self._skipWsBound()
+      n = self.asciiLen
+      if self._asciiByteIs(n, "}"):
         self.pos += 1
         return
-      if self.pos >= n or not self._ascii_byte_is(n, ","):
+      if self.pos >= n or not self._asciiByteIs(n, ","):
         self.fail("expected , or }")
       self.pos += 1
-      self._skip_ws_bound()
+      self._skipWsBound()
 
-  def _load_dict_str_varint_ascii_loop_ref(self, out: dict[str, varint] @ref) -> None:
+  def _loadDictStrVarintAsciiLoopRef(self, out: dict[str, varint] @ref) -> None:
     while True:
-      self._dict_str_varint_push_ascii_ref(out)
-      self.skip_ws()
-      if self.pos < self.src_len() and self.src_char(self.pos) in "}":
+      self._dictStrVarintPushAsciiRef(out)
+      self.skipWs()
+      if self.pos < self.srcLen() and self.srcChar(self.pos) in "}":
         self.pos += 1
         return
-      self.expect_char(",")
-      self.skip_ws()
+      self.expectChar(",")
+      self.skipWs()
 
-  def _dict_str_float_push_ascii(self, out: dict[str, float] @ref) -> None:
-    kseg: span[char] = self._load_str_span_bound()
-    k: str = self._str_assign_from_seg_bound(kseg)
-    self._skip_ws_bound()
-    n: int = self.ascii_len
-    if self.pos >= n or not self._ascii_byte_is(n, ":"):
+  def _dictStrFloatPushAscii(self, out: dict[str, float] @ref) -> None:
+    kseg: span[char] = self._loadStrSpanBound()
+    k: str = self._strAssignFromSegBound(kseg)
+    self._skipWsBound()
+    n: int = self.asciiLen
+    if self.pos >= n or not self._asciiByteIs(n, ":"):
       self.fail("expected :")
     self.pos += 1
-    out[k] = self.parse_float_at()
+    out[k] = self.parseFloatAt()
 
-  def _dict_str_float_push_ascii_ref(self, out: dict[str, float] @ref) -> None:
-    seg: span[char] = self.load_str_span()
-    k: str = str.from_span(seg)
-    self.skip_ws()
-    self.expect_char(":")
-    out[k] = self.parse_float_at()
+  def _dictStrFloatPushAsciiRef(self, out: dict[str, float] @ref) -> None:
+    seg: span[char] = self.loadStrSpan()
+    k: str = str.fromSpan(seg)
+    self.skipWs()
+    self.expectChar(":")
+    out[k] = self.parseFloatAt()
 
-  def _load_dict_str_float_ascii_loop(self, out: dict[str, float] @ref) -> None:
-    n: int = self.ascii_len
-    est: int = (self.ascii_len - self.pos) // 16
+  def _loadDictStrFloatAsciiLoop(self, out: dict[str, float] @ref) -> None:
+    n: int = self.asciiLen
+    est: int = (self.asciiLen - self.pos) // 16
     if est > 0:
       cap: int = est * 3 // 2 + 1
       if cap < 8:
         cap = 8
       out.capacity = cap
     while True:
-      self._dict_str_float_push_ascii(out)
-      self._skip_ws_bound()
-      n = self.ascii_len
-      if self._ascii_byte_is(n, "}"):
+      self._dictStrFloatPushAscii(out)
+      self._skipWsBound()
+      n = self.asciiLen
+      if self._asciiByteIs(n, "}"):
         self.pos += 1
         return
-      if self.pos >= n or not self._ascii_byte_is(n, ","):
+      if self.pos >= n or not self._asciiByteIs(n, ","):
         self.fail("expected , or }")
       self.pos += 1
-      self._skip_ws_bound()
+      self._skipWsBound()
 
-  def _load_dict_str_float_ascii_loop_ref(self, out: dict[str, float] @ref) -> None:
+  def _loadDictStrFloatAsciiLoopRef(self, out: dict[str, float] @ref) -> None:
     while True:
-      self._dict_str_float_push_ascii_ref(out)
-      self.skip_ws()
-      if self.pos < self.src_len() and self.src_char(self.pos) in "}":
+      self._dictStrFloatPushAsciiRef(out)
+      self.skipWs()
+      if self.pos < self.srcLen() and self.srcChar(self.pos) in "}":
         self.pos += 1
         return
-      self.expect_char(",")
-      self.skip_ws()
+      self.expectChar(",")
+      self.skipWs()
 
-  def scan_test_parse_int_at_bound(self) -> int:
-    """集成测：``_parse_int_at_bound`` 快路径。"""
-    return self._parse_int_at_bound()
+  def scanTestParseIntAtBound(self) -> int:
+    """集成测：``_parseIntAtBound`` 快路径。"""
+    return self._parseIntAtBound()
 
-  def scan_test_load_list_int_ascii_loop(self, out: list[int] @ref) -> None:
+  def scanTestLoadListIntAsciiLoop(self, out: list[int] @ref) -> None:
     """集成测：``@native`` 叶子组合的 ASCII ``list[int]`` 循环。"""
-    self._load_list_int_ascii_loop(out)
+    self._loadListIntAsciiLoop(out)
 
-  def scan_test_load_list_int_ascii_loop_ref(self, out: list[int] @ref) -> None:
+  def scanTestLoadListIntAsciiLoopRef(self, out: list[int] @ref) -> None:
     """集成测：纯 Python ``*_ref`` 组合的 ASCII ``list[int]`` 循环。"""
-    self._load_list_int_ascii_loop_ref(out)
+    self._loadListIntAsciiLoopRef(out)
 
-  def scan_test_load_list_str_ascii_loop(self, out: list[str] @ref) -> None:
-    self._load_list_str_ascii_loop(out)
+  def scanTestLoadListStrAsciiLoop(self, out: list[str] @ref) -> None:
+    self._loadListStrAsciiLoop(out)
 
-  def scan_test_load_list_str_ascii_loop_ref(self, out: list[str] @ref) -> None:
-    self._load_list_str_ascii_loop_ref(out)
+  def scanTestLoadListStrAsciiLoopRef(self, out: list[str] @ref) -> None:
+    self._loadListStrAsciiLoopRef(out)
 
-  def scan_test_load_dict_str_int_ascii_loop(self, out: dict[str, int] @ref) -> None:
-    self._load_dict_str_int_ascii_loop(out)
+  def scanTestLoadDictStrIntAsciiLoop(self, out: dict[str, int] @ref) -> None:
+    self._loadDictStrIntAsciiLoop(out)
 
-  def scan_test_load_dict_str_int_ascii_loop_ref(self, out: dict[str, int] @ref) -> None:
-    self._load_dict_str_int_ascii_loop_ref(out)
+  def scanTestLoadDictStrIntAsciiLoopRef(self, out: dict[str, int] @ref) -> None:
+    self._loadDictStrIntAsciiLoopRef(out)
 
-  def scan_test_load_dict_str_str_ascii_loop(self, out: dict[str, str] @ref) -> None:
-    self._load_dict_str_str_ascii_loop(out)
+  def scanTestLoadDictStrStrAsciiLoop(self, out: dict[str, str] @ref) -> None:
+    self._loadDictStrStrAsciiLoop(out)
 
-  def scan_test_load_dict_str_str_ascii_loop_ref(self, out: dict[str, str] @ref) -> None:
-    self._load_dict_str_str_ascii_loop_ref(out)
+  def scanTestLoadDictStrStrAsciiLoopRef(self, out: dict[str, str] @ref) -> None:
+    self._loadDictStrStrAsciiLoopRef(out)
 
-  def _load_list_int_at(self) -> list[int]:
-    self.expect_char("[")
+  def _loadListIntAt(self) -> list[int]:
+    self.expectChar("[")
     out: list[int] = []
-    self.try_bind_ascii()
-    self._skip_ws()
+    self.tryBindAscii()
+    self._skipWs()
     if self.pos < len(self.s) and self.s[self.pos] in "]":
       self.pos += 1
       return out
-    if self.ascii_ok:
-      self._load_list_int_ascii_loop(out)
+    if self.asciiOk:
+      self._loadListIntAsciiLoop(out)
       return out
     while True:
-      out.append(self._parse_int_at())
-      self._skip_ws()
+      out.append(self._parseIntAt())
+      self._skipWs()
       if self.pos < len(self.s) and self.s[self.pos] in "]":
         self.pos += 1
         return out
-      self.expect_char(",")
-      self._skip_ws()
+      self.expectChar(",")
+      self._skipWs()
 
-  def _load_list_varint_at(self) -> list[varint]:
-    self.expect_char("[")
+  def _loadListVarintAt(self) -> list[varint]:
+    self.expectChar("[")
     out: list[varint] = []
-    self._skip_ws()
+    self._skipWs()
     if self.pos < len(self.s) and self.s[self.pos] in "]":
       self.pos += 1
       return out
     while True:
-      out.append(self._parse_varint_at())
-      self._skip_ws()
+      out.append(self._parseVarintAt())
+      self._skipWs()
       if self.pos < len(self.s) and self.s[self.pos] in "]":
         self.pos += 1
         return out
-      self.expect_char(",")
-      self._skip_ws()
+      self.expectChar(",")
+      self._skipWs()
 
-  def load_list_int(self) -> list[int]:
-    self._skip_ws()
-    return self.load_list_int_value()
+  def loadListInt(self) -> list[int]:
+    self._skipWs()
+    return self.loadListIntValue()
 
-  def load_list_varint(self) -> list[varint]:
-    self._skip_ws()
-    return self.load_list_varint_value()
+  def loadListVarint(self) -> list[varint]:
+    self._skipWs()
+    return self.loadListVarintValue()
 
-  def _load_list_str_at(self) -> list[str]:
-    self.expect_char("[")
+  def _loadListStrAt(self) -> list[str]:
+    self.expectChar("[")
     out: list[str] = []
-    self.try_bind_ascii()
-    self._skip_ws()
+    self.tryBindAscii()
+    self._skipWs()
     if self.pos < len(self.s) and self.s[self.pos] in "]":
       self.pos += 1
       return out
-    if self.ascii_ok:
-      self._load_list_str_ascii_loop(out)
+    if self.asciiOk:
+      self._loadListStrAsciiLoop(out)
       return out
     while True:
-      out.append(self.load_str())
-      self._skip_ws()
+      out.append(self.loadStr())
+      self._skipWs()
       if self.pos < len(self.s) and self.s[self.pos] in "]":
         self.pos += 1
         return out
-      self.expect_char(",")
-      self._skip_ws()
+      self.expectChar(",")
+      self._skipWs()
 
-  def load_list_str(self) -> list[str]:
-    self._skip_ws()
-    return self.load_list_str_value()
+  def loadListStr(self) -> list[str]:
+    self._skipWs()
+    return self.loadListStrValue()
 
-  def _load_list_float_at(self) -> list[float]:
-    self.expect_char("[")
+  def _loadListFloatAt(self) -> list[float]:
+    self.expectChar("[")
     out: list[float] = []
-    self._skip_ws()
+    self._skipWs()
     if self.pos < len(self.s) and self.s[self.pos] in "]":
       self.pos += 1
       return out
     while True:
       fbuf: list[float] = []
-      self._parse_float_value(fbuf)
+      self._parseFloatValue(fbuf)
       out.append(fbuf[0])
-      self._skip_ws()
+      self._skipWs()
       if self.pos < len(self.s) and self.s[self.pos] in "]":
         self.pos += 1
         return out
-      self.expect_char(",")
-      self._skip_ws()
+      self.expectChar(",")
+      self._skipWs()
 
-  def load_list_float(self) -> list[float]:
-    self._skip_ws()
-    return self.load_list_float_value()
+  def loadListFloat(self) -> list[float]:
+    self._skipWs()
+    return self.loadListFloatValue()
 
-  def _load_dict_str_int_at(self) -> dict[str, int]:
-    self.expect_char("{")
+  def _loadDictStrIntAt(self) -> dict[str, int]:
+    self.expectChar("{")
     out: dict[str, int] = {}
-    self.try_bind_ascii()
-    self._skip_ws()
+    self.tryBindAscii()
+    self._skipWs()
     if self.pos < len(self.s) and self.s[self.pos] in "}":
       self.pos += 1
       return out
-    if self.ascii_ok:
-      self._load_dict_str_int_ascii_loop(out)
+    if self.asciiOk:
+      self._loadDictStrIntAsciiLoop(out)
       return out
     while True:
       kbuf: list[str] = []
-      self._parse_string_value(kbuf)
+      self._parseStringValue(kbuf)
       k: str = kbuf[0]
-      self._skip_ws()
-      self.expect_char(":")
+      self._skipWs()
+      self.expectChar(":")
       vbuf: list[int] = []
-      self._parse_int_value(vbuf)
+      self._parseIntValue(vbuf)
       out[k] = vbuf[0]
-      self._skip_ws()
+      self._skipWs()
       if self.pos < len(self.s) and self.s[self.pos] in "}":
         self.pos += 1
         return out
-      self.expect_char(",")
-      self._skip_ws()
+      self.expectChar(",")
+      self._skipWs()
 
-  def load_dict_str_int(self) -> dict[str, int]:
-    self._skip_ws()
-    return self._load_dict_str_int_at()
+  def loadDictStrInt(self) -> dict[str, int]:
+    self._skipWs()
+    return self._loadDictStrIntAt()
 
-  def _load_dict_str_varint_at(self) -> dict[str, varint]:
-    self.expect_char("{")
+  def _loadDictStrVarintAt(self) -> dict[str, varint]:
+    self.expectChar("{")
     out: dict[str, varint] = {}
-    self.try_bind_ascii()
-    self._skip_ws()
+    self.tryBindAscii()
+    self._skipWs()
     if self.pos < len(self.s) and self.s[self.pos] in "}":
       self.pos += 1
       return out
-    if self.ascii_ok:
-      self._load_dict_str_varint_ascii_loop(out)
+    if self.asciiOk:
+      self._loadDictStrVarintAsciiLoop(out)
       return out
     while True:
       kbuf: list[str] = []
-      self._parse_string_value(kbuf)
+      self._parseStringValue(kbuf)
       k: str = kbuf[0]
-      self._skip_ws()
-      self.expect_char(":")
+      self._skipWs()
+      self.expectChar(":")
       vbuf: list[varint] = []
-      self._parse_varint_value(vbuf)
+      self._parseVarintValue(vbuf)
       out[k] = vbuf[0]
-      self._skip_ws()
+      self._skipWs()
       if self.pos < len(self.s) and self.s[self.pos] in "}":
         self.pos += 1
         return out
-      self.expect_char(",")
-      self._skip_ws()
+      self.expectChar(",")
+      self._skipWs()
 
-  def load_dict_str_varint(self) -> dict[str, varint]:
-    self._skip_ws()
-    return self._load_dict_str_varint_at()
+  def loadDictStrVarint(self) -> dict[str, varint]:
+    self._skipWs()
+    return self._loadDictStrVarintAt()
 
-  def _load_dict_str_str_at(self) -> dict[str, str]:
-    self.expect_char("{")
+  def _loadDictStrStrAt(self) -> dict[str, str]:
+    self.expectChar("{")
     out: dict[str, str] = {}
-    self.try_bind_ascii()
-    self._skip_ws()
+    self.tryBindAscii()
+    self._skipWs()
     if self.pos < len(self.s) and self.s[self.pos] in "}":
       self.pos += 1
       return out
-    if self.ascii_ok:
-      self._load_dict_str_str_ascii_loop(out)
+    if self.asciiOk:
+      self._loadDictStrStrAsciiLoop(out)
       return out
     while True:
       kbuf: list[str] = []
-      self._parse_string_value(kbuf)
+      self._parseStringValue(kbuf)
       k: str = kbuf[0]
-      self._skip_ws()
-      self.expect_char(":")
+      self._skipWs()
+      self.expectChar(":")
       vbuf: list[str] = []
-      self._parse_string_value(vbuf)
+      self._parseStringValue(vbuf)
       out[k] = vbuf[0]
-      self._skip_ws()
+      self._skipWs()
       if self.pos < len(self.s) and self.s[self.pos] in "}":
         self.pos += 1
         return out
-      self.expect_char(",")
-      self._skip_ws()
+      self.expectChar(",")
+      self._skipWs()
 
-  def load_dict_str_str(self) -> dict[str, str]:
-    self._skip_ws()
-    return self._load_dict_str_str_at()
+  def loadDictStrStr(self) -> dict[str, str]:
+    self._skipWs()
+    return self._loadDictStrStrAt()
 
-  def _load_dict_str_float_at(self) -> dict[str, float]:
-    self.expect_char("{")
+  def _loadDictStrFloatAt(self) -> dict[str, float]:
+    self.expectChar("{")
     out: dict[str, float] = {}
-    self.try_bind_ascii()
-    self._skip_ws()
+    self.tryBindAscii()
+    self._skipWs()
     if self.pos < len(self.s) and self.s[self.pos] in "}":
       self.pos += 1
       return out
-    if self.ascii_ok:
-      self._load_dict_str_float_ascii_loop(out)
+    if self.asciiOk:
+      self._loadDictStrFloatAsciiLoop(out)
       return out
     while True:
       kbuf: list[str] = []
-      self._parse_string_value(kbuf)
+      self._parseStringValue(kbuf)
       k: str = kbuf[0]
-      self._skip_ws()
-      self.expect_char(":")
+      self._skipWs()
+      self.expectChar(":")
       vbuf: list[float] = []
-      self._parse_float_value(vbuf)
+      self._parseFloatValue(vbuf)
       out[k] = vbuf[0]
-      self._skip_ws()
+      self._skipWs()
       if self.pos < len(self.s) and self.s[self.pos] in "}":
         self.pos += 1
         return out
-      self.expect_char(",")
-      self._skip_ws()
+      self.expectChar(",")
+      self._skipWs()
 
-  def load_dict_str_float(self) -> dict[str, float]:
-    self._skip_ws()
-    return self._load_dict_str_float_at()
+  def loadDictStrFloat(self) -> dict[str, float]:
+    self._skipWs()
+    return self._loadDictStrFloatAt()
 
-  def at_object_end(self) -> bool:
-    self._skip_ws()
+  def atObjectEnd(self) -> bool:
+    self._skipWs()
     if self.pos >= len(self.s):
       self.fail("unterminated object")
     if self.s[self.pos] in "}":
@@ -2376,12 +2376,12 @@ class JsonDecoder:
       return True
     return False
 
-  def begin_array(self) -> None:
-    self._skip_ws()
-    self.expect_char("[")
+  def beginArray(self) -> None:
+    self._skipWs()
+    self.expectChar("[")
 
-  def at_array_end(self) -> bool:
-    self._skip_ws()
+  def atArrayEnd(self) -> bool:
+    self._skipWs()
     if self.pos >= len(self.s):
       self.fail("unterminated array")
     if self.s[self.pos] in "]":
@@ -2389,96 +2389,96 @@ class JsonDecoder:
       return True
     return False
 
-  def load_tag_field(self) -> str:
-    key: str = self.load_key()
+  def loadTagField(self) -> str:
+    key: str = self.loadKey()
     if key != "tag":
       self.fail("expected tag field")
-    return self.load_str()
+    return self.loadStr()
 
-  def begin_payload_object(self) -> None:
-    key: str = self.load_key()
+  def beginPayloadObject(self) -> None:
+    key: str = self.loadKey()
     if key != "payload":
       self.fail("expected payload field")
-    self._skip_ws()
-    self.expect_char("{")
+    self._skipWs()
+    self.expectChar("{")
 
-  def end_payload_object(self) -> None:
-    self._skip_ws()
+  def endPayloadObject(self) -> None:
+    self._skipWs()
     if self.pos < len(self.s) and self.s[self.pos] in "}":
       self.pos += 1
 
-  def byte_at_ref(self, i: int) -> int:
-    """第 ``i`` 字节（``int(src_char)``）。"""
-    return int(self.src_char(i))
+  def byteAtRef(self, i: int) -> int:
+    """第 ``i`` 字节（``int(srcChar)``）。"""
+    return int(self.srcChar(i))
 
 
-  def byte_at(self, i: int) -> int:
-    """bound ASCII 下第 ``i`` 字节（``ascii_bytes`` 或 ``src_char``）。"""
-    p: Pointer[char] = self.ascii_bytes
-    if self.ascii_ok and p is not None:
+  def byteAt(self, i: int) -> int:
+    """bound ASCII 下第 ``i`` 字节（``asciiBytes`` 或 ``srcChar``）。"""
+    p: Pointer[char] = self.asciiBytes
+    if self.asciiOk and p is not None:
       return int(p[i])
-    return self.byte_at_ref(i)
+    return self.byteAtRef(i)
 
 
-  def _load_str_span_slow(self) -> span[char]:
-    n: int = self.src_len()
-    if self.pos >= n or self.src_char(self.pos) not in '"':
-      slow: str = self.load_string_slow()
+  def _loadStrSpanSlow(self) -> span[char]:
+    n: int = self.srcLen()
+    if self.pos >= n or self.srcChar(self.pos) not in '"':
+      slow: str = self.loadStringSlow()
       return slow.view
     self.pos += 1
     start: int = self.pos
     while self.pos < n:
-      c: char = self.src_char(self.pos)
+      c: char = self.srcChar(self.pos)
       if c in '"':
         end: int = self.pos
         self.pos += 1
         return self.s.view[start:end]
       if c in "\\":
         self.pos = start - 1
-        slow2: str = self.load_string_slow()
+        slow2: str = self.loadStringSlow()
         return slow2.view
       self.pos += 1
     self.fail("unterminated string")
     return self.s.view[:0]
 
 
-  def parse_int_at_ascii_ref(self) -> int:
-    """游标处 JSON 整数（``JsonDecoder.parse_int_at`` 语义参照）。"""
-    return self.parse_int_at()
+  def parseIntAtAsciiRef(self) -> int:
+    """游标处 JSON 整数（``JsonDecoder.parseIntAt`` 语义参照）。"""
+    return self.parseIntAt()
 
 
-  def parse_int_at_ascii(self) -> int:
+  def parseIntAtAscii(self) -> int:
     """bound ASCII 下 SwAR 整数解析（游标已在数值首字符）。"""
-    if not self.ascii_ok:
+    if not self.asciiOk:
       self.fail("ascii int parse requires bound view")
       return 0
-    n: int = self.ascii_len
-    p: Pointer[char] = self.ascii_bytes
+    n: int = self.asciiLen
+    p: Pointer[char] = self.asciiBytes
     pos: int = self.pos
     neg: bool = False
-    if pos < n and self.byte_at(pos) == ord("-"):
+    if pos < n and self.byteAt(pos) == ord("-"):
       neg = True
       pos += 1
     val: int64 = 0
-    any_d: bool = False
+    anyD: bool = False
     i: int = pos
     while i < n:
       if p is not None and i + 8 <= n:
-        chunk: uint64 = load_u64_le(p, i)
-        if Self._swar_is8digits(chunk):
+        chunk: uint64 = loadU64Le(p, i)
+        if Self._swarIs8digits(chunk):
           val *= 100000000
-          val += int64(Self._swar_parse8(chunk))
+          val += int64(Self._swarParse8(chunk))
           i += 8
-          any_d = True
+          anyD = True
           continue
-      c: int = self.byte_at(i)
+      c: int = self.byteAt(i)
       if c < ord("0") or c > ord("9"):
         break
       val *= 10
       val += int64(c - ord("0"))
       i += 1
-      any_d = True
-    if not any_d:
+      anyD = True
+    if not anyD:
       self.fail("expected int")
       return 0
     self.pos = i
@@ -2487,55 +2487,55 @@ class JsonDecoder:
     return int(val)
 
 
-  def skip_ws_bound_ref(self) -> None:
-    """bound 空白跳过（``skip_ws`` 语义参照）。"""
-    self.skip_ws()
+  def skipWsBoundRef(self) -> None:
+    """bound 空白跳过（``skipWs`` 语义参照）。"""
+    self.skipWs()
 
 
-  def skip_ws_bound(self) -> None:
-    """``ascii_ok`` 时 8 字节空白快扫，否则 ``skip_ws``。"""
-    if not self.ascii_ok:
-      self.skip_ws()
+  def skipWsBound(self) -> None:
+    """``asciiOk`` 时 8 字节空白快扫，否则 ``skipWs``。"""
+    if not self.asciiOk:
+      self.skipWs()
       return
-    n: int = self.ascii_len
+    n: int = self.asciiLen
     i: int = self.pos
-    p: Pointer[char] = self.ascii_bytes
+    p: Pointer[char] = self.asciiBytes
     while i < n:
       if p is not None and i + 8 <= n:
-        chunk: uint64 = load_u64_le(p, i)
-        if Self._chunk_all_ws(chunk):
+        chunk: uint64 = loadU64Le(p, i)
+        if Self._chunkAllWs(chunk):
           i += 8
           continue
-      if not Self._is_ws_byte(self.byte_at(i)):
+      if not Self._isWsByte(self.byteAt(i)):
         break
       i += 1
     self.pos = i
 
 
-  def load_str_span_ascii_ref(self) -> span[char]:
+  def loadStrSpanAsciiRef(self) -> span[char]:
     """无转义 JSON 字符串 span（逐字符扫描语义参照）。"""
-    return self._load_str_span_slow()
+    return self._loadStrSpanSlow()
 
 
-  def load_str_span_ascii(self) -> span[char]:
-    """bound ASCII 下无转义引号串快扫；有转义则 ``load_string_slow``。"""
-    if not self.ascii_ok:
-      self.skip_spaces()
-      return self._load_str_span_slow()
-    n: int = self.ascii_len
-    p: Pointer[char] = self.ascii_bytes
-    if self.pos >= n or self.byte_at(self.pos) != ord('"'):
-      slow: str = self.load_string_slow()
+  def loadStrSpanAscii(self) -> span[char]:
+    """bound ASCII 下无转义引号串快扫；有转义则 ``loadStringSlow``。"""
+    if not self.asciiOk:
+      self.skipSpaces()
+      return self._loadStrSpanSlow()
+    n: int = self.asciiLen
+    p: Pointer[char] = self.asciiBytes
+    if self.pos >= n or self.byteAt(self.pos) != ord('"'):
+      slow: str = self.loadStringSlow()
       return slow.view
     self.pos += 1
     start: int = self.pos
     i: int = start
     while i < n:
       if p is not None and i + 8 <= n:
-        chunk: uint64 = load_u64_le(p, i)
+        chunk: uint64 = loadU64Le(p, i)
         special: bool = False
         for k in range(8):
-          c: int = Self._chunk_byte(chunk, k)
+          c: int = Self._chunkByte(chunk, k)
           if c == ord('"'):
             self.pos = i + k + 1
             return self.s.view[start:i + k]
@@ -2546,7 +2546,7 @@ class JsonDecoder:
           i += 8
           continue
         break
-      c2: int = self.byte_at(i)
+      c2: int = self.byteAt(i)
       if c2 == ord('"'):
         self.pos = i + 1
         return self.s.view[start:i]
@@ -2557,41 +2557,41 @@ class JsonDecoder:
       self.fail("unterminated string")
       return self.s.view[:0]
     self.pos = start - 1
-    slow2: str = self.load_string_slow()
+    slow2: str = self.loadStringSlow()
     return slow2.view
 
 
-  def str_assign_from_seg_ref(self, seg: span[char]) -> str:
-    """``seg`` → 新 ``str``（``copy_from_span``）。"""
+  def strAssignFromSegRef(self, seg: span[char]) -> str:
+    """``seg`` → 新 ``str``（``copyFromSpan``）。"""
     dst: str = ""
-    dst.copy_from_span(seg)
+    dst.copyFromSpan(seg)
     return dst
 
 
-  def str_assign_from_seg(self, seg: span[char]) -> str:
-    """``seg`` → 新 ``str``（Arena 时 ``copy_buf`` + ``adopt_span``）。"""
-    seg_len: int = len(seg)
-    if seg_len == 0 or not self.str_arena_active:
-      return self.str_assign_from_seg_ref(seg)
-    buf: Pointer[char] = self.str_arena.acquire(seg_len)
+  def strAssignFromSeg(self, seg: span[char]) -> str:
+    """``seg`` → 新 ``str``（Arena 时 ``copyBuf`` + ``adoptSpan``）。"""
+    segLen: int = len(seg)
+    if segLen == 0 or not self.strArenaActive:
+      return self.strAssignFromSegRef(seg)
+    buf: Pointer[char] = self.strArena.acquire(segLen)
     if buf is None:
-      return self.str_assign_from_seg_ref(seg)
-    copy_buf(buf, seg.at(), seg_len)
+      return self.strAssignFromSegRef(seg)
+    copyBuf(buf, seg.at(), segLen)
     dst: str = ""
-    dst.adopt_span(span[char](buf, seg_len, 1))
-    self.str_arena.release(buf)
+    dst.adoptSpan(span[char](buf, segLen, 1))
+    self.strArena.release(buf)
     return dst
 
 
-  def _skip_string_ascii(self) -> None:
-    """跳过 JSON 字符串字面量（``byte_at_ref`` 组合）。"""
-    n: int = self.src_len()
+  def _skipStringAscii(self) -> None:
+    """跳过 JSON 字符串字面量（``byteAtRef`` 组合）。"""
+    n: int = self.srcLen()
     i: int = self.pos
-    if i >= n or self.byte_at_ref(i) != ord('"'):
+    if i >= n or self.byteAtRef(i) != ord('"'):
       self.fail("expected string")
     i += 1
     while i < n:
-      c: int = self.byte_at_ref(i)
+      c: int = self.byteAtRef(i)
       if c == ord('"'):
         self.pos = i + 1
         return
@@ -2599,7 +2599,7 @@ class JsonDecoder:
         i += 1
         if i >= n:
           self.fail("unterminated string")
-        if self.byte_at_ref(i) == ord("u"):
+        if self.byteAtRef(i) == ord("u"):
           i += 5
         else:
           i += 1
@@ -2608,60 +2608,60 @@ class JsonDecoder:
     self.fail("unterminated string")
 
 
-  def _skip_number_ascii(self) -> None:
-    n: int = self.src_len()
+  def _skipNumberAscii(self) -> None:
+    n: int = self.srcLen()
     i: int = self.pos
-    if i < n and self.byte_at_ref(i) == ord("-"):
+    if i < n and self.byteAtRef(i) == ord("-"):
       i += 1
     for i in range(i, n):
-      c: int = self.byte_at_ref(i)
+      c: int = self.byteAtRef(i)
       if ord("0") <= c <= ord("9") or c in {ord("."), ord("e"), ord("E"), ord("+"), ord("-")}:
         continue
       break
     self.pos = i
 
 
-  def _skip_container_ascii(self, open_ch: int, close_ch: int) -> None:
-    n: int = self.src_len()
+  def _skipContainerAscii(self, openCh: int, closeCh: int) -> None:
+    n: int = self.srcLen()
     depth: int = 0
     while self.pos < n:
-      c: char = self.src_char(self.pos)
+      c: char = self.srcChar(self.pos)
       match c:
-        case _ if c == open_ch:
+        case _ if c == openCh:
           depth += 1
-        case _ if c == close_ch:
+        case _ if c == closeCh:
           depth -= 1
           if depth == 0:
             self.pos += 1
             return
         case '"':
-          self._skip_string_ascii()
+          self._skipStringAscii()
           continue
         case _:
           pass
       self.pos += 1
-    if open_ch == ord("["):
+    if openCh == ord("["):
       self.fail("unterminated array")
     self.fail("unterminated object")
 
 
-  def _skip_value_ascii(self) -> None:
-    self.skip_ws_bound_ref()
-    n: int = self.src_len()
+  def _skipValueAscii(self) -> None:
+    self.skipWsBoundRef()
+    n: int = self.srcLen()
     if self.pos >= n:
       self.fail("empty input")
-    c: char = self.src_char(self.pos)
+    c: char = self.srcChar(self.pos)
     match c:
       case '"':
-        self._skip_string_ascii()
+        self._skipStringAscii()
         return
       case 't':
         if self.pos + 4 <= n:
           if (
-            self.src_char(self.pos + 0) == 't'
-            and self.src_char(self.pos + 1) == 'r'
-            and self.src_char(self.pos + 2) == 'u'
-            and self.src_char(self.pos + 3) == 'e'
+            self.srcChar(self.pos + 0) == 't'
+            and self.srcChar(self.pos + 1) == 'r'
+            and self.srcChar(self.pos + 2) == 'u'
+            and self.srcChar(self.pos + 3) == 'e'
           ):
             self.pos += 4
             return
@@ -2669,11 +2669,11 @@ class JsonDecoder:
       case 'f':
         if self.pos + 5 <= n:
           if (
-            self.src_char(self.pos + 0) == 'f'
-            and self.src_char(self.pos + 1) == 'a'
-            and self.src_char(self.pos + 2) == 'l'
-            and self.src_char(self.pos + 3) == 's'
-            and self.src_char(self.pos + 4) == 'e'
+            self.srcChar(self.pos + 0) == 'f'
+            and self.srcChar(self.pos + 1) == 'a'
+            and self.srcChar(self.pos + 2) == 'l'
+            and self.srcChar(self.pos + 3) == 's'
+            and self.srcChar(self.pos + 4) == 'e'
           ):
             self.pos += 5
             return
@@ -2681,56 +2681,56 @@ class JsonDecoder:
       case 'n':
         if self.pos + 4 <= n:
           if (
-            self.src_char(self.pos + 0) == 'n'
-            and self.src_char(self.pos + 1) == 'u'
-            and self.src_char(self.pos + 2) == 'l'
-            and self.src_char(self.pos + 3) == 'l'
+            self.srcChar(self.pos + 0) == 'n'
+            and self.srcChar(self.pos + 1) == 'u'
+            and self.srcChar(self.pos + 2) == 'l'
+            and self.srcChar(self.pos + 3) == 'l'
           ):
             self.pos += 4
             return
       case '-' | '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9':
-        self._skip_number_ascii()
+        self._skipNumberAscii()
         return
       case '[':
-        self._skip_container_ascii(ord("["), ord("]"))
+        self._skipContainerAscii(ord("["), ord("]"))
         return
       case '{':
-        self._skip_container_ascii(ord("{"), ord("}"))
+        self._skipContainerAscii(ord("{"), ord("}"))
         return
       case _:
         self.fail("bad value")
 
 
-  def try_skip_value_ascii(self) -> bool:
-    """跳过单个 JSON 值（纯 Python 组合 ``byte_at_ref`` / ``skip_ws_bound_ref``）。"""
-    self.try_bind_ascii()
-    if not self.ascii_ok:
+  def trySkipValueAscii(self) -> bool:
+    """跳过单个 JSON 值（纯 Python 组合 ``byteAtRef`` / ``skipWsBoundRef``）。"""
+    self.tryBindAscii()
+    if not self.asciiOk:
       return False
-    self._skip_value_ascii()
+    self._skipValueAscii()
     return True
 
 
-  def try_skip_field_ascii(self) -> bool:
+  def trySkipFieldAscii(self) -> bool:
     """跳过 ``"key": value`` 字段（纯 Python 组合）。"""
-    self.try_bind_ascii()
-    if not self.ascii_ok:
+    self.tryBindAscii()
+    if not self.asciiOk:
       return False
     mark: int = self.pos
-    self.skip_ws_bound_ref()
-    n: int = self.src_len()
-    if self.pos < n and self.byte_at_ref(self.pos) == ord(","):
+    self.skipWsBoundRef()
+    n: int = self.srcLen()
+    if self.pos < n and self.byteAtRef(self.pos) == ord(","):
       self.pos += 1
-      self.skip_ws_bound_ref()
-    if self.pos >= n or self.byte_at_ref(self.pos) != ord('"'):
+      self.skipWsBoundRef()
+    if self.pos >= n or self.byteAtRef(self.pos) != ord('"'):
       self.pos = mark
       return False
-    self._skip_string_ascii()
-    self.skip_ws_bound_ref()
-    if self.pos >= n or self.byte_at_ref(self.pos) != ord(":"):
+    self._skipStringAscii()
+    self.skipWsBoundRef()
+    if self.pos >= n or self.byteAtRef(self.pos) != ord(":"):
       self.pos = mark
       return False
     self.pos += 1
-    self._skip_value_ascii()
+    self._skipValueAscii()
     return True
 
 class Json:
@@ -2738,31 +2738,31 @@ class Json:
 
   @staticmethod
   @overload
-  def _finish_dump(enc: JsonEncoder, fp: StringIO) -> None:
-    fp.clear_buffer()
-    enc.flush_to(fp)
+  def _finishDump(enc: JsonEncoder, fp: StringIO) -> None:
+    fp.clearBuffer()
+    enc.flushTo(fp)
 
   @staticmethod
   @overload
-  def _finish_dump(enc: JsonEncoder, fp: TextIOWrapper) -> None:
-    enc.flush_to(fp)
+  def _finishDump(enc: JsonEncoder, fp: TextIOWrapper) -> None:
+    enc.flushTo(fp)
 
   @staticmethod
   @overload
-  def _write_fast(s: str, fp: StringIO) -> None:
-    fp.clear_buffer()
+  def _writeFast(s: str, fp: StringIO) -> None:
+    fp.clearBuffer()
     fp.write(s)
 
   @staticmethod
   @overload
-  def _write_fast(s: str, fp: TextIOWrapper) -> None:
+  def _writeFast(s: str, fp: TextIOWrapper) -> None:
     fp.write(s)
 
   @staticmethod
   @immutable
-  def loads_uses_str_arena[T]() -> bool:
-    """``loads`` 是否需 ``str_arena``（标量/纯数值容器为 ``False``）。"""
-    if T in { int, varint, float, bool, list[int], list[varint], list[float] }:
+  def loadsUsesStrArena[Root]() -> bool:
+    """``loads`` 是否需 ``strArena``（标量/纯数值容器为 ``False``）。"""
+    if Root in { int, varint, float, bool, list[int], list[varint], list[float] }:
       return False
     else:
       return True
@@ -2772,7 +2772,7 @@ class Json:
   def dumps(obj: bool, indent: int = 0) -> str:
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_bool(obj)
+    enc.dumpBool(obj)
     return enc.take()
 
 
@@ -2782,7 +2782,7 @@ class Json:
   def dumps(obj: int, indent: int = 0) -> str:
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_int(obj)
+    enc.dumpInt(obj)
     return enc.take()
 
 
@@ -2792,7 +2792,7 @@ class Json:
   def dumps(obj: varint, indent: int = 0) -> str:
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_varint(obj)
+    enc.dumpVarint(obj)
     return enc.take()
 
 
@@ -2802,7 +2802,7 @@ class Json:
   def dumps(obj: float, indent: int = 0) -> str:
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_float(obj)
+    enc.dumpFloat(obj)
     return enc.take()
 
 
@@ -2812,7 +2812,7 @@ class Json:
   def dumps(obj: str, indent: int = 0) -> str:
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_str(obj)
+    enc.dumpStr(obj)
     return enc.take()
 
 
@@ -2821,10 +2821,10 @@ class Json:
   @overload
   def dumps(obj: list[int], indent: int = 0) -> str:
     if indent == 0:
-      return JsonEncoder.fast_encode(obj)
+      return JsonEncoder.fastEncode(obj)
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_list_int(obj)
+    enc.dumpListInt(obj)
     return enc.take()
 
 
@@ -2833,10 +2833,10 @@ class Json:
   @overload
   def dumps(obj: list[varint], indent: int = 0) -> str:
     if indent == 0:
-      return JsonEncoder.fast_encode(obj)
+      return JsonEncoder.fastEncode(obj)
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_list_varint(obj)
+    enc.dumpListVarint(obj)
     return enc.take()
 
 
@@ -2845,10 +2845,10 @@ class Json:
   @overload
   def dumps(obj: list[str], indent: int = 0) -> str:
     if indent == 0:
-      return JsonEncoder.fast_encode(obj)
+      return JsonEncoder.fastEncode(obj)
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_list_str(obj)
+    enc.dumpListStr(obj)
     return enc.take()
 
 
@@ -2857,10 +2857,10 @@ class Json:
   @overload
   def dumps(obj: list[float], indent: int = 0) -> str:
     if indent == 0:
-      return JsonEncoder.fast_encode(obj)
+      return JsonEncoder.fastEncode(obj)
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_list_float(obj)
+    enc.dumpListFloat(obj)
     return enc.take()
 
 
@@ -2869,10 +2869,10 @@ class Json:
   @overload
   def dumps(obj: dict[str, int], indent: int = 0) -> str:
     if indent == 0:
-      return JsonEncoder.fast_encode(obj)
+      return JsonEncoder.fastEncode(obj)
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_dict_str_int(obj)
+    enc.dumpDictStrInt(obj)
     return enc.take()
 
 
@@ -2881,10 +2881,10 @@ class Json:
   @overload
   def dumps(obj: dict[str, varint], indent: int = 0) -> str:
     if indent == 0:
-      return JsonEncoder.fast_encode(obj)
+      return JsonEncoder.fastEncode(obj)
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_dict_str_varint(obj)
+    enc.dumpDictStrVarint(obj)
     return enc.take()
 
 
@@ -2893,10 +2893,10 @@ class Json:
   @overload
   def dumps(obj: dict[str, str], indent: int = 0) -> str:
     if indent == 0:
-      return JsonEncoder.fast_encode(obj)
+      return JsonEncoder.fastEncode(obj)
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_dict_str_str(obj)
+    enc.dumpDictStrStr(obj)
     return enc.take()
 
 
@@ -2905,17 +2905,17 @@ class Json:
   @overload
   def dumps(obj: dict[str, float], indent: int = 0) -> str:
     if indent == 0:
-      return JsonEncoder.fast_encode(obj)
+      return JsonEncoder.fastEncode(obj)
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_dict_str_float(obj)
+    enc.dumpDictStrFloat(obj)
     return enc.take()
 
 
 
   @staticmethod
   @overload
-  def dumps[T](obj: T, indent: int = 0) -> str:
+  def dumps[Root](obj: Root, indent: int = 0) -> str:
     enc: JsonEncoder = new()
     enc.indent = indent
     obj.serialize(enc)
@@ -2925,16 +2925,16 @@ class Json:
 
   @staticmethod
   @overload
-  def dumps[T](obj: list[T], indent: int = 0) -> str:
+  def dumps[Root](obj: list[Root], indent: int = 0) -> str:
     enc: JsonEncoder = new()
     enc.indent = indent
     n: int = len(obj)
     if indent == 0 and n > 0:
-      enc.grow_buf(n * 48 + 16)
-    enc.begin_array()
+      enc.growBuf(n * 48 + 16)
+    enc.beginArray()
     for i in range(n):
       obj[i].serialize(enc)
-    enc.end_array()
+    enc.endArray()
     return enc.take()
 
 
@@ -2944,8 +2944,8 @@ class Json:
   def dump(obj: bool, fp: StringIO, indent: int = 0) -> None:
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_bool(obj)
-    Self._finish_dump(enc, fp)
+    enc.dumpBool(obj)
+    Self._finishDump(enc, fp)
 
 
 
@@ -2954,8 +2954,8 @@ class Json:
   def dump(obj: int, fp: StringIO, indent: int = 0) -> None:
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_int(obj)
-    Self._finish_dump(enc, fp)
+    enc.dumpInt(obj)
+    Self._finishDump(enc, fp)
 
 
 
@@ -2964,8 +2964,8 @@ class Json:
   def dump(obj: varint, fp: StringIO, indent: int = 0) -> None:
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_varint(obj)
-    Self._finish_dump(enc, fp)
+    enc.dumpVarint(obj)
+    Self._finishDump(enc, fp)
 
 
 
@@ -2974,8 +2974,8 @@ class Json:
   def dump(obj: float, fp: StringIO, indent: int = 0) -> None:
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_float(obj)
-    Self._finish_dump(enc, fp)
+    enc.dumpFloat(obj)
+    Self._finishDump(enc, fp)
 
 
 
@@ -2984,8 +2984,8 @@ class Json:
   def dump(obj: str, fp: StringIO, indent: int = 0) -> None:
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_str(obj)
-    Self._finish_dump(enc, fp)
+    enc.dumpStr(obj)
+    Self._finishDump(enc, fp)
 
 
 
@@ -2993,12 +2993,12 @@ class Json:
   @overload
   def dump(obj: list[int], fp: StringIO, indent: int = 0) -> None:
     if indent == 0:
-      Self._write_fast(JsonEncoder.fast_encode(obj), fp)
+      Self._writeFast(JsonEncoder.fastEncode(obj), fp)
       return
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_list_int(obj)
-    Self._finish_dump(enc, fp)
+    enc.dumpListInt(obj)
+    Self._finishDump(enc, fp)
 
 
 
@@ -3006,12 +3006,12 @@ class Json:
   @overload
   def dump(obj: list[varint], fp: StringIO, indent: int = 0) -> None:
     if indent == 0:
-      Self._write_fast(JsonEncoder.fast_encode(obj), fp)
+      Self._writeFast(JsonEncoder.fastEncode(obj), fp)
       return
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_list_varint(obj)
-    Self._finish_dump(enc, fp)
+    enc.dumpListVarint(obj)
+    Self._finishDump(enc, fp)
 
 
 
@@ -3019,12 +3019,12 @@ class Json:
   @overload
   def dump(obj: list[str], fp: StringIO, indent: int = 0) -> None:
     if indent == 0:
-      Self._write_fast(JsonEncoder.fast_encode(obj), fp)
+      Self._writeFast(JsonEncoder.fastEncode(obj), fp)
       return
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_list_str(obj)
-    Self._finish_dump(enc, fp)
+    enc.dumpListStr(obj)
+    Self._finishDump(enc, fp)
 
 
 
@@ -3032,12 +3032,12 @@ class Json:
   @overload
   def dump(obj: list[float], fp: StringIO, indent: int = 0) -> None:
     if indent == 0:
-      Self._write_fast(JsonEncoder.fast_encode(obj), fp)
+      Self._writeFast(JsonEncoder.fastEncode(obj), fp)
       return
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_list_float(obj)
-    Self._finish_dump(enc, fp)
+    enc.dumpListFloat(obj)
+    Self._finishDump(enc, fp)
 
 
 
@@ -3045,12 +3045,12 @@ class Json:
   @overload
   def dump(obj: dict[str, int], fp: StringIO, indent: int = 0) -> None:
     if indent == 0:
-      Self._write_fast(JsonEncoder.fast_encode(obj), fp)
+      Self._writeFast(JsonEncoder.fastEncode(obj), fp)
       return
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_dict_str_int(obj)
-    Self._finish_dump(enc, fp)
+    enc.dumpDictStrInt(obj)
+    Self._finishDump(enc, fp)
 
 
 
@@ -3058,12 +3058,12 @@ class Json:
   @overload
   def dump(obj: dict[str, varint], fp: StringIO, indent: int = 0) -> None:
     if indent == 0:
-      Self._write_fast(JsonEncoder.fast_encode(obj), fp)
+      Self._writeFast(JsonEncoder.fastEncode(obj), fp)
       return
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_dict_str_varint(obj)
-    Self._finish_dump(enc, fp)
+    enc.dumpDictStrVarint(obj)
+    Self._finishDump(enc, fp)
 
 
 
@@ -3071,12 +3071,12 @@ class Json:
   @overload
   def dump(obj: dict[str, str], fp: StringIO, indent: int = 0) -> None:
     if indent == 0:
-      Self._write_fast(JsonEncoder.fast_encode(obj), fp)
+      Self._writeFast(JsonEncoder.fastEncode(obj), fp)
       return
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_dict_str_str(obj)
-    Self._finish_dump(enc, fp)
+    enc.dumpDictStrStr(obj)
+    Self._finishDump(enc, fp)
 
 
 
@@ -3084,38 +3084,38 @@ class Json:
   @overload
   def dump(obj: dict[str, float], fp: StringIO, indent: int = 0) -> None:
     if indent == 0:
-      Self._write_fast(JsonEncoder.fast_encode(obj), fp)
+      Self._writeFast(JsonEncoder.fastEncode(obj), fp)
       return
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_dict_str_float(obj)
-    Self._finish_dump(enc, fp)
+    enc.dumpDictStrFloat(obj)
+    Self._finishDump(enc, fp)
 
 
 
   @staticmethod
   @overload
-  def dump[T](obj: T, fp: StringIO, indent: int = 0) -> None:
+  def dump[Root](obj: Root, fp: StringIO, indent: int = 0) -> None:
     enc: JsonEncoder = new()
     enc.indent = indent
     obj.serialize(enc)
-    Self._finish_dump(enc, fp)
+    Self._finishDump(enc, fp)
 
 
 
   @staticmethod
   @overload
-  def dump[T](obj: list[T], fp: StringIO, indent: int = 0) -> None:
+  def dump[Root](obj: list[Root], fp: StringIO, indent: int = 0) -> None:
     enc: JsonEncoder = new()
     enc.indent = indent
     n: int = len(obj)
     if indent == 0 and n > 0:
-      enc.grow_buf(n * 48 + 16)
-    enc.begin_array()
+      enc.growBuf(n * 48 + 16)
+    enc.beginArray()
     for i in range(n):
       obj[i].serialize(enc)
-    enc.end_array()
-    Self._finish_dump(enc, fp)
+    enc.endArray()
+    Self._finishDump(enc, fp)
 
 
 
@@ -3124,8 +3124,8 @@ class Json:
   def dump(obj: bool, fp: TextIOWrapper, indent: int = 0) -> None:
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_bool(obj)
-    Self._finish_dump(enc, fp)
+    enc.dumpBool(obj)
+    Self._finishDump(enc, fp)
 
 
 
@@ -3134,8 +3134,8 @@ class Json:
   def dump(obj: int, fp: TextIOWrapper, indent: int = 0) -> None:
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_int(obj)
-    Self._finish_dump(enc, fp)
+    enc.dumpInt(obj)
+    Self._finishDump(enc, fp)
 
 
 
@@ -3144,8 +3144,8 @@ class Json:
   def dump(obj: varint, fp: TextIOWrapper, indent: int = 0) -> None:
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_varint(obj)
-    Self._finish_dump(enc, fp)
+    enc.dumpVarint(obj)
+    Self._finishDump(enc, fp)
 
 
 
@@ -3154,8 +3154,8 @@ class Json:
   def dump(obj: float, fp: TextIOWrapper, indent: int = 0) -> None:
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_float(obj)
-    Self._finish_dump(enc, fp)
+    enc.dumpFloat(obj)
+    Self._finishDump(enc, fp)
 
 
 
@@ -3164,8 +3164,8 @@ class Json:
   def dump(obj: str, fp: TextIOWrapper, indent: int = 0) -> None:
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_str(obj)
-    Self._finish_dump(enc, fp)
+    enc.dumpStr(obj)
+    Self._finishDump(enc, fp)
 
 
 
@@ -3173,12 +3173,12 @@ class Json:
   @overload
   def dump(obj: list[int], fp: TextIOWrapper, indent: int = 0) -> None:
     if indent == 0:
-      Self._write_fast(JsonEncoder.fast_encode(obj), fp)
+      Self._writeFast(JsonEncoder.fastEncode(obj), fp)
       return
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_list_int(obj)
-    Self._finish_dump(enc, fp)
+    enc.dumpListInt(obj)
+    Self._finishDump(enc, fp)
 
 
 
@@ -3186,12 +3186,12 @@ class Json:
   @overload
   def dump(obj: list[varint], fp: TextIOWrapper, indent: int = 0) -> None:
     if indent == 0:
-      Self._write_fast(JsonEncoder.fast_encode(obj), fp)
+      Self._writeFast(JsonEncoder.fastEncode(obj), fp)
       return
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_list_varint(obj)
-    Self._finish_dump(enc, fp)
+    enc.dumpListVarint(obj)
+    Self._finishDump(enc, fp)
 
 
 
@@ -3199,12 +3199,12 @@ class Json:
   @overload
   def dump(obj: list[str], fp: TextIOWrapper, indent: int = 0) -> None:
     if indent == 0:
-      Self._write_fast(JsonEncoder.fast_encode(obj), fp)
+      Self._writeFast(JsonEncoder.fastEncode(obj), fp)
       return
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_list_str(obj)
-    Self._finish_dump(enc, fp)
+    enc.dumpListStr(obj)
+    Self._finishDump(enc, fp)
 
 
 
@@ -3212,12 +3212,12 @@ class Json:
   @overload
   def dump(obj: list[float], fp: TextIOWrapper, indent: int = 0) -> None:
     if indent == 0:
-      Self._write_fast(JsonEncoder.fast_encode(obj), fp)
+      Self._writeFast(JsonEncoder.fastEncode(obj), fp)
       return
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_list_float(obj)
-    Self._finish_dump(enc, fp)
+    enc.dumpListFloat(obj)
+    Self._finishDump(enc, fp)
 
 
 
@@ -3225,12 +3225,12 @@ class Json:
   @overload
   def dump(obj: dict[str, int], fp: TextIOWrapper, indent: int = 0) -> None:
     if indent == 0:
-      Self._write_fast(JsonEncoder.fast_encode(obj), fp)
+      Self._writeFast(JsonEncoder.fastEncode(obj), fp)
       return
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_dict_str_int(obj)
-    Self._finish_dump(enc, fp)
+    enc.dumpDictStrInt(obj)
+    Self._finishDump(enc, fp)
 
 
 
@@ -3238,12 +3238,12 @@ class Json:
   @overload
   def dump(obj: dict[str, varint], fp: TextIOWrapper, indent: int = 0) -> None:
     if indent == 0:
-      Self._write_fast(JsonEncoder.fast_encode(obj), fp)
+      Self._writeFast(JsonEncoder.fastEncode(obj), fp)
       return
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_dict_str_varint(obj)
-    Self._finish_dump(enc, fp)
+    enc.dumpDictStrVarint(obj)
+    Self._finishDump(enc, fp)
 
 
 
@@ -3251,12 +3251,12 @@ class Json:
   @overload
   def dump(obj: dict[str, str], fp: TextIOWrapper, indent: int = 0) -> None:
     if indent == 0:
-      Self._write_fast(JsonEncoder.fast_encode(obj), fp)
+      Self._writeFast(JsonEncoder.fastEncode(obj), fp)
       return
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_dict_str_str(obj)
-    Self._finish_dump(enc, fp)
+    enc.dumpDictStrStr(obj)
+    Self._finishDump(enc, fp)
 
 
 
@@ -3264,100 +3264,100 @@ class Json:
   @overload
   def dump(obj: dict[str, float], fp: TextIOWrapper, indent: int = 0) -> None:
     if indent == 0:
-      Self._write_fast(JsonEncoder.fast_encode(obj), fp)
+      Self._writeFast(JsonEncoder.fastEncode(obj), fp)
       return
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dump_dict_str_float(obj)
-    Self._finish_dump(enc, fp)
+    enc.dumpDictStrFloat(obj)
+    Self._finishDump(enc, fp)
 
 
 
   @staticmethod
   @overload
-  def dump[T](obj: T, fp: TextIOWrapper, indent: int = 0) -> None:
+  def dump[Root](obj: Root, fp: TextIOWrapper, indent: int = 0) -> None:
     enc: JsonEncoder = new()
     enc.indent = indent
     obj.serialize(enc)
-    Self._finish_dump(enc, fp)
+    Self._finishDump(enc, fp)
 
 
 
   @staticmethod
   @overload
-  def dump[T](obj: list[T], fp: TextIOWrapper, indent: int = 0) -> None:
+  def dump[Root](obj: list[Root], fp: TextIOWrapper, indent: int = 0) -> None:
     enc: JsonEncoder = new()
     enc.indent = indent
     n: int = len(obj)
     if indent == 0 and n > 0:
-      enc.grow_buf(n * 48 + 16)
-    enc.begin_array()
+      enc.growBuf(n * 48 + 16)
+    enc.beginArray()
     for i in range(n):
       obj[i].serialize(enc)
-    enc.end_array()
-    Self._finish_dump(enc, fp)
+    enc.endArray()
+    Self._finishDump(enc, fp)
 
 
 
   @staticmethod
-  def loads[T](s: str) -> T:
+  def loads[Root](s: str) -> Root:
     """``json.loads``；``T`` 为返回值静态类型（``Json.loads[User](s)`` 或赋值推断）。"""
-    dec: JsonDecoder = new.from_text(s)
-    dec.try_bind_ascii()
-    if Self.loads_uses_str_arena[T]():
-      dec.enable_str_arena()
-    if T is int:
-      out = dec.load_int()
-    elif T is varint:
-      out = dec.load_varint()
-    elif T is float:
-      out = dec.load_float()
-    elif T is str:
-      out = dec.load_str()
-    elif T is bool:
-      out = dec.load_bool()
-    elif T is list[int]:
-      out = dec.load_list_int()
-    elif T is list[varint]:
-      out = dec.load_list_varint()
-    elif T is list[str]:
-      out = dec.load_list_str()
-    elif T is list[float]:
-      out = dec.load_list_float()
-    elif T is list[...]:
-      out = dec.load_container[T]()
-    elif T is dict[str, int]:
-      out = dec.load_dict_str_int()
-    elif T is dict[str, varint]:
-      out = dec.load_dict_str_varint()
-    elif T is dict[str, str]:
-      out = dec.load_dict_str_str()
-    elif T is dict[str, float]:
-      out = dec.load_dict_str_float()
-    elif T is dict[str, ...]:
-      out = dec.load_container[T]()
+    dec: JsonDecoder = new.fromText(s)
+    dec.tryBindAscii()
+    if Self.loadsUsesStrArena[Root]():
+      dec.enableStrArena()
+    if Root is int:
+      out = dec.loadInt()
+    elif Root is varint:
+      out = dec.loadVarint()
+    elif Root is float:
+      out = dec.loadFloat()
+    elif Root is str:
+      out = dec.loadStr()
+    elif Root is bool:
+      out = dec.loadBool()
+    elif Root is list[int]:
+      out = dec.loadListInt()
+    elif Root is list[varint]:
+      out = dec.loadListVarint()
+    elif Root is list[str]:
+      out = dec.loadListStr()
+    elif Root is list[float]:
+      out = dec.loadListFloat()
+    elif Root is list[...]:
+      out = dec.loadContainer[Root]()
+    elif Root is dict[str, int]:
+      out = dec.loadDictStrInt()
+    elif Root is dict[str, varint]:
+      out = dec.loadDictStrVarint()
+    elif Root is dict[str, str]:
+      out = dec.loadDictStrStr()
+    elif Root is dict[str, float]:
+      out = dec.loadDictStrFloat()
+    elif Root is dict[str, ...]:
+      out = dec.loadContainer[Root]()
     else:
-      out = dec.load_generic[T]()
-    if dec.str_arena_active:
-      dec.str_arena.reset()
-      dec.str_arena_active = False
-    dec.release_ascii()
+      out = dec.loadGeneric[Root]()
+    if dec.strArenaActive:
+      dec.strArena.reset()
+      dec.strArenaActive = False
+    dec.releaseAscii()
     return out
 
   @staticmethod
   @overload
-  def load[T](fp: TextIOWrapper) -> T:
+  def load[Root](fp: TextIOWrapper) -> Root:
     """``json.load``：``fp.read()`` 后 ``Json.loads[T]``。"""
-    return Self.loads[T](fp.read())
+    return Self.loads[Root](fp.read())
 
   @staticmethod
   @overload
-  def load[T](fp: StringIO) -> T:
-    return Self.loads[T](fp.read())
+  def load[Root](fp: StringIO) -> Root:
+    return Self.loads[Root](fp.read())
 
 
 @union
-class JsonDocStep:
+class JsonDocStepUnion:
   @variant
   class Field:
     key: str
@@ -3369,7 +3369,7 @@ class JsonDocStep:
 
 @copyable
 @dataclass
-class JsonDocument[T]:
+class JsonDocument[Root]:
   """JSON 持久化文档；打开文件用 ``new.open(path, mode)``（``x: JsonDocument[T] = new.open(...)``；勿 ``JsonDocument[T].open``，S06b）。"""
 
   path: str = ""
@@ -3379,73 +3379,73 @@ class JsonDocument[T]:
   dec: JsonDecoder = new()
   writable: bool = False
   dirty: bool = False
-  text_gen: int = 0
-  arr_cache_bracket: int = -1
-  arr_cache_offsets: list[int] @optional = []
+  textGen: int = 0
+  arrCacheBracket: int = -1
+  arrCacheOffsets: list[int] @optional = []
 
-  def _array_index(self, idx: int):
-    self.dec.skip_spaces()
-    self.dec.expect_char("[")
-    self.dec.skip_spaces()
-    open_pos: int = self.dec.pos - 1
+  def _arrayIndex(self, idx: int):
+    self.dec.skipSpaces()
+    self.dec.expectChar("[")
+    self.dec.skipSpaces()
+    openPos: int = self.dec.pos - 1
     n: int = len(self.dec.s)
     if self.dec.pos < n and self.dec.s[self.dec.pos] in "]":
       self.dec.fail("index out of range")
     if idx < 0:
       self.dec.fail("index out of range")
-    if not self._arr_cache_valid(open_pos):
-      self._arr_cache_reset(open_pos)
-    offs: list[int] = self.arr_cache_offsets
+    if not self._arrCacheValid(openPos):
+      self._arrCacheReset(openPos)
+    offs: list[int] = self.arrCacheOffsets
     if len(offs) > idx:
       self.dec.pos = offs[idx]
       return
     if offs:
       self.dec.pos = offs[-1]
-      self.dec.skip_value()
-      self.dec.skip_spaces()
+      self.dec.skipValue()
+      self.dec.skipSpaces()
       if self.dec.pos < n and self.dec.s[self.dec.pos] in "]":
         self.dec.fail("index out of range")
-      self.dec.expect_char(",")
-      self.dec.skip_spaces()
+      self.dec.expectChar(",")
+      self.dec.skipSpaces()
     while len(offs) <= idx:
       if self.dec.pos < n and self.dec.s[self.dec.pos] in "]":
         self.dec.fail("index out of range")
       offs.append(self.dec.pos)
       if len(offs) - 1 == idx:
         break
-      self.dec.skip_value()
-      self.dec.skip_spaces()
+      self.dec.skipValue()
+      self.dec.skipSpaces()
       if self.dec.pos < n and self.dec.s[self.dec.pos] in "]":
         self.dec.fail("index out of range")
-      self.dec.expect_char(",")
-      self.dec.skip_spaces()
+      self.dec.expectChar(",")
+      self.dec.skipSpaces()
     self.dec.pos = offs[idx]
 
-  def _object_key(self, key: str):
-    self.dec.skip_spaces()
+  def _objectKey(self, key: str):
+    self.dec.skipSpaces()
     n: int = len(self.dec.s)
     if self.dec.pos < n and self.dec.s[self.dec.pos] in "{":
       self.dec.pos += 1
-      self.dec.skip_spaces()
+      self.dec.skipSpaces()
     if self.dec.pos < n and self.dec.s[self.dec.pos] in "}":
       self.dec.fail("missing key")
     while True:
-      if self.dec.at_object_end():
+      if self.dec.atObjectEnd():
         self.dec.fail("missing key")
-      if self.dec.try_match_key(key):
+      if self.dec.tryMatchKey(key):
         return
-      self.dec.skip_field()
+      self.dec.skipField()
 
-  def _container_close_index(self, open_pos: int) -> int:
-    open_c: char = self.dec.s[open_pos]
-    if open_c not in "[{":
+  def _containerCloseIndex(self, openPos: int) -> int:
+    openC: char = self.dec.s[openPos]
+    if openC not in "[{":
       self.dec.fail("expected container")
     depth: int = 0
     n: int = len(self.dec.s)
-    i: int = open_pos
+    i: int = openPos
     while i < n:
       c: char = self.dec.s[i]
-      if open_c in "{":
+      if openC in "{":
         match c:
           case '{':
             depth += 1
@@ -3455,7 +3455,7 @@ class JsonDocument[T]:
               return i
           case _:
             pass
-      elif open_c in "[":
+      elif openC in "[":
         match c:
           case '[':
             depth += 1
@@ -3476,14 +3476,14 @@ class JsonDocument[T]:
           i += 1
       i += 1
     self.dec.fail("unterminated container")
-    return open_pos
+    return openPos
 
   @overload
-  def _encode_for_patch(self, value: str) -> str:
+  def _encodeForPatch(self, value: str) -> str:
     return Json.dumps(value)
 
   @overload
-  def _encode_for_patch(self, value) -> str:
+  def _encodeForPatch(self, value) -> str:
     enc: JsonEncoder = new()
     value.serialize(enc)
     return enc.take()
@@ -3508,7 +3508,7 @@ class JsonDocument[T]:
       f.close()
     doc.orig = doc.text
     doc.dirty = False
-    doc.sync_dec()
+    doc.syncDec()
     return doc
 
   def __enter__(self) -> Self:
@@ -3517,33 +3517,33 @@ class JsonDocument[T]:
   def __exit__(self):
     self.commit()
 
-  def __getattr__(self, name: str) -> JsonDocCursor[T]:
-    cur: JsonDocCursor[T] = new()
+  def __getattr__(self, name: str) -> JsonDocCursor[Root]:
+    cur: JsonDocCursor[Root] = new()
     cur.doc = self
-    cur.steps.append(JsonDocStep.Field(name))
+    cur.steps.append(JsonDocStepUnion.Field(name))
     return cur
 
-  def __getitem__(self, i: int) -> JsonDocCursor[T]:
-    cur: JsonDocCursor[T] = new()
+  def __getitem__(self, i: int) -> JsonDocCursor[Root]:
+    cur: JsonDocCursor[Root] = new()
     cur.doc = self
-    cur.steps.append(JsonDocStep.Index(i))
+    cur.steps.append(JsonDocStepUnion.Index(i))
     return cur
 
   def __setattr__(self, name: str, value):
-    steps: list[JsonDocStep] = [JsonDocStep.Field(name)]
-    self.replace_at(steps, value)
+    steps: list[JsonDocStepUnion] = [JsonDocStepUnion.Field(name)]
+    self.replaceAt(steps, value)
 
   def __setitem__(self, i: int, value):
-    steps: list[JsonDocStep] = [JsonDocStep.Index(i)]
-    self.replace_at(steps, value)
+    steps: list[JsonDocStepUnion] = [JsonDocStepUnion.Index(i)]
+    self.replaceAt(steps, value)
 
   def __delitem__(self, i: int):
-    steps: list[JsonDocStep] = []
-    self.del_item_at(steps, i)
+    steps: list[JsonDocStepUnion] = []
+    self.delItemAt(steps, i)
 
-  def load[T](self) -> T:
+  def load[Root](self) -> Root:
     """全量读入（等价 ``Json.loads[T](全文)``）。"""
-    return Json.loads[T](self.text)
+    return Json.loads[Root](self.text)
 
   def dump(self) -> str:
     """当前文档快照（``str``）。"""
@@ -3567,105 +3567,105 @@ class JsonDocument[T]:
     """放弃未 ``commit`` 的内存变更。"""
     self.text = self.orig
     self.dirty = False
-    self.sync_dec()
+    self.syncDec()
 
-  def read_str_at(self, steps: list[JsonDocStep]) -> str:
-    self._apply_steps(steps)
-    seg: span[char] = self.dec.load_str_span()
-    return str.from_span(seg)
+  def readStrAt(self, steps: list[JsonDocStepUnion]) -> str:
+    self._applySteps(steps)
+    seg: span[char] = self.dec.loadStrSpan()
+    return str.fromSpan(seg)
 
-  def read_int_at(self, steps: list[JsonDocStep]) -> int:
-    self._apply_steps(steps)
-    return self.dec.load_int()
+  def readIntAt(self, steps: list[JsonDocStepUnion]) -> int:
+    self._applySteps(steps)
+    return self.dec.loadInt()
 
-  def read_bool_at(self, steps: list[JsonDocStep]) -> bool:
-    self._apply_steps(steps)
-    return self.dec.load_bool()
+  def readBoolAt(self, steps: list[JsonDocStepUnion]) -> bool:
+    self._applySteps(steps)
+    return self.dec.loadBool()
 
-  def replace_at(self, steps: list[JsonDocStep], value):
-    self._apply_steps(steps)
-    enc: str = self._encode_for_patch(value)
-    self._replace_at_decoder(enc)
+  def replaceAt(self, steps: list[JsonDocStepUnion], value):
+    self._applySteps(steps)
+    enc: str = self._encodeForPatch(value)
+    self._replaceAtDecoder(enc)
 
-  def append_at(self, steps: list[JsonDocStep], item):
-    self._apply_steps(steps)
-    enc: str = self._encode_for_patch(item)
-    self._append_at_array(enc)
+  def appendAt(self, steps: list[JsonDocStepUnion], item):
+    self._applySteps(steps)
+    enc: str = self._encodeForPatch(item)
+    self._appendAtArray(enc)
 
-  def del_item_at(self, steps: list[JsonDocStep], i: int):
-    self._apply_steps(steps)
-    self._array_index(i)
-    self._delete_at_decoder()
+  def delItemAt(self, steps: list[JsonDocStepUnion], i: int):
+    self._applySteps(steps)
+    self._arrayIndex(i)
+    self._deleteAtDecoder()
 
-  def _arr_cache_valid(self, open_pos: int) -> bool:
-    return self.arr_cache_bracket == open_pos
+  def _arrCacheValid(self, openPos: int) -> bool:
+    return self.arrCacheBracket == openPos
 
-  def _arr_cache_reset(self, open_pos: int):
-    self.arr_cache_bracket = open_pos
-    self.arr_cache_offsets = []
+  def _arrCacheReset(self, openPos: int):
+    self.arrCacheBracket = openPos
+    self.arrCacheOffsets = []
 
-  def _reset_dec_for_nav(self):
+  def _resetDecForNav(self):
     """每次懒导航前完整同步 ``dec``（含 ASCII 绑定），避免多次 ``read_*`` 游标残留。"""
-    self.sync_dec()
+    self.syncDec()
 
-  def _require_writable(self):
+  def _requireWritable(self):
     if not self.writable:
       raise OSError()
 
-  def _mark_dirty(self, next: str):
+  def _markDirty(self, next: str):
     self.text = next
     self.dirty = True
-    self.text_gen += 1
-    self.sync_dec()
+    self.textGen += 1
+    self.syncDec()
 
-  def sync_dec(self):
-    self.dec.release_ascii()
+  def syncDec(self):
+    self.dec.releaseAscii()
     self.dec.s = self.text
     self.dec.pos = 0
-    self.dec.ascii_bind_done = False
-    self.dec.ascii_ok = False
-    self.dec.ascii_len = 0
-    self.dec.ascii_bytes = None
-    self.dec.ascii_bytes_owned = False
-    self._arr_cache_reset(-1)
-    self.dec.try_bind_ascii()
+    self.dec.asciiBindDone = False
+    self.dec.asciiOk = False
+    self.dec.asciiLen = 0
+    self.dec.asciiBytes = None
+    self.dec.asciiBytesOwned = False
+    self._arrCacheReset(-1)
+    self.dec.tryBindAscii()
 
-  def _replace_at_decoder(self, encoded: str):
-    self._require_writable()
+  def _replaceAtDecoder(self, encoded: str):
+    self._requireWritable()
     start: int = self.dec.pos
-    self.dec.skip_value()
+    self.dec.skipValue()
     end: int = self.dec.pos
-    nxt: str = self.text.replace_slice(start, end, encoded)
-    self._mark_dirty(nxt)
+    nxt: str = self.text.replaceSlice(start, end, encoded)
+    self._markDirty(nxt)
 
-  def _delete_at_decoder(self):
-    self._require_writable()
+  def _deleteAtDecoder(self):
+    self._requireWritable()
     if self.dec.s != self.text:
-      self.sync_dec()
+      self.syncDec()
     start: int = self.dec.pos
-    self.dec.skip_spaces()
+    self.dec.skipSpaces()
     n: int = len(self.dec.s)
     if self.dec.pos >= n:
       self.dec.fail("empty input")
     c: char = self.dec.s[self.dec.pos]
     end: int = self.dec.pos
     if c in "[{":
-      close_i: int = self._container_close_index(self.dec.pos)
-      end = close_i + 1
+      closeI: int = self._containerCloseIndex(self.dec.pos)
+      end = closeI + 1
       self.dec.pos = end
     else:
-      self.dec.skip_value()
+      self.dec.skipValue()
       end = self.dec.pos
-    self.dec.skip_spaces()
+    self.dec.skipSpaces()
     n = len(self.dec.s)
     if self.dec.pos < n and self.dec.s[self.dec.pos] in ",":
       end += 1
     elif start > 0:
       sn: int = len(self.text)
-      scan_hi: int = start - 1
-      if scan_hi >= sn:
-        scan_hi = sn - 1
-      for scan in range(scan_hi, 0, -1):
+      scanHi: int = start - 1
+      if scanHi >= sn:
+        scanHi = sn - 1
+      for scan in range(scanHi, 0, -1):
         c2: char = self.text[scan]
         if c2 in ",":
           start = scan
@@ -3681,72 +3681,72 @@ class JsonDocument[T]:
       end = start
     if end > sn:
       end = sn
-    nxt: str = self.text.replace_slice(start, end, "")
-    self._mark_dirty(nxt)
+    nxt: str = self.text.replaceSlice(start, end, "")
+    self._markDirty(nxt)
 
-  def _append_at_array(self, encoded: str):
-    self._require_writable()
-    self.dec.skip_spaces()
-    self.dec.expect_char("[")
-    open_pos: int = self.dec.pos - 1
-    self.dec.skip_spaces()
-    close: int = self._container_close_index(open_pos)
+  def _appendAtArray(self, encoded: str):
+    self._requireWritable()
+    self.dec.skipSpaces()
+    self.dec.expectChar("[")
+    openPos: int = self.dec.pos - 1
+    self.dec.skipSpaces()
+    close: int = self._containerCloseIndex(openPos)
     nxt: str = ""
     if self.dec.pos < close and self.dec.s[self.dec.pos] in "]":
-      nxt = self.text.replace_slice(close, close, encoded)
+      nxt = self.text.replaceSlice(close, close, encoded)
     else:
       mid: str = "," + encoded
-      nxt = self.text.replace_slice(close, close, mid)
-    self._mark_dirty(nxt)
+      nxt = self.text.replaceSlice(close, close, mid)
+    self._markDirty(nxt)
 
-  def _apply_steps(self, steps: list[JsonDocStep]):
-    self._reset_dec_for_nav()
-    self.dec.begin_root_object()
+  def _applySteps(self, steps: list[JsonDocStepUnion]):
+    self._resetDecForNav()
+    self.dec.beginRootObject()
     for st in steps:
       match st:  # py2cpp: strict-off
         case new.Field(key):
-          self._object_key(key)
+          self._objectKey(key)
         case new.Index(idx):
-          self._array_index(idx)
+          self._arrayIndex(idx)
 
 
 @copyable
 @dataclass
-class JsonDocCursor[T]:
+class JsonDocCursor[Root]:
   """``JsonDocument`` 懒路径节点（``doc.teams[0].name``）。"""
 
-  doc: Pointer[JsonDocument[T]] = None
-  steps: list[JsonDocStep] @optional = []
+  doc: Pointer[JsonDocument[Root]] = None
+  steps: list[JsonDocStepUnion] @optional = []
 
   def __getattr__(self, name: str) -> Self:
     out: Self = self
-    out.steps.append(JsonDocStep.Field(name))
+    out.steps.append(JsonDocStepUnion.Field(name))
     return out
 
   def __getitem__(self, i: int) -> Self:
     out: Self = self
-    out.steps.append(JsonDocStep.Index(i))
+    out.steps.append(JsonDocStepUnion.Index(i))
     return out
 
   def __setattr__(self, name: str, value):
-    self.steps.append(JsonDocStep.Field(name))
-    self.doc.replace_at(self.steps, value)
+    self.steps.append(JsonDocStepUnion.Field(name))
+    self.doc.replaceAt(self.steps, value)
 
   def __setitem__(self, i: int, value):
-    self.steps.append(JsonDocStep.Index(i))
-    self.doc.replace_at(self.steps, value)
+    self.steps.append(JsonDocStepUnion.Index(i))
+    self.doc.replaceAt(self.steps, value)
 
   def __delitem__(self, i: int):
-    self.doc.del_item_at(self.steps, i)
+    self.doc.delItemAt(self.steps, i)
 
-  def read_str(self) -> str:
-    return self.doc.read_str_at(self.steps)
+  def readStr(self) -> str:
+    return self.doc.readStrAt(self.steps)
 
-  def read_int(self) -> int:
-    return self.doc.read_int_at(self.steps)
+  def readInt(self) -> int:
+    return self.doc.readIntAt(self.steps)
 
-  def read_bool(self) -> bool:
-    return self.doc.read_bool_at(self.steps)
+  def readBool(self) -> bool:
+    return self.doc.readBoolAt(self.steps)
 
   def append(self, item):
-    self.doc.append_at(self.steps, item)
+    self.doc.appendAt(self.steps, item)

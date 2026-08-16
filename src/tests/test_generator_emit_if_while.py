@@ -114,7 +114,7 @@ class GeneratorEmitIfWhileTests(unittest.TestCase):
   def test_resume_hoisted_fields_use_assign_not_annassign(self):
     body = _resume_body_from_source(
       """
-def g() -> Generator[int, None, None]:
+def g() -> GeneratorType[int, None, None]:
   j: int = 0
   while j < 3:
     yield j
@@ -127,7 +127,7 @@ def g() -> Generator[int, None, None]:
   def test_leading_docstring_not_in_resume(self):
     body = _resume_body_from_source(
       """
-def g() -> Generator[int, None, None]:
+def g() -> GeneratorType[int, None, None]:
   \"\"\"doc only\"\"\"
   yield 1
 """,
@@ -137,7 +137,7 @@ def g() -> Generator[int, None, None]:
 
   def test_wrapper_keeps_leading_docstring(self):
     src = """
-def g() -> Generator[int, None, None]:
+def g() -> GeneratorType[int, None, None]:
   \"\"\"doc on wrapper\"\"\"
   yield 1
 """
@@ -150,7 +150,7 @@ def g() -> Generator[int, None, None]:
   def test_if_then_while_separate_cases(self):
     body = _resume_body_from_source(
       """
-def g() -> Generator[int, None, None]:
+def g() -> GeneratorType[int, None, None]:
   flag: bool = True
   if flag:
     i: int = 0
@@ -168,7 +168,7 @@ def g() -> Generator[int, None, None]:
   def test_if_else_both_yield(self):
     body = _resume_body_from_source(
       """
-def g() -> Generator[int, None, None]:
+def g() -> GeneratorType[int, None, None]:
   i: int = 0
   if i % 2 == 0:
     yield 0
@@ -191,7 +191,7 @@ def g() -> Generator[int, None, None]:
   def test_if_yield_then_join_bridge(self):
     body = _resume_body_from_source(
       """
-def g() -> Generator[int, None, None]:
+def g() -> GeneratorType[int, None, None]:
   i: int = 0
   while i < 3:
     if i < 2:
@@ -210,7 +210,7 @@ def g() -> Generator[int, None, None]:
   def test_while_exit_falls_through(self):
     body = _resume_body_from_source(
       """
-def g() -> Generator[int, None, None]:
+def g() -> GeneratorType[int, None, None]:
   i: int = 0
   while i < 1:
     yield i
@@ -226,7 +226,7 @@ def g() -> Generator[int, None, None]:
   def test_sync_yield_from_yields_child_value(self):
     body = _resume_body_from_source(
       """
-def g(xs: list[int]) -> Generator[int, None, None]:
+def g(xs: list[int]) -> GeneratorType[int, None, None]:
   yield from xs
 """,
     )

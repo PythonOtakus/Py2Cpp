@@ -23,12 +23,12 @@ class ECSVelocity:
 class ECSSpawnComponents:
   """``ECSWorld.create(new(...))`` 组件包（标量字段，避免类体默认构造）。"""
 
-  spawn_position: int = 0
-  pos_x: int = 0
-  pos_y: int = 0
-  spawn_velocity: int = 0
-  vel_dx: int = 0
-  vel_dy: int = 0
+  spawnPosition: int = 0
+  posX: int = 0
+  posY: int = 0
+  spawnVelocity: int = 0
+  velDx: int = 0
+  velDy: int = 0
 
 
 class ECSWorld(ECSWorldMixin):
@@ -38,15 +38,15 @@ class ECSWorld(ECSWorldMixin):
   velocity: ECSComponentTable[ECSVelocity] @property = new()
 
   def create(self, bundle: ECSSpawnComponents) -> ECSEntity:
-    e: ECSEntity = self._alloc_entity()
-    if bundle.spawn_position:
-      self.position[e] = new(x=bundle.pos_x, y=bundle.pos_y)
-    if bundle.spawn_velocity:
-      self.velocity[e] = new(dx=bundle.vel_dx, dy=bundle.vel_dy)
+    e: ECSEntity = self._allocEntity()
+    if bundle.spawnPosition:
+      self.position[e] = new(x=bundle.posX, y=bundle.posY)
+    if bundle.spawnVelocity:
+      self.velocity[e] = new(dx=bundle.velDx, dy=bundle.velDy)
     return e
 
 
-def move_system(
+def moveSystem(
   pos: ECSComponentTable[ECSPosition] @ref,
   vel: ECSComponentTable[ECSVelocity] @ref,
 ) -> None:
@@ -58,22 +58,22 @@ def move_system(
 
 
 class EcsCreateTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
     w: ECSWorld = new()
     e: ECSEntity = w.create(
       new(
-        spawn_position=1,
-        pos_x=3,
-        pos_y=4,
-        spawn_velocity=1,
-        vel_dx=1,
-        vel_dy=2,
+        spawnPosition=1,
+        posX=3,
+        posY=4,
+        spawnVelocity=1,
+        velDx=1,
+        velDy=2,
       ),
     )
-    self.assertTrue(w.is_alive(e))
+    self.assertTrue(w.isAlive(e))
     self.assertTrue(e in w.position)
     self.assertTrue(e in w.velocity)
     self.assertEqual(w.position[e].x, 3)
@@ -81,52 +81,52 @@ class EcsCreateTests(TestCaseMixin):
 
 
 class EcsInlineMakeTests(TestCaseMixin):
-  _test_tag = 15
+  _testTag = 15
 
   @override
   def test(self):
     w: ECSWorld = new()
-    bundle: ECSSpawnComponents = new(spawn_position=1, pos_x=5, pos_y=6)
+    bundle: ECSSpawnComponents = new(spawnPosition=1, posX=5, posY=6)
     e: ECSEntity = w.create(bundle)
     self.assertEqual(w.position[e].x, 5)
 
 
 class EcsSystemTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
     w: ECSWorld = new()
     bundle: ECSSpawnComponents = new(
-      spawn_position=1,
-      pos_x=0,
-      pos_y=0,
-      spawn_velocity=1,
-      vel_dx=2,
-      vel_dy=3,
+      spawnPosition=1,
+      posX=0,
+      posY=0,
+      spawnVelocity=1,
+      velDx=2,
+      velDy=3,
     )
     e: ECSEntity = w.create(bundle)
-    move_system(w.position, w.velocity)
+    moveSystem(w.position, w.velocity)
     self.assertEqual(w.position[e].x, 2)
     self.assertEqual(w.position[e].y, 3)
 
 
 class EcsDestroyTests(TestCaseMixin):
-  _test_tag = 30
+  _testTag = 30
 
   @override
   def test(self):
     w: ECSWorld = new()
-    bundle: ECSSpawnComponents = new(spawn_position=1, pos_x=1, pos_y=1)
+    bundle: ECSSpawnComponents = new(spawnPosition=1, posX=1, posY=1)
     e: ECSEntity = w.create(bundle)
     w.destroy(e)
-    self.assertFalse(w.is_alive(e))
+    self.assertFalse(w.isAlive(e))
     self.assertFalse(e in w.position)
 
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

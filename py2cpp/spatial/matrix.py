@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from ..builtins import *
-from ..math import cos, degrees, fabs, almost, floor, lerp, radians, sin, safe_sqrt
+from ..math import cos, degrees, fabs, almost, floor, lerp, radians, sin, safeSqrt
 from .rotator import Quaternion, Rotator
 from .vector import Vector2, Vector3
 
@@ -13,103 +13,103 @@ class MatrixMixin[Vec, Rot]:
   """``Matrix3`` / ``Matrix4`` 公共矩阵 API（``Vec``/``Rot`` 由宿主绑定；经 ``__getitem__`` / ``__setitem__`` 访问元素）。"""
 
   _dim: int @const = 0
-  _vec_dim: int @const = 0
+  _vecDim: int @const = 0
   _data: float64[:Self._dim, :Self._dim]
 
   def __init__(self, identity: bool = True) -> None:
     if identity:
-      for i in inline_range(Self._dim):
-        for j in inline_range(Self._dim):
+      for i in inlineRange(Self._dim):
+        for j in inlineRange(Self._dim):
           self[i, j] = 1.0 if i == j else 0.0
 
   @immutable
   def __getitem__(self, index: (int, int)) -> float64:
-    return self._data.unsafe_get(index[0], index[1])
+    return self._data.unsafeGet(index[0], index[1])
 
   def __setitem__(self, index: (int, int), value: float64) -> None:
-    self._data.unsafe_set(index[0], index[1], value)
+    self._data.unsafeSet(index[0], index[1], value)
 
   @immutable
-  def unsafe_get(self, row: int, col: int) -> float64:
-    return self._data.unsafe_get(row, col)
+  def unsafeGet(self, row: int, col: int) -> float64:
+    return self._data.unsafeGet(row, col)
 
-  def unsafe_set(self, row: int, col: int, value: float64) -> None:
-    self._data.unsafe_set(row, col, value)
+  def unsafeSet(self, row: int, col: int, value: float64) -> None:
+    self._data.unsafeSet(row, col, value)
 
   @immutable
-  def is_affine(self) -> bool:
+  def isAffine(self) -> bool:
     z: float64 = 0.0
     one: float64 = 1.0
-    for j in inline_range(Self._dim - 1):
-      if not almost(self.unsafe_get(Self._dim - 1, j), z):
+    for j in inlineRange(Self._dim - 1):
+      if not almost(self.unsafeGet(Self._dim - 1, j), z):
         return False
-    if not almost(self.unsafe_get(Self._dim - 1, Self._dim - 1), one):
+    if not almost(self.unsafeGet(Self._dim - 1, Self._dim - 1), one):
       return False
     return True
 
   @immutable
-  def _inv_gauss(self) -> Self:
+  def _invGauss(self) -> Self:
     tmp: float64[:Self._dim, :Self._dim * 2] = new()
-    for i in inline_range(Self._dim):
-      for j in inline_range(Self._dim):
+    for i in inlineRange(Self._dim):
+      for j in inlineRange(Self._dim):
         tmp[i, j] = self[i, j]
         tmp[i, j + Self._dim] = 0.0
       tmp[i, i + Self._dim] = 1.0
-    for k in inline_range(Self._dim):
-      piv_row: int = k
-      piv_val: float64 = fabs(tmp[k, k])
-      for r in inline_range(k + 1, Self._dim):
+    for k in inlineRange(Self._dim):
+      pivRow: int = k
+      pivVal: float64 = fabs(tmp[k, k])
+      for r in inlineRange(k + 1, Self._dim):
         v: float64 = fabs(tmp[r, k])
-        if v > piv_val:
-          piv_val = v
-          piv_row = r
-      if piv_row != k:
-        for c in inline_range(Self._dim * 2):
-          swap_val: float64 = tmp[k, c]
-          tmp[k, c] = tmp[piv_row, c]
-          tmp[piv_row, c] = swap_val
+        if v > pivVal:
+          pivVal = v
+          pivRow = r
+      if pivRow != k:
+        for c in inlineRange(Self._dim * 2):
+          swapVal: float64 = tmp[k, c]
+          tmp[k, c] = tmp[pivRow, c]
+          tmp[pivRow, c] = swapVal
       pivot: float64 = tmp[k, k]
-      for c in inline_range(Self._dim * 2):
+      for c in inlineRange(Self._dim * 2):
         tmp[k, c] /= pivot
-      for r in inline_range(Self._dim):
+      for r in inlineRange(Self._dim):
         if r != k:
           factor: float64 = tmp[r, k]
-          for c in inline_range(Self._dim * 2):
+          for c in inlineRange(Self._dim * 2):
             tmp[r, c] -= factor * tmp[k, c]
     result: Self = new(False)
-    for i in inline_range(Self._dim):
-      for j in inline_range(Self._dim):
+    for i in inlineRange(Self._dim):
+      for j in inlineRange(Self._dim):
         result[i, j] = tmp[i, j + Self._dim]
     return result
 
   @immutable
-  def inv_affine(self) -> Self:
+  def invAffine(self) -> Self:
     hom: int = Self._dim - 1
     lin: Self = new(False)
-    for i in inline_range(Self._dim - 1):
-      for j in inline_range(Self._dim - 1):
+    for i in inlineRange(Self._dim - 1):
+      for j in inlineRange(Self._dim - 1):
         lin[i, j] = self[i, j]
     lin[hom, hom] = 1.0
-    lin_inv: Self = lin._inv_gauss()
-    result: Self = lin_inv
-    for i in inline_range(Self._dim - 1):
+    linInv: Self = lin._invGauss()
+    result: Self = linInv
+    for i in inlineRange(Self._dim - 1):
       acc: float64 = 0.0
-      for j in inline_range(Self._dim - 1):
-        acc += lin_inv[i, j] * self[j, hom]
+      for j in inlineRange(Self._dim - 1):
+        acc += linInv[i, j] * self[j, hom]
       result[i, hom] = -acc
     return result
 
-  def _copy_from(self, other: Self) -> None:
-    for i in inline_range(Self._dim):
-      for j in inline_range(Self._dim):
+  def _copyFrom(self, other: Self) -> None:
+    for i in inlineRange(Self._dim):
+      for j in inlineRange(Self._dim):
         self[i, j] = other[i, j]
 
   @staticproperty
   @immutable
   def zero() -> Self:
     m: Self = new(False)
-    for i in inline_range(Self._dim):
-      for j in inline_range(Self._dim):
+    for i in inlineRange(Self._dim):
+      for j in inlineRange(Self._dim):
         m[i, j] = 0.0
     return m
 
@@ -122,46 +122,46 @@ class MatrixMixin[Vec, Rot]:
   @immutable
   def det(self) -> float64:
     tmp: float64[:Self._dim, :Self._dim] = new()
-    for i in inline_range(Self._dim):
-      for j in inline_range(Self._dim):
+    for i in inlineRange(Self._dim):
+      for j in inlineRange(Self._dim):
         tmp[i, j] = self[i, j]
     sign: float64 = 1.0
     prod: float64 = 1.0
-    for k in inline_range(Self._dim):
-      piv_row: int = k
-      piv_val: float64 = fabs(tmp[k, k])
-      for r in inline_range(k + 1, Self._dim):
+    for k in inlineRange(Self._dim):
+      pivRow: int = k
+      pivVal: float64 = fabs(tmp[k, k])
+      for r in inlineRange(k + 1, Self._dim):
         v: float64 = fabs(tmp[r, k])
-        if v > piv_val:
-          piv_val = v
-          piv_row = r
-      if piv_row != k:
+        if v > pivVal:
+          pivVal = v
+          pivRow = r
+      if pivRow != k:
         sign = -sign
-        for c in inline_range(Self._dim):
-          swap_val: float64 = tmp[k, c]
-          tmp[k, c] = tmp[piv_row, c]
-          tmp[piv_row, c] = swap_val
+        for c in inlineRange(Self._dim):
+          swapVal: float64 = tmp[k, c]
+          tmp[k, c] = tmp[pivRow, c]
+          tmp[pivRow, c] = swapVal
       pivot: float64 = tmp[k, k]
       prod *= pivot
-      for r in inline_range(k + 1, Self._dim):
+      for r in inlineRange(k + 1, Self._dim):
         factor: float64 = tmp[r, k] / pivot
         tmp[r, k] = 0.0
-        for c in inline_range(k + 1, Self._dim):
+        for c in inlineRange(k + 1, Self._dim):
           tmp[r, c] -= factor * tmp[k, c]
     return sign * prod
 
   @property
   @immutable
   def inv(self) -> Self:
-    if self.is_affine():
-      return self.inv_affine()
-    return self._inv_gauss()
+    if self.isAffine():
+      return self.invAffine()
+    return self._invGauss()
 
   @immutable
   def transpose(self) -> Self:
     result: Self = new(False)
-    for i in inline_range(Self._dim):
-      for j in inline_range(Self._dim):
+    for i in inlineRange(Self._dim):
+      for j in inlineRange(Self._dim):
         result[i, j] = self[j, i]
     return result
 
@@ -173,17 +173,17 @@ class MatrixMixin[Vec, Rot]:
   @immutable
   def dot(self, other: Self) -> float64:
     acc: float64 = 0.0
-    for i in inline_range(Self._dim):
-      for j in inline_range(Self._dim):
+    for i in inlineRange(Self._dim):
+      for j in inlineRange(Self._dim):
         acc += self[i, j] * other[i, j]
     return acc
 
   @immutable
-  def _fro_norm(self) -> float64:
-    return safe_sqrt(self.dot(self))
+  def _froNorm(self) -> float64:
+    return safeSqrt(self.dot(self))
 
   @immutable
-  def _exp_taylor(self, terms: int) -> Self:
+  def _expTaylor(self, terms: int) -> Self:
     result: Self = new.identity
     term: Self = new.identity
     k: float64 = 1.0
@@ -195,18 +195,18 @@ class MatrixMixin[Vec, Rot]:
     return result
 
   @immutable
-  def _log_taylor(self, terms: int) -> Self:
+  def _logTaylor(self, terms: int) -> Self:
     idm: Self = new.identity
     x: Self = self - idm
     result: Self = new.zero
     power: Self = x
     k: int = 1
     for _ in range(terms):
-      inv_k: float64 = 1.0 / k
+      invK: float64 = 1.0 / k
       if k % 2 == 1:
-        result += power * inv_k
+        result += power * invK
       else:
-        result -= power * inv_k
+        result -= power * invK
       power @= x
       k += 1
     return result
@@ -230,28 +230,28 @@ class MatrixMixin[Vec, Rot]:
   def sqrt(self) -> Self:
     m: Self = new.identity
     half: float64 = 0.5
-    for _ in inline_range(16):
-      inv_m: Self = m.inv
-      avg: Self = m + self @ inv_m
-      next_m: Self = avg * half
-      if next_m @ next_m == self:
-        return next_m
-      m = next_m
+    for _ in inlineRange(16):
+      invM: Self = m.inv
+      avg: Self = m + self @ invM
+      nextM: Self = avg * half
+      if nextM @ nextM == self:
+        return nextM
+      m = nextM
     return m
 
   @immutable
   def exp(self) -> Self:
     thresh: float64 = 0.5
-    taylor_terms: int = 12
-    max_scale: int = 32
+    taylorTerms: int = 12
+    maxScale: int = 32
     a: Self = self
     s: int = 0
-    for _ in range(max_scale):
-      if a._fro_norm() <= thresh:
+    for _ in range(maxScale):
+      if a._froNorm() <= thresh:
         break
       a *= 0.5
       s += 1
-    e: Self = a._exp_taylor(taylor_terms)
+    e: Self = a._expTaylor(taylorTerms)
     for _ in range(s):
       e @= e
     return e
@@ -259,28 +259,28 @@ class MatrixMixin[Vec, Rot]:
   @immutable
   def log(self) -> Self:
     thresh: float64 = 0.25
-    taylor_terms: int = 12
-    max_scale: int = 32
+    taylorTerms: int = 12
+    maxScale: int = 32
     a: Self = self
     s: int = 0
     idm: Self = new.identity
-    for _ in range(max_scale):
+    for _ in range(maxScale):
       diff: Self = a - idm
-      if diff._fro_norm() <= thresh:
+      if diff._froNorm() <= thresh:
         break
       a = a.sqrt()
       s += 1
-    log_a: Self = a._log_taylor(taylor_terms)
+    logA: Self = a._logTaylor(taylorTerms)
     scale: float64 = 1.0
     for _ in range(s):
       scale += scale
-    return log_a * scale
+    return logA * scale
 
   @immutable
   def lerp(self, other: Self, t: float64) -> Self:
     result: Self = new(False)
-    for i in inline_range(Self._dim):
-      for j in inline_range(Self._dim):
+    for i in inlineRange(Self._dim):
+      for j in inlineRange(Self._dim):
         result[i, j] = lerp(self[i, j], other[i, j], t)
     return result
 
@@ -295,44 +295,44 @@ class MatrixMixin[Vec, Rot]:
   @immutable
   def __pos__(self) -> Self:
     result: Self = new(False)
-    for i in inline_range(Self._dim):
-      for j in inline_range(Self._dim):
+    for i in inlineRange(Self._dim):
+      for j in inlineRange(Self._dim):
         result[i, j] = self[i, j]
     return result
 
   @immutable
   def __neg__(self) -> Self:
     result: Self = new(False)
-    for i in inline_range(Self._dim):
-      for j in inline_range(Self._dim):
+    for i in inlineRange(Self._dim):
+      for j in inlineRange(Self._dim):
         result[i, j] = -self[i, j]
     return result
 
   @immutable
   def __add__(self, other: Self) -> Self:
     result: Self = new(False)
-    for i in inline_range(Self._dim):
-      for j in inline_range(Self._dim):
+    for i in inlineRange(Self._dim):
+      for j in inlineRange(Self._dim):
         result[i, j] = self[i, j] + other[i, j]
     return result
 
   def __iadd__(self, other: Self) -> Self:
-    for i in inline_range(Self._dim):
-      for j in inline_range(Self._dim):
+    for i in inlineRange(Self._dim):
+      for j in inlineRange(Self._dim):
         self[i, j] += other[i, j]
     return self
 
   @immutable
   def __sub__(self, other: Self) -> Self:
     result: Self = new(False)
-    for i in inline_range(Self._dim):
-      for j in inline_range(Self._dim):
+    for i in inlineRange(Self._dim):
+      for j in inlineRange(Self._dim):
         result[i, j] = self[i, j] - other[i, j]
     return result
 
   def __isub__(self, other: Self) -> Self:
-    for i in inline_range(Self._dim):
-      for j in inline_range(Self._dim):
+    for i in inlineRange(Self._dim):
+      for j in inlineRange(Self._dim):
         self[i, j] -= other[i, j]
     return self
 
@@ -340,8 +340,8 @@ class MatrixMixin[Vec, Rot]:
   @immutable
   def __mul__(self, other: float64) -> Self:
     result: Self = new(False)
-    for i in inline_range(Self._dim):
-      for j in inline_range(Self._dim):
+    for i in inlineRange(Self._dim):
+      for j in inlineRange(Self._dim):
         result[i, j] = self[i, j] * other
     return result
 
@@ -353,7 +353,7 @@ class MatrixMixin[Vec, Rot]:
   @overload
   @immutable
   def __mul__(self, other: Vec) -> Vec:
-    return self.apply_to_point(other)
+    return self.applyToPoint(other)
 
   @overload
   @immutable
@@ -362,31 +362,31 @@ class MatrixMixin[Vec, Rot]:
 
   @overload
   def __imul__(self, other: float64) -> Self:
-    for i in inline_range(Self._dim):
-      for j in inline_range(Self._dim):
+    for i in inlineRange(Self._dim):
+      for j in inlineRange(Self._dim):
         self[i, j] *= other
     return self
 
   @overload
   def __imul__(self, other: Self) -> Self:
     m: Self = self @ other
-    self._copy_from(m)
+    self._copyFrom(m)
     return self
 
   @immutable
   def __matmul__(self, other: Self) -> Self:
     result: Self = new(False)
-    for i in inline_range(Self._dim):
-      for j in inline_range(Self._dim):
+    for i in inlineRange(Self._dim):
+      for j in inlineRange(Self._dim):
         s: float64 = 0.0
-        for k in inline_range(Self._dim):
-          s += self.unsafe_get(i, k) * other.unsafe_get(k, j)
-        result.unsafe_set(i, j, s)
+        for k in inlineRange(Self._dim):
+          s += self.unsafeGet(i, k) * other.unsafeGet(k, j)
+        result.unsafeSet(i, j, s)
     return result
 
   def __imatmul__(self, other: Self) -> Self:
     m: Self = self @ other
-    self._copy_from(m)
+    self._copyFrom(m)
     return self
 
   @overload
@@ -403,15 +403,15 @@ class MatrixMixin[Vec, Rot]:
   @overload
   def __itruediv__(self, other: float64) -> Self:
     s: float64 = 1.0 / other
-    for i in inline_range(Self._dim):
-      for j in inline_range(Self._dim):
+    for i in inlineRange(Self._dim):
+      for j in inlineRange(Self._dim):
         self[i, j] *= s
     return self
 
   @overload
   def __itruediv__(self, other: Self) -> Self:
     m: Self = self @ other.inv
-    self._copy_from(m)
+    self._copyFrom(m)
     return self
 
   @immutable
@@ -439,7 +439,7 @@ class MatrixMixin[Vec, Rot]:
 
   def __ipow__(self, exponent: float64) -> Self:
     m: Self = self ** exponent
-    self._copy_from(m)
+    self._copyFrom(m)
     return self
 
   @immutable
@@ -448,137 +448,137 @@ class MatrixMixin[Vec, Rot]:
 
   @immutable
   def __eq__(self, other: Self) -> bool:
-    for i in inline_range(Self._dim):
-      for j in inline_range(Self._dim):
+    for i in inlineRange(Self._dim):
+      for j in inlineRange(Self._dim):
         if not almost(self[i, j], other[i, j]):
           return False
     return True
 
   @property.setter
   def rotation(self, value: Rot) -> None:
-    self._copy_from(Self.transform(self.position, value, self.scale))
+    self._copyFrom(Self.transform(self.position, value, self.scale))
 
   @staticmethod
   @immutable
-  def _look_at_impl(position: Vec, target: Vec, scale: Vec) -> Self:
-    rot: Rot = new.look_at(target - position)
+  def _lookAtImpl(position: Vec, target: Vec, scale: Vec) -> Self:
+    rot: Rot = new.lookAt(target - position)
     return new.transform(position, rot, scale)
 
   @immutable
-  def get_axis(self, i: int) -> Vec:
+  def getAxis(self, i: int) -> Vec:
     out: Vec = new()
-    for j in inline_range(Self._vec_dim):
-      out.unsafe_set(j, self.unsafe_get(j, i))
+    for j in inlineRange(Self._vecDim):
+      out.unsafeSet(j, self.unsafeGet(j, i))
     return out
 
-  def set_axis(self, i: int, axis: Vec) -> None:
-    for j in inline_range(Self._vec_dim):
-      self.unsafe_set(j, i, axis.unsafe_get(j))
+  def setAxis(self, i: int, axis: Vec) -> None:
+    for j in inlineRange(Self._vecDim):
+      self.unsafeSet(j, i, axis.unsafeGet(j))
 
   @property
   @immutable
-  def x_axis(self) -> Vec:
-    return self.get_axis(0)
+  def xAxis(self) -> Vec:
+    return self.getAxis(0)
 
   @property.setter
-  def x_axis(self, value: Vec) -> None:
-    self.set_axis(0, value)
+  def xAxis(self, value: Vec) -> None:
+    self.setAxis(0, value)
 
   @property
   @immutable
-  def y_axis(self) -> Vec:
-    return self.get_axis(1)
+  def yAxis(self) -> Vec:
+    return self.getAxis(1)
 
   @property.setter
-  def y_axis(self, value: Vec) -> None:
-    self.set_axis(1, value)
+  def yAxis(self, value: Vec) -> None:
+    self.setAxis(1, value)
 
   @property
   @immutable
   def position(self) -> Vec:
-    return self.get_axis(Self._dim - 1)
+    return self.getAxis(Self._dim - 1)
 
   @property.setter
   def position(self, value: Vec) -> None:
-    self.set_axis(Self._dim - 1, value)
+    self.setAxis(Self._dim - 1, value)
 
   @property
   @immutable
   def scale(self) -> Vec:
     out: Vec = new()
-    for col in inline_range(Self._vec_dim):
-      out.unsafe_set(col, abs(self.get_axis(col)))
+    for col in inlineRange(Self._vecDim):
+      out.unsafeSet(col, abs(self.getAxis(col)))
     return out
 
   @property.setter
   def scale(self, value: Vec) -> None:
     m: Self = new()
-    for col in inline_range(Self._dim - 1):
-      mag: float64 = value.unsafe_get(col)
-      ax: Vec = self.get_axis(col).with_mag(mag)
-      for j in inline_range(Self._vec_dim):
-        m.unsafe_set(j, col, ax.unsafe_get(j))
-    pos_col: int = Self._dim - 1
+    for col in inlineRange(Self._dim - 1):
+      mag: float64 = value.unsafeGet(col)
+      ax: Vec = self.getAxis(col).withMag(mag)
+      for j in inlineRange(Self._vecDim):
+        m.unsafeSet(j, col, ax.unsafeGet(j))
+    posCol: int = Self._dim - 1
     pos: Vec = self.position
-    for j in inline_range(Self._vec_dim):
-      m.unsafe_set(j, pos_col, pos.unsafe_get(j))
-    m.unsafe_set(Self._dim - 1, Self._dim - 1, 1.0)
-    self._copy_from(m)
+    for j in inlineRange(Self._vecDim):
+      m.unsafeSet(j, posCol, pos.unsafeGet(j))
+    m.unsafeSet(Self._dim - 1, Self._dim - 1, 1.0)
+    self._copyFrom(m)
 
   @immutable
-  def apply_to_vector(self, other: Vec) -> Vec:
+  def applyToVector(self, other: Vec) -> Vec:
     out: Vec = new()
-    for i in inline_range(Self._dim - 1):
+    for i in inlineRange(Self._dim - 1):
       s: float64 = 0.0
-      for j in inline_range(Self._vec_dim):
-        s += self.unsafe_get(i, j) * other.unsafe_get(j)
-      out.unsafe_set(i, s)
+      for j in inlineRange(Self._vecDim):
+        s += self.unsafeGet(i, j) * other.unsafeGet(j)
+      out.unsafeSet(i, s)
     return out
 
   @immutable
-  def apply_to_point(self, other: Vec) -> Vec:
+  def applyToPoint(self, other: Vec) -> Vec:
     out: Vec = new()
-    pos_col: int = Self._dim - 1
-    hom_row: int = Self._dim - 1
-    for i in inline_range(Self._dim - 1):
-      s: float64 = self.unsafe_get(i, pos_col)
-      for j in inline_range(Self._vec_dim):
-        s += self.unsafe_get(i, j) * other.unsafe_get(j)
-      w: float64 = self.unsafe_get(hom_row, pos_col)
-      for j2 in inline_range(Self._vec_dim):
-        w += self.unsafe_get(hom_row, j2) * other.unsafe_get(j2)
-      out.unsafe_set(i, s / w)
+    posCol: int = Self._dim - 1
+    homRow: int = Self._dim - 1
+    for i in inlineRange(Self._dim - 1):
+      s: float64 = self.unsafeGet(i, posCol)
+      for j in inlineRange(Self._vecDim):
+        s += self.unsafeGet(i, j) * other.unsafeGet(j)
+      w: float64 = self.unsafeGet(homRow, posCol)
+      for j2 in inlineRange(Self._vecDim):
+        w += self.unsafeGet(homRow, j2) * other.unsafeGet(j2)
+      out.unsafeSet(i, s / w)
     return out
 
   @staticmethod
   @immutable
-  def from_axes_origin(*axis: Vec[:Self._dim - 1], origin: Vec = new.zero) -> Self:
+  def fromAxesOrigin(*axis: Vec[:Self._dim - 1], origin: Vec = new.zero) -> Self:
     m: Self = new()
-    for col in inline_range(Self._dim - 1):
+    for col in inlineRange(Self._dim - 1):
       ax: Vec = axis[col]
-      for j in inline_range(Self._vec_dim):
+      for j in inlineRange(Self._vecDim):
         m[j, col] = ax[j]
-    pos_col: int = Self._dim - 1
-    for j in inline_range(Self._vec_dim):
-      m[j, pos_col] = origin[j]
+    posCol: int = Self._dim - 1
+    for j in inlineRange(Self._vecDim):
+      m[j, posCol] = origin[j]
     m[Self._dim - 1, Self._dim - 1] = 1.0
     return m
 
   @staticmethod
   @immutable
-  def from_position(position: Vec) -> Self:
+  def fromPosition(position: Vec) -> Self:
     m: Self = new()
-    pos_col: int = Self._dim - 1
-    for j in inline_range(Self._vec_dim):
-      m[j, pos_col] = position[j]
+    posCol: int = Self._dim - 1
+    for j in inlineRange(Self._vecDim):
+      m[j, posCol] = position[j]
     m[Self._dim - 1, Self._dim - 1] = 1.0
     return m
 
   @staticmethod
   @immutable
-  def from_scale(scale: Vec) -> Self:
+  def fromScale(scale: Vec) -> Self:
     m: Self = new()
-    for j in inline_range(Self._vec_dim):
+    for j in inlineRange(Self._vecDim):
       m[j, j] = scale[j]
     m[Self._dim - 1, Self._dim - 1] = 1.0
     return m
@@ -591,15 +591,15 @@ class MatrixMixin[Vec, Rot]:
     scale: Vec = new.one,
   ) -> Self:
     m: Self = new()
-    for col in inline_range(Self._vec_dim):
+    for col in inlineRange(Self._vecDim):
       basis: Vec = [Vec.right, Vec.down, Vec.forward][col]
-      ax: Vec = rotation * (basis * scale.unsafe_get(col))
-      for j in inline_range(Self._vec_dim):
-        m.unsafe_set(j, col, ax.unsafe_get(j))
-    pos_col: int = Self._dim - 1
-    for j in inline_range(Self._vec_dim):
-      m.unsafe_set(j, pos_col, position.unsafe_get(j))
-    m.unsafe_set(Self._dim - 1, Self._dim - 1, 1.0)
+      ax: Vec = rotation * (basis * scale.unsafeGet(col))
+      for j in inlineRange(Self._vecDim):
+        m.unsafeSet(j, col, ax.unsafeGet(j))
+    posCol: int = Self._dim - 1
+    for j in inlineRange(Self._vecDim):
+      m.unsafeSet(j, posCol, position.unsafeGet(j))
+    m.unsafeSet(Self._dim - 1, Self._dim - 1, 1.0)
     return m
 
 
@@ -607,7 +607,7 @@ class Matrix3(MatrixMixin[Vector2, Rotator]):
   """3×3 矩阵（2D 仿射变换，列主序对齐 tggame ``mat3``）。"""
 
   _dim: int @const = 3
-  _vec_dim: int @const = 2
+  _vecDim: int @const = 2
 
   @property
   @immutable
@@ -618,15 +618,15 @@ class Matrix3(MatrixMixin[Vector2, Rotator]):
   @property
   @immutable
   def angle(self) -> float64:
-    return self.rotation.to_angle()
+    return self.rotation.toAngle()
 
   @property.setter
   def angle(self, value: float64) -> None:
-    self._copy_from(Self.transform(self.position, Rotator.from_angle(value), self.scale))
+    self._copyFrom(Self.transform(self.position, Rotator.fromAngle(value), self.scale))
 
   @staticmethod
   @immutable
-  def from_rotation(rotation: Rotator) -> Self:
+  def fromRotation(rotation: Rotator) -> Self:
     m: Self = new()
     m[0, 0] = rotation.w
     m[1, 0] = rotation.z
@@ -637,33 +637,33 @@ class Matrix3(MatrixMixin[Vector2, Rotator]):
 
   @staticmethod
   @immutable
-  def from_angle(angle: float64) -> Self:
-    return new.from_rotation(Rotator.from_angle(angle))
+  def fromAngle(angle: float64) -> Self:
+    return new.fromRotation(Rotator.fromAngle(angle))
 
   @staticmethod
   @immutable
-  def look_at(
+  def lookAt(
     position: Vector2 = new.zero,
     target: Vector2 = new.right,
     scale: Vector2 = new.one,
   ) -> Self:
-    return new._look_at_impl(position, target, scale)
+    return new._lookAtImpl(position, target, scale)
 
 
 class Matrix4(MatrixMixin[Vector3, Quaternion]):
   """4×4 矩阵（3D TRS 变换，列主序对齐 tggame ``mat4``）。"""
 
   _dim: int @const = 4
-  _vec_dim: int @const = 3
+  _vecDim: int @const = 3
 
   @property
   @immutable
-  def z_axis(self) -> Vector3:
-    return self.get_axis(2)
+  def zAxis(self) -> Vector3:
+    return self.getAxis(2)
 
   @property.setter
-  def z_axis(self, value: Vector3) -> None:
-    self.set_axis(2, value)
+  def zAxis(self, value: Vector3) -> None:
+    self.setAxis(2, value)
 
   @property
   @immutable
@@ -673,83 +673,83 @@ class Matrix4(MatrixMixin[Vector3, Quaternion]):
     ry: float64 = self[1, 1] / sc.y
     rz: float64 = self[2, 2] / sc.z
     return new(
-      safe_sqrt(1.0 + rx + ry + rz) * 0.5,
-      safe_sqrt(1.0 + rx - ry - rz) * 0.5,
-      safe_sqrt(1.0 - rx + ry - rz) * 0.5,
-      safe_sqrt(1.0 - rx - ry + rz) * 0.5,
+      safeSqrt(1.0 + rx + ry + rz) * 0.5,
+      safeSqrt(1.0 + rx - ry - rz) * 0.5,
+      safeSqrt(1.0 - rx + ry - rz) * 0.5,
+      safeSqrt(1.0 - rx - ry + rz) * 0.5,
     )
 
   @property
   @immutable
-  def euler_angles(self) -> Vector3:
-    return self.rotation.to_euler_angles()
+  def eulerAngles(self) -> Vector3:
+    return self.rotation.toEulerAngles()
 
   @property.setter
-  def euler_angles(self, value: Vector3) -> None:
-    self._copy_from(Self.transform(self.position, Quaternion.from_euler_angles(value), self.scale))
+  def eulerAngles(self, value: Vector3) -> None:
+    self._copyFrom(Self.transform(self.position, Quaternion.fromEulerAngles(value), self.scale))
 
   @staticmethod
   @immutable
-  def from_angle_x(angle: float64) -> Self:
-    rad_a: float64 = radians(angle)
-    cos_a: float64 = cos(rad_a)
-    sin_a: float64 = sin(rad_a)
+  def fromAngleX(angle: float64) -> Self:
+    radA: float64 = radians(angle)
+    cosA: float64 = cos(radA)
+    sinA: float64 = sin(radA)
     m: Self = new()
-    m[1, 1] = cos_a
-    m[1, 2] = -sin_a
-    m[2, 1] = sin_a
-    m[2, 2] = cos_a
+    m[1, 1] = cosA
+    m[1, 2] = -sinA
+    m[2, 1] = sinA
+    m[2, 2] = cosA
     return m
 
   @staticmethod
   @immutable
-  def from_angle_y(angle: float64) -> Self:
-    rad_a: float64 = radians(angle)
-    cos_a: float64 = cos(rad_a)
-    sin_a: float64 = sin(rad_a)
+  def fromAngleY(angle: float64) -> Self:
+    radA: float64 = radians(angle)
+    cosA: float64 = cos(radA)
+    sinA: float64 = sin(radA)
     m: Self = new()
-    m[0, 0] = cos_a
-    m[0, 2] = sin_a
-    m[2, 0] = -sin_a
-    m[2, 2] = cos_a
+    m[0, 0] = cosA
+    m[0, 2] = sinA
+    m[2, 0] = -sinA
+    m[2, 2] = cosA
     return m
 
   @staticmethod
   @immutable
-  def from_angle_z(angle: float64) -> Self:
-    rad_a: float64 = radians(angle)
-    cos_a: float64 = cos(rad_a)
-    sin_a: float64 = sin(rad_a)
+  def fromAngleZ(angle: float64) -> Self:
+    radA: float64 = radians(angle)
+    cosA: float64 = cos(radA)
+    sinA: float64 = sin(radA)
     m: Self = new()
-    m[0, 0] = cos_a
-    m[0, 1] = -sin_a
-    m[1, 0] = sin_a
-    m[1, 1] = cos_a
+    m[0, 0] = cosA
+    m[0, 1] = -sinA
+    m[1, 0] = sinA
+    m[1, 1] = cosA
     return m
 
   @staticmethod
   @immutable
-  def from_rotation(rotation: Quaternion) -> Self:
-    x_axis: Vector3 = rotation * Vector3.right
-    y_axis: Vector3 = rotation * Vector3.down
-    z_axis: Vector3 = rotation * Vector3.forward
-    return new.from_axes_origin(x_axis, y_axis, z_axis)
+  def fromRotation(rotation: Quaternion) -> Self:
+    xAxis: Vector3 = rotation * Vector3.right
+    yAxis: Vector3 = rotation * Vector3.down
+    zAxis: Vector3 = rotation * Vector3.forward
+    return new.fromAxesOrigin(xAxis, yAxis, zAxis)
 
   @staticmethod
   @immutable
-  def from_axis_angle(axis: Vector3, angle: float64) -> Self:
-    return new.from_rotation(Quaternion.from_axis_angle(axis, angle))
+  def fromAxisAngle(axis: Vector3, angle: float64) -> Self:
+    return new.fromRotation(Quaternion.fromAxisAngle(axis, angle))
 
   @staticmethod
   @immutable
-  def from_euler_angles(euler_angles: Vector3) -> Self:
-    return new.from_rotation(Quaternion.from_euler_angles(euler_angles))
+  def fromEulerAngles(eulerAngles: Vector3) -> Self:
+    return new.fromRotation(Quaternion.fromEulerAngles(eulerAngles))
 
   @staticmethod
   @immutable
-  def look_at(
+  def lookAt(
     position: Vector3 = new.zero,
     target: Vector3 = new.forward,
     scale: Vector3 = new.one,
   ) -> Self:
-    return new._look_at_impl(position, target, scale)
+    return new._lookAtImpl(position, target, scale)

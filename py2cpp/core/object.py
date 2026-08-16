@@ -4,7 +4,6 @@ from ..builtins import *
 from .exceptions import TypeError
 
 
-@native_name("PyObject")
 class object:
   def __bool__(self) -> bool:
     return True

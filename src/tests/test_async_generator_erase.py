@@ -10,7 +10,7 @@ class PyAsyncGeneratorTypeTests(unittest.TestCase):
 
     def test_parse_async_generator_ann_storage(self):
         tp = TypeParser()
-        ann = ast.parse('AsyncGenerator[int, None]').body[0].value
+        ann = ast.parse('AsyncGeneratorType[int, None]').body[0].value
         cpp = tp.parse_storage_type(ann, set())
         self.assertEqual(cpp, 'PyAsyncGenerator<PyInt, PyNone>')
 

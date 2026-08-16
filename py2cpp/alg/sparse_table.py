@@ -5,28 +5,28 @@
 | 写法 | 说明 |
 |------|------|
 | ``st[i]`` | 下标 ``i`` 处原数组值（点查） |
-| ``st[l:r]`` | 半开区间 ``[l, r)`` 上 min/max（切片；``mode`` 为 ``AggMode.Min`` / ``AggMode.Max``） |
+| ``st[l:r]`` | 半开区间 ``[l, r)`` 上 min/max（切片；``mode`` 为 ``AggModeEnum.Min`` / ``AggModeEnum.Max``） |
 | ``len(st)`` / ``i in st`` | 长度 ``n``、下标是否合法 |
 """
 from ..builtins import *
 from ..core.exceptions import IndexError, ValueError
 from ..util.list import list
-from .agg_mode import AggMode
+from .agg_mode import AggModeEnum
 from ..util.mixins import ContainerMixin
 
 
 class SparseTable(ContainerMixin):
   """静态 RMQ；构建后不可改原数组。"""
 
-  def __init__(self, data: list[int], mode: AggMode):
+  def __init__(self, data: list[int], mode: AggModeEnum):
     match mode:
-      case AggMode.Min | AggMode.Max:
+      case AggModeEnum.Min | AggModeEnum.Max:
         pass
       case _:
-        raise ValueError("sparse table mode must be AggMode.Min or AggMode.Max")
+        raise ValueError("sparse table mode must be AggModeEnum.Min or AggModeEnum.Max")
     n: int = len(data)
     self._n: int = n
-    self._mode: AggMode = mode
+    self._mode: AggModeEnum = mode
     if n == 0:
       self._log: int[:] = new(1)
       self._log[0] = 0
@@ -54,14 +54,14 @@ class SparseTable(ContainerMixin):
       for i in range(last + 1):
         a: int = prev[i]
         b: int = prev[i + half]
-        if mode == AggMode.Min:
+        if mode == AggModeEnum.Min:
           row[i] = a if a < b else b
         else:
           row[i] = a if a > b else b
       self._st.append(row)
 
   def __copy__(self, other: Self):
-    self._ensure_active()
+    self._ensureActive()
     if other.__moved__:
       raise ValueError("move from moved container")
     self._n = other._n
@@ -79,7 +79,7 @@ class SparseTable(ContainerMixin):
       self._st.append(row)
 
   def __move__(self, other: Self):
-    self._ensure_active()
+    self._ensureActive()
     if other.__moved__:
       raise ValueError("move from moved container")
     self._n = other._n
@@ -94,7 +94,7 @@ class SparseTable(ContainerMixin):
 
   @immutable
   def copy(self) -> Self:
-    self._ensure_active()
+    self._ensureActive()
     data: list[int] = []
     if self._n > 0:
       for i in range(self._n):
@@ -119,7 +119,7 @@ class SparseTable(ContainerMixin):
       raise IndexError("sparse table index out of range")
 
   @immutable
-  def _check_range(self, left: int, right: int) -> None:
+  def _checkRange(self, left: int, right: int) -> None:
     if self._n == 0:
       raise IndexError("sparse table index out of range")
     if left < 0 or right < left or right >= self._n:
@@ -127,24 +127,24 @@ class SparseTable(ContainerMixin):
 
   @immutable
   def _combine(self, a: int, b: int) -> int:
-    if self._mode == AggMode.Min:
+    if self._mode == AggModeEnum.Min:
       return a if a < b else b
     return a if a > b else b
 
   @immutable
   def _identity(self) -> int:
-    if self._mode == AggMode.Min:
-      return Self._max_int()
-    return Self._min_int()
+    if self._mode == AggModeEnum.Min:
+      return Self._maxInt()
+    return Self._minInt()
 
   @immutable
   @staticmethod
-  def _min_int() -> int:
+  def _minInt() -> int:
     return -2147483647
 
   @immutable
   @staticmethod
-  def _max_int() -> int:
+  def _maxInt() -> int:
     return 2147483647
 
   @immutable
@@ -166,11 +166,11 @@ class SparseTable(ContainerMixin):
       raise ValueError("sparse table slice step must be 1")
     if start >= stop:
       return self._identity()
-    return self._range_query(start, stop - 1)
+    return self._rangeQuery(start, stop - 1)
 
   @immutable
-  def _range_query(self, left: int, right: int) -> int:
-    self._check_range(left, right)
+  def _rangeQuery(self, left: int, right: int) -> int:
+    self._checkRange(left, right)
     if left == right:
       return self._st[0][left]
     k: int = self._log[right - left + 1]

@@ -39,7 +39,7 @@ py2cpp/console/
 ```python
 from py2cpp.console import stdin, stdout, stderr
 
-line: str = stdin.readline()
+line: str = stdin.readLine()
 stdout.write("ready\n")
 stderr.write("warning\n")
 stdout.flush()
@@ -47,16 +47,16 @@ stdout.flush()
 
 三者为稳定的文本流对象，首版最少支持：
 
-- `read()`、`readline()`、`readlines()`；
-- `write()`、`writelines()`、`flush()`；
-- `isatty` property；
+- `read()`、`readLine()`、`readLines()`；
+- `write()`、`writeLines()`、`flush()`；
+- `isAtty` property；
 - 作为 `with` 资源使用时，不关闭进程真实的标准句柄。
 
 包根还提供少量公共便利入口：
 
 ```python
 from py2cpp.console import terminal_size, supports_color
-from py2cpp.console import ArgumentParser, Progress
+from py2cpp.console import ArgumentParserMixin, Progress
 
 width, height = terminal_size()
 enabled: bool = supports_color()
@@ -104,7 +104,7 @@ Python 源码负责参数校验、状态机、格式化与组合；C++ / 模板�
 - `render` 的公开更新操作可跨线程调用，最终写终端始终串行；
 - 异步日志使用 `concur.thread.Queue[LogRecord]`；
 - 同步 `Console.run()` 阻塞调用线程；
-- 未来异步子进程必须建立在真实 non-blocking pipe 与 `Task` readiness 上，不能用 `Task.run_thread()` 伪装非阻塞 I/O。
+- 未来异步子进程必须建立在真实 non-blocking pipe 与 `Task` readiness 上，不能用 `Task.runThread()` 伪装非阻塞 I/O。
 
 ## 4. `console.parse`：命令行解析
 
@@ -115,7 +115,7 @@ Python 源码负责参数校验、状态机、格式化与组合；C++ / 模板�
 ```python
 from py2cpp import *
 from py2cpp.console.parse import (
-  ArgumentParser,
+  ArgumentParserMixin,
   FlagArgMeta,
   OptArgMeta,
   PosArgMeta,
@@ -129,10 +129,10 @@ class BuildArgs:
   jobs: int @OptArgMeta(short="-j", choices=(1, 2, 4, 8), help="并行构建数") = 1
   release: bool @FlagArgMeta(help="启用发布构建") = False
 
-args: BuildArgs = ArgumentParser.parse[BuildArgs]()
+args: BuildArgs = ArgumentParserMixin.parse[BuildArgs]()
 ```
 
-`ArgumentParser.parse[T]()` 默认读取进程参数；`ArgumentParser.parse[T](argv)` 允许测试和嵌入式程序传入明确参数。参数来源需由最小 `py2cpp.system.sys.argv` 支持，该能力与本模块同时实施。
+`ArgumentParserMixin.parse[T]()` 默认读取进程参数；`ArgumentParserMixin.parse[T](argv)` 允许测试和嵌入式程序传入明确参数。参数来源需由最小 `py2cpp.system.sys.argv` 支持，该能力与本模块同时实施。
 
 `PosArgMeta`、`OptArgMeta`、`FlagArgMeta` 都是 `@annotation` + `@dataclass` 元数据类，字段注解必须遵循项目既有的 `Type @Meta(...)` 写法。字段名始终是 Python `snake_case`；长选项由字段名自动转换为 kebab-case，例如 `asset_root` 对应 `--asset-root`。短选项只由 `short` 指定，避免再引入重复表达同一名称的 `dest` 或 `long`。
 
@@ -144,7 +144,7 @@ args: BuildArgs = ArgumentParser.parse[BuildArgs]()
 
 同一字段至多出现一个参数类别 Meta。`OptArgMeta.short` 必须形如 `-x` 且在同一 parser 内唯一；派生长选项也必须唯一。`choices` 是固定 tuple 元数据，而非可变 list。
 
-`parse[T]()` 在翻译期读取 dataclass 字段、`Self.get_field_annotation[*ArgMeta](field)` 与 `Self.get_field_type(field)`，生成类型转换、默认值、usage/help 和最终 `T(...)` 构造。`FlagArgMeta` 标在非 `bool`、`OptArgMeta` 标在 `bool`、位置参数带默认值或选项冲突等情形均应为严格翻译错误，而非运行时错误。
+`parse[T]()` 在翻译期读取 dataclass 字段、`Self.getFieldAnnotation[*ArgMeta](field)` 与 `Self.getFieldType(field)`，生成类型转换、默认值、usage/help 和最终 `T(...)` 构造。`FlagArgMeta` 标在非 `bool`、`OptArgMeta` 标在 `bool`、位置参数带默认值或选项冲突等情形均应为严格翻译错误，而非运行时错误。
 
 ### 4.2 首版行为与限制
 
@@ -202,11 +202,11 @@ with Progress() as progress:
 ### 5.3 日志
 
 ```python
-from py2cpp.console.render import LogLevel, Logger
+from py2cpp.console.render import LogLevelEnum, Logger
 
-log = Logger("asset.build", level=LogLevel.INFO)
+log = Logger("asset.build", level=LogLevelEnum.INFO)
 log.info("开始构建", source=source, jobs=jobs)
-log.error("构建失败", code=result.returncode, output=result.stderr)
+log.error("构建失败", code=result.returnCode, output=result.stderr)
 ```
 
 `LogRecord` 为不可变 `@dataclass(frozen=True)`，至少包含单调时间、墙钟时间、等级、logger 名、消息、线程名 / 当前 Task 标识、可选源位置和静态可表示的键值字段。
@@ -245,7 +245,7 @@ stdout.write(result.stdout)
 @dataclass(frozen=True)
 class CompletedTask:
   args: list[str]
-  returncode: int
+  returnCode: int
   stdout: str
   stderr: str
 ```
@@ -255,13 +255,13 @@ class CompletedTask:
 ### 6.2 Task 与兼容接口
 
 ```python
-from py2cpp.console.task import Console, Task, PIPE
+from py2cpp.console.task import Console, Task, Pipe
 
 code: int = Console.system("git status")
 reader = Console.popen("git rev-parse --show-toplevel")
 root: str = reader.read()
 
-task = Task(["tool", "--watch"], stdout=PIPE, stderr=PIPE)
+task = Task(["tool", "--watch"], stdout=Pipe, stderr=Pipe)
 task.start()
 code = task.wait(timeout=10.0)
 ```
@@ -278,12 +278,12 @@ code = task.wait(timeout=10.0)
 - Windows：`CreateProcessW`、UTF-16 命令行、受控 handle 继承与退出码；
 - POSIX：安全的 `posix_spawn` 或 `fork/exec`、fd 重定向和 wait status；
 - 支持 `cwd`、明确 `env`、UTF-8 文本解码与可配置错误策略；
-- stdin/stdout/stderr 支持继承、丢弃、`PIPE` 或文件；
+- stdin/stdout/stderr 支持继承、丢弃、`Pipe` 或文件；
 - 支持 `poll()`、`wait(timeout)`、`terminate()`、`kill()`；
 - `Task.communicate()` 与 `Console.run(capture_output=True)` 必须并发排空 stdout/stderr，避免 pipe 缓冲区写满死锁；
 - 区分启动失败、超时、外部终止和非零退出。
 
-首版不支持进程组、PTY、Windows Job Object、进程树杀死和任意二进制 stdin 流。后续异步版本在 `concur.task` 已支持真实 pipe readiness 后增加；它必须是真正的 non-blocking pipe，不能用 `Task.run_thread()` 包装同步读取。
+首版不支持进程组、PTY、Windows Job Object、进程树杀死和任意二进制 stdin 流。后续异步版本在 `concur.task` 已支持真实 pipe readiness 后增加；它必须是真正的 non-blocking pipe，不能用 `Task.runThread()` 包装同步读取。
 
 ## 7. 平台、编码和异常
 
@@ -339,7 +339,7 @@ test/console/
 ```python
 from py2cpp import *
 from py2cpp.console import Progress
-from py2cpp.console.parse import ArgumentParser, FlagArgMeta, OptArgMeta, PosArgMeta
+from py2cpp.console.parse import ArgumentParserMixin, FlagArgMeta, OptArgMeta, PosArgMeta
 from py2cpp.console.render import Logger
 from py2cpp.console.task import Console
 
@@ -350,7 +350,7 @@ def main() -> int:
     jobs: int @OptArgMeta(short="-j", choices=(1, 2, 4, 8)) = 1
     release: bool @FlagArgMeta() = False
 
-  args: BuildArgs = ArgumentParser.parse[BuildArgs]()
+  args: BuildArgs = ArgumentParserMixin.parse[BuildArgs]()
   log = Logger("asset-build")
   log.info("开始构建", source=args.source, jobs=args.jobs, release=args.release)
 
@@ -362,9 +362,9 @@ def main() -> int:
     )
     progress.complete(work)
 
-  if result.returncode != 0:
-    log.error("构建失败", code=result.returncode, output=result.stderr)
-    return result.returncode
+  if result.returnCode != 0:
+    log.error("构建失败", code=result.returnCode, output=result.stderr)
+    return result.returnCode
   log.info("构建完成")
   return 0
 ```

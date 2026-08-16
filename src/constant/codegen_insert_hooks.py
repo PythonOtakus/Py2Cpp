@@ -14,7 +14,7 @@ class CodegenInsertHook:
 CODEGEN_INSERT_HOOKS: dict[str, CodegenInsertHook] = {
   "layout.primitive_headers": CodegenInsertHook(
     "operators.h",
-    "``write_primitive_type_headers``：char/byte/c_str/py_types/member_access/operators",
+    "``write_primitive_type_headers``：char/byte/CStr/py_types/member_access/operators",
   ),
   "layout.umbrella_header": CodegenInsertHook(
     "minimal.h",
@@ -30,7 +30,7 @@ CODEGEN_INSERT_HOOKS: dict[str, CodegenInsertHook] = {
   ),
   "class_decl.protocol_compare_ops": CodegenInsertHook(
     "~protocol_compare_ops.inl",
-    "``Comparable``/``Equatable`` 模块 traits 前的 ``_Compare_ops_no_pybool_only``",
+    "``ComparableType``/``EquatableType`` 模块 traits 前的 ``_Compare_ops_no_pybool_only``",
   ),
   "class_decl.protocol_traits": CodegenInsertHook(
     "~protocol_traits.inl",
@@ -38,7 +38,7 @@ CODEGEN_INSERT_HOOKS: dict[str, CodegenInsertHook] = {
   ),
   "class_decl.protocol_traits_parametric": CodegenInsertHook(
     "~protocol_traits_parametric.inl",
-    "``protocol_traits_lines`` 多类型参数协议（如 ``Navigatable``）",
+    "``protocol_traits_lines`` 多类型参数协议（如 ``NavigatableType``）",
   ),
   "class_decl.exception_forward_decls": CodegenInsertHook(
     "core/~exception_forward_decls.inl",
@@ -52,7 +52,7 @@ CODEGEN_INSERT_HOOKS: dict[str, CodegenInsertHook] = {
   ),
   "class_decl.exception_group_header": CodegenInsertHook(
     "core/~exception_group_dynamic_header.inl",
-    "``ExcSlot`` 存在时 ``ExceptionGroup`` 类尾 inject",
+    "``ExcTypeUnion`` 存在时 ``ExceptionGroup`` 类尾 inject",
     module_rel="core/exceptions",
   ),
   "stdlib_inject.exception_group_impl": CodegenInsertHook(

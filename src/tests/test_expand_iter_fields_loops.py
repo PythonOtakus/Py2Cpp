@@ -26,7 +26,7 @@ class ExpandIterFieldsLoopsTests(unittest.TestCase):
         @immutable
         def apply_to_vector(self, other):
           vs: VarStack = new()
-          for i in inline_range(Self._dim - 1):
+          for i in inlineRange(Self._dim - 1):
             s: float64 = 0.0
             j: int = 0
             for f in Vec.iter_fields(public_only=True):

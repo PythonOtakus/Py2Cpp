@@ -4,7 +4,7 @@ from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 
 class VarIntBasicsTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
@@ -20,11 +20,11 @@ class VarIntBasicsTests(TestCaseMixin):
     self.assertEqual(int(c), 123)
     self.assertEqual(str(c), "123")
     self.assertTrue(c > b)
-    self.assertEqual(c.bit_length(), 7)
+    self.assertEqual(c.bitLength(), 7)
 
 
 class VarIntUnaryTests(TestCaseMixin):
-  _test_tag = 21
+  _testTag = 21
 
   @override
   def test(self):
@@ -42,18 +42,18 @@ class VarIntUnaryTests(TestCaseMixin):
     self.assertEqual(int(back), 42)
     pos: varint = +p
     self.assertEqual(int(pos), 42)
-    abs_val: varint = abs(neg)
-    self.assertEqual(int(abs_val), 42)
-    inv_z: varint = ~z
-    self.assertEqual(int(inv_z), -1)
-    inv_p: varint = ~p
-    self.assertEqual(int(inv_p), -43)
-    minus_one: varint = -1
-    self.assertEqual(hash(minus_one), -2)
+    absVal: varint = abs(neg)
+    self.assertEqual(int(absVal), 42)
+    invZ: varint = ~z
+    self.assertEqual(int(invZ), -1)
+    invP: varint = ~p
+    self.assertEqual(int(invP), -43)
+    minusOne: varint = -1
+    self.assertEqual(hash(minusOne), -2)
 
 
 class VarIntArithmeticTests(TestCaseMixin):
-  _test_tag = 22
+  _testTag = 22
 
   @override
   def test(self):
@@ -62,7 +62,7 @@ class VarIntArithmeticTests(TestCaseMixin):
     three: varint = 3
     ten: varint = 10
     zero: varint = 0
-    minus_one: varint = -1
+    minusOne: varint = -1
     diff: varint = a - b
     self.assertEqual(int(diff), 4)
     rev: varint = b - a
@@ -73,40 +73,40 @@ class VarIntArithmeticTests(TestCaseMixin):
     self.assertEqual(int(q), 2)
     rem: varint = a % b
     self.assertEqual(int(rem), 1)
-    pow_ab: varint = a ** b
-    self.assertEqual(int(pow_ab), 343)
-    pow_ba: varint = b ** a
-    self.assertEqual(int(pow_ba), 2187)
+    powAb: varint = a ** b
+    self.assertEqual(int(powAb), 343)
+    powBa: varint = b ** a
+    self.assertEqual(int(powBa), 2187)
     rsub: varint = three - a
     self.assertEqual(int(rsub), -4)
     rfdiv: varint = ten // a
     self.assertEqual(int(rfdiv), 1)
     rmod: varint = ten % a
     self.assertEqual(int(rmod), 3)
-    neg_a: varint = -7
-    nq: varint = neg_a // b
+    negA: varint = -7
+    nq: varint = negA // b
     self.assertEqual(int(nq), -3)
-    nrem: varint = neg_a % b
+    nrem: varint = negA % b
     self.assertEqual(int(nrem), 2)
     self.assertEqual(a / b, 7.0 / 3.0)
     self.assertEqual(b / a, 3.0 / 7.0)
-    zpow: varint = neg_a ** zero
+    zpow: varint = negA ** zero
     self.assertEqual(int(zpow), 1)
-    npow: varint = a ** minus_one
+    npow: varint = a ** minusOne
     self.assertEqual(int(npow), 0)
     exp2: varint = 2
     mod11: varint = 11
     pm: varint = pow(a, exp2, mod11)
     self.assertEqual(int(pm), 5)
-    inv_exp: varint = -1
+    invExp: varint = -1
     mod5: varint = 5
     base3: varint = 3
-    inv_r: varint = pow(base3, inv_exp, mod5)
-    self.assertEqual(int(inv_r), 2)
+    invR: varint = pow(base3, invExp, mod5)
+    self.assertEqual(int(invR), 2)
 
 
 class VarIntCompareTests(TestCaseMixin):
-  _test_tag = 23
+  _testTag = 23
 
   @override
   def test(self):
@@ -127,7 +127,7 @@ class VarIntCompareTests(TestCaseMixin):
 
 
 class VarIntBitwiseTests(TestCaseMixin):
-  _test_tag = 24
+  _testTag = 24
 
   @override
   def test(self):
@@ -145,48 +145,48 @@ class VarIntBitwiseTests(TestCaseMixin):
     self.assertEqual(int(bor), 14)
     bxor: varint = a ^ b
     self.assertEqual(int(bxor), 6)
-    f_and: varint = five & three
-    self.assertEqual(int(f_and), 1)
-    f_or: varint = five | three
-    self.assertEqual(int(f_or), 7)
-    f_xor: varint = five ^ three
-    self.assertEqual(int(f_xor), 6)
+    fAnd: varint = five & three
+    self.assertEqual(int(fAnd), 1)
+    fOr: varint = five | three
+    self.assertEqual(int(fOr), 7)
+    fXor: varint = five ^ three
+    self.assertEqual(int(fXor), 6)
     shl: varint = a << two
     self.assertEqual(int(shl), 48)
     shr: varint = a >> two
     self.assertEqual(int(shr), 3)
-    big_shl: varint = one << sh10
-    self.assertEqual(int(big_shl), 1024)
-    self.assertEqual(a.bit_count(), 2)
-    self.assertEqual(zero.bit_count(), 0)
+    bigShl: varint = one << sh10
+    self.assertEqual(int(bigShl), 1024)
+    self.assertEqual(a.bitCount(), 2)
+    self.assertEqual(zero.bitCount(), 0)
 
 
 class VarIntNumericApiTests(TestCaseMixin):
-  _test_tag = 25
+  _testTag = 25
 
   @override
   def test(self):
     v: varint = 17
     self.assertEqual(str(v), "17")
-    self.assertTrue(v.is_integer())
+    self.assertTrue(v.isInteger())
     conj: varint = v.conjugate()
     self.assertEqual(int(conj), 17)
     num: varint = v.numerator
     self.assertEqual(int(num), 17)
     den: varint = v.denominator
     self.assertEqual(int(den), 1)
-    real_v: varint = v.real
-    self.assertEqual(int(real_v), 17)
+    realV: varint = v.real
+    self.assertEqual(int(realV), 17)
     self.assertEqual(v.imag, 0)
-    ratio: (varint, varint) = v.as_integer_ratio()
-    r_num: varint = ratio[0]
-    r_den: varint = ratio[1]
-    self.assertEqual(int(r_num), 17)
-    self.assertEqual(int(r_den), 1)
+    ratio: (varint, varint) = v.asIntegerRatio()
+    rNum: varint = ratio[0]
+    rDen: varint = ratio[1]
+    self.assertEqual(int(rNum), 17)
+    self.assertEqual(int(rDen), 1)
 
 
 class VarIntLargeTests(TestCaseMixin):
-  _test_tag = 26
+  _testTag = 26
 
   @override
   def test(self):
@@ -197,17 +197,17 @@ class VarIntLargeTests(TestCaseMixin):
 
 
 class VarIntHugeTests(TestCaseMixin):
-  _test_tag = 27
+  _testTag = 27
 
   @override
   def test(self):
-    i64_max: varint = 9223372036854775807
+    i64Max: varint = 9223372036854775807
     over: varint = 9223372036854775808
-    self.assertEqual(str(i64_max), "9223372036854775807")
+    self.assertEqual(str(i64Max), "9223372036854775807")
     self.assertEqual(str(over), "9223372036854775808")
-    self.assertTrue(over > i64_max)
+    self.assertTrue(over > i64Max)
     one: varint = 1
-    step: varint = i64_max + one
+    step: varint = i64Max + one
     self.assertEqual(str(step), "9223372036854775808")
     dec20: varint = 10000000000000000000
     self.assertEqual(str(dec20), "10000000000000000000")
@@ -215,10 +215,10 @@ class VarIntHugeTests(TestCaseMixin):
     ten: varint = 10
     mul10: varint = dec20 * ten
     self.assertEqual(str(mul10), "100000000000000000000")
-    neg_huge: varint = -10000000000000000000
-    self.assertEqual(str(neg_huge), "-10000000000000000000")
-    self.assertTrue(neg_huge < i64_max)
-    restored: varint = -neg_huge
+    negHuge: varint = -10000000000000000000
+    self.assertEqual(str(negHuge), "-10000000000000000000")
+    self.assertTrue(negHuge < i64Max)
+    restored: varint = -negHuge
     self.assertEqual(str(restored), "10000000000000000000")
     self.assertTrue(restored == dec20)
     exp300: varint = 300
@@ -235,16 +235,16 @@ class VarIntHugeTests(TestCaseMixin):
     big: varint = two ** exp1000
     self.assertTrue(big > huge)
     mod2: varint = 1000000007
-    big_rem: varint = big % mod2
-    self.assertEqual(str(big_rem), "688423210")
-    big_pm: varint = pow(two, exp1000, mod2)
-    self.assertEqual(str(big_pm), "688423210")
-    self.assertTrue(big_rem == big_pm)
+    bigRem: varint = big % mod2
+    self.assertEqual(str(bigRem), "688423210")
+    bigPm: varint = pow(two, exp1000, mod2)
+    self.assertEqual(str(bigPm), "688423210")
+    self.assertTrue(bigRem == bigPm)
 
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

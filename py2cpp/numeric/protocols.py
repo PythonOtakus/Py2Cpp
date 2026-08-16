@@ -9,15 +9,15 @@ from ..core.protocols import Self, protocol
 
 
 @protocol
-class Number:
-  """``numbers.Number``：可哈希（``hash(x)`` → ``__hash__``）。"""
+class NumberType:
+  """``numbers.NumberType``：可哈希（``hash(x)`` → ``__hash__``）。"""
 
   def __hash__(self) -> int: ...
 
 
 @protocol
-class Complex:
-  """``numbers.Complex`` 核心运算（``+`` ``-`` ``*`` ``/`` ``**`` ``==``；``/`` 走 ``::__truediv__``）。"""
+class ComplexType:
+  """``numbers.ComplexType`` 核心运算（``+`` ``-`` ``*`` ``/`` ``**`` ``==``；``/`` 走 ``::__truediv__``）。"""
 
   def __eq__(self, other: Self) -> bool: ...
 
@@ -35,8 +35,8 @@ class Complex:
 
 
 @protocol
-class Real(Complex):
-  """``numbers.Real``：实数比较、整除/取模、转 ``float``。"""
+class RealType(ComplexType):
+  """``numbers.RealType``：实数比较、整除/取模、转 ``float``。"""
 
   def __lt__(self, other: Self) -> bool: ...
 
@@ -54,8 +54,8 @@ class Real(Complex):
 
 
 @protocol
-class Rational(Real):
-  """``numbers.Rational``：``numerator`` / ``denominator`` 字段或 ``@property``（见 ``numbers``）。"""
+class RationalType(RealType):
+  """``numbers.RationalType``：``numerator`` / ``denominator`` 字段或 ``@property``（见 ``numbers``）。"""
 
   denominator: int = ...
 
@@ -63,8 +63,8 @@ class Rational(Real):
 
 
 @protocol
-class Integral(Real):
-  """``numbers.Integral``（不含 ``Rational`` 属性探测）：``int`` 与位运算。"""
+class IntegralType(RealType):
+  """``numbers.IntegralType``（不含 ``RationalType`` 属性探测）：``int`` 与位运算。"""
 
   def __lshift__(self, other: Self) -> Self: ...
 
@@ -82,8 +82,8 @@ class Integral(Real):
 
 
 @protocol
-class Arithmetic:
-  """兼容别名：``Real`` 的 ``%`` / ``/`` / ``//`` 三项（``::__mod__`` 等全局函数）。"""
+class ArithmeticType:
+  """兼容别名：``RealType`` 的 ``%`` / ``/`` / ``//`` 三项（``::__mod__`` 等全局函数）。"""
 
   def __truediv__(self, other: Self) -> float: ...
 

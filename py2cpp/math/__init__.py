@@ -2,7 +2,7 @@
 
 路径：``py2cpp.math``（``import math`` 的 CPython 同名模块在 Py2Cpp 中请显式导入本包）。
 
-``Inf`` / ``NaN`` 请用标量静态属性 ``float.Inf``、``float64.NaN`` 等（见 ``py_types.h``）；``isfinite`` / ``isInf`` / ``isNaN`` 为 ``float`` / ``float64`` 静态方法。**无** ``math.inf`` / ``math.nan`` / ``math.isinf`` 等。
+``Inf`` / ``NaN`` 请用标量静态属性 ``float.Inf``、``float64.NaN`` 等（见 ``py_types.h``）；``isFinite`` / ``isInf`` / ``isNaN`` 为 ``float`` / ``float64`` 静态方法。**无** ``math.inf`` / ``math.nan`` / ``math.isinf`` 等。
 
 参考 https://docs.python.org/3.13/library/math.html 与 ``Modules/mathmodule.c`` / ``Lib/math.py``。
 超越函数与分类谓词为 ``@native``（``templates/-math.inl`` paste_before → ``math.inl``）；组合逻辑为纯 Python。
@@ -265,7 +265,7 @@ def fmod(x: float64, y: float64) -> float64:
 @native
 @native_name("math_*")
 @immutable
-def copysign(x: float64, y: float64) -> float64:
+def copySign(x: float64, y: float64) -> float64:
   ...
 
 
@@ -298,7 +298,7 @@ def almost(x: float64, y: float64) -> bool:
 
 
 @immutable
-def safe_sqrt(x: float64) -> float64:
+def safeSqrt(x: float64) -> float64:
   """``sqrt`` 的非负实域版本（``x<=0`` 时返回 ``0``）。"""
   if x <= 0.0:
     return 0.0
@@ -315,11 +315,11 @@ def sign(x: float64) -> float64:
 
 
 @immutable
-def clamp(x: float64, min_value: float64, max_value: float64) -> float64:
-  if x < min_value:
-    return min_value
-  if x > max_value:
-    return max_value
+def clamp(x: float64, minValue: float64, maxValue: float64) -> float64:
+  if x < minValue:
+    return minValue
+  if x > maxValue:
+    return maxValue
   return x
 
 
@@ -342,7 +342,7 @@ def repeat(x: float64) -> float64:
 
 
 @immutable
-def move_towards(a: float64, b: float64, delta: float64) -> float64:
+def moveTowards(a: float64, b: float64, delta: float64) -> float64:
   if a < b:
     return a + delta
   if a > b:
@@ -365,7 +365,7 @@ def ease(x: float64) -> float64:
 
 
 @immutable
-def smooth_step(edge0: float64, edge1: float64, x: float64) -> float64:
+def smoothStep(edge0: float64, edge1: float64, x: float64) -> float64:
   if x < edge0:
     return 0.0
   if x > edge1:
@@ -375,13 +375,13 @@ def smooth_step(edge0: float64, edge1: float64, x: float64) -> float64:
 
 
 @immutable
-def isclose(
+def isClose(
   a: float64,
   b: float64,
-  rel_tol: float64 = 1e-09,
-  abs_tol: float64 = 0.0,
+  relTol: float64 = 1e-09,
+  absTol: float64 = 0.0,
 ) -> bool:
-  """对齐 ``math.isclose``（``rel_tol`` / ``abs_tol`` 关键字在调用处传入）。"""
+  """对齐 ``math.isClose``（``relTol`` / ``absTol`` 关键字在调用处传入）。"""
   if a == b:
     return True
   if float64.isInf(a) or float64.isInf(b):
@@ -389,14 +389,14 @@ def isclose(
   if float64.isNaN(a) or float64.isNaN(b):
     return False
   diff: float64 = fabs(a - b)
-  scale_a: float64 = fabs(a)
-  scale_b: float64 = fabs(b)
-  scale: float64 = scale_a
-  if scale_b > scale:
-    scale = scale_b
-  tol: float64 = rel_tol * scale
-  if abs_tol > tol:
-    tol = abs_tol
+  scaleA: float64 = fabs(a)
+  scaleB: float64 = fabs(b)
+  scale: float64 = scaleA
+  if scaleB > scale:
+    scale = scaleB
+  tol: float64 = relTol * scale
+  if absTol > tol:
+    tol = absTol
   return diff <= tol
 
 
@@ -455,7 +455,7 @@ def comb(n: int, k: int) -> int:
 
 
 @immutable
-def _perm_nk(n: int, k: int) -> int:
+def _permNk(n: int, k: int) -> int:
   if k < 0 or k > n:
     raise ValueError("k out of range")
   return factorial(n) // factorial(n - k)
@@ -464,13 +464,13 @@ def _perm_nk(n: int, k: int) -> int:
 @overload
 @immutable
 def perm(n: int) -> int:
-  return _perm_nk(n, n)
+  return _permNk(n, n)
 
 
 @overload
 @immutable
 def perm(n: int, k: int) -> int:
-  return _perm_nk(n, k)
+  return _permNk(n, k)
 
 
 @immutable

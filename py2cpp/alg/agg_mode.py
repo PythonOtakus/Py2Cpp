@@ -3,7 +3,7 @@ from ..builtins import *
 
 
 @enum
-class AggMode:
+class AggModeEnum:
   Min = 0
   Max = ...
   Sum = ...

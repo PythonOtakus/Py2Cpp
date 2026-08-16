@@ -28,9 +28,9 @@ def _frozendict_new_from_arg_expr(tr: 'Translator', inner: str, arg: ast.expr) -
     arg_cpp = tr._visit_value_expr(arg)
     arg_t = tr._infer_expr_cpp_type(arg)
     if is_dict_type(arg_t):
-        init = f'out.init_from_dict({arg_cpp})'
+        init = f'out.initFromDict({arg_cpp})'
     elif is_frozendict_type(arg_t):
-        init = f'out.init_from_frozendict({arg_cpp})'
+        init = f'out.initFromFrozendict({arg_cpp})'
     else:
         raise NotImplementedError('frozendict new(mapping) 仅支持 dict、frozendict 实参（需可推断类型）')
     return f'[&]() {{ {spec} out; {init}; return out; }}()'
@@ -1012,11 +1012,11 @@ def _emit_frozenset_from_arg(tr: 'Translator', name: str, elem_t: str, arg: ast.
     arg_cpp = tr.visit(arg)
     arg_t = tr._infer_expr_cpp_type(arg)
     if is_set_type(arg_t):
-        tr.write_line(f'{pname}.init_from_set({arg_cpp});')
+        tr.write_line(f'{pname}.initFromSet({arg_cpp});')
     elif is_frozenset_type(arg_t):
-        tr.write_line(f'{pname}.init_from_frozenset({arg_cpp});')
+        tr.write_line(f'{pname}.initFromFrozenset({arg_cpp});')
     elif is_list_type(arg_t):
-        tr.write_line(f'{pname}.init_from_list({arg_cpp});')
+        tr.write_line(f'{pname}.initFromList({arg_cpp});')
     else:
         raise NotImplementedError('frozenset(iterable) 仅支持 set、frozenset、list 实参（需可推断类型）')
 
@@ -1124,9 +1124,9 @@ def _emit_frozenlist_from_arg(tr: 'Translator', name: str, elem_t: str, arg: ast
     arg_cpp = tr.visit(arg)
     arg_t = tr._infer_expr_cpp_type(arg)
     if is_list_type(arg_t):
-        tr.write_line(f'{pname}.init_from_list({arg_cpp});')
+        tr.write_line(f'{pname}.initFromList({arg_cpp});')
     elif is_frozenlist_type(arg_t):
-        tr.write_line(f'{pname}.init_from_frozenlist({arg_cpp});')
+        tr.write_line(f'{pname}.initFromFrozenlist({arg_cpp});')
     else:
         raise NotImplementedError('frozenlist(iterable) 仅支持 list、frozenlist 实参（需可推断类型）')
 
@@ -1182,9 +1182,9 @@ def _emit_frozendict_from_arg(tr: 'Translator', name: str, inner: str, arg: ast.
     arg_cpp = tr.visit(arg)
     arg_t = tr._infer_expr_cpp_type(arg)
     if is_dict_type(arg_t):
-        tr.write_line(f'{pname}.init_from_dict({arg_cpp});')
+        tr.write_line(f'{pname}.initFromDict({arg_cpp});')
     elif is_frozendict_type(arg_t):
-        tr.write_line(f'{pname}.init_from_frozendict({arg_cpp});')
+        tr.write_line(f'{pname}.initFromFrozendict({arg_cpp});')
     else:
         raise NotImplementedError('frozendict(mapping) 仅支持 dict、frozendict 实参（需可推断类型）')
 

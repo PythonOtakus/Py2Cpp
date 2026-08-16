@@ -1,10 +1,10 @@
-"""``py2cpp.util.range``：``range`` / ``range_iterator``（CPython 3.13 子集）。"""
+"""``py2cpp.util.range``：``range`` / ``RangeIterator``（CPython 3.13 子集）。"""
 from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 
 class RangeLenIterTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
@@ -13,13 +13,13 @@ class RangeLenIterTests(TestCaseMixin):
     for i in range(5):
       n += 1
     self.assertEqual(n, 5)
-    it: range_iterator = iter(range(4))
+    it: RangeIterator = iter(range(4))
     self.assertEqual(next(it), 0)
     self.assertEqual(next(it), 1)
 
 
 class RangePropertiesTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
@@ -30,7 +30,7 @@ class RangePropertiesTests(TestCaseMixin):
 
 
 class RangeContainsGetitemTests(TestCaseMixin):
-  _test_tag = 30
+  _testTag = 30
 
   @override
   def test(self):
@@ -42,7 +42,7 @@ class RangeContainsGetitemTests(TestCaseMixin):
 
 
 class RangeCountIndexTests(TestCaseMixin):
-  _test_tag = 40
+  _testTag = 40
 
   @override
   def test(self):
@@ -53,7 +53,7 @@ class RangeCountIndexTests(TestCaseMixin):
 
 
 class RangeCompareTests(TestCaseMixin):
-  _test_tag = 50
+  _testTag = 50
 
   @override
   def test(self):
@@ -70,18 +70,18 @@ class RangeCompareTests(TestCaseMixin):
 
 
 class RangeReversedTests(TestCaseMixin):
-  _test_tag = 60
+  _testTag = 60
 
   @override
   def test(self):
-    it: range_iterator = reversed(range(0, 10, 2))
+    it: RangeIterator = reversed(range(0, 10, 2))
     self.assertEqual(next(it), 8)
     self.assertEqual(next(it), 6)
     self.assertEqual(next(it), 4)
 
 
 class RangeNegativeStepTests(TestCaseMixin):
-  _test_tag = 70
+  _testTag = 70
 
   @override
   def test(self):
@@ -92,7 +92,7 @@ class RangeNegativeStepTests(TestCaseMixin):
 
 
 class RangeBoolTests(TestCaseMixin):
-  _test_tag = 80
+  _testTag = 80
 
   @override
   def test(self):
@@ -102,7 +102,7 @@ class RangeBoolTests(TestCaseMixin):
 
 def main() -> int:
   suite: TestSuite = TestSuite()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

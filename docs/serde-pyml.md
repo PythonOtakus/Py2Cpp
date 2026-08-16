@@ -377,7 +377,7 @@ game:
 
 - `.ui.buttons` 是相对当前 PyML 模块所在包的导入；例如当前模块为 `game.main` 时，它解析为 `game.ui.buttons`；
 - `..shared.colors` 允许向上一级包，再导入 `shared.colors`；不得越过配置模块根；
-- `ui.buttons` 是从 `PymlContext.module_root` 解析的绝对逻辑模块路径；
+- `ui.buttons` 是从 `PymlContext.moduleRoot` 解析的绝对逻辑模块路径；
 - 规范逻辑模块路径的 `.` 映射为目录分隔符，末段映射为 `.pyml` 文件，例如 `game.ui.buttons` → `game/ui/buttons.pyml`；
 - 显式导入支持逗号分隔的多个名称；每个 `$name` 可选写作 `$name as $alias`。源名称与别名均必须带 `$`；
 - 显式导入将模块根层导出绑定到当前作用域；导出可以是变量、`@def` 标量函数或 `@inline` 容器片段；使用 `as` 时只绑定别名；
@@ -385,22 +385,22 @@ game:
 - 导入后的绑定名与当前作用域或同一文档先前导入的符号重名时抛 `PymlError`，不允许覆盖；
 - 一个模块只展开一次并按规范模块路径缓存；
 - 检测导入环，并在异常中给出完整模块链，例如 `game.main → game.ui.buttons → game.main`；
-- 文件 IO 只在 `Pyml.load` / `Pyml.expand_file` 路径启用；字符串 `Pyml.loads` 只有在 `PymlContext` 同时提供当前模块名、`module_root` 和允许根目录时才允许 `@from`。
+- 文件 IO 只在 `Pyml.load` / `Pyml.expand_file` 路径启用；字符串 `Pyml.loads` 只有在 `PymlContext` 同时提供当前模块名、`moduleRoot` 和允许根目录时才允许 `@from`。
 
 `PymlContext` 需要增加模块解析信息：
 
 ```python
 @copyable
 class PymlContext:
-  module_name: str = ""
-  module_root: Path = Path()
-  allowed_root: Path = Path()
+  moduleName: str = ""
+  moduleRoot: Path = Path()
+  allowedRoot: Path = Path()
 ```
 
 路径解析必须先将 Python 模块路径标准化为逻辑模块名，再映射到文件系统；禁止接受 `../`、反斜杠、盘符、绝对路径或扩展名作为 `@from` 的输入。
 ## 7. 解析与实现架构
 
-在 `py2cpp/serde/pyml.py` 中分层实现，复用现有 `_strip_comment`、缩进分析、引用处理和 YAML parser；不在 `serde.json` 中增加模板语义。
+在 `py2cpp/serde/pyml.py` 中分层实现，复用现有 `_stripComment`、缩进分析、引用处理和 YAML parser；不在 `serde.json` 中增加模板语义。
 
 ```text
 Pyml

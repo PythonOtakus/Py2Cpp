@@ -2,14 +2,14 @@
 
 
 from py2cpp import *
-def use_in():
+def useIn():
   x: int = 1
   if x in (1, 2, 3):
   # expect NotImplementedError at translate
     pass
 
 
-def use_subscript():
+def useSubscript():
   y: int = (10, 20, 30)[1]
   # expect NotImplementedError at translate
   _ = y

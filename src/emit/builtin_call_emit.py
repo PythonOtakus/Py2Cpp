@@ -137,7 +137,7 @@ def try_emit_global_builtin_call(tr: Translator, name: str, node: ast.Call) -> s
     return f'::{spec.cpp_name}({args})'
 
 def try_emit_scandir_ctor_call(tr: Translator, name: str, node: ast.Call) -> str | None:
-    """``os.scandir`` 返回迭代器：直接构造 ``ScandirIterator``，避免按值返回的拷贝/移动陷阱。"""
+    """``os.scandir`` 返回迭代器：直接构造 ``PyScandirIterator``，避免按值返回的拷贝/移动陷阱。"""
     if name != 'scandir' or node.keywords or len(node.args) != 1:
         return None
     binding = tr._effective_import_bindings().get(name)
@@ -146,7 +146,7 @@ def try_emit_scandir_ctor_call(tr: Translator, name: str, node: ast.Call) -> str
     from ..analysis.module_namespace import namespace_qualifier_for_module
     path = tr._visit_value_expr(node.args[0])
     ns = namespace_qualifier_for_module(binding.module_path) or 'py2cpp::io::file'
-    return f'::{ns}::ScandirIterator({path})'
+    return f'::{ns}::{cpp_ident("ScandirIterator")}({path})'
 
 def format_spec_literal(node: ast.expr) -> str | None:
     """f-string 内 ``format_spec`` 常为 ``JoinedStr``；能静态求值则返回规格串。"""
@@ -165,7 +165,7 @@ def format_spec_literal(node: ast.expr) -> str | None:
             return None
 
 def format_spec_cpp(tr: Translator, node: ast.expr | None) -> str:
-    """``format_spec`` 编译期字符串 → ``c_str`` 字面量。"""
+    """``format_spec`` 编译期字符串 → ``CStr`` 字面量。"""
     if node is None:
         return quote_cpp_string('')
     lit = format_spec_literal(node)
@@ -200,7 +200,7 @@ def is_json_class_ref(tr: Translator, name: str) -> bool:
 
 def json_api_callee(method: str) -> str:
     ns = namespace_qualifier_for_module(_JSON_API_MODULE)
-    return f'::{ns}::Json::{method}'
+    return f'::{ns}::{cpp_ident("Json")}::{method}'
 
 def emit_json_class_api_call(tr: Translator, method: str, type_arg: str | None, node: ast.Call) -> str | None:
     """``Json.loads[T]`` / ``Json.load[T]``（``json.inl`` 模板 API）。"""

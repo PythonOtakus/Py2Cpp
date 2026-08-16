@@ -11,10 +11,10 @@ from src.analysis.type_render import CLASS_BODY, TEMPLATE_HEADER
 from src.analysis.type_storage import apply_full_storage_type_node, apply_storage_type_node
 
 def _parser_with_dict_entry() -> tuple[TypeParser, dict[str, ClassInfo]]:
-    src = '\nfrom py2cpp import DictKey, Self, boxing\n\n@boxing\n@native_name("PyDictEntry")\nclass dict_entry[Key: DictKey, Value]:\n  def __init__(self, key: Key, value: Value, next_entry: Self):\n    self.next: Self = next_entry\n'
+    src = '\nfrom py2cpp import DictKeyType, Self, boxing\n\n@boxing\n@native_name("PyDictEntryUnsafe")\nclass DictEntryUnsafe[Key: DictKeyType, Value]:\n  def __init__(self, key: Key, value: Value, next_entry: Self):\n    self.next: Self = next_entry\n'
     tree = ast.parse(src)
     info = ClassInfo(tree.body[-1], module_path='py2cpp/util/dict.py')
-    classes = {'dict_entry': info}
+    classes = {'DictEntryUnsafe': info}
     parser = TypeParser()
     parser.set_classes(classes)
     return (parser, classes)
@@ -35,36 +35,36 @@ class TestTypeNodeRoundtrip(unittest.TestCase):
         self.assertEqual(tn.render(CLASS_BODY), f"{cpp_ident('list')}<Element>")
 
     def test_pointer_and_ref_roundtrip(self):
-        ptr = type_node_from_cpp_string('PyDictEntry<Key, Value>*')
-        self.assertEqual(ptr.render(CLASS_BODY), 'PyDictEntry<Key, Value>*')
+        ptr = type_node_from_cpp_string('PyDictEntryUnsafe<Key, Value>*')
+        self.assertEqual(ptr.render(CLASS_BODY), 'PyDictEntryUnsafe<Key, Value>*')
         ref = type_node_from_cpp_string('PyTextIOWrapper&')
         self.assertEqual(ref.kind, TypeKind.REF)
         self.assertEqual(ref.render(CLASS_BODY), 'PyTextIOWrapper&')
 
     def test_pointer_and_array(self):
-        inner = TypeNode.template('dict_entry', 'PyDictEntry', TypeNode.type_param('Key'), TypeNode.type_param('Value'))
+        inner = TypeNode.template('DictEntryUnsafe', 'PyDictEntryUnsafe', TypeNode.type_param('Key'), TypeNode.type_param('Value'))
         ptr = TypeNode.pointer(inner)
         arr = TypeNode.array(ptr, kind='heap')
-        self.assertEqual(ptr.render(CLASS_BODY), 'PyDictEntry<Key, Value>*')
+        self.assertEqual(ptr.render(CLASS_BODY), 'PyDictEntryUnsafe<Key, Value>*')
         from src.analysis.ir import CPP_ARRAY_PREFIX
-        self.assertEqual(arr.render(CLASS_BODY), f'{CPP_ARRAY_PREFIX}PyDictEntry<Key, Value>*>')
+        self.assertEqual(arr.render(CLASS_BODY), f'{CPP_ARRAY_PREFIX}PyDictEntryUnsafe<Key, Value>*>')
 
 class TestTypeNodeStorage(unittest.TestCase):
 
     def test_boxing_generic_template(self):
         _, classes = _parser_with_dict_entry()
-        inner = TypeNode.template('dict_entry', 'PyDictEntry', TypeNode.type_param('Key'), TypeNode.type_param('Value'))
+        inner = TypeNode.template('DictEntryUnsafe', 'PyDictEntryUnsafe', TypeNode.type_param('Key'), TypeNode.type_param('Value'))
         stored = apply_storage_type_node(inner, classes)
         self.assertEqual(stored.kind, TypeKind.POINTER)
-        self.assertEqual(stored.render(CLASS_BODY), 'PyDictEntry<Key, Value>*')
+        self.assertEqual(stored.render(CLASS_BODY), 'PyDictEntryUnsafe<Key, Value>*')
 
     def test_boxing_array_inner(self):
         _, classes = _parser_with_dict_entry()
-        inner = TypeNode.template('dict_entry', 'PyDictEntry', TypeNode.type_param('Key'), TypeNode.type_param('Value'))
+        inner = TypeNode.template('DictEntryUnsafe', 'PyDictEntryUnsafe', TypeNode.type_param('Key'), TypeNode.type_param('Value'))
         arr = TypeNode.array(inner, kind='heap')
         stored = apply_storage_type_node(arr, classes)
         from src.analysis.ir import CPP_ARRAY_PREFIX
-        self.assertEqual(stored.render(CLASS_BODY), f'{CPP_ARRAY_PREFIX}PyDictEntry<Key, Value>*>')
+        self.assertEqual(stored.render(CLASS_BODY), f'{CPP_ARRAY_PREFIX}PyDictEntryUnsafe<Key, Value>*>')
 
 class TestTypeNodeParseBridge(unittest.TestCase):
 
@@ -89,8 +89,8 @@ class TestTypeNodeParseBridge(unittest.TestCase):
         parser, classes = _parser_with_dict_entry()
         for src in ('list[int]', 'dict[str, int]', 'Self'):
             ann = ast.parse(src).body[0].value
-            tparams = set(classes['dict_entry'].type_params)
-            self_class = classes['dict_entry'].template_cpp_type()
+            tparams = set(classes['DictEntryUnsafe'].type_params)
+            self_class = classes['DictEntryUnsafe'].template_cpp_type()
             got = parser.parse_storage_type_node(
                 ann, tparams, self_class=self_class,
             ).render(CLASS_BODY)
@@ -99,7 +99,7 @@ class TestTypeNodeParseBridge(unittest.TestCase):
 
     def test_self_field_storage_matches_string_path(self):
         parser, classes = _parser_with_dict_entry()
-        info = classes['dict_entry']
+        info = classes['DictEntryUnsafe']
         ann = ast.Name(id='Self')
         tparams = set(info.type_params)
         self_class = info.template_cpp_type()
@@ -109,7 +109,7 @@ class TestTypeNodeParseBridge(unittest.TestCase):
         from src.analysis.ir import ClassInfo
         stored_cpp = ClassInfo.apply_refcount_storage_cpp_type(semantic_cpp, classes)
         self.assertEqual(stored_node.render(CLASS_BODY), stored_cpp)
-        self.assertEqual(stored_node.render(CLASS_BODY), 'PyDictEntry<Key, Value>*')
+        self.assertEqual(stored_node.render(CLASS_BODY), 'PyDictEntryUnsafe<Key, Value>*')
 
 class TestTypeNodeStructuralMatch(unittest.TestCase):
 
@@ -128,10 +128,10 @@ class TestTypeNodeStructuralMatch(unittest.TestCase):
 class TestTypeNodePhase1DualWrite(unittest.TestCase):
 
     def test_dict_entry_field_type_nodes_match_strings(self):
-        src = '\nfrom py2cpp import DictKey, Self, boxing\n\n@boxing\n@native_name("PyDictEntry")\nclass dict_entry[Key: DictKey, Value]:\n  def __init__(self, key: Key, value: Value, next_entry: Self):\n    self.key: Key = key\n    self.value: Value = value\n    self.next: Self = next_entry\n'
+        src = '\nfrom py2cpp import DictKeyType, Self, boxing\n\n@boxing\n@native_name("PyDictEntryUnsafe")\nclass DictEntryUnsafe[Key: DictKeyType, Value]:\n  def __init__(self, key: Key, value: Value, next_entry: Self):\n    self.key: Key = key\n    self.value: Value = value\n    self.next: Self = next_entry\n'
         tree = ast.parse(src)
         info = ClassInfo(tree.body[-1], module_path='py2cpp/util/dict.py')
-        classes = {'dict_entry': info}
+        classes = {'DictEntryUnsafe': info}
         parser = TypeParser()
         parser.set_classes(classes)
         sigs = SignatureBuilder(parser)
@@ -165,10 +165,10 @@ class TestParseStorageStackArrayAliasImport(unittest.TestCase):
 class TestTypeNodePhase3EmitBoundary(unittest.TestCase):
 
     def _dict_entry_setup(self):
-        src = '\nfrom py2cpp import DictKey, Self, boxing\n\n@boxing\n@native_name("PyDictEntry")\nclass dict_entry[Key: DictKey, Value]:\n  def __init__(self, key: Key, value: Value, next_entry: Self):\n    self.key: Key = key\n    self.value: Value = value\n    self.next: Self = next_entry\n'
+        src = '\nfrom py2cpp import DictKeyType, Self, boxing\n\n@boxing\n@native_name("PyDictEntryUnsafe")\nclass DictEntryUnsafe[Key: DictKeyType, Value]:\n  def __init__(self, key: Key, value: Value, next_entry: Self):\n    self.key: Key = key\n    self.value: Value = value\n    self.next: Self = next_entry\n'
         tree = ast.parse(src)
         info = ClassInfo(tree.body[-1], module_path='py2cpp/util/dict.py')
-        classes = {'dict_entry': info}
+        classes = {'DictEntryUnsafe': info}
         parser = TypeParser()
         parser.set_classes(classes)
         sigs = SignatureBuilder(parser)
@@ -346,7 +346,7 @@ class TestTypeNodePhase4Helpers(unittest.TestCase):
         with open('py2cpp/util/deque.py', encoding='utf-8') as f:
             src = f.read()
         tree = ast.parse(src)
-        rev_cls = next((n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == 'deque_reverse_iterator'))
+        rev_cls = next((n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == 'DequeReverseIterator'))
         info = ClassInfo(rev_cls, module_path='py2cpp/util/deque.py')
         classes = {n.name: ClassInfo(n, module_path='py2cpp/util/deque.py') for n in tree.body if isinstance(n, ast.ClassDef)}
         parser = TypeParser()

@@ -26,7 +26,7 @@ class MixinTypeParamConstraintTests(unittest.TestCase):
 from py2cpp import mixin
 
 @mixin
-class ElemMixin[T: DictKey]:
+class ElemMixin[T: DictKeyType]:
   pass
 
 class Box[T](ElemMixin[T]):
@@ -36,24 +36,24 @@ class Box[T](ElemMixin[T]):
     tr.classes = _parse_classes(src)
     expand_mixins(tr)
     host = tr.classes["Box"]
-    self.assertEqual(host.type_param_constraints.get("T"), ("DictKey",))
+    self.assertEqual(host.type_param_constraints.get("T"), ("DictKeyType",))
 
   def test_mixin_multi_param_constraint_maps_to_host(self):
     src = """
 from py2cpp import mixin
 
 @mixin
-class PairMixin[A, B: DictKey]:
+class PairMixin[A, B: DictKeyType]:
   pass
 
-class Container[A, B: DictKey](PairMixin[A, B]):
+class ContainerType[A, B: DictKeyType](PairMixin[A, B]):
   pass
 """
     tr = Translator("mod", "mod.py")
     tr.classes = _parse_classes(src)
     expand_mixins(tr)
-    host = tr.classes["Container"]
-    self.assertEqual(host.type_param_constraints.get("B"), ("DictKey",))
+    host = tr.classes["ContainerType"]
+    self.assertEqual(host.type_param_constraints.get("B"), ("DictKeyType",))
 
 
 if __name__ == "__main__":

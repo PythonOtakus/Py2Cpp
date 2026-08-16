@@ -41,8 +41,8 @@ class HeaderUsingsTests(unittest.TestCase):
   def test_list_header_from_native_name_classes(self):
     classes = {
       "list": _info("list", "py2cpp/util/list", cpp_rename="PyList"),
-      "list_iterator": _info(
-        "list_iterator", "py2cpp/util/list", cpp_rename="PyListIterator"
+      "ListIterator": _info(
+        "ListIterator", "py2cpp/util/list", cpp_rename="PyListIterator"
       ),
       "TestCase": _info("TestCase", "py2cpp/test/unittest"),
     }
@@ -67,8 +67,8 @@ class HeaderUsingsTests(unittest.TestCase):
 
   def test_global_namespace_module_omitted(self):
     classes = {
-      "stack_array": _info(
-        "stack_array", "py2cpp/util/stack_array", cpp_rename="PyStackArray"
+      "StackArray": _info(
+        "StackArray", "py2cpp/util/stack_array", cpp_rename="PyStackArray"
       ),
     }
     index = build_header_usings_index(classes)

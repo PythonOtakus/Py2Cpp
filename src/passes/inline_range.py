@@ -11,7 +11,7 @@ from .static_reflect import _const_compare_result, fold_static_reflect_tree
 if TYPE_CHECKING:
   from ..analysis.ir import ClassInfo
 
-INLINE_RANGE = "inline_range"
+INLINE_RANGE = "inlineRange"
 
 _INLINE_RANGE_ERR = (
   "inline_range 参数须为外层 inline_range 循环变量、@const、字面量"

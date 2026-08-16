@@ -16,64 +16,64 @@ class UIWidget(UIObject):
 
 @dataclass(eq=False, repr=False)
 class UICheckBox(UIWidget):
-  state_changed: UIValueChanged[bool] = new()
+  stateChanged: UIValueChanged[bool] = new()
 
   @native
-  def _sync_to_native(self) -> None:
+  def _syncToNative(self) -> None:
     """``handle`` 非 0 时将 ``checked__value`` 写回 Win32 checkbox。"""
     ...
 
-  checked: bool @property.postsetter(_sync_to_native, state_changed) = False
+  checked: bool @property.postsetter(_syncToNative, stateChanged) = False
 
 
 @dataclass(eq=False, repr=False)
 class UILineEdit(UIWidget):
-  text_changed: UIValueChanged[str] = new()
+  textChanged: UIValueChanged[str] = new()
 
   @native
-  def _sync_to_native(self) -> None:
+  def _syncToNative(self) -> None:
     """``handle`` 非 0 时将 ``text__value`` 写回 Win32 edit。"""
     ...
 
-  text: str @property.postsetter(_sync_to_native, text_changed) = ""
+  text: str @property.postsetter(_syncToNative, textChanged) = ""
 
 
 @dataclass(eq=False, repr=False)
 class UIIntEdit(UIWidget):
-  value_changed: UIValueChanged[int] = new()
+  valueChanged: UIValueChanged[int] = new()
 
   @native
-  def _sync_to_native(self) -> None:
+  def _syncToNative(self) -> None:
     """``handle`` 非 0 时将 ``value__value`` 写回 Win32 edit。"""
     ...
 
-  value: int @property.postsetter(_sync_to_native, value_changed) = 0
+  value: int @property.postsetter(_syncToNative, valueChanged) = 0
 
 
 @dataclass(eq=False, repr=False)
 class UIFloatEdit(UIWidget):
-  value_changed: UIValueChanged[float64] = new()
+  valueChanged: UIValueChanged[float64] = new()
 
   @native
-  def _sync_to_native(self) -> None:
+  def _syncToNative(self) -> None:
     """``handle`` 非 0 时将 ``value__value`` 写回 Win32 edit。"""
     ...
 
-  value: float64 @property.postsetter(_sync_to_native, value_changed) = 0.0
+  value: float64 @property.postsetter(_syncToNative, valueChanged) = 0.0
 
 
 @dataclass(eq=False, repr=False)
 class UISlider(UIWidget):
   lo: int = 0
   hi: int = 100
-  value_changed: UIValueChanged[int] = new()
+  valueChanged: UIValueChanged[int] = new()
 
   @native
-  def _sync_to_native(self) -> None:
+  def _syncToNative(self) -> None:
     """``handle`` 非 0 时将 ``value__value`` 写回 Win32 slider。"""
     ...
 
-  value: int @property.postsetter(_sync_to_native, value_changed) = 0
+  value: int @property.postsetter(_syncToNative, valueChanged) = 0
 
 
 @dataclass(eq=False, repr=False)

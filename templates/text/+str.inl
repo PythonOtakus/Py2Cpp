@@ -6,7 +6,7 @@ PY2CPP_END
 #include <stdarg.h>
 #include <stdio.h>
 
-PyStr PyStr::_str_unescape_braces(c_str fmt)
+PyStr PyStr::_str_unescape_braces(CStr fmt)
 {
   PyStr out("");
   if (!fmt)
@@ -36,7 +36,7 @@ PyStr PyStr::_str_unescape_braces(c_str fmt)
   return out;
 }
 
-PyStr PyStr::_str_format_substitute(c_str fmt, const PyStr* parts, int n)
+PyStr PyStr::_str_format_substitute(CStr fmt, const PyStr* parts, int n)
 {
   PyStr out("");
   if (!fmt)
@@ -90,10 +90,10 @@ PyStr PyStr::_str_format_substitute(c_str fmt, const PyStr* parts, int n)
 
 PyStr::PrintfArg::PrintfArg(const PyStr& s)
 {
-  s.copy_to_span(PySpan<PyByte>((PyByte*)data, (PyInt)sizeof(data), 1));
+  s.copyToSpan(PySpan<PyByte>((PyByte*)data, (PyInt)sizeof(data), 1));
 }
 
-PyStr PyStr::percent_format(c_str fmt, ...)
+PyStr PyStr::percent_format(CStr fmt, ...)
 {
   char buf[512];
   va_list ap;
@@ -107,48 +107,48 @@ PyStr::PyStr(PyInt value)
 {
   char buf[32];
   snprintf(buf, sizeof(buf), "%d", (int)value);
-  PyStr tmp((c_str)buf);
+  PyStr tmp((CStr)buf);
   (this->_data).__move__(tmp._data);
   this->_hash = tmp._hash;
-  this->_hash_ok = tmp._hash_ok;
+  this->_hashOk = tmp._hashOk;
 }
 
 PyStr::PyStr(PyInt64 value)
 {
   char buf[32];
   snprintf(buf, sizeof(buf), "%lld", (long long)value);
-  PyStr tmp((c_str)buf);
+  PyStr tmp((CStr)buf);
   (this->_data).__move__(tmp._data);
   this->_hash = tmp._hash;
-  this->_hash_ok = tmp._hash_ok;
+  this->_hashOk = tmp._hashOk;
 }
 
 PyStr::PyStr(PyFloat value)
 {
   char buf[64];
   snprintf(buf, sizeof(buf), "%g", (double)value);
-  PyStr tmp((c_str)buf);
+  PyStr tmp((CStr)buf);
   (this->_data).__move__(tmp._data);
   this->_hash = tmp._hash;
-  this->_hash_ok = tmp._hash_ok;
+  this->_hashOk = tmp._hashOk;
 }
 
 PyStr::PyStr(PyFloat64 value)
 {
   char buf[64];
   snprintf(buf, sizeof(buf), "%g", (double)value);
-  PyStr tmp((c_str)buf);
+  PyStr tmp((CStr)buf);
   (this->_data).__move__(tmp._data);
   this->_hash = tmp._hash;
-  this->_hash_ok = tmp._hash_ok;
+  this->_hashOk = tmp._hashOk;
 }
 
 PyStr::PyStr(PyBool value)
 {
-  PyStr tmp(value ? (c_str)"True" : (c_str)"False");
+  PyStr tmp(value ? (CStr)"True" : (CStr)"False");
   (this->_data).__move__(tmp._data);
   this->_hash = tmp._hash;
-  this->_hash_ok = tmp._hash_ok;
+  this->_hashOk = tmp._hashOk;
 }
 
 template<typename T>
@@ -225,7 +225,7 @@ PyStr PyStr::__mod__(const PyTuple<Args...>& other) const
 PyStr::PyStr(PY2CPP_TYPE(PyArray)<PyChar, 0>&& data)
 {
   this->_hash = 0;
-  this->_hash_ok = false;
+  this->_hashOk = false;
   PyInt n = data.__len__();
   if (n > 0)
   {
@@ -241,7 +241,7 @@ PyStr::PyStr(PY2CPP_TYPE(PyArray)<PyChar, 0>&& data)
   }
 }
 
-PyStr PyStr::from_buf(PyArray<PyChar>& buf, PyInt end)
+PyStr PyStr::fromBuf(PyArray<PyChar>& buf, PyInt end)
 {
   PyStr raw(buf);
   return raw.__getitem__(PySlice<int, int>(0, end, 1));

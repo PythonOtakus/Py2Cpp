@@ -7,7 +7,7 @@ from py2cpp.spatial.rect import Rect
 from py2cpp.spatial.vector import Vector2
 
 class RectBasicTests(TestCaseMixin):
-    _test_tag = 1
+    _testTag = 1
 
     @override
     def test(self):
@@ -26,7 +26,7 @@ class RectBasicTests(TestCaseMixin):
         self.assertTrue(almost(fixed.height, 3.0))
 
 class RectSetOpsTests(TestCaseMixin):
-    _test_tag = 2
+    _testTag = 2
 
     @override
     def test(self):
@@ -50,12 +50,12 @@ class RectSetOpsTests(TestCaseMixin):
         self.assertTrue(almost(moved.y, -1.0))
 
 class RectMatrixTests(TestCaseMixin):
-    _test_tag = 3
+    _testTag = 3
 
     @override
     def test(self):
         r: Rect = new(0.0, 0.0, 2.0, 2.0)
-        out: Rect = r.apply_matrix(Matrix3.from_position(Vector2(1.0, 3.0)))
+        out: Rect = r.applyMatrix(Matrix3.fromPosition(Vector2(1.0, 3.0)))
         self.assertTrue(almost(out.x, 1.0))
         self.assertTrue(almost(out.y, 3.0))
         self.assertTrue(almost(out.width, 2.0))
@@ -63,7 +63,7 @@ class RectMatrixTests(TestCaseMixin):
 
 def main() -> int:
     suite: TestSuite = new()
-    for Class in TestCaseMixin.iter_subclasses(sort_const='_test_tag'):
+    for Class in TestCaseMixin.iterSubclasses(sortConst='_testTag'):
         suite.addTest(Class())
     return TextTestRunner().run(suite)
 if __name__ == '__main__':

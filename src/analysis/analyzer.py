@@ -108,6 +108,7 @@ from .header_fixups import apply_header_fixups
 from ..constant.stdlib_layout import (
   CORE_PKG,
   RUNTIME_PKG,
+  cpp_exception_type,
   stdlib_header_include,
   stdlib_module_path,
 )
@@ -126,8 +127,8 @@ def _exception_param_cpp_type(cpp_type: str) -> str | None:
   bare = cpp_type.strip().rstrip("&").strip()
   if bare.startswith("const "):
     bare = bare[6:].strip()
-  if bare in (f"{EXCEPTIONS_NS}::Exception", "Exception"):
-    return f"{EXCEPTIONS_NS}::Exception"
+  if bare in (cpp_exception_type(), "Exception", "PyException"):
+    return cpp_exception_type()
   return None
 
 
@@ -574,7 +575,7 @@ class TypeParser:
         inner = self.parse_type(sl, type_params, self_class=self_class)
         if inner == "void":
           inner = cpp_ident("PyNone")
-        return cpp_fault_result_type(inner, f"{EXCEPTIONS_NS}::Exception")
+        return cpp_fault_result_type(inner, cpp_exception_type())
       if isinstance(node.value, ast.Name):
         resolved = resolve_host_cpp_type(node.value.id, self_class)
         if resolved is not None:
@@ -600,15 +601,15 @@ class TypeParser:
         # 内置标量注解优先于模块 ``type int64 = int`` 等别名（``@const`` 类字段须保留 ``PyInt64``）。
         if name in (
           "int", "int64", "uint", "uint64", "uintptr", "float", "float64", "bool", "str", "bytes", "char", "byte",
-          "object", "RefCount", "IterResult", "Result", "Optional", "Generator",
-          "Coroutine", "AsyncGenerator", "Awaitable", "AsyncIterable", "AsyncIterator",
-          "ContextManager", "AsyncContextManager", "PyNone", "void", "Never",
+          "object", "RefCount", "IterResult", "Result", "Optional", "GeneratorType",
+          "CoroutineType", "AsyncGeneratorType", "AwaitableType", "AsyncIterableType", "AsyncIteratorType",
+          "ContextManagerType", "AsyncContextManagerType", "PyNone", "void", "Never",
         ):
           return cpp_ident(name)
         if name == "None":
           return cpp_ident("PyNone")
-        if name == "c_str":
-          return "c_str"
+        if name == "CStr":
+          return "CStr"
         expanded = self._expand_type_alias_name(
           name, type_params, self_class=self_class, _seen=_alias_seen,
         )
@@ -894,7 +895,7 @@ class TypeParser:
           self_class=self_class,
           typevar_tuple_names=typevar_tuple_names,
         )
-      if isinstance(node.value, ast.Name) and node.value.id == "Generator":
+      if isinstance(node.value, ast.Name) and node.value.id == "GeneratorType":
         sl = node.slice
         if isinstance(sl, ast.Tuple) and len(sl.elts) == 3:
           args = ", ".join(
@@ -903,7 +904,7 @@ class TypeParser:
           )
           return f"{cpp_ident('PyGenerator')}<{args}>"
         return cpp_ident("PyGenerator")
-      if isinstance(node.value, ast.Name) and node.value.id == "Coroutine":
+      if isinstance(node.value, ast.Name) and node.value.id == "CoroutineType":
         sl = node.slice
         if isinstance(sl, ast.Tuple) and len(sl.elts) == 3:
           args = ", ".join(
@@ -912,7 +913,7 @@ class TypeParser:
           )
           return f"{cpp_ident('PyCoroutine')}<{args}>"
         return cpp_ident("PyCoroutine")
-      if isinstance(node.value, ast.Name) and node.value.id == "AsyncGenerator":
+      if isinstance(node.value, ast.Name) and node.value.id == "AsyncGeneratorType":
         sl = node.slice
         if isinstance(sl, ast.Tuple) and len(sl.elts) == 2:
           args = ", ".join(
@@ -1250,11 +1251,11 @@ class TypeParser:
     self_class: str | None = None,
   ) -> str | None:
     """``Counter[str]`` → ``Counter<PyStr>``（省略的形参由 C++ 模板默认值补齐）。"""
-    if class_name == "Generator":
+    if class_name == "GeneratorType":
       return None
-    if class_name == "Coroutine":
+    if class_name == "CoroutineType":
       return None
-    if class_name == "AsyncGenerator":
+    if class_name == "AsyncGeneratorType":
       return None
     info = self._classes.get(class_name)
     if info is None or not info.type_params:
@@ -1347,7 +1348,7 @@ class SignatureBuilder:
     if isinstance(method.returns, ast.Subscript) and isinstance(
       method.returns.value, ast.Name,
     ):
-      if method.returns.value.id in ("Generator", "Coroutine", "AsyncGenerator"):
+      if method.returns.value.id in ("GeneratorType", "CoroutineType", "AsyncGeneratorType"):
         return None
     dec = self._decorator_constraints_for(info, func_ft)
     node = apply_full_storage_type_node(
@@ -1394,7 +1395,7 @@ class SignatureBuilder:
     if isinstance(func.returns, ast.Subscript) and isinstance(
       func.returns.value, ast.Name,
     ):
-      if func.returns.value.id in ("Generator", "Coroutine", "AsyncGenerator"):
+      if func.returns.value.id in ("GeneratorType", "CoroutineType", "AsyncGeneratorType"):
         return None
     node = apply_full_storage_type_node(
       parse_storage_type_node(self._types, func.returns, tparams),
@@ -1627,7 +1628,7 @@ class SignatureBuilder:
         if isinstance(v, str):
           if cpp_type and is_char_heap_array_type(cpp_type) and v == "":
             return f"{cpp_type}(0)"
-          if cpp_type == "c_str":
+          if cpp_type == "CStr":
             return quote_cpp_string(v)
           return str_cpp_from_literal(v)
         if isinstance(v, float):
@@ -1862,15 +1863,16 @@ class SignatureBuilder:
           self._set_field_cpp_type(info, field, f"{info.type_params[0]}*")
           clear_field_ann_ast(info, field)
           continue
-        if info.name.endswith("_iterator") and field == "_host":
-          host_py = info.name[: -len("_iterator")]
-          host_info = self._classes.get(host_py)
-          if host_info is not None:
-            self._set_field_cpp_type(
-              info, field, f"{host_info.template_cpp_type()}*",
-            )
-            clear_field_ann_ast(info, field)
-            continue
+        if field == "_host":
+          host_py = iterator_owner_host_py_name(info.name)
+          if host_py is not None:
+            host_info = self._classes.get(host_py)
+            if host_info is not None:
+              self._set_field_cpp_type(
+                info, field, f"{host_info.template_cpp_type()}*",
+              )
+              clear_field_ann_ast(info, field)
+              continue
         from .ir import resolve_self_in_cpp_type
         from .type_render import CLASS_BODY
 
@@ -1899,11 +1901,12 @@ class SignatureBuilder:
         write_field_storage(info, field, node)
       clear_field_ann_ast(info, field)
     self._infer_fields_from_init_assignments(info)
-    if info.name.endswith("_iterator") and "_host" in info.fields:
-      host_py = info.name[: -len("_iterator")]
-      host_info = self._classes.get(host_py)
-      if host_info is not None:
-        self._set_field_cpp_type(info, "_host", f"{host_info.template_cpp_type()}*")
+    if "_host" in info.fields:
+      host_py = iterator_owner_host_py_name(info.name)
+      if host_py is not None:
+        host_info = self._classes.get(host_py)
+        if host_info is not None:
+          self._set_field_cpp_type(info, "_host", f"{host_info.template_cpp_type()}*")
     self._infer_pointer_fields_from_inits(info)
     info.owned_fields = collect_owned_fields_from_inits(info.inits)
     info.owned_array_sizes = collect_owned_array_sizes(info.inits)
@@ -1952,7 +1955,7 @@ class SignatureBuilder:
       if base in PROTOCOL_PARAM_ERASE:
         raise NotImplementedError(
           f"形参 {arg.arg}: 协议注解 {base} 须由 FuncTypeParams 转为模板约束，"
-          "请写 ``x: Comparable``、``xs: Iterable[T]`` 或 ``def f[T: Comparable](...)``"
+          "请写 ``x: ComparableType``、``xs: IterableType[T]`` 或 ``def f[T: ComparableType](...)``"
         )
     else:
       t = "void*"
@@ -1988,7 +1991,7 @@ class SignatureBuilder:
       return f"{cpp_template_type('array', cpp_ident('byte'))}&"
     if info is not None:
       if info.name == "str" and method and method.name == "__init__" and arg.arg == "text":
-        return "c_str"
+        return "CStr"
       if method and arg.arg == "other":
         if method.name == "__copy__":
           if info.is_template():
@@ -2110,7 +2113,7 @@ class SignatureBuilder:
   ) -> bool:
     """容器与用户类按引用传参，避免按值拷贝/移动（含友元测试里 ``bump(self, v: Vault)``）。
 
-    ``list_iterator`` / ``frozenlist_iterator`` / ``set_iterator`` / ``frozenset_iterator`` 的 ``owner`` 为 ``const PyList*`` / ``const PyFrozenList*`` / ``const PySet*`` / ``const PyFrozenSet*``（只读遍历），见 ``_param_cpp_type``。
+    ``ListIterator`` / ``FrozenListIterator`` / ``SetIterator`` / ``FrozenSetIterator`` 的 ``owner`` 为 ``const PyList*`` / ``const PyFrozenList*`` / ``const PySet*`` / ``const PyFrozenSet*``（只读遍历），见 ``_param_cpp_type``。
     """
     from .type_pred import is_delegate_type
 
@@ -2576,7 +2579,7 @@ class SignatureBuilder:
 
         proto = method.returns.value.id
         match proto:
-          case "Generator":
+          case "GeneratorType":
             if has_named_decorator(method, "virtual") or has_named_decorator(
               method, "override",
             ) or has_named_decorator(method, "abstract"):
@@ -2585,7 +2588,7 @@ class SignatureBuilder:
               )
               return rt, ""
             return cpp_ident(f"{info.name}_{method.name}_generator"), ""
-          case "Coroutine":
+          case "CoroutineType":
             if has_named_decorator(method, "virtual") or has_named_decorator(
               method, "override",
             ) or has_named_decorator(method, "abstract"):
@@ -2594,7 +2597,7 @@ class SignatureBuilder:
               )
               return rt, ""
             return cpp_ident(f"{info.name}_{method.name}_coroutine"), ""
-          case "AsyncGenerator":
+          case "AsyncGeneratorType":
             if has_named_decorator(method, "virtual") or has_named_decorator(
               method, "override",
             ) or has_named_decorator(method, "abstract"):
@@ -2986,11 +2989,11 @@ class SignatureBuilder:
     if func.returns and isinstance(func.returns, ast.Subscript):
       if isinstance(func.returns.value, ast.Name):
         match func.returns.value.id:
-          case "Generator":
+          case "GeneratorType":
             return cpp_ident(f"{func.name}_generator"), ""
-          case "Coroutine":
+          case "CoroutineType":
             return cpp_ident(f"{func.name}_coroutine"), ""
-          case "AsyncGenerator":
+          case "AsyncGeneratorType":
             return cpp_ident(f"{func.name}_coroutine"), ""
     inferred = self._return_type_parts(func, func_ft, set(func_ft.template_names))
     if inferred is not None:

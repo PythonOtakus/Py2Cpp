@@ -64,15 +64,15 @@ class TestClassTypeBase(unittest.TestCase):
     self.assertEqual(alias.value.id, "void")
 
   def test_generic_entity_base_ast(self):
-    container_node = _parse_class("class Container[T]: pass")
+    container_node = _parse_class("class ContainerType[T]: pass")
     container = ClassInfo(container_node, "m")
-    box_node = ast.parse("class Box[T](Container[T]): pass").body[0]
+    box_node = ast.parse("class Box[T](ContainerType[T]): pass").body[0]
     box = ClassInfo(box_node, "m")
-    tr = _TrStub({"Container": container, "Box": box})
-    box.bases = ["Container"]
+    tr = _TrStub({"ContainerType": container, "Box": box})
+    box.bases = ["ContainerType"]
     ast_obj = _entity_base_ast(box, tr)
     self.assertIsInstance(ast_obj, ast.Subscript)
-    self.assertEqual(class_base_name(ast_obj), "Container")
+    self.assertEqual(class_base_name(ast_obj), "ContainerType")
 
 
 if __name__ == "__main__":

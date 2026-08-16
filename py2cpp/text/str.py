@@ -8,15 +8,14 @@ from .bytes import bytes
 from ..util.dict import dict
 from ..core.exceptions import IndexError, ValueError
 from ..util.list import list
-from ..util.memory import copy_buf
+from ..util.memory import copyBuf
 from ..util.array import array
 from ..util.slice import slice
 from ..util.span import span
 from ..util.tuple import tuple
 from .mixins import StringMixin
 
-@native_name("PyStrIterator")
-class str_iterator:
+class StrIterator:
   def __init__(self, view: span[char]):
     self._view: span[char] = view
     self._index: int = 0
@@ -32,8 +31,7 @@ class str_iterator:
     return c
 
 
-@native_name("PyStrReverseIterator")
-class str_reverse_iterator:
+class StrReverseIterator:
   def __init__(self, view: span[char]):
     self._view: span[char] = view
     self._index: int = len(view) - 1
@@ -49,52 +47,51 @@ class str_reverse_iterator:
     return c
 
 @copyable
-@native_name("PyStr")
 class str(StringMixin[char]):
   """不可变 Unicode 字符串。"""
 
-  _data: array[char, _SSO_CAP]
+  _data: array[char, _SsoCap]
 
-  _DELETE_CHAR: int @const = 0xFFFF
+  _DeleteChar: int @const = 0xFFFF
 
   _hash: int = 0
-  _hash_ok: bool = False
+  _hashOk: bool = False
 
   @immutable
   @staticmethod
-  def repr_char(c: char) -> Self:
+  def reprChar(c: char) -> Self:
     """单码点 ``repr`` 片段（不含外层引号；供全局 ``::repr(char)``）。"""
-    return Self._repr_codepoint(c)
+    return Self._reprCodepoint(c)
 
   @staticmethod
-  def _default_pad_char() -> char:
+  def _defaultPadChar() -> char:
     return 32
 
   @staticmethod
-  def _zfill_pad_char() -> char:
+  def _zfillPadChar() -> char:
     return 48
 
   @staticmethod
-  def _translate_buf_len(n: int) -> int:
+  def _translateBufLen(n: int) -> int:
     return n * 2
 
   @staticmethod
-  def _translate_delete_marker() -> char:
-    return Self._DELETE_CHAR
+  def _translateDeleteMarker() -> char:
+    return Self._DeleteChar
 
   @staticmethod
-  def _append_byte(buf: byte[:], at: int, b: byte) -> int:
+  def _appendByte(buf: byte[:], at: int, b: byte) -> int:
     buf[at] = b
     return at + 1
 
   @immutable
   @staticmethod
-  def _is_alnum_char(c: char) -> bool:
-    return Self._is_alpha_char(c) or Self._is_digit_char(c)
+  def _isAlnumChar(c: char) -> bool:
+    return Self._isAlphaChar(c) or Self._isDigitChar(c)
 
   @immutable
   @staticmethod
-  def _is_alpha_char(c: char) -> bool:
+  def _isAlphaChar(c: char) -> bool:
     if c >= ord("A") and c <= ord("Z"):
       return True
     if c >= ord("a") and c <= ord("z"):
@@ -103,17 +100,17 @@ class str(StringMixin[char]):
 
   @immutable
   @staticmethod
-  def _is_ascii(c: char) -> bool:
+  def _isAscii(c: char) -> bool:
     return c >= 0 and c < 128
 
   @immutable
   @staticmethod
-  def _is_ascii_whitespace(c: char) -> bool:
+  def _isAsciiWhitespace(c: char) -> bool:
     return c in "\t\n\v\f\r "
 
   @immutable
   @staticmethod
-  def _is_cased(c: char) -> bool:
+  def _isCased(c: char) -> bool:
     if c >= ord("A") and c <= ord("Z"):
       return True
     if c >= ord("a") and c <= ord("z"):
@@ -122,17 +119,17 @@ class str(StringMixin[char]):
 
   @immutable
   @staticmethod
-  def _is_digit_char(c: char) -> bool:
+  def _isDigitChar(c: char) -> bool:
     return c >= ord("0") and c <= ord("9")
 
   @immutable
   @staticmethod
-  def _is_linebreak(c: char) -> bool:
+  def _isLinebreak(c: char) -> bool:
     return c in "\n\r\v\f\x1c\x1d\x1e\x85\u2028\u2029"
 
   @immutable
   @staticmethod
-  def _is_printable_char(c: char) -> bool:
+  def _isPrintableChar(c: char) -> bool:
     if c in " ":
       return True
     if c < ord(" "):
@@ -141,13 +138,13 @@ class str(StringMixin[char]):
       return False
     if c < 128:
       return True
-    if Self._is_field_whitespace(c):
+    if Self._isFieldWhitespace(c):
       return False
     return True
 
   @immutable
   @staticmethod
-  def _is_field_whitespace(c: char) -> bool:
+  def _isFieldWhitespace(c: char) -> bool:
     if c in "\t\n\v\f\r \u0085\u00a0\u2028\u2029\u3000":
       return True
     if c >= 0x2000 and c <= 0x200A:
@@ -156,12 +153,12 @@ class str(StringMixin[char]):
 
   @immutable
   @staticmethod
-  def _is_cr_lf_pair(cr: char, lf: char) -> bool:
+  def _isCrLfPair(cr: char, lf: char) -> bool:
     return cr in "\r" and lf in "\n"
 
   @immutable
   @staticmethod
-  def _repr_codepoint(c: char) -> Self:
+  def _reprCodepoint(c: char) -> Self:
     hit: Self = {
       ord("'"): "\\'",
       ord("\\"): "\\\\",
@@ -186,7 +183,7 @@ class str(StringMixin[char]):
 
   @immutable
   @staticmethod
-  def _reverse_codes(codes: char[:]) -> char[:]:
+  def _reverseCodes(codes: char[:]) -> char[:]:
     n: int = len(codes)
     buf: char[:] = new(n)
     for i in range(n):
@@ -195,21 +192,21 @@ class str(StringMixin[char]):
 
   @immutable
   @staticmethod
-  def _to_lower_char(c: char) -> char:
+  def _toLowerChar(c: char) -> char:
     if c >= ord("A") and c <= ord("Z"):
       return c + 32
     return c
 
   @immutable
   @staticmethod
-  def _to_upper_char(c: char) -> char:
+  def _toUpperChar(c: char) -> char:
     if c >= ord("a") and c <= ord("z"):
       return c - 32
     return c
 
   @immutable
   @staticmethod
-  def _utf8_byte_len(c: char) -> int:
+  def _utf8ByteLen(c: char) -> int:
     if c < 0x80:
       return 1
     if c < 0x800:
@@ -219,27 +216,27 @@ class str(StringMixin[char]):
     return 4
 
   @staticmethod
-  def _write_utf8(buf: byte[:], at: int, c: char) -> int:
+  def _writeUtf8(buf: byte[:], at: int, c: char) -> int:
     if c < 0x80:
-      return Self._append_byte(buf, at, c)
+      return Self._appendByte(buf, at, c)
     if c < 0x800:
-      at = Self._append_byte(buf, at, (c >> 6) | 0xC0)
-      return Self._append_byte(buf, at, (c & 0x3F) | 0x80)
+      at = Self._appendByte(buf, at, (c >> 6) | 0xC0)
+      return Self._appendByte(buf, at, (c & 0x3F) | 0x80)
     if c < 0x10000:
-      at = Self._append_byte(buf, at, (c >> 12) | 0xE0)
-      at = Self._append_byte(buf, at, ((c >> 6) & 0x3F) | 0x80)
-      return Self._append_byte(buf, at, (c & 0x3F) | 0x80)
-    at = Self._append_byte(buf, at, (c >> 18) | 0xF0)
-    at = Self._append_byte(buf, at, ((c >> 12) & 0x3F) | 0x80)
-    at = Self._append_byte(buf, at, ((c >> 6) & 0x3F) | 0x80)
-    return Self._append_byte(buf, at, (c & 0x3F) | 0x80)
+      at = Self._appendByte(buf, at, (c >> 12) | 0xE0)
+      at = Self._appendByte(buf, at, ((c >> 6) & 0x3F) | 0x80)
+      return Self._appendByte(buf, at, (c & 0x3F) | 0x80)
+    at = Self._appendByte(buf, at, (c >> 18) | 0xF0)
+    at = Self._appendByte(buf, at, ((c >> 12) & 0x3F) | 0x80)
+    at = Self._appendByte(buf, at, ((c >> 6) & 0x3F) | 0x80)
+    return Self._appendByte(buf, at, (c & 0x3F) | 0x80)
 
   @overload
-  def __init__(self, text: c_str = ""):
+  def __init__(self, text: CStr = ""):
     n: int = len(text)
     self._hash = 0
-    self._hash_ok = n == 0
-    self._data: array[char, _SSO_CAP] = new(n)
+    self._hashOk = n == 0
+    self._data: array[char, _SsoCap] = new(n)
     if n > 0:
       for i in range(n):
         self._data[i] = char(text[i])
@@ -247,7 +244,7 @@ class str(StringMixin[char]):
   @overload
   def __init__(self, data: char[:]):
     self._hash = 0
-    self._hash_ok = False
+    self._hashOk = False
     n: int = len(data)
     self._data = new(n)
     for i in range(n):
@@ -257,10 +254,10 @@ class str(StringMixin[char]):
   @overload
   def __init__(self, value: char):
     self._hash = 0
-    self._hash_ok = False
+    self._hashOk = False
     self._data = [value]
 
-  def copy_to(self, buf: char[:], at: int = 0) -> int:
+  def copyTo(self, buf: char[:], at: int = 0) -> int:
     """把本串码点写入 ``buf[at:]``，返回新尾下标。"""
     sn: int = len(self)
     if sn == 0:
@@ -273,7 +270,7 @@ class str(StringMixin[char]):
       buf[at + i] = self._data[i]
     return end
 
-  def copy_slice_to(self, start: int, end: int, buf: char[:], at: int) -> int:
+  def copySliceTo(self, start: int, end: int, buf: char[:], at: int) -> int:
     """``self[start:end]`` 写入 ``buf[at:]``，返回新尾下标。"""
     n: int = end - start
     if n <= 0:
@@ -290,7 +287,7 @@ class str(StringMixin[char]):
   def concat(parts: list[Self]) -> Self:
     return "".join(parts)
 
-  def replace_slice(self, start: int, end: int, repl: Self) -> Self:
+  def replaceSlice(self, start: int, end: int, repl: Self) -> Self:
     """单次分配 ``char[:]`` 拼接 ``self[:start] + repl + self[end:]``。"""
     sn: int = len(self)
     if start < 0:
@@ -305,12 +302,12 @@ class str(StringMixin[char]):
     if start == 0 and end == sn:
       return repl
     tail: int = sn - end
-    new_len: int = start + rn + tail
-    if new_len == 0:
+    newLen: int = start + rn + tail
+    if newLen == 0:
       return ""
     if tail == 0 and rn == 0 and start == sn:
       return self
-    buf: char[:] = new(new_len)
+    buf: char[:] = new(newLen)
     at: int = 0
     if start > 0:
       head: span[char] = self._data.view[:start]
@@ -322,102 +319,102 @@ class str(StringMixin[char]):
       for i in range(rn):
         buf[at + i] = rview[i]
       at += rn
-    tail_n: int = sn - end
-    if tail_n > 0:
+    tailN: int = sn - end
+    if tailN > 0:
       tview: span[char] = self._data.view[end:sn]
-      for i in range(tail_n):
+      for i in range(tailN):
         buf[at + i] = tview[i]
-      at += tail_n
-    return Self.from_buf(buf, at)
+      at += tailN
+    return Self.fromBuf(buf, at)
 
   @staticmethod
-  def from_buf_ref(buf: char[:], end: int) -> Self:
-    """``buf[:end]`` → ``str``（纯 Python；``@native from_buf`` 的语义参照）。"""
+  def fromBufRef(buf: char[:], end: int) -> Self:
+    """``buf[:end]`` → ``str``（纯 Python；``@native fromBuf`` 的语义参照）。"""
     raw = str(buf)
     return raw[:end]
 
   @staticmethod
   @native
-  def from_buf(buf: char[:], end: int) -> Self:
+  def fromBuf(buf: char[:], end: int) -> Self:
     """``buf[:end]`` → ``str``（encode ``finish`` 收尾）。"""
     ...
 
   @staticmethod
   @immutable
-  def from_span(seg: span[char]) -> Self:
-    """由 ``span[char]`` 拷贝构造（``copy_from_span`` 组合）。"""
+  def fromSpan(seg: span[char]) -> Self:
+    """由 ``span[char]`` 拷贝构造（``copyFromSpan`` 组合）。"""
     dst: Self = ""
-    dst.copy_from_span(seg)
+    dst.copyFromSpan(seg)
     return dst
 
   @overload
-  def copy_from_span(self, seg: span[char]) -> None:
-    """将 ``span[char]`` 写入已有 ``PyStr``（``copy_buf`` 叶子）。"""
+  def copyFromSpan(self, seg: span[char]) -> None:
+    """将 ``span[char]`` 写入已有 ``PyStr``（``copyBuf`` 叶子）。"""
     n: int = len(seg)
     if not n:
       self._data.reshape(0, 0)
       self._hash = 0
-      self._hash_ok = True
+      self._hashOk = True
       return
     if len(self._data) != n:
       self._data.reshape(n, 0)
-    self._data.copy_ptr_from(0, seg.at(), n)
+    self._data.copyPtrFrom(0, seg.at(), n)
     self._hash = 0
-    self._hash_ok = False
+    self._hashOk = False
 
   @overload
-  def copy_from_span(self, seg: span[byte]) -> None:
+  def copyFromSpan(self, seg: span[byte]) -> None:
     """将 ``span[byte]`` 按 ``char`` 写入已有 ``PyStr``（C API / 单字节源）。"""
     n: int = len(seg)
     if not n:
       self._data.reshape(0, 0)
       self._hash = 0
-      self._hash_ok = True
+      self._hashOk = True
       return
     if len(self._data) != n:
       self._data.reshape(n, 0)
     for i in range(n):
       self._data[i] = char(seg[i])
     self._hash = 0
-    self._hash_ok = False
+    self._hashOk = False
 
   @immutable
   @overload
-  def copy_to_span(self, dest: span[byte]) -> None:
+  def copyToSpan(self, dest: span[byte]) -> None:
     """把本串按单字节写入 ``dest`` 并以 ``\\0`` 收尾（``len(dest)`` 为容量上限；C API 缓冲）。"""
     cap: int = len(dest)
     if cap <= 0:
       return
     n: int = len(self)
     lim: int = n
-    max_body: int = cap - 1
-    if lim > max_body:
-      lim = max_body
+    maxBody: int = cap - 1
+    if lim > maxBody:
+      lim = maxBody
     for i in range(lim):
       dest[i] = byte(self[i])
     dest[lim] = byte(0)
 
   @immutable
   @overload
-  def copy_to_span(self, dest: span[char]) -> None:
+  def copyToSpan(self, dest: span[char]) -> None:
     """把码点写入 ``dest`` 并以 ``PyChar(0)`` 收尾（``len(dest)`` 为容量上限）。"""
     cap: int = len(dest)
     if cap <= 0:
       return
     n: int = len(self)
     lim: int = n
-    max_body: int = cap - 1
-    if lim > max_body:
-      lim = max_body
+    maxBody: int = cap - 1
+    if lim > maxBody:
+      lim = maxBody
     if lim > 0:
-      self._data.copy_ptr_to(0, dest.at(), lim)
+      self._data.copyPtrTo(0, dest.at(), lim)
     dest[lim] = char(0)
 
-  def adopt_span(self, seg: span[char]) -> None:
+  def adoptSpan(self, seg: span[char]) -> None:
     """接管 ``span[char]`` 底层 ``char`` 缓冲（serde Arena；勿与 ``reshape`` 混用）。"""
-    self._data.adopt_span(seg)
+    self._data.adoptSpan(seg)
     self._hash = 0
-    self._hash_ok = False
+    self._hashOk = False
 
   def __copy__(self, other: Self):
     n: int = len(other._data)
@@ -425,7 +422,7 @@ class str(StringMixin[char]):
       self._data.reshape(n, 0)
     self._data.__copy__(other._data)
     self._hash = other._hash
-    self._hash_ok = other._hash_ok
+    self._hashOk = other._hashOk
 
   @overload
   @native
@@ -461,22 +458,22 @@ class str(StringMixin[char]):
     out: Self = "'"
     n: int = len(self)
     for i in range(n):
-      out += Self._repr_codepoint(self._data[i])
+      out += Self._reprCodepoint(self._data[i])
     return out + "'"
 
   @immutable
-  def __format__(self, format_spec: Self) -> Self:
+  def __format__(self, formatSpec: Self) -> Self:
     return self
 
-  def cache_hash(self, h: int) -> None:
-    """由 ``JsonDecoder.load_key`` 等在已算好哈希时写入缓存（与 ``__hash__`` 算法一致）。"""
+  def cacheHash(self, h: int) -> None:
+    """由 ``JsonDecoder.loadKey`` 等在已算好哈希时写入缓存（与 ``__hash__`` 算法一致）。"""
     self._hash = h
-    self._hash_ok = True
+    self._hashOk = True
 
   @immutable
-  def _peek_hash(self) -> int:
+  def _peekHash(self) -> int:
     """只读哈希（``const`` 比较用）；已缓存则直接返回，否则现场计算不落盘。"""
-    if self._hash_ok:
+    if self._hashOk:
       return self._hash
     h: int = 0
     n: int = len(self._data)
@@ -486,11 +483,11 @@ class str(StringMixin[char]):
 
   def __hash__(self) -> int:
     """多项式哈希（惰性缓存），供 ``dict[str, …]`` 等。"""
-    if self._hash_ok:
+    if self._hashOk:
       return self._hash
-    h: int = self._peek_hash()
+    h: int = self._peekHash()
     self._hash = h
-    self._hash_ok = True
+    self._hashOk = True
     return h
 
   @immutable
@@ -501,10 +498,10 @@ class str(StringMixin[char]):
       return False
     if na == 0:
       return True
-    if self._hash_ok and other._hash_ok:
+    if self._hashOk and other._hashOk:
       if self._hash != other._hash:
         return False
-    elif self._peek_hash() != other._peek_hash():
+    elif self._peekHash() != other._peekHash():
       return False
     return self._compare(other) == 0
 
@@ -514,10 +511,10 @@ class str(StringMixin[char]):
     """只读码点视图（``serde`` 等）。"""
     return self._data.view
 
-  def __iter__(self) -> str_iterator:
+  def __iter__(self) -> StrIterator:
     return new(self.view)
 
-  def __reversed__(self) -> str_reverse_iterator:
+  def __reversed__(self) -> StrReverseIterator:
     return new(self.view)
 
   @immutable
@@ -525,47 +522,47 @@ class str(StringMixin[char]):
     return self.lower()
 
   @immutable
-  def encode(self, encoding: c_str = "utf-8", errors: c_str = "strict") -> bytes:
+  def encode(self, encoding: CStr = "utf-8", errors: CStr = "strict") -> bytes:
     n: int = len(self)
     total: int = 0
     for i in range(n):
-      total += Self._utf8_byte_len(self._data[i])
+      total += Self._utf8ByteLen(self._data[i])
     if total == 0:
       empty: byte[:] = b""
       return bytes(empty)
     buf: byte[:] = new(total)
     at: int = 0
     for i in range(n):
-      at = Self._write_utf8(buf, at, self._data[i])
+      at = Self._writeUtf8(buf, at, self._data[i])
     return bytes(buf)
 
   @immutable
-  def isidentifier(self) -> bool:
+  def isIdentifier(self) -> bool:
     n: int = len(self)
     if n == 0:
       return False
     c0: char = self._data[0]
-    if not (c0 in "_" or Self._is_alpha_char(c0)):
+    if not (c0 in "_" or Self._isAlphaChar(c0)):
       return False
     for i in range(1, n):
       c: char = self._data[i]
-      if not (c in "_" or Self._is_alnum_char(c)):
+      if not (c in "_" or Self._isAlnumChar(c)):
         return False
     return True
 
   @immutable
-  def isnumeric(self) -> bool:
-    return self.isdigit()
+  def isNumeric(self) -> bool:
+    return self.isDigit()
 
   @immutable
-  def isprintable(self) -> bool:
+  def isPrintable(self) -> bool:
     for i in range(len(self)):
-      if not Self._is_printable_char(self._data[i]):
+      if not Self._isPrintableChar(self._data[i]):
         return False
     return True
 
   @immutable
-  def istitle(self) -> bool:
+  def isTitle(self) -> bool:
     return self.title() == self
 
   @native
@@ -573,5 +570,5 @@ class str(StringMixin[char]):
     ...
 
   @native
-  def format_map(self, mapping) -> Self:
+  def formatMap(self, mapping) -> Self:
     ...

@@ -17,7 +17,7 @@ def scale(x: int @RangeVar(0, 100)) -> int @RangeVar(0, 200):
 
 
 class RangeVarIntTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
@@ -33,7 +33,7 @@ class RangeVarIntTests(TestCaseMixin):
 
 
 class RangeVarFloatTests(TestCaseMixin):
-  _test_tag = 2
+  _testTag = 2
 
   @override
   def test(self):
@@ -43,7 +43,7 @@ class RangeVarFloatTests(TestCaseMixin):
 
 
 class LenRangeVarStrTests(TestCaseMixin):
-  _test_tag = 3
+  _testTag = 3
 
   @override
   def test(self):
@@ -55,7 +55,7 @@ class LenRangeVarStrTests(TestCaseMixin):
 
 
 class RangeVarFuncParamTests(TestCaseMixin):
-  _test_tag = 4
+  _testTag = 4
 
   @override
   def test(self):
@@ -64,6 +64,6 @@ class RangeVarFuncParamTests(TestCaseMixin):
 
 def main() -> int:
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)

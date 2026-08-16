@@ -1,13 +1,13 @@
 """标准库 Python / C++ 类名字面量表。"""
 
 HOST_BOUND_ITERATOR_VIEW_EXCLUDE_PY: frozenset[str] = frozenset({
-  "str_iterator",
-  "str_reverse_iterator",
-  "tuple_iterator",
-  "stack_array_iterator",
-  "range_iterator",
-  "zip_iterator",
-  "enumerate_iterator",
+  "StrIterator",
+  "StrReverseIterator",
+  "TupleIterator",
+  "StackArrayIterator",
+  "RangeIterator",
+  "ZipIterator",
+  "EnumerateIterator",
 })
 
 HOST_BOUND_ITERATOR_VIEW_EXTRA_CPP: frozenset[str] = frozenset({

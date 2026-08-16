@@ -1,8 +1,8 @@
-# Codegen C++ 模板：七宏（`BEGIN` / `END` / `EVAL` / `EXEC` / `ECHO` / `INCLUDE` / `TYPE`）
+# Codegen C++ 模板：七宏（`BEGIN` / `END` / `EVAL` / `Exec` / `ECHO` / `INCLUDE` / `TYPE`）
 
 > **状态**：`templates/**` 为 `@native` 叶子真相源（`expand_py2cpp_template` / `stdlib_mirror_codegen` / inject paste）；旧 `src/codegen/*_cpp.py` **已删除**  
 > **受众**：维护 `templates/**`、`*_gen.py`、编写 `@native` 叶子 C++ 的开发者  
-> **关联**：[参考手册 §8 生成风格](./参考手册.md#85-protocol-与-sfin-约束)、[编码规范 §9.4 Native 原子化](./编码规范.md#94-native-原子化基础设施)、用户译器 `inline_range`（`src/passes/inline_range.py`）
+> **关联**：[参考手册 §8 生成风格](./参考手册.md#85-protocol-与-sfin-约束)、[编码规范 §9.4 Native 原子化](./编码规范.md#94-native-原子化基础设施)、用户译器 `inlineRange`（`src/passes/inlineRange.py`）
 
 **定案**：**7 个作者向宏**——`PY2CPP_BEGIN` / `PY2CPP_END` / `PY2CPP_EVAL` / `PY2CPP_EXEC` / `PY2CPP_ECHO` / `PY2CPP_INCLUDE` / `PY2CPP_TYPE`。另有 IDE 辅助宏（`IGNORE`、`INJECT_CLASS`、`BEGIN_SCOPE` 等）见 [§3.4](#34-宏对照表)。**整文件**模板的注释与 include guard 由 ``stdlib_mirror_codegen.finalize_codegen_file_text`` / ``expand_whole_file_template`` 在 Python 侧包壳，**不再**使用模板内宏。**不实现** `SET` / `STMT` / `SYM` / `MACRO` / `RAW` / `loop.*` / 草案 `EMIT`；见 [§14](#14-已弃用宏勿使用) 与 [§16](#16-七宏定案)。
 
@@ -29,7 +29,7 @@ Py2Cpp 标准库中大量 `@native` 实现写在仓库根 `templates/**`（`+*.i
 |------|------|
 | **clangd 不可解析** | f-string 里的 C++ 对 IDE 是字符串，无补全、无跳转、难发现括号/分号错误 |
 | **循环难写** | 重复 C++ 行常靠手写 `for _ in range(n): lines.append(f'…')`，与模板正文分离 |
-| **与译器语义分裂** | 用户侧 `for i in range(n)` 由译器/`inline_range` 展开；codegen 侧却另写一套 Python 循环 |
+| **与译器语义分裂** | 用户侧 `for i in range(n)` 由译器/`inlineRange` 展开；codegen 侧却另写一套 Python 循环 |
 
 本方案在 **codegen 预展开阶段** 引入与 CPython 等价的「转 Python 再执行」模型，使模板源文件接近真实 C++，同时 **循环**（`for` / `range`）与 **条件**（`if` / `elif` / `else`）与用户 Python 侧同一套 f-string / 编译期求值心智。
 
@@ -112,7 +112,7 @@ for i in range(10):
 | `PY2CPP_BEGIN( if … )` | 参数为 `if` 测试表达式或完整 `if cond:` 行（`ast.If`，`orelse` 为空） |
 | `PY2CPP_BEGIN( elif … )` | 须紧接 `if` / `elif` 链；参数为 `elif cond:`；与前一分支合并为同一 `if` 链 |
 | `PY2CPP_BEGIN( else )` | 须紧接 `if` / `elif` 链；参数为 `else` 或 `else:` |
-| `PY2CPP_BEGIN( def fn_Name(…) )` | 注册构建期 helper（不向 `generated/` 发射 C++）；helper 名 ``fn_`` + PascalCase；**形参** ``in_`` + PascalCase（如 ``in_Items``）；体内可嵌套 `BEGIN(for|if)`、`EXEC` |
+| `PY2CPP_BEGIN( def fn_Name(…) )` | 注册构建期 helper（不向 `generated/` 发射 C++）；helper 名 ``fn_`` + PascalCase；**形参** ``in_`` + PascalCase（如 ``in_Items``）；体内可嵌套 `BEGIN(for|if)`、`Exec` |
 | `PY2CPP_END` | 结束当前 `for` / `if` / `def` 分支体；亦配对 ``PY2CPP_IGNORE`` / ``PY2CPP_INJECT_CLASS`` 块尾 |
 | `PY2CPP_EVAL(expr)` | C++ 行内 **CPython 表达式**；构建期可求值的常量 → 与译器 `ir` 一致的 **C++ 字面量**（如 `"abc"` → `PyStr("abc")`）；其余 → f-string `{expr}` 或 C++ 标识符 |
 | `PY2CPP_EXEC(stmt)` | **独立一行** CPython 语句或已注册 `def` 调用；构建期 `exec` / `eval` 内联 |
@@ -123,7 +123,7 @@ for i in range(10):
 | `PY2CPP_INJECT_CLASS(CppClass)` | 仅 ``+<stem>.h``；块内 C++ 注入类体尾部 |
 | `PY2CPP_BEGIN_SCOPE` / `PY2CPP_END_SCOPE` | 按模板路径套 ``namespace py2cpp::…`` |
 | `PY2CPP_NAMESPACE` | 仅 clangd ``~macro/<rel>.h``；paste 段勿用 |
-| 块内无宏纯 C++ 行 | `BEGIN(for|if)` 体内经 f-string 包装；**不在** `BEGIN(def)` / `EXEC` 路径则保持原样 |
+| 块内无宏纯 C++ 行 | `BEGIN(for|if)` 体内经 f-string 包装；**不在** `BEGIN(def)` / `Exec` 路径则保持原样 |
 
 与手写 f-string 的对照（`test/sql/test_sqlite.py` 末尾草图）：
 
@@ -271,7 +271,7 @@ while ((i < n))
 }
 ```
 
-**边界求值**建议复用 `inline_range.py` 中 `_parse_inline_range_bound` / `_const_int_expr` 等思路，避免 codegen 与用户译器两套 `range` 语义。
+**边界求值**建议复用 `inlineRange.py` 中 `_parse_inline_range_bound` / `_const_int_expr` 等思路，避免 codegen 与用户译器两套 `range` 语义。
 
 ### 5.2 `if` / `elif` / `else`
 
@@ -297,7 +297,7 @@ else
 }
 ```
 
-**条件求值**建议复用 `static_reflect.py` 中 `_const_compare_result` / `fold_static_reflect_tree`（与 `inline_range` 内 `_simplify_const_ifs` 同源），在 codegen 侧判断「能否静态求值」；**禁止**为 codegen 单独发明比较语义。
+**条件求值**建议复用 `static_reflect.py` 中 `_const_compare_result` / `fold_static_reflect_tree`（与 `inlineRange` 内 `_simplify_const_ifs` 同源），在 codegen 侧判断「能否静态求值」；**禁止**为 codegen 单独发明比较语义。
 
 `ctx` 约定：
 
@@ -316,13 +316,13 @@ else
 
 ---
 
-## 6. 与 `inline_range` 的关系
+## 6. 与 `inlineRange` 的关系
 
-| | `inline_range`（用户 Python） | `PY2CPP_BEGIN/END`（codegen 模板） |
+| | `inlineRange`（用户 Python） | `PY2CPP_BEGIN/END`（codegen 模板） |
 |--|------------------------------|-------------------------------------|
 | 时机 | 译器 pass，用户模块 AST | bootstrap / 注入前，`templates/**` 模板 |
 | 循环语义 | CPython `for` + `range` | **同一套**：展开器生成的 Python 里的 `for` |
-| 条件语义 | 编译期 `if` 折叠（`inline_range` 等） | **同一套**：展开器生成的 `if` / `elif` / `else` + `exec` 或 C++ 回退 |
+| 条件语义 | 编译期 `if` 折叠（`inlineRange` 等） | **同一套**：展开器生成的 `if` / `elif` / `else` + `exec` 或 C++ 回退 |
 | 发射 | 译器 `visit_*` → C++ AST | `__py2cpp_echo` 收集字符串 → 粘贴进 `.inl` |
 | 失败 | 译期 `ValueError` | 模板解析/exec 失败 → 构建期异常 |
 
@@ -395,12 +395,12 @@ Py2Cpp/                              # 仓库根
       -environ.inl
     util/
       +memory.inl                   # paste_after → util/memory.inl
-      stack_array.h                        # mirror codegen
+      StackArray.h                        # mirror codegen
       tuple.h / tuple.inl                  # mirror codegen
     text/
       +bytes.inl                      # paste_after → text/bytes.inl
       +str.h                          # 类头 inject → text/str.h
-      +str.inl                        # paste_after → text/str.inl（format / % / from_buf 等）
+      +str.inl                        # paste_after → text/str.inl（format / % / fromBuf 等）
     sql/
       +sqlite.inl                     # paste_after → sql/sqlite.inl
     ui/
@@ -591,7 +591,7 @@ explicit PY2CPP_ECHO(ctx_Cls)(const PY2CPP_TYPE(PyStr)& msg) : PY2CPP_ECHO(ctx_B
 | ``~class_header/str_format_header.inl`` 等 | ``text/+str.h`` | 声明：`format`` / ``__mod__`` / ``PyArray&&`` 构造等 |
 | ``text/~str_format_runtime.inl`` | ``text/+str.inl`` | 实现：format 替换、``%``、标量构造 |
 | ``text/~str_array_by_value.inl`` | （同上合并） | ``PyStr(PyArray<PyChar>&&`` |
-| ``text/~str_span.inl`` | （同上合并） | ``from_buf`` |
+| ``text/~str_span.inl`` | （同上合并） | ``fromBuf`` |
 | ``~operators/scalar_format.inl`` | ``+operators.inl``（format 段） | 与 divmod/pow/repr 等合并于同一 ``+operators.inl`` |
 | ``io/~text_io_wrapper.inl`` | ``+io.inl`` | ``TextIOWrapper`` 等写入 ``io.inl`` 尾部 |
 | ``web/~socket_tcp.inl`` | ``web/+socket.inl`` | ``TcpSocket`` 写入 ``web/socket.inl`` 尾部 |
@@ -738,7 +738,7 @@ buf[1] = 2;
 
 | 层 | 路径 | 内容 |
 |----|------|------|
-| 译器单测 | `src/tests/test_expand_py2cpp_template.py` | `for`/`if` 链、`ECHO`/`EXEC`/`EVAL` 分工、`BEGIN(def)` |
+| 译器单测 | `src/tests/test_expand_py2cpp_template.py` | `for`/`if` 链、`ECHO`/`Exec`/`EVAL` 分工、`BEGIN(def)` |
 | 译期规范 | `src/tests/test_template_conventions.py` | bootstrap 全树 T* 规则（见 §11.1） |
 | 集成 | 试点 `templates/sql/sqlite.inl` → `generated/.../sql/sqlite.inl` + `build.bat sql/test_sqlite` | 展开后 SQLite 行为与改前一致 |
 
@@ -782,7 +782,7 @@ buf[1] = 2;
 1. ~~`expand_py2cpp_template.py` + 单测~~（已落地）
 2. ~~``~macro/<rel>.h`` + 模板目录 clangd 配置~~（已落地）
 3. ~~`templates/sql/+sqlite.inl` 等试点~~（`*_cpp.py` 已全部迁出）
-4. 运行时界 / 运行时条件回退 + 复用 `inline_range` / `static_reflect` 求值工具（按需继续加强）
+4. 运行时界 / 运行时条件回退 + 复用 `inlineRange` / `static_reflect` 求值工具（按需继续加强）
 5. 新叶子一律写 `templates/**`，勿再引入 `src/codegen/*_cpp.py`
 
 ---
@@ -790,7 +790,7 @@ buf[1] = 2;
 ## 13. 暂不实现
 
 - 在 **用户可见** Python 代码或 `py2cpp/` 标准库中使用 `PY2CPP_*`。
-- 用本方案替代译器内 `inline_range` pass。
+- 用本方案替代译器内 `inlineRange` pass。
 - 模板内嵌套任意 C++ 模板元编程（仅文本级展开 + C++11 输出）。
 - `match` / `while` / `try` 作为 `PY2CPP_BEGIN` 头（首版仅 `for` + `if` / `elif` / `else`）。
 
@@ -810,7 +810,7 @@ buf[1] = 2;
 | `PY2CPP_SET` | `PY2CPP_EXEC(x = …)` 或 `PY2CPP_EVAL(…)` |
 | `PY2CPP_SYM` | `PY2CPP_TYPE(…)` |
 | `$KEY$` / `$STR_PYSTR$` / `$INDEX_ERROR_THROW$` 等 | `PY2CPP_TYPE(…)` 或模板内全限定 C++；抛错写 `throw PY2CPP_TYPE(IndexError)();` |
-| `PY2CPP_MACRO` / `PY2CPP_CALL` | `BEGIN(def …)` + `EXEC(helper(…))` |
+| `PY2CPP_MACRO` / `PY2CPP_CALL` | `BEGIN(def …)` + `Exec(helper(…))` |
 | `PY2CPP_RAW` / `BEGIN(raw)` | 无宏纯 C++ 行；预生成大块用 `PY2CPP_ECHO(key)` |
 | `loop.index` / `loop.last` 等 | `EVAL(i + 1)`；`BEGIN(def)` 内 Python `for` |
 | `PY2CPP_EMIT`（草案） | 模板内 **直接写 C++**（与现行 `io/-file.inl`、`text/+str.inl` 一致） |
@@ -823,7 +823,7 @@ Jinja2 的 `extends` / `block` / `autoescape`、FILTER 链等 **不做**。片�
 
 ## 15. 具体示例（七宏 · 对照仓库现行模板）
 
-以下示例采用 [§16 七宏定案](#16-七宏定案)：**仅** `BEGIN` / `END`、`EVAL`、`EXEC`、`ECHO`、`INCLUDE`、`TYPE`。模板内 **直接写 C++**（`copy_to_span`、`__getitem__` 等），勿用已弃用的 `EMIT` / `STMT`（见 [§14](#14-已弃用宏勿使用)）。
+以下示例采用 [§16 七宏定案](#16-七宏定案)：**仅** `BEGIN` / `END`、`EVAL`、`Exec`、`ECHO`、`INCLUDE`、`TYPE`。模板内 **直接写 C++**（`copyToSpan`、`__getitem__` 等），勿用已弃用的 `EMIT` / `STMT`（见 [§14](#14-已弃用宏勿使用)）。
 
 每条说明三块：**模板源**（`templates/**`，clangd 可读）、**等价手写 Python**（`exec` 路径，展开器生成）、**展开后 C++**（`generated/runtime/py2cpp/**`）。
 
@@ -998,7 +998,7 @@ else
 
 ---
 
-### 15.5 末元素逗号 / `bind` 序号：`EVAL` 或 `BEGIN(def)` + `EXEC`
+### 15.5 末元素逗号 / `bind` 序号：`EVAL` 或 `BEGIN(def)` + `Exec`
 
 七宏**无** `loop.last` / `loop.index`。等价写法：
 
@@ -1037,7 +1037,7 @@ PY2CPP_BEGIN( for i in range(0, n) )
 PY2CPP_END
 ```
 
-**C. 复杂逗号/分支** → `BEGIN(def)` 注册 helper，`EXEC` 调用（见 §15.9 / §16.3）。
+**C. 复杂逗号/分支** → `BEGIN(def)` 注册 helper，`Exec` 调用（见 §15.9 / §16.3）。
 
 ---
 
@@ -1065,7 +1065,7 @@ throw PY2CPP_TYPE(IndexError)();
 
 ---
 
-### 15.7 `io/-file.inl`：`copy_to_span` 直接写 C++
+### 15.7 `io/-file.inl`：`copyToSpan` 直接写 C++
 
 现行 `templates/io/-file.inl` 在模板内 **直接写 C++**（勿用已弃用草案 `PY2CPP_EMIT`）：
 
@@ -1073,8 +1073,8 @@ throw PY2CPP_TYPE(IndexError)();
 void py_open(const PY2CPP_TYPE(PyStr)& path, const PY2CPP_TYPE(PyStr)& mode) {
   char pbuf[4096];
   char mbuf[16];
-  path.copy_to_span(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
-  mode.copy_to_span(PySpan<PyByte>((PyByte*)mbuf, (PyInt)sizeof(mbuf), 1));
+  path.copyToSpan(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
+  mode.copyToSpan(PySpan<PyByte>((PyByte*)mbuf, (PyInt)sizeof(mbuf), 1));
   FILE* fp = fopen(pbuf, mbuf);
   // …
 }
@@ -1222,16 +1222,16 @@ SQLITE_IMPL = render_sqlite_impl()
 | 运行时 `n` | 手写 `while ((i < n))` | `BEGIN(for i in range(0,n))` → 自动回退 |
 | 类型分派 | 手写 `if/else` 或 Python 生成 | `BEGIN(if/elif/else)` 链 |
 | 绑定序号 `i+1` | f-string `{i+1}` | `EVAL(i+1)` |
-| 末元素无逗号 | `if i != n-1: emit comma` | `EVAL("" if i == k-1 else ",")` 或 `BEGIN(def)` + `EXEC` |
+| 末元素无逗号 | `if i != n-1: emit comma` | `EVAL("" if i == k-1 else ",")` 或 `BEGIN(def)` + `Exec` |
 | 限定 C++ 类型名 | f-string 拼限定名 | `PY2CPP_TYPE(…)` |
-| 构建期常量 | `ctx` 或 Python 字面量 | `INCLUDE` + `EXEC(SQLITE_INTEGER = 1)` |
-| PyStr→缓冲 | f-string 嵌 helper | 模板内直接 `copy_to_span(PySpan<…>(…))` |
+| 构建期常量 | `ctx` 或 Python 字面量 | `INCLUDE` + `Exec(SQLITE_INTEGER = 1)` |
+| PyStr→缓冲 | f-string 嵌 helper | 模板内直接 `copyToSpan(PySpan<…>(…))` |
 | 预生成大块 | `*_gen.py` 拼串 | `PY2CPP_ECHO(key)` + `expand_template(ctx)` |
 | 无插值大段 | `kr_to_allman("""…""")` | **纯 C++ 行**（无任何 `PY2CPP_*`） |
-| 跨模块复用 | Python 拼 `_STATIC_HELPERS` | `INCLUDE` + `BEGIN(def)` + `EXEC` |
+| 跨模块复用 | Python 拼 `_STATIC_HELPERS` | `INCLUDE` + `BEGIN(def)` + `Exec` |
 | 抛错 | f-string `throw …` | `throw PY2CPP_TYPE(IndexError)();` |
 
-宏分工速查见 [§16.2 `EVAL` vs `ECHO` vs `EXEC`](#162-分工eval-vs-echo-vs-exec)。
+宏分工速查见 [§16.2 `EVAL` vs `ECHO` vs `Exec`](#162-分工eval-vs-echo-vs-exec)。
 
 ---
 
@@ -1250,24 +1250,24 @@ SQLITE_IMPL = render_sqlite_impl()
 | `PY2CPP_INCLUDE(path)` | 相对路径展开子模板；`~` 仅内联 |
 | `PY2CPP_TYPE(Name)` | 短名 → 限定 C++ 类型（``_type_registry``） |
 
-### 16.2 分工：`EVAL` vs `ECHO` vs `EXEC`
+### 16.2 分工：`EVAL` vs `ECHO` vs `Exec`
 
 | | `PY2CPP_EVAL` | `PY2CPP_ECHO` | `PY2CPP_EXEC` |
 |--|---------------|---------------|---------------|
 | 输入 | CPython **表达式**（字面量或 `BEGIN` 体内循环/算术） | CPython **表达式**（求值为待粘贴 C++ 文本） | CPython **语句** 或 `def` 调用 |
 | 机制 | 构建期常量 → `ir` 字面量；`BEGIN` 体内 → f-string | `eval(expr)` → `str` / `list[str]` 原样替换；registry 短名限定 | `exec` 命名空间执行 |
 | 典型位置 | `"msg"`、`42`；`BEGIN(for)` 内 `{i}`、`{macro}` | `ctx_PublicMethods`、`ctx_Base`、`ctx_TplArgs`；名称列表循环 ``var_Name`` + ``ECHO(var_Name)`` | 独立一行（常量赋值、`fn_BindIntList(…)`） |
-| 模板内 C++ API | 不适用——**直接写** `copy_to_span(…)`、`__getitem__(i)` | 不适用 | 不适用 |
+| 模板内 C++ API | 不适用——**直接写** `copyToSpan(…)`、`__getitem__(i)` | 不适用 | 不适用 |
 
-**记忆口诀**：**EVAL** 算；**ECHO** 贴；**EXEC** 跑；**叶子 C++** 无宏直写。
+**记忆口诀**：**EVAL** 算；**ECHO** 贴；**Exec** 跑；**叶子 C++** 无宏直写。
 
-### 16.3 复用：`BEGIN(def)` + `EXEC`
+### 16.3 复用：`BEGIN(def)` + `Exec`
 
-替代已弃用 `PY2CPP_MACRO` / `CALL`（§14）。`BEGIN(def fn_PascalName(in_…))` 注册构建期 helper：**helper 名** ``fn_`` + PascalCase；**形参** ``in_`` + PascalCase（如 ``fn_EmitLines(in_Items)``、``fn_EmitMsvcUndefMacros(in_Macros)``）。不向 `generated/` 发射 C++；`EXEC(fn_BindIntList(...))` 在构建期内联 helper 体。完整示例见 [§15.9](#159-py2cpp_include共享片段与-begindef)。
+替代已弃用 `PY2CPP_MACRO` / `CALL`（§14）。`BEGIN(def fn_PascalName(in_…))` 注册构建期 helper：**helper 名** ``fn_`` + PascalCase；**形参** ``in_`` + PascalCase（如 ``fn_EmitLines(in_Items)``、``fn_EmitMsvcUndefMacros(in_Macros)``）。不向 `generated/` 发射 C++；`Exec(fn_BindIntList(...))` 在构建期内联 helper 体。完整示例见 [§15.9](#159-py2cpp_include共享片段与-begindef)。
 
 ### 16.4 常量与类型
 
-`INCLUDE` + `EXEC(SQLITE_INTEGER = 1)` 集中常量；`PY2CPP_TYPE` 只映射类型名。抛错：`throw PY2CPP_TYPE(IndexError)();`。
+`INCLUDE` + `Exec(SQLITE_INTEGER = 1)` 集中常量；`PY2CPP_TYPE` 只映射类型名。抛错：`throw PY2CPP_TYPE(IndexError)();`。
 
 ### 16.5 `BEGIN` 支持的语句头
 
@@ -1275,13 +1275,13 @@ SQLITE_IMPL = render_sqlite_impl()
 
 ### 16.6 静态 C++ 大块
 
-无 `EVAL` / `EXEC` / `ECHO` / `BEGIN` 的行即为纯 C++。预生成大块：`PY2CPP_ECHO(key)`。
+无 `EVAL` / `Exec` / `ECHO` / `BEGIN` 的行即为纯 C++。预生成大块：`PY2CPP_ECHO(key)`。
 
 ### 16.7 展开流水线
 
 ```text
-INCLUDE 树 → 收集 BEGIN(def) → EXEC 注入命名空间
-  → 展开主模板（BEGIN + EVAL + EXEC）→ ECHO 插入 ctx 片段
+INCLUDE 树 → 收集 BEGIN(def) → Exec 注入命名空间
+  → 展开主模板（BEGIN + EVAL + Exec）→ ECHO 插入 ctx 片段
   → PY2CPP_TYPE → kr_to_allman → 写 generated/
 ```
 

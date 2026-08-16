@@ -4,7 +4,7 @@ from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 
 class ComplexLiteralTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
@@ -22,7 +22,7 @@ class ComplexLiteralTests(TestCaseMixin):
 
 
 class ComplexArithmeticTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
@@ -63,16 +63,16 @@ class ComplexArithmeticTests(TestCaseMixin):
     self.assertTrue(rpow.imag > 1.2 and rpow.imag < 1.35)
     tri: complex = 3 + 4j
     self.assertEqual(abs(tri), 5)
-    real_only: complex = 7 + 0j
-    self.assertEqual(abs(real_only), 7)
-    self.assertEqual(float(real_only), 7.0)
+    realOnly: complex = 7 + 0j
+    self.assertEqual(abs(realOnly), 7)
+    self.assertEqual(float(realOnly), 7.0)
     c128: complex[float64] = 3 + 4j
     self.assertEqual(abs(c128), 5)
-    self.assertEqual(int(real_only), 7)
+    self.assertEqual(int(realOnly), 7)
 
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)

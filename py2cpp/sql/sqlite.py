@@ -1,9 +1,9 @@
 from ..builtins import *
 from ..core.exceptions import Exception
-from .protocols import Connection, Cursor, Dialect
+from .protocols import ConnectionType, CursorType, DialectType
 # 翻译闭包拉取 FFI 声明 + glue（``templates/sql/+sqlite.inl`` 经 ``ffi::sqlite::sqlite3`` 调 C）
-from ffi.sqlite.sqlite3 import Pyi_sqlite3, Pyi_sqlite3_stmt
-from ffi.sqlite.sqlite3 import Pyi_sqlite3_open as _ffi_sqlite3_open
+from ffi.sqlite.sqlite3 import PyiSqlite3, PyiSqlite3Stmt
+from ffi.sqlite.sqlite3 import pyiSqlite3Open as _ffi_sqlite3_open
 
 
 class Error(Exception):
@@ -31,8 +31,8 @@ class SqliteDialect:
     return "?"
 
   @immutable
-  def column_sql(self, field_type: str) -> str:
-    match field_type:
+  def columnSql(self, fieldType: str) -> str:
+    match fieldType:
       case "int":
         return "INTEGER"
       case "bool":
@@ -49,42 +49,40 @@ class SqliteDialect:
         return "TEXT"
 
   @immutable
-  def last_insert_id_sql(self) -> str:
+  def lastInsertIdSql(self) -> str:
     return "SELECT last_insert_rowid()"
 
 
 @native
 @uncopyable
-@native_name("Py*")
 class SqliteCursor:
-  """``sqlite3.Cursor`` 子集；当前行由 C++ 侧 ``sqlite3_stmt`` 持有。"""
+  """``sqlite3.CursorType`` 子集；当前行由 C++ 侧 ``sqlite3_stmt`` 持有。"""
 
-  _stmt: Pointer[Pyi_sqlite3_stmt]
+  _stmt: Pointer[PyiSqlite3Stmt]
   _done: bool
 
-  def __init__(self, stmt: Pointer[Pyi_sqlite3_stmt]): ...
+  def __init__(self, stmt: Pointer[PyiSqlite3Stmt]): ...
 
   def __del__(self): ...
 
-  def fetchone(self) -> tuple[int] | None:
+  def fetchOne(self) -> tuple[int] | None:
     ...
 
-  def fetchall(self) -> list[tuple[int]]:
+  def fetchAll(self) -> list[tuple[int]]:
     ...
 
 
 @native
 @uncopyable
-@native_name("Py*")
 class SqliteConnection:
-  _db: Pointer[Pyi_sqlite3]
+  _db: Pointer[PyiSqlite3]
   _closed: bool
 
   def __init__(self): ...
 
   def __del__(self): ...
 
-  def _open_impl(self, path: str) -> None:
+  def _openImpl(self, path: str) -> None:
     ...
 
   @staticmethod
@@ -94,7 +92,7 @@ class SqliteConnection:
   def execute(self, sql: str, params: list[int]) -> SqliteCursor:
     ...
 
-  def executemany(self, sql: str, seq: list[list[int]]) -> None:
+  def executeMany(self, sql: str, seq: list[list[int]]) -> None:
     ...
 
   def commit(self) -> None:

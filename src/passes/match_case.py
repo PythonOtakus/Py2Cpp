@@ -165,13 +165,13 @@ def extract_field_annotation_meta(info: ClassInfo) -> None:
 
 def _fields_loop_call(node: ast.expr) -> tuple[str, str] | None:
     """``Self/Vec.iter_fields(…)`` / ``enum_fields(…)`` → ``(接收者名, 方法名)``。"""
-    if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name) and (node.func.attr in ('iter_fields', 'enum_fields')):
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name) and (node.func.attr in ('iter_fields', 'iterFields', 'enum_fields', 'enumFields')):
         return (node.func.value.id, node.func.attr)
     return None
 
 def _iter_fields_receiver(node: ast.expr) -> str | None:
     info = _fields_loop_call(node)
-    if info is not None and info[1] == 'iter_fields':
+    if info is not None and info[1] in ('iter_fields', 'iterFields'):
         return info[0]
     return None
 
@@ -198,7 +198,7 @@ def _parse_fields_loop_options(node: ast.expr):
     from .annotation_options import IterReflectOptions, parse_self_iter_call_options
     if _fields_loop_call(node) is None:
         return None
-    return parse_self_iter_call_options(node, allowed=frozenset({'public_only', 'mro', 'glob'}), label='iter_fields / enum_fields')
+    return parse_self_iter_call_options(node, allowed=frozenset({'public_only', 'publicOnly', 'mro', 'glob'}), label='iter_fields / enum_fields')
 
 def _parse_fields_loop_public_only(node: ast.expr) -> bool | None:
     """``*.iter_fields|enum_fields([public_only=…])`` → 是否仅公有字段。"""
@@ -379,7 +379,7 @@ def _parse_get_field_annotation_assign(stmt: ast.stmt) -> str | None:
     if not isinstance(tgt, ast.Name):
         return None
     val = stmt.value
-    if not (isinstance(val, ast.Call) and isinstance(val.func, ast.Attribute) and isinstance(val.func.value, ast.Name) and (val.func.value.id == 'Self') and (val.func.attr == 'get_field_annotation') and (len(val.args) == 1) and isinstance(val.args[0], ast.Name)):
+    if not (isinstance(val, ast.Call) and isinstance(val.func, ast.Attribute) and isinstance(val.func.value, ast.Name) and (val.func.value.id == 'Self') and (val.func.attr in ('get_field_annotation', 'getFieldAnnotation')) and (len(val.args) == 1) and isinstance(val.args[0], ast.Name)):
         return None
     return val.args[0].id
 
@@ -466,7 +466,7 @@ def parse_self_get_field_annotation_meta(node: ast.expr) -> tuple[str, ast.expr]
     func = node.func
     if not isinstance(func, ast.Subscript):
         return None
-    if not (isinstance(func.value, ast.Attribute) and isinstance(func.value.value, ast.Name) and (func.value.value.id == 'Self') and (func.value.attr == 'get_field_annotation')):
+    if not (isinstance(func.value, ast.Attribute) and isinstance(func.value.value, ast.Name) and (func.value.value.id == 'Self') and (func.value.attr in ('get_field_annotation', 'getFieldAnnotation'))):
         return None
     meta_name = _meta_name_from_subscript(func.slice)
     if meta_name is None or len(node.args) != 1:
@@ -869,7 +869,7 @@ def pattern_to_match(tr: Translator, pattern: ast.pattern, *, subject_cpp: str, 
     raise NotImplementedError(f'不支持的 match 模式: {ast.dump(pattern)}')
 
 def _needs_subject_temp(subject: ast.expr, subject_cpp: str) -> bool:
-    if subject_cpp in (cpp_ident('int'), cpp_ident('float'), cpp_ident('bool'), cpp_ident('str'), cpp_ident('char'), 'c_str'):
+    if subject_cpp in (cpp_ident('int'), cpp_ident('float'), cpp_ident('bool'), cpp_ident('str'), cpp_ident('char'), 'CStr'):
         return False
     return not isinstance(subject, ast.Name)
 _SWITCHABLE_SUBJECT_CPP = frozenset({cpp_ident('int'), cpp_ident('bool'), cpp_ident('char')})

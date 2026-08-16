@@ -5,11 +5,11 @@ class PyStr {
 PY2CPP_END
 
 char buf[64];
-this->copy_to_span(PySpan<PyByte>((PyByte*)buf, (PyInt)sizeof(buf), 1));
+this->copyToSpan(PySpan<PyByte>((PyByte*)buf, (PyInt)sizeof(buf), 1));
 double v = 0.0;
 if (sscanf(buf, "%lf", &v) != 1)
 {
-  throw PY2CPP_TYPE(ValueError)();
+  throw PY2CPP_TYPE(PyValueError)();
 }
 return (PyFloat)v;
 

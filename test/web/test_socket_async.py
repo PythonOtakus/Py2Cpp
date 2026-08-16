@@ -4,30 +4,30 @@ from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 from py2cpp.web.socket import AsyncTcpSocket
 
 
-_PORT: int = 18132
+_Port: int = 18132
 
 
-async def async_socket_server(listener: AsyncTcpSocket) -> None:
+async def asyncSocketServer(listener: AsyncTcpSocket) -> None:
   conn: AsyncTcpSocket = await listener.accept()
   buf: byte[:] = new(4)
   got: int = await conn.recv(buf, 4)
-  await conn.send_all(b"pong")
+  await conn.sendAll(b"pong")
   conn.close()
   listener.close()
 
 
-async def async_socket_roundtrip() -> str:
+async def asyncSocketRoundtrip() -> str:
   listener: AsyncTcpSocket = new()
-  listener.bind("127.0.0.1", _PORT)
+  listener.bind("127.0.0.1", _Port)
   listener.listen(16)
-  server_task: Task[None] = Task.create(async_socket_server(listener))
+  serverTask: Task[None] = Task.create(asyncSocketServer(listener))
   await Task.sleep(0)
   client: AsyncTcpSocket = new()
-  await client.connect("127.0.0.1", _PORT)
-  await client.send_all(b"ping")
+  await client.connect("127.0.0.1", _Port)
+  await client.sendAll(b"ping")
   buf: byte[:] = new(4)
   got: int = await client.recv(buf, 4)
-  await server_task
+  await serverTask
   client.close()
   if got != 4:
     return f"got-{got}"
@@ -36,16 +36,16 @@ async def async_socket_roundtrip() -> str:
 
 
 class AsyncSocketRoundtripTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
-    self.assertEqual(Task.run(async_socket_roundtrip()), "pong")
+    self.assertEqual(Task.run(asyncSocketRoundtrip()), "pong")
 
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

@@ -4,22 +4,22 @@ from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 
 class Limits:
-  MAX: int @const = 100
-  MIN: int @const = 0
+  Max: int @const = 100
+  Min: int @const = 0
 
 
 class ConstMemberTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
-    self.assertEqual(Limits.MAX, 100)
-    self.assertEqual(Limits.MIN, 0)
-    self.assertTrue(Limits.MAX > Limits.MIN)
+    self.assertEqual(Limits.Max, 100)
+    self.assertEqual(Limits.Min, 0)
+    self.assertTrue(Limits.Max > Limits.Min)
 
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)

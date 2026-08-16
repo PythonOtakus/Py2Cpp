@@ -4,7 +4,6 @@ from py2cpp import native_name, property, union, variant
 
 
 @union
-@native_name("Py*")
 class Optional[Value]:
   @variant
   class None_:

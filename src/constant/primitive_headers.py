@@ -11,5 +11,5 @@ PRIMITIVE_HEADER_MAP: dict[str, str] = {
   "PyBool": "py2cpp/py_types.h",
   "PyChar": "py2cpp/char.h",
   "PyByte": "py2cpp/byte.h",
-  "c_str": "py2cpp/c_str.h",
+  "CStr": "py2cpp/c_str.h",
 }

@@ -3,7 +3,7 @@ from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 
-def dispatch_list(cmd: list[int]) -> int:
+def dispatchList(cmd: list[int]) -> int:
   match cmd:
     case [0]:
       return 0
@@ -18,7 +18,7 @@ def dispatch_list(cmd: list[int]) -> int:
       return -1
 
 
-def dispatch_tuple_pair(p: (int, int)) -> int:
+def dispatchTuplePair(p: (int, int)) -> int:
   match p:
     case [0, y]:
       return y
@@ -30,7 +30,7 @@ def dispatch_tuple_pair(p: (int, int)) -> int:
       return -1
 
 
-def dispatch_tuple_star(t: (int, int, int)) -> int:
+def dispatchTupleStar(t: (int, int, int)) -> int:
   match t:
     case [a, *mid, c]:
       if len(mid) == 1:
@@ -40,7 +40,7 @@ def dispatch_tuple_star(t: (int, int, int)) -> int:
       return 0
 
 
-def dispatch_deque(d: deque[int]) -> int:
+def dispatchDeque(d: deque[int]) -> int:
   match d:
     case [a, *rest, b]:
       return a + b + len(rest)
@@ -48,14 +48,14 @@ def dispatch_deque(d: deque[int]) -> int:
       return -1
 
 
-def dispatch_char(c: char) -> int:
+def dispatchChar(c: char) -> int:
   match c:
     case "a" | "b":
       return 1
     case _:
       return 0
 
-def dispatch_str_tag(s: str) -> int:
+def dispatchStrTag(s: str) -> int:
   match s:
     case ["<", *body, ">"]:
       return len(body)
@@ -64,61 +64,61 @@ def dispatch_str_tag(s: str) -> int:
 
 
 class MatchListTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
     xs: list[int] = [1, 2, 3]
-    self.assertEqual(dispatch_list(xs), 5)
+    self.assertEqual(dispatchList(xs), 5)
     zero: list[int] = [0]
-    self.assertEqual(dispatch_list(zero), 0)
+    self.assertEqual(dispatchList(zero), 0)
     ys: list[int] = [2, 1, 2, 3]
-    self.assertEqual(dispatch_list(ys), 6)
+    self.assertEqual(dispatchList(ys), 6)
     bad: list[int] = [9]
-    self.assertEqual(dispatch_list(bad), -1)
+    self.assertEqual(dispatchList(bad), -1)
 
 
 class MatchTupleTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
-    self.assertEqual(dispatch_tuple_pair((0, 5)), 5)
-    self.assertEqual(dispatch_tuple_pair((3, 0)), 3)
-    self.assertEqual(dispatch_tuple_pair((2, 3)), 5)
-    self.assertEqual(dispatch_tuple_star((1, 2, 3)), 6)
+    self.assertEqual(dispatchTuplePair((0, 5)), 5)
+    self.assertEqual(dispatchTuplePair((3, 0)), 3)
+    self.assertEqual(dispatchTuplePair((2, 3)), 5)
+    self.assertEqual(dispatchTupleStar((1, 2, 3)), 6)
 
 
 class MatchDequeTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
     q: deque[int] = [1, 9, 2, 4]
-    self.assertEqual(dispatch_deque(q), 7)
+    self.assertEqual(dispatchDeque(q), 7)
 
 
 class MatchCharOrTests(TestCaseMixin):
-  _test_tag = 25
+  _testTag = 25
 
   @override
   def test(self):
-    self.assertEqual(dispatch_char("a"[0]), 1)
-    self.assertEqual(dispatch_char("b"[0]), 1)
-    self.assertEqual(dispatch_char("c"[0]), 0)
+    self.assertEqual(dispatchChar("a"[0]), 1)
+    self.assertEqual(dispatchChar("b"[0]), 1)
+    self.assertEqual(dispatchChar("c"[0]), 0)
 
 class MatchStrSequenceTests(TestCaseMixin):
-  _test_tag = 30
+  _testTag = 30
 
   @override
   def test(self):
-    self.assertEqual(dispatch_str_tag("<ab>"), 2)
-    self.assertEqual(dispatch_str_tag("x"), -1)
+    self.assertEqual(dispatchStrTag("<ab>"), 2)
+    self.assertEqual(dispatchStrTag("x"), -1)
 
 
 def main() -> int:
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

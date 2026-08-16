@@ -3,8 +3,8 @@
 用法概要
 --------
 1. 子类 ``TestCase``（``@refcount``），用 ``@override`` 实现虚函数 ``test()``。
-2. 继承 ``TestCaseMixin``（``@mixin``，已继承 ``TestCase``）；混入声明 ``_test_tag``，子类只需写 ``_test_tag = <编号>``。
-   混入内联 ``run``（``begin_test`` → ``test()`` → ``end_test``），名称用 ``Self.__name__``。
+2. 继承 ``TestCaseMixin``（``@mixin``，已继承 ``TestCase``）；混入声明 ``_testTag``，子类只需写 ``_testTag = <编号>``。
+   混入内联 ``run``（``beginTest`` → ``test()`` → ``endTest``），名称用 ``Self.__name__``。
 3. 亦可手写 ``@override`` 的 ``run``（会覆盖混入的 ``run``）。
 4. ``main()`` 中 ``return TextTestRunner().run(suite)``（0=成功）。
 
@@ -13,95 +13,95 @@
 from ..builtins import *
 from ..util.list import list
 from ..text import str
-from ..system.time import format_duration, perf_counter
+from ..system.time import formatDuration, perfCounter
 
-_BANNER_WIDTH: int = 70
+_BannerWidth: int = 70
 
 
 class TestResult:
   """聚合一次运行的统计（类似 ``unittest.TestResult``）。"""
 
   def __init__(self):
-    self.tests_run: int = 0
-    self.tests_failed: int = 0
-    self.assertions_failed: int = 0
-    self.failed_tags: list[int] = []
-    self.failed_names: list[str] = []
-    self.failed_deltas: list[int] = []
-    self._current_tag: int = 0
-    self._case_failures_before: int = 0
+    self.testsRun: int = 0
+    self.testsFailed: int = 0
+    self.assertionsFailed: int = 0
+    self.failedTags: list[int] = []
+    self.failedNames: list[str] = []
+    self.failedDeltas: list[int] = []
+    self._currentTag: int = 0
+    self._caseFailuresBefore: int = 0
     self.verbosity: int = 0
-    self.case_total: int = 0
-    self._current_name: str = "."
-    self._case_start: float64 = 0.0
-    self.case_elapsed: list[float64] = []
-    self.total_seconds: float64 = 0.0
+    self.caseTotal: int = 0
+    self._currentName: str = "."
+    self._caseStart: float64 = 0.0
+    self.caseElapsed: list[float64] = []
+    self.totalSeconds: float64 = 0.0
 
   @immutable
-  def format_elapsed(self, seconds: float64) -> str:
-    return format_duration(seconds)
+  def formatElapsed(self, seconds: float64) -> str:
+    return formatDuration(seconds)
 
   @immutable
   def wasSuccessful(self) -> bool:
-    return self.tests_failed == 0 and self.assertions_failed == 0
+    return self.testsFailed == 0 and self.assertionsFailed == 0
 
   def hline(self, ch: str) -> str:
-    """分隔线（``ch * _BANNER_WIDTH``），供 runner 与失败详情复用。"""
-    return ch * _BANNER_WIDTH
+    """分隔线（``ch * _BannerWidth``），供 runner 与失败详情复用。"""
+    return ch * _BannerWidth
 
-  def begin_test(self, tag: int, case_failures: int, name: str) -> None:
-    self.tests_run += 1
-    self._current_tag = tag
-    self._current_name = name
-    self._case_failures_before = case_failures
-    self._case_start = perf_counter()
+  def beginTest(self, tag: int, caseFailures: int, name: str) -> None:
+    self.testsRun += 1
+    self._currentTag = tag
+    self._currentName = name
+    self._caseFailuresBefore = caseFailures
+    self._caseStart = perfCounter()
 
-  def end_test(self, case_failures: int) -> None:
-    elapsed: float64 = perf_counter() - self._case_start
-    self.case_elapsed.append(elapsed)
-    elapsed_s: str = self.format_elapsed(elapsed)
-    delta: int = case_failures - self._case_failures_before
+  def endTest(self, caseFailures: int) -> None:
+    elapsed: float64 = perfCounter() - self._caseStart
+    self.caseElapsed.append(elapsed)
+    elapsedS: str = self.formatElapsed(elapsed)
+    delta: int = caseFailures - self._caseFailuresBefore
     if delta > 0:
-      self.tests_failed += 1
-      self.failed_tags.append(self._current_tag)
-      self.failed_names.append(self._current_name)
-      self.failed_deltas.append(delta)
-      self.assertions_failed += delta
+      self.testsFailed += 1
+      self.failedTags.append(self._currentTag)
+      self.failedNames.append(self._currentName)
+      self.failedDeltas.append(delta)
+      self.assertionsFailed += delta
     if self.verbosity >= 1:
-      prefix: str = self._progress_prefix()
+      prefix: str = self._progressPrefix()
       if delta > 0:
         print(
-          f"{prefix}  FAIL  {self._current_name}  "
-          f"(tag={self._current_tag}, assertions={delta}, {elapsed_s})",
+          f"{prefix}  FAIL  {self._currentName}  "
+          f"(tag={self._currentTag}, assertions={delta}, {elapsedS})",
           flush=True,
         )
       elif self.verbosity >= 2:
         print(
-          f"{prefix}  PASS  {self._current_name}  "
-          f"(tag={self._current_tag}, {elapsed_s})",
+          f"{prefix}  PASS  {self._currentName}  "
+          f"(tag={self._currentTag}, {elapsedS})",
           flush=True,
         )
       else:
-        print(f"{prefix}  PASS  {self._current_name}  ({elapsed_s})", flush=True)
+        print(f"{prefix}  PASS  {self._currentName}  ({elapsedS})", flush=True)
 
-  def print_failed_details(self) -> None:
-    n_fail: int = len(self.failed_tags)
-    if n_fail == 0:
+  def printFailedDetails(self) -> None:
+    nFail: int = len(self.failedTags)
+    if nFail == 0:
       return
     print(self.hline("="))
     print("  failures")
     print(self.hline("="))
-    for i in range(n_fail):
+    for i in range(nFail):
       idx: int = i + 1
       print(
-        f"  #{idx}  tag={self.failed_tags[i]}  {self.failed_names[i]}  "
-        f"(assertions={self.failed_deltas[i]})"
+        f"  #{idx}  tag={self.failedTags[i]}  {self.failedNames[i]}  "
+        f"(assertions={self.failedDeltas[i]})"
       )
 
-  def _progress_prefix(self) -> str:
-    if self.case_total > 0:
-      return f"[{self.tests_run:3d}/{self.case_total:3d}]"
-    return f"[{self.tests_run:3d}]"
+  def _progressPrefix(self) -> str:
+    if self.caseTotal > 0:
+      return f"[{self.testsRun:3d}/{self.caseTotal:3d}]"
+    return f"[{self.testsRun:3d}]"
 
 
 @refcount
@@ -127,12 +127,12 @@ class TestCase:
     """子类覆盖：具体断言写在此方法中。"""
     pass
 
-  def begin_test(self, result: TestResult, tag: int, name: str) -> None:
+  def beginTest(self, result: TestResult, tag: int, name: str) -> None:
     self.setUp()
-    result.begin_test(tag, self.failures, name)
+    result.beginTest(tag, self.failures, name)
 
-  def end_test(self, result: TestResult) -> None:
-    result.end_test(self.failures)
+  def endTest(self, result: TestResult) -> None:
+    result.endTest(self.failures)
     self.tearDown()
 
   def assertEqual(self, first, second) -> None:
@@ -192,13 +192,13 @@ class TestCase:
 class TestCaseMixin(TestCase):
   """混入类：内联 ``run``；宿主仅写 ``class Foo(TestCaseMixin)`` 即继承 ``TestCase``。"""
 
-  _test_tag: int @const = 0
+  _testTag: int @const = 0
 
   @override
   def run(self, result: TestResult) -> None:
-    self.begin_test(result, self._test_tag, Self.__name__)
+    self.beginTest(result, self._testTag, Self.__name__)
     self.test()
-    self.end_test(result)
+    self.endTest(result)
 
 
 class TestSuite:
@@ -211,8 +211,8 @@ class TestSuite:
     self._cases.append(case)
 
   def run(self, result: TestResult) -> None:
-    for test_case in self._cases:
-      test_case.run(result)
+    for testCase in self._cases:
+      testCase.run(result)
 
   @immutable
   def countTestCases(self) -> int:
@@ -229,40 +229,40 @@ class TextTestRunner:
     result: TestResult = new()
     result.verbosity = self.verbosity
     total: int = suite.countTestCases()
-    result.case_total = total
+    result.caseTotal = total
     if self.verbosity > 0:
       print(result.hline("="))
       print("  py2cpp unittest")
       print(f"  cases: {total}")
       print(result.hline("="))
       print("")
-    suite_start: float64 = perf_counter()
+    suiteStart: float64 = perfCounter()
     suite.run(result)
-    result.total_seconds = perf_counter() - suite_start
+    result.totalSeconds = perfCounter() - suiteStart
     if self.verbosity > 0:
-      passed: int = result.tests_run - result.tests_failed
+      passed: int = result.testsRun - result.testsFailed
       print("")
       print(result.hline("-"))
       print("  summary")
       print(result.hline("-"))
-      print(f"  ran:               {result.tests_run}")
+      print(f"  ran:               {result.testsRun}")
       print(f"  passed:            {passed}")
-      print(f"  failed cases:      {result.tests_failed}")
-      print(f"  failed assertions: {result.assertions_failed}")
-      print(f"  time:              {result.format_elapsed(result.total_seconds)}")
+      print(f"  failed cases:      {result.testsFailed}")
+      print(f"  failed assertions: {result.assertionsFailed}")
+      print(f"  time:              {result.formatElapsed(result.totalSeconds)}")
       if not result.wasSuccessful():
         print("")
-        result.print_failed_details()
+        result.printFailedDetails()
       print("")
       print(result.hline("="))
       if result.wasSuccessful():
-        print(f"  OK ({result.tests_run} tests)")
+        print(f"  Ok ({result.testsRun} tests)")
       else:
         print(
-          f"  FAILED ({result.tests_failed} case(s), "
-          f"{result.assertions_failed} assertion(s))"
+          f"  FAILED ({result.testsFailed} case(s), "
+          f"{result.assertionsFailed} assertion(s))"
         )
       print(result.hline("="))
     if not result.wasSuccessful():
-      return result.tests_failed
+      return result.testsFailed
     return 0

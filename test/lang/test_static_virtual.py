@@ -4,14 +4,14 @@ from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 
 @protocol
-class IParsable:
+class IParsableType:
   @staticmethod
   @abstract
   def parse(s: str) -> Self: ...
 
 
 @protocol
-class INamed:
+class INamedType:
   @staticmethod
   @virtual
   def tag() -> str:
@@ -47,28 +47,28 @@ class Labeled:
     return "labeled"
 
 
-def try_parse[T: IParsable](s: str) -> T:
+def tryParse[T: IParsableType](s: str) -> T:
   return T.parse(s)
 
 
-def read_tag[T: INamed]() -> str:
+def readTag[T: INamedType]() -> str:
   return T.tag()
 
 
 class StaticVirtualTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
-    w: Widget = try_parse[Widget]("42")
+    w: Widget = tryParse[Widget]("42")
     self.assertEqual(w.value, 42)
-    lb: Labeled = try_parse[Labeled]("hello")
+    lb: Labeled = tryParse[Labeled]("hello")
     self.assertEqual(lb.label, "hello")
-    self.assertEqual(read_tag[Labeled](), "labeled")
+    self.assertEqual(readTag[Labeled](), "labeled")
 
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)

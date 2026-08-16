@@ -6,7 +6,7 @@ from py2cpp.alg.dsu import DSU
 
 
 class DsuBasicTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
@@ -23,7 +23,7 @@ class DsuBasicTests(TestCaseMixin):
 
 
 class DsuFindTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
@@ -35,7 +35,7 @@ class DsuFindTests(TestCaseMixin):
 
 
 class DsuContainsTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
@@ -47,7 +47,7 @@ class DsuContainsTests(TestCaseMixin):
 
 
 class DsuLenBoolTests(TestCaseMixin):
-  _test_tag = 30
+  _testTag = 30
 
   @override
   def test(self):

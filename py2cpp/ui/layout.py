@@ -23,27 +23,27 @@ class UIFormLayout:
     ...
 
   @native
-  def add_checkbox(self, label: str, widget: UICheckBox @ref) -> None:
+  def addCheckbox(self, label: str, widget: UICheckBox @ref) -> None:
     ...
 
   @native
-  def add_line_edit(self, label: str, widget: UILineEdit @ref) -> None:
+  def addLineEdit(self, label: str, widget: UILineEdit @ref) -> None:
     ...
 
   @native
-  def add_int_edit(self, label: str, widget: UIIntEdit @ref) -> None:
+  def addIntEdit(self, label: str, widget: UIIntEdit @ref) -> None:
     ...
 
   @native
-  def add_float_edit(self, label: str, widget: UIFloatEdit @ref) -> None:
+  def addFloatEdit(self, label: str, widget: UIFloatEdit @ref) -> None:
     ...
 
   @native
-  def add_slider(self, label: str, widget: UISlider @ref) -> None:
+  def addSlider(self, label: str, widget: UISlider @ref) -> None:
     ...
 
   @native
-  def add_button(self, widget: UIPushButton @ref) -> None:
+  def addButton(self, widget: UIPushButton @ref) -> None:
     ...
 
   @native
@@ -52,67 +52,67 @@ class UIFormLayout:
     ...
 
   @native
-  def sync_from_native(self, win: UIWindow @ref) -> None:
+  def syncFromNative(self, win: UIWindow @ref) -> None:
     """自 Win32 读入各 ``UIWidget`` 字段。"""
     ...
 
   @native
-  def row_count(self) -> int:
+  def rowCount(self) -> int:
     ...
 
   @native
-  def row_bool(self, index: int) -> bool:
+  def rowBool(self, index: int) -> bool:
     ...
 
   @native
-  def row_str(self, index: int) -> str:
+  def rowStr(self, index: int) -> str:
     ...
 
   @native
-  def row_int(self, index: int) -> int:
+  def rowInt(self, index: int) -> int:
     ...
 
   @native
-  def row_float(self, index: int) -> float64:
+  def rowFloat(self, index: int) -> float64:
     ...
 
   @native
-  def set_row_bool(self, index: int, value: bool) -> None:
+  def setRowBool(self, index: int, value: bool) -> None:
     ...
 
   @native
-  def set_row_str(self, index: int, value: str) -> None:
+  def setRowStr(self, index: int, value: str) -> None:
     ...
 
   @native
-  def set_row_int(self, index: int, value: int) -> None:
+  def setRowInt(self, index: int, value: int) -> None:
     ...
 
   @native
-  def set_row_float(self, index: int, value: float64) -> None:
+  def setRowFloat(self, index: int, value: float64) -> None:
     ...
 
   @native
-  def push_row_bool(self, index: int, value: bool) -> None:
+  def pushRowBool(self, index: int, value: bool) -> None:
     """写对应 checkbox ``checked__set``（触发 postsetter → Win32）。"""
     ...
 
   @native
-  def push_row_str(self, index: int, value: str) -> None:
+  def pushRowStr(self, index: int, value: str) -> None:
     """写对应 line edit ``text__set``。"""
     ...
 
   @native
-  def push_row_int(self, index: int, value: int) -> None:
+  def pushRowInt(self, index: int, value: int) -> None:
     """写对应 int edit / slider ``value__set``。"""
     ...
 
   @native
-  def push_row_float(self, index: int, value: float64) -> None:
+  def pushRowFloat(self, index: int, value: float64) -> None:
     """写对应 float edit ``value__set``。"""
     ...
 
   @native
-  def sync_to_native(self, win: UIWindow @ref) -> None:
+  def syncToNative(self, win: UIWindow @ref) -> None:
     """将各 ``UIWidget`` 字段写回 Win32。"""
     ...

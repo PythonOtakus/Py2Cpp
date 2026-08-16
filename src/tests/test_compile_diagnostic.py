@@ -17,26 +17,26 @@ class CompileDiagnosticTests(unittest.TestCase):
     self.assertEqual(COMPILE_DIAG_PREFIX, "编译期")
 
   def test_type_param_protocol_message(self):
-    msg = compile_diag_type_param_protocol("K", "DictKey")
+    msg = compile_diag_type_param_protocol("K", "DictKeyType")
     self.assertTrue(msg.startswith("编译期:"))
     self.assertIn("类型参数 K", msg)
-    self.assertIn("@protocol DictKey", msg)
+    self.assertIn("@protocol DictKeyType", msg)
 
   def test_protocol_verify_message(self):
-    msg = compile_diag_protocol_unsatisfied("Comparable")
+    msg = compile_diag_protocol_unsatisfied("ComparableType")
     self.assertIn("类型 T 不满足", msg)
-    self.assertIn("@protocol Comparable", msg)
+    self.assertIn("@protocol ComparableType", msg)
 
   def test_descriptor_protocol_message(self):
-    msg = compile_diag_descriptor_protocol("PyInt", "Comparable")
+    msg = compile_diag_descriptor_protocol("PyInt", "ComparableType")
     self.assertIn("描述符值类型 PyInt", msg)
-    self.assertIn("@protocol Comparable", msg)
+    self.assertIn("@protocol ComparableType", msg)
 
   def test_type_param_protocol_message_with_location(self):
     from src.emit.compile_diagnostic_emit import compile_diag_location_prefix
 
     loc = compile_diag_location_prefix("test/foo.py", 12)
-    msg = compile_diag_type_param_protocol("K", "DictKey", loc_prefix=loc)
+    msg = compile_diag_type_param_protocol("K", "DictKeyType", loc_prefix=loc)
     self.assertTrue(msg.startswith("test/foo.py:12:"))
     self.assertIn("编译期:", msg)
 

@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from ..analysis.ir import format_cpp_int, quote_cpp_string
 from ..analysis.module_namespace import qualify_symbol_in_module
-from ..constant.stdlib_layout import EXCEPTIONS_NS
+from ..constant.stdlib_layout import cpp_exception_type, EXCEPTIONS_NS
 from ..emit.enum_emit import _emit_enum_str_body
 from ..analysis.patterns import property_getter_method_for
 
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 
 def _exc_base_cpp() -> str:
-  return f"{EXCEPTIONS_NS}::Exception"
+  return cpp_exception_type()
 
 
 def _qual_union_mro_base_cpp(tr: Translator, info: ClassInfo) -> str:

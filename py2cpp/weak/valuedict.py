@@ -1,17 +1,17 @@
 """弱值字典：键强持有、值 ``WeakRef``（对齐 ``weakref.WeakValueDictionary`` 子集）。"""
 from ..builtins import *
 from ..core.exceptions import KeyError
-from ..util.protocols import DictKey
+from ..util.protocols import DictKeyType
 from .ref import WeakRef
 
 
 @copyable
-class WeakValueDict[K: DictKey, V: refcount]:
+class WeakValueDict[Key: DictKeyType, Value: refcount]:
   """值无外部强引用时条目自动移除（访问时惰性清理）。"""
 
-  _keys: list[K] = []
+  _keys: list[Key] = []
 
-  _values: list[WeakRef[V]] = []
+  _values: list[WeakRef[Value]] = []
 
   def __del__(self):
     self.clear()
@@ -24,7 +24,7 @@ class WeakValueDict[K: DictKey, V: refcount]:
     self._compact()
     return len(self._keys) > 0
 
-  def __contains__(self, key: K) -> bool:
+  def __contains__(self, key: Key) -> bool:
     self._compact()
     for i in range(len(self._keys)):
       if self._keys[i] == key:
@@ -32,7 +32,7 @@ class WeakValueDict[K: DictKey, V: refcount]:
           return True
     return False
 
-  def __getitem__(self, key: K) -> V:
+  def __getitem__(self, key: Key) -> Value:
     self._compact()
     for i in range(len(self._keys)):
       if self._keys[i] == key:
@@ -40,16 +40,16 @@ class WeakValueDict[K: DictKey, V: refcount]:
           return self._values[i].value
     raise KeyError("key not found")
 
-  def __setitem__(self, key: K, value: V) -> None:
+  def __setitem__(self, key: Key, value: Value) -> None:
     self._compact()
     for i in range(len(self._keys)):
       if self._keys[i] == key:
         self._values[i] = new(value)
         return
     self._keys.append(key)
-    self._values.append(WeakRef[V](value))
+    self._values.append(WeakRef[Value](value))
 
-  def __delitem__(self, key: K) -> None:
+  def __delitem__(self, key: Key) -> None:
     self._compact()
     for i in range(len(self._keys)):
       if self._keys[i] == key:
@@ -74,52 +74,52 @@ class WeakValueDict[K: DictKey, V: refcount]:
         )
     return "WeakValueDict({" + ", ".join(parts) + "})"
 
-  def get(self, key: K, default: V) -> V:
+  def get(self, key: Key, default: Value) -> Value:
     if key in self:
       return self[key]
     return default
 
-  def setdefault(self, key: K, default: V) -> V:
+  def setDefault(self, key: Key, default: Value) -> Value:
     if key in self:
       return self[key]
     self[key] = default
     return default
 
-  def pop(self, key: K) -> V:
+  def pop(self, key: Key) -> Value:
     if key not in self:
       raise KeyError("pop")
-    val: V = self[key]
+    val: Value = self[key]
     del self[key]
     return val
 
-  def popitem(self) -> (K, V):
+  def popItem(self) -> (Key, Value):
     self._compact()
     if not self._keys:
-      raise KeyError("popitem(): dictionary is empty")
-    key: K = self._keys.pop()
-    wr: WeakRef[V] = self._values.pop()
-    val: V = wr.value
+      raise KeyError("popItem(): dictionary is empty")
+    key: Key = self._keys.pop()
+    wr: WeakRef[Value] = self._values.pop()
+    val: Value = wr.value
     return (key, val)
 
-  def keys(self) -> list[K]:
+  def keys(self) -> list[Key]:
     self._compact()
-    out: list[K] = []
+    out: list[Key] = []
     for i in range(len(self._keys)):
       if self._values[i].alive:
         out.append(self._keys[i])
     return out
 
-  def values(self) -> list[V]:
+  def values(self) -> list[Value]:
     self._compact()
-    out: list[V] = []
+    out: list[Value] = []
     for i in range(len(self._keys)):
       if self._values[i].alive:
         out.append(self._values[i].value)
     return out
 
-  def items(self) -> list[tuple[K, V]]:
+  def items(self) -> list[tuple[Key, Value]]:
     self._compact()
-    out: list[tuple[K, V]] = []
+    out: list[tuple[Key, Value]] = []
     for i in range(len(self._keys)):
       if self._values[i].alive:
         out.append((self._keys[i], self._values[i].value))
@@ -134,21 +134,21 @@ class WeakValueDict[K: DictKey, V: refcount]:
     self._keys.clear()
     self._values.clear()
 
-  def valuerefs(self) -> list[WeakRef[V]]:
+  def valuerefs(self) -> list[WeakRef[Value]]:
     self._compact()
-    out: list[WeakRef[V]] = []
+    out: list[WeakRef[Value]] = []
     for i in range(len(self._values)):
       if self._values[i].alive:
         out.append(self._values[i])
     return out
 
   def _compact(self) -> None:
-    out_k: list[K] = []
-    out_v: list[WeakRef[V]] = []
+    outK: list[Key] = []
+    outV: list[WeakRef[Value]] = []
     for i in range(len(self._keys)):
-      w: WeakRef[V] = self._values[i]
+      w: WeakRef[Value] = self._values[i]
       if w.alive:
-        out_k.append(self._keys[i])
-        out_v.append(w)
-    self._keys = out_k
-    self._values = out_v
+        outK.append(self._keys[i])
+        outV.append(w)
+    self._keys = outK
+    self._values = outV

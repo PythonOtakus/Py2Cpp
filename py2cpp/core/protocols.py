@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from ..builtins import *
-from ..util.protocols import Iterator
+from ..util.protocols import IteratorType
 from .iter_result import IterResult
 
 
@@ -22,10 +22,10 @@ class Self:
 
 
 @protocol
-class Generator[YieldType, SendType, ReturnType]:
-  """``typing.Generator`` 子集：``__iter__`` / ``__next__`` / ``send``（PEP 342）。
+class GeneratorType[YieldType, SendType, ReturnType]:
+  """``typing.GeneratorType`` 子集：``__iter__`` / ``__next__`` / ``send``（PEP 342）。
 
-  生成器函数 ``def f() -> Generator[Y, S, R]: yield ...`` 由 ``generators`` pass 译为 ``*_generator`` 类；
+  生成器函数 ``def f() -> GeneratorType[Y, S, R]: yield ...`` 由 ``generators`` pass 译为 ``*_generator`` 类；
   本协议仅作类型约束与 SFINAE，不生成 C++ 类。
   """
 
@@ -37,8 +37,8 @@ class Generator[YieldType, SendType, ReturnType]:
 
 
 @protocol
-class Coroutine[YieldType, SendType, ReturnType]:
-  """``typing.Coroutine`` 子集（PEP 492 / 3.13）：``__await__`` + ``__next__`` / ``send``。
+class CoroutineType[YieldType, SendType, ReturnType]:
+  """``typing.CoroutineType`` 子集（PEP 492 / 3.13）：``__await__`` + ``__next__`` / ``send``。
 
   纯 ``async def``（无 ``yield``）译为 ``*_coroutine``；``await`` 脱糖为 ``yield from x.__await__()``。
   """
@@ -53,10 +53,10 @@ class Coroutine[YieldType, SendType, ReturnType]:
 
 
 @protocol
-class AsyncGenerator[YieldType, SendType]:
-  """``typing.AsyncGenerator`` 子集（PEP 525 / 3.13）：``__aiter__`` / ``__anext__`` / ``asend``。
+class AsyncGeneratorType[YieldType, SendType]:
+  """``typing.AsyncGeneratorType`` 子集（PEP 525 / 3.13）：``__aiter__`` / ``__anext__`` / ``asend``。
 
-  ``async def`` 含 ``yield`` 仍译为 ``*_coroutine``；推荐 ``-> AsyncGenerator[Y,S]`` 作返回注解。
+  ``async def`` 含 ``yield`` 仍译为 ``*_coroutine``；推荐 ``-> AsyncGeneratorType[Y,S]`` 作返回注解。
   """
 
   def __aiter__(self) -> Self: ...
@@ -67,51 +67,51 @@ class AsyncGenerator[YieldType, SendType]:
 
 
 @protocol
-class Awaitable[T]:
+class AwaitableType[Element]:
   """可被 ``await`` 的对象：``__await__`` 返回迭代器（协程 / 生成器等）。"""
 
-  def __await__(self) -> Iterator[T]: ...
+  def __await__(self) -> IteratorType[Element]: ...
 
 
 @protocol
-class AsyncIterable[T]:
-  """``collections.abc.AsyncIterable``：``__aiter__``。"""
+class AsyncIterableType[Element]:
+  """``collections.abc.AsyncIterableType``：``__aiter__``。"""
 
-  def __aiter__(self) -> AsyncIterator[T]: ...
+  def __aiter__(self) -> AsyncIteratorType[Element]: ...
 
 
 @protocol
-class AsyncIterator[T]:
-  """``collections.abc.AsyncIterator``：``__anext__`` → ``IterResult[T, ...]``（同 ``Iterator`` / ``__next__``）。"""
+class AsyncIteratorType[Element]:
+  """``collections.abc.AsyncIteratorType``：``__anext__`` → ``IterResult[T, ...]``（同 ``IteratorType`` / ``__next__``）。"""
 
   def __aiter__(self) -> Self: ...
 
-  def __anext__(self) -> IterResult[T, None]: ...
+  def __anext__(self) -> IterResult[Element, None]: ...
 
 
 @protocol
-class ContextManager[T]:
+class ContextManagerType[Element]:
   """同步上下文管理器（``collections.abc`` 子集）：``with`` 展开为 ``__enter__`` / ``__exit__``。
 
   ``__exit__`` 无异常三元组（与生成 C++ 一致，见 ``test/misc/test_io.py``）。
   """
 
-  def __enter__(self) -> T: ...
+  def __enter__(self) -> Element: ...
 
   def __exit__(self): ...
 
 
 @protocol
-class AsyncContextManager[T]:
+class AsyncContextManagerType[Element]:
   """异步上下文管理器：``__aenter__`` / ``__aexit__``（``async with`` 脱糖为 ``yield from``）。"""
 
-  def __aenter__(self) -> Awaitable[T]: ...
+  def __aenter__(self) -> AwaitableType[Element]: ...
 
-  def __aexit__(self) -> Awaitable[None]: ...
+  def __aexit__(self) -> AwaitableType[None]: ...
 
 
 @protocol
-class StringFormat:
+class StringFormatType:
   """``str %`` 仅 ``::__mod__(fmt, PyTuple<...>)``；单值须 ``makeTuple``，不探测 ``PyStr % int``。"""
 
   def __mod__(self, other: tuple) -> str: ...

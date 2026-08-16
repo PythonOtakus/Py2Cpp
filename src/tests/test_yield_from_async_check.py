@@ -24,10 +24,10 @@ class YieldFromAsyncCheckTests(unittest.TestCase):
     with self.assertRaises(TranslationError) as ctx:
       _check_body(
         """
-async def inner() -> AsyncGenerator[int, None]:
+async def inner() -> AsyncGeneratorType[int, None]:
   yield 1
 
-async def outer() -> AsyncGenerator[int, None]:
+async def outer() -> AsyncGeneratorType[int, None]:
   yield from inner()
 """,
       )
@@ -48,7 +48,7 @@ async def bar() -> int:
   def test_allows_yield_from_in_nested_sync_def(self) -> None:
     _check_body(
       """
-async def outer() -> AsyncGenerator[int, None]:
+async def outer() -> AsyncGeneratorType[int, None]:
   def inner():
     xs: list[int] = [1, 2]
     yield from xs

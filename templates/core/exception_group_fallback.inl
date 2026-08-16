@@ -7,8 +7,8 @@ namespace py2cpp {
 namespace core {
 namespace exceptions {
 
-using ExcKind = ExceptionGroup::ExcKind;
-using ExcSlot = ExceptionGroup::ExcSlot;
+using ExcKind = PyExceptionGroup::ExcKind;
+using PyExcTypeUnion = PyExceptionGroup::PyExcTypeUnion;
 
 bool exc_kind_is_instance(ExcKind slot, ExcKind match)
 {
@@ -16,130 +16,130 @@ bool exc_kind_is_instance(ExcKind slot, ExcKind match)
   {
     return true;
   }
-  if (match == ExcKind::ValueError)
+  if (match == ExcKind::PyValueError)
   {
-    return slot == ExcKind::StatisticsError
-        || slot == ExcKind::LinAlgError;
+    return slot == ExcKind::PyStatisticsError
+        || slot == ExcKind::PyLinAlgError;
   }
-  if (match == ExcKind::OSError)
+  if (match == ExcKind::PyOSError)
   {
-    return slot == ExcKind::FileNotFoundError
-        || slot == ExcKind::FileExistsError;
+    return slot == ExcKind::PyFileNotFoundError
+        || slot == ExcKind::PyFileExistsError;
   }
   return false;
 }
 
 namespace {
 
-ExcSlot make_slot(const StopIteration& e)
+PyExcTypeUnion make_slot(const PyStopIteration& e)
 {
-  ExcSlot s;
-  s.kind = ExcKind::StopIteration;
+  PyExcTypeUnion s;
+  s.kind = ExcKind::PyStopIteration;
   s.stop_iteration = e;
   return s;
 }
 
-ExcSlot make_slot(const TypeError& e)
+PyExcTypeUnion make_slot(const PyTypeError& e)
 {
-  ExcSlot s;
-  s.kind = ExcKind::TypeError;
+  PyExcTypeUnion s;
+  s.kind = ExcKind::PyTypeError;
   s.type_error = e;
   return s;
 }
 
-ExcSlot make_slot(const KeyError& e)
+PyExcTypeUnion make_slot(const PyKeyError& e)
 {
-  ExcSlot s;
-  s.kind = ExcKind::KeyError;
+  PyExcTypeUnion s;
+  s.kind = ExcKind::PyKeyError;
   s.key_error = e;
   return s;
 }
 
-ExcSlot make_slot(const IndexError& e)
+PyExcTypeUnion make_slot(const PyIndexError& e)
 {
-  ExcSlot s;
-  s.kind = ExcKind::IndexError;
+  PyExcTypeUnion s;
+  s.kind = ExcKind::PyIndexError;
   s.index_error = e;
   return s;
 }
 
-ExcSlot make_slot(const ValueError& e)
+PyExcTypeUnion make_slot(const PyValueError& e)
 {
-  ExcSlot s;
-  s.kind = ExcKind::ValueError;
+  PyExcTypeUnion s;
+  s.kind = ExcKind::PyValueError;
   s.value_error = e;
   return s;
 }
 
-ExcSlot make_slot(const StatisticsError& e)
+PyExcTypeUnion make_slot(const PyStatisticsError& e)
 {
-  ExcSlot s;
-  s.kind = ExcKind::StatisticsError;
+  PyExcTypeUnion s;
+  s.kind = ExcKind::PyStatisticsError;
   s.statistics_error = e;
   return s;
 }
 
-ExcSlot make_slot(const LinAlgError& e)
+PyExcTypeUnion make_slot(const PyLinAlgError& e)
 {
-  ExcSlot s;
-  s.kind = ExcKind::LinAlgError;
+  PyExcTypeUnion s;
+  s.kind = ExcKind::PyLinAlgError;
   s.linalg_error = e;
   return s;
 }
 
-ExcSlot make_slot(const RuntimeError& e)
+PyExcTypeUnion make_slot(const PyRuntimeError& e)
 {
-  ExcSlot s;
-  s.kind = ExcKind::RuntimeError;
+  PyExcTypeUnion s;
+  s.kind = ExcKind::PyRuntimeError;
   s.runtime_error = e;
   return s;
 }
 
-ExcSlot make_slot(const OSError& e)
+PyExcTypeUnion make_slot(const PyOSError& e)
 {
-  ExcSlot s;
-  s.kind = ExcKind::OSError;
+  PyExcTypeUnion s;
+  s.kind = ExcKind::PyOSError;
   s.os_error = e;
   return s;
 }
 
-ExcSlot make_slot(const FileNotFoundError& e)
+PyExcTypeUnion make_slot(const PyFileNotFoundError& e)
 {
-  ExcSlot s;
-  s.kind = ExcKind::FileNotFoundError;
+  PyExcTypeUnion s;
+  s.kind = ExcKind::PyFileNotFoundError;
   s.file_not_found_error = e;
   return s;
 }
 
-ExcSlot make_slot(const FileExistsError& e)
+PyExcTypeUnion make_slot(const PyFileExistsError& e)
 {
-  ExcSlot s;
-  s.kind = ExcKind::FileExistsError;
+  PyExcTypeUnion s;
+  s.kind = ExcKind::PyFileExistsError;
   s.file_exists_error = e;
   return s;
 }
 
-ExcSlot make_slot(const AssertionError& e)
+PyExcTypeUnion make_slot(const PyAssertionError& e)
 {
-  ExcSlot s;
-  s.kind = ExcKind::AssertionError;
+  PyExcTypeUnion s;
+  s.kind = ExcKind::PyAssertionError;
   s.assertion_error = e;
   return s;
 }
 
 } // namespace
 
-void ExceptionGroup::split_for_except_star(
+void PyExceptionGroup::split_for_except_star(
     const ExcKind* kinds,
     PyInt kind_count,
-    ExceptionGroup& matched,
-    ExceptionGroup& rest) const
+    PyExceptionGroup& matched,
+    PyExceptionGroup& rest) const
 {
   matched.clear();
   rest.clear();
   for (PyInt i = 0; i < slots_len_; ++i)
   {
-    const ExcSlot& slot = slots_[i];
+    const PyExcTypeUnion& slot = slots_[i];
     bool hit = false;
     for (PyInt k = 0; k < kind_count; ++k)
     {
@@ -162,17 +162,17 @@ void ExceptionGroup::split_for_except_star(
   }
 }
 
-PyInt ExceptionGroup::__len__() const
+PyInt PyExceptionGroup::__len__() const
 {
   return slots_len_;
 }
 
-void ExceptionGroup::clear()
+void PyExceptionGroup::clear()
 {
   slots_len_ = 0;
 }
 
-void ExceptionGroup::push_slot_impl(const ExcSlot& slot)
+void PyExceptionGroup::push_slot_impl(const PyExcTypeUnion& slot)
 {
   if (slots_len_ < kMaxSlots)
   {
@@ -181,7 +181,7 @@ void ExceptionGroup::push_slot_impl(const ExcSlot& slot)
   }
 }
 
-void ExceptionGroup::copy_from(ExceptionGroup other)
+void PyExceptionGroup::copyFrom(PyExceptionGroup other)
 {
   slots_len_ = other.slots_len_;
   for (PyInt i = 0; i < other.slots_len_; ++i)
@@ -190,82 +190,82 @@ void ExceptionGroup::copy_from(ExceptionGroup other)
   }
 }
 
-void ExceptionGroup::append(const StopIteration& e)
+void PyExceptionGroup::append(const PyStopIteration& e)
 {
   push_slot_impl(make_slot(e));
 }
 
-void ExceptionGroup::append(const TypeError& e)
+void PyExceptionGroup::append(const PyTypeError& e)
 {
   push_slot_impl(make_slot(e));
 }
 
-void ExceptionGroup::append(const KeyError& e)
+void PyExceptionGroup::append(const PyKeyError& e)
 {
   push_slot_impl(make_slot(e));
 }
 
-void ExceptionGroup::append(const IndexError& e)
+void PyExceptionGroup::append(const PyIndexError& e)
 {
   push_slot_impl(make_slot(e));
 }
 
-void ExceptionGroup::append(const ValueError& e)
+void PyExceptionGroup::append(const PyValueError& e)
 {
   push_slot_impl(make_slot(e));
 }
 
-void ExceptionGroup::append(const StatisticsError& e)
+void PyExceptionGroup::append(const PyStatisticsError& e)
 {
   push_slot_impl(make_slot(e));
 }
 
-void ExceptionGroup::append(const LinAlgError& e)
+void PyExceptionGroup::append(const PyLinAlgError& e)
 {
   push_slot_impl(make_slot(e));
 }
 
-void ExceptionGroup::append(const RuntimeError& e)
+void PyExceptionGroup::append(const PyRuntimeError& e)
 {
   push_slot_impl(make_slot(e));
 }
 
-void ExceptionGroup::append(const OSError& e)
+void PyExceptionGroup::append(const PyOSError& e)
 {
   push_slot_impl(make_slot(e));
 }
 
-void ExceptionGroup::append(const FileNotFoundError& e)
+void PyExceptionGroup::append(const PyFileNotFoundError& e)
 {
   push_slot_impl(make_slot(e));
 }
 
-void ExceptionGroup::append(const FileExistsError& e)
+void PyExceptionGroup::append(const PyFileExistsError& e)
 {
   push_slot_impl(make_slot(e));
 }
 
-void ExceptionGroup::append(const AssertionError& e)
+void PyExceptionGroup::append(const PyAssertionError& e)
 {
   push_slot_impl(make_slot(e));
 }
 
-PyBool ExceptionGroup::__bool__() const
+PyBool PyExceptionGroup::__bool__() const
 {
   return slots_len_ > 0;
 }
 
 void exception_group_split_except_star(
-    const ExceptionGroup& src,
+    const PyExceptionGroup& src,
     const ExcKind* kinds,
     PyInt kind_count,
-    ExceptionGroup& matched,
-    ExceptionGroup& rest)
+    PyExceptionGroup& matched,
+    PyExceptionGroup& rest)
 {
   src.split_for_except_star(kinds, kind_count, matched, rest);
 }
 
-void throw_exception_group_propagate(const ExceptionGroup& g)
+void throw_exception_group_propagate(const PyExceptionGroup& g)
 {
   if (!static_cast<PyBool>(g))
   {
@@ -274,86 +274,86 @@ void throw_exception_group_propagate(const ExceptionGroup& g)
   throw g;
 }
 
-ExceptionGroup exception_group_from_single(const StopIteration& e)
+PyExceptionGroup exception_group_from_single(const PyStopIteration& e)
 {
-  ExceptionGroup g;
+  PyExceptionGroup g;
   g.append(e);
   return g;
 }
 
-ExceptionGroup exception_group_from_single(const TypeError& e)
+PyExceptionGroup exception_group_from_single(const PyTypeError& e)
 {
-  ExceptionGroup g;
+  PyExceptionGroup g;
   g.append(e);
   return g;
 }
 
-ExceptionGroup exception_group_from_single(const KeyError& e)
+PyExceptionGroup exception_group_from_single(const PyKeyError& e)
 {
-  ExceptionGroup g;
+  PyExceptionGroup g;
   g.append(e);
   return g;
 }
 
-ExceptionGroup exception_group_from_single(const IndexError& e)
+PyExceptionGroup exception_group_from_single(const PyIndexError& e)
 {
-  ExceptionGroup g;
+  PyExceptionGroup g;
   g.append(e);
   return g;
 }
 
-ExceptionGroup exception_group_from_single(const ValueError& e)
+PyExceptionGroup exception_group_from_single(const PyValueError& e)
 {
-  ExceptionGroup g;
+  PyExceptionGroup g;
   g.append(e);
   return g;
 }
 
-ExceptionGroup exception_group_from_single(const StatisticsError& e)
+PyExceptionGroup exception_group_from_single(const PyStatisticsError& e)
 {
-  ExceptionGroup g;
+  PyExceptionGroup g;
   g.append(e);
   return g;
 }
 
-ExceptionGroup exception_group_from_single(const LinAlgError& e)
+PyExceptionGroup exception_group_from_single(const PyLinAlgError& e)
 {
-  ExceptionGroup g;
+  PyExceptionGroup g;
   g.append(e);
   return g;
 }
 
-ExceptionGroup exception_group_from_single(const RuntimeError& e)
+PyExceptionGroup exception_group_from_single(const PyRuntimeError& e)
 {
-  ExceptionGroup g;
+  PyExceptionGroup g;
   g.append(e);
   return g;
 }
 
-ExceptionGroup exception_group_from_single(const OSError& e)
+PyExceptionGroup exception_group_from_single(const PyOSError& e)
 {
-  ExceptionGroup g;
+  PyExceptionGroup g;
   g.append(e);
   return g;
 }
 
-ExceptionGroup exception_group_from_single(const FileNotFoundError& e)
+PyExceptionGroup exception_group_from_single(const PyFileNotFoundError& e)
 {
-  ExceptionGroup g;
+  PyExceptionGroup g;
   g.append(e);
   return g;
 }
 
-ExceptionGroup exception_group_from_single(const FileExistsError& e)
+PyExceptionGroup exception_group_from_single(const PyFileExistsError& e)
 {
-  ExceptionGroup g;
+  PyExceptionGroup g;
   g.append(e);
   return g;
 }
 
-ExceptionGroup exception_group_from_single(const AssertionError& e)
+PyExceptionGroup exception_group_from_single(const PyAssertionError& e)
 {
-  ExceptionGroup g;
+  PyExceptionGroup g;
   g.append(e);
   return g;
 }

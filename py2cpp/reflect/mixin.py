@@ -5,11 +5,11 @@
 
 翻译期辅助（由 ``passes/`` 展开，**非** CPython 运行时语义）：
 
-- ``Self.iter_fields()`` / ``Self.iter_fields[Ann]()`` / ``enum_fields(public_only=…)`` / ``get_field_annotation(...)`` / ``get_field_annotations(...)``（``glob=`` 粗筛字段名）
-- ``VarStack`` + ``s: VarStack = new()`` + ``s.push(…)`` / ``s.pop()`` / ``s.top()`` + ``new(*s)`` / ``fn(*s)`` / ``(*s,)``（译期展开为 ``__vs_{name}N``；``pop`` 不回收编号，``*s`` 仅含逻辑栈剩余项；``top()`` 可读栈顶且可跨内层作用域；声明与 ``push``/``pop``/``*s`` 须同块作用域，``Self.iter_fields`` / ``enum_fields`` 循环体除外）
-- ``Self.iter_methods()`` / ``Self.iter_methods[Ann]()`` / ``get_method_annotation[AnnMeta](method)``（``glob=`` 粗筛方法名）
-- ``Self.get_field_annotation[AnnMeta](field)`` → 字段上该 ``@`` 标记（无则 ``None``）；``.text`` / ``.lo`` 等译期折叠
-- ``Mixin.iter_subclasses()`` / ``iter_subclasses(sort_const="_test_tag")`` → 入口 ``main`` 内 ``suite.addTest(Host())``（``expand_test_discovery``）
+- ``Self.iterFields()`` / ``Self.iterFields[Ann]()`` / ``enumFields(publicOnly=…)`` / ``getFieldAnnotation(...)`` / ``getFieldAnnotations(...)``（``glob=`` 粗筛字段名）
+- ``VarStack`` + ``s: VarStack = new()`` + ``s.push(…)`` / ``s.pop()`` / ``s.top()`` + ``new(*s)`` / ``fn(*s)`` / ``(*s,)``（译期展开为 ``__vs_{name}N``；``pop`` 不回收编号，``*s`` 仅含逻辑栈剩余项；``top()`` 可读栈顶且可跨内层作用域；声明与 ``push``/``pop``/``*s`` 须同块作用域，``Self.iterFields`` / ``enumFields`` 循环体除外）
+- ``Self.iterMethods()`` / ``Self.iterMethods[Ann]()`` / ``getMethodAnnotation[AnnMeta](method)``（``glob=`` 粗筛方法名）
+- ``Self.getFieldAnnotation[AnnMeta](field)`` → 字段上该 ``@`` 标记（无则 ``None``）；``.text`` / ``.lo`` 等译期折叠
+- ``Mixin.iterSubclasses()`` / ``iterSubclasses(sortConst="_testTag")`` → 入口 ``main`` 内 ``suite.addTest(Host())``（``expand_test_discovery``）
 """
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ __all__ = (
 from src.constant.mixin import MIXIN_METHODS_NOT_INLINED  # noqa: E402
 
 
-def _discover_annotated_fields(cls: type, annotation_name: str) -> list[str]:
+def _discoverAnnotatedFields(cls: type, annotationName: str) -> list[str]:
   try:
     src = inspect.getsource(cls.__init__)
     tree = ast.parse(src)
@@ -51,38 +51,38 @@ def _discover_annotated_fields(cls: type, annotation_name: str) -> list[str]:
       rname = right.id
     elif isinstance(right, ast.Call) and isinstance(right.func, ast.Name):
       rname = right.func.id
-    if rname == annotation_name:
+    if rname == annotationName:
       fields.append(node.target.attr)
   return fields
 
 
-def _discover_module_hosts(
-  mixin_cls: type,
+def _discoverModuleHosts(
+  mixinCls: type,
   *,
-  require_method: str | None = None,
+  requireMethod: str | None = None,
 ) -> list[type]:
   """CPython 下扫描定义本混入的模块内直接子类（仅供 IDE/调试；译器用 AST）。"""
-  mod = inspect.getmodule(mixin_cls)
+  mod = inspect.getmodule(mixinCls)
   if mod is None:
     return []
   out: list[type] = []
   for obj in vars(mod).values():
-    if not isinstance(obj, type) or obj is mixin_cls:
+    if not isinstance(obj, type) or obj is mixinCls:
       continue
-    if not issubclass(obj, mixin_cls):
+    if not issubclass(obj, mixinCls):
       continue
-    if require_method is not None and require_method not in obj.__dict__:
+    if requireMethod is not None and requireMethod not in obj.__dict__:
       continue
     out.append(obj)
   return out
 
 
 def mixin(cls):
-  """类装饰器：混入类不生成 C++；``Self.iter_fields[…]`` 等在翻译期内联。"""
+  """类装饰器：混入类不生成 C++；``Self.iterFields[…]`` 等在翻译期内联。"""
 
   @classmethod
-  def iter_fields(cls, *, public_only: bool = False, mro: bool = False, glob: str | None = None):
-    """翻译期：全部字段（声明序）；``Self.iter_fields[Ann]()`` 按 ``@Ann`` 过滤；``glob=`` 粗筛字段名。"""
+  def iterFields(cls, *, publicOnly: bool = False, mro: bool = False, glob: str | None = None):
+    """翻译期：全部字段（声明序）；``Self.iterFields[Ann]()`` 按 ``@Ann`` 过滤；``glob=`` 粗筛字段名。"""
     try:
       src = inspect.getsource(cls.__init__)
       tree = ast.parse(src)
@@ -93,17 +93,17 @@ def mixin(cls):
       if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Attribute):
         if isinstance(node.target.value, ast.Name) and node.target.value.id == "self":
           name = node.target.attr
-          if public_only and name.startswith("_"):
+          if publicOnly and name.startsWith("_"):
             continue
           yield name
 
   @classmethod
-  def enum_fields(cls, *, public_only: bool = False, mro: bool = False):
-    for idx, field in enumerate(cls.iter_fields(public_only=public_only, mro=mro)):
+  def enumFields(cls, *, publicOnly: bool = False, mro: bool = False):
+    for idx, field in enumerate(cls.iterFields(publicOnly=publicOnly, mro=mro)):
       yield idx, field
 
   @classmethod
-  def get_field_annotation(cls, field: str):
+  def getFieldAnnotation(cls, field: str):
     try:
       src = inspect.getsource(cls.__init__)
       tree = ast.parse(src)
@@ -124,50 +124,50 @@ def mixin(cls):
     return None
 
   @classmethod
-  def get_field_annotations(cls, field: str):
-    """翻译期：字段 ``T @A @B`` 上各 ``@`` 标记（自外向内）；``for ann in Self.get_field_annotations(field):`` 由译器展开。"""
+  def getFieldAnnotations(cls, field: str):
+    """翻译期：字段 ``T @A @B`` 上各 ``@`` 标记（自外向内）；``for ann in Self.getFieldAnnotations(field):`` 由译器展开。"""
     return []
 
   @classmethod
-  def iter_methods(cls, *, public_only: bool = False, mro: bool = False, glob: str | None = None):
-    """翻译期：类体内方法名（声明序）；``Self.iter_methods[Ann]()`` 按 ``@Ann`` 过滤；``glob=`` 粗筛方法名。"""
+  def iterMethods(cls, *, publicOnly: bool = False, mro: bool = False, glob: str | None = None):
+    """翻译期：类体内方法名（声明序）；``Self.iterMethods[Ann]()`` 按 ``@Ann`` 过滤；``glob=`` 粗筛方法名。"""
     return []
 
   @classmethod
-  def get_method_annotation(cls, method: str):
+  def getMethodAnnotation(cls, method: str):
     """翻译期：方法 ``@Ann`` 标记（无则 ``None``）。"""
     return None
 
   @classmethod
-  def iter_method_params(cls, method: str):
-    """翻译期：方法形参名（跳过 ``self``）；``for p in Self.iter_method_params(m):`` 由译器展开。"""
+  def iterMethodParams(cls, method: str):
+    """翻译期：方法形参名（跳过 ``self``）；``for p in Self.iterMethodParams(m):`` 由译器展开。"""
     return []
 
   @classmethod
-  def get_method_param_type(cls, method: str, param: str):
-    """翻译期：形参基础类型；可写 ``Self.get_method_param_type(m, p) is int``。"""
+  def getMethodParamType(cls, method: str, param: str):
+    """翻译期：形参基础类型；可写 ``Self.getMethodParamType(m, p) is int``。"""
     pass
 
   @classmethod
-  def get_method_return_type(cls, method: str):
+  def getMethodReturnType(cls, method: str):
     """翻译期：返回基础类型；无返回注解或 ``-> None`` 时为 ``None``。"""
     return None
 
   @classmethod
-  def iter_subclasses(
+  def iterSubclasses(
     cls,
     *,
-    sort_const: str | None = None,
-    require_method: str = "test",
+    sortConst: str | None = None,
+    requireMethod: str = "test",
   ):
     """翻译期展开：入口模块内 ``class Host(cls)`` 子类。
 
-    默认按**声明顺序**；``sort_const`` 非空时按同名 ``static const`` 字段**升序**
-    （同键保持声明顺序）。``sort_const`` 须与宿主字段名一致（如 ``"_test_tag"``）。
+    默认按**声明顺序**；``sortConst`` 非空时按同名 ``static const`` 字段**升序**
+    （同键保持声明顺序）。``sortConst`` 须与宿主字段名一致（如 ``"_testTag"``）。
 
     典型用法（``unittest``）::
 
-      for Case in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+      for Case in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
         suite.addTest(Case())
 
     译器在 ``main()`` 中展开为 ``suite.addTest(makeRefCount<Host>())``；勿在本混入类上生成 C++ 实现。
@@ -175,14 +175,14 @@ def mixin(cls):
     """
     return []
 
-  cls.iter_fields = iter_fields
-  cls.enum_fields = enum_fields
-  cls.get_field_annotation = get_field_annotation
-  cls.get_field_annotations = get_field_annotations
-  cls.iter_methods = iter_methods
-  cls.get_method_annotation = get_method_annotation
-  cls.iter_method_params = iter_method_params
-  cls.get_method_param_type = get_method_param_type
-  cls.get_method_return_type = get_method_return_type
-  cls.iter_subclasses = iter_subclasses
+  cls.iterFields = iterFields
+  cls.enumFields = enumFields
+  cls.getFieldAnnotation = getFieldAnnotation
+  cls.getFieldAnnotations = getFieldAnnotations
+  cls.iterMethods = iterMethods
+  cls.getMethodAnnotation = getMethodAnnotation
+  cls.iterMethodParams = iterMethodParams
+  cls.getMethodParamType = getMethodParamType
+  cls.getMethodReturnType = getMethodReturnType
+  cls.iterSubclasses = iterSubclasses
   return cls

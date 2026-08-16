@@ -7,16 +7,14 @@ from ..core.exceptions import IndexError
 from .span import span, span2d, span3d
 
 
-@native_name("PyStackArrayIterator")
-class stack_array_iterator[Element, Length: int, Offset: int]:
+class StackArrayIterator[Element, Length: int, Offset: int]:
   """C++：``PyStackArrayIterator``；``for x in buf`` 优先索引 ``for`` 内联。"""
 
   pass
 
 
 @native
-@native_name("PyStackArray")
-class stack_array[Element, Length: int, Offset: int]:
+class StackArray[Element, Length: int, Offset: int]:
   """栈上 ``Length`` 个元素；``__getitem__(k)`` 为 ``Offset<=k<Offset+Length``（``Element[:N]`` 时 ``Offset=0``）。"""
 
   @immutable
@@ -44,10 +42,10 @@ class stack_array[Element, Length: int, Offset: int]:
     raise IndexError
 
   @immutable
-  def unsafe_get(self, index: int) -> Element:
+  def unsafeGet(self, index: int) -> Element:
     raise IndexError
 
-  def unsafe_set(self, index: int, value: Element) -> None:
+  def unsafeSet(self, index: int, value: Element) -> None:
     raise IndexError
 
   @property
@@ -57,7 +55,7 @@ class stack_array[Element, Length: int, Offset: int]:
 
 
 @native_name("PyStackArray2D")
-class stack_array2d[Element, Rows: int, Cols: int, RowOff: int, ColOff: int]:
+class StackArray2d[Element, Rows: int, Cols: int, RowOff: int, ColOff: int]:
   """栈上 ``Rows×Cols`` 行主序矩阵；``Element[:R, :C]`` / ``Element[r0:r1, c0:c1]``。"""
 
   @immutable
@@ -76,10 +74,10 @@ class stack_array2d[Element, Rows: int, Cols: int, RowOff: int, ColOff: int]:
     raise IndexError
 
   @immutable
-  def unsafe_get(self, row: int, col: int) -> Element:
+  def unsafeGet(self, row: int, col: int) -> Element:
     raise IndexError
 
-  def unsafe_set(self, row: int, col: int, value: Element) -> None:
+  def unsafeSet(self, row: int, col: int, value: Element) -> None:
     raise IndexError
 
   @property
@@ -89,7 +87,7 @@ class stack_array2d[Element, Rows: int, Cols: int, RowOff: int, ColOff: int]:
 
 
 @native_name("PyStackArray3D")
-class stack_array3d[Element, D0: int, D1: int, D2: int, O0: int, O1: int, O2: int]:
+class StackArray3d[Element, Dim0: int, Dim1: int, Dim2: int, Off0: int, Off1: int, Off2: int]:
   """栈上 ``D0×D1×D2`` 行主序块；``Element[:D0, :D1, :D2]`` / 子块注解。"""
 
   @immutable
@@ -108,10 +106,10 @@ class stack_array3d[Element, D0: int, D1: int, D2: int, O0: int, O1: int, O2: in
     raise IndexError
 
   @immutable
-  def unsafe_get(self, i: int, j: int, k: int) -> Element:
+  def unsafeGet(self, i: int, j: int, k: int) -> Element:
     raise IndexError
 
-  def unsafe_set(self, i: int, j: int, k: int, value: Element) -> None:
+  def unsafeSet(self, i: int, j: int, k: int, value: Element) -> None:
     raise IndexError
 
   @property

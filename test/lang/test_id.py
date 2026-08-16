@@ -8,27 +8,27 @@ class Widget:
     self.tag: int = tag
 
 
-def same_slot(w: Widget) -> bool:
+def sameSlot(w: Widget) -> bool:
   return id(w) == id(w)
 
 
-def copy_diff_addr(src: Widget) -> bool:
+def copyDiffAddr(src: Widget) -> bool:
   other: Widget = src
   return id(src) != id(other)
 
 
 class IdTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
     w: Widget = new(Widget(1))
-    self.assertTrue(same_slot(w))
-    self.assertTrue(copy_diff_addr(w))
+    self.assertTrue(sameSlot(w))
+    self.assertTrue(copyDiffAddr(w))
 
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)

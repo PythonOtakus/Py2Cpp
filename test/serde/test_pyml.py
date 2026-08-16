@@ -10,7 +10,7 @@ from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 
 class PymlVariablesAndExpressionsTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
@@ -28,7 +28,7 @@ class PymlVariablesAndExpressionsTests(TestCaseMixin):
       count: = $count
       title: = f"{$asset_root}/{$name}.png"
       = f"build_{$scale}": = $count % 5
-    """.striplines()
+    """.stripLines()
     expanded: str = ""
     failed: bool = False
     try:
@@ -45,7 +45,7 @@ class PymlVariablesAndExpressionsTests(TestCaseMixin):
         count: 14
         title: "assets/ui/button_primary.png"
         build_2: 4
-      """.striplines() + "\n",
+      """.stripLines() + "\n",
     )
 
     decoded: dict[str, dict[str, int]] = Pyml.loads[dict[str, dict[str, int]]](
@@ -53,15 +53,15 @@ class PymlVariablesAndExpressionsTests(TestCaseMixin):
         $scale: 2
         window:
           width: = 160 * $scale
-      """.striplines(),
+      """.stripLines(),
     )
     self.assertEqual(decoded["window"]["width"], 320)
 
-    indented_template: str = """
+    indentedTemplate: str = """
     $value: 4
     item: = $value * 2
-    """.striplines()
-    self.assertEqual(Pyml.expand(indented_template), "item: 8\n")
+    """.stripLines()
+    self.assertEqual(Pyml.expand(indentedTemplate), "item: 8\n")
 
     collections: str = Pyml.expand(
       """
@@ -75,7 +75,7 @@ class PymlVariablesAndExpressionsTests(TestCaseMixin):
           = $name: = $size
       plugins:
         @expand $plugins
-      """.striplines(),
+      """.stripLines(),
     )
     self.assertEqual(
       collections,
@@ -86,7 +86,7 @@ class PymlVariablesAndExpressionsTests(TestCaseMixin):
       plugins:
         - core
         - input
-      """.striplines() + "\n",
+      """.stripLines() + "\n",
     )
 
     paths: str = Pyml.expand(
@@ -107,7 +107,7 @@ class PymlVariablesAndExpressionsTests(TestCaseMixin):
       color: = $state.ui.buttons[0].colors.primary
       tag: = $state.ui.buttons[0].tags[0]
       id: = $state.ui.buttons[0].id
-      """.striplines(),
+      """.stripLines(),
     )
     self.assertEqual(
       paths,
@@ -118,12 +118,12 @@ class PymlVariablesAndExpressionsTests(TestCaseMixin):
       color: "green"
       tag: "primary"
       id: 8
-      """.striplines() + "\n",
+      """.stripLines() + "\n",
     )
 
 
 class PymlControlFlowTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
@@ -134,7 +134,7 @@ class PymlControlFlowTests(TestCaseMixin):
         - selected
       @for $i in range(1, 4):
         - = $i * 2
-    """.striplines()
+    """.stripLines()
     expanded: str = Pyml.expand(source)
     self.assertEqual(
       expanded,
@@ -144,7 +144,7 @@ class PymlControlFlowTests(TestCaseMixin):
         - 2
         - 4
         - 6
-      """.striplines() + "\n",
+      """.stripLines() + "\n",
     )
     values: dict[str, list[int]] = Pyml.loads[dict[str, list[int]]](
       """
@@ -154,7 +154,7 @@ class PymlControlFlowTests(TestCaseMixin):
             - 1
           @for $i in range(2, 4):
             - = $i
-      """.striplines(),
+      """.stripLines(),
     )
     self.assertEqual(len(values["items"]), 3)
     self.assertEqual(values["items"][0], 1)
@@ -168,13 +168,13 @@ class PymlControlFlowTests(TestCaseMixin):
       @for $item in [1, 2]:
         $enabled: = $item == 1
       result: = $enabled
-      """.striplines(),
+      """.stripLines(),
     )
     self.assertEqual(scoped, "result: true\n")
 
 
 class PymlCallablesTests(TestCaseMixin):
-  _test_tag = 15
+  _testTag = 15
 
   @override
   def test(self):
@@ -198,7 +198,7 @@ class PymlCallablesTests(TestCaseMixin):
       plugins:
         @expand $base_plugins()
         - diagnostics
-    """.striplines()
+    """.stripLines()
     expanded: str = Pyml.expand(source)
     self.assertEqual(
       expanded,
@@ -213,23 +213,23 @@ class PymlCallablesTests(TestCaseMixin):
           - core
           - input
           - diagnostics
-      """.striplines() + "\n",
+      """.stripLines() + "\n",
     )
 
-    missing_return: bool = False
+    missingReturn: bool = False
     try:
       Pyml.expand(
         """
           @def $bad():
             $x: 1
           value: = $bad()
-        """.striplines(),
+        """.stripLines(),
       )
     except PymlError:
-      missing_return = True
-    self.assertTrue(missing_return)
+      missingReturn = True
+    self.assertTrue(missingReturn)
 
-    expanded_mapping: str = Pyml.expand(
+    expandedMapping: str = Pyml.expand(
       """
         $defaults:
           color: blue
@@ -237,16 +237,16 @@ class PymlCallablesTests(TestCaseMixin):
         panel:
           @expand $defaults
           title: "settings"
-      """.striplines(),
+      """.stripLines(),
     )
     self.assertEqual(
-      expanded_mapping,
+      expandedMapping,
       """
         panel:
           color: blue
           padding: [12, 8]
           title: "settings"
-      """.striplines() + "\n",
+      """.stripLines() + "\n",
     )
     overwritten: str = Pyml.expand(
       """
@@ -255,19 +255,19 @@ class PymlCallablesTests(TestCaseMixin):
         panel:
           title: "local"
           @expand $defaults
-      """.striplines(),
+      """.stripLines(),
     )
     self.assertEqual(
       overwritten,
       """
         panel:
           title: "imported"
-      """.striplines() + "\n",
+      """.stripLines() + "\n",
     )
 
 
 class PymlErrorTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
@@ -278,29 +278,29 @@ class PymlErrorTests(TestCaseMixin):
       undefined = True
     self.assertTrue(undefined)
 
-    invalid_for: bool = False
+    invalidFor: bool = False
     try:
       Pyml.expand("@for $item in 1:\n  - = $item\n")
     except PymlError:
-      invalid_for = True
-    self.assertTrue(invalid_for)
+      invalidFor = True
+    self.assertTrue(invalidFor)
 
-    invalid_key: bool = False
+    invalidKey: bool = False
     try:
       Pyml.expand(
         """
           $items: [1]
           = $items:
             value: 1
-        """.striplines(),
+        """.stripLines(),
       )
     except PymlError:
-      invalid_key = True
-    self.assertTrue(invalid_key)
+      invalidKey = True
+    self.assertTrue(invalidKey)
 
 
 class PymlPathAccessTests(TestCaseMixin):
-  _test_tag = 22
+  _testTag = 22
 
   @override
   def test(self):
@@ -322,7 +322,7 @@ class PymlPathAccessTests(TestCaseMixin):
         last: = $items[-1]
         special: = $map["a.b"]["a]b"]
         created: = $map["new"]
-      """.striplines(),
+      """.stripLines(),
     )
     self.assertEqual(
       expanded,
@@ -331,7 +331,7 @@ class PymlPathAccessTests(TestCaseMixin):
         last: 5
         special: 21
         created: 5
-      """.striplines() + "\n",
+      """.stripLines() + "\n",
     )
 
     isolated: str = Pyml.expand(
@@ -342,47 +342,47 @@ class PymlPathAccessTests(TestCaseMixin):
         @for $i in [3]:
           $state.items[0]: = $i
         result: = $state.items[0]
-      """.striplines(),
+      """.stripLines(),
     )
     self.assertEqual(isolated, "result: 1\n")
 
-    invalid_index_type: bool = False
+    invalidIndexType: bool = False
     try:
       Pyml.expand("$items: [1]\nvalue: = $items[\"zero\"]\n")
     except PymlError:
-      invalid_index_type = True
-    self.assertTrue(invalid_index_type)
+      invalidIndexType = True
+    self.assertTrue(invalidIndexType)
 
-    out_of_range: bool = False
+    outOfRange: bool = False
     try:
       Pyml.expand("$items: [1]\nvalue: = $items[1]\n")
     except PymlError:
-      out_of_range = True
-    self.assertTrue(out_of_range)
+      outOfRange = True
+    self.assertTrue(outOfRange)
 
-    missing_intermediate: bool = False
+    missingIntermediate: bool = False
     try:
       Pyml.expand("$state: {}\n$state.missing.value: 1\n")
     except PymlError:
-      missing_intermediate = True
-    self.assertTrue(missing_intermediate)
+      missingIntermediate = True
+    self.assertTrue(missingIntermediate)
 
-    invalid_container: bool = False
+    invalidContainer: bool = False
     try:
       Pyml.expand("$state: 1\nvalue: = $state.value\n")
     except PymlError:
-      invalid_container = True
-    self.assertTrue(invalid_container)
+      invalidContainer = True
+    self.assertTrue(invalidContainer)
 
 
 class PymlModulesTests(TestCaseMixin):
-  _test_tag = 25
+  _testTag = 25
 
   @override
   def test(self):
     context: PymlContext = new(
-      module_name="game.main",
-      module_root="test/serde/pyml_modules",
+      moduleName="game.main",
+      moduleRoot="test/serde/pyml_modules",
     )
     expanded: str = Pyml.expand(
       """
@@ -392,7 +392,7 @@ class PymlModulesTests(TestCaseMixin):
           start:
             @expand $button($title)
         value: = $double(3)
-      """.striplines(),
+      """.stripLines(),
       context,
     )
     self.assertEqual(
@@ -403,25 +403,25 @@ class PymlModulesTests(TestCaseMixin):
             text: "PyML"
             color: "blue"
         value: 6
-      """.striplines() + "\n",
+      """.stripLines() + "\n",
     )
 
-    imported_all: str = Pyml.expand(
+    importedAll: str = Pyml.expand(
       """
         @from game.config import *
         title: = $title
-      """.striplines(),
+      """.stripLines(),
       context,
     )
-    self.assertEqual(imported_all, "title: \"PyML\"\n")
+    self.assertEqual(importedAll, "title: \"PyML\"\n")
 
     cyclic: bool = False
-    cycle_context: PymlContext = new(
-      module_name="game.cycle_a",
-      module_root="test/serde/pyml_modules",
+    cycleContext: PymlContext = new(
+      moduleName="game.cycle_a",
+      moduleRoot="test/serde/pyml_modules",
     )
     try:
-      Pyml.expand("@from .cycle_b import *\n", cycle_context)
+      Pyml.expand("@from .cycle_b import *\n", cycleContext)
     except PymlError:
       cyclic = True
     self.assertTrue(cyclic)
@@ -432,7 +432,7 @@ class PymlModulesTests(TestCaseMixin):
         """
           $title: "local"
           @from game.config import $title
-        """.striplines(),
+        """.stripLines(),
         context,
       )
     except PymlError:

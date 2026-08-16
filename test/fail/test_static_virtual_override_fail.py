@@ -3,7 +3,7 @@ from py2cpp import *
 
 
 @protocol
-class IParsable:
+class IParsableType:
   @staticmethod
   @abstract
   def parse(s: str) -> Self: ...
@@ -20,10 +20,10 @@ class Widget:
     return new(int(s))
 
 
-def try_parse[T: IParsable](s: str) -> T:
+def tryParse[T: IParsableType](s: str) -> T:
   return T.parse(s)
 
 
 def main():
-  w: Widget = try_parse[Widget]("1")
+  w: Widget = tryParse[Widget]("1")
   return w.value

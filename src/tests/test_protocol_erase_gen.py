@@ -19,14 +19,14 @@ class ProtocolEraseGenTests(unittest.TestCase):
 
   def test_iterator_iter_returns_this(self):
     specs = {s.name: s for s in protocol_erase_specs_for_header(late=False)}
-    text = _render_spec(specs["Iterator"])
+    text = _render_spec(specs["IteratorType"])
     self.assertIn("PyIterator<T>& __iter__()", text)
     self.assertIn("return *this;", text)
     self.assertNotIn("_fn___iter__", text)
 
   def test_iterable_iter_uses_make_iterator(self):
     specs = {s.name: s for s in protocol_erase_specs_for_header(late=False)}
-    text = _render_spec(specs["Iterable"])
+    text = _render_spec(specs["IterableType"])
     self.assertIn("return makeIterator<T>(self->impl->__iter__());", text)
 
   def test_header_includes_preamble_and_guard(self):

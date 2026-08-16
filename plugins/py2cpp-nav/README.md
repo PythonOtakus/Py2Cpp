@@ -13,7 +13,7 @@
 
 ## 依赖
 
-- VS Code / Cursor ≥ 1.85
+- VS Code / CursorType ≥ 1.85
 - Python 3.10+（与 Py2Cpp 译器相同），仓库根可运行 `python main.py …`
 - 工作区为 Py2Cpp 仓库根，或在设置中指定 `py2cpp-nav.repoRoot`
 - 已至少翻译过一次目标模块（见下文「索引」）；全库标准库需 bootstrap
@@ -33,7 +33,7 @@ package.bat
 pkg-nav.bat
 ```
 
-`package.py` 按 `.vscodeignore` 收集 `out/`、`package.json` 等，生成 `py2cpp-nav-0.1.0.vsix`。在 VS Code / Cursor 中选择 **Extensions → … → Install from VSIX…** 安装。
+`package.py` 按 `.vscodeignore` 收集 `out/`、`package.json` 等，生成 `py2cpp-nav-0.1.0.vsix`。在 VS Code / CursorType 中选择 **Extensions → … → Install from VSIX…** 安装。
 
 ## 索引
 
@@ -69,7 +69,7 @@ python main.py test\concur\test_task.py -o generated
 
 ## 开发调试
 
-1. 在 VS Code / Cursor 中打开 `plugins/py2cpp-nav`
+1. 在 VS Code / CursorType 中打开 `plugins/py2cpp-nav`
 2. 扩展源码为 **纯 JavaScript**（`out/*.js`），直接编辑即可，无需 TypeScript / npm 编译
 3. 本目录 `package.json` 为 VS Code 扩展清单（非 Node 工程）；仓库根 `npm.autoDetect` 为 `off`，并已 `npm.exclude` 插件路径
 4. 按 F5 启动 Extension Development Host

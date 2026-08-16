@@ -2,7 +2,7 @@
 from py2cpp import *
 
 
-def bad_capture[T, _U = ...](x: T) -> int:
+def badCapture[T, _U = ...](x: T) -> int:
   if T is int:
     return 1
   else:

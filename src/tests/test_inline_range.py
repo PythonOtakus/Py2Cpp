@@ -19,7 +19,7 @@ class ExpandInlineRangeTests(unittest.TestCase):
 
   def _assert_no_for_range(self, expanded: ast.FunctionDef) -> None:
     dump = ast.dump(expanded, include_attributes=False)
-    self.assertNotIn("inline_range", dump)
+    self.assertNotIn("inlineRange", dump)
     self.assertNotIn("range", dump)
     self.assertNotIn("For(", dump)
 
@@ -28,7 +28,7 @@ class ExpandInlineRangeTests(unittest.TestCase):
       '''
       class M:
         def fill_diag(self):
-          for i in inline_range(Self._dim):
+          for i in inlineRange(Self._dim):
             self[i, i] = 1.0
       '''
     )
@@ -50,7 +50,7 @@ class ExpandInlineRangeTests(unittest.TestCase):
       '''
       class M:
         def row(self):
-          for j in inline_range(Self._dim - 1):
+          for j in inlineRange(Self._dim - 1):
             pass
       '''
     )
@@ -68,8 +68,8 @@ class ExpandInlineRangeTests(unittest.TestCase):
       '''
       class M:
         def elim(self):
-          for k in inline_range(Self._dim):
-            for r in inline_range(k + 1, Self._dim):
+          for k in inlineRange(Self._dim):
+            for r in inlineRange(k + 1, Self._dim):
               pass
       '''
     )
@@ -87,9 +87,9 @@ class ExpandInlineRangeTests(unittest.TestCase):
       '''
       class M:
         def nest(self):
-          for i in inline_range(Self._dim):
-            for j in inline_range(i + 1, Self._dim):
-              for k in inline_range(j + 1, i + j + Self._dim):
+          for i in inlineRange(Self._dim):
+            for j in inlineRange(i + 1, Self._dim):
+              for k in inlineRange(j + 1, i + j + Self._dim):
                 pass
       '''
     )
@@ -107,7 +107,7 @@ class ExpandInlineRangeTests(unittest.TestCase):
       '''
       class M:
         def bad(self, n: int):
-          for i in inline_range(n):
+          for i in inlineRange(n):
             pass
       '''
     )
@@ -125,7 +125,7 @@ class ExpandInlineRangeTests(unittest.TestCase):
       '''
       class M:
         def bad(self):
-          for i in inline_range(Self._dim):
+          for i in inlineRange(Self._dim):
             if i == 0:
               continue
             pass
@@ -145,8 +145,8 @@ class ExpandInlineRangeTests(unittest.TestCase):
       '''
       class M:
         def elim(self):
-          for k in inline_range(Self._dim):
-            for r in inline_range(Self._dim):
+          for k in inlineRange(Self._dim):
+            for r in inlineRange(Self._dim):
               if r != k:
                 self[r, k] = 0.0
       '''

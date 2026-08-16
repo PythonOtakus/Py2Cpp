@@ -1,13 +1,13 @@
-"""``Fraction[T: Integral]`` 回归（``int`` / ``varint``）。"""
+"""``Fraction[T: IntegralType]`` 回归（``int`` / ``varint``）。"""
 from py2cpp import *
 from py2cpp.numeric.fraction import Fraction
-from py2cpp.numeric.ratio import float_as_integer_ratio
+from py2cpp.numeric.ratio import floatAsIntegerRatio
 from py2cpp.numeric.decimal import Decimal
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 type Frac = Fraction[int]
 
 class FractionStrTests(TestCaseMixin):
-    _test_tag = 1
+    _testTag = 1
 
     @override
     def test(self):
@@ -21,7 +21,7 @@ class FractionStrTests(TestCaseMixin):
         self.assertEqual(str(Frac('-47e-2')), '-47/100')
 
 class FractionFloatTests(TestCaseMixin):
-    _test_tag = 10
+    _testTag = 10
 
     @override
     def test(self):
@@ -29,16 +29,16 @@ class FractionFloatTests(TestCaseMixin):
         self.assertNotEqual(str(Frac(0.3)), '3/10')
 
 class FractionFloatRatioTests(TestCaseMixin):
-    _test_tag = 15
+    _testTag = 15
 
     @override
     def test(self):
-        ratio: (varint, varint) = float_as_integer_ratio(1.47)
+        ratio: (varint, varint) = floatAsIntegerRatio(1.47)
         self.assertEqual(str(ratio[0]), '6620291452234629')
         self.assertEqual(str(ratio[1]), '4503599627370496')
 
 class FractionArithmeticTests(TestCaseMixin):
-    _test_tag = 20
+    _testTag = 20
 
     @override
     def test(self):
@@ -52,23 +52,23 @@ class FractionArithmeticTests(TestCaseMixin):
         self.assertEqual(str(e), '2')
 
 class FractionDecimalTests(TestCaseMixin):
-    _test_tag = 30
+    _testTag = 30
 
     @override
     def test(self):
         self.assertEqual(str(Frac(Decimal('1.47'))), '147/100')
 
 class FractionLimitTests(TestCaseMixin):
-    _test_tag = 50
+    _testTag = 50
 
     @override
     def test(self):
         pi: Frac = new('22/7')
-        approx: Frac = pi.limit_denominator(10)
+        approx: Frac = pi.limitDenominator(10)
         self.assertEqual(str(approx), '22/7')
 
 def main():
     suite: TestSuite = new()
-    for Class in TestCaseMixin.iter_subclasses(sort_const='_test_tag'):
+    for Class in TestCaseMixin.iterSubclasses(sortConst='_testTag'):
         suite.addTest(Class())
     return TextTestRunner().run(suite)

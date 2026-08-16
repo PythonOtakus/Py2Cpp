@@ -6,7 +6,7 @@ from py2cpp.alg.ac_auto import ACAuto
 
 
 class AcAutoBasicTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
@@ -24,7 +24,7 @@ class AcAutoBasicTests(TestCaseMixin):
 
 
 class AcAutoOverlapTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
@@ -36,7 +36,7 @@ class AcAutoOverlapTests(TestCaseMixin):
 
 
 class AcAutoDuplicateAddTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
@@ -49,7 +49,7 @@ class AcAutoDuplicateAddTests(TestCaseMixin):
 
 
 class AcAutoLazyBuildTests(TestCaseMixin):
-  _test_tag = 30
+  _testTag = 30
 
   @override
   def test(self):
@@ -60,7 +60,7 @@ class AcAutoLazyBuildTests(TestCaseMixin):
 
 
 class AcAutoContainsTests(TestCaseMixin):
-  _test_tag = 45
+  _testTag = 45
 
   @override
   def test(self):
@@ -72,7 +72,7 @@ class AcAutoContainsTests(TestCaseMixin):
 
 
 class AcAutoUpdateListTests(TestCaseMixin):
-  _test_tag = 50
+  _testTag = 50
 
   @override
   def test(self):
@@ -84,7 +84,7 @@ class AcAutoUpdateListTests(TestCaseMixin):
 
 
 class AcAutoUpdateSelfTests(TestCaseMixin):
-  _test_tag = 55
+  _testTag = 55
 
   @override
   def test(self):
@@ -99,7 +99,7 @@ class AcAutoUpdateSelfTests(TestCaseMixin):
 
 
 class AcAutoAddFlushFalseTests(TestCaseMixin):
-  _test_tag = 60
+  _testTag = 60
 
   @override
   def test(self):
@@ -111,7 +111,7 @@ class AcAutoAddFlushFalseTests(TestCaseMixin):
 
 
 class AcAutoEmptyTests(TestCaseMixin):
-  _test_tag = 40
+  _testTag = 40
 
   @override
   def test(self):
@@ -125,7 +125,7 @@ class AcAutoEmptyTests(TestCaseMixin):
 
 
 class AcAutoRemoveTests(TestCaseMixin):
-  _test_tag = 70
+  _testTag = 70
 
   @override
   def test(self):
@@ -140,7 +140,7 @@ class AcAutoRemoveTests(TestCaseMixin):
 
 
 class AcAutoRemoveDuplicateTests(TestCaseMixin):
-  _test_tag = 71
+  _testTag = 71
 
   @override
   def test(self):
@@ -153,7 +153,7 @@ class AcAutoRemoveDuplicateTests(TestCaseMixin):
 
 
 class AcAutoClearTests(TestCaseMixin):
-  _test_tag = 72
+  _testTag = 72
 
   @override
   def test(self):
@@ -166,7 +166,7 @@ class AcAutoClearTests(TestCaseMixin):
 
 
 class AcAutoDiscardTests(TestCaseMixin):
-  _test_tag = 73
+  _testTag = 73
 
   @override
   def test(self):
@@ -181,7 +181,7 @@ class AcAutoDiscardTests(TestCaseMixin):
 
 
 class AcAutoRemoveFlushFalseTests(TestCaseMixin):
-  _test_tag = 74
+  _testTag = 74
 
   @override
   def test(self):

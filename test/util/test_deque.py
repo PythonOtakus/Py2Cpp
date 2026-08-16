@@ -4,7 +4,7 @@ from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 class DequeLiteralTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
@@ -15,7 +15,7 @@ class DequeLiteralTests(TestCaseMixin):
 
 
 class DequeCompTests(TestCaseMixin):
-  _test_tag = 15
+  _testTag = 15
 
   @override
   def test(self):
@@ -29,18 +29,18 @@ class DequeCompTests(TestCaseMixin):
 class DequeMethodsTests(TestCaseMixin):
   """对齐 Python 3.13 ``collections.deque`` 双端与查询方法。"""
 
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
     d: deque[int] = []
     d.append(1)
     d.append(2)
-    d.appendleft(0)
+    d.appendLeft(0)
     self.assertEqual(len(d), 3)
     self.assertEqual(d[0], 0)
     self.assertEqual(d[2], 2)
-    self.assertEqual(d.popleft(), 0)
+    self.assertEqual(d.popLeft(), 0)
     self.assertEqual(d.pop(), 2)
     self.assertEqual(len(d), 1)
     other: deque[int] = [3, 4]
@@ -48,7 +48,7 @@ class DequeMethodsTests(TestCaseMixin):
     self.assertEqual(len(d), 3)
     self.assertEqual(d[1], 3)
     left: deque[int] = [10, 20]
-    d.extendleft(left)
+    d.extendLeft(left)
     self.assertEqual(d[0], 20)
     self.assertEqual(d[1], 10)
     self.assertEqual(d.count(4), 1)
@@ -68,17 +68,17 @@ class DequeMethodsTests(TestCaseMixin):
     self.assertEqual(seq[0], 1)
     self.assertEqual(seq[1], 3)
     self.assertEqual(seq[2], 2)
-    rev_sum: int = 0
+    revSum: int = 0
     for x in reversed(seq):
-      rev_sum += x
-    self.assertEqual(rev_sum, 6)
+      revSum += x
+    self.assertEqual(revSum, 6)
     bounded: deque[int] = new(2)
     bounded.append(1)
     bounded.append(2)
     bounded.append(3)
     self.assertEqual(len(bounded), 2)
     self.assertEqual(bounded[0], 2)
-    bounded.appendleft(0)
+    bounded.appendLeft(0)
     self.assertEqual(len(bounded), 2)
     self.assertEqual(bounded[0], 0)
     self.assertEqual(bounded[1], 2)
@@ -93,7 +93,7 @@ class DequeMethodsTests(TestCaseMixin):
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

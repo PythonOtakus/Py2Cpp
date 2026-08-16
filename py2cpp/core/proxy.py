@@ -4,11 +4,10 @@ from ..builtins import *
 
 @copyable
 @native
-@native_name("Py*")
-class Proxy[T]:
+class Proxy[Element]:
   """C++ 为 ``PyProxy<StorageT>`` 组合存储；未 ``@override`` 的成员由译器剥壳转发。"""
 
-  _target: T
+  _target: Element
 
-  def __init__(self, target: T):
+  def __init__(self, target: Element):
     self._target = target

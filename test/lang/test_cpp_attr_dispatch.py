@@ -22,39 +22,39 @@ class HasField:
   x: int = 0
 
 
-def read_prop(obj) -> int:
+def readProp(obj) -> int:
   return obj.value
 
 
-def write_prop(obj) -> None:
+def writeProp(obj) -> None:
   obj.value = 7
 
 
-def read_field(obj) -> int:
+def readField(obj) -> int:
   return obj.x
 
 
-def write_field(obj) -> None:
+def writeField(obj) -> None:
   obj.x = 3
 
 
-def exercise_templates(h: HasField) -> int:
-  write_field(h)
-  return read_field(h)
+def exerciseTemplates(h: HasField) -> int:
+  writeField(h)
+  return readField(h)
 
 
 class CppAttrDispatchTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
     row: HasField = new()
     row.x = 3
-    self.assertEqual(exercise_templates(row), 3)
+    self.assertEqual(exerciseTemplates(row), 3)
 
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)

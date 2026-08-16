@@ -1,4 +1,4 @@
-"""``@annotation`` 与 ``Self.iter_fields[Ann]`` / ``Self.iter_methods[Ann]`` / ``get_annotation`` 译期反射展开。"""
+"""``@annotation`` 与 ``Self.iterFields[Ann]`` / ``Self.iterMethods[Ann]`` / ``get_annotation`` 译期反射展开。"""
 from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
@@ -38,9 +38,9 @@ class TagBox:
 
 @mixin
 class SumTaggedMixin:
-  def sum_tagged(self) -> int:
+  def sumTagged(self) -> int:
     total: int = 0
-    for field in Self.iter_fields[TagMeta]():
+    for field in Self.iterFields[TagMeta]():
       total += getattr(self, field)
     return total
 
@@ -53,9 +53,9 @@ class TaggedInts(SumTaggedMixin):
 
 @mixin
 class CountMarkedMixin:
-  def marked_field_count(self) -> int:
+  def markedFieldCount(self) -> int:
     count: int = 0
-    for field in Self.iter_fields[MarkMeta]():
+    for field in Self.iterFields[MarkMeta]():
       count += 1
     return count
 
@@ -68,10 +68,10 @@ class MarkedStore(CountMarkedMixin):
 
 @mixin
 class MetaScanMixin:
-  def meta_field_count(self) -> int:
+  def metaFieldCount(self) -> int:
     count: int = 0
-    for field in Self.iter_fields(public_only=True):
-      tagged = Self.get_field_annotation[Meta](field)
+    for field in Self.iterFields(publicOnly=True):
+      tagged = Self.getFieldAnnotation[Meta](field)
       if tagged is not None:
         count += 1
     return count
@@ -85,10 +85,10 @@ class MetaTaggedRow(MetaScanMixin):
 
 @mixin
 class FieldTypeMixin:
-  def tagged_total(self) -> int:
+  def taggedTotal(self) -> int:
     total: int = 0
-    for field in Self.iter_fields[TagMeta]():
-      value: Self.get_field_type(field) = getattr(self, field)
+    for field in Self.iterFields[TagMeta]():
+      value: Self.getFieldType(field) = getattr(self, field)
       total += value
     return total
 
@@ -103,13 +103,13 @@ class TypedTaggedInts(FieldTypeMixin):
 class ActionRunnerMixin:
   clicks: int = 0
 
-  def run_labeled(self, button_label: str) -> None:
-    for method in Self.iter_methods[ActionMeta]():
+  def runLabeled(self, buttonLabel: str) -> None:
+    for method in Self.iterMethods[ActionMeta]():
       label: str = method
-      meta = Self.get_method_annotation[ActionMeta](method)
+      meta = Self.getMethodAnnotation[ActionMeta](method)
       if meta is not None and meta.label:
         label = meta.label
-      if label == button_label:
+      if label == buttonLabel:
         getattr(self, method)()
 
 
@@ -124,7 +124,7 @@ class ActionPanel(ActionRunnerMixin):
 
 
 class AnnotationFieldTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
@@ -135,50 +135,50 @@ class AnnotationFieldTests(TestCaseMixin):
 
 
 class IterAnnotatedFieldsMarkerTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
     row: TaggedInts = new()
-    self.assertEqual(row.sum_tagged(), 15)
+    self.assertEqual(row.sumTagged(), 15)
 
 
 class IterAnnotatedFieldsContainerTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
     store: MarkedStore = new()
-    self.assertEqual(store.marked_field_count(), 2)
+    self.assertEqual(store.markedFieldCount(), 2)
 
 
 class FieldTypeReflectTests(TestCaseMixin):
-  _test_tag = 25
+  _testTag = 25
 
   @override
   def test(self):
     row: TypedTaggedInts = new()
-    self.assertEqual(row.tagged_total(), 16)
+    self.assertEqual(row.taggedTotal(), 16)
 
 
 class IterFieldsGetAnnotationTests(TestCaseMixin):
-  _test_tag = 30
+  _testTag = 30
 
   @override
   def test(self):
     row: MetaTaggedRow = new()
-    self.assertEqual(row.meta_field_count(), 2)
+    self.assertEqual(row.metaFieldCount(), 2)
 
 
 class IterAnnotatedMethodsTests(TestCaseMixin):
-  _test_tag = 40
+  _testTag = 40
 
   @override
   def test(self):
     panel: ActionPanel = new()
-    panel.run_labeled("Go")
+    panel.runLabeled("Go")
     self.assertEqual(panel.clicks, 1)
-    panel.run_labeled("apply")
+    panel.runLabeled("apply")
     self.assertEqual(panel.clicks, 11)
 
 
@@ -188,20 +188,20 @@ class InheritMeta:
 
 
 class EntityBase:
-  base_val: int @InheritMeta = 7
+  baseVal: int @InheritMeta = 7
 
 
 @mixin
 class InheritScanMixin:
-  def inherit_sum(self) -> int:
+  def inheritSum(self) -> int:
     total: int = 0
-    for field in Self.iter_fields[InheritMeta](mro=True):
+    for field in Self.iterFields[InheritMeta](mro=True):
       total += getattr(self, field)
     return total
 
 
 class DerivedEntity(InheritScanMixin, EntityBase):
-  own_val: int = 3
+  ownVal: int = 3
 
 
 @annotation(inheritable=True)
@@ -211,46 +211,46 @@ class MethodInheritMeta:
 
 class MethodBase:
   @MethodInheritMeta()
-  def base_hook(self) -> int:
+  def baseHook(self) -> int:
     return 5
 
 
 @mixin
 class MethodInheritMixin:
-  def call_inherited_hooks(self) -> int:
+  def callInheritedHooks(self) -> int:
     total: int = 0
-    for method in Self.iter_methods[MethodInheritMeta](mro=True):
+    for method in Self.iterMethods[MethodInheritMeta](mro=True):
       total += getattr(self, method)()
     return total
 
 
 class DerivedMethods(MethodInheritMixin, MethodBase):
   @MethodInheritMeta()
-  def own_hook(self) -> int:
+  def ownHook(self) -> int:
     return 2
 
 
 class AnnotationMroTests(TestCaseMixin):
-  _test_tag = 50
+  _testTag = 50
 
   @override
   def test(self):
     row: DerivedEntity = new()
-    self.assertEqual(row.inherit_sum(), 7)
+    self.assertEqual(row.inheritSum(), 7)
 
 
 class AnnotationMethodMroTests(TestCaseMixin):
-  _test_tag = 60
+  _testTag = 60
 
   @override
   def test(self):
     obj: DerivedMethods = new()
-    self.assertEqual(obj.call_inherited_hooks(), 7)
+    self.assertEqual(obj.callInheritedHooks(), 7)
 
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

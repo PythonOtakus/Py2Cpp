@@ -6,7 +6,7 @@ from py2cpp.alg.fen_tree import FenTree
 
 
 class FenTreePrefixTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
@@ -20,7 +20,7 @@ class FenTreePrefixTests(TestCaseMixin):
 
 
 class FenTreeRangeTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
@@ -32,7 +32,7 @@ class FenTreeRangeTests(TestCaseMixin):
 
 
 class FenTreeGetSetTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
@@ -45,7 +45,7 @@ class FenTreeGetSetTests(TestCaseMixin):
 
 
 class FenTreeSliceTests(TestCaseMixin):
-  _test_tag = 30
+  _testTag = 30
 
   @override
   def test(self):

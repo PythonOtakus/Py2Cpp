@@ -346,7 +346,7 @@ class GeneratorSwitchEmitter:
         self._state = nxt
 
     def _is_async_generator_class(self) -> bool:
-        """``AsyncGenerator[Y, None]``：只识别已混入 ``__aiter__``/``__anext__`` 的 async 生成器类。"""
+        """``AsyncGeneratorType[Y, None]``：只识别已混入 ``__aiter__``/``__anext__`` 的 async 生成器类。"""
         info = self._class_info
         if info is None:
             return False
@@ -404,7 +404,7 @@ class GeneratorSwitchEmitter:
         if (
             isinstance(ann, ast.Subscript)
             and isinstance(ann.value, ast.Name)
-            and ann.value.id in ('Coroutine', 'Generator', 'AsyncGenerator')
+            and ann.value.id in ('CoroutineType', 'GeneratorType', 'AsyncGeneratorType')
         ):
             sl = ann.slice
             if isinstance(sl, ast.Tuple) and sl.elts:
@@ -484,7 +484,7 @@ class GeneratorSwitchEmitter:
         self._state = yf_state
         with self.tr._use_block(f'if (!this->{active})'):
             if self._yf_it_field_uses_assign(it_field):
-                self.tr.write_line(f'this->{it_field}.copy_from({iter_expr});')
+                self.tr.write_line(f'this->{it_field}.copyFrom({iter_expr});')
             else:
                 self.tr.write_line(f'this->{it_field} = {iter_expr};')
             self.tr.write_line(f'this->{active} = true;')
@@ -707,7 +707,7 @@ class GeneratorSwitchEmitter:
                     iter_expr = f'({src}){sep}__aiter__()'
                     with self.tr._use_block(f'if (!this->{active})'):
                         if self._for_it_field_uses_assign(it_field):
-                            self.tr.write_line(f'this->{it_field}.copy_from({iter_expr});')
+                            self.tr.write_line(f'this->{it_field}.copyFrom({iter_expr});')
                         else:
                             self.tr.write_line(f'this->{it_field} = std::move({iter_expr});')
                         self.tr.write_line(f'this->{active} = true;')
@@ -888,7 +888,7 @@ class GeneratorSwitchEmitter:
                         else:
                             iter_expr = f'({src}){sep}__iter__()'
                         if self._for_it_field_uses_assign(it_field):
-                            self.tr.write_line(f'this->{it_field}.copy_from({iter_expr});')
+                            self.tr.write_line(f'this->{it_field}.copyFrom({iter_expr});')
                         else:
                             self.tr.write_line(f'this->{it_field} = std::move({iter_expr});')
                         self.tr.write_line(f'this->{active} = true;')

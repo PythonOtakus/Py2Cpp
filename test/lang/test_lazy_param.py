@@ -11,12 +11,12 @@ class SideEffectCounter:
   n: int = 0
 
 
-def _lazy_bump(c: SideEffectCounter) -> int:
+def _lazyBump(c: SideEffectCounter) -> int:
   c.n += 1
   return c.n
 
 
-def _wrap_get(d: dict[int, int], key: int, default: int @lazy = None) -> int:
+def _wrapGet(d: dict[int, int], key: int, default: int @lazy = None) -> int:
   return d.get(key, default)
 
 
@@ -24,38 +24,38 @@ def _pick(d: dict[int, int], key: int, default: int @lazy = 77) -> int:
   return d.get(key, default)
 
 
-def _default_88() -> int:
+def _default88() -> int:
   return 88
 
 
-def _pick_factory_default(d: dict[int, int], key: int, default: int @lazy = _default_88()) -> int:
+def _pickFactoryDefault(d: dict[int, int], key: int, default: int @lazy = _default88()) -> int:
   return d.get(key, default)
 
 
 class LazyParamSkipDefaultTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
     c: SideEffectCounter = new()
     d: dict[int, int] = {10: 100}
-    self.assertEqual(d.get(10, _lazy_bump(c)), 100)
+    self.assertEqual(d.get(10, _lazyBump(c)), 100)
     self.assertEqual(c.n, 0)
 
 
 class LazyParamRunDefaultTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
     c: SideEffectCounter = new()
     d: dict[int, int] = {10: 100}
-    self.assertEqual(_wrap_get(d, 99, _lazy_bump(c)), 1)
+    self.assertEqual(_wrapGet(d, 99, _lazyBump(c)), 1)
     self.assertEqual(c.n, 1)
 
 
 class LazyParamLiteralDefaultTests(TestCaseMixin):
-  _test_tag = 30
+  _testTag = 30
 
   @override
   def test(self):
@@ -64,7 +64,7 @@ class LazyParamLiteralDefaultTests(TestCaseMixin):
 
 
 class LazyParamMissingArgTests(TestCaseMixin):
-  _test_tag = 40
+  _testTag = 40
 
   @override
   def test(self):
@@ -74,20 +74,20 @@ class LazyParamMissingArgTests(TestCaseMixin):
 
 
 class LazyParamForwardTests(TestCaseMixin):
-  _test_tag = 50
+  _testTag = 50
 
   @override
   def test(self):
     c: SideEffectCounter = new()
     d: dict[int, int] = {5: 50}
-    self.assertEqual(_wrap_get(d, 5, _lazy_bump(c)), 50)
+    self.assertEqual(_wrapGet(d, 5, _lazyBump(c)), 50)
     self.assertEqual(c.n, 0)
-    self.assertEqual(_wrap_get(d, 1, _lazy_bump(c)), 1)
+    self.assertEqual(_wrapGet(d, 1, _lazyBump(c)), 1)
     self.assertEqual(c.n, 1)
 
 
 class LazyParamNonNoneDefaultTests(TestCaseMixin):
-  _test_tag = 60
+  _testTag = 60
 
   @override
   def test(self):
@@ -98,29 +98,29 @@ class LazyParamNonNoneDefaultTests(TestCaseMixin):
 
 
 class LazyParamNonNoneExprDefaultTests(TestCaseMixin):
-  _test_tag = 70
+  _testTag = 70
 
   @override
   def test(self):
     d: dict[int, int] = {3: 30}
-    self.assertEqual(_pick_factory_default(d, 9), 88)
-    self.assertEqual(_pick_factory_default(d, 3), 30)
+    self.assertEqual(_pickFactoryDefault(d, 9), 88)
+    self.assertEqual(_pickFactoryDefault(d, 3), 30)
 
 
 class LazyParamNonNoneSkipSideEffectTests(TestCaseMixin):
-  _test_tag = 80
+  _testTag = 80
 
   @override
   def test(self):
     c: SideEffectCounter = new()
     d: dict[int, int] = {10: 100}
-    self.assertEqual(_pick(d, 10, _lazy_bump(c)), 100)
+    self.assertEqual(_pick(d, 10, _lazyBump(c)), 100)
     self.assertEqual(c.n, 0)
 
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

@@ -525,21 +525,29 @@ def is_delegate_type(
   delegate_names: frozenset[str],
   classes: dict[str, ClassInfo] | None = None,
 ) -> bool:
+  from ..constant.language import default_py_class_cpp_name
+
+  def _match(base: str) -> bool:
+    if base in delegate_names:
+      return True
+    for d in delegate_names:
+      cpp = default_py_class_cpp_name(d)
+      if base == cpp or base.endswith(f"::{d}") or base.endswith(f"::{cpp}"):
+        return True
+    return False
+
   if isinstance(ty, str):
     t = _strip_qualifiers_text(ty)
     if t.startswith("PyDelegate<"):
       return True
-    base = t.split("<", 1)[0].strip()
-    return base in delegate_names
+    return _match(t.split("<", 1)[0].strip())
   node = coerce_type_node(ty, classes=classes)
   if node is None:
     return False
   core = _peel_ref_only(node)
   if core.kind == TypeKind.TEMPLATE and core.name == "PyDelegate":
     return True
-  return core.name in delegate_names or any(
-    core.name.endswith(f"::{n}") for n in delegate_names
-  )
+  return _match(core.name)
 
 
 def is_concrete_generator_type(ty: TypeLike, *, classes: dict[str, ClassInfo] | None = None) -> bool:

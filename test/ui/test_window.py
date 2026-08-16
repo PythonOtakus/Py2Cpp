@@ -1,4 +1,4 @@
-"""``UIWindow`` Win32 后端：``show`` / ``draw_panel`` / ``close``。"""
+"""``UIWindow`` Win32 后端：``show`` / ``drawPanel`` / ``close``。"""
 from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 from py2cpp.ui.app import UIApp
@@ -16,15 +16,15 @@ class DemoConfig(UIPanelMixin):
 
 
 class UIAppAvailableTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
-    self.assertTrue(UIApp.is_available())
+    self.assertTrue(UIApp.isAvailable())
 
 
 class UIWindowBeginDrawTests(TestCaseMixin):
-  _test_tag = 2
+  _testTag = 2
 
   @override
   def test(self):
@@ -33,13 +33,13 @@ class UIWindowBeginDrawTests(TestCaseMixin):
     win.show(480, 320)
     self.assertTrue(win.handle != 0)
     cfg: DemoConfig = new()
-    cfg.draw_panel(win)
+    cfg.drawPanel(win)
     win.close()
     self.assertEqual(win.handle, 0)
 
 
 class UIWindowTitlePropertyTests(TestCaseMixin):
-  _test_tag = 4
+  _testTag = 4
 
   @override
   def test(self):
@@ -53,7 +53,7 @@ class UIWindowTitlePropertyTests(TestCaseMixin):
 
 
 class UIWindowResizeTests(TestCaseMixin):
-  _test_tag = 3
+  _testTag = 3
 
   @override
   def test(self):
@@ -62,7 +62,7 @@ class UIWindowResizeTests(TestCaseMixin):
     win.show(-1, -1)
     self.assertTrue(win.handle != 0)
     cfg: DemoConfig = new()
-    cfg.draw_panel(win)
+    cfg.drawPanel(win)
     win.resize(-1, -1)
     win.close()
     self.assertEqual(win.handle, 0)
@@ -70,7 +70,7 @@ class UIWindowResizeTests(TestCaseMixin):
 
 def main() -> int:
   suite: TestSuite = TestSuite()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

@@ -170,7 +170,7 @@ namespace py2cpp_concur_thread_detail
     bool finished;
     bool joined;
     PyInt64 ident;
-    PyInt64 native_id;
+    PyInt64 nativeId;
     PY2CPP_TYPE(PyStr) name;
     bool daemon;
     bool registered;
@@ -179,7 +179,7 @@ namespace py2cpp_concur_thread_detail
 
     ThreadState()
       : refs(1), target(), started(false), running(false), finished(false),
-        joined(false), ident(0), native_id(0), name(PY2CPP_TYPE(PyStr)("")),
+        joined(false), ident(0), nativeId(0), name(PY2CPP_TYPE(PyStr)("")),
         daemon(false), registered(false), registry_prev(NULL), registry_next(NULL)
     {
     }
@@ -309,7 +309,7 @@ namespace py2cpp_concur_thread_detail
       st->finished = false;
       st->joined = true;
       st->ident = ident;
-      st->native_id = current_native_id();
+      st->nativeId = current_native_id();
       st->name = PY2CPP_TYPE(PyStr)("MainThread");
       st->daemon = false;
       main_thread_state = st;
@@ -420,11 +420,11 @@ namespace py2cpp_concur_thread_detail
   {
     if (!blocking && timeout >= 0.0)
     {
-      throw PY2CPP_TYPE(ValueError)();
+      throw PY2CPP_TYPE(PyValueError)();
     }
     if (timeout < -1.0)
     {
-      throw PY2CPP_TYPE(ValueError)();
+      throw PY2CPP_TYPE(PyValueError)();
     }
   }
 
@@ -447,7 +447,7 @@ namespace py2cpp_concur_thread_detail
   {
     if (!st)
     {
-      throw PY2CPP_TYPE(RuntimeError)();
+      throw PY2CPP_TYPE(PyRuntimeError)();
     }
     validate_blocking_timeout(blocking, timeout);
     std::unique_lock<std::mutex> lk(st->mutex);
@@ -490,13 +490,13 @@ namespace py2cpp_concur_thread_detail
   {
     if (!st)
     {
-      throw PY2CPP_TYPE(RuntimeError)();
+      throw PY2CPP_TYPE(PyRuntimeError)();
     }
     {
       std::lock_guard<std::mutex> lk(st->mutex);
       if (!st->locked)
       {
-        throw PY2CPP_TYPE(RuntimeError)();
+        throw PY2CPP_TYPE(PyRuntimeError)();
       }
       st->locked = false;
     }
@@ -528,7 +528,7 @@ namespace py2cpp_concur_thread_detail
   {
     if (!st)
     {
-      throw PY2CPP_TYPE(RuntimeError)();
+      throw PY2CPP_TYPE(PyRuntimeError)();
     }
     validate_blocking_timeout(blocking, timeout);
     PyInt64 me = ensure_ident();
@@ -579,7 +579,7 @@ namespace py2cpp_concur_thread_detail
   {
     if (!st)
     {
-      throw PY2CPP_TYPE(RuntimeError)();
+      throw PY2CPP_TYPE(PyRuntimeError)();
     }
     bool notify = false;
     PyInt64 me = ensure_ident();
@@ -587,7 +587,7 @@ namespace py2cpp_concur_thread_detail
       std::lock_guard<std::mutex> lk(st->mutex);
       if (st->owner != me || st->recursion <= 0)
       {
-        throw PY2CPP_TYPE(RuntimeError)();
+        throw PY2CPP_TYPE(PyRuntimeError)();
       }
       st->recursion -= 1;
       if (st->recursion == 0)
@@ -606,7 +606,7 @@ namespace py2cpp_concur_thread_detail
   {
     if (!st)
     {
-      throw PY2CPP_TYPE(RuntimeError)();
+      throw PY2CPP_TYPE(PyRuntimeError)();
     }
     PyInt64 me = ensure_ident();
     PyInt count = 0;
@@ -614,7 +614,7 @@ namespace py2cpp_concur_thread_detail
       std::lock_guard<std::mutex> lk(st->mutex);
       if (st->owner != me || st->recursion <= 0)
       {
-        throw PY2CPP_TYPE(RuntimeError)();
+        throw PY2CPP_TYPE(PyRuntimeError)();
       }
       count = st->recursion;
       st->recursion = 0;
@@ -628,11 +628,11 @@ namespace py2cpp_concur_thread_detail
   {
     if (!st)
     {
-      throw PY2CPP_TYPE(RuntimeError)();
+      throw PY2CPP_TYPE(PyRuntimeError)();
     }
     if (count <= 0)
     {
-      throw PY2CPP_TYPE(ValueError)();
+      throw PY2CPP_TYPE(PyValueError)();
     }
     PyInt64 me = ensure_ident();
     std::unique_lock<std::mutex> lk(st->mutex);
@@ -674,7 +674,7 @@ namespace py2cpp_concur_thread_detail
   {
     if (!st)
     {
-      throw PY2CPP_TYPE(RuntimeError)();
+      throw PY2CPP_TYPE(PyRuntimeError)();
     }
     if (st->lock_kind == CONDITION_LOCK)
     {
@@ -687,7 +687,7 @@ namespace py2cpp_concur_thread_detail
   {
     if (!st)
     {
-      throw PY2CPP_TYPE(RuntimeError)();
+      throw PY2CPP_TYPE(PyRuntimeError)();
     }
     if (st->lock_kind == CONDITION_LOCK)
     {
@@ -725,15 +725,15 @@ namespace py2cpp_concur_thread_detail
   {
     if (!st)
     {
-      throw PY2CPP_TYPE(RuntimeError)();
+      throw PY2CPP_TYPE(PyRuntimeError)();
     }
     if (timeout < -1.0)
     {
-      throw PY2CPP_TYPE(ValueError)();
+      throw PY2CPP_TYPE(PyValueError)();
     }
     if (!condition_is_owned_state(st))
     {
-      throw PY2CPP_TYPE(RuntimeError)();
+      throw PY2CPP_TYPE(PyRuntimeError)();
     }
     double end = 0.0;
     if (timeout >= 0.0)
@@ -812,11 +812,11 @@ namespace py2cpp_concur_thread_detail
   {
     if (!st)
     {
-      throw PY2CPP_TYPE(RuntimeError)();
+      throw PY2CPP_TYPE(PyRuntimeError)();
     }
     if (!condition_is_owned_state(st))
     {
-      throw PY2CPP_TYPE(RuntimeError)();
+      throw PY2CPP_TYPE(PyRuntimeError)();
     }
     if (n <= 0)
     {
@@ -842,11 +842,11 @@ namespace py2cpp_concur_thread_detail
   {
     if (!st)
     {
-      throw PY2CPP_TYPE(RuntimeError)();
+      throw PY2CPP_TYPE(PyRuntimeError)();
     }
     if (!condition_is_owned_state(st))
     {
-      throw PY2CPP_TYPE(RuntimeError)();
+      throw PY2CPP_TYPE(PyRuntimeError)();
     }
     PyInt count = 0;
     {
@@ -918,116 +918,116 @@ namespace py2cpp {
 namespace concur {
 namespace thread {
 
-void _barrier_no_action()
+void _barrierNoAction()
 {
 }
 
-template<typename _T>
-PyAtomic<_T>::PyAtomic()
+template<typename _Value>
+PyAtomic<_Value>::PyAtomic()
 {
-  _state = (PyUPtr)(uintptr_t)(new py2cpp_concur_thread_detail::AtomicState<_T>(_T()));
+  _state = (PyUPtr)(uintptr_t)(new py2cpp_concur_thread_detail::AtomicState<_Value>(_Value()));
 }
 
-template<typename _T>
-PyAtomic<_T>::PyAtomic(_T value)
+template<typename _Value>
+PyAtomic<_Value>::PyAtomic(_Value value)
 {
-  _state = (PyUPtr)(uintptr_t)(new py2cpp_concur_thread_detail::AtomicState<_T>(value));
+  _state = (PyUPtr)(uintptr_t)(new py2cpp_concur_thread_detail::AtomicState<_Value>(value));
 }
 
-template<typename _T>
-PyAtomic<_T>::~PyAtomic()
+template<typename _Value>
+PyAtomic<_Value>::~PyAtomic()
 {
-  py2cpp_concur_thread_detail::AtomicState<_T>* st =
-    py2cpp_concur_thread_detail::atomic_from_handle<_T>(_state);
+  py2cpp_concur_thread_detail::AtomicState<_Value>* st =
+    py2cpp_concur_thread_detail::atomic_from_handle<_Value>(_state);
   py2cpp_concur_thread_detail::release_atomic(st);
   _state = 0;
 }
 
-template<typename _T>
-void PyAtomic<_T>::__copy__(const PyAtomic<_T>& other)
+template<typename _Value>
+void PyAtomic<_Value>::__copy__(const PyAtomic<_Value>& other)
 {
   if (_state == other._state)
   {
     return;
   }
-  py2cpp_concur_thread_detail::AtomicState<_T>* next =
-    py2cpp_concur_thread_detail::atomic_from_handle<_T>(other._state);
+  py2cpp_concur_thread_detail::AtomicState<_Value>* next =
+    py2cpp_concur_thread_detail::atomic_from_handle<_Value>(other._state);
   py2cpp_concur_thread_detail::retain_atomic(next);
-  py2cpp_concur_thread_detail::AtomicState<_T>* old =
-    py2cpp_concur_thread_detail::atomic_from_handle<_T>(_state);
+  py2cpp_concur_thread_detail::AtomicState<_Value>* old =
+    py2cpp_concur_thread_detail::atomic_from_handle<_Value>(_state);
   py2cpp_concur_thread_detail::release_atomic(old);
   _state = other._state;
 }
 
-template<typename _T>
-_T PyAtomic<_T>::load() const
+template<typename _Value>
+_Value PyAtomic<_Value>::load() const
 {
-  py2cpp_concur_thread_detail::AtomicState<_T>* st =
-    py2cpp_concur_thread_detail::atomic_from_handle<_T>(_state);
+  py2cpp_concur_thread_detail::AtomicState<_Value>* st =
+    py2cpp_concur_thread_detail::atomic_from_handle<_Value>(_state);
   if (!st)
   {
-    throw PY2CPP_TYPE(RuntimeError)();
+    throw PY2CPP_TYPE(PyRuntimeError)();
   }
   return st->value.load(std::memory_order_seq_cst);
 }
 
-template<typename _T>
-void PyAtomic<_T>::store(_T value)
+template<typename _Value>
+void PyAtomic<_Value>::store(_Value value)
 {
-  py2cpp_concur_thread_detail::AtomicState<_T>* st =
-    py2cpp_concur_thread_detail::atomic_from_handle<_T>(_state);
+  py2cpp_concur_thread_detail::AtomicState<_Value>* st =
+    py2cpp_concur_thread_detail::atomic_from_handle<_Value>(_state);
   if (!st)
   {
-    throw PY2CPP_TYPE(RuntimeError)();
+    throw PY2CPP_TYPE(PyRuntimeError)();
   }
   st->value.store(value, std::memory_order_seq_cst);
 }
 
-template<typename _T>
-_T PyAtomic<_T>::exchange(_T value)
+template<typename _Value>
+_Value PyAtomic<_Value>::exchange(_Value value)
 {
-  py2cpp_concur_thread_detail::AtomicState<_T>* st =
-    py2cpp_concur_thread_detail::atomic_from_handle<_T>(_state);
+  py2cpp_concur_thread_detail::AtomicState<_Value>* st =
+    py2cpp_concur_thread_detail::atomic_from_handle<_Value>(_state);
   if (!st)
   {
-    throw PY2CPP_TYPE(RuntimeError)();
+    throw PY2CPP_TYPE(PyRuntimeError)();
   }
   return st->value.exchange(value, std::memory_order_seq_cst);
 }
 
-template<typename _T>
-PyBool PyAtomic<_T>::compare_exchange(_T expected, _T desired)
+template<typename _Value>
+PyBool PyAtomic<_Value>::compareExchange(_Value expected, _Value desired)
 {
-  py2cpp_concur_thread_detail::AtomicState<_T>* st =
-    py2cpp_concur_thread_detail::atomic_from_handle<_T>(_state);
+  py2cpp_concur_thread_detail::AtomicState<_Value>* st =
+    py2cpp_concur_thread_detail::atomic_from_handle<_Value>(_state);
   if (!st)
   {
-    throw PY2CPP_TYPE(RuntimeError)();
+    throw PY2CPP_TYPE(PyRuntimeError)();
   }
   return st->value.compare_exchange_strong(
     expected, desired, std::memory_order_seq_cst, std::memory_order_seq_cst);
 }
 
-template<typename _T>
-_T PyAtomic<_T>::fetch_add(_T delta)
+template<typename _Value>
+_Value PyAtomic<_Value>::fetchAdd(_Value delta)
 {
-  py2cpp_concur_thread_detail::AtomicState<_T>* st =
-    py2cpp_concur_thread_detail::atomic_from_handle<_T>(_state);
+  py2cpp_concur_thread_detail::AtomicState<_Value>* st =
+    py2cpp_concur_thread_detail::atomic_from_handle<_Value>(_state);
   if (!st)
   {
-    throw PY2CPP_TYPE(RuntimeError)();
+    throw PY2CPP_TYPE(PyRuntimeError)();
   }
   return st->value.fetch_add(delta, std::memory_order_seq_cst);
 }
 
-template<typename _T>
-_T PyAtomic<_T>::fetch_sub(_T delta)
+template<typename _Value>
+_Value PyAtomic<_Value>::fetchSub(_Value delta)
 {
-  py2cpp_concur_thread_detail::AtomicState<_T>* st =
-    py2cpp_concur_thread_detail::atomic_from_handle<_T>(_state);
+  py2cpp_concur_thread_detail::AtomicState<_Value>* st =
+    py2cpp_concur_thread_detail::atomic_from_handle<_Value>(_state);
   if (!st)
   {
-    throw PY2CPP_TYPE(RuntimeError)();
+    throw PY2CPP_TYPE(PyRuntimeError)();
   }
   return st->value.fetch_sub(delta, std::memory_order_seq_cst);
 }
@@ -1141,21 +1141,21 @@ PyBool PyRLock::locked() const
   return py2cpp_concur_thread_detail::rlock_locked_state(st);
 }
 
-PyBool PyRLock::_is_owned() const
+PyBool PyRLock::_isOwned() const
 {
   py2cpp_concur_thread_detail::RLockState* st =
     py2cpp_concur_thread_detail::rlock_from_handle(_state);
   return py2cpp_concur_thread_detail::rlock_is_owned_state(st);
 }
 
-PyInt PyRLock::_release_save()
+PyInt PyRLock::_releaseSave()
 {
   py2cpp_concur_thread_detail::RLockState* st =
     py2cpp_concur_thread_detail::rlock_from_handle(_state);
   return py2cpp_concur_thread_detail::rlock_release_save_state(st);
 }
 
-void PyRLock::_acquire_restore(PyInt count)
+void PyRLock::_acquireRestore(PyInt count)
 {
   py2cpp_concur_thread_detail::RLockState* st =
     py2cpp_concur_thread_detail::rlock_from_handle(_state);
@@ -1243,7 +1243,7 @@ PyBool PyCondition::locked() const
   return py2cpp_concur_thread_detail::condition_locked_state(st);
 }
 
-PyBool PyCondition::_is_owned() const
+PyBool PyCondition::_isOwned() const
 {
   py2cpp_concur_thread_detail::ConditionState* st =
     py2cpp_concur_thread_detail::condition_from_handle(_state);
@@ -1257,11 +1257,11 @@ PyBool PyCondition::wait(PyFloat64 timeout)
   return py2cpp_concur_thread_detail::condition_wait_state(st, timeout);
 }
 
-PyBool PyCondition::wait_for(PyCallable<PyBool> predicate, PyFloat64 timeout)
+PyBool PyCondition::waitFor(PyCallable<PyBool> predicate, PyFloat64 timeout)
 {
-  if (!_is_owned())
+  if (!_isOwned())
   {
-    throw PY2CPP_TYPE(RuntimeError)();
+    throw PY2CPP_TYPE(PyRuntimeError)();
   }
   if (predicate())
   {
@@ -1269,7 +1269,7 @@ PyBool PyCondition::wait_for(PyCallable<PyBool> predicate, PyFloat64 timeout)
   }
   if (timeout < -1.0)
   {
-    throw PY2CPP_TYPE(ValueError)();
+    throw PY2CPP_TYPE(PyValueError)();
   }
   double end = 0.0;
   if (timeout >= 0.0)
@@ -1307,7 +1307,7 @@ void PyCondition::notify(PyInt n)
   py2cpp_concur_thread_detail::condition_notify_state(st, n);
 }
 
-void PyCondition::notify_all()
+void PyCondition::notifyAll()
 {
   py2cpp_concur_thread_detail::ConditionState* st =
     py2cpp_concur_thread_detail::condition_from_handle(_state);
@@ -1325,42 +1325,42 @@ void PyCondition::__exit__()
   release();
 }
 
-template<typename _T>
-PyQueue<_T>::PyQueue(PyInt maxsize)
+template<typename _Element>
+PyQueue<_Element>::PyQueue(PyInt maxsize)
 {
-  _state = (PyUPtr)(uintptr_t)(new py2cpp_concur_thread_detail::QueueState<_T>(maxsize));
+  _state = (PyUPtr)(uintptr_t)(new py2cpp_concur_thread_detail::QueueState<_Element>(maxsize));
 }
 
-template<typename _T>
-PyQueue<_T>::~PyQueue()
+template<typename _Element>
+PyQueue<_Element>::~PyQueue()
 {
-  py2cpp_concur_thread_detail::QueueState<_T>* st =
-    py2cpp_concur_thread_detail::queue_from_handle<_T>(_state);
+  py2cpp_concur_thread_detail::QueueState<_Element>* st =
+    py2cpp_concur_thread_detail::queue_from_handle<_Element>(_state);
   py2cpp_concur_thread_detail::release_queue(st);
   _state = 0;
 }
 
-template<typename _T>
-void PyQueue<_T>::__copy__(const PyQueue<_T>& other)
+template<typename _Element>
+void PyQueue<_Element>::__copy__(const PyQueue<_Element>& other)
 {
   if (_state == other._state)
   {
     return;
   }
-  py2cpp_concur_thread_detail::QueueState<_T>* next =
-    py2cpp_concur_thread_detail::queue_from_handle<_T>(other._state);
+  py2cpp_concur_thread_detail::QueueState<_Element>* next =
+    py2cpp_concur_thread_detail::queue_from_handle<_Element>(other._state);
   py2cpp_concur_thread_detail::retain_queue(next);
-  py2cpp_concur_thread_detail::QueueState<_T>* old =
-    py2cpp_concur_thread_detail::queue_from_handle<_T>(_state);
+  py2cpp_concur_thread_detail::QueueState<_Element>* old =
+    py2cpp_concur_thread_detail::queue_from_handle<_Element>(_state);
   py2cpp_concur_thread_detail::release_queue(old);
   _state = other._state;
 }
 
-template<typename _T>
-PyInt PyQueue<_T>::qsize() const
+template<typename _Element>
+PyInt PyQueue<_Element>::qsize() const
 {
-  py2cpp_concur_thread_detail::QueueState<_T>* st =
-    py2cpp_concur_thread_detail::queue_from_handle<_T>(_state);
+  py2cpp_concur_thread_detail::QueueState<_Element>* st =
+    py2cpp_concur_thread_detail::queue_from_handle<_Element>(_state);
   if (!st)
   {
     return 0;
@@ -1369,17 +1369,17 @@ PyInt PyQueue<_T>::qsize() const
   return st->items.__len__();
 }
 
-template<typename _T>
-PyBool PyQueue<_T>::__bool__() const
+template<typename _Element>
+PyBool PyQueue<_Element>::__bool__() const
 {
   return qsize() > 0;
 }
 
-template<typename _T>
-PyBool PyQueue<_T>::full() const
+template<typename _Element>
+PyBool PyQueue<_Element>::full() const
 {
-  py2cpp_concur_thread_detail::QueueState<_T>* st =
-    py2cpp_concur_thread_detail::queue_from_handle<_T>(_state);
+  py2cpp_concur_thread_detail::QueueState<_Element>* st =
+    py2cpp_concur_thread_detail::queue_from_handle<_Element>(_state);
   if (!st)
   {
     return false;
@@ -1388,27 +1388,27 @@ PyBool PyQueue<_T>::full() const
   return st->maxsize > 0 && st->items.__len__() >= st->maxsize;
 }
 
-template<typename _T>
-void PyQueue<_T>::put(_T item, PyBool block, PyFloat64 timeout)
+template<typename _Element>
+void PyQueue<_Element>::put(_Element item, PyBool block, PyFloat64 timeout)
 {
-  py2cpp_concur_thread_detail::QueueState<_T>* st =
-    py2cpp_concur_thread_detail::queue_from_handle<_T>(_state);
+  py2cpp_concur_thread_detail::QueueState<_Element>* st =
+    py2cpp_concur_thread_detail::queue_from_handle<_Element>(_state);
   if (!st)
   {
-    throw PY2CPP_TYPE(RuntimeError)();
+    throw PY2CPP_TYPE(PyRuntimeError)();
   }
   if (!block && timeout >= 0.0)
   {
-    throw PY2CPP_TYPE(ValueError)();
+    throw PY2CPP_TYPE(PyValueError)();
   }
   if (timeout < -1.0)
   {
-    throw PY2CPP_TYPE(ValueError)();
+    throw PY2CPP_TYPE(PyValueError)();
   }
   std::unique_lock<std::mutex> lk(st->mutex);
   if (st->shutdown)
   {
-    throw ShutDown();
+    throw PyShutDownError();
   }
   double end = 0.0;
   if (timeout >= 0.0)
@@ -1419,11 +1419,11 @@ void PyQueue<_T>::put(_T item, PyBool block, PyFloat64 timeout)
   {
     if (st->shutdown)
     {
-      throw ShutDown();
+      throw PyShutDownError();
     }
     if (!block)
     {
-      throw Full();
+      throw PyFullError();
     }
     if (timeout < 0.0)
     {
@@ -1435,14 +1435,14 @@ void PyQueue<_T>::put(_T item, PyBool block, PyFloat64 timeout)
       double remaining = end - now;
       if (remaining <= 0.0)
       {
-        throw Full();
+        throw PyFullError();
       }
       py2cpp_concur_thread_detail::timed_wait_cv(st->not_full, lk, remaining);
     }
   }
   if (st->shutdown)
   {
-    throw ShutDown();
+    throw PyShutDownError();
   }
   st->items.append(item);
   st->unfinished_tasks += 1;
@@ -1450,28 +1450,28 @@ void PyQueue<_T>::put(_T item, PyBool block, PyFloat64 timeout)
   st->not_empty.notify_one();
 }
 
-template<typename _T>
-void PyQueue<_T>::put_nowait(_T item)
+template<typename _Element>
+void PyQueue<_Element>::putNowait(_Element item)
 {
   put(item, false, -1.0);
 }
 
-template<typename _T>
-_T PyQueue<_T>::get(PyBool block, PyFloat64 timeout)
+template<typename _Element>
+_Element PyQueue<_Element>::get(PyBool block, PyFloat64 timeout)
 {
-  py2cpp_concur_thread_detail::QueueState<_T>* st =
-    py2cpp_concur_thread_detail::queue_from_handle<_T>(_state);
+  py2cpp_concur_thread_detail::QueueState<_Element>* st =
+    py2cpp_concur_thread_detail::queue_from_handle<_Element>(_state);
   if (!st)
   {
-    throw PY2CPP_TYPE(RuntimeError)();
+    throw PY2CPP_TYPE(PyRuntimeError)();
   }
   if (!block && timeout >= 0.0)
   {
-    throw PY2CPP_TYPE(ValueError)();
+    throw PY2CPP_TYPE(PyValueError)();
   }
   if (timeout < -1.0)
   {
-    throw PY2CPP_TYPE(ValueError)();
+    throw PY2CPP_TYPE(PyValueError)();
   }
   std::unique_lock<std::mutex> lk(st->mutex);
   double end = 0.0;
@@ -1483,11 +1483,11 @@ _T PyQueue<_T>::get(PyBool block, PyFloat64 timeout)
   {
     if (st->shutdown)
     {
-      throw ShutDown();
+      throw PyShutDownError();
     }
     if (!block)
     {
-      throw Empty();
+      throw PyEmptyError();
     }
     if (timeout < 0.0)
     {
@@ -1499,40 +1499,40 @@ _T PyQueue<_T>::get(PyBool block, PyFloat64 timeout)
       double remaining = end - now;
       if (remaining <= 0.0)
       {
-        throw Empty();
+        throw PyEmptyError();
       }
       py2cpp_concur_thread_detail::timed_wait_cv(st->not_empty, lk, remaining);
     }
   }
   if (st->immediate)
   {
-    throw ShutDown();
+    throw PyShutDownError();
   }
-  _T item = st->items.popleft();
+  _Element item = st->items.popLeft();
   lk.unlock();
   st->not_full.notify_one();
   return item;
 }
 
-template<typename _T>
-_T PyQueue<_T>::get_nowait()
+template<typename _Element>
+_Element PyQueue<_Element>::getNowait()
 {
   return get(false, -1.0);
 }
 
-template<typename _T>
-void PyQueue<_T>::task_done()
+template<typename _Element>
+void PyQueue<_Element>::taskDone()
 {
-  py2cpp_concur_thread_detail::QueueState<_T>* st =
-    py2cpp_concur_thread_detail::queue_from_handle<_T>(_state);
+  py2cpp_concur_thread_detail::QueueState<_Element>* st =
+    py2cpp_concur_thread_detail::queue_from_handle<_Element>(_state);
   if (!st)
   {
-    throw PY2CPP_TYPE(RuntimeError)();
+    throw PY2CPP_TYPE(PyRuntimeError)();
   }
   std::lock_guard<std::mutex> lk(st->mutex);
   if (st->unfinished_tasks <= 0)
   {
-    throw PY2CPP_TYPE(ValueError)();
+    throw PY2CPP_TYPE(PyValueError)();
   }
   st->unfinished_tasks -= 1;
   if (st->unfinished_tasks == 0)
@@ -1541,14 +1541,14 @@ void PyQueue<_T>::task_done()
   }
 }
 
-template<typename _T>
-void PyQueue<_T>::join()
+template<typename _Element>
+void PyQueue<_Element>::join()
 {
-  py2cpp_concur_thread_detail::QueueState<_T>* st =
-    py2cpp_concur_thread_detail::queue_from_handle<_T>(_state);
+  py2cpp_concur_thread_detail::QueueState<_Element>* st =
+    py2cpp_concur_thread_detail::queue_from_handle<_Element>(_state);
   if (!st)
   {
-    throw PY2CPP_TYPE(RuntimeError)();
+    throw PY2CPP_TYPE(PyRuntimeError)();
   }
   std::unique_lock<std::mutex> lk(st->mutex);
   while (st->unfinished_tasks > 0 && !st->immediate)
@@ -1557,14 +1557,14 @@ void PyQueue<_T>::join()
   }
 }
 
-template<typename _T>
-void PyQueue<_T>::shutdown(PyBool immediate)
+template<typename _Element>
+void PyQueue<_Element>::shutdown(PyBool immediate)
 {
-  py2cpp_concur_thread_detail::QueueState<_T>* st =
-    py2cpp_concur_thread_detail::queue_from_handle<_T>(_state);
+  py2cpp_concur_thread_detail::QueueState<_Element>* st =
+    py2cpp_concur_thread_detail::queue_from_handle<_Element>(_state);
   if (!st)
   {
-    throw PY2CPP_TYPE(RuntimeError)();
+    throw PY2CPP_TYPE(PyRuntimeError)();
   }
   {
     std::lock_guard<std::mutex> lk(st->mutex);
@@ -1581,12 +1581,12 @@ void PyQueue<_T>::shutdown(PyBool immediate)
   st->all_tasks_done.notify_all();
 }
 
-Py_ThreadHandle::Py_ThreadHandle()
+_PyThreadHandle::_PyThreadHandle()
 {
   _state = (PyUPtr)(uintptr_t)(new py2cpp_concur_thread_detail::ThreadState());
 }
 
-Py_ThreadHandle::~Py_ThreadHandle()
+_PyThreadHandle::~_PyThreadHandle()
 {
   py2cpp_concur_thread_detail::ThreadState* st =
     py2cpp_concur_thread_detail::thread_from_handle(_state);
@@ -1594,7 +1594,7 @@ Py_ThreadHandle::~Py_ThreadHandle()
   _state = 0;
 }
 
-void Py_ThreadHandle::__copy__(const Py_ThreadHandle& other)
+void _PyThreadHandle::__copy__(const _PyThreadHandle& other)
 {
   if (_state == other._state)
   {
@@ -1609,11 +1609,11 @@ void Py_ThreadHandle::__copy__(const Py_ThreadHandle& other)
   _state = other._state;
 }
 
-Py_ThreadHandle Py_ThreadHandle::PY2CPP_GETTER(current)()
+_PyThreadHandle _PyThreadHandle::PY2CPP_GETTER(current)()
 {
   py2cpp_concur_thread_detail::ThreadState* st =
     py2cpp_concur_thread_detail::current_thread_state();
-  Py_ThreadHandle handle;
+  _PyThreadHandle handle;
   py2cpp_concur_thread_detail::ThreadState* old =
     py2cpp_concur_thread_detail::thread_from_handle(handle._state);
   py2cpp_concur_thread_detail::release_thread(old);
@@ -1622,11 +1622,11 @@ Py_ThreadHandle Py_ThreadHandle::PY2CPP_GETTER(current)()
   return handle;
 }
 
-Py_ThreadHandle Py_ThreadHandle::PY2CPP_GETTER(main)()
+_PyThreadHandle _PyThreadHandle::PY2CPP_GETTER(main)()
 {
   py2cpp_concur_thread_detail::ThreadState* st =
     py2cpp_concur_thread_detail::ensure_main_thread_registered();
-  Py_ThreadHandle handle;
+  _PyThreadHandle handle;
   py2cpp_concur_thread_detail::ThreadState* old =
     py2cpp_concur_thread_detail::thread_from_handle(handle._state);
   py2cpp_concur_thread_detail::release_thread(old);
@@ -1635,7 +1635,7 @@ Py_ThreadHandle Py_ThreadHandle::PY2CPP_GETTER(main)()
   return handle;
 }
 
-PyInt Py_ThreadHandle::PY2CPP_GETTER(active_count)()
+PyInt _PyThreadHandle::PY2CPP_GETTER(activeCount)()
 {
   py2cpp_concur_thread_detail::ensure_main_thread_registered();
   PyInt count = 0;
@@ -1650,16 +1650,16 @@ PyInt Py_ThreadHandle::PY2CPP_GETTER(active_count)()
   return count;
 }
 
-PY2CPP_TYPE(PyList)<Py_ThreadHandle> Py_ThreadHandle::PY2CPP_GETTER(actives)()
+PY2CPP_TYPE(PyList)<_PyThreadHandle> _PyThreadHandle::PY2CPP_GETTER(actives)()
 {
   py2cpp_concur_thread_detail::ensure_main_thread_registered();
-  PY2CPP_TYPE(PyList)<Py_ThreadHandle> out;
+  PY2CPP_TYPE(PyList)<_PyThreadHandle> out;
   std::lock_guard<std::mutex> lk(py2cpp_concur_thread_detail::registry_mutex);
   py2cpp_concur_thread_detail::ThreadState* cur =
     py2cpp_concur_thread_detail::registry_head;
   while (cur)
   {
-    Py_ThreadHandle handle;
+    _PyThreadHandle handle;
     py2cpp_concur_thread_detail::ThreadState* old =
       py2cpp_concur_thread_detail::thread_from_handle(handle._state);
     py2cpp_concur_thread_detail::release_thread(old);
@@ -1671,7 +1671,7 @@ PY2CPP_TYPE(PyList)<Py_ThreadHandle> Py_ThreadHandle::PY2CPP_GETTER(actives)()
   return out;
 }
 
-void Py_ThreadHandle::start(
+void _PyThreadHandle::start(
   py2cpp_concur_thread_detail::ThreadTarget target,
   PY2CPP_TYPE(PyStr) name,
   PyBool daemon)
@@ -1681,13 +1681,13 @@ void Py_ThreadHandle::start(
     py2cpp_concur_thread_detail::thread_from_handle(_state);
   if (!st)
   {
-    throw PY2CPP_TYPE(RuntimeError)();
+    throw PY2CPP_TYPE(PyRuntimeError)();
   }
   {
     std::lock_guard<std::mutex> lk(st->mutex);
     if (st->started)
     {
-      throw PY2CPP_TYPE(RuntimeError)();
+      throw PY2CPP_TYPE(PyRuntimeError)();
     }
     st->target = target;
     st->name = name;
@@ -1701,11 +1701,11 @@ void Py_ThreadHandle::start(
     st->worker = std::thread([st]() {
       py2cpp_concur_thread_detail::tls_thread_state = st;
       PyInt64 ident = py2cpp_concur_thread_detail::ensure_ident();
-      PyInt64 native_id = py2cpp_concur_thread_detail::current_native_id();
+      PyInt64 nativeId = py2cpp_concur_thread_detail::current_native_id();
       {
         std::lock_guard<std::mutex> lk(st->mutex);
         st->ident = ident;
-        st->native_id = native_id;
+        st->nativeId = nativeId;
       }
       py2cpp_concur_thread_detail::register_active_thread(st);
       st->cv.notify_all();
@@ -1737,7 +1737,7 @@ void Py_ThreadHandle::start(
     st->finished = false;
     st->target = py2cpp_concur_thread_detail::ThreadTarget();
     py2cpp_concur_thread_detail::release_thread(st);
-    throw PY2CPP_TYPE(RuntimeError)();
+    throw PY2CPP_TYPE(PyRuntimeError)();
   }
   std::unique_lock<std::mutex> lk(st->mutex);
   while (st->ident == 0 && st->running)
@@ -1746,20 +1746,20 @@ void Py_ThreadHandle::start(
   }
 }
 
-PyBool Py_ThreadHandle::join(PyFloat64 timeout)
+PyBool _PyThreadHandle::join(PyFloat64 timeout)
 {
   py2cpp_concur_thread_detail::ThreadState* st =
     py2cpp_concur_thread_detail::thread_from_handle(_state);
   if (!st)
   {
-    throw PY2CPP_TYPE(RuntimeError)();
+    throw PY2CPP_TYPE(PyRuntimeError)();
   }
   bool should_join = false;
   {
     std::unique_lock<std::mutex> lk(st->mutex);
     if (!st->started)
     {
-      throw PY2CPP_TYPE(RuntimeError)();
+      throw PY2CPP_TYPE(PyRuntimeError)();
     }
     if (!st->finished)
     {
@@ -1799,7 +1799,7 @@ PyBool Py_ThreadHandle::join(PyFloat64 timeout)
   return true;
 }
 
-PyBool Py_ThreadHandle::PY2CPP_GETTER(alive)() const
+PyBool _PyThreadHandle::PY2CPP_GETTER(alive)() const
 {
   py2cpp_concur_thread_detail::ThreadState* st =
     py2cpp_concur_thread_detail::thread_from_handle(_state);
@@ -1811,7 +1811,7 @@ PyBool Py_ThreadHandle::PY2CPP_GETTER(alive)() const
   return st->running && !st->finished;
 }
 
-PyInt64 Py_ThreadHandle::PY2CPP_GETTER(ident)() const
+PyInt64 _PyThreadHandle::PY2CPP_GETTER(ident)() const
 {
   py2cpp_concur_thread_detail::ThreadState* st =
     py2cpp_concur_thread_detail::thread_from_handle(_state);
@@ -1823,7 +1823,7 @@ PyInt64 Py_ThreadHandle::PY2CPP_GETTER(ident)() const
   return st->ident;
 }
 
-PyInt64 Py_ThreadHandle::PY2CPP_GETTER(native_id)() const
+PyInt64 _PyThreadHandle::PY2CPP_GETTER(nativeId)() const
 {
   py2cpp_concur_thread_detail::ThreadState* st =
     py2cpp_concur_thread_detail::thread_from_handle(_state);
@@ -1832,10 +1832,10 @@ PyInt64 Py_ThreadHandle::PY2CPP_GETTER(native_id)() const
     return 0;
   }
   std::lock_guard<std::mutex> lk(st->mutex);
-  return st->native_id;
+  return st->nativeId;
 }
 
-PY2CPP_TYPE(PyStr) Py_ThreadHandle::PY2CPP_GETTER(name)() const
+PY2CPP_TYPE(PyStr) _PyThreadHandle::PY2CPP_GETTER(name)() const
 {
   py2cpp_concur_thread_detail::ThreadState* st =
     py2cpp_concur_thread_detail::thread_from_handle(_state);
@@ -1847,7 +1847,7 @@ PY2CPP_TYPE(PyStr) Py_ThreadHandle::PY2CPP_GETTER(name)() const
   return st->name;
 }
 
-PyBool Py_ThreadHandle::PY2CPP_GETTER(daemon)() const
+PyBool _PyThreadHandle::PY2CPP_GETTER(daemon)() const
 {
   py2cpp_concur_thread_detail::ThreadState* st =
     py2cpp_concur_thread_detail::thread_from_handle(_state);

@@ -11,7 +11,7 @@
 - 运行时标准库在仓库根 ``py2cpp/*.py`` 用 Python 描述，与用户代码一同翻译；不依赖 STL。
 - ``__next__``：Python 仍写 ``raise StopIteration`` / ``return value``，C++ 侧为 ``PyIterResult<Y,R>``。
 - ``@refcount``：``A(...)`` → ``RefCount<A>(...)``（类型见 ``refcount.py``，装饰器见 ``py2cpp/__init__.py``）。
-- ``@boxing``：``A(...)`` / ``A[T](...)`` → ``new A<...>(...)``（无引用计数的堆节点，如 ``dict_entry``）。
+- ``@boxing``：``A(...)`` / ``A[T](...)`` → ``new A<...>(...)``（无引用计数的堆节点，如 ``DictEntryUnsafe``）。
 - ``@descriptor`` / ``@mixin`` / ``@annotation`` 等：见 ``py2cpp/__init__.py`` 与 ``passes`` 下 ``mixins`` / ``descriptors`` 展开模块。
 - ``@immutable`` / ``@copyable`` / ``@decorator`` / ``@context``：声明见 ``py2cpp/__init__.py``；``@context`` 亦可作函数装饰器。
 - 用户类算术/位运算/比较：映射为 ``__add__`` / ``__radd__`` / ``__iadd__`` 等；``+=`` 等增强赋值同理。
@@ -49,6 +49,7 @@ from .passes.default_numeric_convert import expand_default_numeric_convert
 from .passes.default_iter import expand_default_iter
 from .passes.default_ne import expand_default_ne
 from .passes.kwargs_options import expand_kwargs_options
+from .passes.argument_parser import expand_argument_parser
 from .translation_error import TranslationError, enhance_translation_exception
 from .passes.access import expand_member_access
 from .passes.copyable import expand_copyable
@@ -391,6 +392,8 @@ class Translator(ast.NodeVisitor):
         try:
             check_s32_dataclass_required_fields(translator)
             check_s44_field_annotation_markers(translator)
+            # 须在 expand_dataclass 之前：dataclass 会清掉类体字段默认值
+            expand_argument_parser(translator)
             expand_dataclass(translator)
             expand_class_id(translator)
             expand_enum_mro(translator)
@@ -1249,7 +1252,7 @@ class Translator(ast.NodeVisitor):
             return f'({cpp})'
         if is_char_type(t, classes=self.classes):
             return f'({cpp})'
-        if t in ('c_str', 'const char*'):
+        if t in ('CStr', 'const char*'):
             return f'({cpp} != 0)'
         if is_refcount_type(t, classes=self.classes):
             pb = cpp_ident('PyBool')
@@ -2533,13 +2536,13 @@ class Translator(ast.NodeVisitor):
                 getter = self._property_getter_cpp_name(owner, attr)
                 return f'{recv}{sep}{getter}()'
         recv_t = self._infer_expr_cpp_type(receiver) or self._expr_cpp_type(receiver) or ''
-        if attr in ('done', 'value', 'return_value') and is_iter_result_type(recv_t):
+        if attr in ('done', 'value', 'returnValue') and is_iter_result_type(recv_t):
             recv, sep = self._receiver_access(receiver)
             return f'{recv}{sep}{property_getter_method_for(attr)}()'
         if attr in ('ok', 'value') and is_fault_result_type(recv_t):
             recv, sep = self._receiver_access(receiver)
             return f'{recv}{sep}{property_getter_method_for(attr)}()'
-        if attr in ('done', 'return_value'):
+        if attr in ('done', 'returnValue'):
             recv, sep = self._receiver_access(receiver)
             return f'{recv}{sep}{property_getter_method_for(attr)}()'
         if self._use_member_dispatch_macro(receiver):
@@ -4785,6 +4788,10 @@ class Translator(ast.NodeVisitor):
             case ast.Attribute(value=ast.Name(id='self'), attr=attr):
                 if not self._is_primitive_cpp_type(vtype):
                     return False
+                if self.class_info and attr in getattr(self.class_info, 'thread_local_fields', {}):
+                    cpp = self.class_info.cpp_member_name(attr)
+                    self.write_line(f'{self.class_info.cpp_name()}::{cpp} {aug_op} {rhs};')
+                    return True
                 storage_attr = attr
                 if self.class_info and attr in self.class_info.field_properties:
                     storage_attr = storage_field_for(attr)
@@ -5157,7 +5164,7 @@ class Translator(ast.NodeVisitor):
         from .analysis.stubs.protocol_erase_stubs import parse_erased_protocol_from_cpp
         t = strip_cpp_ref(mgr_type)
         parsed = parse_erased_protocol_from_cpp(t)
-        if parsed is not None and parsed[0] == 'ContextManager' and parsed[1]:
+        if parsed is not None and parsed[0] == 'ContextManagerType' and parsed[1]:
             return parsed[1]
         info = self._class_info_for_type(t)
         if info is None:
@@ -5263,7 +5270,7 @@ class Translator(ast.NodeVisitor):
             self.write_line(f'{val};')
 
     def _is_ptr_type(self, t: str) -> bool:
-        return bool(t) and t.endswith('*') and (t not in ('c_str', 'const char*'))
+        return bool(t) and t.endswith('*') and (t not in ('CStr', 'const char*'))
 
     @staticmethod
     def _array_ndim_from_type(t: str) -> int | None:
@@ -5519,7 +5526,7 @@ class Translator(ast.NodeVisitor):
         return emit_compare(self, node)
 
     def visit_GeneratorExp(self, node: ast.GeneratorExp):
-        raise NotImplementedError('生成器表达式仅支持作为 min/max/sum/any/all 的唯一 positional 实参，或传给注解为 Iterable[...] 的用户函数/方法形参（调用点内联）')
+        raise NotImplementedError('生成器表达式仅支持作为 min/max/sum/any/all 的唯一 positional 实参，或传给注解为 IterableType[...] 的用户函数/方法形参（调用点内联）')
 
     def visit_JoinedStr(self, node: ast.JoinedStr):
         return emit_format_expr(self, plan_joined_str(self, node))
@@ -5604,12 +5611,11 @@ class Translator(ast.NodeVisitor):
         return self._literal(node.value)
 
     def _union_ctor_class_cpp(self, info: ClassInfo, *, type_args_slice: ast.expr | None=None, context_cpp: str | None=None) -> str:
-        if type_args_slice is not None and info.type_params:
-            args = self._parse_type_args(type_args_slice, set(info.type_params))
-            return f'{info.cpp_name()}<{args}>'
         if context_cpp and '<' in context_cpp:
             # 仅当上下文是本 union 的实例化（如 ``BoxT[int]``）时采用；勿把
             # ``Json.dumps`` 误匹配的 ``PyList<T>`` 形参当成构造目标类型。
+            # 优先用已按活跃形参解析的 ``context_cpp``（``IterResult[int, Value]`` 中
+            # ``Value`` 属宿主类形参，勿再用 union 自身形参集重解析导致 ``PyValue``）。
             from .analysis.ir import cpp_template_base_and_args
             ctx = context_cpp.strip()
             parsed = cpp_template_base_and_args(ctx)
@@ -5618,6 +5624,11 @@ class Translator(ast.NodeVisitor):
                 base = parsed[0]
                 if base == cpp or base.endswith(f'::{cpp}'):
                     return ctx
+        if type_args_slice is not None and info.type_params:
+            args = self._parse_type_args(
+              type_args_slice, self._active_type_params() | set(info.type_params),
+            )
+            return f'{info.cpp_name()}<{args}>'
         if info.is_template():
             return info.template_cpp_type()
         return info.cpp_name()
@@ -5775,7 +5786,7 @@ class Translator(ast.NodeVisitor):
                     return format_cpp_float64(value)
                 return format_cpp_float(value)
             case str():
-                if cpp_type in ('c_str', 'const char*'):
+                if cpp_type in ('CStr', 'const char*'):
                     return quote_cpp_string(value)
                 return str_cpp_from_literal(value)
             case bytes():
@@ -6418,13 +6429,18 @@ class Translator(ast.NodeVisitor):
         items = [n for mp, n in self.module_constants if mp == module_path]
         if not items:
             return
-        with self._use_module_header(module_path), self._use_header():
+        with self._use_module_header(module_path), self._use_header(), self._use_import_bindings(module_path):
             for node in items:
                 name = node.target.id
                 if name == '__all__':
                     continue
-                undef_name = name
-                if self._is_ffi_module(module_path) and name.startswith('Pyi_'):
+                from .analysis.ir import parse_native_name_type_annotation
+                undef_name = parse_native_name_type_annotation(node.annotation) or name
+                if (
+                  self._is_ffi_module(module_path)
+                  and undef_name == name
+                  and name.startswith('Pyi_')
+                ):
                     undef_name = name[4:]
                 t = self._parse_type(node.annotation, [])
                 is_const = is_const_type_annotation(node.annotation)

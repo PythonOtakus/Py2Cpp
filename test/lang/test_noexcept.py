@@ -6,14 +6,14 @@ from py2cpp.core.exceptions import ValueError, Exception
 
 
 @noexcept
-def div_ok(a: int, b: int) -> int:
+def divOk(a: int, b: int) -> int:
   if b == 0:
     raise ValueError()
   return a // b
 
 
 @noexcept
-def try_catch_ok() -> int:
+def tryCatchOk() -> int:
   n: int = 0
   try:
     raise ValueError()
@@ -23,23 +23,23 @@ def try_catch_ok() -> int:
 
 
 @noexcept
-def void_ok() -> None:
+def voidOk() -> None:
   return
 
 
-def unwrap_ok(r: Result[int, ValueError]) -> int:
+def unwrapOk(r: Result[int, ValueError]) -> int:
   if r.ok:
     return r.value
   return -1
 
 
-def unwrap_err(r: Result[int, ValueError]) -> int:
+def unwrapErr(r: Result[int, ValueError]) -> int:
   if not r.ok:
     return -2
   return r.value
 
 
-def value_on_err_raises(r: Result[int, ValueError]) -> bool:
+def valueOnErrRaises(r: Result[int, ValueError]) -> bool:
   caught: bool = False
   try:
     _: int = r.value
@@ -48,7 +48,7 @@ def value_on_err_raises(r: Result[int, ValueError]) -> bool:
   return caught
 
 
-def match_ok(r: Result[int, ValueError]) -> int:
+def matchOk(r: Result[int, ValueError]) -> int:
   match r:
     case new.Ok(v):
       return v
@@ -57,38 +57,38 @@ def match_ok(r: Result[int, ValueError]) -> int:
 
 
 class NoexceptBasicTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
-    ok: Result[int, ValueError] = div_ok(10, 2)
+    ok: Result[int, ValueError] = divOk(10, 2)
     self.assertTrue(ok.ok)
     self.assertEqual(ok.value, 5)
-    self.assertEqual(unwrap_ok(div_ok(8, 4)), 2)
-    bad: Result[int, ValueError] = div_ok(1, 0)
+    self.assertEqual(unwrapOk(divOk(8, 4)), 2)
+    bad: Result[int, ValueError] = divOk(1, 0)
     self.assertFalse(bad.ok)
-    self.assertEqual(unwrap_err(bad), -2)
-    self.assertTrue(value_on_err_raises(bad))
-    self.assertEqual(match_ok(div_ok(6, 3)), 2)
-    self.assertEqual(match_ok(div_ok(1, 0)), -3)
+    self.assertEqual(unwrapErr(bad), -2)
+    self.assertTrue(valueOnErrRaises(bad))
+    self.assertEqual(matchOk(divOk(6, 3)), 2)
+    self.assertEqual(matchOk(divOk(1, 0)), -3)
 
 
 class NoexceptTryTests(TestCaseMixin):
-  _test_tag = 2
+  _testTag = 2
 
   @override
   def test(self):
-    r: Result[int, ValueError] = try_catch_ok()
+    r: Result[int, ValueError] = tryCatchOk()
     self.assertTrue(r.ok)
     self.assertEqual(r.value, 7)
 
 
 class NoexceptVoidTests(TestCaseMixin):
-  _test_tag = 3
+  _testTag = 3
 
   @override
   def test(self):
-    r: Result[None, Exception] = void_ok()
+    r: Result[None, Exception] = voidOk()
     self.assertTrue(r.ok)
 
 

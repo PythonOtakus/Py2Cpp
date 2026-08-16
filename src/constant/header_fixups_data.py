@@ -37,18 +37,18 @@ HEADER_FORWARD_DECLS: dict[str, str] = {
   ),
   "ecs_component_table_tpl": (
     "namespace py2cpp { namespace design { namespace ecs { "
-    "template<typename T> class ECSComponentTable; } } }"
+    "template<typename T> class PyECSComponentTable; } } }"
   ),
   "json_doc_cursor_tpl": (
     "namespace py2cpp { namespace serde { namespace json { "
-    "template<typename T> class JsonDocCursor; } } }"
+    "template<typename T> class PyJsonDocCursor; } } }"
   ),
   "pytuple_tpl": "template<typename... Args> class PyTuple;",
   "path_walk_step": (
-    "namespace py2cpp { namespace io { namespace path { class WalkStep; } } }"
+    "namespace py2cpp { namespace io { namespace path { class PyWalkStep; } } }"
   ),
   "file_walk_generator": (
-    "namespace py2cpp { namespace io { namespace file { class walk_generator; } } }"
+    "namespace py2cpp { namespace io { namespace file { class PyWalk_generator; } } }"
   ),
   "task_slot_friend": "namespace py2cpp_concur_task_detail { struct TaskSlotFriend; }",
 }

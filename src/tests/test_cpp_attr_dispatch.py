@@ -174,11 +174,11 @@ def use(p: Pointer[Node]) -> int:
 from py2cpp import Pointer, Self, boxing
 
 @boxing
-class Link:
+class LinkUnsafe:
   next: Pointer[Self]
   prev: Pointer[Self]
 
-def wire(cur: Pointer[Link], node: Pointer[Link]) -> None:
+def wire(cur: Pointer[LinkUnsafe], node: Pointer[LinkUnsafe]) -> None:
   cur.prev.next = node
 """
     with tempfile.TemporaryDirectory() as tmp:

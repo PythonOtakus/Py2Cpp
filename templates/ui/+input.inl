@@ -10,19 +10,19 @@ PY2CPP_END
 
 PY2CPP_BEGIN_SCOPE
 
-PyTuple<PyInt, PyInt> cursor_screen_pos()
+PyTuple<PyInt, PyInt> cursorScreenPos()
 {
   POINT pt;
   GetCursorPos(&pt);
   return PyTuple<PyInt, PyInt>((PyInt)pt.x, (PyInt)pt.y);
 }
 
-PyBool shift_down()
+PyBool shiftDown()
 {
   return (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
 }
 
-PyBool ctrl_down()
+PyBool ctrlDown()
 {
   return (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
 }
@@ -33,17 +33,17 @@ PY2CPP_END_SCOPE
 
 PY2CPP_BEGIN_SCOPE
 
-PyTuple<PyInt, PyInt> cursor_screen_pos()
+PyTuple<PyInt, PyInt> cursorScreenPos()
 {
   return PyTuple<PyInt, PyInt>(0, 0);
 }
 
-PyBool shift_down()
+PyBool shiftDown()
 {
   return false;
 }
 
-PyBool ctrl_down()
+PyBool ctrlDown()
 {
   return false;
 }

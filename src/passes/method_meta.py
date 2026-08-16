@@ -207,7 +207,7 @@ def _is_iter_method_params_call(node: ast.expr) -> bool:
     and isinstance(node.func, ast.Attribute)
     and isinstance(node.func.value, ast.Name)
     and node.func.value.id == "Self"
-    and node.func.attr == "iter_method_params"
+    and node.func.attr in ("iter_method_params", "iterMethodParams")
     and len(node.args) == 1
   )
 
@@ -221,7 +221,7 @@ def _is_get_method_param_type_call(node: ast.expr) -> tuple[str, str] | None:
     isinstance(func, ast.Attribute)
     and isinstance(func.value, ast.Name)
     and func.value.id == "Self"
-    and func.attr == "get_method_param_type"
+    and func.attr in ("get_method_param_type", "getMethodParamType")
     and len(node.args) == 2
   ):
     return None
@@ -240,7 +240,7 @@ def _is_get_method_return_type_call(node: ast.expr) -> str | None:
     isinstance(func, ast.Attribute)
     and isinstance(func.value, ast.Name)
     and func.value.id == "Self"
-    and func.attr == "get_method_return_type"
+    and func.attr in ("get_method_return_type", "getMethodReturnType")
     and len(node.args) == 1
   ):
     return None
@@ -422,7 +422,7 @@ def _is_iter_methods_call(node: ast.expr) -> bool:
     and isinstance(node.func, ast.Attribute)
     and isinstance(node.func.value, ast.Name)
     and node.func.value.id == "Self"
-    and node.func.attr == "iter_methods"
+    and node.func.attr in ("iter_methods", "iterMethods")
   )
 
 
@@ -433,7 +433,7 @@ def _parse_iter_methods_options(node: ast.expr):
     return None
   return parse_self_iter_call_options(
     node,
-    allowed=frozenset({"public_only", "mro", "glob"}),
+    allowed=frozenset({"public_only", "publicOnly", "mro", "glob"}),
     label="Self.iter_methods",
   )
 
@@ -446,17 +446,24 @@ def _parse_iter_methods_public_only(node: ast.expr) -> bool | None:
 
 
 def _iter_methods_subscript_annotation(iter_node: ast.expr) -> str | None:
-  match iter_node:
-    case ast.Call(
-      func=ast.Subscript(
-        value=ast.Attribute(value=ast.Name(id="Self"), attr="iter_methods"),
-        slice=sl,
-      ),
-    ):
-      if isinstance(sl, ast.Name):
-        return sl.id
-      if isinstance(sl, ast.Call) and isinstance(sl.func, ast.Name):
-        return sl.func.id
+  if not isinstance(iter_node, ast.Call):
+    return None
+  func = iter_node.func
+  if not isinstance(func, ast.Subscript):
+    return None
+  value = func.value
+  if not (
+    isinstance(value, ast.Attribute)
+    and isinstance(value.value, ast.Name)
+    and value.value.id == "Self"
+    and value.attr in ("iter_methods", "iterMethods")
+  ):
+    return None
+  sl = func.slice
+  if isinstance(sl, ast.Name):
+    return sl.id
+  if isinstance(sl, ast.Call) and isinstance(sl.func, ast.Name):
+    return sl.func.id
   return None
 
 
@@ -590,7 +597,7 @@ def parse_self_get_method_annotation_meta(node: ast.expr) -> tuple[str, ast.expr
     and isinstance(func.value, ast.Attribute)
     and isinstance(func.value.value, ast.Name)
     and func.value.value.id == "Self"
-    and func.value.attr == "get_method_annotation"
+    and func.value.attr in ("get_method_annotation", "getMethodAnnotation")
     and len(node.args) == 1
   ):
     return None

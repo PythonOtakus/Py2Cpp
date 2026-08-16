@@ -1,26 +1,25 @@
-"""进程环境变量（对齐 Python 3.13 ``os.environ`` / ``ntpath.expandvars`` / ``expanduser``）。
+"""进程环境变量（对齐 Python 3.13 ``os.environ`` / ``ntpath.expandVars`` / ``expandUser``）。
 
 C 层：``PyEnviron`` 映射方法（``templates/system/-environ.inl`` → ``system/environ.inl``）。
 **不**暴露 ``putenv`` / ``getenv`` 模块函数。
 """
 from ..builtins import *
-from ..io.file.path import basename, dirname, join
-from ..util.list import list, list_iterator
+from ..io.file.path import baseName, dirName, join
+from ..util.list import list
 from ..text import str
 
-_VARCHARS: str = (
+_Varchars: str = (
   "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"
 )
-_QUOTE: str = "'"
-_PERCENT: str = "%"
-_BRACE: str = "{"
-_RBRACE: str = "}"
-_DOLLAR: str = "$"
-_TILDE: str = "~"
-_SEP_CHARS: str = "\\/"
+_Quote: str = "'"
+_Percent: str = "%"
+_Brace: str = "{"
+_Rbrace: str = "}"
+_Dollar: str = "$"
+_Tilde: str = "~"
+_SepChars: str = "\\/"
 
 
-@native_name("Py*")
 @copyable
 class Environ:
   """类字典进程环境映射（读写即时作用于 OS，对齐 ``os._Environ``）。"""
@@ -57,76 +56,76 @@ class Environ:
     ...
 
   @immutable
-  def __iter__(self) -> list_iterator[str]:
-    return new(self.keys())
+  def __iter__(self) -> list[str]:
+    return self.keys()
 
   @immutable
-  def expandvars(self, path: str) -> str:
-    """``$var`` / ``${var}`` / ``%var%``；未知变量保留原样（``ntpath.expandvars``）。"""
-    if _DOLLAR not in path and _PERCENT not in path:
+  def expandVars(self, path: str) -> str:
+    """``$var`` / ``${var}`` / ``%var%``；未知变量保留原样（``ntpath.expandVars``）。"""
+    if _Dollar not in path and _Percent not in path:
       return path
     res: str = ""
     index: int = 0
     pathlen: int = len(path)
     while index < pathlen:
       c: str = path[index : index + 1]
-      if c == _QUOTE:
+      if c == _Quote:
         path = path[index + 1 :]
         pathlen = len(path)
         try:
-          index = path.index(_QUOTE)
-          res += _QUOTE + path[: index + 1]
+          index = path.index(_Quote)
+          res += _Quote + path[: index + 1]
         except ValueError:
-          res += _QUOTE + path
+          res += _Quote + path
           index = pathlen - 1
-      elif c == _PERCENT:
-        if path[index + 1 : index + 2] == _PERCENT:
+      elif c == _Percent:
+        if path[index + 1 : index + 2] == _Percent:
           res += c
           index += 1
         else:
           path = path[index + 1 :]
           pathlen = len(path)
           try:
-            index = path.index(_PERCENT)
+            index = path.index(_Percent)
           except ValueError:
-            res += _PERCENT + path
+            res += _Percent + path
             index = pathlen - 1
           else:
             var: str = path[:index]
             if var in self:
               res += self[var]
             else:
-              res += _PERCENT + var + _PERCENT
-      elif c == _DOLLAR:
-        if path[index + 1 : index + 2] == _DOLLAR:
+              res += _Percent + var + _Percent
+      elif c == _Dollar:
+        if path[index + 1 : index + 2] == _Dollar:
           res += c
           index += 1
-        elif path[index + 1 : index + 2] == _BRACE:
+        elif path[index + 1 : index + 2] == _Brace:
           path = path[index + 2 :]
           pathlen = len(path)
           try:
-            index = path.index(_RBRACE)
+            index = path.index(_Rbrace)
           except ValueError:
-            res += _DOLLAR + _BRACE + path
+            res += _Dollar + _Brace + path
             index = pathlen - 1
           else:
             var = path[:index]
             if var in self:
               res += self[var]
             else:
-              res += _DOLLAR + _BRACE + var + _RBRACE
+              res += _Dollar + _Brace + var + _Rbrace
         else:
           var = ""
           index += 1
           c = path[index : index + 1]
-          while c and c in _VARCHARS:
+          while c and c in _Varchars:
             var += c
             index += 1
             c = path[index : index + 1]
           if var in self:
             res += self[var]
           else:
-            res += _DOLLAR + var
+            res += _Dollar + var
           if c:
             index -= 1
       else:
@@ -135,13 +134,13 @@ class Environ:
     return res
 
   @immutable
-  def expanduser(self, path: str) -> str:
-    """``~`` / ``~user``（``ntpath.expanduser``；依赖 ``USERPROFILE`` / ``HOMEPATH`` 等）。"""
-    if not path.startswith(_TILDE):
+  def expandUser(self, path: str) -> str:
+    """``~`` / ``~user``（``ntpath.expandUser``；依赖 ``USERPROFILE`` / ``HOMEPATH`` 等）。"""
+    if not path.startsWith(_Tilde):
       return path
     i: int = 1
     n: int = len(path)
-    while i < n and path[i] not in _SEP_CHARS:
+    while i < n and path[i] not in _SepChars:
       i += 1
     userhome: str = ""
     if "USERPROFILE" in self:
@@ -152,12 +151,12 @@ class Environ:
       drive: str = self.get("HOMEDRIVE", "")
       userhome = join(drive, self["HOMEPATH"])
     if i != 1:
-      target_user: str = path[1:i]
-      current_user: str = self.get("USERNAME", "")
-      if target_user != current_user:
-        if current_user != basename(userhome):
+      targetUser: str = path[1:i]
+      currentUser: str = self.get("USERNAME", "")
+      if targetUser != currentUser:
+        if currentUser != baseName(userhome):
           return path
-        userhome = join(dirname(userhome), target_user)
+        userhome = join(dirName(userhome), targetUser)
     return userhome + path[i:]
 
 

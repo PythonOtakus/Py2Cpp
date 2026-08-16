@@ -3,7 +3,7 @@ from py2cpp import *
 
 
 @boxing
-class Cell:
+class CellUnsafe:
   def __init__(self, n: int = 0):
     self.n: int = n
 

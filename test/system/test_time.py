@@ -1,12 +1,12 @@
 from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
-﻿"""``time`` 模块与 ``float64``/``int64`` 标量回归（时钟、``format_duration``、高精度算术）。"""
+﻿"""``time`` 模块与 ``float64``/``int64`` 标量回归（时钟、``formatDuration``、高精度算术）。"""
 
 from py2cpp.system.time import (
-  format_duration,
+  formatDuration,
   monotonic,
-  perf_counter,
-  process_time,
+  perfCounter,
+  processTime,
   sleep,
   stopwatch,
   time,
@@ -14,7 +14,7 @@ from py2cpp.system.time import (
 
 
 class TimeEpochTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
@@ -23,7 +23,7 @@ class TimeEpochTests(TestCaseMixin):
 
 
 class TimeMonotonicTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
@@ -34,26 +34,26 @@ class TimeMonotonicTests(TestCaseMixin):
 
 
 class TimePerfCounterTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
-    a: float64 = perf_counter()
+    a: float64 = perfCounter()
     sleep(0.05)
-    b: float64 = perf_counter()
+    b: float64 = perfCounter()
     self.assertTrue(b > a)
 
 
 class TimeProcessTests(TestCaseMixin):
-  _test_tag = 30
+  _testTag = 30
 
   @override
   def test(self):
-    self.assertTrue(process_time() >= 0.0)
+    self.assertTrue(processTime() >= 0.0)
 
 
 class TimeSleepNoopTests(TestCaseMixin):
-  _test_tag = 40
+  _testTag = 40
 
   @override
   def test(self):
@@ -62,18 +62,18 @@ class TimeSleepNoopTests(TestCaseMixin):
 
 
 class TimeFormatDurationTests(TestCaseMixin):
-  _test_tag = 45
+  _testTag = 45
 
   @override
   def test(self):
-    self.assertEqual(format_duration(2.5), "2.500000s")
-    self.assertEqual(format_duration(0.05), "50.000ms")
-    self.assertEqual(format_duration(0.00005), "50.000us")
-    self.assertEqual(format_duration(0.0000005), "500.000ns")
+    self.assertEqual(formatDuration(2.5), "2.500000s")
+    self.assertEqual(formatDuration(0.05), "50.000ms")
+    self.assertEqual(formatDuration(0.00005), "50.000us")
+    self.assertEqual(formatDuration(0.0000005), "500.000ns")
 
 
 class TimeStopwatchTests(TestCaseMixin):
-  _test_tag = 50
+  _testTag = 50
 
   @override
   def test(self):
@@ -85,7 +85,7 @@ class TimeStopwatchTests(TestCaseMixin):
 
 
 class Int64LiteralTests(TestCaseMixin):
-  _test_tag = 60
+  _testTag = 60
 
   @override
   def test(self):
@@ -96,7 +96,7 @@ class Int64LiteralTests(TestCaseMixin):
 
 
 class Int64DivModTests(TestCaseMixin):
-  _test_tag = 61
+  _testTag = 61
 
   @override
   def test(self):
@@ -107,7 +107,7 @@ class Int64DivModTests(TestCaseMixin):
 
 
 class Float64ArithmeticTests(TestCaseMixin):
-  _test_tag = 62
+  _testTag = 62
 
   @override
   def test(self):
@@ -118,7 +118,7 @@ class Float64ArithmeticTests(TestCaseMixin):
 
 
 class Scalar64MixedTests(TestCaseMixin):
-  _test_tag = 63
+  _testTag = 63
 
   @override
   def test(self):
@@ -135,6 +135,6 @@ class Scalar64MixedTests(TestCaseMixin):
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)

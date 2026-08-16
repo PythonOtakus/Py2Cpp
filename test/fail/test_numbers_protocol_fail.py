@@ -1,12 +1,12 @@
 from py2cpp import *
-from py2cpp.numeric.protocols import Integral
+from py2cpp.numeric.protocols import IntegralType
 
 
-def only_integral[T: Integral](x: T) -> int:
+def onlyIntegral[T: IntegralType](x: T) -> int:
   return int(x)
 
 
 def main() -> int:
   items: list[str] = []
   items.append("x")
-  return only_integral(items[0])
+  return onlyIntegral(items[0])

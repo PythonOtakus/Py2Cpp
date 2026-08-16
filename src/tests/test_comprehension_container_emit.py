@@ -29,14 +29,14 @@ class ComprehensionContainerEmitTests(unittest.TestCase):
     self.assertIn("PyDeque<", cpp)
     self.assertNotIn("PyList<PyInt> dq", cpp.replace(" ", ""))
 
-  def test_frozenlist_comp_init_from_list(self):
+  def test_frozenlist_comp_initFromList(self):
     cpp = self._translate(
       "def f() -> int:\n"
       "  src: list[int] = [1]\n"
       "  fl: frozenlist[int] = [x for x in src]\n"
       "  return len(fl)\n",
     )
-    self.assertIn("init_from_list", cpp)
+    self.assertIn("initFromList", cpp)
 
 
 if __name__ == "__main__":

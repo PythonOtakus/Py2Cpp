@@ -10,7 +10,7 @@ class ShooterLogic(UIFlowMixin):
   ammo: int = 30
 
   @FlowEventMeta("Begin Play")
-  def on_begin(self) -> None:
+  def onBegin(self) -> None:
     pass
 
   @FlowNodeMeta("Fire", category="Combat")
@@ -21,14 +21,14 @@ class ShooterLogic(UIFlowMixin):
     return True
 
   @FlowPureMeta("HP")
-  def get_hp(self) -> int:
+  def getHp(self) -> int:
     return self.hp
 
-  def on_flow_ready(self) -> None:
-    self._flow_canvas.add_node_from_kind("ShooterLogic.on_begin", 80.0, 80.0)
-    self._flow_canvas.add_node_from_kind("ShooterLogic.fire", 320.0, 80.0)
+  def onFlowReady(self) -> None:
+    self._flowCanvas.addNodeFromKind("ShooterLogic.onBegin", 80.0, 80.0)
+    self._flowCanvas.addNodeFromKind("ShooterLogic.fire", 320.0, 80.0)
 
 
 def main() -> int:
   logic: ShooterLogic = new()
-  return logic.show_flow("Shooter Blueprint", 1280, 720)
+  return logic.showFlow("Shooter Blueprint", 1280, 720)

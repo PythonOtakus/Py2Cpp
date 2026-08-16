@@ -17,6 +17,7 @@ from src.constant.stdlib_layout import RUNTIME_BUILTINS_MODULE, RUNTIME_PKG, std
 class BuiltinStubTests(unittest.TestCase):
   def test_decorator_string_wildcard(self):
     self.assertEqual(resolve_decorator_string_pattern("fs_*", "getcwd"), "fs_getcwd")
+    self.assertEqual(resolve_decorator_string_pattern("fs_*", "getCwd"), "fs_getCwd")
     self.assertEqual(resolve_decorator_string_pattern("Py*", "Foo"), "PyFoo")
     self.assertEqual(resolve_decorator_string_pattern("PyFoo", "Foo"), "PyFoo")
 

@@ -4,11 +4,10 @@
 """
 from ..builtins import *
 from ..core.exceptions import IndexError
-from ..util.memory import copy_buf
+from ..util.memory import copyBuf
 from .span import span, span2d, span3d
 
 
-@native_name("PyArray")
 class array[Element, StackLength: int = 0]:
   """Element[:] — 一维定长/可 reshape 缓冲区。"""
 
@@ -20,16 +19,16 @@ class array[Element, StackLength: int = 0]:
   @overload
   def __init__(self):
     """空缓冲（``list`` 内部 ``data`` 等）。"""
-    self.clear_state()
+    self.clearState()
     self._shape = (0,)
 
   @overload
   def __init__(self, size: int):
-    self.init_capacity(size)
+    self.initCapacity(size)
 
-  def init_capacity(self, size: int) -> None:
+  def initCapacity(self, size: int) -> None:
     """分配 ``size`` 个 ``Element()`` 初值（``array2d`` / ``array3d`` 构造等）。"""
-    self.clear_state()
+    self.clearState()
     self._shape = (size,)
     if size > 0:
       self.allocate(size)
@@ -38,31 +37,31 @@ class array[Element, StackLength: int = 0]:
     self.release(self._shape[0])
 
   @immutable
-  def is_heap(self) -> bool:
+  def isHeap(self) -> bool:
     if StackLength <= 0:
       return self._ptr is not None
     return self._heap
 
-  def clear_state(self) -> None:
+  def clearState(self) -> None:
     self._ptr = None
     self._heap = False
 
-  def release(self, old_count: int) -> None:
+  def release(self, oldCount: int) -> None:
     if self._ptr is None:
       return
-    for i in range(old_count):
+    for i in range(oldCount):
       destroy(self._ptr + i)
     if self._heap or StackLength <= 0:
       freeArray(self._ptr)
-    self.clear_state()
+    self.clearState()
 
-  def bind_inline(self) -> None:
+  def bindInline(self) -> None:
     self._ptr = self._stack.view.at(0)
     self._heap = False
 
   def allocate(self, size: int) -> Pointer[Element]:
     if size <= 0:
-      self.clear_state()
+      self.clearState()
       return None
     if StackLength > 0 and size <= StackLength:
       self._ptr = self._stack.view.at(0)
@@ -76,33 +75,33 @@ class array[Element, StackLength: int = 0]:
       init(self._ptr + i, Element())
     return self._ptr
 
-  def copy_from_ptr(self, src: Pointer[Element], n: int, active: int) -> None:
+  def copyFromPtr(self, src: Pointer[Element], n: int, active: int) -> None:
     if n <= 0 or src is None:
-      self.clear_state()
+      self.clearState()
       return
-    copy_n: int = n
-    if active >= 0 and active < copy_n:
-      copy_n = active
+    copyN: int = n
+    if active >= 0 and active < copyN:
+      copyN = active
     if StackLength > 0 and n <= StackLength:
       self._ptr = self._stack.view.at(0)
       self._heap = False
-      for i in range(copy_n):
+      for i in range(copyN):
         init(self._ptr + i, src[i])
     else:
       self._ptr = allocRawArray[Element](n)
       self._heap = True
-      for i in range(copy_n):
+      for i in range(copyN):
         init(self._ptr + i, src[i])
 
-  def adopt_heap(self, p: Pointer[Element]) -> None:
+  def adoptHeap(self, p: Pointer[Element]) -> None:
     self._ptr = p
     self._heap = True
 
-  def reset_after_move(self) -> None:
-    self.clear_state()
+  def resetAfterMove(self) -> None:
+    self.clearState()
 
-  def move_from_inline(self, other: Self, n: int) -> Pointer[Element]:
-    other_sso: Pointer[Element] = other._stack.view.at(0)
+  def moveFromInline(self, other: Self, n: int) -> Pointer[Element]:
+    otherSso: Pointer[Element] = other._stack.view.at(0)
     if StackLength > 0 and n <= StackLength:
       self._ptr = self._stack.view.at(0)
       self._heap = False
@@ -110,61 +109,61 @@ class array[Element, StackLength: int = 0]:
       self._ptr = allocRawArray[Element](n)
       self._heap = True
     for i in range(n):
-      init(self._ptr + i, other_sso[i])
-      destroy(other_sso + i)
-    other.reset_after_move()
+      init(self._ptr + i, otherSso[i])
+      destroy(otherSso + i)
+    other.resetAfterMove()
     return self._ptr
 
   def reallocate(
     self,
-    new_size: int,
+    newSize: int,
     active: int,
-    old_size: int,
-    old_buf: Pointer[Element],
-    copy_n: int,
+    oldSize: int,
+    oldBuf: Pointer[Element],
+    copyN: int,
   ) -> None:
-    was_heap: bool = self.is_heap()
-    if new_size <= 0:
-      if old_buf is not None:
-        for j in range(copy_n, old_size):
+    wasHeap: bool = self.isHeap()
+    if newSize <= 0:
+      if oldBuf is not None:
+        for j in range(copyN, oldSize):
           if j < active:
-            destroy(old_buf + j)
-        for i in range(copy_n):
-          destroy(old_buf + i)
-        if was_heap or StackLength <= 0:
-          freeArray(old_buf)
-      self.clear_state()
+            destroy(oldBuf + j)
+        for i in range(copyN):
+          destroy(oldBuf + i)
+        if wasHeap or StackLength <= 0:
+          freeArray(oldBuf)
+      self.clearState()
       return
-    if StackLength > 0 and new_size <= StackLength:
-      new_buf: Pointer[Element] = self._stack.view.at(0)
-      for i in range(copy_n):
-        if old_buf is not None:
-          init(new_buf + i, old_buf[i])
-      if old_buf is not None:
-        for j in range(copy_n, old_size):
+    if StackLength > 0 and newSize <= StackLength:
+      newBuf: Pointer[Element] = self._stack.view.at(0)
+      for i in range(copyN):
+        if oldBuf is not None:
+          init(newBuf + i, oldBuf[i])
+      if oldBuf is not None:
+        for j in range(copyN, oldSize):
           if j < active:
-            destroy(old_buf + j)
-        for i in range(copy_n):
-          destroy(old_buf + i)
-        if was_heap:
-          freeArray(old_buf)
-      self.bind_inline()
+            destroy(oldBuf + j)
+        for i in range(copyN):
+          destroy(oldBuf + i)
+        if wasHeap:
+          freeArray(oldBuf)
+      self.bindInline()
       return
-    new_buf: Pointer[Element] = allocRawArray[Element](new_size)
-    for i in range(copy_n):
-      if old_buf is not None:
-        init(new_buf + i, old_buf[i])
-    if old_buf is not None:
-      for j in range(copy_n, old_size):
+    newBuf: Pointer[Element] = allocRawArray[Element](newSize)
+    for i in range(copyN):
+      if oldBuf is not None:
+        init(newBuf + i, oldBuf[i])
+    if oldBuf is not None:
+      for j in range(copyN, oldSize):
         if j < active:
-          destroy(old_buf + j)
-      for i in range(copy_n):
-        destroy(old_buf + i)
-      if was_heap or StackLength <= 0:
-        freeArray(old_buf)
-    self.adopt_heap(new_buf)
+          destroy(oldBuf + j)
+      for i in range(copyN):
+        destroy(oldBuf + i)
+      if wasHeap or StackLength <= 0:
+        freeArray(oldBuf)
+    self.adoptHeap(newBuf)
 
-  def release_buffer(self, active: int) -> None:
+  def releaseBuffer(self, active: int) -> None:
     """释放 ``active`` 个已构造元素并清空（``list._clear`` 等）。"""
     self.release(active)
     self._shape = (0,)
@@ -184,18 +183,18 @@ class array[Element, StackLength: int = 0]:
     n: int = len(other)
     if n <= 0:
       self._shape = (0,)
-      self.clear_state()
+      self.clearState()
       other.__moved__ = True
       return
-    if other.is_heap():
+    if other.isHeap():
       self._shape = other._shape
-      self.adopt_heap(other._ptr)
-      other.reset_after_move()
+      self.adoptHeap(other._ptr)
+      other.resetAfterMove()
       other._shape = (0,)
       other.__moved__ = True
       return
     self._shape = (n,)
-    self.move_from_inline(other, n)
+    self.moveFromInline(other, n)
     other._shape = (0,)
     other.__moved__ = True
 
@@ -223,33 +222,33 @@ class array[Element, StackLength: int = 0]:
   def view(self) -> span[Element]:
     return new(self._ptr, self._shape[0], 1)
 
-  def init_slot(self, index: int, value: Element) -> None:
+  def initSlot(self, index: int, value: Element) -> None:
     init(self.view.at(index), value)
 
-  def destroy_slot(self, index: int) -> None:
+  def destroySlot(self, index: int) -> None:
     destroy(self.view.at(index))
 
-  def copy_ptr_from(self, dest_off: int, src: Pointer[Element], n: int) -> None:
-    copy_buf(self.view.at(dest_off), src, n)
+  def copyPtrFrom(self, destOff: int, src: Pointer[Element], n: int) -> None:
+    copyBuf(self.view.at(destOff), src, n)
 
   @immutable
-  def copy_ptr_to(self, src_off: int, dest: Pointer[Element], n: int) -> None:
-    copy_buf(dest, self.view.at(src_off), n)
+  def copyPtrTo(self, srcOff: int, dest: Pointer[Element], n: int) -> None:
+    copyBuf(dest, self.view.at(srcOff), n)
 
-  def reshape(self, new_size: int, active: int = -1):
+  def reshape(self, newSize: int, active: int = -1):
     """扩容/缩容缓冲。``active`` 为已构造元素个数（``list`` 传 ``_length``）；默认 -1 表示整块有效。"""
-    if new_size == self._shape[0]:
+    if newSize == self._shape[0]:
       return
     if active < 0:
       active = self._shape[0]
-    old_size: int = self._shape[0]
-    copy_n: int = old_size
-    if new_size < copy_n:
-      copy_n = new_size
-    if active < copy_n:
-      copy_n = active
-    self.reallocate(new_size, active, old_size, self._ptr, copy_n)
-    self._shape = (new_size,)
+    oldSize: int = self._shape[0]
+    copyN: int = oldSize
+    if newSize < copyN:
+      copyN = newSize
+    if active < copyN:
+      copyN = active
+    self.reallocate(newSize, active, oldSize, self._ptr, copyN)
+    self._shape = (newSize,)
 
   def reserve(self, need: int, active: int = -1) -> None:
     """容量至少扩至 ``need``；``active`` 为已构造元素个数（默认 ``len(self)``）。"""
@@ -258,10 +257,10 @@ class array[Element, StackLength: int = 0]:
     if need > len(self):
       self.reshape(need, active)
 
-  def adopt_span(self, seg: span[Element]) -> None:
+  def adoptSpan(self, seg: span[Element]) -> None:
     """接管 ``span`` 底层缓冲所有权（析构时 ``freeArray``）。"""
     self.release(self._shape[0])
-    self.adopt_heap(seg.at())
+    self.adoptHeap(seg.at())
     self._shape = (len(seg),)
 
   def fill(self, value: Element) -> None:
@@ -271,10 +270,10 @@ class array[Element, StackLength: int = 0]:
       self._ptr[i] = value
 
   @immutable
-  def unsafe_get(self, index: int) -> Element:
+  def unsafeGet(self, index: int) -> Element:
     return self._ptr[index]
 
-  def unsafe_set(self, index: int, value: Element) -> None:
+  def unsafeSet(self, index: int, value: Element) -> None:
     self._ptr[index] = value
 
 
@@ -295,7 +294,7 @@ class array2d[Element]:
     self._shape = (rows, cols)
     n: int = rows * cols
     if n > 0:
-      self._data.init_capacity(n)
+      self._data.initCapacity(n)
 
   @immutable
   def _count(self) -> int:
@@ -343,11 +342,11 @@ class array2d[Element]:
     self._data.fill(value)
 
   @immutable
-  def unsafe_get(self, row: int, col: int) -> Element:
-    return self._data.unsafe_get(self._index(row, col))
+  def unsafeGet(self, row: int, col: int) -> Element:
+    return self._data.unsafeGet(self._index(row, col))
 
-  def unsafe_set(self, row: int, col: int, value: Element) -> None:
-    self._data.unsafe_set(self._index(row, col), value)
+  def unsafeSet(self, row: int, col: int, value: Element) -> None:
+    self._data.unsafeSet(self._index(row, col), value)
 
 
 @native_name("PyArray3D")
@@ -361,7 +360,7 @@ class array3d[Element]:
     self._shape = (d0, d1, d2)
     n: int = d0 * d1 * d2
     if n > 0:
-      self._data.init_capacity(n)
+      self._data.initCapacity(n)
 
   @immutable
   def _count(self) -> int:
@@ -398,8 +397,8 @@ class array3d[Element]:
     self._data.fill(value)
 
   @immutable
-  def unsafe_get(self, i: int, j: int, k: int) -> Element:
-    return self._data.unsafe_get(self._index(i, j, k))
+  def unsafeGet(self, i: int, j: int, k: int) -> Element:
+    return self._data.unsafeGet(self._index(i, j, k))
 
-  def unsafe_set(self, i: int, j: int, k: int, value: Element) -> None:
-    self._data.unsafe_set(self._index(i, j, k), value)
+  def unsafeSet(self, i: int, j: int, k: int, value: Element) -> None:
+    self._data.unsafeSet(self._index(i, j, k), value)

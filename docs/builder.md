@@ -89,14 +89,14 @@ count        := non_negative_integer
 
 ```python
 org: Org = Org.build(
-  'teams[:1] > name="alpha", min_score=5, '
+  'teams[:1] > name="alpha", minScore=5, '
   'members[:2] > score=10,name="amy"'
 )
 
 teams: list[Team] = list[Team].build('[:2]: $i > name={str($i)}')
 
 org: Org = Org.build(
-  'teams[:3]: $i > name={prefix + str($i)}, min_score=$i'
+  'teams[:3]: $i > name={prefix + str($i)}, minScore=$i'
 )
 ```
 

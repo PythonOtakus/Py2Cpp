@@ -5,7 +5,7 @@ import ast
 from typing import TYPE_CHECKING
 
 from ..analysis.ir import has_named_decorator
-from ..constant.stdlib_layout import EXCEPTIONS_NS
+from ..constant.stdlib_layout import cpp_exception_type, EXCEPTIONS_NS
 
 if TYPE_CHECKING:
   from ..translator import Translator
@@ -47,15 +47,15 @@ def _exception_ancestors(name: str) -> list[str]:
 def resolve_noexcept_err_type(exc_names: frozenset[str]) -> str:
   """``raise`` 集合 → ``E`` 的 C++ 类型（``py2cpp::core::exceptions::…``）。"""
   if not exc_names:
-    return f"{EXCEPTIONS_NS}::Exception"
+    return cpp_exception_type()
   if len(exc_names) == 1:
-    return f"{EXCEPTIONS_NS}::{next(iter(exc_names))}"
+    return cpp_exception_type(next(iter(exc_names)))
   sets = [set(_exception_ancestors(n)) for n in exc_names]
   common = sets[0]
   for s in sets[1:]:
     common &= s
   if not common:
-    return f"{EXCEPTIONS_NS}::Exception"
+    return cpp_exception_type()
   best = "Exception"
   best_depth = -1
   for name in common:
@@ -64,7 +64,7 @@ def resolve_noexcept_err_type(exc_names: frozenset[str]) -> str:
     if depth > best_depth:
       best_depth = depth
       best = name
-  return f"{EXCEPTIONS_NS}::{best}"
+  return cpp_exception_type(best)
 
 
 def collect_raise_exception_names(func: ast.FunctionDef) -> frozenset[str]:

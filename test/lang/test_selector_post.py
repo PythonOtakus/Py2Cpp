@@ -13,7 +13,7 @@ class Member:
 @dataclass
 class Team:
   name: str
-  min_score: int = 0
+  minScore: int = 0
   members: list[Member] @optional = []
 
 
@@ -22,12 +22,12 @@ class Org:
   teams: list[Team] = []
 
 
-def build_org() -> Org:
+def buildOrg() -> Org:
   m1: Member = new(10, "amy", "eng")
   m2: Member = new(0, "bob", "eng")
   m3: Member = new(5, "cara", "ops")
   t: Team = Team(name="alpha")
-  t.min_score = 5
+  t.minScore = 5
   t.members.append(m1)
   t.members.append(m2)
   t.members.append(m3)
@@ -37,11 +37,11 @@ def build_org() -> Org:
 
 
 class SelectPostSortTests(TestCaseMixin):
-  _test_tag = 98
+  _testTag = 98
 
   @override
   def test(self):
-    team: Team = build_org().teams[0]
+    team: Team = buildOrg().teams[0]
     hits: list[Member] = team.select(".members{.score > 0}@sort(-.score, .name)")
     self.assertEqual(len(hits), 2)
     self.assertEqual(hits[0].name, "amy")
@@ -49,11 +49,11 @@ class SelectPostSortTests(TestCaseMixin):
 
 
 class SelectPostCountTests(TestCaseMixin):
-  _test_tag = 99
+  _testTag = 99
 
   @override
   def test(self):
-    org: Org = build_org()
+    org: Org = buildOrg()
     self.assertEqual(org.select(".teams@count"), 1)
     team: Team = org.teams[0]
     freq: Counter[str] = team.select(".members@count(.dept)")
@@ -62,24 +62,24 @@ class SelectPostCountTests(TestCaseMixin):
 
 
 class SelectPostGroupTests(TestCaseMixin):
-  _test_tag = 100
+  _testTag = 100
 
   @override
   def test(self):
-    team: Team = build_org().teams[0]
-    by_dept: dict[str, list[Member]] = team.select(".members@group(.dept)")
-    self.assertEqual(len(by_dept["eng"]), 2)
-    self.assertEqual(len(by_dept["ops"]), 1)
+    team: Team = buildOrg().teams[0]
+    byDept: dict[str, list[Member]] = team.select(".members@group(.dept)")
+    self.assertEqual(len(byDept["eng"]), 2)
+    self.assertEqual(len(byDept["ops"]), 1)
 
 
 class SelectPostBindSortTests(TestCaseMixin):
-  _test_tag = 101
+  _testTag = 101
 
   @override
   def test(self):
-    org: Org = build_org()
+    org: Org = buildOrg()
     names: list[Member] = org.select(
-      ".teams[0]:$t; $t.members{.score > $t.min_score}@sort(.name)",
+      ".teams[0]:$t; $t.members{.score > $t.minScore}@sort(.name)",
     )
     self.assertEqual(len(names), 1)
     self.assertEqual(names[0].name, "amy")
@@ -88,13 +88,13 @@ class SelectPostBindSortTests(TestCaseMixin):
 class SelectPostSortExprKeyTests(TestCaseMixin):
   """``@sort`` 键支持与 ``{filter}`` 相同的算术表达式。"""
 
-  _test_tag = 103
+  _testTag = 103
 
   @override
   def test(self):
-    org: Org = build_org()
+    org: Org = buildOrg()
     ordered: list[Member] = org.select(
-      ".teams[0]:$t; $t.members@sort(.score - $t.min_score, .name)",
+      ".teams[0]:$t; $t.members@sort(.score - $t.minScore, .name)",
     )
     self.assertEqual(len(ordered), 3)
     self.assertEqual(ordered[0].name, "bob")
@@ -105,28 +105,28 @@ class SelectPostSortExprKeyTests(TestCaseMixin):
 class SelectPostBindSortParentKeyTests(TestCaseMixin):
   """方案 A：``@sort`` 键可用 ``:$t`` 快照的父字段（与 ``{filter}`` 同规则）。"""
 
-  _test_tag = 102
+  _testTag = 102
 
   @override
   def test(self):
-    org: Org = build_org()
-    by_inline: list[Member] = org.select(
+    org: Org = buildOrg()
+    byInline: list[Member] = org.select(
       ".teams[0]:$t.members{.score > 0}@sort($t.name, -.score, .name)",
     )
-    by_chain: list[Member] = org.select(
+    byChain: list[Member] = org.select(
       ".teams[0]:$t; $t.members{.score > 0}@sort($t.name, -.score, .name)",
     )
-    self.assertEqual(len(by_inline), 2)
-    self.assertEqual(by_inline[0].name, "amy")
-    self.assertEqual(by_inline[1].name, "cara")
-    self.assertEqual(len(by_chain), 2)
-    self.assertEqual(by_chain[0].name, by_inline[0].name)
-    self.assertEqual(by_chain[1].name, by_inline[1].name)
+    self.assertEqual(len(byInline), 2)
+    self.assertEqual(byInline[0].name, "amy")
+    self.assertEqual(byInline[1].name, "cara")
+    self.assertEqual(len(byChain), 2)
+    self.assertEqual(byChain[0].name, byInline[0].name)
+    self.assertEqual(byChain[1].name, byInline[1].name)
 
 
 def main() -> int:
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

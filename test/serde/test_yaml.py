@@ -8,7 +8,7 @@ from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 
 class YamlScalarTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
@@ -19,7 +19,7 @@ class YamlScalarTests(TestCaseMixin):
 
 
 class YamlContainerTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
@@ -38,21 +38,21 @@ class YamlContainerTests(TestCaseMixin):
 
 
 class YamlDocumentTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
-    docs: list[int] = Yaml.loads_all[int]("---\n1\n---\n2\n...\n")
+    docs: list[int] = Yaml.loadsAll[int]("---\n1\n---\n2\n...\n")
     self.assertEqual(len(docs), 2)
     self.assertEqual(docs[0], 1)
     self.assertEqual(docs[1], 2)
-    streamed: list[int] = Yaml.load_all_string[int](StringIO("---\n3\n---\n4\n"))
+    streamed: list[int] = Yaml.loadAllString[int](StringIO("---\n3\n---\n4\n"))
     self.assertEqual(streamed[0], 3)
     self.assertEqual(streamed[1], 4)
 
 
 class YamlBlockScalarTests(TestCaseMixin):
-  _test_tag = 25
+  _testTag = 25
 
   @override
   def test(self):
@@ -64,7 +64,7 @@ class YamlBlockScalarTests(TestCaseMixin):
     self.assertEqual(kept["text"], "one\ntwo\n\n")
 
 class YamlStreamTests(TestCaseMixin):
-  _test_tag = 30
+  _testTag = 30
 
   @override
   def test(self):
@@ -74,9 +74,9 @@ class YamlStreamTests(TestCaseMixin):
     decoded: list[int] = Yaml.loads[list[int]](encoded)
     self.assertEqual(decoded[0], 1)
     stream: StringIO = new()
-    Yaml.dump_string(values, stream)
+    Yaml.dumpString(values, stream)
     stream.seek(0)
-    back: list[int] = Yaml.load_string[list[int]](stream)
+    back: list[int] = Yaml.loadString[list[int]](stream)
     self.assertEqual(back[2], 3)
 
 

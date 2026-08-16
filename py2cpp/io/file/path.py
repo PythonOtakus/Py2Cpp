@@ -1,7 +1,7 @@
 """``os.path``：纯路径与元数据检测（对齐 Python 3.13 ``ntpath`` / ``genericpath``）。
 
-C 层：``exists`` / ``isfile`` / ``isdir`` / ``lexists`` / ``islink`` / ``isjunction`` /
-``isdevdrive`` / ``realpath``（``templates/io/-file.inl`` → ``io/file/path.inl`` 同批 paste_before）。
+C 层：``exists`` / ``isFile`` / ``isDir`` / ``lExists`` / ``isLink`` / ``isJunction`` /
+``isDevDrive`` / ``realPath``（``templates/io/-file.inl`` → ``io/file/path.inl`` 同批 paste_before）。
 其余在 Python 侧实现，复用 ``py2cpp.text.str``。
 """
 from ...builtins import *
@@ -9,69 +9,69 @@ from ...core.exceptions import OSError, ValueError
 from ...util.list import list
 from ...text import str
 
-curdir: str = "."
-pardir: str = ".."
-extsep: str = "."
+CurDir: str = "."
+ParDir: str = ".."
+ExtSep: str = "."
 sep: str = "\\"
-pathsep: str = ";"
-altsep: str = "/"
-defpath: str = ".;C:\\bin"
-devnull: str = "nul"
-supports_unicode_filenames: bool = True
+PathSep: str = ";"
+AltSep: str = "/"
+DefPath: str = ".;C:\\bin"
+DevNull: str = "nul"
+supportsUnicodeFilenames: bool = True
 
-_SEP: str = sep
-_ALT: str = altsep
-_SEP_CHARS: str = "\\/"
-_DOT: str = curdir
-_PARDIR: str = pardir
-
-
-@immutable
-def _last_sep_index(path: str) -> int:
-  sep_index: int = path.rfind(_SEP)
-  alt: int = path.rfind(_ALT)
-  if alt > sep_index:
-    sep_index = alt
-  return sep_index
+_Sep: str = sep
+_Alt: str = AltSep
+_SepChars: str = "\\/"
+_Dot: str = CurDir
+_Pardir: str = ParDir
 
 
 @immutable
-def _norm_tail(path: str) -> str:
-  return path.rstrip(_SEP_CHARS)
+def _lastSepIndex(path: str) -> int:
+  sepIndex: int = path.rfind(_Sep)
+  alt: int = path.rfind(_Alt)
+  if alt > sepIndex:
+    sepIndex = alt
+  return sepIndex
 
 
 @immutable
-def _norm_head(path: str) -> str:
+def _normTail(path: str) -> str:
+  return path.rstrip(_SepChars)
+
+
+@immutable
+def _normHead(path: str) -> str:
   if not path:
     return path
-  out: str = path.lstrip(_SEP_CHARS)
+  out: str = path.lstrip(_SepChars)
   if not out:
-    return _SEP
+    return _Sep
   return out
 
 
 @immutable
-def splitroot(path: str) -> (str, str, str):
-  """``(drive, root, tail)``（``ntpath.splitroot`` 纯 Python 回退）。"""
-  normp: str = path.replace(_ALT, _SEP)
+def splitRoot(path: str) -> (str, str, str):
+  """``(drive, root, tail)``（``ntpath.splitRoot`` 纯 Python 回退）。"""
+  normp: str = path.replace(_Alt, _Sep)
   n: int = len(normp)
   if not n:
     return "", "", ""
-  if normp[:1] == _SEP:
-    if n >= 2 and normp[1:2] == _SEP:
+  if normp[:1] == _Sep:
+    if n >= 2 and normp[1:2] == _Sep:
       start: int = 2
       if n >= 8 and normp[:8].upper() == "\\\\?\\UNC\\":
         start = 8
-      idx: int = normp.find(_SEP, start)
+      idx: int = normp.find(_Sep, start)
       if idx < 0:
         return path, "", ""
-      idx2: int = normp.find(_SEP, idx + 1)
+      idx2: int = normp.find(_Sep, idx + 1)
       if idx2 < 0:
         return path, "", ""
       return path[:idx2], path[idx2 : idx2 + 1], path[idx2 + 1 :]
     return "", normp[:1], normp[1:]
   if n >= 2 and normp[1:2] == ":":
-    if n >= 3 and normp[2:3] == _SEP:
+    if n >= 3 and normp[2:3] == _Sep:
       return path[:2], path[2:3], path[3:]
     return path[:2], "", path[2:]
   return "", "", path
@@ -82,20 +82,20 @@ def join(path: str, other: str) -> str:
   pd: str
   pr: str
   pp: str
-  pd, pr, pp = splitroot(other)
+  pd, pr, pp = splitRoot(other)
   if pr or pd:
     return pd + pr + pp
-  p: str = _norm_tail(path)
-  o: str = _norm_head(other)
+  p: str = _normTail(path)
+  o: str = _normHead(other)
   if not p:
     return o
   if not o:
     return p
-  return p + _SEP + o
+  return p + _Sep + o
 
 
 @immutable
-def _join_paths(base: str, parts: list[str]) -> str:
+def _joinPaths(base: str, parts: list[str]) -> str:
   out: str = base
   for p in parts:
     out = join(out, p)
@@ -109,51 +109,51 @@ def exists(path: str) -> bool:
 
 
 @native
-def isfile(path: str) -> bool:
+def isFile(path: str) -> bool:
   """是否为常规文件。"""
   ...
 
 
 @native
-def isdir(path: str) -> bool:
+def isDir(path: str) -> bool:
   """是否为目录。"""
   ...
 
 
 @native
-def lexists(path: str) -> bool:
+def lExists(path: str) -> bool:
   """是否存在（不跟随符号链接失败时仍检测）。"""
   ...
 
 
 @native
-def islink(path: str) -> bool:
+def isLink(path: str) -> bool:
   """是否为符号链接。"""
   ...
 
 
 @native
-def isjunction(path: str) -> bool:
+def isJunction(path: str) -> bool:
   """是否为目录联结（Windows junction）。"""
   ...
 
 
 @native
-def isdevdrive(path: str) -> bool:
+def isDevDrive(path: str) -> bool:
   """是否在 Dev Drive 卷上（暂恒 ``False``）。"""
   ...
 
 
 @native
-def realpath(path: str) -> str:
-  """规范绝对路径（Win ``GetFullPathName`` / POSIX ``realpath``）。"""
+def realPath(path: str) -> str:
+  """规范绝对路径（Win ``GetFullPathName`` / POSIX ``realPath``）。"""
   ...
 
 
-def basename(path: str) -> str:
+def baseName(path: str) -> str:
   tail: str
-  *_, tail = splitroot(path)
-  pos: int = _last_sep_index(tail)
+  *_, tail = splitRoot(path)
+  pos: int = _lastSepIndex(tail)
   if pos < 0:
     return tail
   if pos >= len(tail) - 1:
@@ -161,57 +161,57 @@ def basename(path: str) -> str:
   return tail[pos + 1 :]
 
 
-def dirname(path: str) -> str:
+def dirName(path: str) -> str:
   d: str
   r: str
   tail: str
-  d, r, tail = splitroot(path)
-  pos: int = _last_sep_index(tail)
+  d, r, tail = splitRoot(path)
+  pos: int = _lastSepIndex(tail)
   if pos < 0:
     return d + r
   if pos == 0:
-    return d + r + _SEP
+    return d + r + _Sep
   head: str = tail[:pos]
-  return d + r + _norm_tail(head)
+  return d + r + _normTail(head)
 
 
-def normpath(path: str) -> str:
+def normPath(path: str) -> str:
   """折叠 ``.`` / ``..`` 与重复分隔符。"""
   if not path:
     return ""
-  p: str = path.replace(_ALT, _SEP)
+  p: str = path.replace(_Alt, _Sep)
   drive: str
   root: str
   rest: str
-  drive, root, rest = splitroot(p)
+  drive, root, rest = splitRoot(p)
   prefix: str = drive + root
-  parts: list[str] = rest.split(_SEP)
+  parts: list[str] = rest.split(_Sep)
   comps: list[str] = []
   for part in parts:
-    if not part or part == _DOT:
+    if not part or part == _Dot:
       continue
-    if part == _PARDIR:
-      if comps and comps[-1] != _PARDIR:
+    if part == _Pardir:
+      if comps and comps[-1] != _Pardir:
         comps.pop()
       elif not root:
-        comps.append(_PARDIR)
+        comps.append(_Pardir)
       continue
     comps.append(part)
   if not prefix and not comps:
-    comps.append(_DOT)
+    comps.append(_Dot)
   out: str = prefix
   for i in range(len(comps)):
     if i > 0 or prefix:
-      out += _SEP
+      out += _Sep
     out += comps[i]
   return out
 
 
 @immutable
-def normcase(path: str) -> str:
+def normCase(path: str) -> str:
   if not path:
     return path
-  p: str = path.replace(_ALT, _SEP)
+  p: str = path.replace(_Alt, _Sep)
   return p.lower()
 
 
@@ -220,46 +220,46 @@ def split(path: str) -> (str, str):
   d: str
   r: str
   tail: str
-  d, r, tail = splitroot(path)
+  d, r, tail = splitRoot(path)
   pos: int = len(tail)
-  while pos > 0 and tail[pos - 1 : pos] not in _SEP_CHARS:
+  while pos > 0 and tail[pos - 1 : pos] not in _SepChars:
     pos -= 1
   head: str = tail[:pos]
   leaf: str = tail[pos:]
-  return d + r + _norm_tail(head), leaf
+  return d + r + _normTail(head), leaf
 
 
 @immutable
-def splitdrive(path: str) -> (str, str):
+def splitDrive(path: str) -> (str, str):
   d: str
   r: str
   tail: str
-  d, r, tail = splitroot(path)
+  d, r, tail = splitRoot(path)
   return d, r + tail
 
 
 @immutable
-def splitext(path: str) -> (str, str):
-  sep_index: int = _last_sep_index(path)
-  dot_index: int = path.rfind(".")
-  if dot_index > sep_index:
-    stem: str = path[sep_index + 1 : dot_index]
-    stem_body: str = stem.replace(".", "")
-    if stem_body:
-      return path[:dot_index], path[dot_index:]
+def splitExt(path: str) -> (str, str):
+  sepIndex: int = _lastSepIndex(path)
+  dotIndex: int = path.rfind(".")
+  if dotIndex > sepIndex:
+    stem: str = path[sepIndex + 1 : dotIndex]
+    stemBody: str = stem.replace(".", "")
+    if stemBody:
+      return path[:dotIndex], path[dotIndex:]
   return path, ""
 
 
 @immutable
-def isabs(path: str) -> bool:
+def isAbs(path: str) -> bool:
   if not path:
     return False
-  norm: str = path[:3].replace(_ALT, _SEP)
-  if len(norm) >= 2 and norm[1:2] == ":" and len(norm) >= 3 and norm[2:3] == _SEP:
+  norm: str = path[:3].replace(_Alt, _Sep)
+  if len(norm) >= 2 and norm[1:2] == ":" and len(norm) >= 3 and norm[2:3] == _Sep:
     return True
-  if path.startswith("\\\\"):
+  if path.startsWith("\\\\"):
     return True
-  if path.startswith(_SEP) or path.startswith(_ALT):
+  if path.startsWith(_Sep) or path.startsWith(_Alt):
     return True
   if len(path) >= 2 and path[1:2] == ":":
     return True
@@ -267,37 +267,37 @@ def isabs(path: str) -> bool:
 
 
 @native
-def getsize(path: str) -> int:
+def getSize(path: str) -> int:
   """文件字节大小。"""
   ...
 
 
 @native
-def getmtime(path: str) -> float64:
+def getMtime(path: str) -> float64:
   """修改时间。"""
   ...
 
 
 @native
-def getatime(path: str) -> float64:
+def getAtime(path: str) -> float64:
   """访问时间。"""
   ...
 
 
 @native
-def getctime(path: str) -> float64:
+def getCtime(path: str) -> float64:
   """创建/元数据变更时间。"""
   ...
 
 
 @native
-def _path_getcwd() -> str:
-  """当前工作目录（供 ``abspath``）。"""
+def _pathGetcwd() -> str:
+  """当前工作目录（供 ``absPath``）。"""
   ...
 
 
 @immutable
-def commonprefix(m: list[str]) -> str:
+def commonPrefix(m: list[str]) -> str:
   if not m:
     return ""
   s1: str = m[0]
@@ -318,56 +318,56 @@ def commonprefix(m: list[str]) -> str:
 
 
 @immutable
-def abspath(path: str) -> str:
-  p: str = normpath(path)
-  if not isabs(p):
-    p = normpath(join(_path_getcwd(), p))
-  return realpath(p)
+def absPath(path: str) -> str:
+  p: str = normPath(path)
+  if not isAbs(p):
+    p = normPath(join(_pathGetcwd(), p))
+  return realPath(p)
 
 
 @immutable
-def relpath(path: str, start: str = ".") -> str:
+def relPath(path: str, start: str = ".") -> str:
   if not path:
     raise ValueError("no path specified")
-  start_abs: str = abspath(start)
-  path_abs: str = abspath(path)
+  startAbs: str = absPath(start)
+  pathAbs: str = absPath(path)
   sd: str
   srest: str
-  sd, _, srest = splitroot(start_abs)
+  sd, _, srest = splitRoot(startAbs)
   pd: str
   prest: str
-  pd, _, prest = splitroot(path_abs)
-  if normcase(sd) != normcase(pd):
+  pd, _, prest = splitRoot(pathAbs)
+  if normCase(sd) != normCase(pd):
     raise ValueError("path is on mount")
-  start_parts: list[str] = srest.split(_SEP)
+  startParts: list[str] = srest.split(_Sep)
   if not srest:
-    start_parts = []
-  path_parts: list[str] = prest.split(_SEP)
+    startParts = []
+  pathParts: list[str] = prest.split(_Sep)
   if not prest:
-    path_parts = []
+    pathParts = []
   si: list[str] = []
   pi: list[str] = []
-  for part in start_parts:
-    if part and part != _DOT:
+  for part in startParts:
+    if part and part != _Dot:
       si.append(part)
-  for part in path_parts:
-    if part and part != _DOT:
+  for part in pathParts:
+    if part and part != _Dot:
       pi.append(part)
-  common_len: int = 0
+  commonLen: int = 0
   n: int = len(si)
   if len(pi) < n:
     n = len(pi)
   for i in range(n):
-    if normcase(si[i]) != normcase(pi[i]):
+    if normCase(si[i]) != normCase(pi[i]):
       break
-    common_len = i + 1
+    commonLen = i + 1
   rel: list[str] = []
-  for j in range(common_len, len(si)):
-    rel.append(_PARDIR)
-  for k in range(common_len, len(pi)):
+  for j in range(commonLen, len(si)):
+    rel.append(_Pardir)
+  for k in range(commonLen, len(pi)):
     rel.append(pi[k])
   if not rel:
-    return _DOT
+    return _Dot
   out: str = rel[0]
   for ri in range(1, len(rel)):
     out = join(out, rel[ri])
@@ -375,26 +375,26 @@ def relpath(path: str, start: str = ".") -> str:
 
 
 @immutable
-def commonpath(paths: list[str]) -> str:
+def commonPath(paths: list[str]) -> str:
   if not paths:
-    raise ValueError("commonpath() arg is an empty iterable")
+    raise ValueError("commonPath() arg is an empty iterable")
   drives: list[str] = []
   roots: list[str] = []
-  split_paths: list[list[str]] = []
+  splitPaths: list[list[str]] = []
   for p in paths:
-    norm: str = p.replace(_ALT, _SEP)
+    norm: str = p.replace(_Alt, _Sep)
     d: str
     r: str
     tail: str
-    d, r, tail = splitroot(norm)
+    d, r, tail = splitRoot(norm)
     drives.append(d.lower())
     roots.append(r)
-    parts: list[str] = tail.split(_SEP)
+    parts: list[str] = tail.split(_Sep)
     cleaned: list[str] = []
     for part in parts:
-      if part and part != _DOT:
+      if part and part != _Dot:
         cleaned.append(part)
-    split_paths.append(cleaned)
+    splitPaths.append(cleaned)
   for i in range(len(paths) - 1):
     if drives[i] != drives[i + 1]:
       raise ValueError("Paths don't have the same drive")
@@ -402,17 +402,17 @@ def commonpath(paths: list[str]) -> str:
       raise ValueError("Can't mix rooted and not-rooted paths")
   d0: str
   r0: str
-  d0, r0, _ = splitroot(paths[0].replace(_ALT, _SEP))
+  d0, r0, _ = splitRoot(paths[0].replace(_Alt, _Sep))
   common: list[str] = []
-  if split_paths:
-    s1: list[str] = split_paths[0]
-    for sp in split_paths:
+  if splitPaths:
+    s1: list[str] = splitPaths[0]
+    for sp in splitPaths:
       if len(sp) < len(s1):
         s1 = sp
     for idx in range(len(s1)):
       c: str = s1[idx]
       ok: bool = True
-      for sp in split_paths:
+      for sp in splitPaths:
         if idx >= len(sp) or sp[idx] != c:
           ok = False
           break
@@ -426,13 +426,13 @@ def commonpath(paths: list[str]) -> str:
 
 
 @immutable
-def ismount(path: str) -> bool:
-  abs_p: str = abspath(path)
+def isMount(path: str) -> bool:
+  absP: str = absPath(path)
   d: str
   r: str
   rest: str
-  d, r, rest = splitroot(abs_p)
-  if d and d[0] in _SEP_CHARS:
+  d, r, rest = splitRoot(absP)
+  if d and d[0] in _SepChars:
     return not rest
   if r and not rest:
     return True
@@ -440,7 +440,7 @@ def ismount(path: str) -> bool:
 
 
 @immutable
-def _is_reserved_name(name: str) -> bool:
+def _isReservedName(name: str) -> bool:
   if not name:
     return False
   if name[-1:] in ". ":
@@ -459,39 +459,39 @@ def _is_reserved_name(name: str) -> bool:
 
 
 @immutable
-def isreserved(path: str) -> bool:
+def isReserved(path: str) -> bool:
   tail: str
-  *_, tail = splitroot(path)
-  norm: str = tail.replace(_ALT, _SEP)
-  segs: list[str] = norm.split(_SEP)
+  *_, tail = splitRoot(path)
+  norm: str = tail.replace(_Alt, _Sep)
+  segs: list[str] = norm.split(_Sep)
   for i in range(len(segs) - 1, -1, -1):
-    if segs[i] and _is_reserved_name(segs[i]):
+    if segs[i] and _isReservedName(segs[i]):
       return True
   return False
 
 
 @native
-def _path_stat_dev(path: str) -> int:
+def _pathStatDev(path: str) -> int:
   ...
 
 
 @native
-def _path_stat_ino(path: str) -> int:
+def _pathStatIno(path: str) -> int:
   ...
 
 
 @immutable
-def samestat(st1, st2) -> bool:
-  return st1.st_ino == st2.st_ino and st1.st_dev == st2.st_dev
+def sameStat(st1, st2) -> bool:
+  return st1.stIno == st2.stIno and st1.stDev == st2.stDev
 
 
 @immutable
-def samefile(path1: str, path2: str) -> bool:
-  return _path_stat_dev(path1) == _path_stat_dev(path2) and _path_stat_ino(path1) == _path_stat_ino(path2)
+def sameFile(path1: str, path2: str) -> bool:
+  return _pathStatDev(path1) == _pathStatDev(path2) and _pathStatIno(path1) == _pathStatIno(path2)
 
 
 @immutable
-def sameopenfile(fp1: int, fp2: int) -> bool:
+def sameOpenFile(fp1: int, fp2: int) -> bool:
   _ = fp1
   _ = fp2
   raise OSError()

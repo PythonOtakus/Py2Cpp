@@ -53,7 +53,7 @@ class Gamma(TestCase):
     main_src = '''
 def main():
   suite: TestSuite = TestSuite()
-  for Cls in TestCaseMixin.iter_subclasses():
+  for Cls in TestCaseMixin.iterSubclasses():
     suite.addTest(Cls())
   return TextTestRunner().run(suite)
 '''
@@ -86,7 +86,7 @@ class B(TestCaseMixin):
 
   def test_parse_loop_pattern(self):
     loop = ast.parse(
-      "for Cls in TestCaseMixin.iter_subclasses():\n"
+      "for Cls in TestCaseMixin.iterSubclasses():\n"
       "  suite.addTest(Cls())\n"
     ).body[0]
     assert isinstance(loop, ast.For)
@@ -96,15 +96,15 @@ class B(TestCaseMixin):
   def test_sort_hosts_by_test_tag(self):
     code = '''
 class Z(TestCaseMixin):
-  _test_tag = 90
+  _testTag = 90
   @override
   def test(self): pass
 class A(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
   @override
   def test(self): pass
 class M(TestCaseMixin):
-  _test_tag = 50
+  _testTag = 50
   @override
   def test(self): pass
 '''
@@ -115,23 +115,23 @@ class M(TestCaseMixin):
 
     expand_mixins(tr)
     hosts = collect_ordered_mixin_hosts(tr, "mod", "TestCaseMixin")
-    self.assertEqual(sort_mixin_hosts(tr, hosts, "_test_tag"), ["A", "M", "Z"])
+    self.assertEqual(sort_mixin_hosts(tr, hosts, "_testTag"), ["A", "M", "Z"])
 
   def test_expand_iter_subclasses_sort_const_loop(self):
     main_src = '''
 def main():
   suite: TestSuite = TestSuite()
-  for Cls in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Cls in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Cls())
   return TextTestRunner().run(suite)
 '''
     body_code = '''
 class Late(TestCaseMixin):
-  _test_tag = 50
+  _testTag = 50
   @override
   def test(self): pass
 class Early(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
   @override
   def test(self): pass
 ''' + main_src

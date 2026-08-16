@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..analysis.module_namespace import qualify_symbol_in_module
-from ..constant.stdlib_layout import EXCEPTIONS_NS
+from ..constant.stdlib_layout import cpp_exception_type, EXCEPTIONS_NS
 from ..analysis.patterns import property_getter_method_for
 
 _CLASS_ID_GET = property_getter_method_for("__class_id__")
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 
 def _exc_base_cpp() -> str:
-  return f"{EXCEPTIONS_NS}::Exception"
+  return cpp_exception_type()
 
 
 def _qual_mro_base_cpp(tr: Translator, base_name: str | None) -> str:

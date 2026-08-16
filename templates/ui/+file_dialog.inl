@@ -16,7 +16,7 @@ static PyStr _ui_pick_file(PyBool save, PyStr title, PyStr default_name)
   memset(path, 0, sizeof(path));
   if (save && default_name.__len__() > 0)
   {
-    default_name.copy_to_span(PySpan<PyByte>((PyByte*)path, (PyInt)sizeof(path), 1));
+    default_name.copyToSpan(PySpan<PyByte>((PyByte*)path, (PyInt)sizeof(path), 1));
   }
   OPENFILENAMEA ofn;
   memset(&ofn, 0, sizeof(ofn));
@@ -26,7 +26,7 @@ static PyStr _ui_pick_file(PyBool save, PyStr title, PyStr default_name)
   ofn.lpstrFile = path;
   ofn.nMaxFile = MAX_PATH;
   char tbuf[256];
-  title.copy_to_span(PySpan<PyByte>((PyByte*)tbuf, (PyInt)sizeof(tbuf), 1));
+  title.copyToSpan(PySpan<PyByte>((PyByte*)tbuf, (PyInt)sizeof(tbuf), 1));
   ofn.lpstrTitle = tbuf;
   PyBool ok = false;
   if (save)
@@ -48,13 +48,13 @@ static PyStr _ui_pick_file(PyBool save, PyStr title, PyStr default_name)
 
 PY2CPP_BEGIN_SCOPE
 
-PyStr pick_open_file(const PyStr& title, const PyStr& filter_ext)
+PyStr pickOpenFile(const PyStr& title, const PyStr& filter_ext)
 {
   (void)filter_ext;
   return _ui_pick_file(false, title, PyStr(""));
 }
 
-PyStr pick_save_file(const PyStr& title, const PyStr& filter_ext, const PyStr& default_name)
+PyStr pickSaveFile(const PyStr& title, const PyStr& filter_ext, const PyStr& default_name)
 {
   (void)filter_ext;
   return _ui_pick_file(true, title, default_name);
@@ -66,14 +66,14 @@ PY2CPP_END_SCOPE
 
 PY2CPP_BEGIN_SCOPE
 
-PyStr pick_open_file(PyStr title, PyStr filter_ext)
+PyStr pickOpenFile(PyStr title, PyStr filter_ext)
 {
   (void)title;
   (void)filter_ext;
   return PyStr("");
 }
 
-PyStr pick_save_file(PyStr title, PyStr filter_ext, PyStr default_name)
+PyStr pickSaveFile(PyStr title, PyStr filter_ext, PyStr default_name)
 {
   (void)title;
   (void)filter_ext;

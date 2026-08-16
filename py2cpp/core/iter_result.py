@@ -4,7 +4,6 @@ from py2cpp import native_name, union, variant
 
 
 @union
-@native_name("Py*")
 class IterResult[YieldValue, ReturnValue]:
   @variant
   class Yield:
@@ -12,7 +11,7 @@ class IterResult[YieldValue, ReturnValue]:
 
   @variant
   class Return:
-    return_value: ReturnValue
+    returnValue: ReturnValue
 
   @property
   def done(self) -> bool:
@@ -31,7 +30,7 @@ class IterResult[YieldValue, ReturnValue]:
         return YieldValue()
 
   @property
-  def return_value(self) -> ReturnValue:
+  def returnValue(self) -> ReturnValue:
     match self:
       case new.Return(r):
         return r
@@ -39,6 +38,6 @@ class IterResult[YieldValue, ReturnValue]:
         return ReturnValue()
 
 
-def result_done[YieldValue, ReturnValue]() -> IterResult[YieldValue, ReturnValue]:
-  """翻译器内建：迭代结束，``return_value`` 为 ``ReturnValue()``。"""
+def resultDone[YieldValue, ReturnValue]() -> IterResult[YieldValue, ReturnValue]:
+  """翻译器内建：迭代结束，``returnValue`` 为 ``ReturnValue()``。"""
   return new.Return(ReturnValue())

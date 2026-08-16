@@ -50,7 +50,7 @@ class Box:
       '''
 from py2cpp import *
 
-def gen_three() -> Generator[int, None, None]:
+def gen_three() -> GeneratorType[int, None, None]:
   yield 1
 '''
     )

@@ -112,7 +112,7 @@ def _emit_array_clone_from(tr: Translator, info: ClassInfo, qual: str, cpp: str,
     tr.write_line(f'{dest}->_shape = other._shape;')
     tr.write_line('int __n = other._shape.__getitem__(0);')
     with tr._use_block('if ((__n > 0) && ((other.view__get()).at(0) != nullptr))'):
-        tr.write_line(f'{dest}->copy_from_ptr((other.view__get()).at(0), __n, __n);')
+        tr.write_line(f'{dest}->copyFromPtr((other.view__get()).at(0), __n, __n);')
 
 def _emit_array_copy_ctor(tr: Translator, info: ClassInfo, qual: str, cpp: str) -> None:
     """``array`` 须在已置空状态下按元素 ``init``，不能对未构造的 ``this`` 调 ``__copy__``。"""
@@ -172,7 +172,7 @@ def emit_copy_move_special_members(tr: Translator, info: ClassInfo) -> None:
                 with tr._use_block():
                     tr.write_line('__copy__(other);')
             elif info.name == 'deque':
-                tr.write_line(f'{qual}::{cpp}(const {cpp}& other) : _head(nullptr), _tail(nullptr), _length(0), __moved__(false), _maxlen(PY2CPP_INT_MIN)')
+                tr.write_line(f'{qual}::{cpp}(const {cpp}& other) : _head(nullptr), _tail(nullptr), _length(0), __moved__(false), _maxLen(PY2CPP_INT_MIN)')
                 with tr._use_block():
                     tr.write_line('__copy__(other);')
             elif info.name == 'ChunkDeque':
@@ -230,7 +230,7 @@ def emit_copy_move_special_members(tr: Translator, info: ClassInfo) -> None:
                 with tr._use_block():
                     tr.write_line('__move__(other);')
             elif info.name == 'deque':
-                tr.write_line(f'{qual}::{cpp}({cpp}&& other) : _head(nullptr), _tail(nullptr), _length(0), __moved__(false), _maxlen(PY2CPP_INT_MIN)')
+                tr.write_line(f'{qual}::{cpp}({cpp}&& other) : _head(nullptr), _tail(nullptr), _length(0), __moved__(false), _maxLen(PY2CPP_INT_MIN)')
                 with tr._use_block():
                     tr.write_line('__move__(other);')
             elif info.name == 'ChunkDeque':

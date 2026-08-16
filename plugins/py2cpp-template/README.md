@@ -9,7 +9,7 @@
 
 ## 依赖
 
-- VS Code / Cursor ≥ 1.85
+- VS Code / CursorType ≥ 1.85
 - Python 3.10+（与 Py2Cpp 译器相同），且能 `import src.codegen.template_conventions`
 - 工作区为 Py2Cpp 仓库根，或在设置中指定 `py2cpp-template.repoRoot`
 
@@ -28,11 +28,11 @@ package.bat
 pkg-tpl.bat
 ```
 
-`package.py` 按 `.vscodeignore` 收集 `out/`、`python/`、`package.json` 等，生成 OPC 格式 `py2cpp-template-0.2.0.vsix`。在 VS Code / Cursor 中选择 **Extensions → … → Install from VSIX…** 安装。
+`package.py` 按 `.vscodeignore` 收集 `out/`、`python/`、`package.json` 等，生成 OPC 格式 `py2cpp-template-0.2.0.vsix`。在 VS Code / CursorType 中选择 **Extensions → … → Install from VSIX…** 安装。
 
 ## 开发调试
 
-1. 在 VS Code / Cursor 中打开 `plugins/py2cpp-template`
+1. 在 VS Code / CursorType 中打开 `plugins/py2cpp-template`
 2. 扩展源码为 **纯 JavaScript**（`out/*.js`），直接编辑即可，无需 TypeScript / npm 编译
 3. 本目录 `package.json` 为 VS Code 扩展清单（非 Node 工程）；仓库根已 `npm.exclude` 本路径，插件目录内 `npm.autoDetect` 为 `off`
 4. 按 F5 启动 Extension Development Host
@@ -57,7 +57,7 @@ pkg-tpl.bat
 | `py2cpp-template.repoRoot` | （空） | 仓库根；空则自动查找含 `main.py` + `templates/` 的目录 |
 | `py2cpp-template.enableDiagnostics` | `true` | 是否自动诊断 |
 | `py2cpp-template.includeWarnings` | `true` | 是否显示 warning（如 T6） |
-| `py2cpp-template.enableMacroPairs` | `true` | 配对宏三级高亮与 Document Highlight |
+| `py2cpp-template.enableMacroPairs` | `true` | 配对宏三级高亮与 DocumentType Highlight |
 | `py2cpp-template.enableMacroFolding` | `true` | 配对宏块代码折叠 |
 
 ## 架构

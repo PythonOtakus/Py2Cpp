@@ -31,7 +31,7 @@ VARSTACK_TRANSLATOR_ONLY_METHODS = frozenset({"push", "pop", "top"})
 
 
 def is_translator_only_method(name: str, method: ast.FunctionDef | None = None) -> bool:
-  """``assign`` 调用脱糖为字段赋值；带真实方法体的 ``assign``（如 ``list_iterator``）仍生成 C++。"""
+  """``assign`` 调用脱糖为字段赋值；带真实方法体的 ``assign``（如 ``ListIterator``）仍生成 C++。"""
   if name not in TRANSLATOR_ONLY_METHODS:
     return False
   if method is None:
@@ -376,17 +376,45 @@ def _build_instance_ctor_field_keywords(
   use_self: bool = False,
   at: ast.AST | None = None,
 ) -> tuple[list[ast.stmt], ast.Name]:
-  """``Cls(…)`` / ``Self(…)`` 后对实例字段（或 property）赋值（非空构造实参见 ``_default_ctor_args``）。"""
+  """``Cls(…)`` / ``Self(…)`` 后对实例字段（或 property）赋值（非空构造实参见 ``_default_ctor_args``）。
+
+  关键字若均可映射到 ``__init__`` 形参（含 ``@dataclass(frozen=True)`` 的 const 字段），
+  则并入构造实参，避免占位 ``0`` 对 ``str`` 非法，也避免对 const 事后赋值。
+  """
   _validate_keywords(
     class_name, keywords, fields,
     tr=tr, at=at or (keywords[0] if keywords else None),
   )
   ctor = ast.Name(id="Self" if use_self else class_name, ctx=ast.Load())
   var = _fresh_opts_var()
+  info = tr.classes.get(class_name)
+  kw_names = {kw.arg for kw in keywords if kw.arg is not None}
+  final = frozenset(info.final_fields) if info is not None else frozenset()
+  init_params: set[str] = set()
+  if info is not None and info.inits:
+    raw = info.inits[0].args.args
+    params = raw[1:] if raw and raw[0].arg == "self" else list(raw)
+    init_params = {p.arg for p in params}
+  if info is not None and info.inits and kw_names and kw_names <= init_params:
+    fake = ast.Call(
+      func=ctor,
+      args=[copy.deepcopy(a) for a in positional],
+      keywords=[copy.deepcopy(kw) for kw in keywords],
+    )
+    ctor_args = new_ctor_arg_exprs_from_init(fake, info.inits[0])
+    stmts: list[ast.stmt] = [
+      ast.Assign(
+        targets=[ast.Name(id=var, ctx=ast.Store())],
+        value=ast.Call(func=ctor, args=ctor_args, keywords=[]),
+      ),
+    ]
+    for s in stmts:
+      ast.fix_missing_locations(s)
+    return stmts, ast.Name(id=var, ctx=ast.Load())
   ctor_args = [copy.deepcopy(a) for a in positional]
   if not ctor_args:
     ctor_args = _default_ctor_args(tr, class_name)
-  stmts: list[ast.stmt] = [
+  stmts = [
     ast.Assign(
       targets=[ast.Name(id=var, ctx=ast.Store())],
       value=ast.Call(
@@ -397,6 +425,15 @@ def _build_instance_ctor_field_keywords(
   ]
   target = ast.Name(id=var, ctx=ast.Load())
   for kw in keywords:
+    if kw.arg in final:
+      from ..translation_error import raise_translation_error
+
+      raise_translation_error(
+        tr,
+        at or kw,
+        f"{class_name}.{kw.arg}: frozen/final 字段不可在构造后赋值；"
+        "请将该关键字并入构造或勿与可写字段混用同一 Cls(kw=…) 调用",
+      )
     stmts.append(_assign_member(target, kw.arg, kw.value))
   for s in stmts:
     ast.fix_missing_locations(s)

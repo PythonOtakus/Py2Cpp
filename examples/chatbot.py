@@ -13,39 +13,39 @@ from py2cpp.system.environ import environ
 from py2cpp.web.openai import OpenAI, OpenAIError
 
 
-_DEFAULT_MODEL: str = "gpt-4o-mini"
-_DEFAULT_SYSTEM: str = "You are a helpful assistant."
-_MAX_HISTORY_CHARS: int = 12000
+_DefaultModel: str = "gpt-4o-mini"
+_DefaultSystem: str = "You are a helpful assistant."
+_MaxHistoryChars: int = 12000
 
 
-def _trim_history(history: str) -> str:
-  if len(history) <= _MAX_HISTORY_CHARS:
+def _trimHistory(history: str) -> str:
+  if len(history) <= _MaxHistoryChars:
     return history
-  return history[len(history) - _MAX_HISTORY_CHARS :]
+  return history[len(history) - _MaxHistoryChars :]
 
 
-def _build_system_prompt(system_prompt: str, history: str) -> str:
+def _buildSystemPrompt(systemPrompt: str, history: str) -> str:
   if not history:
-    return system_prompt
-  if system_prompt:
-    return f"{system_prompt}\n\nConversation so far:\n{history}"
+    return systemPrompt
+  if systemPrompt:
+    return f"{systemPrompt}\n\nConversation so far:\n{history}"
   return f"Conversation so far:\n{history}"
 
 
 def main() -> int:
-  api_key: str = environ.get("OPENAI_API_KEY", "")
-  base_url: str = environ.get("OPENAI_BASE_URL", "")
-  model: str = environ.get("OPENAI_MODEL", _DEFAULT_MODEL)
-  system_prompt: str = environ.get("OPENAI_SYSTEM_PROMPT", _DEFAULT_SYSTEM)
+  apiKey: str = environ.get("OPENAI_API_KEY", "")
+  baseUrl: str = environ.get("OPENAI_BASE_URL", "")
+  model: str = environ.get("OPENAI_MODEL", _DefaultModel)
+  systemPrompt: str = environ.get("OPENAI_SYSTEM_PROMPT", _DefaultSystem)
 
-  if not api_key:
+  if not apiKey:
     print("missing env: OPENAI_API_KEY or DEEPSEEK_API_KEY")
     return 2
-  if not base_url:
+  if not baseUrl:
     print("missing env: OPENAI_BASE_URL")
     return 2
 
-  client: OpenAI = new(api_key=api_key, base_url=base_url, timeout=120.0)
+  client: OpenAI = new(apiKey=apiKey, baseUrl=baseUrl, timeout=120.0)
   history: str = ""
 
   print("Py2Cpp Chatbot")
@@ -66,17 +66,17 @@ def main() -> int:
     if not user:
       continue
 
-    prompt: str = _build_system_prompt(system_prompt, history)
+    prompt: str = _buildSystemPrompt(systemPrompt, history)
     answer: str = ""
     print("bot> ", end="", flush=True)
     try:
-      for token in client.chat_stream(model, user, system=prompt, temperature=0.7):
+      for token in client.chatStream(model, user, system=prompt, temperature=0.7):
         print(token, end="", flush=True)
         answer += token
     except OpenAIError:
       print("")
-      if client.last_error:
-        print(f"[error] {client.last_error}")
+      if client.lastError:
+        print(f"[error] {client.lastError}")
       else:
         print("[error] OpenAI request failed")
       continue
@@ -91,7 +91,7 @@ def main() -> int:
     print("")
 
     history += f"User: {user}\nAssistant: {answer}\n"
-    history = _trim_history(history)
+    history = _trimHistory(history)
 
 
 if __name__ == "__main__":

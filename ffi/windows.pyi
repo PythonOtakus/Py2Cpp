@@ -1699,8 +1699,8 @@ class Pyi__DEBUG_EVENT:
 class Pyi__DISCDLGSTRUCTA:
   cbStructure: uint
   hwndOwner: Pointer[Pyi_HWND__]
-  lpLocalName: c_str
-  lpRemoteName: c_str
+  lpLocalName: CStr
+  lpRemoteName: CStr
   dwFlags: uint
 
 @native
@@ -1741,7 +1741,7 @@ class Pyi__DISPATCHER_CONTEXT_ARM64:
   HistoryTable: Pointer[Pyi__UNWIND_HISTORY_TABLE]
   ScopeIndex: uint
   ControlPcIsUnwound: int
-  NonVolatileRegisters: c_str
+  NonVolatileRegisters: CStr
 
 @native
 @native_name("_DISPATCHER_CONTEXT_NONVOLREG_ARM64")
@@ -1803,9 +1803,9 @@ class Pyi__DISPLAY_DEVICEW:
 @native_name("_DOCINFOA")
 class Pyi__DOCINFOA:
   cbSize: int
-  lpszDocName: c_str
-  lpszOutput: c_str
-  lpszDatatype: c_str
+  lpszDocName: CStr
+  lpszOutput: CStr
+  lpszDatatype: CStr
   fwType: uint
 
 @native
@@ -1887,8 +1887,8 @@ class Pyi__ENLISTMENT_CRM_INFORMATION:
 @native
 @native_name("_ENUM_SERVICE_STATUSA")
 class Pyi__ENUM_SERVICE_STATUSA:
-  lpServiceName: c_str
-  lpDisplayName: c_str
+  lpServiceName: CStr
+  lpDisplayName: CStr
   ServiceStatus: Pyi__SERVICE_STATUS
 
 @native
@@ -1901,8 +1901,8 @@ class Pyi__ENUM_SERVICE_STATUSW:
 @native
 @native_name("_ENUM_SERVICE_STATUS_PROCESSA")
 class Pyi__ENUM_SERVICE_STATUS_PROCESSA:
-  lpServiceName: c_str
-  lpDisplayName: c_str
+  lpServiceName: CStr
+  lpDisplayName: CStr
   ServiceStatusProcess: Pyi__SERVICE_STATUS_PROCESS
 
 @native
@@ -3736,10 +3736,10 @@ class Pyi__NETRESOURCEA:
   dwType: uint
   dwDisplayType: uint
   dwUsage: uint
-  lpLocalName: c_str
-  lpRemoteName: c_str
-  lpComment: c_str
-  lpProvider: c_str
+  lpLocalName: CStr
+  lpRemoteName: CStr
+  lpComment: CStr
+  lpProvider: CStr
 
 @native
 @native_name("_NETRESOURCEW")
@@ -3933,10 +3933,10 @@ class Pyi__OUTLINETEXTMETRICA:
   otmsStrikeoutPosition: int
   otmsUnderscoreSize: int
   otmsUnderscorePosition: int
-  otmpFamilyName: c_str
-  otmpFaceName: c_str
-  otmpStyleName: c_str
-  otmpFullName: c_str
+  otmpFamilyName: CStr
+  otmpFaceName: CStr
+  otmpStyleName: CStr
+  otmpFullName: CStr
 
 @native
 @native_name("_OUTLINETEXTMETRICW")
@@ -3969,15 +3969,15 @@ class Pyi__OUTLINETEXTMETRICW:
   otmsStrikeoutPosition: int
   otmsUnderscoreSize: int
   otmsUnderscorePosition: int
-  otmpFamilyName: c_str
-  otmpFaceName: c_str
-  otmpStyleName: c_str
-  otmpFullName: c_str
+  otmpFamilyName: CStr
+  otmpFaceName: CStr
+  otmpStyleName: CStr
+  otmpFullName: CStr
 
 @native
 @native_name("_OUTPUT_DEBUG_STRING_INFO")
 class Pyi__OUTPUT_DEBUG_STRING_INFO:
-  lpDebugStringData: c_str
+  lpDebugStringData: CStr
   fUnicode: uint
   nDebugStringLength: uint
 
@@ -4332,12 +4332,12 @@ class Pyi__QUERY_SERVICE_CONFIGA:
   dwServiceType: uint
   dwStartType: uint
   dwErrorControl: uint
-  lpBinaryPathName: c_str
-  lpLoadOrderGroup: c_str
+  lpBinaryPathName: CStr
+  lpLoadOrderGroup: CStr
   dwTagId: uint
-  lpDependencies: c_str
-  lpServiceStartName: c_str
-  lpDisplayName: c_str
+  lpDependencies: CStr
+  lpServiceStartName: CStr
+  lpDisplayName: CStr
 
 @native
 @native_name("_QUERY_SERVICE_CONFIGW")
@@ -4356,7 +4356,7 @@ class Pyi__QUERY_SERVICE_CONFIGW:
 @native_name("_QUERY_SERVICE_LOCK_STATUSA")
 class Pyi__QUERY_SERVICE_LOCK_STATUSA:
   fIsLocked: uint
-  lpLockOwner: c_str
+  lpLockOwner: CStr
   dwLockDuration: uint
 
 @native
@@ -4447,16 +4447,16 @@ class Pyi__REDIRECTION_DESCRIPTOR:
 @native
 @native_name("_REDIRECTION_FUNCTION_DESCRIPTOR")
 class Pyi__REDIRECTION_FUNCTION_DESCRIPTOR:
-  DllName: c_str
-  FunctionName: c_str
+  DllName: CStr
+  FunctionName: CStr
   RedirectionTarget: uintptr
 
 @native
 @native_name("_REMOTE_NAME_INFOA")
 class Pyi__REMOTE_NAME_INFOA:
-  lpUniversalName: c_str
-  lpConnectionName: c_str
-  lpRemainingPath: c_str
+  lpUniversalName: CStr
+  lpConnectionName: CStr
+  lpRemainingPath: CStr
 
 @native
 @native_name("_REMOTE_NAME_INFOW")
@@ -4709,7 +4709,7 @@ class Pyi__SERVERSILO_BASIC_INFORMATION:
 @native_name("_SERVICE_CONTROL_STATUS_REASON_PARAMSA")
 class Pyi__SERVICE_CONTROL_STATUS_REASON_PARAMSA:
   dwReason: uint
-  pszComment: c_str
+  pszComment: CStr
   ServiceStatus: Pyi__SERVICE_STATUS_PROCESS
 
 @native
@@ -4732,7 +4732,7 @@ class Pyi__SERVICE_DELAYED_AUTO_START_INFO:
 @native
 @native_name("_SERVICE_DESCRIPTIONA")
 class Pyi__SERVICE_DESCRIPTIONA:
-  lpDescription: c_str
+  lpDescription: CStr
 
 @native
 @native_name("_SERVICE_DESCRIPTIONW")
@@ -4743,8 +4743,8 @@ class Pyi__SERVICE_DESCRIPTIONW:
 @native_name("_SERVICE_FAILURE_ACTIONSA")
 class Pyi__SERVICE_FAILURE_ACTIONSA:
   dwResetPeriod: uint
-  lpRebootMsg: c_str
-  lpCommand: c_str
+  lpRebootMsg: CStr
+  lpCommand: CStr
   cActions: uint
   lpsaActions: Pointer[Pyi__SC_ACTION]
 
@@ -4785,7 +4785,7 @@ class Pyi__SERVICE_NOTIFY_2A:
   dwNotificationStatus: uint
   ServiceStatus: Pyi__SERVICE_STATUS_PROCESS
   dwNotificationTriggered: uint
-  pszServiceNames: c_str
+  pszServiceNames: CStr
 
 @native
 @native_name("_SERVICE_NOTIFY_2W")
@@ -4812,7 +4812,7 @@ class Pyi__SERVICE_PRESHUTDOWN_INFO:
 @native
 @native_name("_SERVICE_REQUIRED_PRIVILEGES_INFOA")
 class Pyi__SERVICE_REQUIRED_PRIVILEGES_INFOA:
-  pmszRequiredPrivileges: c_str
+  pmszRequiredPrivileges: CStr
 
 @native
 @native_name("_SERVICE_REQUIRED_PRIVILEGES_INFOW")
@@ -4856,8 +4856,8 @@ class Pyi__SERVICE_STATUS_PROCESS:
 @native
 @native_name("_SERVICE_TABLE_ENTRYA")
 class Pyi__SERVICE_TABLE_ENTRYA:
-  lpServiceName: c_str
-  lpServiceProc: Function[[uint, Pointer[c_str]], None]  # fn ptr
+  lpServiceName: CStr
+  lpServiceProc: Function[[uint, Pointer[CStr]], None]  # fn ptr
 
 @native
 @native_name("_SERVICE_TABLE_ENTRYW")
@@ -4885,14 +4885,14 @@ class Pyi__SERVICE_TRIGGER:
 class Pyi__SERVICE_TRIGGER_INFO:
   cTriggers: uint
   pTriggers: Pointer[Pyi__SERVICE_TRIGGER]
-  pReserved: c_str
+  pReserved: CStr
 
 @native
 @native_name("_SERVICE_TRIGGER_SPECIFIC_DATA_ITEM")
 class Pyi__SERVICE_TRIGGER_SPECIFIC_DATA_ITEM:
   dwDataType: uint
   cbData: uint
-  pData: c_str
+  pData: CStr
 
 @native
 @native_name("_SE_ACCESS_REPLY")
@@ -5016,9 +5016,9 @@ class Pyi__SMALL_RECT:
 @native_name("_STARTUPINFOA")
 class Pyi__STARTUPINFOA:
   cb: uint
-  lpReserved: c_str
-  lpDesktop: c_str
-  lpTitle: c_str
+  lpReserved: CStr
+  lpDesktop: CStr
+  lpTitle: CStr
   dwX: uint
   dwY: uint
   dwXSize: uint
@@ -5029,7 +5029,7 @@ class Pyi__STARTUPINFOA:
   dwFlags: uint
   wShowWindow: uint
   cbReserved2: uint
-  lpReserved2: c_str
+  lpReserved2: CStr
   hStdInput: uintptr
   hStdOutput: uintptr
   hStdError: uintptr
@@ -5063,7 +5063,7 @@ class Pyi__STARTUPINFOW:
   dwFlags: uint
   wShowWindow: uint
   cbReserved2: uint
-  lpReserved2: c_str
+  lpReserved2: CStr
   hStdInput: uintptr
   hStdOutput: uintptr
   hStdError: uintptr
@@ -5755,7 +5755,7 @@ class Pyi__UMS_SYSTEM_THREAD_INFORMATION:
 @native
 @native_name("_UNIVERSAL_NAME_INFOA")
 class Pyi__UNIVERSAL_NAME_INFOA:
-  lpUniversalName: c_str
+  lpUniversalName: CStr
 
 @native
 @native_name("_UNIVERSAL_NAME_INFOW")
@@ -6063,11 +6063,11 @@ class Pyi__currencyfmtA:
   NumDigits: uint
   LeadingZero: uint
   Grouping: uint
-  lpDecimalSep: c_str
-  lpThousandSep: c_str
+  lpDecimalSep: CStr
+  lpThousandSep: CStr
   NegativeOrder: uint
   PositiveOrder: uint
-  lpCurrencySymbol: c_str
+  lpCurrencySymbol: CStr
 
 @native
 @native_name("_currencyfmtW")
@@ -6163,8 +6163,8 @@ class Pyi__numberfmtA:
   NumDigits: uint
   LeadingZero: uint
   Grouping: uint
-  lpDecimalSep: c_str
-  lpThousandSep: c_str
+  lpDecimalSep: CStr
+  lpThousandSep: CStr
   NegativeOrder: uint
 
 @native
@@ -6190,7 +6190,7 @@ class Pyi_provider_info:
 @native
 @native_name("pvalueA")
 class Pyi_pvalueA:
-  pv_valuename: c_str
+  pv_valuename: CStr
   pv_valuelen: int
   pv_value_context: uintptr
   pv_type: uint
@@ -6227,12 +6227,12 @@ class Pyi_tagACCESSTIMEOUT:
 class Pyi_tagACTCTXA:
   cbSize: uint
   dwFlags: uint
-  lpSource: c_str
+  lpSource: CStr
   wProcessorArchitecture: uint
   wLangId: uint
-  lpAssemblyDirectory: c_str
-  lpResourceName: c_str
-  lpApplicationName: c_str
+  lpAssemblyDirectory: CStr
+  lpResourceName: CStr
+  lpApplicationName: CStr
   hModule: Pointer[Pyi_HINSTANCE__]
 
 @native
@@ -6544,8 +6544,8 @@ class Pyi_tagCREATESTRUCTA:
   y: int
   x: int
   style: int
-  lpszName: c_str
-  lpszClass: c_str
+  lpszName: CStr
+  lpszClass: CStr
   dwExStyle: uint
 
 @native
@@ -7476,11 +7476,11 @@ class Pyi_tagFONTSIGNATURE:
 @native_name("tagGCP_RESULTSA")
 class Pyi_tagGCP_RESULTSA:
   lStructSize: uint
-  lpOutString: c_str
+  lpOutString: CStr
   lpOrder: Pointer[uint]
   lpDx: Pointer[int]
   lpCaretPos: Pointer[int]
-  lpClass: c_str
+  lpClass: CStr
   lpGlyphs: Pointer[uint]
   nGlyphs: uint
   nMaxFit: int
@@ -7493,7 +7493,7 @@ class Pyi_tagGCP_RESULTSW:
   lpOrder: Pointer[uint]
   lpDx: Pointer[int]
   lpCaretPos: Pointer[int]
-  lpClass: c_str
+  lpClass: CStr
   lpGlyphs: Pointer[uint]
   nGlyphs: uint
   nMaxFit: int
@@ -7613,7 +7613,7 @@ class Pyi_tagHELPWININFOW:
 class Pyi_tagHIGHCONTRASTA:
   cbSize: uint
   dwFlags: uint
-  lpszDefaultScheme: c_str
+  lpszDefaultScheme: CStr
 
 @native
 @native_name("tagHIGHCONTRASTW")
@@ -7881,8 +7881,8 @@ class Pyi_tagLOGPEN:
 @native
 @native_name("tagMDICREATESTRUCTA")
 class Pyi_tagMDICREATESTRUCTA:
-  szClass: c_str
-  szTitle: c_str
+  szClass: CStr
+  szTitle: CStr
   hOwner: uintptr
   x: int
   y: int
@@ -7961,7 +7961,7 @@ class Pyi_tagMENUITEMINFOA:
   hbmpChecked: Pointer[Pyi_HBITMAP__]
   hbmpUnchecked: Pointer[Pyi_HBITMAP__]
   dwItemData: uint64
-  dwTypeData: c_str
+  dwTypeData: CStr
   cch: uint
   hbmpItem: Pointer[Pyi_HBITMAP__]
 
@@ -8101,10 +8101,10 @@ class Pyi_tagMSGBOXPARAMSA:
   cbSize: uint
   hwndOwner: Pointer[Pyi_HWND__]
   hInstance: Pointer[Pyi_HINSTANCE__]
-  lpszText: c_str
-  lpszCaption: c_str
+  lpszText: CStr
+  lpszCaption: CStr
   dwStyle: uint
-  lpszIcon: c_str
+  lpszIcon: CStr
   dwContextHelpId: uint64
   lpfnMsgBoxCallback: Function[[Pointer[Pyi_tagHELPINFO]], None]  # fn ptr
   dwLanguageId: uint
@@ -8438,7 +8438,7 @@ class Pyi_tagPOLYTEXTA:
   x: int
   y: int
   n: uint
-  lpstr: c_str
+  lpstr: CStr
   uiFlags: uint
   rcl: Pyi_tagRECT
   pdx: Pointer[int]
@@ -8531,8 +8531,8 @@ class Pyi_tagRECT:
 @native
 @native_name("tagREGISTERWORDA")
 class Pyi_tagREGISTERWORDA:
-  lpReading: c_str
-  lpWord: c_str
+  lpReading: CStr
+  lpWord: CStr
 
 @native
 @native_name("tagREGISTERWORDW")
@@ -8615,8 +8615,8 @@ class Pyi_tagSCROLLINFO:
 class Pyi_tagSERIALKEYSA:
   cbSize: uint
   dwFlags: uint
-  lpszActivePort: c_str
-  lpszPort: c_str
+  lpszActivePort: CStr
+  lpszPort: CStr
   iBaudRate: uint
   iPortState: uint
   iActive: uint
@@ -8651,7 +8651,7 @@ class Pyi_tagSOUNDSENTRYA:
   iFSGrafEffectColor: uint
   iWindowsEffect: uint
   iWindowsEffectMSec: uint
-  lpszWindowsEffectDLL: c_str
+  lpszWindowsEffectDLL: CStr
   iWindowsEffectOrdinal: uint
 
 @native
@@ -8932,8 +8932,8 @@ class Pyi_tagWNDCLASSA:
   hIcon: Pointer[Pyi_HICON__]
   hCursor: Pointer[Pyi_HICON__]
   hbrBackground: Pointer[Pyi_HBRUSH__]
-  lpszMenuName: c_str
-  lpszClassName: c_str
+  lpszMenuName: CStr
+  lpszClassName: CStr
 
 @native
 @native_name("tagWNDCLASSEXA")
@@ -8947,8 +8947,8 @@ class Pyi_tagWNDCLASSEXA:
   hIcon: Pointer[Pyi_HICON__]
   hCursor: Pointer[Pyi_HICON__]
   hbrBackground: Pointer[Pyi_HBRUSH__]
-  lpszMenuName: c_str
-  lpszClassName: c_str
+  lpszMenuName: CStr
+  lpszClassName: CStr
   hIconSm: Pointer[Pyi_HICON__]
 
 @native
@@ -9007,7 +9007,7 @@ class Pyi_val_context:
 @native
 @native_name("value_entA")
 class Pyi_value_entA:
-  ve_valuename: c_str
+  ve_valuename: CStr
   ve_valuelen: uint
   ve_valueptr: uint64
   ve_type: uint
@@ -37272,7 +37272,7 @@ def Pyi_AbortPath(hdc: Pointer[Pyi_HDC__]) -> int:
 
 @native
 @native_name("AbortSystemShutdownA")
-def Pyi_AbortSystemShutdownA(lpMachineName: c_str) -> int:
+def Pyi_AbortSystemShutdownA(lpMachineName: CStr) -> int:
   ...
 
 @native
@@ -37287,7 +37287,7 @@ def Pyi_AccessCheck(pSecurityDescriptor: uintptr, ClientToken: uintptr, DesiredA
 
 @native
 @native_name("AccessCheckAndAuditAlarmA")
-def Pyi_AccessCheckAndAuditAlarmA(SubsystemName: c_str, HandleId: uintptr, ObjectTypeName: c_str, ObjectName: c_str, SecurityDescriptor: uintptr, DesiredAccess: uint, GenericMapping: Pointer[Pyi__GENERIC_MAPPING], ObjectCreation: int, GrantedAccess: Pointer[uint], AccessStatus: Pointer[int], pfGenerateOnClose: Pointer[int]) -> int:
+def Pyi_AccessCheckAndAuditAlarmA(SubsystemName: CStr, HandleId: uintptr, ObjectTypeName: CStr, ObjectName: CStr, SecurityDescriptor: uintptr, DesiredAccess: uint, GenericMapping: Pointer[Pyi__GENERIC_MAPPING], ObjectCreation: int, GrantedAccess: Pointer[uint], AccessStatus: Pointer[int], pfGenerateOnClose: Pointer[int]) -> int:
   ...
 
 @native
@@ -37302,7 +37302,7 @@ def Pyi_AccessCheckByType(pSecurityDescriptor: uintptr, PrincipalSelfSid: uintpt
 
 @native
 @native_name("AccessCheckByTypeAndAuditAlarmA")
-def Pyi_AccessCheckByTypeAndAuditAlarmA(SubsystemName: c_str, HandleId: uintptr, ObjectTypeName: c_str, ObjectName: c_str, SecurityDescriptor: uintptr, PrincipalSelfSid: uintptr, DesiredAccess: uint, AuditType: Pyi_AUDIT_EVENT_TYPE, Flags: uint, ObjectTypeList: Pointer[Pyi__OBJECT_TYPE_LIST], ObjectTypeListLength: uint, GenericMapping: Pointer[Pyi__GENERIC_MAPPING], ObjectCreation: int, GrantedAccess: Pointer[uint], AccessStatus: Pointer[int], pfGenerateOnClose: Pointer[int]) -> int:
+def Pyi_AccessCheckByTypeAndAuditAlarmA(SubsystemName: CStr, HandleId: uintptr, ObjectTypeName: CStr, ObjectName: CStr, SecurityDescriptor: uintptr, PrincipalSelfSid: uintptr, DesiredAccess: uint, AuditType: Pyi_AUDIT_EVENT_TYPE, Flags: uint, ObjectTypeList: Pointer[Pyi__OBJECT_TYPE_LIST], ObjectTypeListLength: uint, GenericMapping: Pointer[Pyi__GENERIC_MAPPING], ObjectCreation: int, GrantedAccess: Pointer[uint], AccessStatus: Pointer[int], pfGenerateOnClose: Pointer[int]) -> int:
   ...
 
 @native
@@ -37317,12 +37317,12 @@ def Pyi_AccessCheckByTypeResultList(pSecurityDescriptor: uintptr, PrincipalSelfS
 
 @native
 @native_name("AccessCheckByTypeResultListAndAuditAlarmA")
-def Pyi_AccessCheckByTypeResultListAndAuditAlarmA(SubsystemName: c_str, HandleId: uintptr, ObjectTypeName: c_str, ObjectName: c_str, SecurityDescriptor: uintptr, PrincipalSelfSid: uintptr, DesiredAccess: uint, AuditType: Pyi_AUDIT_EVENT_TYPE, Flags: uint, ObjectTypeList: Pointer[Pyi__OBJECT_TYPE_LIST], ObjectTypeListLength: uint, GenericMapping: Pointer[Pyi__GENERIC_MAPPING], ObjectCreation: int, GrantedAccess: Pointer[uint], AccessStatusList: Pointer[uint], pfGenerateOnClose: Pointer[int]) -> int:
+def Pyi_AccessCheckByTypeResultListAndAuditAlarmA(SubsystemName: CStr, HandleId: uintptr, ObjectTypeName: CStr, ObjectName: CStr, SecurityDescriptor: uintptr, PrincipalSelfSid: uintptr, DesiredAccess: uint, AuditType: Pyi_AUDIT_EVENT_TYPE, Flags: uint, ObjectTypeList: Pointer[Pyi__OBJECT_TYPE_LIST], ObjectTypeListLength: uint, GenericMapping: Pointer[Pyi__GENERIC_MAPPING], ObjectCreation: int, GrantedAccess: Pointer[uint], AccessStatusList: Pointer[uint], pfGenerateOnClose: Pointer[int]) -> int:
   ...
 
 @native
 @native_name("AccessCheckByTypeResultListAndAuditAlarmByHandleA")
-def Pyi_AccessCheckByTypeResultListAndAuditAlarmByHandleA(SubsystemName: c_str, HandleId: uintptr, ClientToken: uintptr, ObjectTypeName: c_str, ObjectName: c_str, SecurityDescriptor: uintptr, PrincipalSelfSid: uintptr, DesiredAccess: uint, AuditType: Pyi_AUDIT_EVENT_TYPE, Flags: uint, ObjectTypeList: Pointer[Pyi__OBJECT_TYPE_LIST], ObjectTypeListLength: uint, GenericMapping: Pointer[Pyi__GENERIC_MAPPING], ObjectCreation: int, GrantedAccess: Pointer[uint], AccessStatusList: Pointer[uint], pfGenerateOnClose: Pointer[int]) -> int:
+def Pyi_AccessCheckByTypeResultListAndAuditAlarmByHandleA(SubsystemName: CStr, HandleId: uintptr, ClientToken: uintptr, ObjectTypeName: CStr, ObjectName: CStr, SecurityDescriptor: uintptr, PrincipalSelfSid: uintptr, DesiredAccess: uint, AuditType: Pyi_AUDIT_EVENT_TYPE, Flags: uint, ObjectTypeList: Pointer[Pyi__OBJECT_TYPE_LIST], ObjectTypeListLength: uint, GenericMapping: Pointer[Pyi__GENERIC_MAPPING], ObjectCreation: int, GrantedAccess: Pointer[uint], AccessStatusList: Pointer[uint], pfGenerateOnClose: Pointer[int]) -> int:
   ...
 
 @native
@@ -37392,7 +37392,7 @@ def Pyi_AddAce(pAcl: Pointer[Pyi__ACL], dwAceRevision: uint, dwStartingAceIndex:
 
 @native
 @native_name("AddAtomA")
-def Pyi_AddAtomA(lpString: c_str) -> uint:
+def Pyi_AddAtomA(lpString: CStr) -> uint:
   ...
 
 @native
@@ -37427,7 +37427,7 @@ def Pyi_AddConditionalAce(pAcl: Pointer[Pyi__ACL], dwAceRevision: uint, AceFlags
 
 @native
 @native_name("AddConsoleAliasA")
-def Pyi_AddConsoleAliasA(Source: c_str, Target: c_str, ExeName: c_str) -> int:
+def Pyi_AddConsoleAliasA(Source: CStr, Target: CStr, ExeName: CStr) -> int:
   ...
 
 @native
@@ -37447,12 +37447,12 @@ def Pyi_AddFontMemResourceEx(pFileView: uintptr, cjSize: uint, pvResrved: uintpt
 
 @native
 @native_name("AddFontResourceA")
-def Pyi_AddFontResourceA(arg0: c_str) -> int:
+def Pyi_AddFontResourceA(arg0: CStr) -> int:
   ...
 
 @native
 @native_name("AddFontResourceExA")
-def Pyi_AddFontResourceExA(name: c_str, fl: uint, res: uintptr) -> int:
+def Pyi_AddFontResourceExA(name: CStr, fl: uint, res: uintptr) -> int:
   ...
 
 @native
@@ -37597,7 +37597,7 @@ def Pyi_AnyPopup() -> int:
 
 @native
 @native_name("AppendMenuA")
-def Pyi_AppendMenuA(hMenu: Pointer[Pyi_HMENU__], uFlags: uint, uIDNewItem: uint64, lpNewItem: c_str) -> int:
+def Pyi_AppendMenuA(hMenu: Pointer[Pyi_HMENU__], uFlags: uint, uIDNewItem: uint64, lpNewItem: CStr) -> int:
   ...
 
 @native
@@ -37672,7 +37672,7 @@ def Pyi_AttachThreadInput(idAttach: uint, idAttachTo: uint, fAttach: int) -> int
 
 @native
 @native_name("BackupEventLogA")
-def Pyi_BackupEventLogA(hEventLog: uintptr, lpBackupFileName: c_str) -> int:
+def Pyi_BackupEventLogA(hEventLog: uintptr, lpBackupFileName: CStr) -> int:
   ...
 
 @native
@@ -37682,7 +37682,7 @@ def Pyi_BackupEventLogW(hEventLog: uintptr, lpBackupFileName: Pointer[uint]) -> 
 
 @native
 @native_name("BackupRead")
-def Pyi_BackupRead(hFile: uintptr, lpBuffer: c_str, nNumberOfBytesToRead: uint, lpNumberOfBytesRead: Pointer[uint], bAbort: int, bProcessSecurity: int, lpContext: Pointer[uintptr]) -> int:
+def Pyi_BackupRead(hFile: uintptr, lpBuffer: CStr, nNumberOfBytesToRead: uint, lpNumberOfBytesRead: Pointer[uint], bAbort: int, bProcessSecurity: int, lpContext: Pointer[uintptr]) -> int:
   ...
 
 @native
@@ -37692,7 +37692,7 @@ def Pyi_BackupSeek(hFile: uintptr, dwLowBytesToSeek: uint, dwHighBytesToSeek: ui
 
 @native
 @native_name("BackupWrite")
-def Pyi_BackupWrite(hFile: uintptr, lpBuffer: c_str, nNumberOfBytesToWrite: uint, lpNumberOfBytesWritten: Pointer[uint], bAbort: int, bProcessSecurity: int, lpContext: Pointer[uintptr]) -> int:
+def Pyi_BackupWrite(hFile: uintptr, lpBuffer: CStr, nNumberOfBytesToWrite: uint, lpNumberOfBytesWritten: Pointer[uint], bAbort: int, bProcessSecurity: int, lpContext: Pointer[uintptr]) -> int:
   ...
 
 @native
@@ -37722,7 +37722,7 @@ def Pyi_BeginPath(hdc: Pointer[Pyi_HDC__]) -> int:
 
 @native
 @native_name("BeginUpdateResourceA")
-def Pyi_BeginUpdateResourceA(pFileName: c_str, bDeleteExistingResources: int) -> uintptr:
+def Pyi_BeginUpdateResourceA(pFileName: CStr, bDeleteExistingResources: int) -> uintptr:
   ...
 
 @native
@@ -37772,12 +37772,12 @@ def Pyi_BroadcastSystemMessageW(flags: uint, lpInfo: Pointer[uint], Msg: uint, w
 
 @native
 @native_name("BuildCommDCBA")
-def Pyi_BuildCommDCBA(lpDef: c_str, lpDCB: Pointer[Pyi__DCB]) -> int:
+def Pyi_BuildCommDCBA(lpDef: CStr, lpDCB: Pointer[Pyi__DCB]) -> int:
   ...
 
 @native
 @native_name("BuildCommDCBAndTimeoutsA")
-def Pyi_BuildCommDCBAndTimeoutsA(lpDef: c_str, lpDCB: Pointer[Pyi__DCB], lpCommTimeouts: Pointer[Pyi__COMMTIMEOUTS]) -> int:
+def Pyi_BuildCommDCBAndTimeoutsA(lpDef: CStr, lpDCB: Pointer[Pyi__DCB], lpCommTimeouts: Pointer[Pyi__COMMTIMEOUTS]) -> int:
   ...
 
 @native
@@ -37817,7 +37817,7 @@ def Pyi_CallMsgFilterW(lpMsg: Pointer[Pyi_tagMSG], nCode: int) -> int:
 
 @native
 @native_name("CallNamedPipeA")
-def Pyi_CallNamedPipeA(lpNamedPipeName: c_str, lpInBuffer: uintptr, nInBufferSize: uint, lpOutBuffer: uintptr, nOutBufferSize: uint, lpBytesRead: Pointer[uint], nTimeOut: uint) -> int:
+def Pyi_CallNamedPipeA(lpNamedPipeName: CStr, lpInBuffer: uintptr, nInBufferSize: uint, lpOutBuffer: uintptr, nOutBufferSize: uint, lpBytesRead: Pointer[uint], nTimeOut: uint) -> int:
   ...
 
 @native
@@ -37907,7 +37907,7 @@ def Pyi_ChangeDisplaySettingsA(lpDevMode: Pointer[Pyi__devicemodeA], dwFlags: ui
 
 @native
 @native_name("ChangeDisplaySettingsExA")
-def Pyi_ChangeDisplaySettingsExA(lpszDeviceName: c_str, lpDevMode: Pointer[Pyi__devicemodeA], hwnd: Pointer[Pyi_HWND__], dwflags: uint, lParam: uintptr) -> int:
+def Pyi_ChangeDisplaySettingsExA(lpszDeviceName: CStr, lpDevMode: Pointer[Pyi__devicemodeA], hwnd: Pointer[Pyi_HWND__], dwflags: uint, lParam: uintptr) -> int:
   ...
 
 @native
@@ -37922,7 +37922,7 @@ def Pyi_ChangeDisplaySettingsW(lpDevMode: Pointer[Pyi__devicemodeW], dwFlags: ui
 
 @native
 @native_name("ChangeMenuA")
-def Pyi_ChangeMenuA(hMenu: Pointer[Pyi_HMENU__], cmd: uint, lpszNewItem: c_str, cmdInsert: uint, flags: uint) -> int:
+def Pyi_ChangeMenuA(hMenu: Pointer[Pyi_HMENU__], cmd: uint, lpszNewItem: CStr, cmdInsert: uint, flags: uint) -> int:
   ...
 
 @native
@@ -37942,7 +37942,7 @@ def Pyi_ChangeServiceConfig2W(hService: Pointer[Pyi_SC_HANDLE__], dwInfoLevel: u
 
 @native
 @native_name("ChangeServiceConfigA")
-def Pyi_ChangeServiceConfigA(hService: Pointer[Pyi_SC_HANDLE__], dwServiceType: uint, dwStartType: uint, dwErrorControl: uint, lpBinaryPathName: c_str, lpLoadOrderGroup: c_str, lpdwTagId: Pointer[uint], lpDependencies: c_str, lpServiceStartName: c_str, lpPassword: c_str, lpDisplayName: c_str) -> int:
+def Pyi_ChangeServiceConfigA(hService: Pointer[Pyi_SC_HANDLE__], dwServiceType: uint, dwStartType: uint, dwErrorControl: uint, lpBinaryPathName: CStr, lpLoadOrderGroup: CStr, lpdwTagId: Pointer[uint], lpDependencies: CStr, lpServiceStartName: CStr, lpPassword: CStr, lpDisplayName: CStr) -> int:
   ...
 
 @native
@@ -37967,12 +37967,12 @@ def Pyi_ChangeWindowMessageFilterEx(hwnd: Pointer[Pyi_HWND__], message: uint, ac
 
 @native
 @native_name("CharLowerA")
-def Pyi_CharLowerA(lpsz: c_str) -> c_str:
+def Pyi_CharLowerA(lpsz: CStr) -> CStr:
   ...
 
 @native
 @native_name("CharLowerBuffA")
-def Pyi_CharLowerBuffA(lpsz: c_str, cchLength: uint) -> uint:
+def Pyi_CharLowerBuffA(lpsz: CStr, cchLength: uint) -> uint:
   ...
 
 @native
@@ -37987,12 +37987,12 @@ def Pyi_CharLowerW(lpsz: Pointer[uint]) -> Pointer[uint]:
 
 @native
 @native_name("CharNextA")
-def Pyi_CharNextA(lpsz: c_str) -> c_str:
+def Pyi_CharNextA(lpsz: CStr) -> CStr:
   ...
 
 @native
 @native_name("CharNextExA")
-def Pyi_CharNextExA(CodePage: uint, lpCurrentChar: c_str, dwFlags: uint) -> c_str:
+def Pyi_CharNextExA(CodePage: uint, lpCurrentChar: CStr, dwFlags: uint) -> CStr:
   ...
 
 @native
@@ -38002,12 +38002,12 @@ def Pyi_CharNextW(lpsz: Pointer[uint]) -> Pointer[uint]:
 
 @native
 @native_name("CharPrevA")
-def Pyi_CharPrevA(lpszStart: c_str, lpszCurrent: c_str) -> c_str:
+def Pyi_CharPrevA(lpszStart: CStr, lpszCurrent: CStr) -> CStr:
   ...
 
 @native
 @native_name("CharPrevExA")
-def Pyi_CharPrevExA(CodePage: uint, lpStart: c_str, lpCurrentChar: c_str, dwFlags: uint) -> c_str:
+def Pyi_CharPrevExA(CodePage: uint, lpStart: CStr, lpCurrentChar: CStr, dwFlags: uint) -> CStr:
   ...
 
 @native
@@ -38017,32 +38017,32 @@ def Pyi_CharPrevW(lpszStart: Pointer[uint], lpszCurrent: Pointer[uint]) -> Point
 
 @native
 @native_name("CharToOemA")
-def Pyi_CharToOemA(pSrc: c_str, pDst: c_str) -> int:
+def Pyi_CharToOemA(pSrc: CStr, pDst: CStr) -> int:
   ...
 
 @native
 @native_name("CharToOemBuffA")
-def Pyi_CharToOemBuffA(lpszSrc: c_str, lpszDst: c_str, cchDstLength: uint) -> int:
+def Pyi_CharToOemBuffA(lpszSrc: CStr, lpszDst: CStr, cchDstLength: uint) -> int:
   ...
 
 @native
 @native_name("CharToOemBuffW")
-def Pyi_CharToOemBuffW(lpszSrc: Pointer[uint], lpszDst: c_str, cchDstLength: uint) -> int:
+def Pyi_CharToOemBuffW(lpszSrc: Pointer[uint], lpszDst: CStr, cchDstLength: uint) -> int:
   ...
 
 @native
 @native_name("CharToOemW")
-def Pyi_CharToOemW(pSrc: Pointer[uint], pDst: c_str) -> int:
+def Pyi_CharToOemW(pSrc: Pointer[uint], pDst: CStr) -> int:
   ...
 
 @native
 @native_name("CharUpperA")
-def Pyi_CharUpperA(lpsz: c_str) -> c_str:
+def Pyi_CharUpperA(lpsz: CStr) -> CStr:
   ...
 
 @native
 @native_name("CharUpperBuffA")
-def Pyi_CharUpperBuffA(lpsz: c_str, cchLength: uint) -> uint:
+def Pyi_CharUpperBuffA(lpsz: CStr, cchLength: uint) -> uint:
   ...
 
 @native
@@ -38067,7 +38067,7 @@ def Pyi_CheckDlgButton(hDlg: Pointer[Pyi_HWND__], nIDButton: int, uCheck: uint) 
 
 @native
 @native_name("CheckForHiberboot")
-def Pyi_CheckForHiberboot(pHiberboot: c_str, bClearFlag: int) -> uint:
+def Pyi_CheckForHiberboot(pHiberboot: CStr, bClearFlag: int) -> uint:
   ...
 
 @native
@@ -38082,12 +38082,12 @@ def Pyi_CheckMenuRadioItem(hmenu: Pointer[Pyi_HMENU__], first: uint, last: uint,
 
 @native
 @native_name("CheckNameLegalDOS8Dot3A")
-def Pyi_CheckNameLegalDOS8Dot3A(lpName: c_str, lpOemName: c_str, OemNameSize: uint, pbNameContainsSpaces: Pointer[int], pbNameLegal: Pointer[int]) -> int:
+def Pyi_CheckNameLegalDOS8Dot3A(lpName: CStr, lpOemName: CStr, OemNameSize: uint, pbNameContainsSpaces: Pointer[int], pbNameLegal: Pointer[int]) -> int:
   ...
 
 @native
 @native_name("CheckNameLegalDOS8Dot3W")
-def Pyi_CheckNameLegalDOS8Dot3W(lpName: Pointer[uint], lpOemName: c_str, OemNameSize: uint, pbNameContainsSpaces: Pointer[int], pbNameLegal: Pointer[int]) -> int:
+def Pyi_CheckNameLegalDOS8Dot3W(lpName: Pointer[uint], lpOemName: CStr, OemNameSize: uint, pbNameContainsSpaces: Pointer[int], pbNameLegal: Pointer[int]) -> int:
   ...
 
 @native
@@ -38147,7 +38147,7 @@ def Pyi_ClearCommError(hFile: uintptr, lpErrors: Pointer[uint], lpStat: Pointer[
 
 @native
 @native_name("ClearEventLogA")
-def Pyi_ClearEventLogA(hEventLog: uintptr, lpBackupFileName: c_str) -> int:
+def Pyi_ClearEventLogA(hEventLog: uintptr, lpBackupFileName: CStr) -> int:
   ...
 
 @native
@@ -38297,7 +38297,7 @@ def Pyi_CombineTransform(lpxfOut: Pointer[Pyi_tagXFORM], lpxf1: Pointer[Pyi_tagX
 
 @native
 @native_name("CommConfigDialogA")
-def Pyi_CommConfigDialogA(lpszName: c_str, hWnd: Pointer[Pyi_HWND__], lpCC: Pointer[Pyi__COMMCONFIG]) -> int:
+def Pyi_CommConfigDialogA(lpszName: CStr, hWnd: Pointer[Pyi_HWND__], lpCC: Pointer[Pyi__COMMCONFIG]) -> int:
   ...
 
 @native
@@ -38317,7 +38317,7 @@ def Pyi_CompareObjectHandles(hFirstObjectHandle: uintptr, hSecondObjectHandle: u
 
 @native
 @native_name("CompareStringA")
-def Pyi_CompareStringA(Locale: uint, dwCmpFlags: uint, lpString1: c_str, cchCount1: int, lpString2: c_str, cchCount2: int) -> int:
+def Pyi_CompareStringA(Locale: uint, dwCmpFlags: uint, lpString1: CStr, cchCount1: int, lpString2: CStr, cchCount2: int) -> int:
   ...
 
 @native
@@ -38412,7 +38412,7 @@ def Pyi_CopyContext(Destination: Pointer[Pyi__CONTEXT], ContextFlags: uint, Sour
 
 @native
 @native_name("CopyEnhMetaFileA")
-def Pyi_CopyEnhMetaFileA(hEnh: Pointer[Pyi_HENHMETAFILE__], lpFileName: c_str) -> Pointer[Pyi_HENHMETAFILE__]:
+def Pyi_CopyEnhMetaFileA(hEnh: Pointer[Pyi_HENHMETAFILE__], lpFileName: CStr) -> Pointer[Pyi_HENHMETAFILE__]:
   ...
 
 @native
@@ -38427,12 +38427,12 @@ def Pyi_CopyFile2(pwszExistingFileName: Pointer[uint], pwszNewFileName: Pointer[
 
 @native
 @native_name("CopyFileA")
-def Pyi_CopyFileA(lpExistingFileName: c_str, lpNewFileName: c_str, bFailIfExists: int) -> int:
+def Pyi_CopyFileA(lpExistingFileName: CStr, lpNewFileName: CStr, bFailIfExists: int) -> int:
   ...
 
 @native
 @native_name("CopyFileExA")
-def Pyi_CopyFileExA(lpExistingFileName: c_str, lpNewFileName: c_str, lpProgressRoutine: Function[[Pyi__LARGE_INTEGER, Pyi__LARGE_INTEGER, Pyi__LARGE_INTEGER, Pyi__LARGE_INTEGER, uint, uint, uintptr, uintptr, uintptr], uint], lpData: uintptr, pbCancel: Pointer[int], dwCopyFlags: uint) -> int:
+def Pyi_CopyFileExA(lpExistingFileName: CStr, lpNewFileName: CStr, lpProgressRoutine: Function[[Pyi__LARGE_INTEGER, Pyi__LARGE_INTEGER, Pyi__LARGE_INTEGER, Pyi__LARGE_INTEGER, uint, uint, uintptr, uintptr, uintptr], uint], lpData: uintptr, pbCancel: Pointer[int], dwCopyFlags: uint) -> int:
   ...
 
 @native
@@ -38447,7 +38447,7 @@ def Pyi_CopyFileFromAppW(lpExistingFileName: Pointer[uint], lpNewFileName: Point
 
 @native
 @native_name("CopyFileTransactedA")
-def Pyi_CopyFileTransactedA(lpExistingFileName: c_str, lpNewFileName: c_str, lpProgressRoutine: Function[[Pyi__LARGE_INTEGER, Pyi__LARGE_INTEGER, Pyi__LARGE_INTEGER, Pyi__LARGE_INTEGER, uint, uint, uintptr, uintptr, uintptr], uint], lpData: uintptr, pbCancel: Pointer[int], dwCopyFlags: uint, hTransaction: uintptr) -> int:
+def Pyi_CopyFileTransactedA(lpExistingFileName: CStr, lpNewFileName: CStr, lpProgressRoutine: Function[[Pyi__LARGE_INTEGER, Pyi__LARGE_INTEGER, Pyi__LARGE_INTEGER, Pyi__LARGE_INTEGER, uint, uint, uintptr, uintptr, uintptr], uint], lpData: uintptr, pbCancel: Pointer[int], dwCopyFlags: uint, hTransaction: uintptr) -> int:
   ...
 
 @native
@@ -38472,7 +38472,7 @@ def Pyi_CopyImage(h: uintptr, type: uint, cx: int, cy: int, flags: uint) -> uint
 
 @native
 @native_name("CopyMetaFileA")
-def Pyi_CopyMetaFileA(arg0: Pointer[Pyi_HMETAFILE__], arg1: c_str) -> Pointer[Pyi_HMETAFILE__]:
+def Pyi_CopyMetaFileA(arg0: Pointer[Pyi_HMETAFILE__], arg1: CStr) -> Pointer[Pyi_HMETAFILE__]:
   ...
 
 @native
@@ -38527,7 +38527,7 @@ def Pyi_CreateBitmapIndirect(pbm: Pointer[Pyi_tagBITMAP]) -> Pointer[Pyi_HBITMAP
 
 @native
 @native_name("CreateBoundaryDescriptorA")
-def Pyi_CreateBoundaryDescriptorA(Name: c_str, Flags: uint) -> uintptr:
+def Pyi_CreateBoundaryDescriptorA(Name: CStr, Flags: uint) -> uintptr:
   ...
 
 @native
@@ -38577,7 +38577,7 @@ def Pyi_CreateCursor(hInst: Pointer[Pyi_HINSTANCE__], xHotSpot: int, yHotSpot: i
 
 @native
 @native_name("CreateDCA")
-def Pyi_CreateDCA(pwszDriver: c_str, pwszDevice: c_str, pszPort: c_str, pdm: Pointer[Pyi__devicemodeA]) -> Pointer[Pyi_HDC__]:
+def Pyi_CreateDCA(pwszDriver: CStr, pwszDevice: CStr, pszPort: CStr, pdm: Pointer[Pyi__devicemodeA]) -> Pointer[Pyi_HDC__]:
   ...
 
 @native
@@ -38607,12 +38607,12 @@ def Pyi_CreateDIBitmap(hdc: Pointer[Pyi_HDC__], pbmih: Pointer[Pyi_tagBITMAPINFO
 
 @native
 @native_name("CreateDesktopA")
-def Pyi_CreateDesktopA(lpszDesktop: c_str, lpszDevice: c_str, pDevmode: Pointer[Pyi__devicemodeA], dwFlags: uint, dwDesiredAccess: uint, lpsa: Pointer[Pyi__SECURITY_ATTRIBUTES]) -> Pointer[Pyi_HDESK__]:
+def Pyi_CreateDesktopA(lpszDesktop: CStr, lpszDevice: CStr, pDevmode: Pointer[Pyi__devicemodeA], dwFlags: uint, dwDesiredAccess: uint, lpsa: Pointer[Pyi__SECURITY_ATTRIBUTES]) -> Pointer[Pyi_HDESK__]:
   ...
 
 @native
 @native_name("CreateDesktopExA")
-def Pyi_CreateDesktopExA(lpszDesktop: c_str, lpszDevice: c_str, pDevmode: Pointer[Pyi__devicemodeA], dwFlags: uint, dwDesiredAccess: uint, lpsa: Pointer[Pyi__SECURITY_ATTRIBUTES], ulHeapSize: uint, pvoid: uintptr) -> Pointer[Pyi_HDESK__]:
+def Pyi_CreateDesktopExA(lpszDesktop: CStr, lpszDevice: CStr, pDevmode: Pointer[Pyi__devicemodeA], dwFlags: uint, dwDesiredAccess: uint, lpsa: Pointer[Pyi__SECURITY_ATTRIBUTES], ulHeapSize: uint, pvoid: uintptr) -> Pointer[Pyi_HDESK__]:
   ...
 
 @native
@@ -38637,7 +38637,7 @@ def Pyi_CreateDialogIndirectParamW(hInstance: Pointer[Pyi_HINSTANCE__], lpTempla
 
 @native
 @native_name("CreateDialogParamA")
-def Pyi_CreateDialogParamA(hInstance: Pointer[Pyi_HINSTANCE__], lpTemplateName: c_str, hWndParent: Pointer[Pyi_HWND__], lpDialogFunc: Function[[Pointer[Pyi_HWND__], uint, uint64, int64], int64], dwInitParam: int64) -> Pointer[Pyi_HWND__]:
+def Pyi_CreateDialogParamA(hInstance: Pointer[Pyi_HINSTANCE__], lpTemplateName: CStr, hWndParent: Pointer[Pyi_HWND__], lpDialogFunc: Function[[Pointer[Pyi_HWND__], uint, uint64, int64], int64], dwInitParam: int64) -> Pointer[Pyi_HWND__]:
   ...
 
 @native
@@ -38647,12 +38647,12 @@ def Pyi_CreateDialogParamW(hInstance: Pointer[Pyi_HINSTANCE__], lpTemplateName: 
 
 @native
 @native_name("CreateDirectoryA")
-def Pyi_CreateDirectoryA(lpPathName: c_str, lpSecurityAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES]) -> int:
+def Pyi_CreateDirectoryA(lpPathName: CStr, lpSecurityAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES]) -> int:
   ...
 
 @native
 @native_name("CreateDirectoryExA")
-def Pyi_CreateDirectoryExA(lpTemplateDirectory: c_str, lpNewDirectory: c_str, lpSecurityAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES]) -> int:
+def Pyi_CreateDirectoryExA(lpTemplateDirectory: CStr, lpNewDirectory: CStr, lpSecurityAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES]) -> int:
   ...
 
 @native
@@ -38667,7 +38667,7 @@ def Pyi_CreateDirectoryFromAppW(lpPathName: Pointer[uint], lpSecurityAttributes:
 
 @native
 @native_name("CreateDirectoryTransactedA")
-def Pyi_CreateDirectoryTransactedA(lpTemplateDirectory: c_str, lpNewDirectory: c_str, lpSecurityAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], hTransaction: uintptr) -> int:
+def Pyi_CreateDirectoryTransactedA(lpTemplateDirectory: CStr, lpNewDirectory: CStr, lpSecurityAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], hTransaction: uintptr) -> int:
   ...
 
 @native
@@ -38702,7 +38702,7 @@ def Pyi_CreateEnclave(hProcess: uintptr, lpAddress: uintptr, dwSize: uint64, dwI
 
 @native
 @native_name("CreateEnhMetaFileA")
-def Pyi_CreateEnhMetaFileA(hdc: Pointer[Pyi_HDC__], lpFilename: c_str, lprc: Pointer[Pyi_tagRECT], lpDesc: c_str) -> Pointer[Pyi_HDC__]:
+def Pyi_CreateEnhMetaFileA(hdc: Pointer[Pyi_HDC__], lpFilename: CStr, lprc: Pointer[Pyi_tagRECT], lpDesc: CStr) -> Pointer[Pyi_HDC__]:
   ...
 
 @native
@@ -38712,12 +38712,12 @@ def Pyi_CreateEnhMetaFileW(hdc: Pointer[Pyi_HDC__], lpFilename: Pointer[uint], l
 
 @native
 @native_name("CreateEventA")
-def Pyi_CreateEventA(lpEventAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], bManualReset: int, bInitialState: int, lpName: c_str) -> uintptr:
+def Pyi_CreateEventA(lpEventAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], bManualReset: int, bInitialState: int, lpName: CStr) -> uintptr:
   ...
 
 @native
 @native_name("CreateEventExA")
-def Pyi_CreateEventExA(lpEventAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], lpName: c_str, dwFlags: uint, dwDesiredAccess: uint) -> uintptr:
+def Pyi_CreateEventExA(lpEventAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], lpName: CStr, dwFlags: uint, dwDesiredAccess: uint) -> uintptr:
   ...
 
 @native
@@ -38752,7 +38752,7 @@ def Pyi_CreateFile2FromAppW(lpFileName: Pointer[uint], dwDesiredAccess: uint, dw
 
 @native
 @native_name("CreateFileA")
-def Pyi_CreateFileA(lpFileName: c_str, dwDesiredAccess: uint, dwShareMode: uint, lpSecurityAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], dwCreationDisposition: uint, dwFlagsAndAttributes: uint, hTemplateFile: uintptr) -> uintptr:
+def Pyi_CreateFileA(lpFileName: CStr, dwDesiredAccess: uint, dwShareMode: uint, lpSecurityAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], dwCreationDisposition: uint, dwFlagsAndAttributes: uint, hTemplateFile: uintptr) -> uintptr:
   ...
 
 @native
@@ -38767,7 +38767,7 @@ def Pyi_CreateFileMapping2(File: uintptr, SecurityAttributes: Pointer[Pyi__SECUR
 
 @native
 @native_name("CreateFileMappingA")
-def Pyi_CreateFileMappingA(hFile: uintptr, lpFileMappingAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], flProtect: uint, dwMaximumSizeHigh: uint, dwMaximumSizeLow: uint, lpName: c_str) -> uintptr:
+def Pyi_CreateFileMappingA(hFile: uintptr, lpFileMappingAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], flProtect: uint, dwMaximumSizeHigh: uint, dwMaximumSizeLow: uint, lpName: CStr) -> uintptr:
   ...
 
 @native
@@ -38777,7 +38777,7 @@ def Pyi_CreateFileMappingFromApp(hFile: uintptr, SecurityAttributes: Pointer[Pyi
 
 @native
 @native_name("CreateFileMappingNumaA")
-def Pyi_CreateFileMappingNumaA(hFile: uintptr, lpFileMappingAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], flProtect: uint, dwMaximumSizeHigh: uint, dwMaximumSizeLow: uint, lpName: c_str, nndPreferred: uint) -> uintptr:
+def Pyi_CreateFileMappingNumaA(hFile: uintptr, lpFileMappingAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], flProtect: uint, dwMaximumSizeHigh: uint, dwMaximumSizeLow: uint, lpName: CStr, nndPreferred: uint) -> uintptr:
   ...
 
 @native
@@ -38792,7 +38792,7 @@ def Pyi_CreateFileMappingW(hFile: uintptr, lpFileMappingAttributes: Pointer[Pyi_
 
 @native
 @native_name("CreateFileTransactedA")
-def Pyi_CreateFileTransactedA(lpFileName: c_str, dwDesiredAccess: uint, dwShareMode: uint, lpSecurityAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], dwCreationDisposition: uint, dwFlagsAndAttributes: uint, hTemplateFile: uintptr, hTransaction: uintptr, pusMiniVersion: Pointer[uint], lpExtendedParameter: uintptr) -> uintptr:
+def Pyi_CreateFileTransactedA(lpFileName: CStr, dwDesiredAccess: uint, dwShareMode: uint, lpSecurityAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], dwCreationDisposition: uint, dwFlagsAndAttributes: uint, hTemplateFile: uintptr, hTransaction: uintptr, pusMiniVersion: Pointer[uint], lpExtendedParameter: uintptr) -> uintptr:
   ...
 
 @native
@@ -38807,7 +38807,7 @@ def Pyi_CreateFileW(lpFileName: Pointer[uint], dwDesiredAccess: uint, dwShareMod
 
 @native
 @native_name("CreateFontA")
-def Pyi_CreateFontA(cHeight: int, cWidth: int, cEscapement: int, cOrientation: int, cWeight: int, bItalic: uint, bUnderline: uint, bStrikeOut: uint, iCharSet: uint, iOutPrecision: uint, iClipPrecision: uint, iQuality: uint, iPitchAndFamily: uint, pszFaceName: c_str) -> Pointer[Pyi_HFONT__]:
+def Pyi_CreateFontA(cHeight: int, cWidth: int, cEscapement: int, cOrientation: int, cWeight: int, bItalic: uint, bUnderline: uint, bStrikeOut: uint, iCharSet: uint, iOutPrecision: uint, iClipPrecision: uint, iQuality: uint, iPitchAndFamily: uint, pszFaceName: CStr) -> Pointer[Pyi_HFONT__]:
   ...
 
 @native
@@ -38842,12 +38842,12 @@ def Pyi_CreateHalftonePalette(hdc: Pointer[Pyi_HDC__]) -> Pointer[Pyi_HPALETTE__
 
 @native
 @native_name("CreateHardLinkA")
-def Pyi_CreateHardLinkA(lpFileName: c_str, lpExistingFileName: c_str, lpSecurityAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES]) -> int:
+def Pyi_CreateHardLinkA(lpFileName: CStr, lpExistingFileName: CStr, lpSecurityAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES]) -> int:
   ...
 
 @native
 @native_name("CreateHardLinkTransactedA")
-def Pyi_CreateHardLinkTransactedA(lpFileName: c_str, lpExistingFileName: c_str, lpSecurityAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], hTransaction: uintptr) -> int:
+def Pyi_CreateHardLinkTransactedA(lpFileName: CStr, lpExistingFileName: CStr, lpSecurityAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], hTransaction: uintptr) -> int:
   ...
 
 @native
@@ -38867,7 +38867,7 @@ def Pyi_CreateHatchBrush(iHatch: int, color: uint) -> Pointer[Pyi_HBRUSH__]:
 
 @native
 @native_name("CreateICA")
-def Pyi_CreateICA(pszDriver: c_str, pszDevice: c_str, pszPort: c_str, pdm: Pointer[Pyi__devicemodeA]) -> Pointer[Pyi_HDC__]:
+def Pyi_CreateICA(pszDriver: CStr, pszDevice: CStr, pszPort: CStr, pdm: Pointer[Pyi__devicemodeA]) -> Pointer[Pyi_HDC__]:
   ...
 
 @native
@@ -38882,12 +38882,12 @@ def Pyi_CreateIcon(hInstance: Pointer[Pyi_HINSTANCE__], nWidth: int, nHeight: in
 
 @native
 @native_name("CreateIconFromResource")
-def Pyi_CreateIconFromResource(presbits: c_str, dwResSize: uint, fIcon: int, dwVer: uint) -> Pointer[Pyi_HICON__]:
+def Pyi_CreateIconFromResource(presbits: CStr, dwResSize: uint, fIcon: int, dwVer: uint) -> Pointer[Pyi_HICON__]:
   ...
 
 @native
 @native_name("CreateIconFromResourceEx")
-def Pyi_CreateIconFromResourceEx(presbits: c_str, dwResSize: uint, fIcon: int, dwVer: uint, cxDesired: int, cyDesired: int, Flags: uint) -> Pointer[Pyi_HICON__]:
+def Pyi_CreateIconFromResourceEx(presbits: CStr, dwResSize: uint, fIcon: int, dwVer: uint, cxDesired: int, cyDesired: int, Flags: uint) -> Pointer[Pyi_HICON__]:
   ...
 
 @native
@@ -38902,7 +38902,7 @@ def Pyi_CreateIoCompletionPort(FileHandle: uintptr, ExistingCompletionPort: uint
 
 @native
 @native_name("CreateJobObjectA")
-def Pyi_CreateJobObjectA(lpJobAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], lpName: c_str) -> uintptr:
+def Pyi_CreateJobObjectA(lpJobAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], lpName: CStr) -> uintptr:
   ...
 
 @native
@@ -38917,7 +38917,7 @@ def Pyi_CreateJobSet(NumJob: uint, UserJobSet: Pointer[Pyi__JOB_SET_ARRAY], Flag
 
 @native
 @native_name("CreateMDIWindowA")
-def Pyi_CreateMDIWindowA(lpClassName: c_str, lpWindowName: c_str, dwStyle: uint, X: int, Y: int, nWidth: int, nHeight: int, hWndParent: Pointer[Pyi_HWND__], hInstance: Pointer[Pyi_HINSTANCE__], lParam: int64) -> Pointer[Pyi_HWND__]:
+def Pyi_CreateMDIWindowA(lpClassName: CStr, lpWindowName: CStr, dwStyle: uint, X: int, Y: int, nWidth: int, nHeight: int, hWndParent: Pointer[Pyi_HWND__], hInstance: Pointer[Pyi_HINSTANCE__], lParam: int64) -> Pointer[Pyi_HWND__]:
   ...
 
 @native
@@ -38927,7 +38927,7 @@ def Pyi_CreateMDIWindowW(lpClassName: Pointer[uint], lpWindowName: Pointer[uint]
 
 @native
 @native_name("CreateMailslotA")
-def Pyi_CreateMailslotA(lpName: c_str, nMaxMessageSize: uint, lReadTimeout: uint, lpSecurityAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES]) -> uintptr:
+def Pyi_CreateMailslotA(lpName: CStr, nMaxMessageSize: uint, lReadTimeout: uint, lpSecurityAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES]) -> uintptr:
   ...
 
 @native
@@ -38947,7 +38947,7 @@ def Pyi_CreateMenu() -> Pointer[Pyi_HMENU__]:
 
 @native
 @native_name("CreateMetaFileA")
-def Pyi_CreateMetaFileA(pszFile: c_str) -> Pointer[Pyi_HDC__]:
+def Pyi_CreateMetaFileA(pszFile: CStr) -> Pointer[Pyi_HDC__]:
   ...
 
 @native
@@ -38957,12 +38957,12 @@ def Pyi_CreateMetaFileW(pszFile: Pointer[uint]) -> Pointer[Pyi_HDC__]:
 
 @native
 @native_name("CreateMutexA")
-def Pyi_CreateMutexA(lpMutexAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], bInitialOwner: int, lpName: c_str) -> uintptr:
+def Pyi_CreateMutexA(lpMutexAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], bInitialOwner: int, lpName: CStr) -> uintptr:
   ...
 
 @native
 @native_name("CreateMutexExA")
-def Pyi_CreateMutexExA(lpMutexAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], lpName: c_str, dwFlags: uint, dwDesiredAccess: uint) -> uintptr:
+def Pyi_CreateMutexExA(lpMutexAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], lpName: CStr, dwFlags: uint, dwDesiredAccess: uint) -> uintptr:
   ...
 
 @native
@@ -38977,7 +38977,7 @@ def Pyi_CreateMutexW(lpMutexAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], bInit
 
 @native
 @native_name("CreateNamedPipeA")
-def Pyi_CreateNamedPipeA(lpName: c_str, dwOpenMode: uint, dwPipeMode: uint, nMaxInstances: uint, nOutBufferSize: uint, nInBufferSize: uint, nDefaultTimeOut: uint, lpSecurityAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES]) -> uintptr:
+def Pyi_CreateNamedPipeA(lpName: CStr, dwOpenMode: uint, dwPipeMode: uint, nMaxInstances: uint, nOutBufferSize: uint, nInBufferSize: uint, nDefaultTimeOut: uint, lpSecurityAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES]) -> uintptr:
   ...
 
 @native
@@ -39027,7 +39027,7 @@ def Pyi_CreatePopupMenu() -> Pointer[Pyi_HMENU__]:
 
 @native
 @native_name("CreatePrivateNamespaceA")
-def Pyi_CreatePrivateNamespaceA(lpPrivateNamespaceAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], lpBoundaryDescriptor: uintptr, lpAliasPrefix: c_str) -> uintptr:
+def Pyi_CreatePrivateNamespaceA(lpPrivateNamespaceAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], lpBoundaryDescriptor: uintptr, lpAliasPrefix: CStr) -> uintptr:
   ...
 
 @native
@@ -39052,12 +39052,12 @@ def Pyi_CreatePrivateObjectSecurityWithMultipleInheritance(ParentDescriptor: uin
 
 @native
 @native_name("CreateProcessA")
-def Pyi_CreateProcessA(lpApplicationName: c_str, lpCommandLine: c_str, lpProcessAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], lpThreadAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], bInheritHandles: int, dwCreationFlags: uint, lpEnvironment: uintptr, lpCurrentDirectory: c_str, lpStartupInfo: Pointer[Pyi__STARTUPINFOA], lpProcessInformation: Pointer[Pyi__PROCESS_INFORMATION]) -> int:
+def Pyi_CreateProcessA(lpApplicationName: CStr, lpCommandLine: CStr, lpProcessAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], lpThreadAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], bInheritHandles: int, dwCreationFlags: uint, lpEnvironment: uintptr, lpCurrentDirectory: CStr, lpStartupInfo: Pointer[Pyi__STARTUPINFOA], lpProcessInformation: Pointer[Pyi__PROCESS_INFORMATION]) -> int:
   ...
 
 @native
 @native_name("CreateProcessAsUserA")
-def Pyi_CreateProcessAsUserA(hToken: uintptr, lpApplicationName: c_str, lpCommandLine: c_str, lpProcessAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], lpThreadAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], bInheritHandles: int, dwCreationFlags: uint, lpEnvironment: uintptr, lpCurrentDirectory: c_str, lpStartupInfo: Pointer[Pyi__STARTUPINFOA], lpProcessInformation: Pointer[Pyi__PROCESS_INFORMATION]) -> int:
+def Pyi_CreateProcessAsUserA(hToken: uintptr, lpApplicationName: CStr, lpCommandLine: CStr, lpProcessAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], lpThreadAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], bInheritHandles: int, dwCreationFlags: uint, lpEnvironment: uintptr, lpCurrentDirectory: CStr, lpStartupInfo: Pointer[Pyi__STARTUPINFOA], lpProcessInformation: Pointer[Pyi__PROCESS_INFORMATION]) -> int:
   ...
 
 @native
@@ -39117,7 +39117,7 @@ def Pyi_CreateRoundRectRgn(x1: int, y1: int, x2: int, y2: int, w: int, h: int) -
 
 @native
 @native_name("CreateScalableFontResourceA")
-def Pyi_CreateScalableFontResourceA(fdwHidden: uint, lpszFont: c_str, lpszFile: c_str, lpszPath: c_str) -> int:
+def Pyi_CreateScalableFontResourceA(fdwHidden: uint, lpszFont: CStr, lpszFile: CStr, lpszPath: CStr) -> int:
   ...
 
 @native
@@ -39127,12 +39127,12 @@ def Pyi_CreateScalableFontResourceW(fdwHidden: uint, lpszFont: Pointer[uint], lp
 
 @native
 @native_name("CreateSemaphoreA")
-def Pyi_CreateSemaphoreA(lpSemaphoreAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], lInitialCount: int, lMaximumCount: int, lpName: c_str) -> uintptr:
+def Pyi_CreateSemaphoreA(lpSemaphoreAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], lInitialCount: int, lMaximumCount: int, lpName: CStr) -> uintptr:
   ...
 
 @native
 @native_name("CreateSemaphoreExA")
-def Pyi_CreateSemaphoreExA(lpSemaphoreAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], lInitialCount: int, lMaximumCount: int, lpName: c_str, dwFlags: uint, dwDesiredAccess: uint) -> uintptr:
+def Pyi_CreateSemaphoreExA(lpSemaphoreAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], lInitialCount: int, lMaximumCount: int, lpName: CStr, dwFlags: uint, dwDesiredAccess: uint) -> uintptr:
   ...
 
 @native
@@ -39147,7 +39147,7 @@ def Pyi_CreateSemaphoreW(lpSemaphoreAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES
 
 @native
 @native_name("CreateServiceA")
-def Pyi_CreateServiceA(hSCManager: Pointer[Pyi_SC_HANDLE__], lpServiceName: c_str, lpDisplayName: c_str, dwDesiredAccess: uint, dwServiceType: uint, dwStartType: uint, dwErrorControl: uint, lpBinaryPathName: c_str, lpLoadOrderGroup: c_str, lpdwTagId: Pointer[uint], lpDependencies: c_str, lpServiceStartName: c_str, lpPassword: c_str) -> Pointer[Pyi_SC_HANDLE__]:
+def Pyi_CreateServiceA(hSCManager: Pointer[Pyi_SC_HANDLE__], lpServiceName: CStr, lpDisplayName: CStr, dwDesiredAccess: uint, dwServiceType: uint, dwStartType: uint, dwErrorControl: uint, lpBinaryPathName: CStr, lpLoadOrderGroup: CStr, lpdwTagId: Pointer[uint], lpDependencies: CStr, lpServiceStartName: CStr, lpPassword: CStr) -> Pointer[Pyi_SC_HANDLE__]:
   ...
 
 @native
@@ -39162,12 +39162,12 @@ def Pyi_CreateSolidBrush(color: uint) -> Pointer[Pyi_HBRUSH__]:
 
 @native
 @native_name("CreateSymbolicLinkA")
-def Pyi_CreateSymbolicLinkA(lpSymlinkFileName: c_str, lpTargetFileName: c_str, dwFlags: uint) -> int:
+def Pyi_CreateSymbolicLinkA(lpSymlinkFileName: CStr, lpTargetFileName: CStr, dwFlags: uint) -> int:
   ...
 
 @native
 @native_name("CreateSymbolicLinkTransactedA")
-def Pyi_CreateSymbolicLinkTransactedA(lpSymlinkFileName: c_str, lpTargetFileName: c_str, dwFlags: uint, hTransaction: uintptr) -> int:
+def Pyi_CreateSymbolicLinkTransactedA(lpSymlinkFileName: CStr, lpTargetFileName: CStr, dwFlags: uint, hTransaction: uintptr) -> int:
   ...
 
 @native
@@ -39247,12 +39247,12 @@ def Pyi_CreateUmsThreadContext(lpUmsThread: Pointer[uintptr]) -> int:
 
 @native
 @native_name("CreateWaitableTimerA")
-def Pyi_CreateWaitableTimerA(lpTimerAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], bManualReset: int, lpTimerName: c_str) -> uintptr:
+def Pyi_CreateWaitableTimerA(lpTimerAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], bManualReset: int, lpTimerName: CStr) -> uintptr:
   ...
 
 @native
 @native_name("CreateWaitableTimerExA")
-def Pyi_CreateWaitableTimerExA(lpTimerAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], lpTimerName: c_str, dwFlags: uint, dwDesiredAccess: uint) -> uintptr:
+def Pyi_CreateWaitableTimerExA(lpTimerAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], lpTimerName: CStr, dwFlags: uint, dwDesiredAccess: uint) -> uintptr:
   ...
 
 @native
@@ -39272,7 +39272,7 @@ def Pyi_CreateWellKnownSid(WellKnownSidType: Pyi_WELL_KNOWN_SID_TYPE, DomainSid:
 
 @native
 @native_name("CreateWindowExA")
-def Pyi_CreateWindowExA(dwExStyle: uint, lpClassName: c_str, lpWindowName: c_str, dwStyle: uint, X: int, Y: int, nWidth: int, nHeight: int, hWndParent: Pointer[Pyi_HWND__], hMenu: Pointer[Pyi_HMENU__], hInstance: Pointer[Pyi_HINSTANCE__], lpParam: uintptr) -> Pointer[Pyi_HWND__]:
+def Pyi_CreateWindowExA(dwExStyle: uint, lpClassName: CStr, lpWindowName: CStr, dwStyle: uint, X: int, Y: int, nWidth: int, nHeight: int, hWndParent: Pointer[Pyi_HWND__], hMenu: Pointer[Pyi_HMENU__], hInstance: Pointer[Pyi_HINSTANCE__], lpParam: uintptr) -> Pointer[Pyi_HWND__]:
   ...
 
 @native
@@ -39282,7 +39282,7 @@ def Pyi_CreateWindowExW(dwExStyle: uint, lpClassName: Pointer[uint], lpWindowNam
 
 @native
 @native_name("CreateWindowStationA")
-def Pyi_CreateWindowStationA(lpwinsta: c_str, dwFlags: uint, dwDesiredAccess: uint, lpsa: Pointer[Pyi__SECURITY_ATTRIBUTES]) -> Pointer[Pyi_HWINSTA__]:
+def Pyi_CreateWindowStationA(lpwinsta: CStr, dwFlags: uint, dwDesiredAccess: uint, lpsa: Pointer[Pyi__SECURITY_ATTRIBUTES]) -> Pointer[Pyi_HWINSTA__]:
   ...
 
 @native
@@ -39347,7 +39347,7 @@ def Pyi_DecodeSystemPointer(Ptr: uintptr) -> uintptr:
 
 @native
 @native_name("DecryptFileA")
-def Pyi_DecryptFileA(lpFileName: c_str, dwReserved: uint) -> int:
+def Pyi_DecryptFileA(lpFileName: CStr, dwReserved: uint) -> int:
   ...
 
 @native
@@ -39407,7 +39407,7 @@ def Pyi_DeferWindowPos(hWinPosInfo: uintptr, hWnd: Pointer[Pyi_HWND__], hWndInse
 
 @native
 @native_name("DefineDosDeviceA")
-def Pyi_DefineDosDeviceA(dwFlags: uint, lpDeviceName: c_str, lpTargetPath: c_str) -> int:
+def Pyi_DefineDosDeviceA(dwFlags: uint, lpDeviceName: CStr, lpTargetPath: CStr) -> int:
   ...
 
 @native
@@ -39462,7 +39462,7 @@ def Pyi_DeleteFiber(lpFiber: uintptr) -> None:
 
 @native
 @native_name("DeleteFileA")
-def Pyi_DeleteFileA(lpFileName: c_str) -> int:
+def Pyi_DeleteFileA(lpFileName: CStr) -> int:
   ...
 
 @native
@@ -39472,7 +39472,7 @@ def Pyi_DeleteFileFromAppW(lpFileName: Pointer[uint]) -> int:
 
 @native
 @native_name("DeleteFileTransactedA")
-def Pyi_DeleteFileTransactedA(lpFileName: c_str, hTransaction: uintptr) -> int:
+def Pyi_DeleteFileTransactedA(lpFileName: CStr, hTransaction: uintptr) -> int:
   ...
 
 @native
@@ -39542,7 +39542,7 @@ def Pyi_DeleteUmsThreadContext(UmsThread: uintptr) -> int:
 
 @native
 @native_name("DeleteVolumeMountPointA")
-def Pyi_DeleteVolumeMountPointA(lpszVolumeMountPoint: c_str) -> int:
+def Pyi_DeleteVolumeMountPointA(lpszVolumeMountPoint: CStr) -> int:
   ...
 
 @native
@@ -39622,7 +39622,7 @@ def Pyi_DestroyWindow(hWnd: Pointer[Pyi_HWND__]) -> int:
 
 @native
 @native_name("DeviceCapabilitiesA")
-def Pyi_DeviceCapabilitiesA(pDevice: c_str, pPort: c_str, fwCapability: uint, pOutput: c_str, pDevMode: Pointer[Pyi__devicemodeA]) -> int:
+def Pyi_DeviceCapabilitiesA(pDevice: CStr, pPort: CStr, fwCapability: uint, pOutput: CStr, pDevMode: Pointer[Pyi__devicemodeA]) -> int:
   ...
 
 @native
@@ -39647,7 +39647,7 @@ def Pyi_DialogBoxIndirectParamW(hInstance: Pointer[Pyi_HINSTANCE__], hDialogTemp
 
 @native
 @native_name("DialogBoxParamA")
-def Pyi_DialogBoxParamA(hInstance: Pointer[Pyi_HINSTANCE__], lpTemplateName: c_str, hWndParent: Pointer[Pyi_HWND__], lpDialogFunc: Function[[Pointer[Pyi_HWND__], uint, uint64, int64], int64], dwInitParam: int64) -> int64:
+def Pyi_DialogBoxParamA(hInstance: Pointer[Pyi_HINSTANCE__], lpTemplateName: CStr, hWndParent: Pointer[Pyi_HWND__], lpDialogFunc: Function[[Pointer[Pyi_HWND__], uint, uint64, int64], int64], dwInitParam: int64) -> int64:
   ...
 
 @native
@@ -39707,12 +39707,12 @@ def Pyi_DisplayConfigSetDeviceInfo(setPacket: Pointer[Pyi_DISPLAYCONFIG_DEVICE_I
 
 @native
 @native_name("DlgDirListA")
-def Pyi_DlgDirListA(hDlg: Pointer[Pyi_HWND__], lpPathSpec: c_str, nIDListBox: int, nIDStaticPath: int, uFileType: uint) -> int:
+def Pyi_DlgDirListA(hDlg: Pointer[Pyi_HWND__], lpPathSpec: CStr, nIDListBox: int, nIDStaticPath: int, uFileType: uint) -> int:
   ...
 
 @native
 @native_name("DlgDirListComboBoxA")
-def Pyi_DlgDirListComboBoxA(hDlg: Pointer[Pyi_HWND__], lpPathSpec: c_str, nIDComboBox: int, nIDStaticPath: int, uFiletype: uint) -> int:
+def Pyi_DlgDirListComboBoxA(hDlg: Pointer[Pyi_HWND__], lpPathSpec: CStr, nIDComboBox: int, nIDStaticPath: int, uFiletype: uint) -> int:
   ...
 
 @native
@@ -39727,7 +39727,7 @@ def Pyi_DlgDirListW(hDlg: Pointer[Pyi_HWND__], lpPathSpec: Pointer[uint], nIDLis
 
 @native
 @native_name("DlgDirSelectComboBoxExA")
-def Pyi_DlgDirSelectComboBoxExA(hwndDlg: Pointer[Pyi_HWND__], lpString: c_str, cchOut: int, idComboBox: int) -> int:
+def Pyi_DlgDirSelectComboBoxExA(hwndDlg: Pointer[Pyi_HWND__], lpString: CStr, cchOut: int, idComboBox: int) -> int:
   ...
 
 @native
@@ -39737,7 +39737,7 @@ def Pyi_DlgDirSelectComboBoxExW(hwndDlg: Pointer[Pyi_HWND__], lpString: Pointer[
 
 @native
 @native_name("DlgDirSelectExA")
-def Pyi_DlgDirSelectExA(hwndDlg: Pointer[Pyi_HWND__], lpString: c_str, chCount: int, idListBox: int) -> int:
+def Pyi_DlgDirSelectExA(hwndDlg: Pointer[Pyi_HWND__], lpString: CStr, chCount: int, idListBox: int) -> int:
   ...
 
 @native
@@ -39747,7 +39747,7 @@ def Pyi_DlgDirSelectExW(hwndDlg: Pointer[Pyi_HWND__], lpString: Pointer[uint], c
 
 @native
 @native_name("DnsHostnameToComputerNameA")
-def Pyi_DnsHostnameToComputerNameA(Hostname: c_str, ComputerName: c_str, nSize: Pointer[uint]) -> int:
+def Pyi_DnsHostnameToComputerNameA(Hostname: CStr, ComputerName: CStr, nSize: Pointer[uint]) -> int:
   ...
 
 @native
@@ -39792,7 +39792,7 @@ def Pyi_DrawEdge(hdc: Pointer[Pyi_HDC__], qrc: Pointer[Pyi_tagRECT], edge: uint,
 
 @native
 @native_name("DrawEscape")
-def Pyi_DrawEscape(hdc: Pointer[Pyi_HDC__], iEscape: int, cjIn: int, lpIn: c_str) -> int:
+def Pyi_DrawEscape(hdc: Pointer[Pyi_HDC__], iEscape: int, cjIn: int, lpIn: CStr) -> int:
   ...
 
 @native
@@ -39832,12 +39832,12 @@ def Pyi_DrawStateW(hdc: Pointer[Pyi_HDC__], hbrFore: Pointer[Pyi_HBRUSH__], qfnC
 
 @native
 @native_name("DrawTextA")
-def Pyi_DrawTextA(hdc: Pointer[Pyi_HDC__], lpchText: c_str, cchText: int, lprc: Pointer[Pyi_tagRECT], format: uint) -> int:
+def Pyi_DrawTextA(hdc: Pointer[Pyi_HDC__], lpchText: CStr, cchText: int, lprc: Pointer[Pyi_tagRECT], format: uint) -> int:
   ...
 
 @native
 @native_name("DrawTextExA")
-def Pyi_DrawTextExA(hdc: Pointer[Pyi_HDC__], lpchText: c_str, cchText: int, lprc: Pointer[Pyi_tagRECT], format: uint, lpdtp: Pointer[Pyi_tagDRAWTEXTPARAMS]) -> int:
+def Pyi_DrawTextExA(hdc: Pointer[Pyi_HDC__], lpchText: CStr, cchText: int, lprc: Pointer[Pyi_tagRECT], format: uint, lpdtp: Pointer[Pyi_tagDRAWTEXTPARAMS]) -> int:
   ...
 
 @native
@@ -39932,7 +39932,7 @@ def Pyi_EncodeSystemPointer(Ptr: uintptr) -> uintptr:
 
 @native
 @native_name("EncryptFileA")
-def Pyi_EncryptFileA(lpFileName: c_str) -> int:
+def Pyi_EncryptFileA(lpFileName: CStr) -> int:
   ...
 
 @native
@@ -40002,12 +40002,12 @@ def Pyi_EnterUmsSchedulingMode(SchedulerStartupInfo: Pointer[Pyi__UMS_SCHEDULER_
 
 @native
 @native_name("EnumCalendarInfoA")
-def Pyi_EnumCalendarInfoA(lpCalInfoEnumProc: Function[[c_str], int], Locale: uint, Calendar: uint, CalType: uint) -> int:
+def Pyi_EnumCalendarInfoA(lpCalInfoEnumProc: Function[[CStr], int], Locale: uint, Calendar: uint, CalType: uint) -> int:
   ...
 
 @native
 @native_name("EnumCalendarInfoExA")
-def Pyi_EnumCalendarInfoExA(lpCalInfoEnumProcEx: Function[[c_str, uint], int], Locale: uint, Calendar: uint, CalType: uint) -> int:
+def Pyi_EnumCalendarInfoExA(lpCalInfoEnumProcEx: Function[[CStr, uint], int], Locale: uint, Calendar: uint, CalType: uint) -> int:
   ...
 
 @native
@@ -40037,12 +40037,12 @@ def Pyi_EnumClipboardFormats(format: uint) -> uint:
 
 @native
 @native_name("EnumDateFormatsA")
-def Pyi_EnumDateFormatsA(lpDateFmtEnumProc: Function[[c_str], int], Locale: uint, dwFlags: uint) -> int:
+def Pyi_EnumDateFormatsA(lpDateFmtEnumProc: Function[[CStr], int], Locale: uint, dwFlags: uint) -> int:
   ...
 
 @native
 @native_name("EnumDateFormatsExA")
-def Pyi_EnumDateFormatsExA(lpDateFmtEnumProcEx: Function[[c_str, uint], int], Locale: uint, dwFlags: uint) -> int:
+def Pyi_EnumDateFormatsExA(lpDateFmtEnumProcEx: Function[[CStr, uint], int], Locale: uint, dwFlags: uint) -> int:
   ...
 
 @native
@@ -40077,7 +40077,7 @@ def Pyi_EnumDesktopWindows(hDesktop: Pointer[Pyi_HDESK__], lpfn: Function[[Point
 
 @native
 @native_name("EnumDesktopsA")
-def Pyi_EnumDesktopsA(hwinsta: Pointer[Pyi_HWINSTA__], lpEnumFunc: Function[[c_str, int64], int], lParam: int64) -> int:
+def Pyi_EnumDesktopsA(hwinsta: Pointer[Pyi_HWINSTA__], lpEnumFunc: Function[[CStr, int64], int], lParam: int64) -> int:
   ...
 
 @native
@@ -40087,7 +40087,7 @@ def Pyi_EnumDesktopsW(hwinsta: Pointer[Pyi_HWINSTA__], lpEnumFunc: Function[[Poi
 
 @native
 @native_name("EnumDisplayDevicesA")
-def Pyi_EnumDisplayDevicesA(lpDevice: c_str, iDevNum: uint, lpDisplayDevice: Pointer[Pyi__DISPLAY_DEVICEA], dwFlags: uint) -> int:
+def Pyi_EnumDisplayDevicesA(lpDevice: CStr, iDevNum: uint, lpDisplayDevice: Pointer[Pyi__DISPLAY_DEVICEA], dwFlags: uint) -> int:
   ...
 
 @native
@@ -40102,12 +40102,12 @@ def Pyi_EnumDisplayMonitors(hdc: Pointer[Pyi_HDC__], lprcClip: Pointer[Pyi_tagRE
 
 @native
 @native_name("EnumDisplaySettingsA")
-def Pyi_EnumDisplaySettingsA(lpszDeviceName: c_str, iModeNum: uint, lpDevMode: Pointer[Pyi__devicemodeA]) -> int:
+def Pyi_EnumDisplaySettingsA(lpszDeviceName: CStr, iModeNum: uint, lpDevMode: Pointer[Pyi__devicemodeA]) -> int:
   ...
 
 @native
 @native_name("EnumDisplaySettingsExA")
-def Pyi_EnumDisplaySettingsExA(lpszDeviceName: c_str, iModeNum: uint, lpDevMode: Pointer[Pyi__devicemodeA], dwFlags: uint) -> int:
+def Pyi_EnumDisplaySettingsExA(lpszDeviceName: CStr, iModeNum: uint, lpDevMode: Pointer[Pyi__devicemodeA], dwFlags: uint) -> int:
   ...
 
 @native
@@ -40132,7 +40132,7 @@ def Pyi_EnumEnhMetaFile(hdc: Pointer[Pyi_HDC__], hmf: Pointer[Pyi_HENHMETAFILE__
 
 @native
 @native_name("EnumFontFamiliesA")
-def Pyi_EnumFontFamiliesA(hdc: Pointer[Pyi_HDC__], lpLogfont: c_str, lpProc: Function[[Pointer[Pyi_tagLOGFONTA], Pointer[Pyi_tagTEXTMETRICA], uint, int64], int], lParam: int64) -> int:
+def Pyi_EnumFontFamiliesA(hdc: Pointer[Pyi_HDC__], lpLogfont: CStr, lpProc: Function[[Pointer[Pyi_tagLOGFONTA], Pointer[Pyi_tagTEXTMETRICA], uint, int64], int], lParam: int64) -> int:
   ...
 
 @native
@@ -40152,7 +40152,7 @@ def Pyi_EnumFontFamiliesW(hdc: Pointer[Pyi_HDC__], lpLogfont: Pointer[uint], lpP
 
 @native
 @native_name("EnumFontsA")
-def Pyi_EnumFontsA(hdc: Pointer[Pyi_HDC__], lpLogfont: c_str, lpProc: Function[[Pointer[Pyi_tagLOGFONTA], Pointer[Pyi_tagTEXTMETRICA], uint, int64], int], lParam: int64) -> int:
+def Pyi_EnumFontsA(hdc: Pointer[Pyi_HDC__], lpLogfont: CStr, lpProc: Function[[Pointer[Pyi_tagLOGFONTA], Pointer[Pyi_tagTEXTMETRICA], uint, int64], int], lParam: int64) -> int:
   ...
 
 @native
@@ -40162,7 +40162,7 @@ def Pyi_EnumFontsW(hdc: Pointer[Pyi_HDC__], lpLogfont: Pointer[uint], lpProc: Fu
 
 @native
 @native_name("EnumICMProfilesA")
-def Pyi_EnumICMProfilesA(hdc: Pointer[Pyi_HDC__], proc: Function[[c_str, int64], int], param: int64) -> int:
+def Pyi_EnumICMProfilesA(hdc: Pointer[Pyi_HDC__], proc: Function[[CStr, int64], int], param: int64) -> int:
   ...
 
 @native
@@ -40172,7 +40172,7 @@ def Pyi_EnumICMProfilesW(hdc: Pointer[Pyi_HDC__], proc: Function[[Pointer[uint],
 
 @native
 @native_name("EnumLanguageGroupLocalesA")
-def Pyi_EnumLanguageGroupLocalesA(lpLangGroupLocaleEnumProc: Function[[uint, uint, c_str, int64], int], LanguageGroup: uint, dwFlags: uint, lParam: int64) -> int:
+def Pyi_EnumLanguageGroupLocalesA(lpLangGroupLocaleEnumProc: Function[[uint, uint, CStr, int64], int], LanguageGroup: uint, dwFlags: uint, lParam: int64) -> int:
   ...
 
 @native
@@ -40192,12 +40192,12 @@ def Pyi_EnumObjects(hdc: Pointer[Pyi_HDC__], nType: int, lpFunc: Function[[uintp
 
 @native
 @native_name("EnumPropsA")
-def Pyi_EnumPropsA(hWnd: Pointer[Pyi_HWND__], lpEnumFunc: Function[[Pointer[Pyi_HWND__], c_str, uintptr], int]) -> int:
+def Pyi_EnumPropsA(hWnd: Pointer[Pyi_HWND__], lpEnumFunc: Function[[Pointer[Pyi_HWND__], CStr, uintptr], int]) -> int:
   ...
 
 @native
 @native_name("EnumPropsExA")
-def Pyi_EnumPropsExA(hWnd: Pointer[Pyi_HWND__], lpEnumFunc: Function[[Pointer[Pyi_HWND__], c_str, uintptr, uint64], int], lParam: int64) -> int:
+def Pyi_EnumPropsExA(hWnd: Pointer[Pyi_HWND__], lpEnumFunc: Function[[Pointer[Pyi_HWND__], CStr, uintptr, uint64], int], lParam: int64) -> int:
   ...
 
 @native
@@ -40212,12 +40212,12 @@ def Pyi_EnumPropsW(hWnd: Pointer[Pyi_HWND__], lpEnumFunc: Function[[Pointer[Pyi_
 
 @native
 @native_name("EnumResourceLanguagesA")
-def Pyi_EnumResourceLanguagesA(hModule: Pointer[Pyi_HINSTANCE__], lpType: c_str, lpName: c_str, lpEnumFunc: Function[[Pointer[Pyi_HINSTANCE__], c_str, c_str, uint, int64], int], lParam: int64) -> int:
+def Pyi_EnumResourceLanguagesA(hModule: Pointer[Pyi_HINSTANCE__], lpType: CStr, lpName: CStr, lpEnumFunc: Function[[Pointer[Pyi_HINSTANCE__], CStr, CStr, uint, int64], int], lParam: int64) -> int:
   ...
 
 @native
 @native_name("EnumResourceLanguagesExA")
-def Pyi_EnumResourceLanguagesExA(hModule: Pointer[Pyi_HINSTANCE__], lpType: c_str, lpName: c_str, lpEnumFunc: Function[[Pointer[Pyi_HINSTANCE__], c_str, c_str, uint, int64], int], lParam: int64, dwFlags: uint, LangId: uint) -> int:
+def Pyi_EnumResourceLanguagesExA(hModule: Pointer[Pyi_HINSTANCE__], lpType: CStr, lpName: CStr, lpEnumFunc: Function[[Pointer[Pyi_HINSTANCE__], CStr, CStr, uint, int64], int], lParam: int64, dwFlags: uint, LangId: uint) -> int:
   ...
 
 @native
@@ -40232,12 +40232,12 @@ def Pyi_EnumResourceLanguagesW(hModule: Pointer[Pyi_HINSTANCE__], lpType: Pointe
 
 @native
 @native_name("EnumResourceNamesA")
-def Pyi_EnumResourceNamesA(hModule: Pointer[Pyi_HINSTANCE__], lpType: c_str, lpEnumFunc: Function[[Pointer[Pyi_HINSTANCE__], c_str, c_str, int64], int], lParam: int64) -> int:
+def Pyi_EnumResourceNamesA(hModule: Pointer[Pyi_HINSTANCE__], lpType: CStr, lpEnumFunc: Function[[Pointer[Pyi_HINSTANCE__], CStr, CStr, int64], int], lParam: int64) -> int:
   ...
 
 @native
 @native_name("EnumResourceNamesExA")
-def Pyi_EnumResourceNamesExA(hModule: Pointer[Pyi_HINSTANCE__], lpType: c_str, lpEnumFunc: Function[[Pointer[Pyi_HINSTANCE__], c_str, c_str, int64], int], lParam: int64, dwFlags: uint, LangId: uint) -> int:
+def Pyi_EnumResourceNamesExA(hModule: Pointer[Pyi_HINSTANCE__], lpType: CStr, lpEnumFunc: Function[[Pointer[Pyi_HINSTANCE__], CStr, CStr, int64], int], lParam: int64, dwFlags: uint, LangId: uint) -> int:
   ...
 
 @native
@@ -40252,12 +40252,12 @@ def Pyi_EnumResourceNamesW(hModule: Pointer[Pyi_HINSTANCE__], lpType: Pointer[ui
 
 @native
 @native_name("EnumResourceTypesA")
-def Pyi_EnumResourceTypesA(hModule: Pointer[Pyi_HINSTANCE__], lpEnumFunc: Function[[Pointer[Pyi_HINSTANCE__], c_str, int64], int], lParam: int64) -> int:
+def Pyi_EnumResourceTypesA(hModule: Pointer[Pyi_HINSTANCE__], lpEnumFunc: Function[[Pointer[Pyi_HINSTANCE__], CStr, int64], int], lParam: int64) -> int:
   ...
 
 @native
 @native_name("EnumResourceTypesExA")
-def Pyi_EnumResourceTypesExA(hModule: Pointer[Pyi_HINSTANCE__], lpEnumFunc: Function[[Pointer[Pyi_HINSTANCE__], c_str, int64], int], lParam: int64, dwFlags: uint, LangId: uint) -> int:
+def Pyi_EnumResourceTypesExA(hModule: Pointer[Pyi_HINSTANCE__], lpEnumFunc: Function[[Pointer[Pyi_HINSTANCE__], CStr, int64], int], lParam: int64, dwFlags: uint, LangId: uint) -> int:
   ...
 
 @native
@@ -40277,12 +40277,12 @@ def Pyi_EnumServicesStatusA(hSCManager: Pointer[Pyi_SC_HANDLE__], dwServiceType:
 
 @native
 @native_name("EnumServicesStatusExA")
-def Pyi_EnumServicesStatusExA(hSCManager: Pointer[Pyi_SC_HANDLE__], InfoLevel: Pyi_SC_ENUM_TYPE, dwServiceType: uint, dwServiceState: uint, lpServices: c_str, cbBufSize: uint, pcbBytesNeeded: Pointer[uint], lpServicesReturned: Pointer[uint], lpResumeHandle: Pointer[uint], pszGroupName: c_str) -> int:
+def Pyi_EnumServicesStatusExA(hSCManager: Pointer[Pyi_SC_HANDLE__], InfoLevel: Pyi_SC_ENUM_TYPE, dwServiceType: uint, dwServiceState: uint, lpServices: CStr, cbBufSize: uint, pcbBytesNeeded: Pointer[uint], lpServicesReturned: Pointer[uint], lpResumeHandle: Pointer[uint], pszGroupName: CStr) -> int:
   ...
 
 @native
 @native_name("EnumServicesStatusExW")
-def Pyi_EnumServicesStatusExW(hSCManager: Pointer[Pyi_SC_HANDLE__], InfoLevel: Pyi_SC_ENUM_TYPE, dwServiceType: uint, dwServiceState: uint, lpServices: c_str, cbBufSize: uint, pcbBytesNeeded: Pointer[uint], lpServicesReturned: Pointer[uint], lpResumeHandle: Pointer[uint], pszGroupName: Pointer[uint]) -> int:
+def Pyi_EnumServicesStatusExW(hSCManager: Pointer[Pyi_SC_HANDLE__], InfoLevel: Pyi_SC_ENUM_TYPE, dwServiceType: uint, dwServiceState: uint, lpServices: CStr, cbBufSize: uint, pcbBytesNeeded: Pointer[uint], lpServicesReturned: Pointer[uint], lpResumeHandle: Pointer[uint], pszGroupName: Pointer[uint]) -> int:
   ...
 
 @native
@@ -40292,7 +40292,7 @@ def Pyi_EnumServicesStatusW(hSCManager: Pointer[Pyi_SC_HANDLE__], dwServiceType:
 
 @native
 @native_name("EnumSystemCodePagesA")
-def Pyi_EnumSystemCodePagesA(lpCodePageEnumProc: Function[[c_str], int], dwFlags: uint) -> int:
+def Pyi_EnumSystemCodePagesA(lpCodePageEnumProc: Function[[CStr], int], dwFlags: uint) -> int:
   ...
 
 @native
@@ -40317,7 +40317,7 @@ def Pyi_EnumSystemGeoNames(geoClass: uint, geoEnumProc: Function[[Pointer[uint],
 
 @native
 @native_name("EnumSystemLanguageGroupsA")
-def Pyi_EnumSystemLanguageGroupsA(lpLanguageGroupEnumProc: Function[[uint, c_str, c_str, uint, int64], int], dwFlags: uint, lParam: int64) -> int:
+def Pyi_EnumSystemLanguageGroupsA(lpLanguageGroupEnumProc: Function[[uint, CStr, CStr, uint, int64], int], dwFlags: uint, lParam: int64) -> int:
   ...
 
 @native
@@ -40327,7 +40327,7 @@ def Pyi_EnumSystemLanguageGroupsW(lpLanguageGroupEnumProc: Function[[uint, Point
 
 @native
 @native_name("EnumSystemLocalesA")
-def Pyi_EnumSystemLocalesA(lpLocaleEnumProc: Function[[c_str], int], dwFlags: uint) -> int:
+def Pyi_EnumSystemLocalesA(lpLocaleEnumProc: Function[[CStr], int], dwFlags: uint) -> int:
   ...
 
 @native
@@ -40347,7 +40347,7 @@ def Pyi_EnumThreadWindows(dwThreadId: uint, lpfn: Function[[Pointer[Pyi_HWND__],
 
 @native
 @native_name("EnumTimeFormatsA")
-def Pyi_EnumTimeFormatsA(lpTimeFmtEnumProc: Function[[c_str], int], Locale: uint, dwFlags: uint) -> int:
+def Pyi_EnumTimeFormatsA(lpTimeFmtEnumProc: Function[[CStr], int], Locale: uint, dwFlags: uint) -> int:
   ...
 
 @native
@@ -40362,7 +40362,7 @@ def Pyi_EnumTimeFormatsW(lpTimeFmtEnumProc: Function[[Pointer[uint]], int], Loca
 
 @native
 @native_name("EnumUILanguagesA")
-def Pyi_EnumUILanguagesA(lpUILanguageEnumProc: Function[[c_str, int64], int], dwFlags: uint, lParam: int64) -> int:
+def Pyi_EnumUILanguagesA(lpUILanguageEnumProc: Function[[CStr, int64], int], dwFlags: uint, lParam: int64) -> int:
   ...
 
 @native
@@ -40372,7 +40372,7 @@ def Pyi_EnumUILanguagesW(lpUILanguageEnumProc: Function[[Pointer[uint], int64], 
 
 @native
 @native_name("EnumWindowStationsA")
-def Pyi_EnumWindowStationsA(lpEnumFunc: Function[[c_str, int64], int], lParam: int64) -> int:
+def Pyi_EnumWindowStationsA(lpEnumFunc: Function[[CStr, int64], int], lParam: int64) -> int:
   ...
 
 @native
@@ -40417,7 +40417,7 @@ def Pyi_EraseTape(hDevice: uintptr, dwEraseType: uint, bImmediate: int) -> uint:
 
 @native
 @native_name("Escape")
-def Pyi_Escape(hdc: Pointer[Pyi_HDC__], iEscape: int, cjIn: int, pvIn: c_str, pvOut: uintptr) -> int:
+def Pyi_Escape(hdc: Pointer[Pyi_HDC__], iEscape: int, cjIn: int, pvIn: CStr, pvOut: uintptr) -> int:
   ...
 
 @native
@@ -40467,7 +40467,7 @@ def Pyi_ExitWindowsEx(uFlags: uint, dwReason: uint) -> int:
 
 @native
 @native_name("ExpandEnvironmentStringsA")
-def Pyi_ExpandEnvironmentStringsA(lpSrc: c_str, lpDst: c_str, nSize: uint) -> uint:
+def Pyi_ExpandEnvironmentStringsA(lpSrc: CStr, lpDst: CStr, nSize: uint) -> uint:
   ...
 
 @native
@@ -40477,7 +40477,7 @@ def Pyi_ExpandEnvironmentStringsW(lpSrc: Pointer[uint], lpDst: Pointer[uint], nS
 
 @native
 @native_name("ExpungeConsoleCommandHistoryA")
-def Pyi_ExpungeConsoleCommandHistoryA(ExeName: c_str) -> None:
+def Pyi_ExpungeConsoleCommandHistoryA(ExeName: CStr) -> None:
   ...
 
 @native
@@ -40497,7 +40497,7 @@ def Pyi_ExtCreateRegion(lpx: Pointer[Pyi_tagXFORM], nCount: uint, lpData: Pointe
 
 @native
 @native_name("ExtEscape")
-def Pyi_ExtEscape(hdc: Pointer[Pyi_HDC__], iEscape: int, cjInput: int, lpInData: c_str, cjOutput: int, lpOutData: c_str) -> int:
+def Pyi_ExtEscape(hdc: Pointer[Pyi_HDC__], iEscape: int, cjInput: int, lpInData: CStr, cjOutput: int, lpOutData: CStr) -> int:
   ...
 
 @native
@@ -40512,7 +40512,7 @@ def Pyi_ExtSelectClipRgn(hdc: Pointer[Pyi_HDC__], hrgn: Pointer[Pyi_HRGN__], mod
 
 @native
 @native_name("ExtTextOutA")
-def Pyi_ExtTextOutA(hdc: Pointer[Pyi_HDC__], x: int, y: int, options: uint, lprect: Pointer[Pyi_tagRECT], lpString: c_str, c: uint, lpDx: Pointer[int]) -> int:
+def Pyi_ExtTextOutA(hdc: Pointer[Pyi_HDC__], x: int, y: int, options: uint, lprect: Pointer[Pyi_tagRECT], lpString: CStr, c: uint, lpDx: Pointer[int]) -> int:
   ...
 
 @native
@@ -40522,7 +40522,7 @@ def Pyi_ExtTextOutW(hdc: Pointer[Pyi_HDC__], x: int, y: int, options: uint, lpre
 
 @native
 @native_name("FatalAppExitA")
-def Pyi_FatalAppExitA(uAction: uint, lpMessageText: c_str) -> None:
+def Pyi_FatalAppExitA(uAction: uint, lpMessageText: CStr) -> None:
   ...
 
 @native
@@ -40537,7 +40537,7 @@ def Pyi_FatalExit(ExitCode: int) -> None:
 
 @native
 @native_name("FileEncryptionStatusA")
-def Pyi_FileEncryptionStatusA(lpFileName: c_str, lpStatus: Pointer[uint]) -> int:
+def Pyi_FileEncryptionStatusA(lpFileName: CStr, lpStatus: Pointer[uint]) -> int:
   ...
 
 @native
@@ -40597,7 +40597,7 @@ def Pyi_FindActCtxSectionGuid(dwFlags: uint, lpExtensionGuid: Pointer[Pyi__GUID]
 
 @native
 @native_name("FindActCtxSectionStringA")
-def Pyi_FindActCtxSectionStringA(dwFlags: uint, lpExtensionGuid: Pointer[Pyi__GUID], ulSectionId: uint, lpStringToFind: c_str, ReturnedData: Pointer[Pyi_tagACTCTX_SECTION_KEYED_DATA]) -> int:
+def Pyi_FindActCtxSectionStringA(dwFlags: uint, lpExtensionGuid: Pointer[Pyi__GUID], ulSectionId: uint, lpStringToFind: CStr, ReturnedData: Pointer[Pyi_tagACTCTX_SECTION_KEYED_DATA]) -> int:
   ...
 
 @native
@@ -40607,7 +40607,7 @@ def Pyi_FindActCtxSectionStringW(dwFlags: uint, lpExtensionGuid: Pointer[Pyi__GU
 
 @native
 @native_name("FindAtomA")
-def Pyi_FindAtomA(lpString: c_str) -> uint:
+def Pyi_FindAtomA(lpString: CStr) -> uint:
   ...
 
 @native
@@ -40627,7 +40627,7 @@ def Pyi_FindCloseChangeNotification(hChangeHandle: uintptr) -> int:
 
 @native
 @native_name("FindFirstChangeNotificationA")
-def Pyi_FindFirstChangeNotificationA(lpPathName: c_str, bWatchSubtree: int, dwNotifyFilter: uint) -> uintptr:
+def Pyi_FindFirstChangeNotificationA(lpPathName: CStr, bWatchSubtree: int, dwNotifyFilter: uint) -> uintptr:
   ...
 
 @native
@@ -40637,12 +40637,12 @@ def Pyi_FindFirstChangeNotificationW(lpPathName: Pointer[uint], bWatchSubtree: i
 
 @native
 @native_name("FindFirstFileA")
-def Pyi_FindFirstFileA(lpFileName: c_str, lpFindFileData: Pointer[Pyi__WIN32_FIND_DATAA]) -> uintptr:
+def Pyi_FindFirstFileA(lpFileName: CStr, lpFindFileData: Pointer[Pyi__WIN32_FIND_DATAA]) -> uintptr:
   ...
 
 @native
 @native_name("FindFirstFileExA")
-def Pyi_FindFirstFileExA(lpFileName: c_str, fInfoLevelId: Pyi_FINDEX_INFO_LEVELS, lpFindFileData: uintptr, fSearchOp: Pyi_FINDEX_SEARCH_OPS, lpSearchFilter: uintptr, dwAdditionalFlags: uint) -> uintptr:
+def Pyi_FindFirstFileExA(lpFileName: CStr, fInfoLevelId: Pyi_FINDEX_INFO_LEVELS, lpFindFileData: uintptr, fSearchOp: Pyi_FINDEX_SEARCH_OPS, lpSearchFilter: uintptr, dwAdditionalFlags: uint) -> uintptr:
   ...
 
 @native
@@ -40667,7 +40667,7 @@ def Pyi_FindFirstFileNameW(lpFileName: Pointer[uint], dwFlags: uint, StringLengt
 
 @native
 @native_name("FindFirstFileTransactedA")
-def Pyi_FindFirstFileTransactedA(lpFileName: c_str, fInfoLevelId: Pyi_FINDEX_INFO_LEVELS, lpFindFileData: uintptr, fSearchOp: Pyi_FINDEX_SEARCH_OPS, lpSearchFilter: uintptr, dwAdditionalFlags: uint, hTransaction: uintptr) -> uintptr:
+def Pyi_FindFirstFileTransactedA(lpFileName: CStr, fInfoLevelId: Pyi_FINDEX_INFO_LEVELS, lpFindFileData: uintptr, fSearchOp: Pyi_FINDEX_SEARCH_OPS, lpSearchFilter: uintptr, dwAdditionalFlags: uint, hTransaction: uintptr) -> uintptr:
   ...
 
 @native
@@ -40697,12 +40697,12 @@ def Pyi_FindFirstStreamW(lpFileName: Pointer[uint], InfoLevel: Pyi_STREAM_INFO_L
 
 @native
 @native_name("FindFirstVolumeA")
-def Pyi_FindFirstVolumeA(lpszVolumeName: c_str, cchBufferLength: uint) -> uintptr:
+def Pyi_FindFirstVolumeA(lpszVolumeName: CStr, cchBufferLength: uint) -> uintptr:
   ...
 
 @native
 @native_name("FindFirstVolumeMountPointA")
-def Pyi_FindFirstVolumeMountPointA(lpszRootPathName: c_str, lpszVolumeMountPoint: c_str, cchBufferLength: uint) -> uintptr:
+def Pyi_FindFirstVolumeMountPointA(lpszRootPathName: CStr, lpszVolumeMountPoint: CStr, cchBufferLength: uint) -> uintptr:
   ...
 
 @native
@@ -40752,12 +40752,12 @@ def Pyi_FindNextStreamW(hFindStream: uintptr, lpFindStreamData: uintptr) -> int:
 
 @native
 @native_name("FindNextVolumeA")
-def Pyi_FindNextVolumeA(hFindVolume: uintptr, lpszVolumeName: c_str, cchBufferLength: uint) -> int:
+def Pyi_FindNextVolumeA(hFindVolume: uintptr, lpszVolumeName: CStr, cchBufferLength: uint) -> int:
   ...
 
 @native
 @native_name("FindNextVolumeMountPointA")
-def Pyi_FindNextVolumeMountPointA(hFindVolumeMountPoint: uintptr, lpszVolumeMountPoint: c_str, cchBufferLength: uint) -> int:
+def Pyi_FindNextVolumeMountPointA(hFindVolumeMountPoint: uintptr, lpszVolumeMountPoint: CStr, cchBufferLength: uint) -> int:
   ...
 
 @native
@@ -40772,12 +40772,12 @@ def Pyi_FindNextVolumeW(hFindVolume: uintptr, lpszVolumeName: Pointer[uint], cch
 
 @native
 @native_name("FindResourceA")
-def Pyi_FindResourceA(hModule: Pointer[Pyi_HINSTANCE__], lpName: c_str, lpType: c_str) -> Pointer[Pyi_HRSRC__]:
+def Pyi_FindResourceA(hModule: Pointer[Pyi_HINSTANCE__], lpName: CStr, lpType: CStr) -> Pointer[Pyi_HRSRC__]:
   ...
 
 @native
 @native_name("FindResourceExA")
-def Pyi_FindResourceExA(hModule: Pointer[Pyi_HINSTANCE__], lpType: c_str, lpName: c_str, wLanguage: uint) -> Pointer[Pyi_HRSRC__]:
+def Pyi_FindResourceExA(hModule: Pointer[Pyi_HINSTANCE__], lpType: CStr, lpName: CStr, wLanguage: uint) -> Pointer[Pyi_HRSRC__]:
   ...
 
 @native
@@ -40807,12 +40807,12 @@ def Pyi_FindVolumeMountPointClose(hFindVolumeMountPoint: uintptr) -> int:
 
 @native
 @native_name("FindWindowA")
-def Pyi_FindWindowA(lpClassName: c_str, lpWindowName: c_str) -> Pointer[Pyi_HWND__]:
+def Pyi_FindWindowA(lpClassName: CStr, lpWindowName: CStr) -> Pointer[Pyi_HWND__]:
   ...
 
 @native
 @native_name("FindWindowExA")
-def Pyi_FindWindowExA(hWndParent: Pointer[Pyi_HWND__], hWndChildAfter: Pointer[Pyi_HWND__], lpszClass: c_str, lpszWindow: c_str) -> Pointer[Pyi_HWND__]:
+def Pyi_FindWindowExA(hWndParent: Pointer[Pyi_HWND__], hWndChildAfter: Pointer[Pyi_HWND__], lpszClass: CStr, lpszWindow: CStr) -> Pointer[Pyi_HWND__]:
   ...
 
 @native
@@ -40897,7 +40897,7 @@ def Pyi_FlushViewOfFile(lpBaseAddress: uintptr, dwNumberOfBytesToFlush: uint64) 
 
 @native
 @native_name("FoldStringA")
-def Pyi_FoldStringA(dwMapFlags: uint, lpSrcStr: c_str, cchSrc: int, lpDestStr: c_str, cchDest: int) -> int:
+def Pyi_FoldStringA(dwMapFlags: uint, lpSrcStr: CStr, cchSrc: int, lpDestStr: CStr, cchDest: int) -> int:
   ...
 
 @native
@@ -40907,12 +40907,12 @@ def Pyi_FoldStringW(dwMapFlags: uint, lpSrcStr: Pointer[uint], cchSrc: int, lpDe
 
 @native
 @native_name("FormatMessageA")
-def Pyi_FormatMessageA(dwFlags: uint, lpSource: uintptr, dwMessageId: uint, dwLanguageId: uint, lpBuffer: c_str, nSize: uint, Arguments: Pointer[c_str]) -> uint:
+def Pyi_FormatMessageA(dwFlags: uint, lpSource: uintptr, dwMessageId: uint, dwLanguageId: uint, lpBuffer: CStr, nSize: uint, Arguments: Pointer[CStr]) -> uint:
   ...
 
 @native
 @native_name("FormatMessageW")
-def Pyi_FormatMessageW(dwFlags: uint, lpSource: uintptr, dwMessageId: uint, dwLanguageId: uint, lpBuffer: Pointer[uint], nSize: uint, Arguments: Pointer[c_str]) -> uint:
+def Pyi_FormatMessageW(dwFlags: uint, lpSource: uintptr, dwMessageId: uint, dwLanguageId: uint, lpBuffer: Pointer[uint], nSize: uint, Arguments: Pointer[CStr]) -> uint:
   ...
 
 @native
@@ -40932,7 +40932,7 @@ def Pyi_FreeConsole() -> int:
 
 @native
 @native_name("FreeEnvironmentStringsA")
-def Pyi_FreeEnvironmentStringsA(penv: c_str) -> int:
+def Pyi_FreeEnvironmentStringsA(penv: CStr) -> int:
   ...
 
 @native
@@ -41047,7 +41047,7 @@ def Pyi_GetActiveWindow() -> Pointer[Pyi_HWND__]:
 
 @native
 @native_name("GetAltTabInfoA")
-def Pyi_GetAltTabInfoA(hwnd: Pointer[Pyi_HWND__], iItem: int, pati: Pointer[Pyi_tagALTTABINFO], pszItemText: c_str, cchItemText: uint) -> int:
+def Pyi_GetAltTabInfoA(hwnd: Pointer[Pyi_HWND__], iItem: int, pati: Pointer[Pyi_tagALTTABINFO], pszItemText: CStr, cchItemText: uint) -> int:
   ...
 
 @native
@@ -41097,7 +41097,7 @@ def Pyi_GetAsyncKeyState(vKey: int) -> int:
 
 @native
 @native_name("GetAtomNameA")
-def Pyi_GetAtomNameA(nAtom: uint, lpBuffer: c_str, nSize: int) -> uint:
+def Pyi_GetAtomNameA(nAtom: uint, lpBuffer: CStr, nSize: int) -> uint:
   ...
 
 @native
@@ -41117,7 +41117,7 @@ def Pyi_GetAwarenessFromDpiAwarenessContext(value: Pointer[Pyi_DPI_AWARENESS_CON
 
 @native
 @native_name("GetBinaryTypeA")
-def Pyi_GetBinaryTypeA(lpApplicationName: c_str, lpBinaryType: Pointer[uint]) -> int:
+def Pyi_GetBinaryTypeA(lpApplicationName: CStr, lpBinaryType: Pointer[uint]) -> int:
   ...
 
 @native
@@ -41177,12 +41177,12 @@ def Pyi_GetCPInfoExW(CodePage: uint, dwFlags: uint, lpCPInfoEx: Pointer[Pyi__cpi
 
 @native
 @native_name("GetCachedSigningLevel")
-def Pyi_GetCachedSigningLevel(File: uintptr, Flags: Pointer[uint], SigningLevel: Pointer[uint], Thumbprint: c_str, ThumbprintSize: Pointer[uint], ThumbprintAlgorithm: Pointer[uint]) -> int:
+def Pyi_GetCachedSigningLevel(File: uintptr, Flags: Pointer[uint], SigningLevel: Pointer[uint], Thumbprint: CStr, ThumbprintSize: Pointer[uint], ThumbprintAlgorithm: Pointer[uint]) -> int:
   ...
 
 @native
 @native_name("GetCalendarInfoA")
-def Pyi_GetCalendarInfoA(Locale: uint, Calendar: uint, CalType: uint, lpCalData: c_str, cchData: int, lpValue: Pointer[uint]) -> int:
+def Pyi_GetCalendarInfoA(Locale: uint, Calendar: uint, CalType: uint, lpCalData: CStr, cchData: int, lpValue: Pointer[uint]) -> int:
   ...
 
 @native
@@ -41272,7 +41272,7 @@ def Pyi_GetCharWidthW(hdc: Pointer[Pyi_HDC__], iFirst: uint, iLast: uint, lpBuff
 
 @native
 @native_name("GetCharacterPlacementA")
-def Pyi_GetCharacterPlacementA(hdc: Pointer[Pyi_HDC__], lpString: c_str, nCount: int, nMexExtent: int, lpResults: Pointer[Pyi_tagGCP_RESULTSA], dwFlags: uint) -> uint:
+def Pyi_GetCharacterPlacementA(hdc: Pointer[Pyi_HDC__], lpString: CStr, nCount: int, nMexExtent: int, lpResults: Pointer[Pyi_tagGCP_RESULTSA], dwFlags: uint) -> uint:
   ...
 
 @native
@@ -41282,12 +41282,12 @@ def Pyi_GetCharacterPlacementW(hdc: Pointer[Pyi_HDC__], lpString: Pointer[uint],
 
 @native
 @native_name("GetClassInfoA")
-def Pyi_GetClassInfoA(hInstance: Pointer[Pyi_HINSTANCE__], lpClassName: c_str, lpWndClass: Pointer[Pyi_tagWNDCLASSA]) -> int:
+def Pyi_GetClassInfoA(hInstance: Pointer[Pyi_HINSTANCE__], lpClassName: CStr, lpWndClass: Pointer[Pyi_tagWNDCLASSA]) -> int:
   ...
 
 @native
 @native_name("GetClassInfoExA")
-def Pyi_GetClassInfoExA(hInstance: Pointer[Pyi_HINSTANCE__], lpszClass: c_str, lpwcx: Pointer[Pyi_tagWNDCLASSEXA]) -> int:
+def Pyi_GetClassInfoExA(hInstance: Pointer[Pyi_HINSTANCE__], lpszClass: CStr, lpwcx: Pointer[Pyi_tagWNDCLASSEXA]) -> int:
   ...
 
 @native
@@ -41322,7 +41322,7 @@ def Pyi_GetClassLongW(hWnd: Pointer[Pyi_HWND__], nIndex: int) -> uint:
 
 @native
 @native_name("GetClassNameA")
-def Pyi_GetClassNameA(hWnd: Pointer[Pyi_HWND__], lpClassName: c_str, nMaxCount: int) -> int:
+def Pyi_GetClassNameA(hWnd: Pointer[Pyi_HWND__], lpClassName: CStr, nMaxCount: int) -> int:
   ...
 
 @native
@@ -41362,7 +41362,7 @@ def Pyi_GetClipboardData(uFormat: uint) -> uintptr:
 
 @native
 @native_name("GetClipboardFormatNameA")
-def Pyi_GetClipboardFormatNameA(format: uint, lpszFormatName: c_str, cchMaxCount: int) -> int:
+def Pyi_GetClipboardFormatNameA(format: uint, lpszFormatName: CStr, cchMaxCount: int) -> int:
   ...
 
 @native
@@ -41442,7 +41442,7 @@ def Pyi_GetCommTimeouts(hFile: uintptr, lpCommTimeouts: Pointer[Pyi__COMMTIMEOUT
 
 @native
 @native_name("GetCommandLineA")
-def Pyi_GetCommandLineA() -> c_str:
+def Pyi_GetCommandLineA() -> CStr:
   ...
 
 @native
@@ -41452,12 +41452,12 @@ def Pyi_GetCommandLineW() -> Pointer[uint]:
 
 @native
 @native_name("GetCompressedFileSizeA")
-def Pyi_GetCompressedFileSizeA(lpFileName: c_str, lpFileSizeHigh: Pointer[uint]) -> uint:
+def Pyi_GetCompressedFileSizeA(lpFileName: CStr, lpFileSizeHigh: Pointer[uint]) -> uint:
   ...
 
 @native
 @native_name("GetCompressedFileSizeTransactedA")
-def Pyi_GetCompressedFileSizeTransactedA(lpFileName: c_str, lpFileSizeHigh: Pointer[uint], hTransaction: uintptr) -> uint:
+def Pyi_GetCompressedFileSizeTransactedA(lpFileName: CStr, lpFileSizeHigh: Pointer[uint], hTransaction: uintptr) -> uint:
   ...
 
 @native
@@ -41472,12 +41472,12 @@ def Pyi_GetCompressedFileSizeW(lpFileName: Pointer[uint], lpFileSizeHigh: Pointe
 
 @native
 @native_name("GetComputerNameA")
-def Pyi_GetComputerNameA(lpBuffer: c_str, nSize: Pointer[uint]) -> int:
+def Pyi_GetComputerNameA(lpBuffer: CStr, nSize: Pointer[uint]) -> int:
   ...
 
 @native
 @native_name("GetComputerNameExA")
-def Pyi_GetComputerNameExA(NameType: Pyi_COMPUTER_NAME_FORMAT, lpBuffer: c_str, nSize: Pointer[uint]) -> int:
+def Pyi_GetComputerNameExA(NameType: Pyi_COMPUTER_NAME_FORMAT, lpBuffer: CStr, nSize: Pointer[uint]) -> int:
   ...
 
 @native
@@ -41492,12 +41492,12 @@ def Pyi_GetComputerNameW(lpBuffer: Pointer[uint], nSize: Pointer[uint]) -> int:
 
 @native
 @native_name("GetConsoleAliasA")
-def Pyi_GetConsoleAliasA(Source: c_str, TargetBuffer: c_str, TargetBufferLength: uint, ExeName: c_str) -> uint:
+def Pyi_GetConsoleAliasA(Source: CStr, TargetBuffer: CStr, TargetBufferLength: uint, ExeName: CStr) -> uint:
   ...
 
 @native
 @native_name("GetConsoleAliasExesA")
-def Pyi_GetConsoleAliasExesA(ExeNameBuffer: c_str, ExeNameBufferLength: uint) -> uint:
+def Pyi_GetConsoleAliasExesA(ExeNameBuffer: CStr, ExeNameBufferLength: uint) -> uint:
   ...
 
 @native
@@ -41522,12 +41522,12 @@ def Pyi_GetConsoleAliasW(Source: Pointer[uint], TargetBuffer: Pointer[uint], Tar
 
 @native
 @native_name("GetConsoleAliasesA")
-def Pyi_GetConsoleAliasesA(AliasBuffer: c_str, AliasBufferLength: uint, ExeName: c_str) -> uint:
+def Pyi_GetConsoleAliasesA(AliasBuffer: CStr, AliasBufferLength: uint, ExeName: CStr) -> uint:
   ...
 
 @native
 @native_name("GetConsoleAliasesLengthA")
-def Pyi_GetConsoleAliasesLengthA(ExeName: c_str) -> uint:
+def Pyi_GetConsoleAliasesLengthA(ExeName: CStr) -> uint:
   ...
 
 @native
@@ -41547,12 +41547,12 @@ def Pyi_GetConsoleCP() -> uint:
 
 @native
 @native_name("GetConsoleCommandHistoryA")
-def Pyi_GetConsoleCommandHistoryA(Commands: c_str, CommandBufferLength: uint, ExeName: c_str) -> uint:
+def Pyi_GetConsoleCommandHistoryA(Commands: CStr, CommandBufferLength: uint, ExeName: CStr) -> uint:
   ...
 
 @native
 @native_name("GetConsoleCommandHistoryLengthA")
-def Pyi_GetConsoleCommandHistoryLengthA(ExeName: c_str) -> uint:
+def Pyi_GetConsoleCommandHistoryLengthA(ExeName: CStr) -> uint:
   ...
 
 @native
@@ -41592,7 +41592,7 @@ def Pyi_GetConsoleMode(hConsoleHandle: uintptr, lpMode: Pointer[uint]) -> int:
 
 @native
 @native_name("GetConsoleOriginalTitleA")
-def Pyi_GetConsoleOriginalTitleA(lpConsoleTitle: c_str, nSize: uint) -> uint:
+def Pyi_GetConsoleOriginalTitleA(lpConsoleTitle: CStr, nSize: uint) -> uint:
   ...
 
 @native
@@ -41627,7 +41627,7 @@ def Pyi_GetConsoleSelectionInfo(lpConsoleSelectionInfo: Pointer[Pyi__CONSOLE_SEL
 
 @native
 @native_name("GetConsoleTitleA")
-def Pyi_GetConsoleTitleA(lpConsoleTitle: c_str, nSize: uint) -> uint:
+def Pyi_GetConsoleTitleA(lpConsoleTitle: CStr, nSize: uint) -> uint:
   ...
 
 @native
@@ -41642,7 +41642,7 @@ def Pyi_GetConsoleWindow() -> Pointer[Pyi_HWND__]:
 
 @native
 @native_name("GetCurrencyFormatA")
-def Pyi_GetCurrencyFormatA(Locale: uint, dwFlags: uint, lpValue: c_str, lpFormat: Pointer[Pyi__currencyfmtA], lpCurrencyStr: c_str, cchCurrency: int) -> int:
+def Pyi_GetCurrencyFormatA(Locale: uint, dwFlags: uint, lpValue: CStr, lpFormat: Pointer[Pyi__currencyfmtA], lpCurrencyStr: CStr, cchCurrency: int) -> int:
   ...
 
 @native
@@ -41672,7 +41672,7 @@ def Pyi_GetCurrentConsoleFontEx(hConsoleOutput: uintptr, bMaximumWindow: int, lp
 
 @native
 @native_name("GetCurrentDirectoryA")
-def Pyi_GetCurrentDirectoryA(nBufferLength: uint, lpBuffer: c_str) -> uint:
+def Pyi_GetCurrentDirectoryA(nBufferLength: uint, lpBuffer: CStr) -> uint:
   ...
 
 @native
@@ -41817,7 +41817,7 @@ def Pyi_GetDIBits(hdc: Pointer[Pyi_HDC__], hbm: Pointer[Pyi_HBITMAP__], start: u
 
 @native
 @native_name("GetDateFormatA")
-def Pyi_GetDateFormatA(Locale: uint, dwFlags: uint, lpDate: Pointer[Pyi__SYSTEMTIME], lpFormat: c_str, lpDateStr: c_str, cchDate: int) -> int:
+def Pyi_GetDateFormatA(Locale: uint, dwFlags: uint, lpDate: Pointer[Pyi__SYSTEMTIME], lpFormat: CStr, lpDateStr: CStr, cchDate: int) -> int:
   ...
 
 @native
@@ -41832,7 +41832,7 @@ def Pyi_GetDateFormatW(Locale: uint, dwFlags: uint, lpDate: Pointer[Pyi__SYSTEMT
 
 @native
 @native_name("GetDefaultCommConfigA")
-def Pyi_GetDefaultCommConfigA(lpszName: c_str, lpCC: Pointer[Pyi__COMMCONFIG], lpdwSize: Pointer[uint]) -> int:
+def Pyi_GetDefaultCommConfigA(lpszName: CStr, lpCC: Pointer[Pyi__COMMCONFIG], lpdwSize: Pointer[uint]) -> int:
   ...
 
 @native
@@ -41882,12 +41882,12 @@ def Pyi_GetDialogDpiChangeBehavior(hDlg: Pointer[Pyi_HWND__]) -> Pyi_DIALOG_DPI_
 
 @native
 @native_name("GetDiskFreeSpaceA")
-def Pyi_GetDiskFreeSpaceA(lpRootPathName: c_str, lpSectorsPerCluster: Pointer[uint], lpBytesPerSector: Pointer[uint], lpNumberOfFreeClusters: Pointer[uint], lpTotalNumberOfClusters: Pointer[uint]) -> int:
+def Pyi_GetDiskFreeSpaceA(lpRootPathName: CStr, lpSectorsPerCluster: Pointer[uint], lpBytesPerSector: Pointer[uint], lpNumberOfFreeClusters: Pointer[uint], lpTotalNumberOfClusters: Pointer[uint]) -> int:
   ...
 
 @native
 @native_name("GetDiskFreeSpaceExA")
-def Pyi_GetDiskFreeSpaceExA(lpDirectoryName: c_str, lpFreeBytesAvailableToCaller: Pointer[Pyi__ULARGE_INTEGER], lpTotalNumberOfBytes: Pointer[Pyi__ULARGE_INTEGER], lpTotalNumberOfFreeBytes: Pointer[Pyi__ULARGE_INTEGER]) -> int:
+def Pyi_GetDiskFreeSpaceExA(lpDirectoryName: CStr, lpFreeBytesAvailableToCaller: Pointer[Pyi__ULARGE_INTEGER], lpTotalNumberOfBytes: Pointer[Pyi__ULARGE_INTEGER], lpTotalNumberOfFreeBytes: Pointer[Pyi__ULARGE_INTEGER]) -> int:
   ...
 
 @native
@@ -41902,7 +41902,7 @@ def Pyi_GetDiskFreeSpaceW(lpRootPathName: Pointer[uint], lpSectorsPerCluster: Po
 
 @native
 @native_name("GetDiskSpaceInformationA")
-def Pyi_GetDiskSpaceInformationA(rootPath: c_str, diskSpaceInfo: Pointer[Pyi_DISK_SPACE_INFORMATION]) -> int:
+def Pyi_GetDiskSpaceInformationA(rootPath: CStr, diskSpaceInfo: Pointer[Pyi_DISK_SPACE_INFORMATION]) -> int:
   ...
 
 @native
@@ -41942,7 +41942,7 @@ def Pyi_GetDlgItemInt(hDlg: Pointer[Pyi_HWND__], nIDDlgItem: int, lpTranslated: 
 
 @native
 @native_name("GetDlgItemTextA")
-def Pyi_GetDlgItemTextA(hDlg: Pointer[Pyi_HWND__], nIDDlgItem: int, lpString: c_str, cchMax: int) -> uint:
+def Pyi_GetDlgItemTextA(hDlg: Pointer[Pyi_HWND__], nIDDlgItem: int, lpString: CStr, cchMax: int) -> uint:
   ...
 
 @native
@@ -41952,7 +41952,7 @@ def Pyi_GetDlgItemTextW(hDlg: Pointer[Pyi_HWND__], nIDDlgItem: int, lpString: Po
 
 @native
 @native_name("GetDllDirectoryA")
-def Pyi_GetDllDirectoryA(nBufferLength: uint, lpBuffer: c_str) -> uint:
+def Pyi_GetDllDirectoryA(nBufferLength: uint, lpBuffer: CStr) -> uint:
   ...
 
 @native
@@ -41987,7 +41987,7 @@ def Pyi_GetDpiFromDpiAwarenessContext(value: Pointer[Pyi_DPI_AWARENESS_CONTEXT__
 
 @native
 @native_name("GetDriveTypeA")
-def Pyi_GetDriveTypeA(lpRootPathName: c_str) -> uint:
+def Pyi_GetDriveTypeA(lpRootPathName: CStr) -> uint:
   ...
 
 @native
@@ -42022,17 +42022,17 @@ def Pyi_GetEnabledXStateFeatures() -> uint64:
 
 @native
 @native_name("GetEnhMetaFileA")
-def Pyi_GetEnhMetaFileA(lpName: c_str) -> Pointer[Pyi_HENHMETAFILE__]:
+def Pyi_GetEnhMetaFileA(lpName: CStr) -> Pointer[Pyi_HENHMETAFILE__]:
   ...
 
 @native
 @native_name("GetEnhMetaFileBits")
-def Pyi_GetEnhMetaFileBits(hEMF: Pointer[Pyi_HENHMETAFILE__], nSize: uint, lpData: c_str) -> uint:
+def Pyi_GetEnhMetaFileBits(hEMF: Pointer[Pyi_HENHMETAFILE__], nSize: uint, lpData: CStr) -> uint:
   ...
 
 @native
 @native_name("GetEnhMetaFileDescriptionA")
-def Pyi_GetEnhMetaFileDescriptionA(hemf: Pointer[Pyi_HENHMETAFILE__], cchBuffer: uint, lpDescription: c_str) -> uint:
+def Pyi_GetEnhMetaFileDescriptionA(hemf: Pointer[Pyi_HENHMETAFILE__], cchBuffer: uint, lpDescription: CStr) -> uint:
   ...
 
 @native
@@ -42062,7 +42062,7 @@ def Pyi_GetEnhMetaFileW(lpName: Pointer[uint]) -> Pointer[Pyi_HENHMETAFILE__]:
 
 @native
 @native_name("GetEnvironmentStrings")
-def Pyi_GetEnvironmentStrings() -> c_str:
+def Pyi_GetEnvironmentStrings() -> CStr:
   ...
 
 @native
@@ -42072,7 +42072,7 @@ def Pyi_GetEnvironmentStringsW() -> Pointer[uint]:
 
 @native
 @native_name("GetEnvironmentVariableA")
-def Pyi_GetEnvironmentVariableA(lpName: c_str, lpBuffer: c_str, nSize: uint) -> uint:
+def Pyi_GetEnvironmentVariableA(lpName: CStr, lpBuffer: CStr, nSize: uint) -> uint:
   ...
 
 @native
@@ -42107,12 +42107,12 @@ def Pyi_GetFiberData() -> uintptr:
 
 @native
 @native_name("GetFileAttributesA")
-def Pyi_GetFileAttributesA(lpFileName: c_str) -> uint:
+def Pyi_GetFileAttributesA(lpFileName: CStr) -> uint:
   ...
 
 @native
 @native_name("GetFileAttributesExA")
-def Pyi_GetFileAttributesExA(lpFileName: c_str, fInfoLevelId: Pyi_GET_FILEEX_INFO_LEVELS, lpFileInformation: uintptr) -> int:
+def Pyi_GetFileAttributesExA(lpFileName: CStr, fInfoLevelId: Pyi_GET_FILEEX_INFO_LEVELS, lpFileInformation: uintptr) -> int:
   ...
 
 @native
@@ -42127,7 +42127,7 @@ def Pyi_GetFileAttributesExW(lpFileName: Pointer[uint], fInfoLevelId: Pyi_GET_FI
 
 @native
 @native_name("GetFileAttributesTransactedA")
-def Pyi_GetFileAttributesTransactedA(lpFileName: c_str, fInfoLevelId: Pyi_GET_FILEEX_INFO_LEVELS, lpFileInformation: uintptr, hTransaction: uintptr) -> int:
+def Pyi_GetFileAttributesTransactedA(lpFileName: CStr, fInfoLevelId: Pyi_GET_FILEEX_INFO_LEVELS, lpFileInformation: uintptr, hTransaction: uintptr) -> int:
   ...
 
 @native
@@ -42167,7 +42167,7 @@ def Pyi_GetFileMUIPath(dwFlags: uint, pcwszFilePath: Pointer[uint], pwszLanguage
 
 @native
 @native_name("GetFileSecurityA")
-def Pyi_GetFileSecurityA(lpFileName: c_str, RequestedInformation: uint, pSecurityDescriptor: uintptr, nLength: uint, lpnLengthNeeded: Pointer[uint]) -> int:
+def Pyi_GetFileSecurityA(lpFileName: CStr, RequestedInformation: uint, pSecurityDescriptor: uintptr, nLength: uint, lpnLengthNeeded: Pointer[uint]) -> int:
   ...
 
 @native
@@ -42197,12 +42197,12 @@ def Pyi_GetFileType(hFile: uintptr) -> uint:
 
 @native
 @native_name("GetFileVersionInfoA")
-def Pyi_GetFileVersionInfoA(lptstrFilename: c_str, dwHandle: uint, dwLen: uint, lpData: uintptr) -> int:
+def Pyi_GetFileVersionInfoA(lptstrFilename: CStr, dwHandle: uint, dwLen: uint, lpData: uintptr) -> int:
   ...
 
 @native
 @native_name("GetFileVersionInfoExA")
-def Pyi_GetFileVersionInfoExA(dwFlags: uint, lpwstrFilename: c_str, dwHandle: uint, dwLen: uint, lpData: uintptr) -> int:
+def Pyi_GetFileVersionInfoExA(dwFlags: uint, lpwstrFilename: CStr, dwHandle: uint, dwLen: uint, lpData: uintptr) -> int:
   ...
 
 @native
@@ -42212,12 +42212,12 @@ def Pyi_GetFileVersionInfoExW(dwFlags: uint, lpwstrFilename: Pointer[uint], dwHa
 
 @native
 @native_name("GetFileVersionInfoSizeA")
-def Pyi_GetFileVersionInfoSizeA(lptstrFilename: c_str, lpdwHandle: Pointer[uint]) -> uint:
+def Pyi_GetFileVersionInfoSizeA(lptstrFilename: CStr, lpdwHandle: Pointer[uint]) -> uint:
   ...
 
 @native
 @native_name("GetFileVersionInfoSizeExA")
-def Pyi_GetFileVersionInfoSizeExA(dwFlags: uint, lpwstrFilename: c_str, lpdwHandle: Pointer[uint]) -> uint:
+def Pyi_GetFileVersionInfoSizeExA(dwFlags: uint, lpwstrFilename: CStr, lpdwHandle: Pointer[uint]) -> uint:
   ...
 
 @native
@@ -42237,7 +42237,7 @@ def Pyi_GetFileVersionInfoW(lptstrFilename: Pointer[uint], dwHandle: uint, dwLen
 
 @native
 @native_name("GetFinalPathNameByHandleA")
-def Pyi_GetFinalPathNameByHandleA(hFile: uintptr, lpszFilePath: c_str, cchFilePath: uint, dwFlags: uint) -> uint:
+def Pyi_GetFinalPathNameByHandleA(hFile: uintptr, lpszFilePath: CStr, cchFilePath: uint, dwFlags: uint) -> uint:
   ...
 
 @native
@@ -42247,12 +42247,12 @@ def Pyi_GetFinalPathNameByHandleW(hFile: uintptr, lpszFilePath: Pointer[uint], c
 
 @native
 @native_name("GetFirmwareEnvironmentVariableA")
-def Pyi_GetFirmwareEnvironmentVariableA(lpName: c_str, lpGuid: c_str, pBuffer: uintptr, nSize: uint) -> uint:
+def Pyi_GetFirmwareEnvironmentVariableA(lpName: CStr, lpGuid: CStr, pBuffer: uintptr, nSize: uint) -> uint:
   ...
 
 @native
 @native_name("GetFirmwareEnvironmentVariableExA")
-def Pyi_GetFirmwareEnvironmentVariableExA(lpName: c_str, lpGuid: c_str, pBuffer: uintptr, nSize: uint, pdwAttribubutes: Pointer[uint]) -> uint:
+def Pyi_GetFirmwareEnvironmentVariableExA(lpName: CStr, lpGuid: CStr, pBuffer: uintptr, nSize: uint, pdwAttribubutes: Pointer[uint]) -> uint:
   ...
 
 @native
@@ -42297,12 +42297,12 @@ def Pyi_GetForegroundWindow() -> Pointer[Pyi_HWND__]:
 
 @native
 @native_name("GetFullPathNameA")
-def Pyi_GetFullPathNameA(lpFileName: c_str, nBufferLength: uint, lpBuffer: c_str, lpFilePart: Pointer[c_str]) -> uint:
+def Pyi_GetFullPathNameA(lpFileName: CStr, nBufferLength: uint, lpBuffer: CStr, lpFilePart: Pointer[CStr]) -> uint:
   ...
 
 @native
 @native_name("GetFullPathNameTransactedA")
-def Pyi_GetFullPathNameTransactedA(lpFileName: c_str, nBufferLength: uint, lpBuffer: c_str, lpFilePart: Pointer[c_str], hTransaction: uintptr) -> uint:
+def Pyi_GetFullPathNameTransactedA(lpFileName: CStr, nBufferLength: uint, lpBuffer: CStr, lpFilePart: Pointer[CStr], hTransaction: uintptr) -> uint:
   ...
 
 @native
@@ -42322,7 +42322,7 @@ def Pyi_GetGUIThreadInfo(idThread: uint, pgui: Pointer[Pyi_tagGUITHREADINFO]) ->
 
 @native
 @native_name("GetGeoInfoA")
-def Pyi_GetGeoInfoA(Location: int, GeoType: uint, lpGeoData: c_str, cchData: int, LangId: uint) -> int:
+def Pyi_GetGeoInfoA(Location: int, GeoType: uint, lpGeoData: CStr, cchData: int, LangId: uint) -> int:
   ...
 
 @native
@@ -42342,7 +42342,7 @@ def Pyi_GetGestureConfig(hwnd: Pointer[Pyi_HWND__], dwReserved: uint, dwFlags: u
 
 @native
 @native_name("GetGestureExtraArgs")
-def Pyi_GetGestureExtraArgs(hGestureInfo: Pointer[Pyi_HGESTUREINFO__], cbExtraArgs: uint, pExtraArgs: c_str) -> int:
+def Pyi_GetGestureExtraArgs(hGestureInfo: Pointer[Pyi_HGESTUREINFO__], cbExtraArgs: uint, pExtraArgs: CStr) -> int:
   ...
 
 @native
@@ -42352,7 +42352,7 @@ def Pyi_GetGestureInfo(hGestureInfo: Pointer[Pyi_HGESTUREINFO__], pGestureInfo: 
 
 @native
 @native_name("GetGlyphIndicesA")
-def Pyi_GetGlyphIndicesA(hdc: Pointer[Pyi_HDC__], lpstr: c_str, c: int, pgi: Pointer[uint], fl: uint) -> uint:
+def Pyi_GetGlyphIndicesA(hdc: Pointer[Pyi_HDC__], lpstr: CStr, c: int, pgi: Pointer[uint], fl: uint) -> uint:
   ...
 
 @native
@@ -42387,7 +42387,7 @@ def Pyi_GetHandleInformation(hObject: uintptr, lpdwFlags: Pointer[uint]) -> int:
 
 @native
 @native_name("GetICMProfileA")
-def Pyi_GetICMProfileA(hdc: Pointer[Pyi_HDC__], pBufSize: Pointer[uint], pszFilename: c_str) -> int:
+def Pyi_GetICMProfileA(hdc: Pointer[Pyi_HDC__], pBufSize: Pointer[uint], pszFilename: CStr) -> int:
   ...
 
 @native
@@ -42442,7 +42442,7 @@ def Pyi_GetKerningPairsW(hdc: Pointer[Pyi_HDC__], nPairs: uint, lpKernPair: Poin
 
 @native
 @native_name("GetKeyNameTextA")
-def Pyi_GetKeyNameTextA(lParam: int, lpString: c_str, cchSize: int) -> int:
+def Pyi_GetKeyNameTextA(lParam: int, lpString: CStr, cchSize: int) -> int:
   ...
 
 @native
@@ -42467,7 +42467,7 @@ def Pyi_GetKeyboardLayoutList(nBuff: int, lpList: Pointer[Pointer[Pyi_HKL__]]) -
 
 @native
 @native_name("GetKeyboardLayoutNameA")
-def Pyi_GetKeyboardLayoutNameA(pwszKLID: c_str) -> int:
+def Pyi_GetKeyboardLayoutNameA(pwszKLID: CStr) -> int:
   ...
 
 @native
@@ -42477,7 +42477,7 @@ def Pyi_GetKeyboardLayoutNameW(pwszKLID: Pointer[uint]) -> int:
 
 @native
 @native_name("GetKeyboardState")
-def Pyi_GetKeyboardState(lpKeyState: c_str) -> int:
+def Pyi_GetKeyboardState(lpKeyState: CStr) -> int:
   ...
 
 @native
@@ -42537,7 +42537,7 @@ def Pyi_GetLocalTime(lpSystemTime: Pointer[Pyi__SYSTEMTIME]) -> None:
 
 @native
 @native_name("GetLocaleInfoA")
-def Pyi_GetLocaleInfoA(Locale: uint, LCType: uint, lpLCData: c_str, cchData: int) -> int:
+def Pyi_GetLocaleInfoA(Locale: uint, LCType: uint, lpLCData: CStr, cchData: int) -> int:
   ...
 
 @native
@@ -42562,7 +42562,7 @@ def Pyi_GetLogColorSpaceW(hColorSpace: Pointer[Pyi_HCOLORSPACE__], lpBuffer: Poi
 
 @native
 @native_name("GetLogicalDriveStringsA")
-def Pyi_GetLogicalDriveStringsA(nBufferLength: uint, lpBuffer: c_str) -> uint:
+def Pyi_GetLogicalDriveStringsA(nBufferLength: uint, lpBuffer: CStr) -> uint:
   ...
 
 @native
@@ -42587,12 +42587,12 @@ def Pyi_GetLogicalProcessorInformationEx(RelationshipType: Pyi_LOGICAL_PROCESSOR
 
 @native
 @native_name("GetLongPathNameA")
-def Pyi_GetLongPathNameA(lpszShortPath: c_str, lpszLongPath: c_str, cchBuffer: uint) -> uint:
+def Pyi_GetLongPathNameA(lpszShortPath: CStr, lpszLongPath: CStr, cchBuffer: uint) -> uint:
   ...
 
 @native
 @native_name("GetLongPathNameTransactedA")
-def Pyi_GetLongPathNameTransactedA(lpszShortPath: c_str, lpszLongPath: c_str, cchBuffer: uint, hTransaction: uintptr) -> uint:
+def Pyi_GetLongPathNameTransactedA(lpszShortPath: CStr, lpszLongPath: CStr, cchBuffer: uint, hTransaction: uintptr) -> uint:
   ...
 
 @native
@@ -42697,7 +42697,7 @@ def Pyi_GetMenuState(hMenu: Pointer[Pyi_HMENU__], uId: uint, uFlags: uint) -> ui
 
 @native
 @native_name("GetMenuStringA")
-def Pyi_GetMenuStringA(hMenu: Pointer[Pyi_HMENU__], uIDItem: uint, lpString: c_str, cchMax: int, flags: uint) -> int:
+def Pyi_GetMenuStringA(hMenu: Pointer[Pyi_HMENU__], uIDItem: uint, lpString: CStr, cchMax: int, flags: uint) -> int:
   ...
 
 @native
@@ -42732,7 +42732,7 @@ def Pyi_GetMessageW(lpMsg: Pointer[Pyi_tagMSG], hWnd: Pointer[Pyi_HWND__], wMsgF
 
 @native
 @native_name("GetMetaFileA")
-def Pyi_GetMetaFileA(lpName: c_str) -> Pointer[Pyi_HMETAFILE__]:
+def Pyi_GetMetaFileA(lpName: CStr) -> Pointer[Pyi_HMETAFILE__]:
   ...
 
 @native
@@ -42757,7 +42757,7 @@ def Pyi_GetMiterLimit(hdc: Pointer[Pyi_HDC__], plimit: Pointer[float]) -> int:
 
 @native
 @native_name("GetModuleFileNameA")
-def Pyi_GetModuleFileNameA(hModule: Pointer[Pyi_HINSTANCE__], lpFilename: c_str, nSize: uint) -> uint:
+def Pyi_GetModuleFileNameA(hModule: Pointer[Pyi_HINSTANCE__], lpFilename: CStr, nSize: uint) -> uint:
   ...
 
 @native
@@ -42767,12 +42767,12 @@ def Pyi_GetModuleFileNameW(hModule: Pointer[Pyi_HINSTANCE__], lpFilename: Pointe
 
 @native
 @native_name("GetModuleHandleA")
-def Pyi_GetModuleHandleA(lpModuleName: c_str) -> Pointer[Pyi_HINSTANCE__]:
+def Pyi_GetModuleHandleA(lpModuleName: CStr) -> Pointer[Pyi_HINSTANCE__]:
   ...
 
 @native
 @native_name("GetModuleHandleExA")
-def Pyi_GetModuleHandleExA(dwFlags: uint, lpModuleName: c_str, phModule: Pointer[Pointer[Pyi_HINSTANCE__]]) -> int:
+def Pyi_GetModuleHandleExA(dwFlags: uint, lpModuleName: CStr, phModule: Pointer[Pointer[Pyi_HINSTANCE__]]) -> int:
   ...
 
 @native
@@ -42812,7 +42812,7 @@ def Pyi_GetNLSVersionEx(function: uint, lpLocaleName: Pointer[uint], lpVersionIn
 
 @native
 @native_name("GetNamedPipeClientComputerNameA")
-def Pyi_GetNamedPipeClientComputerNameA(Pipe: uintptr, ClientComputerName: c_str, ClientComputerNameLength: uint) -> int:
+def Pyi_GetNamedPipeClientComputerNameA(Pipe: uintptr, ClientComputerName: CStr, ClientComputerNameLength: uint) -> int:
   ...
 
 @native
@@ -42832,7 +42832,7 @@ def Pyi_GetNamedPipeClientSessionId(Pipe: uintptr, ClientSessionId: Pointer[uint
 
 @native
 @native_name("GetNamedPipeHandleStateA")
-def Pyi_GetNamedPipeHandleStateA(hNamedPipe: uintptr, lpState: Pointer[uint], lpCurInstances: Pointer[uint], lpMaxCollectionCount: Pointer[uint], lpCollectDataTimeout: Pointer[uint], lpUserName: c_str, nMaxUserNameSize: uint) -> int:
+def Pyi_GetNamedPipeHandleStateA(hNamedPipe: uintptr, lpState: Pointer[uint], lpCurInstances: Pointer[uint], lpMaxCollectionCount: Pointer[uint], lpCollectDataTimeout: Pointer[uint], lpUserName: CStr, nMaxUserNameSize: uint) -> int:
   ...
 
 @native
@@ -42922,7 +42922,7 @@ def Pyi_GetNumaNodeProcessorMaskEx(Node: uint, ProcessorMask: Pointer[Pyi__GROUP
 
 @native
 @native_name("GetNumaProcessorNode")
-def Pyi_GetNumaProcessorNode(Processor: int, NodeNumber: c_str) -> int:
+def Pyi_GetNumaProcessorNode(Processor: int, NodeNumber: CStr) -> int:
   ...
 
 @native
@@ -42932,7 +42932,7 @@ def Pyi_GetNumaProcessorNodeEx(Processor: Pointer[Pyi__PROCESSOR_NUMBER], NodeNu
 
 @native
 @native_name("GetNumaProximityNode")
-def Pyi_GetNumaProximityNode(ProximityId: uint, NodeNumber: c_str) -> int:
+def Pyi_GetNumaProximityNode(ProximityId: uint, NodeNumber: CStr) -> int:
   ...
 
 @native
@@ -42942,7 +42942,7 @@ def Pyi_GetNumaProximityNodeEx(ProximityId: uint, NodeNumber: Pointer[uint]) -> 
 
 @native
 @native_name("GetNumberFormatA")
-def Pyi_GetNumberFormatA(Locale: uint, dwFlags: uint, lpValue: c_str, lpFormat: Pointer[Pyi__numberfmtA], lpNumberStr: c_str, cchNumber: int) -> int:
+def Pyi_GetNumberFormatA(Locale: uint, dwFlags: uint, lpValue: CStr, lpFormat: Pointer[Pyi__numberfmtA], lpNumberStr: CStr, cchNumber: int) -> int:
   ...
 
 @native
@@ -43042,7 +43042,7 @@ def Pyi_GetParent(hWnd: Pointer[Pyi_HWND__]) -> Pointer[Pyi_HWND__]:
 
 @native
 @native_name("GetPath")
-def Pyi_GetPath(hdc: Pointer[Pyi_HDC__], apt: Pointer[Pyi_tagPOINT], aj: c_str, cpt: int) -> int:
+def Pyi_GetPath(hdc: Pointer[Pyi_HDC__], apt: Pointer[Pyi_tagPOINT], aj: CStr, cpt: int) -> int:
   ...
 
 @native
@@ -43187,7 +43187,7 @@ def Pyi_GetPrivateObjectSecurity(ObjectDescriptor: uintptr, SecurityInformation:
 
 @native
 @native_name("GetPrivateProfileIntA")
-def Pyi_GetPrivateProfileIntA(lpAppName: c_str, lpKeyName: c_str, nDefault: int, lpFileName: c_str) -> uint:
+def Pyi_GetPrivateProfileIntA(lpAppName: CStr, lpKeyName: CStr, nDefault: int, lpFileName: CStr) -> uint:
   ...
 
 @native
@@ -43197,12 +43197,12 @@ def Pyi_GetPrivateProfileIntW(lpAppName: Pointer[uint], lpKeyName: Pointer[uint]
 
 @native
 @native_name("GetPrivateProfileSectionA")
-def Pyi_GetPrivateProfileSectionA(lpAppName: c_str, lpReturnedString: c_str, nSize: uint, lpFileName: c_str) -> uint:
+def Pyi_GetPrivateProfileSectionA(lpAppName: CStr, lpReturnedString: CStr, nSize: uint, lpFileName: CStr) -> uint:
   ...
 
 @native
 @native_name("GetPrivateProfileSectionNamesA")
-def Pyi_GetPrivateProfileSectionNamesA(lpszReturnBuffer: c_str, nSize: uint, lpFileName: c_str) -> uint:
+def Pyi_GetPrivateProfileSectionNamesA(lpszReturnBuffer: CStr, nSize: uint, lpFileName: CStr) -> uint:
   ...
 
 @native
@@ -43217,7 +43217,7 @@ def Pyi_GetPrivateProfileSectionW(lpAppName: Pointer[uint], lpReturnedString: Po
 
 @native
 @native_name("GetPrivateProfileStringA")
-def Pyi_GetPrivateProfileStringA(lpAppName: c_str, lpKeyName: c_str, lpDefault: c_str, lpReturnedString: c_str, nSize: uint, lpFileName: c_str) -> uint:
+def Pyi_GetPrivateProfileStringA(lpAppName: CStr, lpKeyName: CStr, lpDefault: CStr, lpReturnedString: CStr, nSize: uint, lpFileName: CStr) -> uint:
   ...
 
 @native
@@ -43227,7 +43227,7 @@ def Pyi_GetPrivateProfileStringW(lpAppName: Pointer[uint], lpKeyName: Pointer[ui
 
 @native
 @native_name("GetPrivateProfileStructA")
-def Pyi_GetPrivateProfileStructA(lpszSection: c_str, lpszKey: c_str, lpStruct: uintptr, uSizeStruct: uint, szFile: c_str) -> int:
+def Pyi_GetPrivateProfileStructA(lpszSection: CStr, lpszKey: CStr, lpStruct: uintptr, uSizeStruct: uint, szFile: CStr) -> int:
   ...
 
 @native
@@ -43237,7 +43237,7 @@ def Pyi_GetPrivateProfileStructW(lpszSection: Pointer[uint], lpszKey: Pointer[ui
 
 @native
 @native_name("GetProcAddress")
-def Pyi_GetProcAddress(hModule: Pointer[Pyi_HINSTANCE__], lpProcName: c_str) -> uintptr:  # C: long long ()
+def Pyi_GetProcAddress(hModule: Pointer[Pyi_HINSTANCE__], lpProcName: CStr) -> uintptr:  # C: long long ()
   ...
 
 @native
@@ -43362,7 +43362,7 @@ def Pyi_GetProductInfo(dwOSMajorVersion: uint, dwOSMinorVersion: uint, dwSpMajor
 
 @native
 @native_name("GetProfileIntA")
-def Pyi_GetProfileIntA(lpAppName: c_str, lpKeyName: c_str, nDefault: int) -> uint:
+def Pyi_GetProfileIntA(lpAppName: CStr, lpKeyName: CStr, nDefault: int) -> uint:
   ...
 
 @native
@@ -43372,7 +43372,7 @@ def Pyi_GetProfileIntW(lpAppName: Pointer[uint], lpKeyName: Pointer[uint], nDefa
 
 @native
 @native_name("GetProfileSectionA")
-def Pyi_GetProfileSectionA(lpAppName: c_str, lpReturnedString: c_str, nSize: uint) -> uint:
+def Pyi_GetProfileSectionA(lpAppName: CStr, lpReturnedString: CStr, nSize: uint) -> uint:
   ...
 
 @native
@@ -43382,7 +43382,7 @@ def Pyi_GetProfileSectionW(lpAppName: Pointer[uint], lpReturnedString: Pointer[u
 
 @native
 @native_name("GetProfileStringA")
-def Pyi_GetProfileStringA(lpAppName: c_str, lpKeyName: c_str, lpDefault: c_str, lpReturnedString: c_str, nSize: uint) -> uint:
+def Pyi_GetProfileStringA(lpAppName: CStr, lpKeyName: CStr, lpDefault: CStr, lpReturnedString: CStr, nSize: uint) -> uint:
   ...
 
 @native
@@ -43392,7 +43392,7 @@ def Pyi_GetProfileStringW(lpAppName: Pointer[uint], lpKeyName: Pointer[uint], lp
 
 @native
 @native_name("GetPropA")
-def Pyi_GetPropA(hWnd: Pointer[Pyi_HWND__], lpString: c_str) -> uintptr:
+def Pyi_GetPropA(hWnd: Pointer[Pyi_HWND__], lpString: CStr) -> uintptr:
   ...
 
 @native
@@ -43522,7 +43522,7 @@ def Pyi_GetSecurityDescriptorOwner(pSecurityDescriptor: uintptr, pOwner: Pointer
 
 @native
 @native_name("GetSecurityDescriptorRMControl")
-def Pyi_GetSecurityDescriptorRMControl(SecurityDescriptor: uintptr, RMControl: c_str) -> uint:
+def Pyi_GetSecurityDescriptorRMControl(SecurityDescriptor: uintptr, RMControl: CStr) -> uint:
   ...
 
 @native
@@ -43537,7 +43537,7 @@ def Pyi_GetServiceDirectory(hServiceStatus: Pointer[Pyi_SERVICE_STATUS_HANDLE__]
 
 @native
 @native_name("GetServiceDisplayNameA")
-def Pyi_GetServiceDisplayNameA(hSCManager: Pointer[Pyi_SC_HANDLE__], lpServiceName: c_str, lpDisplayName: c_str, lpcchBuffer: Pointer[uint]) -> int:
+def Pyi_GetServiceDisplayNameA(hSCManager: Pointer[Pyi_SC_HANDLE__], lpServiceName: CStr, lpDisplayName: CStr, lpcchBuffer: Pointer[uint]) -> int:
   ...
 
 @native
@@ -43547,7 +43547,7 @@ def Pyi_GetServiceDisplayNameW(hSCManager: Pointer[Pyi_SC_HANDLE__], lpServiceNa
 
 @native
 @native_name("GetServiceKeyNameA")
-def Pyi_GetServiceKeyNameA(hSCManager: Pointer[Pyi_SC_HANDLE__], lpDisplayName: c_str, lpServiceName: c_str, lpcchBuffer: Pointer[uint]) -> int:
+def Pyi_GetServiceKeyNameA(hSCManager: Pointer[Pyi_SC_HANDLE__], lpDisplayName: CStr, lpServiceName: CStr, lpcchBuffer: Pointer[uint]) -> int:
   ...
 
 @native
@@ -43577,7 +43577,7 @@ def Pyi_GetShellWindow() -> Pointer[Pyi_HWND__]:
 
 @native
 @native_name("GetShortPathNameA")
-def Pyi_GetShortPathNameA(lpszLongPath: c_str, lpszShortPath: c_str, cchBuffer: uint) -> uint:
+def Pyi_GetShortPathNameA(lpszLongPath: CStr, lpszShortPath: CStr, cchBuffer: uint) -> uint:
   ...
 
 @native
@@ -43602,7 +43602,7 @@ def Pyi_GetSidSubAuthority(pSid: uintptr, nSubAuthority: uint) -> Pointer[uint]:
 
 @native
 @native_name("GetSidSubAuthorityCount")
-def Pyi_GetSidSubAuthorityCount(pSid: uintptr) -> c_str:
+def Pyi_GetSidSubAuthorityCount(pSid: uintptr) -> CStr:
   ...
 
 @native
@@ -43637,12 +43637,12 @@ def Pyi_GetStringScripts(dwFlags: uint, lpString: Pointer[uint], cchString: int,
 
 @native
 @native_name("GetStringTypeA")
-def Pyi_GetStringTypeA(Locale: uint, dwInfoType: uint, lpSrcStr: c_str, cchSrc: int, lpCharType: Pointer[uint]) -> int:
+def Pyi_GetStringTypeA(Locale: uint, dwInfoType: uint, lpSrcStr: CStr, cchSrc: int, lpCharType: Pointer[uint]) -> int:
   ...
 
 @native
 @native_name("GetStringTypeExA")
-def Pyi_GetStringTypeExA(Locale: uint, dwInfoType: uint, lpSrcStr: c_str, cchSrc: int, lpCharType: Pointer[uint]) -> int:
+def Pyi_GetStringTypeExA(Locale: uint, dwInfoType: uint, lpSrcStr: CStr, cchSrc: int, lpCharType: Pointer[uint]) -> int:
   ...
 
 @native
@@ -43702,7 +43702,7 @@ def Pyi_GetSystemDefaultUILanguage() -> uint:
 
 @native
 @native_name("GetSystemDirectoryA")
-def Pyi_GetSystemDirectoryA(lpBuffer: c_str, uSize: uint) -> uint:
+def Pyi_GetSystemDirectoryA(lpBuffer: CStr, uSize: uint) -> uint:
   ...
 
 @native
@@ -43807,7 +43807,7 @@ def Pyi_GetSystemTimes(lpIdleTime: Pointer[Pyi__FILETIME], lpKernelTime: Pointer
 
 @native
 @native_name("GetSystemWindowsDirectoryA")
-def Pyi_GetSystemWindowsDirectoryA(lpBuffer: c_str, uSize: uint) -> uint:
+def Pyi_GetSystemWindowsDirectoryA(lpBuffer: CStr, uSize: uint) -> uint:
   ...
 
 @native
@@ -43817,7 +43817,7 @@ def Pyi_GetSystemWindowsDirectoryW(lpBuffer: Pointer[uint], uSize: uint) -> uint
 
 @native
 @native_name("GetSystemWow64Directory2A")
-def Pyi_GetSystemWow64Directory2A(lpBuffer: c_str, uSize: uint, ImageFileMachineType: uint) -> uint:
+def Pyi_GetSystemWow64Directory2A(lpBuffer: CStr, uSize: uint, ImageFileMachineType: uint) -> uint:
   ...
 
 @native
@@ -43827,7 +43827,7 @@ def Pyi_GetSystemWow64Directory2W(lpBuffer: Pointer[uint], uSize: uint, ImageFil
 
 @native
 @native_name("GetSystemWow64DirectoryA")
-def Pyi_GetSystemWow64DirectoryA(lpBuffer: c_str, uSize: uint) -> uint:
+def Pyi_GetSystemWow64DirectoryA(lpBuffer: CStr, uSize: uint) -> uint:
   ...
 
 @native
@@ -43837,7 +43837,7 @@ def Pyi_GetSystemWow64DirectoryW(lpBuffer: Pointer[uint], uSize: uint) -> uint:
 
 @native
 @native_name("GetTabbedTextExtentA")
-def Pyi_GetTabbedTextExtentA(hdc: Pointer[Pyi_HDC__], lpString: c_str, chCount: int, nTabPositions: int, lpnTabStopPositions: Pointer[int]) -> uint:
+def Pyi_GetTabbedTextExtentA(hdc: Pointer[Pyi_HDC__], lpString: CStr, chCount: int, nTabPositions: int, lpnTabStopPositions: Pointer[int]) -> uint:
   ...
 
 @native
@@ -43862,7 +43862,7 @@ def Pyi_GetTapeStatus(hDevice: uintptr) -> uint:
 
 @native
 @native_name("GetTempFileNameA")
-def Pyi_GetTempFileNameA(lpPathName: c_str, lpPrefixString: c_str, uUnique: uint, lpTempFileName: c_str) -> uint:
+def Pyi_GetTempFileNameA(lpPathName: CStr, lpPrefixString: CStr, uUnique: uint, lpTempFileName: CStr) -> uint:
   ...
 
 @native
@@ -43872,7 +43872,7 @@ def Pyi_GetTempFileNameW(lpPathName: Pointer[uint], lpPrefixString: Pointer[uint
 
 @native
 @native_name("GetTempPath2A")
-def Pyi_GetTempPath2A(BufferLength: uint, Buffer: c_str) -> uint:
+def Pyi_GetTempPath2A(BufferLength: uint, Buffer: CStr) -> uint:
   ...
 
 @native
@@ -43882,7 +43882,7 @@ def Pyi_GetTempPath2W(BufferLength: uint, Buffer: Pointer[uint]) -> uint:
 
 @native
 @native_name("GetTempPathA")
-def Pyi_GetTempPathA(nBufferLength: uint, lpBuffer: c_str) -> uint:
+def Pyi_GetTempPathA(nBufferLength: uint, lpBuffer: CStr) -> uint:
   ...
 
 @native
@@ -43917,7 +43917,7 @@ def Pyi_GetTextColor(hdc: Pointer[Pyi_HDC__]) -> uint:
 
 @native
 @native_name("GetTextExtentExPointA")
-def Pyi_GetTextExtentExPointA(hdc: Pointer[Pyi_HDC__], lpszString: c_str, cchString: int, nMaxExtent: int, lpnFit: Pointer[int], lpnDx: Pointer[int], lpSize: Pointer[Pyi_tagSIZE]) -> int:
+def Pyi_GetTextExtentExPointA(hdc: Pointer[Pyi_HDC__], lpszString: CStr, cchString: int, nMaxExtent: int, lpnFit: Pointer[int], lpnDx: Pointer[int], lpSize: Pointer[Pyi_tagSIZE]) -> int:
   ...
 
 @native
@@ -43932,7 +43932,7 @@ def Pyi_GetTextExtentExPointW(hdc: Pointer[Pyi_HDC__], lpszString: Pointer[uint]
 
 @native
 @native_name("GetTextExtentPoint32A")
-def Pyi_GetTextExtentPoint32A(hdc: Pointer[Pyi_HDC__], lpString: c_str, c: int, psizl: Pointer[Pyi_tagSIZE]) -> int:
+def Pyi_GetTextExtentPoint32A(hdc: Pointer[Pyi_HDC__], lpString: CStr, c: int, psizl: Pointer[Pyi_tagSIZE]) -> int:
   ...
 
 @native
@@ -43942,7 +43942,7 @@ def Pyi_GetTextExtentPoint32W(hdc: Pointer[Pyi_HDC__], lpString: Pointer[uint], 
 
 @native
 @native_name("GetTextExtentPointA")
-def Pyi_GetTextExtentPointA(hdc: Pointer[Pyi_HDC__], lpString: c_str, c: int, lpsz: Pointer[Pyi_tagSIZE]) -> int:
+def Pyi_GetTextExtentPointA(hdc: Pointer[Pyi_HDC__], lpString: CStr, c: int, lpsz: Pointer[Pyi_tagSIZE]) -> int:
   ...
 
 @native
@@ -43957,7 +43957,7 @@ def Pyi_GetTextExtentPointW(hdc: Pointer[Pyi_HDC__], lpString: Pointer[uint], c:
 
 @native
 @native_name("GetTextFaceA")
-def Pyi_GetTextFaceA(hdc: Pointer[Pyi_HDC__], c: int, lpName: c_str) -> int:
+def Pyi_GetTextFaceA(hdc: Pointer[Pyi_HDC__], c: int, lpName: CStr) -> int:
   ...
 
 @native
@@ -44092,7 +44092,7 @@ def Pyi_GetTickCount64() -> uint64:
 
 @native
 @native_name("GetTimeFormatA")
-def Pyi_GetTimeFormatA(Locale: uint, dwFlags: uint, lpTime: Pointer[Pyi__SYSTEMTIME], lpFormat: c_str, lpTimeStr: c_str, cchTime: int) -> int:
+def Pyi_GetTimeFormatA(Locale: uint, dwFlags: uint, lpTime: Pointer[Pyi__SYSTEMTIME], lpFormat: CStr, lpTimeStr: CStr, cchTime: int) -> int:
   ...
 
 @native
@@ -44202,7 +44202,7 @@ def Pyi_GetUserGeoID(GeoClass: uint) -> int:
 
 @native
 @native_name("GetUserNameA")
-def Pyi_GetUserNameA(lpBuffer: c_str, pcbBuffer: Pointer[uint]) -> int:
+def Pyi_GetUserNameA(lpBuffer: CStr, pcbBuffer: Pointer[uint]) -> int:
   ...
 
 @native
@@ -44257,7 +44257,7 @@ def Pyi_GetViewportOrgEx(hdc: Pointer[Pyi_HDC__], lppoint: Pointer[Pyi_tagPOINT]
 
 @native
 @native_name("GetVolumeInformationA")
-def Pyi_GetVolumeInformationA(lpRootPathName: c_str, lpVolumeNameBuffer: c_str, nVolumeNameSize: uint, lpVolumeSerialNumber: Pointer[uint], lpMaximumComponentLength: Pointer[uint], lpFileSystemFlags: Pointer[uint], lpFileSystemNameBuffer: c_str, nFileSystemNameSize: uint) -> int:
+def Pyi_GetVolumeInformationA(lpRootPathName: CStr, lpVolumeNameBuffer: CStr, nVolumeNameSize: uint, lpVolumeSerialNumber: Pointer[uint], lpMaximumComponentLength: Pointer[uint], lpFileSystemFlags: Pointer[uint], lpFileSystemNameBuffer: CStr, nFileSystemNameSize: uint) -> int:
   ...
 
 @native
@@ -44272,7 +44272,7 @@ def Pyi_GetVolumeInformationW(lpRootPathName: Pointer[uint], lpVolumeNameBuffer:
 
 @native
 @native_name("GetVolumeNameForVolumeMountPointA")
-def Pyi_GetVolumeNameForVolumeMountPointA(lpszVolumeMountPoint: c_str, lpszVolumeName: c_str, cchBufferLength: uint) -> int:
+def Pyi_GetVolumeNameForVolumeMountPointA(lpszVolumeMountPoint: CStr, lpszVolumeName: CStr, cchBufferLength: uint) -> int:
   ...
 
 @native
@@ -44282,7 +44282,7 @@ def Pyi_GetVolumeNameForVolumeMountPointW(lpszVolumeMountPoint: Pointer[uint], l
 
 @native
 @native_name("GetVolumePathNameA")
-def Pyi_GetVolumePathNameA(lpszFileName: c_str, lpszVolumePathName: c_str, cchBufferLength: uint) -> int:
+def Pyi_GetVolumePathNameA(lpszFileName: CStr, lpszVolumePathName: CStr, cchBufferLength: uint) -> int:
   ...
 
 @native
@@ -44292,7 +44292,7 @@ def Pyi_GetVolumePathNameW(lpszFileName: Pointer[uint], lpszVolumePathName: Poin
 
 @native
 @native_name("GetVolumePathNamesForVolumeNameA")
-def Pyi_GetVolumePathNamesForVolumeNameA(lpszVolumeName: c_str, lpszVolumePathNames: c_str, cchBufferLength: uint, lpcchReturnLength: Pointer[uint]) -> int:
+def Pyi_GetVolumePathNamesForVolumeNameA(lpszVolumeName: CStr, lpszVolumePathNames: CStr, cchBufferLength: uint, lpcchReturnLength: Pointer[uint]) -> int:
   ...
 
 @native
@@ -44302,7 +44302,7 @@ def Pyi_GetVolumePathNamesForVolumeNameW(lpszVolumeName: Pointer[uint], lpszVolu
 
 @native
 @native_name("GetWinMetaFileBits")
-def Pyi_GetWinMetaFileBits(hemf: Pointer[Pyi_HENHMETAFILE__], cbData16: uint, pData16: c_str, iMapMode: int, hdcRef: Pointer[Pyi_HDC__]) -> uint:
+def Pyi_GetWinMetaFileBits(hemf: Pointer[Pyi_HENHMETAFILE__], cbData16: uint, pData16: CStr, iMapMode: int, hdcRef: Pointer[Pyi_HDC__]) -> uint:
   ...
 
 @native
@@ -44372,7 +44372,7 @@ def Pyi_GetWindowLongW(hWnd: Pointer[Pyi_HWND__], nIndex: int) -> int:
 
 @native
 @native_name("GetWindowModuleFileNameA")
-def Pyi_GetWindowModuleFileNameA(hwnd: Pointer[Pyi_HWND__], pszFileName: c_str, cchFileNameMax: uint) -> uint:
+def Pyi_GetWindowModuleFileNameA(hwnd: Pointer[Pyi_HWND__], pszFileName: CStr, cchFileNameMax: uint) -> uint:
   ...
 
 @native
@@ -44407,7 +44407,7 @@ def Pyi_GetWindowRgnBox(hWnd: Pointer[Pyi_HWND__], lprc: Pointer[Pyi_tagRECT]) -
 
 @native
 @native_name("GetWindowTextA")
-def Pyi_GetWindowTextA(hWnd: Pointer[Pyi_HWND__], lpString: c_str, nMaxCount: int) -> int:
+def Pyi_GetWindowTextA(hWnd: Pointer[Pyi_HWND__], lpString: CStr, nMaxCount: int) -> int:
   ...
 
 @native
@@ -44442,7 +44442,7 @@ def Pyi_GetWindowsAccountDomainSid(pSid: uintptr, pDomainSid: uintptr, cbDomainS
 
 @native
 @native_name("GetWindowsDirectoryA")
-def Pyi_GetWindowsDirectoryA(lpBuffer: c_str, uSize: uint) -> uint:
+def Pyi_GetWindowsDirectoryA(lpBuffer: CStr, uSize: uint) -> uint:
   ...
 
 @native
@@ -44467,12 +44467,12 @@ def Pyi_GetXStateFeaturesMask(Context: Pointer[Pyi__CONTEXT], FeatureMask: Point
 
 @native
 @native_name("GlobalAddAtomA")
-def Pyi_GlobalAddAtomA(lpString: c_str) -> uint:
+def Pyi_GlobalAddAtomA(lpString: CStr) -> uint:
   ...
 
 @native
 @native_name("GlobalAddAtomExA")
-def Pyi_GlobalAddAtomExA(lpString: c_str, Flags: uint) -> uint:
+def Pyi_GlobalAddAtomExA(lpString: CStr, Flags: uint) -> uint:
   ...
 
 @native
@@ -44502,7 +44502,7 @@ def Pyi_GlobalDeleteAtom(nAtom: uint) -> uint:
 
 @native
 @native_name("GlobalFindAtomA")
-def Pyi_GlobalFindAtomA(lpString: c_str) -> uint:
+def Pyi_GlobalFindAtomA(lpString: CStr) -> uint:
   ...
 
 @native
@@ -44527,7 +44527,7 @@ def Pyi_GlobalFree(hMem: uintptr) -> uintptr:
 
 @native
 @native_name("GlobalGetAtomNameA")
-def Pyi_GlobalGetAtomNameA(nAtom: uint, lpBuffer: c_str, nSize: int) -> uint:
+def Pyi_GlobalGetAtomNameA(nAtom: uint, lpBuffer: CStr, nSize: int) -> uint:
   ...
 
 @native
@@ -44777,7 +44777,7 @@ def Pyi_ImmEnumInputContext(idThread: uint, lpfn: Function[[Pointer[Pyi_HIMC__],
 
 @native
 @native_name("ImmEnumRegisterWordA")
-def Pyi_ImmEnumRegisterWordA(arg0: Pointer[Pyi_HKL__], arg1: Function[[c_str, uint, c_str, uintptr], int], lpszReading: c_str, arg3: uint, lpszRegister: c_str, arg5: uintptr) -> uint:
+def Pyi_ImmEnumRegisterWordA(arg0: Pointer[Pyi_HKL__], arg1: Function[[CStr, uint, CStr, uintptr], int], lpszReading: CStr, arg3: uint, lpszRegister: CStr, arg5: uintptr) -> uint:
   ...
 
 @native
@@ -44852,7 +44852,7 @@ def Pyi_ImmGetContext(arg0: Pointer[Pyi_HWND__]) -> Pointer[Pyi_HIMC__]:
 
 @native
 @native_name("ImmGetConversionListA")
-def Pyi_ImmGetConversionListA(arg0: Pointer[Pyi_HKL__], arg1: Pointer[Pyi_HIMC__], lpSrc: c_str, lpDst: Pointer[Pyi_tagCANDIDATELIST], dwBufLen: uint, uFlag: uint) -> uint:
+def Pyi_ImmGetConversionListA(arg0: Pointer[Pyi_HKL__], arg1: Pointer[Pyi_HIMC__], lpSrc: CStr, lpDst: Pointer[Pyi_tagCANDIDATELIST], dwBufLen: uint, uFlag: uint) -> uint:
   ...
 
 @native
@@ -44872,7 +44872,7 @@ def Pyi_ImmGetDefaultIMEWnd(arg0: Pointer[Pyi_HWND__]) -> Pointer[Pyi_HWND__]:
 
 @native
 @native_name("ImmGetDescriptionA")
-def Pyi_ImmGetDescriptionA(arg0: Pointer[Pyi_HKL__], lpszDescription: c_str, uBufLen: uint) -> uint:
+def Pyi_ImmGetDescriptionA(arg0: Pointer[Pyi_HKL__], lpszDescription: CStr, uBufLen: uint) -> uint:
   ...
 
 @native
@@ -44882,7 +44882,7 @@ def Pyi_ImmGetDescriptionW(arg0: Pointer[Pyi_HKL__], lpszDescription: Pointer[ui
 
 @native
 @native_name("ImmGetGuideLineA")
-def Pyi_ImmGetGuideLineA(arg0: Pointer[Pyi_HIMC__], dwIndex: uint, lpBuf: c_str, dwBufLen: uint) -> uint:
+def Pyi_ImmGetGuideLineA(arg0: Pointer[Pyi_HIMC__], dwIndex: uint, lpBuf: CStr, dwBufLen: uint) -> uint:
   ...
 
 @native
@@ -44892,7 +44892,7 @@ def Pyi_ImmGetGuideLineW(arg0: Pointer[Pyi_HIMC__], dwIndex: uint, lpBuf: Pointe
 
 @native
 @native_name("ImmGetIMEFileNameA")
-def Pyi_ImmGetIMEFileNameA(arg0: Pointer[Pyi_HKL__], lpszFileName: c_str, uBufLen: uint) -> uint:
+def Pyi_ImmGetIMEFileNameA(arg0: Pointer[Pyi_HKL__], lpszFileName: CStr, uBufLen: uint) -> uint:
   ...
 
 @native
@@ -44942,7 +44942,7 @@ def Pyi_ImmGetVirtualKey(arg0: Pointer[Pyi_HWND__]) -> uint:
 
 @native
 @native_name("ImmInstallIMEA")
-def Pyi_ImmInstallIMEA(lpszIMEFileName: c_str, lpszLayoutText: c_str) -> Pointer[Pyi_HKL__]:
+def Pyi_ImmInstallIMEA(lpszIMEFileName: CStr, lpszLayoutText: CStr) -> Pointer[Pyi_HKL__]:
   ...
 
 @native
@@ -44972,7 +44972,7 @@ def Pyi_ImmNotifyIME(arg0: Pointer[Pyi_HIMC__], dwAction: uint, dwIndex: uint, d
 
 @native
 @native_name("ImmRegisterWordA")
-def Pyi_ImmRegisterWordA(arg0: Pointer[Pyi_HKL__], lpszReading: c_str, arg2: uint, lpszRegister: c_str) -> int:
+def Pyi_ImmRegisterWordA(arg0: Pointer[Pyi_HKL__], lpszReading: CStr, arg2: uint, lpszRegister: CStr) -> int:
   ...
 
 @native
@@ -45037,7 +45037,7 @@ def Pyi_ImmSimulateHotKey(arg0: Pointer[Pyi_HWND__], arg1: uint) -> int:
 
 @native
 @native_name("ImmUnregisterWordA")
-def Pyi_ImmUnregisterWordA(arg0: Pointer[Pyi_HKL__], lpszReading: c_str, arg2: uint, lpszUnregister: c_str) -> int:
+def Pyi_ImmUnregisterWordA(arg0: Pointer[Pyi_HKL__], lpszReading: CStr, arg2: uint, lpszUnregister: CStr) -> int:
   ...
 
 @native
@@ -45192,7 +45192,7 @@ def Pyi_InitializeTouchInjection(maxCount: uint, dwMode: uint) -> int:
 
 @native
 @native_name("InitiateShutdownA")
-def Pyi_InitiateShutdownA(lpMachineName: c_str, lpMessage: c_str, dwGracePeriod: uint, dwShutdownFlags: uint, dwReason: uint) -> uint:
+def Pyi_InitiateShutdownA(lpMachineName: CStr, lpMessage: CStr, dwGracePeriod: uint, dwShutdownFlags: uint, dwReason: uint) -> uint:
   ...
 
 @native
@@ -45202,12 +45202,12 @@ def Pyi_InitiateShutdownW(lpMachineName: Pointer[uint], lpMessage: Pointer[uint]
 
 @native
 @native_name("InitiateSystemShutdownA")
-def Pyi_InitiateSystemShutdownA(lpMachineName: c_str, lpMessage: c_str, dwTimeout: uint, bForceAppsClosed: int, bRebootAfterShutdown: int) -> int:
+def Pyi_InitiateSystemShutdownA(lpMachineName: CStr, lpMessage: CStr, dwTimeout: uint, bForceAppsClosed: int, bRebootAfterShutdown: int) -> int:
   ...
 
 @native
 @native_name("InitiateSystemShutdownExA")
-def Pyi_InitiateSystemShutdownExA(lpMachineName: c_str, lpMessage: c_str, dwTimeout: uint, bForceAppsClosed: int, bRebootAfterShutdown: int, dwReason: uint) -> int:
+def Pyi_InitiateSystemShutdownExA(lpMachineName: CStr, lpMessage: CStr, dwTimeout: uint, bForceAppsClosed: int, bRebootAfterShutdown: int, dwReason: uint) -> int:
   ...
 
 @native
@@ -45232,7 +45232,7 @@ def Pyi_InjectTouchInput(count: uint, contacts: Pointer[Pyi_tagPOINTER_TOUCH_INF
 
 @native
 @native_name("InsertMenuA")
-def Pyi_InsertMenuA(hMenu: Pointer[Pyi_HMENU__], uPosition: uint, uFlags: uint, uIDNewItem: uint64, lpNewItem: c_str) -> int:
+def Pyi_InsertMenuA(hMenu: Pointer[Pyi_HMENU__], uPosition: uint, uFlags: uint, uIDNewItem: uint64, lpNewItem: CStr) -> int:
   ...
 
 @native
@@ -45317,7 +45317,7 @@ def Pyi_InvertRgn(hdc: Pointer[Pyi_HDC__], hrgn: Pointer[Pyi_HRGN__]) -> int:
 
 @native
 @native_name("IsApiSetImplemented")
-def Pyi_IsApiSetImplemented(Contract: c_str) -> int:
+def Pyi_IsApiSetImplemented(Contract: CStr) -> int:
   ...
 
 @native
@@ -45342,7 +45342,7 @@ def Pyi_IsBadReadPtr(lp: uintptr, ucb: uint64) -> int:
 
 @native
 @native_name("IsBadStringPtrA")
-def Pyi_IsBadStringPtrA(lpsz: c_str, ucchMax: uint64) -> int:
+def Pyi_IsBadStringPtrA(lpsz: CStr, ucchMax: uint64) -> int:
   ...
 
 @native
@@ -45662,7 +45662,7 @@ def Pyi_LCIDToLocaleName(Locale: uint, lpName: Pointer[uint], cchName: int, dwFl
 
 @native
 @native_name("LCMapStringA")
-def Pyi_LCMapStringA(Locale: uint, dwMapFlags: uint, lpSrcStr: c_str, cchSrc: int, lpDestStr: c_str, cchDest: int) -> int:
+def Pyi_LCMapStringA(Locale: uint, dwMapFlags: uint, lpSrcStr: CStr, cchSrc: int, lpDestStr: CStr, cchDest: int) -> int:
   ...
 
 @native
@@ -45702,7 +45702,7 @@ def Pyi_LineTo(hdc: Pointer[Pyi_HDC__], x: int, y: int) -> int:
 
 @native
 @native_name("LoadAcceleratorsA")
-def Pyi_LoadAcceleratorsA(hInstance: Pointer[Pyi_HINSTANCE__], lpTableName: c_str) -> Pointer[Pyi_HACCEL__]:
+def Pyi_LoadAcceleratorsA(hInstance: Pointer[Pyi_HINSTANCE__], lpTableName: CStr) -> Pointer[Pyi_HACCEL__]:
   ...
 
 @native
@@ -45712,7 +45712,7 @@ def Pyi_LoadAcceleratorsW(hInstance: Pointer[Pyi_HINSTANCE__], lpTableName: Poin
 
 @native
 @native_name("LoadBitmapA")
-def Pyi_LoadBitmapA(hInstance: Pointer[Pyi_HINSTANCE__], lpBitmapName: c_str) -> Pointer[Pyi_HBITMAP__]:
+def Pyi_LoadBitmapA(hInstance: Pointer[Pyi_HINSTANCE__], lpBitmapName: CStr) -> Pointer[Pyi_HBITMAP__]:
   ...
 
 @native
@@ -45722,12 +45722,12 @@ def Pyi_LoadBitmapW(hInstance: Pointer[Pyi_HINSTANCE__], lpBitmapName: Pointer[u
 
 @native
 @native_name("LoadCursorA")
-def Pyi_LoadCursorA(hInstance: Pointer[Pyi_HINSTANCE__], lpCursorName: c_str) -> Pointer[Pyi_HICON__]:
+def Pyi_LoadCursorA(hInstance: Pointer[Pyi_HINSTANCE__], lpCursorName: CStr) -> Pointer[Pyi_HICON__]:
   ...
 
 @native
 @native_name("LoadCursorFromFileA")
-def Pyi_LoadCursorFromFileA(lpFileName: c_str) -> Pointer[Pyi_HICON__]:
+def Pyi_LoadCursorFromFileA(lpFileName: CStr) -> Pointer[Pyi_HICON__]:
   ...
 
 @native
@@ -45747,7 +45747,7 @@ def Pyi_LoadEnclaveData(hProcess: uintptr, lpAddress: uintptr, lpBuffer: uintptr
 
 @native
 @native_name("LoadEnclaveImageA")
-def Pyi_LoadEnclaveImageA(lpEnclaveAddress: uintptr, lpImageName: c_str) -> int:
+def Pyi_LoadEnclaveImageA(lpEnclaveAddress: uintptr, lpImageName: CStr) -> int:
   ...
 
 @native
@@ -45757,7 +45757,7 @@ def Pyi_LoadEnclaveImageW(lpEnclaveAddress: uintptr, lpImageName: Pointer[uint])
 
 @native
 @native_name("LoadIconA")
-def Pyi_LoadIconA(hInstance: Pointer[Pyi_HINSTANCE__], lpIconName: c_str) -> Pointer[Pyi_HICON__]:
+def Pyi_LoadIconA(hInstance: Pointer[Pyi_HINSTANCE__], lpIconName: CStr) -> Pointer[Pyi_HICON__]:
   ...
 
 @native
@@ -45767,7 +45767,7 @@ def Pyi_LoadIconW(hInstance: Pointer[Pyi_HINSTANCE__], lpIconName: Pointer[uint]
 
 @native
 @native_name("LoadImageA")
-def Pyi_LoadImageA(hInst: Pointer[Pyi_HINSTANCE__], name: c_str, type: uint, cx: int, cy: int, fuLoad: uint) -> uintptr:
+def Pyi_LoadImageA(hInst: Pointer[Pyi_HINSTANCE__], name: CStr, type: uint, cx: int, cy: int, fuLoad: uint) -> uintptr:
   ...
 
 @native
@@ -45777,7 +45777,7 @@ def Pyi_LoadImageW(hInst: Pointer[Pyi_HINSTANCE__], name: Pointer[uint], type: u
 
 @native
 @native_name("LoadKeyboardLayoutA")
-def Pyi_LoadKeyboardLayoutA(pwszKLID: c_str, Flags: uint) -> Pointer[Pyi_HKL__]:
+def Pyi_LoadKeyboardLayoutA(pwszKLID: CStr, Flags: uint) -> Pointer[Pyi_HKL__]:
   ...
 
 @native
@@ -45787,12 +45787,12 @@ def Pyi_LoadKeyboardLayoutW(pwszKLID: Pointer[uint], Flags: uint) -> Pointer[Pyi
 
 @native
 @native_name("LoadLibraryA")
-def Pyi_LoadLibraryA(lpLibFileName: c_str) -> Pointer[Pyi_HINSTANCE__]:
+def Pyi_LoadLibraryA(lpLibFileName: CStr) -> Pointer[Pyi_HINSTANCE__]:
   ...
 
 @native
 @native_name("LoadLibraryExA")
-def Pyi_LoadLibraryExA(lpLibFileName: c_str, hFile: uintptr, dwFlags: uint) -> Pointer[Pyi_HINSTANCE__]:
+def Pyi_LoadLibraryExA(lpLibFileName: CStr, hFile: uintptr, dwFlags: uint) -> Pointer[Pyi_HINSTANCE__]:
   ...
 
 @native
@@ -45807,7 +45807,7 @@ def Pyi_LoadLibraryW(lpLibFileName: Pointer[uint]) -> Pointer[Pyi_HINSTANCE__]:
 
 @native
 @native_name("LoadMenuA")
-def Pyi_LoadMenuA(hInstance: Pointer[Pyi_HINSTANCE__], lpMenuName: c_str) -> Pointer[Pyi_HMENU__]:
+def Pyi_LoadMenuA(hInstance: Pointer[Pyi_HINSTANCE__], lpMenuName: CStr) -> Pointer[Pyi_HMENU__]:
   ...
 
 @native
@@ -45827,7 +45827,7 @@ def Pyi_LoadMenuW(hInstance: Pointer[Pyi_HINSTANCE__], lpMenuName: Pointer[uint]
 
 @native
 @native_name("LoadModule")
-def Pyi_LoadModule(lpModuleName: c_str, lpParameterBlock: uintptr) -> uint:
+def Pyi_LoadModule(lpModuleName: CStr, lpParameterBlock: uintptr) -> uint:
   ...
 
 @native
@@ -45842,7 +45842,7 @@ def Pyi_LoadResource(hModule: Pointer[Pyi_HINSTANCE__], hResInfo: Pointer[Pyi_HR
 
 @native
 @native_name("LoadStringA")
-def Pyi_LoadStringA(hInstance: Pointer[Pyi_HINSTANCE__], uID: uint, lpBuffer: c_str, cchBufferMax: int) -> int:
+def Pyi_LoadStringA(hInstance: Pointer[Pyi_HINSTANCE__], uID: uint, lpBuffer: CStr, cchBufferMax: int) -> int:
   ...
 
 @native
@@ -45977,12 +45977,12 @@ def Pyi_LogicalToPhysicalPointForPerMonitorDPI(hWnd: Pointer[Pyi_HWND__], lpPoin
 
 @native
 @native_name("LogonUserA")
-def Pyi_LogonUserA(lpszUsername: c_str, lpszDomain: c_str, lpszPassword: c_str, dwLogonType: uint, dwLogonProvider: uint, phToken: Pointer[uintptr]) -> int:
+def Pyi_LogonUserA(lpszUsername: CStr, lpszDomain: CStr, lpszPassword: CStr, dwLogonType: uint, dwLogonProvider: uint, phToken: Pointer[uintptr]) -> int:
   ...
 
 @native
 @native_name("LogonUserExA")
-def Pyi_LogonUserExA(lpszUsername: c_str, lpszDomain: c_str, lpszPassword: c_str, dwLogonType: uint, dwLogonProvider: uint, phToken: Pointer[uintptr], ppLogonSid: Pointer[uintptr], ppProfileBuffer: Pointer[uintptr], pdwProfileLength: Pointer[uint], pQuotaLimits: Pointer[Pyi__QUOTA_LIMITS]) -> int:
+def Pyi_LogonUserExA(lpszUsername: CStr, lpszDomain: CStr, lpszPassword: CStr, dwLogonType: uint, dwLogonProvider: uint, phToken: Pointer[uintptr], ppLogonSid: Pointer[uintptr], ppProfileBuffer: Pointer[uintptr], pdwProfileLength: Pointer[uint], pQuotaLimits: Pointer[Pyi__QUOTA_LIMITS]) -> int:
   ...
 
 @native
@@ -46007,12 +46007,12 @@ def Pyi_LongToPtr(l: int) -> uintptr:
 
 @native
 @native_name("LookupAccountNameA")
-def Pyi_LookupAccountNameA(lpSystemName: c_str, lpAccountName: c_str, Sid: uintptr, cbSid: Pointer[uint], ReferencedDomainName: c_str, cchReferencedDomainName: Pointer[uint], peUse: Pointer[Pyi__SID_NAME_USE]) -> int:
+def Pyi_LookupAccountNameA(lpSystemName: CStr, lpAccountName: CStr, Sid: uintptr, cbSid: Pointer[uint], ReferencedDomainName: CStr, cchReferencedDomainName: Pointer[uint], peUse: Pointer[Pyi__SID_NAME_USE]) -> int:
   ...
 
 @native
 @native_name("LookupAccountNameLocalA")
-def Pyi_LookupAccountNameLocalA(lpAccountName: c_str, Sid: uintptr, cbSid: Pointer[uint], ReferencedDomainName: c_str, cchReferencedDomainName: Pointer[uint], peUse: Pointer[Pyi__SID_NAME_USE]) -> int:
+def Pyi_LookupAccountNameLocalA(lpAccountName: CStr, Sid: uintptr, cbSid: Pointer[uint], ReferencedDomainName: CStr, cchReferencedDomainName: Pointer[uint], peUse: Pointer[Pyi__SID_NAME_USE]) -> int:
   ...
 
 @native
@@ -46027,12 +46027,12 @@ def Pyi_LookupAccountNameW(lpSystemName: Pointer[uint], lpAccountName: Pointer[u
 
 @native
 @native_name("LookupAccountSidA")
-def Pyi_LookupAccountSidA(lpSystemName: c_str, Sid: uintptr, Name: c_str, cchName: Pointer[uint], ReferencedDomainName: c_str, cchReferencedDomainName: Pointer[uint], peUse: Pointer[Pyi__SID_NAME_USE]) -> int:
+def Pyi_LookupAccountSidA(lpSystemName: CStr, Sid: uintptr, Name: CStr, cchName: Pointer[uint], ReferencedDomainName: CStr, cchReferencedDomainName: Pointer[uint], peUse: Pointer[Pyi__SID_NAME_USE]) -> int:
   ...
 
 @native
 @native_name("LookupAccountSidLocalA")
-def Pyi_LookupAccountSidLocalA(Sid: uintptr, Name: c_str, cchName: Pointer[uint], ReferencedDomainName: c_str, cchReferencedDomainName: Pointer[uint], peUse: Pointer[Pyi__SID_NAME_USE]) -> int:
+def Pyi_LookupAccountSidLocalA(Sid: uintptr, Name: CStr, cchName: Pointer[uint], ReferencedDomainName: CStr, cchReferencedDomainName: Pointer[uint], peUse: Pointer[Pyi__SID_NAME_USE]) -> int:
   ...
 
 @native
@@ -46047,17 +46047,17 @@ def Pyi_LookupAccountSidW(lpSystemName: Pointer[uint], Sid: uintptr, Name: Point
 
 @native
 @native_name("LookupIconIdFromDirectory")
-def Pyi_LookupIconIdFromDirectory(presbits: c_str, fIcon: int) -> int:
+def Pyi_LookupIconIdFromDirectory(presbits: CStr, fIcon: int) -> int:
   ...
 
 @native
 @native_name("LookupIconIdFromDirectoryEx")
-def Pyi_LookupIconIdFromDirectoryEx(presbits: c_str, fIcon: int, cxDesired: int, cyDesired: int, Flags: uint) -> int:
+def Pyi_LookupIconIdFromDirectoryEx(presbits: CStr, fIcon: int, cxDesired: int, cyDesired: int, Flags: uint) -> int:
   ...
 
 @native
 @native_name("LookupPrivilegeDisplayNameA")
-def Pyi_LookupPrivilegeDisplayNameA(lpSystemName: c_str, lpName: c_str, lpDisplayName: c_str, cchDisplayName: Pointer[uint], lpLanguageId: Pointer[uint]) -> int:
+def Pyi_LookupPrivilegeDisplayNameA(lpSystemName: CStr, lpName: CStr, lpDisplayName: CStr, cchDisplayName: Pointer[uint], lpLanguageId: Pointer[uint]) -> int:
   ...
 
 @native
@@ -46067,7 +46067,7 @@ def Pyi_LookupPrivilegeDisplayNameW(lpSystemName: Pointer[uint], lpName: Pointer
 
 @native
 @native_name("LookupPrivilegeNameA")
-def Pyi_LookupPrivilegeNameA(lpSystemName: c_str, lpLuid: Pointer[Pyi__LUID], lpName: c_str, cchName: Pointer[uint]) -> int:
+def Pyi_LookupPrivilegeNameA(lpSystemName: CStr, lpLuid: Pointer[Pyi__LUID], lpName: CStr, cchName: Pointer[uint]) -> int:
   ...
 
 @native
@@ -46077,7 +46077,7 @@ def Pyi_LookupPrivilegeNameW(lpSystemName: Pointer[uint], lpLuid: Pointer[Pyi__L
 
 @native
 @native_name("LookupPrivilegeValueA")
-def Pyi_LookupPrivilegeValueA(lpSystemName: c_str, lpName: c_str, lpLuid: Pointer[Pyi__LUID]) -> int:
+def Pyi_LookupPrivilegeValueA(lpSystemName: CStr, lpName: CStr, lpLuid: Pointer[Pyi__LUID]) -> int:
   ...
 
 @native
@@ -46197,12 +46197,12 @@ def Pyi_MessageBeep(uType: uint) -> int:
 
 @native
 @native_name("MessageBoxA")
-def Pyi_MessageBoxA(hWnd: Pointer[Pyi_HWND__], lpText: c_str, lpCaption: c_str, uType: uint) -> int:
+def Pyi_MessageBoxA(hWnd: Pointer[Pyi_HWND__], lpText: CStr, lpCaption: CStr, uType: uint) -> int:
   ...
 
 @native
 @native_name("MessageBoxExA")
-def Pyi_MessageBoxExA(hWnd: Pointer[Pyi_HWND__], lpText: c_str, lpCaption: c_str, uType: uint, wLanguageId: uint) -> int:
+def Pyi_MessageBoxExA(hWnd: Pointer[Pyi_HWND__], lpText: CStr, lpCaption: CStr, uType: uint, wLanguageId: uint) -> int:
   ...
 
 @native
@@ -46227,7 +46227,7 @@ def Pyi_MessageBoxW(hWnd: Pointer[Pyi_HWND__], lpText: Pointer[uint], lpCaption:
 
 @native
 @native_name("ModifyMenuA")
-def Pyi_ModifyMenuA(hMnu: Pointer[Pyi_HMENU__], uPosition: uint, uFlags: uint, uIDNewItem: uint64, lpNewItem: c_str) -> int:
+def Pyi_ModifyMenuA(hMnu: Pointer[Pyi_HMENU__], uPosition: uint, uFlags: uint, uIDNewItem: uint64, lpNewItem: CStr) -> int:
   ...
 
 @native
@@ -46257,12 +46257,12 @@ def Pyi_MonitorFromWindow(hwnd: Pointer[Pyi_HWND__], dwFlags: uint) -> Pointer[P
 
 @native
 @native_name("MoveFileA")
-def Pyi_MoveFileA(lpExistingFileName: c_str, lpNewFileName: c_str) -> int:
+def Pyi_MoveFileA(lpExistingFileName: CStr, lpNewFileName: CStr) -> int:
   ...
 
 @native
 @native_name("MoveFileExA")
-def Pyi_MoveFileExA(lpExistingFileName: c_str, lpNewFileName: c_str, dwFlags: uint) -> int:
+def Pyi_MoveFileExA(lpExistingFileName: CStr, lpNewFileName: CStr, dwFlags: uint) -> int:
   ...
 
 @native
@@ -46277,7 +46277,7 @@ def Pyi_MoveFileFromAppW(lpExistingFileName: Pointer[uint], lpNewFileName: Point
 
 @native
 @native_name("MoveFileTransactedA")
-def Pyi_MoveFileTransactedA(lpExistingFileName: c_str, lpNewFileName: c_str, lpProgressRoutine: Function[[Pyi__LARGE_INTEGER, Pyi__LARGE_INTEGER, Pyi__LARGE_INTEGER, Pyi__LARGE_INTEGER, uint, uint, uintptr, uintptr, uintptr], uint], lpData: uintptr, dwFlags: uint, hTransaction: uintptr) -> int:
+def Pyi_MoveFileTransactedA(lpExistingFileName: CStr, lpNewFileName: CStr, lpProgressRoutine: Function[[Pyi__LARGE_INTEGER, Pyi__LARGE_INTEGER, Pyi__LARGE_INTEGER, Pyi__LARGE_INTEGER, uint, uint, uintptr, uintptr, uintptr], uint], lpData: uintptr, dwFlags: uint, hTransaction: uintptr) -> int:
   ...
 
 @native
@@ -46292,7 +46292,7 @@ def Pyi_MoveFileW(lpExistingFileName: Pointer[uint], lpNewFileName: Pointer[uint
 
 @native
 @native_name("MoveFileWithProgressA")
-def Pyi_MoveFileWithProgressA(lpExistingFileName: c_str, lpNewFileName: c_str, lpProgressRoutine: Function[[Pyi__LARGE_INTEGER, Pyi__LARGE_INTEGER, Pyi__LARGE_INTEGER, Pyi__LARGE_INTEGER, uint, uint, uintptr, uintptr, uintptr], uint], lpData: uintptr, dwFlags: uint) -> int:
+def Pyi_MoveFileWithProgressA(lpExistingFileName: CStr, lpNewFileName: CStr, lpProgressRoutine: Function[[Pyi__LARGE_INTEGER, Pyi__LARGE_INTEGER, Pyi__LARGE_INTEGER, Pyi__LARGE_INTEGER, uint, uint, uintptr, uintptr, uintptr], uint], lpData: uintptr, dwFlags: uint) -> int:
   ...
 
 @native
@@ -46327,7 +46327,7 @@ def Pyi_MulDiv(nNumber: int, nNumerator: int, nDenominator: int) -> int:
 
 @native
 @native_name("MultiByteToWideChar")
-def Pyi_MultiByteToWideChar(CodePage: uint, dwFlags: uint, lpMultiByteStr: c_str, cbMultiByte: int, lpWideCharStr: Pointer[uint], cchWideChar: int) -> int:
+def Pyi_MultiByteToWideChar(CodePage: uint, dwFlags: uint, lpMultiByteStr: CStr, cbMultiByte: int, lpWideCharStr: Pointer[uint], cchWideChar: int) -> int:
   ...
 
 @native
@@ -46347,7 +46347,7 @@ def Pyi_MultiplyExtract128(Multiplier: int64, Multiplicand: int64, Shift: int) -
 
 @native
 @native_name("NeedCurrentDirectoryForExePathA")
-def Pyi_NeedCurrentDirectoryForExePathA(ExeName: c_str) -> int:
+def Pyi_NeedCurrentDirectoryForExePathA(ExeName: CStr) -> int:
   ...
 
 @native
@@ -46397,7 +46397,7 @@ def Pyi_NtCurrentTeb() -> Pointer[Pyi__TEB]:
 
 @native
 @native_name("ObjectCloseAuditAlarmA")
-def Pyi_ObjectCloseAuditAlarmA(SubsystemName: c_str, HandleId: uintptr, GenerateOnClose: int) -> int:
+def Pyi_ObjectCloseAuditAlarmA(SubsystemName: CStr, HandleId: uintptr, GenerateOnClose: int) -> int:
   ...
 
 @native
@@ -46407,7 +46407,7 @@ def Pyi_ObjectCloseAuditAlarmW(SubsystemName: Pointer[uint], HandleId: uintptr, 
 
 @native
 @native_name("ObjectDeleteAuditAlarmA")
-def Pyi_ObjectDeleteAuditAlarmA(SubsystemName: c_str, HandleId: uintptr, GenerateOnClose: int) -> int:
+def Pyi_ObjectDeleteAuditAlarmA(SubsystemName: CStr, HandleId: uintptr, GenerateOnClose: int) -> int:
   ...
 
 @native
@@ -46417,7 +46417,7 @@ def Pyi_ObjectDeleteAuditAlarmW(SubsystemName: Pointer[uint], HandleId: uintptr,
 
 @native
 @native_name("ObjectOpenAuditAlarmA")
-def Pyi_ObjectOpenAuditAlarmA(SubsystemName: c_str, HandleId: uintptr, ObjectTypeName: c_str, ObjectName: c_str, pSecurityDescriptor: uintptr, ClientToken: uintptr, DesiredAccess: uint, GrantedAccess: uint, Privileges: Pointer[Pyi__PRIVILEGE_SET], ObjectCreation: int, AccessGranted: int, GenerateOnClose: Pointer[int]) -> int:
+def Pyi_ObjectOpenAuditAlarmA(SubsystemName: CStr, HandleId: uintptr, ObjectTypeName: CStr, ObjectName: CStr, pSecurityDescriptor: uintptr, ClientToken: uintptr, DesiredAccess: uint, GrantedAccess: uint, Privileges: Pointer[Pyi__PRIVILEGE_SET], ObjectCreation: int, AccessGranted: int, GenerateOnClose: Pointer[int]) -> int:
   ...
 
 @native
@@ -46427,7 +46427,7 @@ def Pyi_ObjectOpenAuditAlarmW(SubsystemName: Pointer[uint], HandleId: uintptr, O
 
 @native
 @native_name("ObjectPrivilegeAuditAlarmA")
-def Pyi_ObjectPrivilegeAuditAlarmA(SubsystemName: c_str, HandleId: uintptr, ClientToken: uintptr, DesiredAccess: uint, Privileges: Pointer[Pyi__PRIVILEGE_SET], AccessGranted: int) -> int:
+def Pyi_ObjectPrivilegeAuditAlarmA(SubsystemName: CStr, HandleId: uintptr, ClientToken: uintptr, DesiredAccess: uint, Privileges: Pointer[Pyi__PRIVILEGE_SET], AccessGranted: int) -> int:
   ...
 
 @native
@@ -46442,22 +46442,22 @@ def Pyi_OemKeyScan(wOemChar: uint) -> uint:
 
 @native
 @native_name("OemToCharA")
-def Pyi_OemToCharA(pSrc: c_str, pDst: c_str) -> int:
+def Pyi_OemToCharA(pSrc: CStr, pDst: CStr) -> int:
   ...
 
 @native
 @native_name("OemToCharBuffA")
-def Pyi_OemToCharBuffA(lpszSrc: c_str, lpszDst: c_str, cchDstLength: uint) -> int:
+def Pyi_OemToCharBuffA(lpszSrc: CStr, lpszDst: CStr, cchDstLength: uint) -> int:
   ...
 
 @native
 @native_name("OemToCharBuffW")
-def Pyi_OemToCharBuffW(lpszSrc: c_str, lpszDst: Pointer[uint], cchDstLength: uint) -> int:
+def Pyi_OemToCharBuffW(lpszSrc: CStr, lpszDst: Pointer[uint], cchDstLength: uint) -> int:
   ...
 
 @native
 @native_name("OemToCharW")
-def Pyi_OemToCharW(pSrc: c_str, pDst: Pointer[uint]) -> int:
+def Pyi_OemToCharW(pSrc: CStr, pDst: Pointer[uint]) -> int:
   ...
 
 @native
@@ -46492,7 +46492,7 @@ def Pyi_OffsetWindowOrgEx(hdc: Pointer[Pyi_HDC__], x: int, y: int, lppt: Pointer
 
 @native
 @native_name("OpenBackupEventLogA")
-def Pyi_OpenBackupEventLogA(lpUNCServerName: c_str, lpFileName: c_str) -> uintptr:
+def Pyi_OpenBackupEventLogA(lpUNCServerName: CStr, lpFileName: CStr) -> uintptr:
   ...
 
 @native
@@ -46517,7 +46517,7 @@ def Pyi_OpenDedicatedMemoryPartition(Partition: uintptr, DedicatedMemoryTypeId: 
 
 @native
 @native_name("OpenDesktopA")
-def Pyi_OpenDesktopA(lpszDesktop: c_str, dwFlags: uint, fInherit: int, dwDesiredAccess: uint) -> Pointer[Pyi_HDESK__]:
+def Pyi_OpenDesktopA(lpszDesktop: CStr, dwFlags: uint, fInherit: int, dwDesiredAccess: uint) -> Pointer[Pyi_HDESK__]:
   ...
 
 @native
@@ -46527,7 +46527,7 @@ def Pyi_OpenDesktopW(lpszDesktop: Pointer[uint], dwFlags: uint, fInherit: int, d
 
 @native
 @native_name("OpenEncryptedFileRawA")
-def Pyi_OpenEncryptedFileRawA(lpFileName: c_str, ulFlags: uint, pvContext: Pointer[uintptr]) -> uint:
+def Pyi_OpenEncryptedFileRawA(lpFileName: CStr, ulFlags: uint, pvContext: Pointer[uintptr]) -> uint:
   ...
 
 @native
@@ -46537,12 +46537,12 @@ def Pyi_OpenEncryptedFileRawW(lpFileName: Pointer[uint], ulFlags: uint, pvContex
 
 @native
 @native_name("OpenEventA")
-def Pyi_OpenEventA(dwDesiredAccess: uint, bInheritHandle: int, lpName: c_str) -> uintptr:
+def Pyi_OpenEventA(dwDesiredAccess: uint, bInheritHandle: int, lpName: CStr) -> uintptr:
   ...
 
 @native
 @native_name("OpenEventLogA")
-def Pyi_OpenEventLogA(lpUNCServerName: c_str, lpSourceName: c_str) -> uintptr:
+def Pyi_OpenEventLogA(lpUNCServerName: CStr, lpSourceName: CStr) -> uintptr:
   ...
 
 @native
@@ -46557,7 +46557,7 @@ def Pyi_OpenEventW(dwDesiredAccess: uint, bInheritHandle: int, lpName: Pointer[u
 
 @native
 @native_name("OpenFile")
-def Pyi_OpenFile(lpFileName: c_str, lpReOpenBuff: Pointer[Pyi__OFSTRUCT], uStyle: uint) -> int:
+def Pyi_OpenFile(lpFileName: CStr, lpReOpenBuff: Pointer[Pyi__OFSTRUCT], uStyle: uint) -> int:
   ...
 
 @native
@@ -46567,7 +46567,7 @@ def Pyi_OpenFileById(hVolumeHint: uintptr, lpFileId: Pointer[Pyi_FILE_ID_DESCRIP
 
 @native
 @native_name("OpenFileMappingA")
-def Pyi_OpenFileMappingA(dwDesiredAccess: uint, bInheritHandle: int, lpName: c_str) -> uintptr:
+def Pyi_OpenFileMappingA(dwDesiredAccess: uint, bInheritHandle: int, lpName: CStr) -> uintptr:
   ...
 
 @native
@@ -46592,7 +46592,7 @@ def Pyi_OpenInputDesktop(dwFlags: uint, fInherit: int, dwDesiredAccess: uint) ->
 
 @native
 @native_name("OpenJobObjectA")
-def Pyi_OpenJobObjectA(dwDesiredAccess: uint, bInheritHandle: int, lpName: c_str) -> uintptr:
+def Pyi_OpenJobObjectA(dwDesiredAccess: uint, bInheritHandle: int, lpName: CStr) -> uintptr:
   ...
 
 @native
@@ -46602,7 +46602,7 @@ def Pyi_OpenJobObjectW(dwDesiredAccess: uint, bInheritHandle: int, lpName: Point
 
 @native
 @native_name("OpenMutexA")
-def Pyi_OpenMutexA(dwDesiredAccess: uint, bInheritHandle: int, lpName: c_str) -> uintptr:
+def Pyi_OpenMutexA(dwDesiredAccess: uint, bInheritHandle: int, lpName: CStr) -> uintptr:
   ...
 
 @native
@@ -46612,7 +46612,7 @@ def Pyi_OpenMutexW(dwDesiredAccess: uint, bInheritHandle: int, lpName: Pointer[u
 
 @native
 @native_name("OpenPrivateNamespaceA")
-def Pyi_OpenPrivateNamespaceA(lpBoundaryDescriptor: uintptr, lpAliasPrefix: c_str) -> uintptr:
+def Pyi_OpenPrivateNamespaceA(lpBoundaryDescriptor: uintptr, lpAliasPrefix: CStr) -> uintptr:
   ...
 
 @native
@@ -46632,7 +46632,7 @@ def Pyi_OpenProcessToken(ProcessHandle: uintptr, DesiredAccess: uint, TokenHandl
 
 @native
 @native_name("OpenSCManagerA")
-def Pyi_OpenSCManagerA(lpMachineName: c_str, lpDatabaseName: c_str, dwDesiredAccess: uint) -> Pointer[Pyi_SC_HANDLE__]:
+def Pyi_OpenSCManagerA(lpMachineName: CStr, lpDatabaseName: CStr, dwDesiredAccess: uint) -> Pointer[Pyi_SC_HANDLE__]:
   ...
 
 @native
@@ -46642,7 +46642,7 @@ def Pyi_OpenSCManagerW(lpMachineName: Pointer[uint], lpDatabaseName: Pointer[uin
 
 @native
 @native_name("OpenSemaphoreA")
-def Pyi_OpenSemaphoreA(dwDesiredAccess: uint, bInheritHandle: int, lpName: c_str) -> uintptr:
+def Pyi_OpenSemaphoreA(dwDesiredAccess: uint, bInheritHandle: int, lpName: CStr) -> uintptr:
   ...
 
 @native
@@ -46652,7 +46652,7 @@ def Pyi_OpenSemaphoreW(dwDesiredAccess: uint, bInheritHandle: int, lpName: Point
 
 @native
 @native_name("OpenServiceA")
-def Pyi_OpenServiceA(hSCManager: Pointer[Pyi_SC_HANDLE__], lpServiceName: c_str, dwDesiredAccess: uint) -> Pointer[Pyi_SC_HANDLE__]:
+def Pyi_OpenServiceA(hSCManager: Pointer[Pyi_SC_HANDLE__], lpServiceName: CStr, dwDesiredAccess: uint) -> Pointer[Pyi_SC_HANDLE__]:
   ...
 
 @native
@@ -46672,7 +46672,7 @@ def Pyi_OpenThreadToken(ThreadHandle: uintptr, DesiredAccess: uint, OpenAsSelf: 
 
 @native
 @native_name("OpenWaitableTimerA")
-def Pyi_OpenWaitableTimerA(dwDesiredAccess: uint, bInheritHandle: int, lpTimerName: c_str) -> uintptr:
+def Pyi_OpenWaitableTimerA(dwDesiredAccess: uint, bInheritHandle: int, lpTimerName: CStr) -> uintptr:
   ...
 
 @native
@@ -46682,7 +46682,7 @@ def Pyi_OpenWaitableTimerW(dwDesiredAccess: uint, bInheritHandle: int, lpTimerNa
 
 @native
 @native_name("OpenWindowStationA")
-def Pyi_OpenWindowStationA(lpszWinSta: c_str, fInherit: int, dwDesiredAccess: uint) -> Pointer[Pyi_HWINSTA__]:
+def Pyi_OpenWindowStationA(lpszWinSta: CStr, fInherit: int, dwDesiredAccess: uint) -> Pointer[Pyi_HWINSTA__]:
   ...
 
 @native
@@ -46702,7 +46702,7 @@ def Pyi_OperationStart(OperationStartParams: Pointer[Pyi__OPERATION_START_PARAME
 
 @native
 @native_name("OutputDebugStringA")
-def Pyi_OutputDebugStringA(lpOutputString: c_str) -> None:
+def Pyi_OutputDebugStringA(lpOutputString: CStr) -> None:
   ...
 
 @native
@@ -46912,7 +46912,7 @@ def Pyi_PrintWindow(hwnd: Pointer[Pyi_HWND__], hdcBlt: Pointer[Pyi_HDC__], nFlag
 
 @native
 @native_name("PrivateExtractIconsA")
-def Pyi_PrivateExtractIconsA(szFileName: c_str, nIconIndex: int, cxIcon: int, cyIcon: int, phicon: Pointer[Pointer[Pyi_HICON__]], piconid: Pointer[uint], nIcons: uint, flags: uint) -> uint:
+def Pyi_PrivateExtractIconsA(szFileName: CStr, nIconIndex: int, cxIcon: int, cyIcon: int, phicon: Pointer[Pointer[Pyi_HICON__]], piconid: Pointer[uint], nIcons: uint, flags: uint) -> uint:
   ...
 
 @native
@@ -46927,7 +46927,7 @@ def Pyi_PrivilegeCheck(ClientToken: uintptr, RequiredPrivileges: Pointer[Pyi__PR
 
 @native
 @native_name("PrivilegedServiceAuditAlarmA")
-def Pyi_PrivilegedServiceAuditAlarmA(SubsystemName: c_str, ServiceName: c_str, ClientToken: uintptr, Privileges: Pointer[Pyi__PRIVILEGE_SET], AccessGranted: int) -> int:
+def Pyi_PrivilegedServiceAuditAlarmA(SubsystemName: CStr, ServiceName: CStr, ClientToken: uintptr, Privileges: Pointer[Pyi__PRIVILEGE_SET], AccessGranted: int) -> int:
   ...
 
 @native
@@ -47032,7 +47032,7 @@ def Pyi_QueryDisplayConfig(flags: uint, numPathArrayElements: Pointer[uint], pat
 
 @native
 @native_name("QueryDosDeviceA")
-def Pyi_QueryDosDeviceA(lpDeviceName: c_str, lpTargetPath: c_str, ucchMax: uint) -> uint:
+def Pyi_QueryDosDeviceA(lpDeviceName: CStr, lpTargetPath: CStr, ucchMax: uint) -> uint:
   ...
 
 @native
@@ -47042,7 +47042,7 @@ def Pyi_QueryDosDeviceW(lpDeviceName: Pointer[uint], lpTargetPath: Pointer[uint]
 
 @native
 @native_name("QueryFullProcessImageNameA")
-def Pyi_QueryFullProcessImageNameA(hProcess: uintptr, dwFlags: uint, lpExeName: c_str, lpdwSize: Pointer[uint]) -> int:
+def Pyi_QueryFullProcessImageNameA(hProcess: uintptr, dwFlags: uint, lpExeName: CStr, lpdwSize: Pointer[uint]) -> int:
   ...
 
 @native
@@ -47122,12 +47122,12 @@ def Pyi_QuerySecurityAccessMask(SecurityInformation: uint, DesiredAccess: Pointe
 
 @native
 @native_name("QueryServiceConfig2A")
-def Pyi_QueryServiceConfig2A(hService: Pointer[Pyi_SC_HANDLE__], dwInfoLevel: uint, lpBuffer: c_str, cbBufSize: uint, pcbBytesNeeded: Pointer[uint]) -> int:
+def Pyi_QueryServiceConfig2A(hService: Pointer[Pyi_SC_HANDLE__], dwInfoLevel: uint, lpBuffer: CStr, cbBufSize: uint, pcbBytesNeeded: Pointer[uint]) -> int:
   ...
 
 @native
 @native_name("QueryServiceConfig2W")
-def Pyi_QueryServiceConfig2W(hService: Pointer[Pyi_SC_HANDLE__], dwInfoLevel: uint, lpBuffer: c_str, cbBufSize: uint, pcbBytesNeeded: Pointer[uint]) -> int:
+def Pyi_QueryServiceConfig2W(hService: Pointer[Pyi_SC_HANDLE__], dwInfoLevel: uint, lpBuffer: CStr, cbBufSize: uint, pcbBytesNeeded: Pointer[uint]) -> int:
   ...
 
 @native
@@ -47167,7 +47167,7 @@ def Pyi_QueryServiceStatus(hService: Pointer[Pyi_SC_HANDLE__], lpServiceStatus: 
 
 @native
 @native_name("QueryServiceStatusEx")
-def Pyi_QueryServiceStatusEx(hService: Pointer[Pyi_SC_HANDLE__], InfoLevel: Pyi_SC_STATUS_TYPE, lpBuffer: c_str, cbBufSize: uint, pcbBytesNeeded: Pointer[uint]) -> int:
+def Pyi_QueryServiceStatusEx(hService: Pointer[Pyi_SC_HANDLE__], InfoLevel: Pyi_SC_STATUS_TYPE, lpBuffer: CStr, cbBufSize: uint, pcbBytesNeeded: Pointer[uint]) -> int:
   ...
 
 @native
@@ -47177,7 +47177,7 @@ def Pyi_QueryThreadCycleTime(ThreadHandle: uintptr, CycleTime: Pointer[uint64]) 
 
 @native
 @native_name("QueryThreadProfiling")
-def Pyi_QueryThreadProfiling(ThreadHandle: uintptr, Enabled: c_str) -> uint:
+def Pyi_QueryThreadProfiling(ThreadHandle: uintptr, Enabled: CStr) -> uint:
   ...
 
 @native
@@ -47302,7 +47302,7 @@ def Pyi_ReadConsoleOutputAttribute(hConsoleOutput: uintptr, lpAttribute: Pointer
 
 @native
 @native_name("ReadConsoleOutputCharacterA")
-def Pyi_ReadConsoleOutputCharacterA(hConsoleOutput: uintptr, lpCharacter: c_str, nLength: uint, dwReadCoord: Pyi__COORD, lpNumberOfCharsRead: Pointer[uint]) -> int:
+def Pyi_ReadConsoleOutputCharacterA(hConsoleOutput: uintptr, lpCharacter: CStr, nLength: uint, dwReadCoord: Pyi__COORD, lpNumberOfCharsRead: Pointer[uint]) -> int:
   ...
 
 @native
@@ -47332,7 +47332,7 @@ def Pyi_ReadDirectoryChangesW(hDirectory: uintptr, lpBuffer: uintptr, nBufferLen
 
 @native
 @native_name("ReadEncryptedFileRaw")
-def Pyi_ReadEncryptedFileRaw(pfExportCallback: Function[[c_str, uintptr, uint], uint], pvCallbackContext: uintptr, pvContext: uintptr) -> uint:
+def Pyi_ReadEncryptedFileRaw(pfExportCallback: Function[[CStr, uintptr, uint], uint], pvCallbackContext: uintptr, pvContext: uintptr) -> uint:
   ...
 
 @native
@@ -47522,7 +47522,7 @@ def Pyi_RealChildWindowFromPoint(hwndParent: Pointer[Pyi_HWND__], ptParentClient
 
 @native
 @native_name("RealGetWindowClassA")
-def Pyi_RealGetWindowClassA(hwnd: Pointer[Pyi_HWND__], ptszClassName: c_str, cchClassNameMax: uint) -> uint:
+def Pyi_RealGetWindowClassA(hwnd: Pointer[Pyi_HWND__], ptszClassName: CStr, cchClassNameMax: uint) -> uint:
   ...
 
 @native
@@ -47567,12 +47567,12 @@ def Pyi_RegCloseKey(hKey: Pointer[Pyi_HKEY__]) -> int:
 
 @native
 @native_name("RegConnectRegistryA")
-def Pyi_RegConnectRegistryA(lpMachineName: c_str, hKey: Pointer[Pyi_HKEY__], phkResult: Pointer[Pointer[Pyi_HKEY__]]) -> int:
+def Pyi_RegConnectRegistryA(lpMachineName: CStr, hKey: Pointer[Pyi_HKEY__], phkResult: Pointer[Pointer[Pyi_HKEY__]]) -> int:
   ...
 
 @native
 @native_name("RegConnectRegistryExA")
-def Pyi_RegConnectRegistryExA(lpMachineName: c_str, hKey: Pointer[Pyi_HKEY__], Flags: uint, phkResult: Pointer[Pointer[Pyi_HKEY__]]) -> int:
+def Pyi_RegConnectRegistryExA(lpMachineName: CStr, hKey: Pointer[Pyi_HKEY__], Flags: uint, phkResult: Pointer[Pointer[Pyi_HKEY__]]) -> int:
   ...
 
 @native
@@ -47587,7 +47587,7 @@ def Pyi_RegConnectRegistryW(lpMachineName: Pointer[uint], hKey: Pointer[Pyi_HKEY
 
 @native
 @native_name("RegCopyTreeA")
-def Pyi_RegCopyTreeA(hKeySrc: Pointer[Pyi_HKEY__], lpSubKey: c_str, hKeyDest: Pointer[Pyi_HKEY__]) -> int:
+def Pyi_RegCopyTreeA(hKeySrc: Pointer[Pyi_HKEY__], lpSubKey: CStr, hKeyDest: Pointer[Pyi_HKEY__]) -> int:
   ...
 
 @native
@@ -47597,12 +47597,12 @@ def Pyi_RegCopyTreeW(hKeySrc: Pointer[Pyi_HKEY__], lpSubKey: Pointer[uint], hKey
 
 @native
 @native_name("RegCreateKeyA")
-def Pyi_RegCreateKeyA(hKey: Pointer[Pyi_HKEY__], lpSubKey: c_str, phkResult: Pointer[Pointer[Pyi_HKEY__]]) -> int:
+def Pyi_RegCreateKeyA(hKey: Pointer[Pyi_HKEY__], lpSubKey: CStr, phkResult: Pointer[Pointer[Pyi_HKEY__]]) -> int:
   ...
 
 @native
 @native_name("RegCreateKeyExA")
-def Pyi_RegCreateKeyExA(hKey: Pointer[Pyi_HKEY__], lpSubKey: c_str, Reserved: uint, lpClass: c_str, dwOptions: uint, samDesired: uint, lpSecurityAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], phkResult: Pointer[Pointer[Pyi_HKEY__]], lpdwDisposition: Pointer[uint]) -> int:
+def Pyi_RegCreateKeyExA(hKey: Pointer[Pyi_HKEY__], lpSubKey: CStr, Reserved: uint, lpClass: CStr, dwOptions: uint, samDesired: uint, lpSecurityAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], phkResult: Pointer[Pointer[Pyi_HKEY__]], lpdwDisposition: Pointer[uint]) -> int:
   ...
 
 @native
@@ -47612,7 +47612,7 @@ def Pyi_RegCreateKeyExW(hKey: Pointer[Pyi_HKEY__], lpSubKey: Pointer[uint], Rese
 
 @native
 @native_name("RegCreateKeyTransactedA")
-def Pyi_RegCreateKeyTransactedA(hKey: Pointer[Pyi_HKEY__], lpSubKey: c_str, Reserved: uint, lpClass: c_str, dwOptions: uint, samDesired: uint, lpSecurityAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], phkResult: Pointer[Pointer[Pyi_HKEY__]], lpdwDisposition: Pointer[uint], hTransaction: uintptr, pExtendedParemeter: uintptr) -> int:
+def Pyi_RegCreateKeyTransactedA(hKey: Pointer[Pyi_HKEY__], lpSubKey: CStr, Reserved: uint, lpClass: CStr, dwOptions: uint, samDesired: uint, lpSecurityAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], phkResult: Pointer[Pointer[Pyi_HKEY__]], lpdwDisposition: Pointer[uint], hTransaction: uintptr, pExtendedParemeter: uintptr) -> int:
   ...
 
 @native
@@ -47627,12 +47627,12 @@ def Pyi_RegCreateKeyW(hKey: Pointer[Pyi_HKEY__], lpSubKey: Pointer[uint], phkRes
 
 @native
 @native_name("RegDeleteKeyA")
-def Pyi_RegDeleteKeyA(hKey: Pointer[Pyi_HKEY__], lpSubKey: c_str) -> int:
+def Pyi_RegDeleteKeyA(hKey: Pointer[Pyi_HKEY__], lpSubKey: CStr) -> int:
   ...
 
 @native
 @native_name("RegDeleteKeyExA")
-def Pyi_RegDeleteKeyExA(hKey: Pointer[Pyi_HKEY__], lpSubKey: c_str, samDesired: uint, Reserved: uint) -> int:
+def Pyi_RegDeleteKeyExA(hKey: Pointer[Pyi_HKEY__], lpSubKey: CStr, samDesired: uint, Reserved: uint) -> int:
   ...
 
 @native
@@ -47642,7 +47642,7 @@ def Pyi_RegDeleteKeyExW(hKey: Pointer[Pyi_HKEY__], lpSubKey: Pointer[uint], samD
 
 @native
 @native_name("RegDeleteKeyTransactedA")
-def Pyi_RegDeleteKeyTransactedA(hKey: Pointer[Pyi_HKEY__], lpSubKey: c_str, samDesired: uint, Reserved: uint, hTransaction: uintptr, pExtendedParameter: uintptr) -> int:
+def Pyi_RegDeleteKeyTransactedA(hKey: Pointer[Pyi_HKEY__], lpSubKey: CStr, samDesired: uint, Reserved: uint, hTransaction: uintptr, pExtendedParameter: uintptr) -> int:
   ...
 
 @native
@@ -47652,7 +47652,7 @@ def Pyi_RegDeleteKeyTransactedW(hKey: Pointer[Pyi_HKEY__], lpSubKey: Pointer[uin
 
 @native
 @native_name("RegDeleteKeyValueA")
-def Pyi_RegDeleteKeyValueA(hKey: Pointer[Pyi_HKEY__], lpSubKey: c_str, lpValueName: c_str) -> int:
+def Pyi_RegDeleteKeyValueA(hKey: Pointer[Pyi_HKEY__], lpSubKey: CStr, lpValueName: CStr) -> int:
   ...
 
 @native
@@ -47667,7 +47667,7 @@ def Pyi_RegDeleteKeyW(hKey: Pointer[Pyi_HKEY__], lpSubKey: Pointer[uint]) -> int
 
 @native
 @native_name("RegDeleteTreeA")
-def Pyi_RegDeleteTreeA(hKey: Pointer[Pyi_HKEY__], lpSubKey: c_str) -> int:
+def Pyi_RegDeleteTreeA(hKey: Pointer[Pyi_HKEY__], lpSubKey: CStr) -> int:
   ...
 
 @native
@@ -47677,7 +47677,7 @@ def Pyi_RegDeleteTreeW(hKey: Pointer[Pyi_HKEY__], lpSubKey: Pointer[uint]) -> in
 
 @native
 @native_name("RegDeleteValueA")
-def Pyi_RegDeleteValueA(hKey: Pointer[Pyi_HKEY__], lpValueName: c_str) -> int:
+def Pyi_RegDeleteValueA(hKey: Pointer[Pyi_HKEY__], lpValueName: CStr) -> int:
   ...
 
 @native
@@ -47707,12 +47707,12 @@ def Pyi_RegEnableReflectionKey(hBase: Pointer[Pyi_HKEY__]) -> int:
 
 @native
 @native_name("RegEnumKeyA")
-def Pyi_RegEnumKeyA(hKey: Pointer[Pyi_HKEY__], dwIndex: uint, lpName: c_str, cchName: uint) -> int:
+def Pyi_RegEnumKeyA(hKey: Pointer[Pyi_HKEY__], dwIndex: uint, lpName: CStr, cchName: uint) -> int:
   ...
 
 @native
 @native_name("RegEnumKeyExA")
-def Pyi_RegEnumKeyExA(hKey: Pointer[Pyi_HKEY__], dwIndex: uint, lpName: c_str, lpcchName: Pointer[uint], lpReserved: Pointer[uint], lpClass: c_str, lpcchClass: Pointer[uint], lpftLastWriteTime: Pointer[Pyi__FILETIME]) -> int:
+def Pyi_RegEnumKeyExA(hKey: Pointer[Pyi_HKEY__], dwIndex: uint, lpName: CStr, lpcchName: Pointer[uint], lpReserved: Pointer[uint], lpClass: CStr, lpcchClass: Pointer[uint], lpftLastWriteTime: Pointer[Pyi__FILETIME]) -> int:
   ...
 
 @native
@@ -47727,12 +47727,12 @@ def Pyi_RegEnumKeyW(hKey: Pointer[Pyi_HKEY__], dwIndex: uint, lpName: Pointer[ui
 
 @native
 @native_name("RegEnumValueA")
-def Pyi_RegEnumValueA(hKey: Pointer[Pyi_HKEY__], dwIndex: uint, lpValueName: c_str, lpcchValueName: Pointer[uint], lpReserved: Pointer[uint], lpType: Pointer[uint], lpData: c_str, lpcbData: Pointer[uint]) -> int:
+def Pyi_RegEnumValueA(hKey: Pointer[Pyi_HKEY__], dwIndex: uint, lpValueName: CStr, lpcchValueName: Pointer[uint], lpReserved: Pointer[uint], lpType: Pointer[uint], lpData: CStr, lpcbData: Pointer[uint]) -> int:
   ...
 
 @native
 @native_name("RegEnumValueW")
-def Pyi_RegEnumValueW(hKey: Pointer[Pyi_HKEY__], dwIndex: uint, lpValueName: Pointer[uint], lpcchValueName: Pointer[uint], lpReserved: Pointer[uint], lpType: Pointer[uint], lpData: c_str, lpcbData: Pointer[uint]) -> int:
+def Pyi_RegEnumValueW(hKey: Pointer[Pyi_HKEY__], dwIndex: uint, lpValueName: Pointer[uint], lpcchValueName: Pointer[uint], lpReserved: Pointer[uint], lpType: Pointer[uint], lpData: CStr, lpcbData: Pointer[uint]) -> int:
   ...
 
 @native
@@ -47747,7 +47747,7 @@ def Pyi_RegGetKeySecurity(hKey: Pointer[Pyi_HKEY__], SecurityInformation: uint, 
 
 @native
 @native_name("RegGetValueA")
-def Pyi_RegGetValueA(hkey: Pointer[Pyi_HKEY__], lpSubKey: c_str, lpValue: c_str, dwFlags: uint, pdwType: Pointer[uint], pvData: uintptr, pcbData: Pointer[uint]) -> int:
+def Pyi_RegGetValueA(hkey: Pointer[Pyi_HKEY__], lpSubKey: CStr, lpValue: CStr, dwFlags: uint, pdwType: Pointer[uint], pvData: uintptr, pcbData: Pointer[uint]) -> int:
   ...
 
 @native
@@ -47757,7 +47757,7 @@ def Pyi_RegGetValueW(hkey: Pointer[Pyi_HKEY__], lpSubKey: Pointer[uint], lpValue
 
 @native
 @native_name("RegLoadAppKeyA")
-def Pyi_RegLoadAppKeyA(lpFile: c_str, phkResult: Pointer[Pointer[Pyi_HKEY__]], samDesired: uint, dwOptions: uint, Reserved: uint) -> int:
+def Pyi_RegLoadAppKeyA(lpFile: CStr, phkResult: Pointer[Pointer[Pyi_HKEY__]], samDesired: uint, dwOptions: uint, Reserved: uint) -> int:
   ...
 
 @native
@@ -47767,7 +47767,7 @@ def Pyi_RegLoadAppKeyW(lpFile: Pointer[uint], phkResult: Pointer[Pointer[Pyi_HKE
 
 @native
 @native_name("RegLoadKeyA")
-def Pyi_RegLoadKeyA(hKey: Pointer[Pyi_HKEY__], lpSubKey: c_str, lpFile: c_str) -> int:
+def Pyi_RegLoadKeyA(hKey: Pointer[Pyi_HKEY__], lpSubKey: CStr, lpFile: CStr) -> int:
   ...
 
 @native
@@ -47777,7 +47777,7 @@ def Pyi_RegLoadKeyW(hKey: Pointer[Pyi_HKEY__], lpSubKey: Pointer[uint], lpFile: 
 
 @native
 @native_name("RegLoadMUIStringA")
-def Pyi_RegLoadMUIStringA(hKey: Pointer[Pyi_HKEY__], pszValue: c_str, pszOutBuf: c_str, cbOutBuf: uint, pcbData: Pointer[uint], Flags: uint, pszDirectory: c_str) -> int:
+def Pyi_RegLoadMUIStringA(hKey: Pointer[Pyi_HKEY__], pszValue: CStr, pszOutBuf: CStr, cbOutBuf: uint, pcbData: Pointer[uint], Flags: uint, pszDirectory: CStr) -> int:
   ...
 
 @native
@@ -47797,12 +47797,12 @@ def Pyi_RegOpenCurrentUser(samDesired: uint, phkResult: Pointer[Pointer[Pyi_HKEY
 
 @native
 @native_name("RegOpenKeyA")
-def Pyi_RegOpenKeyA(hKey: Pointer[Pyi_HKEY__], lpSubKey: c_str, phkResult: Pointer[Pointer[Pyi_HKEY__]]) -> int:
+def Pyi_RegOpenKeyA(hKey: Pointer[Pyi_HKEY__], lpSubKey: CStr, phkResult: Pointer[Pointer[Pyi_HKEY__]]) -> int:
   ...
 
 @native
 @native_name("RegOpenKeyExA")
-def Pyi_RegOpenKeyExA(hKey: Pointer[Pyi_HKEY__], lpSubKey: c_str, ulOptions: uint, samDesired: uint, phkResult: Pointer[Pointer[Pyi_HKEY__]]) -> int:
+def Pyi_RegOpenKeyExA(hKey: Pointer[Pyi_HKEY__], lpSubKey: CStr, ulOptions: uint, samDesired: uint, phkResult: Pointer[Pointer[Pyi_HKEY__]]) -> int:
   ...
 
 @native
@@ -47812,7 +47812,7 @@ def Pyi_RegOpenKeyExW(hKey: Pointer[Pyi_HKEY__], lpSubKey: Pointer[uint], ulOpti
 
 @native
 @native_name("RegOpenKeyTransactedA")
-def Pyi_RegOpenKeyTransactedA(hKey: Pointer[Pyi_HKEY__], lpSubKey: c_str, ulOptions: uint, samDesired: uint, phkResult: Pointer[Pointer[Pyi_HKEY__]], hTransaction: uintptr, pExtendedParemeter: uintptr) -> int:
+def Pyi_RegOpenKeyTransactedA(hKey: Pointer[Pyi_HKEY__], lpSubKey: CStr, ulOptions: uint, samDesired: uint, phkResult: Pointer[Pointer[Pyi_HKEY__]], hTransaction: uintptr, pExtendedParemeter: uintptr) -> int:
   ...
 
 @native
@@ -47837,7 +47837,7 @@ def Pyi_RegOverridePredefKey(hKey: Pointer[Pyi_HKEY__], hNewHKey: Pointer[Pyi_HK
 
 @native
 @native_name("RegQueryInfoKeyA")
-def Pyi_RegQueryInfoKeyA(hKey: Pointer[Pyi_HKEY__], lpClass: c_str, lpcchClass: Pointer[uint], lpReserved: Pointer[uint], lpcSubKeys: Pointer[uint], lpcbMaxSubKeyLen: Pointer[uint], lpcbMaxClassLen: Pointer[uint], lpcValues: Pointer[uint], lpcbMaxValueNameLen: Pointer[uint], lpcbMaxValueLen: Pointer[uint], lpcbSecurityDescriptor: Pointer[uint], lpftLastWriteTime: Pointer[Pyi__FILETIME]) -> int:
+def Pyi_RegQueryInfoKeyA(hKey: Pointer[Pyi_HKEY__], lpClass: CStr, lpcchClass: Pointer[uint], lpReserved: Pointer[uint], lpcSubKeys: Pointer[uint], lpcbMaxSubKeyLen: Pointer[uint], lpcbMaxClassLen: Pointer[uint], lpcValues: Pointer[uint], lpcbMaxValueNameLen: Pointer[uint], lpcbMaxValueLen: Pointer[uint], lpcbSecurityDescriptor: Pointer[uint], lpftLastWriteTime: Pointer[Pyi__FILETIME]) -> int:
   ...
 
 @native
@@ -47847,7 +47847,7 @@ def Pyi_RegQueryInfoKeyW(hKey: Pointer[Pyi_HKEY__], lpClass: Pointer[uint], lpcc
 
 @native
 @native_name("RegQueryMultipleValuesA")
-def Pyi_RegQueryMultipleValuesA(hKey: Pointer[Pyi_HKEY__], val_list: Pointer[Pyi_value_entA], num_vals: uint, lpValueBuf: c_str, ldwTotsize: Pointer[uint]) -> int:
+def Pyi_RegQueryMultipleValuesA(hKey: Pointer[Pyi_HKEY__], val_list: Pointer[Pyi_value_entA], num_vals: uint, lpValueBuf: CStr, ldwTotsize: Pointer[uint]) -> int:
   ...
 
 @native
@@ -47862,17 +47862,17 @@ def Pyi_RegQueryReflectionKey(hBase: Pointer[Pyi_HKEY__], bIsReflectionDisabled:
 
 @native
 @native_name("RegQueryValueA")
-def Pyi_RegQueryValueA(hKey: Pointer[Pyi_HKEY__], lpSubKey: c_str, lpData: c_str, lpcbData: Pointer[int]) -> int:
+def Pyi_RegQueryValueA(hKey: Pointer[Pyi_HKEY__], lpSubKey: CStr, lpData: CStr, lpcbData: Pointer[int]) -> int:
   ...
 
 @native
 @native_name("RegQueryValueExA")
-def Pyi_RegQueryValueExA(hKey: Pointer[Pyi_HKEY__], lpValueName: c_str, lpReserved: Pointer[uint], lpType: Pointer[uint], lpData: c_str, lpcbData: Pointer[uint]) -> int:
+def Pyi_RegQueryValueExA(hKey: Pointer[Pyi_HKEY__], lpValueName: CStr, lpReserved: Pointer[uint], lpType: Pointer[uint], lpData: CStr, lpcbData: Pointer[uint]) -> int:
   ...
 
 @native
 @native_name("RegQueryValueExW")
-def Pyi_RegQueryValueExW(hKey: Pointer[Pyi_HKEY__], lpValueName: Pointer[uint], lpReserved: Pointer[uint], lpType: Pointer[uint], lpData: c_str, lpcbData: Pointer[uint]) -> int:
+def Pyi_RegQueryValueExW(hKey: Pointer[Pyi_HKEY__], lpValueName: Pointer[uint], lpReserved: Pointer[uint], lpType: Pointer[uint], lpData: CStr, lpcbData: Pointer[uint]) -> int:
   ...
 
 @native
@@ -47887,7 +47887,7 @@ def Pyi_RegRenameKey(hKey: Pointer[Pyi_HKEY__], lpSubKeyName: Pointer[uint], lpN
 
 @native
 @native_name("RegReplaceKeyA")
-def Pyi_RegReplaceKeyA(hKey: Pointer[Pyi_HKEY__], lpSubKey: c_str, lpNewFile: c_str, lpOldFile: c_str) -> int:
+def Pyi_RegReplaceKeyA(hKey: Pointer[Pyi_HKEY__], lpSubKey: CStr, lpNewFile: CStr, lpOldFile: CStr) -> int:
   ...
 
 @native
@@ -47897,7 +47897,7 @@ def Pyi_RegReplaceKeyW(hKey: Pointer[Pyi_HKEY__], lpSubKey: Pointer[uint], lpNew
 
 @native
 @native_name("RegRestoreKeyA")
-def Pyi_RegRestoreKeyA(hKey: Pointer[Pyi_HKEY__], lpFile: c_str, dwFlags: uint) -> int:
+def Pyi_RegRestoreKeyA(hKey: Pointer[Pyi_HKEY__], lpFile: CStr, dwFlags: uint) -> int:
   ...
 
 @native
@@ -47907,12 +47907,12 @@ def Pyi_RegRestoreKeyW(hKey: Pointer[Pyi_HKEY__], lpFile: Pointer[uint], dwFlags
 
 @native
 @native_name("RegSaveKeyA")
-def Pyi_RegSaveKeyA(hKey: Pointer[Pyi_HKEY__], lpFile: c_str, lpSecurityAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES]) -> int:
+def Pyi_RegSaveKeyA(hKey: Pointer[Pyi_HKEY__], lpFile: CStr, lpSecurityAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES]) -> int:
   ...
 
 @native
 @native_name("RegSaveKeyExA")
-def Pyi_RegSaveKeyExA(hKey: Pointer[Pyi_HKEY__], lpFile: c_str, lpSecurityAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], Flags: uint) -> int:
+def Pyi_RegSaveKeyExA(hKey: Pointer[Pyi_HKEY__], lpFile: CStr, lpSecurityAttributes: Pointer[Pyi__SECURITY_ATTRIBUTES], Flags: uint) -> int:
   ...
 
 @native
@@ -47932,7 +47932,7 @@ def Pyi_RegSetKeySecurity(hKey: Pointer[Pyi_HKEY__], SecurityInformation: uint, 
 
 @native
 @native_name("RegSetKeyValueA")
-def Pyi_RegSetKeyValueA(hKey: Pointer[Pyi_HKEY__], lpSubKey: c_str, lpValueName: c_str, dwType: uint, lpData: uintptr, cbData: uint) -> int:
+def Pyi_RegSetKeyValueA(hKey: Pointer[Pyi_HKEY__], lpSubKey: CStr, lpValueName: CStr, dwType: uint, lpData: uintptr, cbData: uint) -> int:
   ...
 
 @native
@@ -47942,12 +47942,12 @@ def Pyi_RegSetKeyValueW(hKey: Pointer[Pyi_HKEY__], lpSubKey: Pointer[uint], lpVa
 
 @native
 @native_name("RegSetValueA")
-def Pyi_RegSetValueA(hKey: Pointer[Pyi_HKEY__], lpSubKey: c_str, dwType: uint, lpData: c_str, cbData: uint) -> int:
+def Pyi_RegSetValueA(hKey: Pointer[Pyi_HKEY__], lpSubKey: CStr, dwType: uint, lpData: CStr, cbData: uint) -> int:
   ...
 
 @native
 @native_name("RegSetValueExA")
-def Pyi_RegSetValueExA(hKey: Pointer[Pyi_HKEY__], lpValueName: c_str, Reserved: uint, dwType: uint, lpData: Pointer[int], cbData: uint) -> int:
+def Pyi_RegSetValueExA(hKey: Pointer[Pyi_HKEY__], lpValueName: CStr, Reserved: uint, dwType: uint, lpData: Pointer[int], cbData: uint) -> int:
   ...
 
 @native
@@ -47962,7 +47962,7 @@ def Pyi_RegSetValueW(hKey: Pointer[Pyi_HKEY__], lpSubKey: Pointer[uint], dwType:
 
 @native
 @native_name("RegUnLoadKeyA")
-def Pyi_RegUnLoadKeyA(hKey: Pointer[Pyi_HKEY__], lpSubKey: c_str) -> int:
+def Pyi_RegUnLoadKeyA(hKey: Pointer[Pyi_HKEY__], lpSubKey: CStr) -> int:
   ...
 
 @native
@@ -48007,7 +48007,7 @@ def Pyi_RegisterClassW(lpWndClass: Pointer[Pyi_tagWNDCLASSW]) -> uint:
 
 @native
 @native_name("RegisterClipboardFormatA")
-def Pyi_RegisterClipboardFormatA(lpszFormat: c_str) -> uint:
+def Pyi_RegisterClipboardFormatA(lpszFormat: CStr) -> uint:
   ...
 
 @native
@@ -48027,7 +48027,7 @@ def Pyi_RegisterDeviceNotificationW(hRecipient: uintptr, NotificationFilter: uin
 
 @native
 @native_name("RegisterEventSourceA")
-def Pyi_RegisterEventSourceA(lpUNCServerName: c_str, lpSourceName: c_str) -> uintptr:
+def Pyi_RegisterEventSourceA(lpUNCServerName: CStr, lpSourceName: CStr) -> uintptr:
   ...
 
 @native
@@ -48072,12 +48072,12 @@ def Pyi_RegisterRawInputDevices(pRawInputDevices: Pointer[Pyi_tagRAWINPUTDEVICE]
 
 @native
 @native_name("RegisterServiceCtrlHandlerA")
-def Pyi_RegisterServiceCtrlHandlerA(lpServiceName: c_str, lpHandlerProc: Function[[uint], None]) -> Pointer[Pyi_SERVICE_STATUS_HANDLE__]:
+def Pyi_RegisterServiceCtrlHandlerA(lpServiceName: CStr, lpHandlerProc: Function[[uint], None]) -> Pointer[Pyi_SERVICE_STATUS_HANDLE__]:
   ...
 
 @native
 @native_name("RegisterServiceCtrlHandlerExA")
-def Pyi_RegisterServiceCtrlHandlerExA(lpServiceName: c_str, lpHandlerProc: Function[[uint, uint, uintptr, uintptr], uint], lpContext: uintptr) -> Pointer[Pyi_SERVICE_STATUS_HANDLE__]:
+def Pyi_RegisterServiceCtrlHandlerExA(lpServiceName: CStr, lpHandlerProc: Function[[uint, uint, uintptr, uintptr], uint], lpContext: uintptr) -> Pointer[Pyi_SERVICE_STATUS_HANDLE__]:
   ...
 
 @native
@@ -48117,7 +48117,7 @@ def Pyi_RegisterWaitForSingleObject(phNewWaitObject: Pointer[uintptr], hObject: 
 
 @native
 @native_name("RegisterWindowMessageA")
-def Pyi_RegisterWindowMessageA(lpString: c_str) -> uint:
+def Pyi_RegisterWindowMessageA(lpString: CStr) -> uint:
   ...
 
 @native
@@ -48177,7 +48177,7 @@ def Pyi_RemoveClipboardFormatListener(hwnd: Pointer[Pyi_HWND__]) -> int:
 
 @native
 @native_name("RemoveDirectoryA")
-def Pyi_RemoveDirectoryA(lpPathName: c_str) -> int:
+def Pyi_RemoveDirectoryA(lpPathName: CStr) -> int:
   ...
 
 @native
@@ -48187,7 +48187,7 @@ def Pyi_RemoveDirectoryFromAppW(lpPathName: Pointer[uint]) -> int:
 
 @native
 @native_name("RemoveDirectoryTransactedA")
-def Pyi_RemoveDirectoryTransactedA(lpPathName: c_str, hTransaction: uintptr) -> int:
+def Pyi_RemoveDirectoryTransactedA(lpPathName: CStr, hTransaction: uintptr) -> int:
   ...
 
 @native
@@ -48212,12 +48212,12 @@ def Pyi_RemoveFontMemResourceEx(h: uintptr) -> int:
 
 @native
 @native_name("RemoveFontResourceA")
-def Pyi_RemoveFontResourceA(lpFileName: c_str) -> int:
+def Pyi_RemoveFontResourceA(lpFileName: CStr) -> int:
   ...
 
 @native
 @native_name("RemoveFontResourceExA")
-def Pyi_RemoveFontResourceExA(name: c_str, fl: uint, pdv: uintptr) -> int:
+def Pyi_RemoveFontResourceExA(name: CStr, fl: uint, pdv: uintptr) -> int:
   ...
 
 @native
@@ -48237,7 +48237,7 @@ def Pyi_RemoveMenu(hMenu: Pointer[Pyi_HMENU__], uPosition: uint, uFlags: uint) -
 
 @native
 @native_name("RemovePropA")
-def Pyi_RemovePropA(hWnd: Pointer[Pyi_HWND__], lpString: c_str) -> uintptr:
+def Pyi_RemovePropA(hWnd: Pointer[Pyi_HWND__], lpString: CStr) -> uintptr:
   ...
 
 @native
@@ -48262,7 +48262,7 @@ def Pyi_RemoveVectoredExceptionHandler(Handle: uintptr) -> uint:
 
 @native
 @native_name("ReplaceFileA")
-def Pyi_ReplaceFileA(lpReplacedFileName: c_str, lpReplacementFileName: c_str, lpBackupFileName: c_str, dwReplaceFlags: uint, lpExclude: uintptr, lpReserved: uintptr) -> int:
+def Pyi_ReplaceFileA(lpReplacedFileName: CStr, lpReplacementFileName: CStr, lpBackupFileName: CStr, dwReplaceFlags: uint, lpExclude: uintptr, lpReserved: uintptr) -> int:
   ...
 
 @native
@@ -48287,7 +48287,7 @@ def Pyi_ReplyMessage(lResult: int64) -> int:
 
 @native
 @native_name("ReportEventA")
-def Pyi_ReportEventA(hEventLog: uintptr, wType: uint, wCategory: uint, dwEventID: uint, lpUserSid: uintptr, wNumStrings: uint, dwDataSize: uint, lpStrings: Pointer[c_str], lpRawData: uintptr) -> int:
+def Pyi_ReportEventA(hEventLog: uintptr, wType: uint, wCategory: uint, dwEventID: uint, lpUserSid: uintptr, wNumStrings: uint, dwDataSize: uint, lpStrings: Pointer[CStr], lpRawData: uintptr) -> int:
   ...
 
 @native
@@ -48662,7 +48662,7 @@ def Pyi_ScrollWindowEx(hWnd: Pointer[Pyi_HWND__], dx: int, dy: int, prcScroll: P
 
 @native
 @native_name("SearchPathA")
-def Pyi_SearchPathA(lpPath: c_str, lpFileName: c_str, lpExtension: c_str, nBufferLength: uint, lpBuffer: c_str, lpFilePart: Pointer[c_str]) -> uint:
+def Pyi_SearchPathA(lpPath: CStr, lpFileName: CStr, lpExtension: CStr, nBufferLength: uint, lpBuffer: CStr, lpFilePart: Pointer[CStr]) -> uint:
   ...
 
 @native
@@ -48807,7 +48807,7 @@ def Pyi_SetCachedSigningLevel(SourceFiles: Pointer[uintptr], SourceFileCount: ui
 
 @native
 @native_name("SetCalendarInfoA")
-def Pyi_SetCalendarInfoA(Locale: uint, Calendar: uint, CalType: uint, lpCalData: c_str) -> int:
+def Pyi_SetCalendarInfoA(Locale: uint, Calendar: uint, CalType: uint, lpCalData: CStr) -> int:
   ...
 
 @native
@@ -48907,7 +48907,7 @@ def Pyi_SetCommTimeouts(hFile: uintptr, lpCommTimeouts: Pointer[Pyi__COMMTIMEOUT
 
 @native
 @native_name("SetComputerNameA")
-def Pyi_SetComputerNameA(lpComputerName: c_str) -> int:
+def Pyi_SetComputerNameA(lpComputerName: CStr) -> int:
   ...
 
 @native
@@ -48917,7 +48917,7 @@ def Pyi_SetComputerNameEx2W(NameType: Pyi_COMPUTER_NAME_FORMAT, Flags: uint, lpB
 
 @native
 @native_name("SetComputerNameExA")
-def Pyi_SetComputerNameExA(NameType: Pyi_COMPUTER_NAME_FORMAT, lpBuffer: c_str) -> int:
+def Pyi_SetComputerNameExA(NameType: Pyi_COMPUTER_NAME_FORMAT, lpBuffer: CStr) -> int:
   ...
 
 @native
@@ -48972,7 +48972,7 @@ def Pyi_SetConsoleMode(hConsoleHandle: uintptr, dwMode: uint) -> int:
 
 @native
 @native_name("SetConsoleNumberOfCommandsA")
-def Pyi_SetConsoleNumberOfCommandsA(Number: uint, ExeName: c_str) -> int:
+def Pyi_SetConsoleNumberOfCommandsA(Number: uint, ExeName: CStr) -> int:
   ...
 
 @native
@@ -49002,7 +49002,7 @@ def Pyi_SetConsoleTextAttribute(hConsoleOutput: uintptr, wAttributes: uint) -> i
 
 @native
 @native_name("SetConsoleTitleA")
-def Pyi_SetConsoleTitleA(lpConsoleTitle: c_str) -> int:
+def Pyi_SetConsoleTitleA(lpConsoleTitle: CStr) -> int:
   ...
 
 @native
@@ -49027,7 +49027,7 @@ def Pyi_SetCurrentConsoleFontEx(hConsoleOutput: uintptr, bMaximumWindow: int, lp
 
 @native
 @native_name("SetCurrentDirectoryA")
-def Pyi_SetCurrentDirectoryA(lpPathName: c_str) -> int:
+def Pyi_SetCurrentDirectoryA(lpPathName: CStr) -> int:
   ...
 
 @native
@@ -49077,7 +49077,7 @@ def Pyi_SetDebugErrorLevel(dwLevel: uint) -> None:
 
 @native
 @native_name("SetDefaultCommConfigA")
-def Pyi_SetDefaultCommConfigA(lpszName: c_str, lpCC: Pointer[Pyi__COMMCONFIG], dwSize: uint) -> int:
+def Pyi_SetDefaultCommConfigA(lpszName: CStr, lpCC: Pointer[Pyi__COMMCONFIG], dwSize: uint) -> int:
   ...
 
 @native
@@ -49122,7 +49122,7 @@ def Pyi_SetDlgItemInt(hDlg: Pointer[Pyi_HWND__], nIDDlgItem: int, uValue: uint, 
 
 @native
 @native_name("SetDlgItemTextA")
-def Pyi_SetDlgItemTextA(hDlg: Pointer[Pyi_HWND__], nIDDlgItem: int, lpString: c_str) -> int:
+def Pyi_SetDlgItemTextA(hDlg: Pointer[Pyi_HWND__], nIDDlgItem: int, lpString: CStr) -> int:
   ...
 
 @native
@@ -49132,7 +49132,7 @@ def Pyi_SetDlgItemTextW(hDlg: Pointer[Pyi_HWND__], nIDDlgItem: int, lpString: Po
 
 @native
 @native_name("SetDllDirectoryA")
-def Pyi_SetDllDirectoryA(lpPathName: c_str) -> int:
+def Pyi_SetDllDirectoryA(lpPathName: CStr) -> int:
   ...
 
 @native
@@ -49162,7 +49162,7 @@ def Pyi_SetEnhMetaFileBits(nSize: uint, pb: Pointer[int]) -> Pointer[Pyi_HENHMET
 
 @native
 @native_name("SetEnvironmentStringsA")
-def Pyi_SetEnvironmentStringsA(NewEnvironment: c_str) -> int:
+def Pyi_SetEnvironmentStringsA(NewEnvironment: CStr) -> int:
   ...
 
 @native
@@ -49172,7 +49172,7 @@ def Pyi_SetEnvironmentStringsW(NewEnvironment: Pointer[uint]) -> int:
 
 @native
 @native_name("SetEnvironmentVariableA")
-def Pyi_SetEnvironmentVariableA(lpName: c_str, lpValue: c_str) -> int:
+def Pyi_SetEnvironmentVariableA(lpName: CStr, lpValue: CStr) -> int:
   ...
 
 @native
@@ -49207,7 +49207,7 @@ def Pyi_SetFileApisToOEM() -> None:
 
 @native
 @native_name("SetFileAttributesA")
-def Pyi_SetFileAttributesA(lpFileName: c_str, dwFileAttributes: uint) -> int:
+def Pyi_SetFileAttributesA(lpFileName: CStr, dwFileAttributes: uint) -> int:
   ...
 
 @native
@@ -49217,7 +49217,7 @@ def Pyi_SetFileAttributesFromAppW(lpFileName: Pointer[uint], dwFileAttributes: u
 
 @native
 @native_name("SetFileAttributesTransactedA")
-def Pyi_SetFileAttributesTransactedA(lpFileName: c_str, dwFileAttributes: uint, hTransaction: uintptr) -> int:
+def Pyi_SetFileAttributesTransactedA(lpFileName: CStr, dwFileAttributes: uint, hTransaction: uintptr) -> int:
   ...
 
 @native
@@ -49247,7 +49247,7 @@ def Pyi_SetFileInformationByHandle(hFile: uintptr, FileInformationClass: Pyi_FIL
 
 @native
 @native_name("SetFileIoOverlappedRange")
-def Pyi_SetFileIoOverlappedRange(FileHandle: uintptr, OverlappedRangeStart: c_str, Length: uint) -> int:
+def Pyi_SetFileIoOverlappedRange(FileHandle: uintptr, OverlappedRangeStart: CStr, Length: uint) -> int:
   ...
 
 @native
@@ -49262,7 +49262,7 @@ def Pyi_SetFilePointerEx(hFile: uintptr, liDistanceToMove: Pyi__LARGE_INTEGER, l
 
 @native
 @native_name("SetFileSecurityA")
-def Pyi_SetFileSecurityA(lpFileName: c_str, SecurityInformation: uint, pSecurityDescriptor: uintptr) -> int:
+def Pyi_SetFileSecurityA(lpFileName: CStr, SecurityInformation: uint, pSecurityDescriptor: uintptr) -> int:
   ...
 
 @native
@@ -49272,7 +49272,7 @@ def Pyi_SetFileSecurityW(lpFileName: Pointer[uint], SecurityInformation: uint, p
 
 @native
 @native_name("SetFileShortNameA")
-def Pyi_SetFileShortNameA(hFile: uintptr, lpShortName: c_str) -> int:
+def Pyi_SetFileShortNameA(hFile: uintptr, lpShortName: CStr) -> int:
   ...
 
 @native
@@ -49292,12 +49292,12 @@ def Pyi_SetFileValidData(hFile: uintptr, ValidDataLength: int64) -> int:
 
 @native
 @native_name("SetFirmwareEnvironmentVariableA")
-def Pyi_SetFirmwareEnvironmentVariableA(lpName: c_str, lpGuid: c_str, pValue: uintptr, nSize: uint) -> int:
+def Pyi_SetFirmwareEnvironmentVariableA(lpName: CStr, lpGuid: CStr, pValue: uintptr, nSize: uint) -> int:
   ...
 
 @native
 @native_name("SetFirmwareEnvironmentVariableExA")
-def Pyi_SetFirmwareEnvironmentVariableExA(lpName: c_str, lpGuid: c_str, pValue: uintptr, nSize: uint, dwAttributes: uint) -> int:
+def Pyi_SetFirmwareEnvironmentVariableExA(lpName: CStr, lpGuid: CStr, pValue: uintptr, nSize: uint, dwAttributes: uint) -> int:
   ...
 
 @native
@@ -49347,7 +49347,7 @@ def Pyi_SetICMMode(hdc: Pointer[Pyi_HDC__], mode: int) -> int:
 
 @native
 @native_name("SetICMProfileA")
-def Pyi_SetICMProfileA(hdc: Pointer[Pyi_HDC__], lpFileName: c_str) -> int:
+def Pyi_SetICMProfileA(hdc: Pointer[Pyi_HDC__], lpFileName: CStr) -> int:
   ...
 
 @native
@@ -49372,7 +49372,7 @@ def Pyi_SetKernelObjectSecurity(Handle: uintptr, SecurityInformation: uint, Secu
 
 @native
 @native_name("SetKeyboardState")
-def Pyi_SetKeyboardState(lpKeyState: c_str) -> int:
+def Pyi_SetKeyboardState(lpKeyState: CStr) -> int:
   ...
 
 @native
@@ -49402,7 +49402,7 @@ def Pyi_SetLocalTime(lpSystemTime: Pointer[Pyi__SYSTEMTIME]) -> int:
 
 @native
 @native_name("SetLocaleInfoA")
-def Pyi_SetLocaleInfoA(Locale: uint, LCType: uint, lpLCData: c_str) -> int:
+def Pyi_SetLocaleInfoA(Locale: uint, LCType: uint, lpLCData: CStr) -> int:
   ...
 
 @native
@@ -49652,7 +49652,7 @@ def Pyi_SetProcessWorkingSetSizeEx(hProcess: uintptr, dwMinimumWorkingSetSize: u
 
 @native
 @native_name("SetPropA")
-def Pyi_SetPropA(hWnd: Pointer[Pyi_HWND__], lpString: c_str, hData: uintptr) -> int:
+def Pyi_SetPropA(hWnd: Pointer[Pyi_HWND__], lpString: CStr, hData: uintptr) -> int:
   ...
 
 @native
@@ -49732,7 +49732,7 @@ def Pyi_SetSecurityDescriptorOwner(pSecurityDescriptor: uintptr, pOwner: uintptr
 
 @native
 @native_name("SetSecurityDescriptorRMControl")
-def Pyi_SetSecurityDescriptorRMControl(SecurityDescriptor: uintptr, RMControl: c_str) -> uint:
+def Pyi_SetSecurityDescriptorRMControl(SecurityDescriptor: uintptr, RMControl: CStr) -> uint:
   ...
 
 @native
@@ -50082,7 +50082,7 @@ def Pyi_SetViewportOrgEx(hdc: Pointer[Pyi_HDC__], x: int, y: int, lppt: Pointer[
 
 @native
 @native_name("SetVolumeLabelA")
-def Pyi_SetVolumeLabelA(lpRootPathName: c_str, lpVolumeName: c_str) -> int:
+def Pyi_SetVolumeLabelA(lpRootPathName: CStr, lpVolumeName: CStr) -> int:
   ...
 
 @native
@@ -50092,7 +50092,7 @@ def Pyi_SetVolumeLabelW(lpRootPathName: Pointer[uint], lpVolumeName: Pointer[uin
 
 @native
 @native_name("SetVolumeMountPointA")
-def Pyi_SetVolumeMountPointA(lpszVolumeMountPoint: c_str, lpszVolumeName: c_str) -> int:
+def Pyi_SetVolumeMountPointA(lpszVolumeMountPoint: CStr, lpszVolumeName: CStr) -> int:
   ...
 
 @native
@@ -50182,7 +50182,7 @@ def Pyi_SetWindowRgn(hWnd: Pointer[Pyi_HWND__], hRgn: Pointer[Pyi_HRGN__], bRedr
 
 @native
 @native_name("SetWindowTextA")
-def Pyi_SetWindowTextA(hWnd: Pointer[Pyi_HWND__], lpString: c_str) -> int:
+def Pyi_SetWindowTextA(hWnd: Pointer[Pyi_HWND__], lpString: CStr) -> int:
   ...
 
 @native
@@ -50332,7 +50332,7 @@ def Pyi_StartPage(hdc: Pointer[Pyi_HDC__]) -> int:
 
 @native
 @native_name("StartServiceA")
-def Pyi_StartServiceA(hService: Pointer[Pyi_SC_HANDLE__], dwNumServiceArgs: uint, lpServiceArgVectors: Pointer[c_str]) -> int:
+def Pyi_StartServiceA(hService: Pointer[Pyi_SC_HANDLE__], dwNumServiceArgs: uint, lpServiceArgVectors: Pointer[CStr]) -> int:
   ...
 
 @native
@@ -50457,7 +50457,7 @@ def Pyi_SystemTimeToTzSpecificLocalTimeEx(lpTimeZoneInformation: Pointer[Pyi__TI
 
 @native
 @native_name("TabbedTextOutA")
-def Pyi_TabbedTextOutA(hdc: Pointer[Pyi_HDC__], x: int, y: int, lpString: c_str, chCount: int, nTabPositions: int, lpnTabStopPositions: Pointer[int], nTabOrigin: int) -> int:
+def Pyi_TabbedTextOutA(hdc: Pointer[Pyi_HDC__], x: int, y: int, lpString: CStr, chCount: int, nTabPositions: int, lpnTabStopPositions: Pointer[int], nTabOrigin: int) -> int:
   ...
 
 @native
@@ -50492,7 +50492,7 @@ def Pyi_TerminateThread(hThread: uintptr, dwExitCode: uint) -> int:
 
 @native
 @native_name("TextOutA")
-def Pyi_TextOutA(hdc: Pointer[Pyi_HDC__], x: int, y: int, lpString: c_str, c: int) -> int:
+def Pyi_TextOutA(hdc: Pointer[Pyi_HDC__], x: int, y: int, lpString: CStr, c: int) -> int:
   ...
 
 @native
@@ -50787,7 +50787,7 @@ def Pyi_UnregisterBadMemoryNotification(RegistrationHandle: uintptr) -> int:
 
 @native
 @native_name("UnregisterClassA")
-def Pyi_UnregisterClassA(lpClassName: c_str, hInstance: Pointer[Pyi_HINSTANCE__]) -> int:
+def Pyi_UnregisterClassA(lpClassName: CStr, hInstance: Pointer[Pyi_HINSTANCE__]) -> int:
   ...
 
 @native
@@ -50862,7 +50862,7 @@ def Pyi_UpdateColors(hdc: Pointer[Pyi_HDC__]) -> int:
 
 @native
 @native_name("UpdateICMRegKeyA")
-def Pyi_UpdateICMRegKeyA(reserved: uint, lpszCMID: c_str, lpszFileName: c_str, command: uint) -> int:
+def Pyi_UpdateICMRegKeyA(reserved: uint, lpszCMID: CStr, lpszFileName: CStr, command: uint) -> int:
   ...
 
 @native
@@ -50887,7 +50887,7 @@ def Pyi_UpdateProcThreadAttribute(lpAttributeList: Pointer[Pyi__PROC_THREAD_ATTR
 
 @native
 @native_name("UpdateResourceA")
-def Pyi_UpdateResourceA(hUpdate: uintptr, lpType: c_str, lpName: c_str, wLanguage: uint, lpData: uintptr, cb: uint) -> int:
+def Pyi_UpdateResourceA(hUpdate: uintptr, lpType: CStr, lpName: CStr, wLanguage: uint, lpData: uintptr, cb: uint) -> int:
   ...
 
 @native
@@ -50917,7 +50917,7 @@ def Pyi_ValidateRgn(hWnd: Pointer[Pyi_HWND__], hRgn: Pointer[Pyi_HRGN__]) -> int
 
 @native
 @native_name("VerFindFileA")
-def Pyi_VerFindFileA(uFlags: uint, szFileName: c_str, szWinDir: c_str, szAppDir: c_str, szCurDir: c_str, puCurDirLen: Pointer[uint], szDestDir: c_str, puDestDirLen: Pointer[uint]) -> uint:
+def Pyi_VerFindFileA(uFlags: uint, szFileName: CStr, szWinDir: CStr, szAppDir: CStr, szCurDir: CStr, puCurDirLen: Pointer[uint], szDestDir: CStr, puDestDirLen: Pointer[uint]) -> uint:
   ...
 
 @native
@@ -50927,7 +50927,7 @@ def Pyi_VerFindFileW(uFlags: uint, szFileName: Pointer[uint], szWinDir: Pointer[
 
 @native
 @native_name("VerInstallFileA")
-def Pyi_VerInstallFileA(uFlags: uint, szSrcFileName: c_str, szDestFileName: c_str, szSrcDir: c_str, szDestDir: c_str, szCurDir: c_str, szTmpFile: c_str, puTmpFileLen: Pointer[uint]) -> uint:
+def Pyi_VerInstallFileA(uFlags: uint, szSrcFileName: CStr, szDestFileName: CStr, szSrcDir: CStr, szDestDir: CStr, szCurDir: CStr, szTmpFile: CStr, puTmpFileLen: Pointer[uint]) -> uint:
   ...
 
 @native
@@ -50937,7 +50937,7 @@ def Pyi_VerInstallFileW(uFlags: uint, szSrcFileName: Pointer[uint], szDestFileNa
 
 @native
 @native_name("VerLanguageNameA")
-def Pyi_VerLanguageNameA(wLang: uint, szLang: c_str, cchLang: uint) -> uint:
+def Pyi_VerLanguageNameA(wLang: uint, szLang: CStr, cchLang: uint) -> uint:
   ...
 
 @native
@@ -50947,7 +50947,7 @@ def Pyi_VerLanguageNameW(wLang: uint, szLang: Pointer[uint], cchLang: uint) -> u
 
 @native
 @native_name("VerQueryValueA")
-def Pyi_VerQueryValueA(pBlock: uintptr, lpSubBlock: c_str, lplpBuffer: Pointer[uintptr], puLen: Pointer[uint]) -> int:
+def Pyi_VerQueryValueA(pBlock: uintptr, lpSubBlock: CStr, lplpBuffer: Pointer[uintptr], puLen: Pointer[uint]) -> int:
   ...
 
 @native
@@ -51077,7 +51077,7 @@ def Pyi_VkKeyScanW(ch: uint) -> int:
 
 @native
 @native_name("WNetAddConnection2A")
-def Pyi_WNetAddConnection2A(lpNetResource: Pointer[Pyi__NETRESOURCEA], lpPassword: c_str, lpUserName: c_str, dwFlags: uint) -> uint:
+def Pyi_WNetAddConnection2A(lpNetResource: Pointer[Pyi__NETRESOURCEA], lpPassword: CStr, lpUserName: CStr, dwFlags: uint) -> uint:
   ...
 
 @native
@@ -51087,7 +51087,7 @@ def Pyi_WNetAddConnection2W(lpNetResource: Pointer[Pyi__NETRESOURCEW], lpPasswor
 
 @native
 @native_name("WNetAddConnection3A")
-def Pyi_WNetAddConnection3A(hwndOwner: Pointer[Pyi_HWND__], lpNetResource: Pointer[Pyi__NETRESOURCEA], lpPassword: c_str, lpUserName: c_str, dwFlags: uint) -> uint:
+def Pyi_WNetAddConnection3A(hwndOwner: Pointer[Pyi_HWND__], lpNetResource: Pointer[Pyi__NETRESOURCEA], lpPassword: CStr, lpUserName: CStr, dwFlags: uint) -> uint:
   ...
 
 @native
@@ -51097,17 +51097,17 @@ def Pyi_WNetAddConnection3W(hwndOwner: Pointer[Pyi_HWND__], lpNetResource: Point
 
 @native
 @native_name("WNetAddConnection4A")
-def Pyi_WNetAddConnection4A(hwndOwner: Pointer[Pyi_HWND__], lpNetResource: Pointer[Pyi__NETRESOURCEA], pAuthBuffer: uintptr, cbAuthBuffer: uint, dwFlags: uint, lpUseOptions: c_str, cbUseOptions: uint) -> uint:
+def Pyi_WNetAddConnection4A(hwndOwner: Pointer[Pyi_HWND__], lpNetResource: Pointer[Pyi__NETRESOURCEA], pAuthBuffer: uintptr, cbAuthBuffer: uint, dwFlags: uint, lpUseOptions: CStr, cbUseOptions: uint) -> uint:
   ...
 
 @native
 @native_name("WNetAddConnection4W")
-def Pyi_WNetAddConnection4W(hwndOwner: Pointer[Pyi_HWND__], lpNetResource: Pointer[Pyi__NETRESOURCEW], pAuthBuffer: uintptr, cbAuthBuffer: uint, dwFlags: uint, lpUseOptions: c_str, cbUseOptions: uint) -> uint:
+def Pyi_WNetAddConnection4W(hwndOwner: Pointer[Pyi_HWND__], lpNetResource: Pointer[Pyi__NETRESOURCEW], pAuthBuffer: uintptr, cbAuthBuffer: uint, dwFlags: uint, lpUseOptions: CStr, cbUseOptions: uint) -> uint:
   ...
 
 @native
 @native_name("WNetAddConnectionA")
-def Pyi_WNetAddConnectionA(lpRemoteName: c_str, lpPassword: c_str, lpLocalName: c_str) -> uint:
+def Pyi_WNetAddConnectionA(lpRemoteName: CStr, lpPassword: CStr, lpLocalName: CStr) -> uint:
   ...
 
 @native
@@ -51117,7 +51117,7 @@ def Pyi_WNetAddConnectionW(lpRemoteName: Pointer[uint], lpPassword: Pointer[uint
 
 @native
 @native_name("WNetCancelConnection2A")
-def Pyi_WNetCancelConnection2A(lpName: c_str, dwFlags: uint, fForce: int) -> uint:
+def Pyi_WNetCancelConnection2A(lpName: CStr, dwFlags: uint, fForce: int) -> uint:
   ...
 
 @native
@@ -51127,7 +51127,7 @@ def Pyi_WNetCancelConnection2W(lpName: Pointer[uint], dwFlags: uint, fForce: int
 
 @native
 @native_name("WNetCancelConnectionA")
-def Pyi_WNetCancelConnectionA(lpName: c_str, fForce: int) -> uint:
+def Pyi_WNetCancelConnectionA(lpName: CStr, fForce: int) -> uint:
   ...
 
 @native
@@ -51182,7 +51182,7 @@ def Pyi_WNetEnumResourceW(hEnum: uintptr, lpcCount: Pointer[uint], lpBuffer: uin
 
 @native
 @native_name("WNetGetConnectionA")
-def Pyi_WNetGetConnectionA(lpLocalName: c_str, lpRemoteName: c_str, lpnLength: Pointer[uint]) -> uint:
+def Pyi_WNetGetConnectionA(lpLocalName: CStr, lpRemoteName: CStr, lpnLength: Pointer[uint]) -> uint:
   ...
 
 @native
@@ -51192,7 +51192,7 @@ def Pyi_WNetGetConnectionW(lpLocalName: Pointer[uint], lpRemoteName: Pointer[uin
 
 @native
 @native_name("WNetGetLastErrorA")
-def Pyi_WNetGetLastErrorA(lpError: Pointer[uint], lpErrorBuf: c_str, nErrorBufSize: uint, lpNameBuf: c_str, nNameBufSize: uint) -> uint:
+def Pyi_WNetGetLastErrorA(lpError: Pointer[uint], lpErrorBuf: CStr, nErrorBufSize: uint, lpNameBuf: CStr, nNameBufSize: uint) -> uint:
   ...
 
 @native
@@ -51202,7 +51202,7 @@ def Pyi_WNetGetLastErrorW(lpError: Pointer[uint], lpErrorBuf: Pointer[uint], nEr
 
 @native
 @native_name("WNetGetNetworkInformationA")
-def Pyi_WNetGetNetworkInformationA(lpProvider: c_str, lpNetInfoStruct: Pointer[Pyi__NETINFOSTRUCT]) -> uint:
+def Pyi_WNetGetNetworkInformationA(lpProvider: CStr, lpNetInfoStruct: Pointer[Pyi__NETINFOSTRUCT]) -> uint:
   ...
 
 @native
@@ -51212,7 +51212,7 @@ def Pyi_WNetGetNetworkInformationW(lpProvider: Pointer[uint], lpNetInfoStruct: P
 
 @native
 @native_name("WNetGetProviderNameA")
-def Pyi_WNetGetProviderNameA(dwNetType: uint, lpProviderName: c_str, lpBufferSize: Pointer[uint]) -> uint:
+def Pyi_WNetGetProviderNameA(dwNetType: uint, lpProviderName: CStr, lpBufferSize: Pointer[uint]) -> uint:
   ...
 
 @native
@@ -51222,7 +51222,7 @@ def Pyi_WNetGetProviderNameW(dwNetType: uint, lpProviderName: Pointer[uint], lpB
 
 @native
 @native_name("WNetGetResourceInformationA")
-def Pyi_WNetGetResourceInformationA(lpNetResource: Pointer[Pyi__NETRESOURCEA], lpBuffer: uintptr, lpcbBuffer: Pointer[uint], lplpSystem: Pointer[c_str]) -> uint:
+def Pyi_WNetGetResourceInformationA(lpNetResource: Pointer[Pyi__NETRESOURCEA], lpBuffer: uintptr, lpcbBuffer: Pointer[uint], lplpSystem: Pointer[CStr]) -> uint:
   ...
 
 @native
@@ -51242,7 +51242,7 @@ def Pyi_WNetGetResourceParentW(lpNetResource: Pointer[Pyi__NETRESOURCEW], lpBuff
 
 @native
 @native_name("WNetGetUniversalNameA")
-def Pyi_WNetGetUniversalNameA(lpLocalPath: c_str, dwInfoLevel: uint, lpBuffer: uintptr, lpBufferSize: Pointer[uint]) -> uint:
+def Pyi_WNetGetUniversalNameA(lpLocalPath: CStr, dwInfoLevel: uint, lpBuffer: uintptr, lpBufferSize: Pointer[uint]) -> uint:
   ...
 
 @native
@@ -51252,7 +51252,7 @@ def Pyi_WNetGetUniversalNameW(lpLocalPath: Pointer[uint], dwInfoLevel: uint, lpB
 
 @native
 @native_name("WNetGetUserA")
-def Pyi_WNetGetUserA(lpName: c_str, lpUserName: c_str, lpnLength: Pointer[uint]) -> uint:
+def Pyi_WNetGetUserA(lpName: CStr, lpUserName: CStr, lpnLength: Pointer[uint]) -> uint:
   ...
 
 @native
@@ -51277,17 +51277,17 @@ def Pyi_WNetRestoreSingleConnectionW(hwndParent: Pointer[Pyi_HWND__], lpDevice: 
 
 @native
 @native_name("WNetUseConnection4A")
-def Pyi_WNetUseConnection4A(hwndOwner: Pointer[Pyi_HWND__], lpNetResource: Pointer[Pyi__NETRESOURCEA], pAuthBuffer: uintptr, cbAuthBuffer: uint, dwFlags: uint, lpUseOptions: c_str, cbUseOptions: uint, lpAccessName: c_str, lpBufferSize: Pointer[uint], lpResult: Pointer[uint]) -> uint:
+def Pyi_WNetUseConnection4A(hwndOwner: Pointer[Pyi_HWND__], lpNetResource: Pointer[Pyi__NETRESOURCEA], pAuthBuffer: uintptr, cbAuthBuffer: uint, dwFlags: uint, lpUseOptions: CStr, cbUseOptions: uint, lpAccessName: CStr, lpBufferSize: Pointer[uint], lpResult: Pointer[uint]) -> uint:
   ...
 
 @native
 @native_name("WNetUseConnection4W")
-def Pyi_WNetUseConnection4W(hwndOwner: Pointer[Pyi_HWND__], lpNetResource: Pointer[Pyi__NETRESOURCEW], pAuthBuffer: uintptr, cbAuthBuffer: uint, dwFlags: uint, lpUseOptions: c_str, cbUseOptions: uint, lpAccessName: Pointer[uint], lpBufferSize: Pointer[uint], lpResult: Pointer[uint]) -> uint:
+def Pyi_WNetUseConnection4W(hwndOwner: Pointer[Pyi_HWND__], lpNetResource: Pointer[Pyi__NETRESOURCEW], pAuthBuffer: uintptr, cbAuthBuffer: uint, dwFlags: uint, lpUseOptions: CStr, cbUseOptions: uint, lpAccessName: Pointer[uint], lpBufferSize: Pointer[uint], lpResult: Pointer[uint]) -> uint:
   ...
 
 @native
 @native_name("WNetUseConnectionA")
-def Pyi_WNetUseConnectionA(hwndOwner: Pointer[Pyi_HWND__], lpNetResource: Pointer[Pyi__NETRESOURCEA], lpPassword: c_str, lpUserId: c_str, dwFlags: uint, lpAccessName: c_str, lpBufferSize: Pointer[uint], lpResult: Pointer[uint]) -> uint:
+def Pyi_WNetUseConnectionA(hwndOwner: Pointer[Pyi_HWND__], lpNetResource: Pointer[Pyi__NETRESOURCEA], lpPassword: CStr, lpUserId: CStr, dwFlags: uint, lpAccessName: CStr, lpBufferSize: Pointer[uint], lpResult: Pointer[uint]) -> uint:
   ...
 
 @native
@@ -51377,7 +51377,7 @@ def Pyi_WaitMessage() -> int:
 
 @native
 @native_name("WaitNamedPipeA")
-def Pyi_WaitNamedPipeA(lpNamedPipeName: c_str, nTimeOut: uint) -> int:
+def Pyi_WaitNamedPipeA(lpNamedPipeName: CStr, nTimeOut: uint) -> int:
   ...
 
 @native
@@ -51417,7 +51417,7 @@ def Pyi_WakeConditionVariable(ConditionVariable: Pointer[Pyi__RTL_CONDITION_VARI
 
 @native
 @native_name("WideCharToMultiByte")
-def Pyi_WideCharToMultiByte(CodePage: uint, dwFlags: uint, lpWideCharStr: Pointer[uint], cchWideChar: int, lpMultiByteStr: c_str, cbMultiByte: int, lpDefaultChar: c_str, lpUsedDefaultChar: Pointer[int]) -> int:
+def Pyi_WideCharToMultiByte(CodePage: uint, dwFlags: uint, lpWideCharStr: Pointer[uint], cchWideChar: int, lpMultiByteStr: CStr, cbMultiByte: int, lpDefaultChar: CStr, lpUsedDefaultChar: Pointer[int]) -> int:
   ...
 
 @native
@@ -51427,12 +51427,12 @@ def Pyi_WidenPath(hdc: Pointer[Pyi_HDC__]) -> int:
 
 @native
 @native_name("WinExec")
-def Pyi_WinExec(lpCmdLine: c_str, uCmdShow: uint) -> uint:
+def Pyi_WinExec(lpCmdLine: CStr, uCmdShow: uint) -> uint:
   ...
 
 @native
 @native_name("WinHelpA")
-def Pyi_WinHelpA(hWndMain: Pointer[Pyi_HWND__], lpszHelp: c_str, uCommand: uint, dwData: uint64) -> int:
+def Pyi_WinHelpA(hWndMain: Pointer[Pyi_HWND__], lpszHelp: CStr, uCommand: uint, dwData: uint64) -> int:
   ...
 
 @native
@@ -51442,7 +51442,7 @@ def Pyi_WinHelpW(hWndMain: Pointer[Pyi_HWND__], lpszHelp: Pointer[uint], uComman
 
 @native
 @native_name("WinMain")
-def Pyi_WinMain(hInstance: Pointer[Pyi_HINSTANCE__], hPrevInstance: Pointer[Pyi_HINSTANCE__], lpCmdLine: c_str, nShowCmd: int) -> int:
+def Pyi_WinMain(hInstance: Pointer[Pyi_HINSTANCE__], hPrevInstance: Pointer[Pyi_HINSTANCE__], lpCmdLine: CStr, nShowCmd: int) -> int:
   ...
 
 @native
@@ -51537,7 +51537,7 @@ def Pyi_WriteConsoleOutputAttribute(hConsoleOutput: uintptr, lpAttribute: Pointe
 
 @native
 @native_name("WriteConsoleOutputCharacterA")
-def Pyi_WriteConsoleOutputCharacterA(hConsoleOutput: uintptr, lpCharacter: c_str, nLength: uint, dwWriteCoord: Pyi__COORD, lpNumberOfCharsWritten: Pointer[uint]) -> int:
+def Pyi_WriteConsoleOutputCharacterA(hConsoleOutput: uintptr, lpCharacter: CStr, nLength: uint, dwWriteCoord: Pyi__COORD, lpNumberOfCharsWritten: Pointer[uint]) -> int:
   ...
 
 @native
@@ -51557,7 +51557,7 @@ def Pyi_WriteConsoleW(hConsoleOutput: uintptr, lpBuffer: uintptr, nNumberOfChars
 
 @native
 @native_name("WriteEncryptedFileRaw")
-def Pyi_WriteEncryptedFileRaw(pfImportCallback: Function[[c_str, uintptr, Pointer[uint]], uint], pvCallbackContext: uintptr, pvContext: uintptr) -> uint:
+def Pyi_WriteEncryptedFileRaw(pfImportCallback: Function[[CStr, uintptr, Pointer[uint]], uint], pvCallbackContext: uintptr, pvContext: uintptr) -> uint:
   ...
 
 @native
@@ -51627,7 +51627,7 @@ def Pyi_WritePointerRelease(Destination: Pointer[uintptr], Value: uintptr) -> No
 
 @native
 @native_name("WritePrivateProfileSectionA")
-def Pyi_WritePrivateProfileSectionA(lpAppName: c_str, lpString: c_str, lpFileName: c_str) -> int:
+def Pyi_WritePrivateProfileSectionA(lpAppName: CStr, lpString: CStr, lpFileName: CStr) -> int:
   ...
 
 @native
@@ -51637,7 +51637,7 @@ def Pyi_WritePrivateProfileSectionW(lpAppName: Pointer[uint], lpString: Pointer[
 
 @native
 @native_name("WritePrivateProfileStringA")
-def Pyi_WritePrivateProfileStringA(lpAppName: c_str, lpKeyName: c_str, lpString: c_str, lpFileName: c_str) -> int:
+def Pyi_WritePrivateProfileStringA(lpAppName: CStr, lpKeyName: CStr, lpString: CStr, lpFileName: CStr) -> int:
   ...
 
 @native
@@ -51647,7 +51647,7 @@ def Pyi_WritePrivateProfileStringW(lpAppName: Pointer[uint], lpKeyName: Pointer[
 
 @native
 @native_name("WritePrivateProfileStructA")
-def Pyi_WritePrivateProfileStructA(lpszSection: c_str, lpszKey: c_str, lpStruct: uintptr, uSizeStruct: uint, szFile: c_str) -> int:
+def Pyi_WritePrivateProfileStructA(lpszSection: CStr, lpszKey: CStr, lpStruct: uintptr, uSizeStruct: uint, szFile: CStr) -> int:
   ...
 
 @native
@@ -51662,7 +51662,7 @@ def Pyi_WriteProcessMemory(hProcess: uintptr, lpBaseAddress: uintptr, lpBuffer: 
 
 @native
 @native_name("WriteProfileSectionA")
-def Pyi_WriteProfileSectionA(lpAppName: c_str, lpString: c_str) -> int:
+def Pyi_WriteProfileSectionA(lpAppName: CStr, lpString: CStr) -> int:
   ...
 
 @native
@@ -51672,7 +51672,7 @@ def Pyi_WriteProfileSectionW(lpAppName: Pointer[uint], lpString: Pointer[uint]) 
 
 @native
 @native_name("WriteProfileStringA")
-def Pyi_WriteProfileStringA(lpAppName: c_str, lpKeyName: c_str, lpString: c_str) -> int:
+def Pyi_WriteProfileStringA(lpAppName: CStr, lpKeyName: CStr, lpString: CStr) -> int:
   ...
 
 @native
@@ -51852,7 +51852,7 @@ def Pyi__InterlockedAnd64(Destination: Pointer[int64], Value: int64) -> int64:
 
 @native
 @native_name("_InterlockedAnd8")
-def Pyi__InterlockedAnd8(Destination: c_str, Value: int) -> int:
+def Pyi__InterlockedAnd8(Destination: CStr, Value: int) -> int:
   ...
 
 @native
@@ -51927,7 +51927,7 @@ def Pyi__InterlockedExchangeAdd64(Addend: Pointer[int64], Value: int64) -> int64
 
 @native
 @native_name("_InterlockedExchangeAdd8")
-def Pyi__InterlockedExchangeAdd8(_Addend: c_str, _Value: int) -> int:
+def Pyi__InterlockedExchangeAdd8(_Addend: CStr, _Value: int) -> int:
   ...
 
 @native
@@ -51967,7 +51967,7 @@ def Pyi__InterlockedOr64(Destination: Pointer[int64], Value: int64) -> int64:
 
 @native
 @native_name("_InterlockedOr8")
-def Pyi__InterlockedOr8(Destination: c_str, Value: int) -> int:
+def Pyi__InterlockedOr8(Destination: CStr, Value: int) -> int:
   ...
 
 @native
@@ -51987,7 +51987,7 @@ def Pyi__InterlockedXor64(Destination: Pointer[int64], Value: int64) -> int64:
 
 @native
 @native_name("_InterlockedXor8")
-def Pyi__InterlockedXor8(Destination: c_str, Value: int) -> int:
+def Pyi__InterlockedXor8(Destination: CStr, Value: int) -> int:
   ...
 
 @native
@@ -52142,7 +52142,7 @@ def Pyi___iswcsymf(_C: uint) -> int:
 
 @native
 @native_name("__movsb")
-def Pyi___movsb(Destination: c_str, Source: Pointer[int], Count: uint64) -> None:
+def Pyi___movsb(Destination: CStr, Source: Pointer[int], Count: uint64) -> None:
   ...
 
 @native
@@ -52227,7 +52227,7 @@ def Pyi___shiftright128(LowPart: uint64, HighPart: uint64, Shift: int) -> uint64
 
 @native
 @native_name("__stosb")
-def Pyi___stosb(Destination: c_str, Value: int, Count: uint64) -> None:
+def Pyi___stosb(Destination: CStr, Value: int, Count: uint64) -> None:
   ...
 
 @native
@@ -52247,7 +52247,7 @@ def Pyi___stosw(Destination: Pointer[uint], Value: uint, Count: uint64) -> None:
 
 @native
 @native_name("__strncnt")
-def Pyi___strncnt(_String: c_str, _Count: uint64) -> uint64:
+def Pyi___strncnt(_String: CStr, _Count: uint64) -> uint64:
   ...
 
 @native
@@ -52262,12 +52262,12 @@ def Pyi___umulh(Multiplier: uint64, Multiplicand: uint64) -> uint64:
 
 @native
 @native_name("__wcserror")
-def Pyi___wcserror(_String: c_str) -> c_str:
+def Pyi___wcserror(_String: CStr) -> CStr:
   ...
 
 @native
 @native_name("__wcserror_s")
-def Pyi___wcserror_s(_Buffer: c_str, _SizeInWords: uint64, _ErrorMessage: c_str) -> int:
+def Pyi___wcserror_s(_Buffer: CStr, _SizeInWords: uint64, _ErrorMessage: CStr) -> int:
   ...
 
 @native
@@ -52357,7 +52357,7 @@ def Pyi__hread(hFile: int, lpBuffer: uintptr, lBytes: int) -> int:
 
 @native
 @native_name("_hwrite")
-def Pyi__hwrite(hFile: int, lpBuffer: c_str, lBytes: int) -> int:
+def Pyi__hwrite(hFile: int, lpBuffer: CStr, lBytes: int) -> int:
   ...
 
 @native
@@ -52392,7 +52392,7 @@ def Pyi__invalid_parameter_noinfo_noreturn() -> None:
 
 @native
 @native_name("_invoke_watson")
-def Pyi__invoke_watson(_Expression: c_str, _FunctionName: c_str, _FileName: c_str, _LineNo: uint, _Reserved: uint64) -> None:
+def Pyi__invoke_watson(_Expression: CStr, _FunctionName: CStr, _FileName: CStr, _LineNo: uint, _Reserved: uint64) -> None:
   ...
 
 @native
@@ -52557,7 +52557,7 @@ def Pyi__lclose(hFile: int) -> int:
 
 @native
 @native_name("_lcreat")
-def Pyi__lcreat(lpPathName: c_str, iAttribute: int) -> int:
+def Pyi__lcreat(lpPathName: CStr, iAttribute: int) -> int:
   ...
 
 @native
@@ -52567,7 +52567,7 @@ def Pyi__llseek(hFile: int, lOffset: int, iOrigin: int) -> int:
 
 @native
 @native_name("_lopen")
-def Pyi__lopen(lpPathName: c_str, iReadWrite: int) -> int:
+def Pyi__lopen(lpPathName: CStr, iReadWrite: int) -> int:
   ...
 
 @native
@@ -52577,7 +52577,7 @@ def Pyi__lread(hFile: int, lpBuffer: uintptr, uBytes: uint) -> uint:
 
 @native
 @native_name("_lwrite")
-def Pyi__lwrite(hFile: int, lpBuffer: c_str, uBytes: uint) -> uint:
+def Pyi__lwrite(hFile: int, lpBuffer: CStr, uBytes: uint) -> uint:
   ...
 
 @native
@@ -52697,147 +52697,147 @@ def Pyi__set_errno(_Value: int) -> int:
 
 @native
 @native_name("_strcmpi")
-def Pyi__strcmpi(_String1: c_str, _String2: c_str) -> int:
+def Pyi__strcmpi(_String1: CStr, _String2: CStr) -> int:
   ...
 
 @native
 @native_name("_strcoll_l")
-def Pyi__strcoll_l(_String1: c_str, _String2: c_str, _Locale: Pointer[Pyi___crt_locale_pointers]) -> int:
+def Pyi__strcoll_l(_String1: CStr, _String2: CStr, _Locale: Pointer[Pyi___crt_locale_pointers]) -> int:
   ...
 
 @native
 @native_name("_strdup")
-def Pyi__strdup(_Source: c_str) -> c_str:
+def Pyi__strdup(_Source: CStr) -> CStr:
   ...
 
 @native
 @native_name("_strerror")
-def Pyi__strerror(_ErrorMessage: c_str) -> c_str:
+def Pyi__strerror(_ErrorMessage: CStr) -> CStr:
   ...
 
 @native
 @native_name("_strerror_s")
-def Pyi__strerror_s(_Buffer: c_str, _SizeInBytes: uint64, _ErrorMessage: c_str) -> int:
+def Pyi__strerror_s(_Buffer: CStr, _SizeInBytes: uint64, _ErrorMessage: CStr) -> int:
   ...
 
 @native
 @native_name("_stricmp")
-def Pyi__stricmp(_String1: c_str, _String2: c_str) -> int:
+def Pyi__stricmp(_String1: CStr, _String2: CStr) -> int:
   ...
 
 @native
 @native_name("_stricmp_l")
-def Pyi__stricmp_l(_String1: c_str, _String2: c_str, _Locale: Pointer[Pyi___crt_locale_pointers]) -> int:
+def Pyi__stricmp_l(_String1: CStr, _String2: CStr, _Locale: Pointer[Pyi___crt_locale_pointers]) -> int:
   ...
 
 @native
 @native_name("_stricoll")
-def Pyi__stricoll(_String1: c_str, _String2: c_str) -> int:
+def Pyi__stricoll(_String1: CStr, _String2: CStr) -> int:
   ...
 
 @native
 @native_name("_stricoll_l")
-def Pyi__stricoll_l(_String1: c_str, _String2: c_str, _Locale: Pointer[Pyi___crt_locale_pointers]) -> int:
+def Pyi__stricoll_l(_String1: CStr, _String2: CStr, _Locale: Pointer[Pyi___crt_locale_pointers]) -> int:
   ...
 
 @native
 @native_name("_strlwr")
-def Pyi__strlwr(_String: c_str) -> c_str:
+def Pyi__strlwr(_String: CStr) -> CStr:
   ...
 
 @native
 @native_name("_strlwr_l")
-def Pyi__strlwr_l(_String: c_str, _Locale: Pointer[Pyi___crt_locale_pointers]) -> c_str:
+def Pyi__strlwr_l(_String: CStr, _Locale: Pointer[Pyi___crt_locale_pointers]) -> CStr:
   ...
 
 @native
 @native_name("_strlwr_s")
-def Pyi__strlwr_s(_String: c_str, _Size: uint64) -> int:
+def Pyi__strlwr_s(_String: CStr, _Size: uint64) -> int:
   ...
 
 @native
 @native_name("_strlwr_s_l")
-def Pyi__strlwr_s_l(_String: c_str, _Size: uint64, _Locale: Pointer[Pyi___crt_locale_pointers]) -> int:
+def Pyi__strlwr_s_l(_String: CStr, _Size: uint64, _Locale: Pointer[Pyi___crt_locale_pointers]) -> int:
   ...
 
 @native
 @native_name("_strncoll")
-def Pyi__strncoll(_String1: c_str, _String2: c_str, _MaxCount: uint64) -> int:
+def Pyi__strncoll(_String1: CStr, _String2: CStr, _MaxCount: uint64) -> int:
   ...
 
 @native
 @native_name("_strncoll_l")
-def Pyi__strncoll_l(_String1: c_str, _String2: c_str, _MaxCount: uint64, _Locale: Pointer[Pyi___crt_locale_pointers]) -> int:
+def Pyi__strncoll_l(_String1: CStr, _String2: CStr, _MaxCount: uint64, _Locale: Pointer[Pyi___crt_locale_pointers]) -> int:
   ...
 
 @native
 @native_name("_strnicmp")
-def Pyi__strnicmp(_String1: c_str, _String2: c_str, _MaxCount: uint64) -> int:
+def Pyi__strnicmp(_String1: CStr, _String2: CStr, _MaxCount: uint64) -> int:
   ...
 
 @native
 @native_name("_strnicmp_l")
-def Pyi__strnicmp_l(_String1: c_str, _String2: c_str, _MaxCount: uint64, _Locale: Pointer[Pyi___crt_locale_pointers]) -> int:
+def Pyi__strnicmp_l(_String1: CStr, _String2: CStr, _MaxCount: uint64, _Locale: Pointer[Pyi___crt_locale_pointers]) -> int:
   ...
 
 @native
 @native_name("_strnicoll")
-def Pyi__strnicoll(_String1: c_str, _String2: c_str, _MaxCount: uint64) -> int:
+def Pyi__strnicoll(_String1: CStr, _String2: CStr, _MaxCount: uint64) -> int:
   ...
 
 @native
 @native_name("_strnicoll_l")
-def Pyi__strnicoll_l(_String1: c_str, _String2: c_str, _MaxCount: uint64, _Locale: Pointer[Pyi___crt_locale_pointers]) -> int:
+def Pyi__strnicoll_l(_String1: CStr, _String2: CStr, _MaxCount: uint64, _Locale: Pointer[Pyi___crt_locale_pointers]) -> int:
   ...
 
 @native
 @native_name("_strnset")
-def Pyi__strnset(_Destination: c_str, _Value: int, _Count: uint64) -> c_str:
+def Pyi__strnset(_Destination: CStr, _Value: int, _Count: uint64) -> CStr:
   ...
 
 @native
 @native_name("_strnset_s")
-def Pyi__strnset_s(_String: c_str, _SizeInBytes: uint64, _Value: int, _MaxCount: uint64) -> int:
+def Pyi__strnset_s(_String: CStr, _SizeInBytes: uint64, _Value: int, _MaxCount: uint64) -> int:
   ...
 
 @native
 @native_name("_strrev")
-def Pyi__strrev(_Str: c_str) -> c_str:
+def Pyi__strrev(_Str: CStr) -> CStr:
   ...
 
 @native
 @native_name("_strset")
-def Pyi__strset(_Destination: c_str, _Value: int) -> c_str:
+def Pyi__strset(_Destination: CStr, _Value: int) -> CStr:
   ...
 
 @native
 @native_name("_strset_s")
-def Pyi__strset_s(_Destination: c_str, _DestinationSize: uint64, _Value: int) -> int:
+def Pyi__strset_s(_Destination: CStr, _DestinationSize: uint64, _Value: int) -> int:
   ...
 
 @native
 @native_name("_strupr")
-def Pyi__strupr(_String: c_str) -> c_str:
+def Pyi__strupr(_String: CStr) -> CStr:
   ...
 
 @native
 @native_name("_strupr_l")
-def Pyi__strupr_l(_String: c_str, _Locale: Pointer[Pyi___crt_locale_pointers]) -> c_str:
+def Pyi__strupr_l(_String: CStr, _Locale: Pointer[Pyi___crt_locale_pointers]) -> CStr:
   ...
 
 @native
 @native_name("_strupr_s")
-def Pyi__strupr_s(_String: c_str, _Size: uint64) -> int:
+def Pyi__strupr_s(_String: CStr, _Size: uint64) -> int:
   ...
 
 @native
 @native_name("_strupr_s_l")
-def Pyi__strupr_s_l(_String: c_str, _Size: uint64, _Locale: Pointer[Pyi___crt_locale_pointers]) -> int:
+def Pyi__strupr_s_l(_String: CStr, _Size: uint64, _Locale: Pointer[Pyi___crt_locale_pointers]) -> int:
   ...
 
 @native
 @native_name("_strxfrm_l")
-def Pyi__strxfrm_l(_Destination: c_str, _Source: c_str, _MaxCount: uint64, _Locale: Pointer[Pyi___crt_locale_pointers]) -> uint64:
+def Pyi__strxfrm_l(_Destination: CStr, _Source: CStr, _MaxCount: uint64, _Locale: Pointer[Pyi___crt_locale_pointers]) -> uint64:
   ...
 
 @native
@@ -52877,142 +52877,142 @@ def Pyi__umul128(Multiplier: uint64, Multiplicand: uint64, HighProduct: Pointer[
 
 @native
 @native_name("_wcscoll_l")
-def Pyi__wcscoll_l(_String1: c_str, _String2: c_str, _Locale: Pointer[Pyi___crt_locale_pointers]) -> int:
+def Pyi__wcscoll_l(_String1: CStr, _String2: CStr, _Locale: Pointer[Pyi___crt_locale_pointers]) -> int:
   ...
 
 @native
 @native_name("_wcsdup")
-def Pyi__wcsdup(_String: c_str) -> c_str:
+def Pyi__wcsdup(_String: CStr) -> CStr:
   ...
 
 @native
 @native_name("_wcserror")
-def Pyi__wcserror(_ErrorNumber: int) -> c_str:
+def Pyi__wcserror(_ErrorNumber: int) -> CStr:
   ...
 
 @native
 @native_name("_wcserror_s")
-def Pyi__wcserror_s(_Buffer: c_str, _SizeInWords: uint64, _ErrorNumber: int) -> int:
+def Pyi__wcserror_s(_Buffer: CStr, _SizeInWords: uint64, _ErrorNumber: int) -> int:
   ...
 
 @native
 @native_name("_wcsicmp")
-def Pyi__wcsicmp(_String1: c_str, _String2: c_str) -> int:
+def Pyi__wcsicmp(_String1: CStr, _String2: CStr) -> int:
   ...
 
 @native
 @native_name("_wcsicmp_l")
-def Pyi__wcsicmp_l(_String1: c_str, _String2: c_str, _Locale: Pointer[Pyi___crt_locale_pointers]) -> int:
+def Pyi__wcsicmp_l(_String1: CStr, _String2: CStr, _Locale: Pointer[Pyi___crt_locale_pointers]) -> int:
   ...
 
 @native
 @native_name("_wcsicoll")
-def Pyi__wcsicoll(_String1: c_str, _String2: c_str) -> int:
+def Pyi__wcsicoll(_String1: CStr, _String2: CStr) -> int:
   ...
 
 @native
 @native_name("_wcsicoll_l")
-def Pyi__wcsicoll_l(_String1: c_str, _String2: c_str, _Locale: Pointer[Pyi___crt_locale_pointers]) -> int:
+def Pyi__wcsicoll_l(_String1: CStr, _String2: CStr, _Locale: Pointer[Pyi___crt_locale_pointers]) -> int:
   ...
 
 @native
 @native_name("_wcslwr")
-def Pyi__wcslwr(_String: c_str) -> c_str:
+def Pyi__wcslwr(_String: CStr) -> CStr:
   ...
 
 @native
 @native_name("_wcslwr_l")
-def Pyi__wcslwr_l(_String: c_str, _Locale: Pointer[Pyi___crt_locale_pointers]) -> c_str:
+def Pyi__wcslwr_l(_String: CStr, _Locale: Pointer[Pyi___crt_locale_pointers]) -> CStr:
   ...
 
 @native
 @native_name("_wcslwr_s")
-def Pyi__wcslwr_s(_String: c_str, _SizeInWords: uint64) -> int:
+def Pyi__wcslwr_s(_String: CStr, _SizeInWords: uint64) -> int:
   ...
 
 @native
 @native_name("_wcslwr_s_l")
-def Pyi__wcslwr_s_l(_String: c_str, _SizeInWords: uint64, _Locale: Pointer[Pyi___crt_locale_pointers]) -> int:
+def Pyi__wcslwr_s_l(_String: CStr, _SizeInWords: uint64, _Locale: Pointer[Pyi___crt_locale_pointers]) -> int:
   ...
 
 @native
 @native_name("_wcsncoll")
-def Pyi__wcsncoll(_String1: c_str, _String2: c_str, _MaxCount: uint64) -> int:
+def Pyi__wcsncoll(_String1: CStr, _String2: CStr, _MaxCount: uint64) -> int:
   ...
 
 @native
 @native_name("_wcsncoll_l")
-def Pyi__wcsncoll_l(_String1: c_str, _String2: c_str, _MaxCount: uint64, _Locale: Pointer[Pyi___crt_locale_pointers]) -> int:
+def Pyi__wcsncoll_l(_String1: CStr, _String2: CStr, _MaxCount: uint64, _Locale: Pointer[Pyi___crt_locale_pointers]) -> int:
   ...
 
 @native
 @native_name("_wcsnicmp")
-def Pyi__wcsnicmp(_String1: c_str, _String2: c_str, _MaxCount: uint64) -> int:
+def Pyi__wcsnicmp(_String1: CStr, _String2: CStr, _MaxCount: uint64) -> int:
   ...
 
 @native
 @native_name("_wcsnicmp_l")
-def Pyi__wcsnicmp_l(_String1: c_str, _String2: c_str, _MaxCount: uint64, _Locale: Pointer[Pyi___crt_locale_pointers]) -> int:
+def Pyi__wcsnicmp_l(_String1: CStr, _String2: CStr, _MaxCount: uint64, _Locale: Pointer[Pyi___crt_locale_pointers]) -> int:
   ...
 
 @native
 @native_name("_wcsnicoll")
-def Pyi__wcsnicoll(_String1: c_str, _String2: c_str, _MaxCount: uint64) -> int:
+def Pyi__wcsnicoll(_String1: CStr, _String2: CStr, _MaxCount: uint64) -> int:
   ...
 
 @native
 @native_name("_wcsnicoll_l")
-def Pyi__wcsnicoll_l(_String1: c_str, _String2: c_str, _MaxCount: uint64, _Locale: Pointer[Pyi___crt_locale_pointers]) -> int:
+def Pyi__wcsnicoll_l(_String1: CStr, _String2: CStr, _MaxCount: uint64, _Locale: Pointer[Pyi___crt_locale_pointers]) -> int:
   ...
 
 @native
 @native_name("_wcsnset")
-def Pyi__wcsnset(_String: c_str, _Value: uint, _MaxCount: uint64) -> c_str:
+def Pyi__wcsnset(_String: CStr, _Value: uint, _MaxCount: uint64) -> CStr:
   ...
 
 @native
 @native_name("_wcsnset_s")
-def Pyi__wcsnset_s(_Destination: c_str, _SizeInWords: uint64, _Value: uint, _MaxCount: uint64) -> int:
+def Pyi__wcsnset_s(_Destination: CStr, _SizeInWords: uint64, _Value: uint, _MaxCount: uint64) -> int:
   ...
 
 @native
 @native_name("_wcsrev")
-def Pyi__wcsrev(_String: c_str) -> c_str:
+def Pyi__wcsrev(_String: CStr) -> CStr:
   ...
 
 @native
 @native_name("_wcsset")
-def Pyi__wcsset(_String: c_str, _Value: uint) -> c_str:
+def Pyi__wcsset(_String: CStr, _Value: uint) -> CStr:
   ...
 
 @native
 @native_name("_wcsset_s")
-def Pyi__wcsset_s(_Destination: c_str, _SizeInWords: uint64, _Value: uint) -> int:
+def Pyi__wcsset_s(_Destination: CStr, _SizeInWords: uint64, _Value: uint) -> int:
   ...
 
 @native
 @native_name("_wcsupr")
-def Pyi__wcsupr(_String: c_str) -> c_str:
+def Pyi__wcsupr(_String: CStr) -> CStr:
   ...
 
 @native
 @native_name("_wcsupr_l")
-def Pyi__wcsupr_l(_String: c_str, _Locale: Pointer[Pyi___crt_locale_pointers]) -> c_str:
+def Pyi__wcsupr_l(_String: CStr, _Locale: Pointer[Pyi___crt_locale_pointers]) -> CStr:
   ...
 
 @native
 @native_name("_wcsupr_s")
-def Pyi__wcsupr_s(_String: c_str, _Size: uint64) -> int:
+def Pyi__wcsupr_s(_String: CStr, _Size: uint64) -> int:
   ...
 
 @native
 @native_name("_wcsupr_s_l")
-def Pyi__wcsupr_s_l(_String: c_str, _Size: uint64, _Locale: Pointer[Pyi___crt_locale_pointers]) -> int:
+def Pyi__wcsupr_s_l(_String: CStr, _Size: uint64, _Locale: Pointer[Pyi___crt_locale_pointers]) -> int:
   ...
 
 @native
 @native_name("_wcsxfrm_l")
-def Pyi__wcsxfrm_l(_Destination: c_str, _Source: c_str, _MaxCount: uint64, _Locale: Pointer[Pyi___crt_locale_pointers]) -> uint64:
+def Pyi__wcsxfrm_l(_Destination: CStr, _Source: CStr, _MaxCount: uint64, _Locale: Pointer[Pyi___crt_locale_pointers]) -> uint64:
   ...
 
 @native
@@ -53162,7 +53162,7 @@ def Pyi_keybd_event(bVk: int, bScan: int, dwFlags: uint, dwExtraInfo: uint64) ->
 
 @native
 @native_name("lstrcatA")
-def Pyi_lstrcatA(lpString1: c_str, lpString2: c_str) -> c_str:
+def Pyi_lstrcatA(lpString1: CStr, lpString2: CStr) -> CStr:
   ...
 
 @native
@@ -53172,7 +53172,7 @@ def Pyi_lstrcatW(lpString1: Pointer[uint], lpString2: Pointer[uint]) -> Pointer[
 
 @native
 @native_name("lstrcmpA")
-def Pyi_lstrcmpA(lpString1: c_str, lpString2: c_str) -> int:
+def Pyi_lstrcmpA(lpString1: CStr, lpString2: CStr) -> int:
   ...
 
 @native
@@ -53182,7 +53182,7 @@ def Pyi_lstrcmpW(lpString1: Pointer[uint], lpString2: Pointer[uint]) -> int:
 
 @native
 @native_name("lstrcmpiA")
-def Pyi_lstrcmpiA(lpString1: c_str, lpString2: c_str) -> int:
+def Pyi_lstrcmpiA(lpString1: CStr, lpString2: CStr) -> int:
   ...
 
 @native
@@ -53192,7 +53192,7 @@ def Pyi_lstrcmpiW(lpString1: Pointer[uint], lpString2: Pointer[uint]) -> int:
 
 @native
 @native_name("lstrcpyA")
-def Pyi_lstrcpyA(lpString1: c_str, lpString2: c_str) -> c_str:
+def Pyi_lstrcpyA(lpString1: CStr, lpString2: CStr) -> CStr:
   ...
 
 @native
@@ -53202,7 +53202,7 @@ def Pyi_lstrcpyW(lpString1: Pointer[uint], lpString2: Pointer[uint]) -> Pointer[
 
 @native
 @native_name("lstrcpynA")
-def Pyi_lstrcpynA(lpString1: c_str, lpString2: c_str, iMaxLength: int) -> c_str:
+def Pyi_lstrcpynA(lpString1: CStr, lpString2: CStr, iMaxLength: int) -> CStr:
   ...
 
 @native
@@ -53212,7 +53212,7 @@ def Pyi_lstrcpynW(lpString1: Pointer[uint], lpString2: Pointer[uint], iMaxLength
 
 @native
 @native_name("lstrlenA")
-def Pyi_lstrlenA(lpString: c_str) -> int:
+def Pyi_lstrlenA(lpString: CStr) -> int:
   ...
 
 @native
@@ -53237,152 +53237,152 @@ def Pyi_mouse_event(dwFlags: uint, dx: uint, dy: uint, dwData: uint, dwExtraInfo
 
 @native
 @native_name("strcat")
-def Pyi_strcat(_Destination: c_str, _Source: c_str) -> c_str:
+def Pyi_strcat(_Destination: CStr, _Source: CStr) -> CStr:
   ...
 
 @native
 @native_name("strcat_s")
-def Pyi_strcat_s(_Destination: c_str, _SizeInBytes: uint64, _Source: c_str) -> int:
+def Pyi_strcat_s(_Destination: CStr, _SizeInBytes: uint64, _Source: CStr) -> int:
   ...
 
 @native
 @native_name("strcmp")
-def Pyi_strcmp(_Str1: c_str, _Str2: c_str) -> int:
+def Pyi_strcmp(_Str1: CStr, _Str2: CStr) -> int:
   ...
 
 @native
 @native_name("strcmpi")
-def Pyi_strcmpi(_String1: c_str, _String2: c_str) -> int:
+def Pyi_strcmpi(_String1: CStr, _String2: CStr) -> int:
   ...
 
 @native
 @native_name("strcoll")
-def Pyi_strcoll(_String1: c_str, _String2: c_str) -> int:
+def Pyi_strcoll(_String1: CStr, _String2: CStr) -> int:
   ...
 
 @native
 @native_name("strcpy")
-def Pyi_strcpy(_Destination: c_str, _Source: c_str) -> c_str:
+def Pyi_strcpy(_Destination: CStr, _Source: CStr) -> CStr:
   ...
 
 @native
 @native_name("strcpy_s")
-def Pyi_strcpy_s(_Destination: c_str, _SizeInBytes: uint64, _Source: c_str) -> int:
+def Pyi_strcpy_s(_Destination: CStr, _SizeInBytes: uint64, _Source: CStr) -> int:
   ...
 
 @native
 @native_name("strcspn")
-def Pyi_strcspn(_Str: c_str, _Control: c_str) -> uint64:
+def Pyi_strcspn(_Str: CStr, _Control: CStr) -> uint64:
   ...
 
 @native
 @native_name("strdup")
-def Pyi_strdup(_String: c_str) -> c_str:
+def Pyi_strdup(_String: CStr) -> CStr:
   ...
 
 @native
 @native_name("strerror")
-def Pyi_strerror(_ErrorMessage: int) -> c_str:
+def Pyi_strerror(_ErrorMessage: int) -> CStr:
   ...
 
 @native
 @native_name("strerror_s")
-def Pyi_strerror_s(_Buffer: c_str, _SizeInBytes: uint64, _ErrorNumber: int) -> int:
+def Pyi_strerror_s(_Buffer: CStr, _SizeInBytes: uint64, _ErrorNumber: int) -> int:
   ...
 
 @native
 @native_name("stricmp")
-def Pyi_stricmp(_String1: c_str, _String2: c_str) -> int:
+def Pyi_stricmp(_String1: CStr, _String2: CStr) -> int:
   ...
 
 @native
 @native_name("strlen")
-def Pyi_strlen(_Str: c_str) -> uint64:
+def Pyi_strlen(_Str: CStr) -> uint64:
   ...
 
 @native
 @native_name("strlwr")
-def Pyi_strlwr(_String: c_str) -> c_str:
+def Pyi_strlwr(_String: CStr) -> CStr:
   ...
 
 @native
 @native_name("strncat")
-def Pyi_strncat(_Destination: c_str, _Source: c_str, _Count: uint64) -> c_str:
+def Pyi_strncat(_Destination: CStr, _Source: CStr, _Count: uint64) -> CStr:
   ...
 
 @native
 @native_name("strncat_s")
-def Pyi_strncat_s(_Destination: c_str, _SizeInBytes: uint64, _Source: c_str, _MaxCount: uint64) -> int:
+def Pyi_strncat_s(_Destination: CStr, _SizeInBytes: uint64, _Source: CStr, _MaxCount: uint64) -> int:
   ...
 
 @native
 @native_name("strncmp")
-def Pyi_strncmp(_Str1: c_str, _Str2: c_str, _MaxCount: uint64) -> int:
+def Pyi_strncmp(_Str1: CStr, _Str2: CStr, _MaxCount: uint64) -> int:
   ...
 
 @native
 @native_name("strncpy")
-def Pyi_strncpy(_Destination: c_str, _Source: c_str, _Count: uint64) -> c_str:
+def Pyi_strncpy(_Destination: CStr, _Source: CStr, _Count: uint64) -> CStr:
   ...
 
 @native
 @native_name("strncpy_s")
-def Pyi_strncpy_s(_Destination: c_str, _SizeInBytes: uint64, _Source: c_str, _MaxCount: uint64) -> int:
+def Pyi_strncpy_s(_Destination: CStr, _SizeInBytes: uint64, _Source: CStr, _MaxCount: uint64) -> int:
   ...
 
 @native
 @native_name("strnicmp")
-def Pyi_strnicmp(_String1: c_str, _String2: c_str, _MaxCount: uint64) -> int:
+def Pyi_strnicmp(_String1: CStr, _String2: CStr, _MaxCount: uint64) -> int:
   ...
 
 @native
 @native_name("strnlen")
-def Pyi_strnlen(_String: c_str, _MaxCount: uint64) -> uint64:
+def Pyi_strnlen(_String: CStr, _MaxCount: uint64) -> uint64:
   ...
 
 @native
 @native_name("strnset")
-def Pyi_strnset(_String: c_str, _Value: int, _MaxCount: uint64) -> c_str:
+def Pyi_strnset(_String: CStr, _Value: int, _MaxCount: uint64) -> CStr:
   ...
 
 @native
 @native_name("strpbrk")
-def Pyi_strpbrk(_Str: c_str, _Control: c_str) -> c_str:
+def Pyi_strpbrk(_Str: CStr, _Control: CStr) -> CStr:
   ...
 
 @native
 @native_name("strrev")
-def Pyi_strrev(_String: c_str) -> c_str:
+def Pyi_strrev(_String: CStr) -> CStr:
   ...
 
 @native
 @native_name("strset")
-def Pyi_strset(_String: c_str, _Value: int) -> c_str:
+def Pyi_strset(_String: CStr, _Value: int) -> CStr:
   ...
 
 @native
 @native_name("strspn")
-def Pyi_strspn(_Str: c_str, _Control: c_str) -> uint64:
+def Pyi_strspn(_Str: CStr, _Control: CStr) -> uint64:
   ...
 
 @native
 @native_name("strtok")
-def Pyi_strtok(_String: c_str, _Delimiter: c_str) -> c_str:
+def Pyi_strtok(_String: CStr, _Delimiter: CStr) -> CStr:
   ...
 
 @native
 @native_name("strtok_s")
-def Pyi_strtok_s(_String: c_str, _Delimiter: c_str, _Context: Pointer[c_str]) -> c_str:
+def Pyi_strtok_s(_String: CStr, _Delimiter: CStr, _Context: Pointer[CStr]) -> CStr:
   ...
 
 @native
 @native_name("strupr")
-def Pyi_strupr(_String: c_str) -> c_str:
+def Pyi_strupr(_String: CStr) -> CStr:
   ...
 
 @native
 @native_name("strxfrm")
-def Pyi_strxfrm(_Destination: c_str, _Source: c_str, _MaxCount: uint64) -> uint64:
+def Pyi_strxfrm(_Destination: CStr, _Source: CStr, _MaxCount: uint64) -> uint64:
   ...
 
 @native
@@ -53457,142 +53457,142 @@ def Pyi_wWinMain(hInstance: Pointer[Pyi_HINSTANCE__], hPrevInstance: Pointer[Pyi
 
 @native
 @native_name("wcscat")
-def Pyi_wcscat(_Destination: c_str, _Source: c_str) -> c_str:
+def Pyi_wcscat(_Destination: CStr, _Source: CStr) -> CStr:
   ...
 
 @native
 @native_name("wcscat_s")
-def Pyi_wcscat_s(_Destination: c_str, _SizeInWords: uint64, _Source: c_str) -> int:
+def Pyi_wcscat_s(_Destination: CStr, _SizeInWords: uint64, _Source: CStr) -> int:
   ...
 
 @native
 @native_name("wcscmp")
-def Pyi_wcscmp(_String1: c_str, _String2: c_str) -> int:
+def Pyi_wcscmp(_String1: CStr, _String2: CStr) -> int:
   ...
 
 @native
 @native_name("wcscoll")
-def Pyi_wcscoll(_String1: c_str, _String2: c_str) -> int:
+def Pyi_wcscoll(_String1: CStr, _String2: CStr) -> int:
   ...
 
 @native
 @native_name("wcscpy")
-def Pyi_wcscpy(_Destination: c_str, _Source: c_str) -> c_str:
+def Pyi_wcscpy(_Destination: CStr, _Source: CStr) -> CStr:
   ...
 
 @native
 @native_name("wcscpy_s")
-def Pyi_wcscpy_s(_Destination: c_str, _SizeInWords: uint64, _Source: c_str) -> int:
+def Pyi_wcscpy_s(_Destination: CStr, _SizeInWords: uint64, _Source: CStr) -> int:
   ...
 
 @native
 @native_name("wcscspn")
-def Pyi_wcscspn(_String: c_str, _Control: c_str) -> uint64:
+def Pyi_wcscspn(_String: CStr, _Control: CStr) -> uint64:
   ...
 
 @native
 @native_name("wcsdup")
-def Pyi_wcsdup(_String: c_str) -> c_str:
+def Pyi_wcsdup(_String: CStr) -> CStr:
   ...
 
 @native
 @native_name("wcsicmp")
-def Pyi_wcsicmp(_String1: c_str, _String2: c_str) -> int:
+def Pyi_wcsicmp(_String1: CStr, _String2: CStr) -> int:
   ...
 
 @native
 @native_name("wcsicoll")
-def Pyi_wcsicoll(_String1: c_str, _String2: c_str) -> int:
+def Pyi_wcsicoll(_String1: CStr, _String2: CStr) -> int:
   ...
 
 @native
 @native_name("wcslen")
-def Pyi_wcslen(_String: c_str) -> uint64:
+def Pyi_wcslen(_String: CStr) -> uint64:
   ...
 
 @native
 @native_name("wcslwr")
-def Pyi_wcslwr(_String: c_str) -> c_str:
+def Pyi_wcslwr(_String: CStr) -> CStr:
   ...
 
 @native
 @native_name("wcsncat")
-def Pyi_wcsncat(_Destination: c_str, _Source: c_str, _Count: uint64) -> c_str:
+def Pyi_wcsncat(_Destination: CStr, _Source: CStr, _Count: uint64) -> CStr:
   ...
 
 @native
 @native_name("wcsncat_s")
-def Pyi_wcsncat_s(_Destination: c_str, _SizeInWords: uint64, _Source: c_str, _MaxCount: uint64) -> int:
+def Pyi_wcsncat_s(_Destination: CStr, _SizeInWords: uint64, _Source: CStr, _MaxCount: uint64) -> int:
   ...
 
 @native
 @native_name("wcsncmp")
-def Pyi_wcsncmp(_String1: c_str, _String2: c_str, _MaxCount: uint64) -> int:
+def Pyi_wcsncmp(_String1: CStr, _String2: CStr, _MaxCount: uint64) -> int:
   ...
 
 @native
 @native_name("wcsncpy")
-def Pyi_wcsncpy(_Destination: c_str, _Source: c_str, _Count: uint64) -> c_str:
+def Pyi_wcsncpy(_Destination: CStr, _Source: CStr, _Count: uint64) -> CStr:
   ...
 
 @native
 @native_name("wcsncpy_s")
-def Pyi_wcsncpy_s(_Destination: c_str, _SizeInWords: uint64, _Source: c_str, _MaxCount: uint64) -> int:
+def Pyi_wcsncpy_s(_Destination: CStr, _SizeInWords: uint64, _Source: CStr, _MaxCount: uint64) -> int:
   ...
 
 @native
 @native_name("wcsnicmp")
-def Pyi_wcsnicmp(_String1: c_str, _String2: c_str, _MaxCount: uint64) -> int:
+def Pyi_wcsnicmp(_String1: CStr, _String2: CStr, _MaxCount: uint64) -> int:
   ...
 
 @native
 @native_name("wcsnlen")
-def Pyi_wcsnlen(_Source: c_str, _MaxCount: uint64) -> uint64:
+def Pyi_wcsnlen(_Source: CStr, _MaxCount: uint64) -> uint64:
   ...
 
 @native
 @native_name("wcsnset")
-def Pyi_wcsnset(_String: c_str, _Value: uint, _MaxCount: uint64) -> c_str:
+def Pyi_wcsnset(_String: CStr, _Value: uint, _MaxCount: uint64) -> CStr:
   ...
 
 @native
 @native_name("wcspbrk")
-def Pyi_wcspbrk(_String: c_str, _Control: c_str) -> c_str:
+def Pyi_wcspbrk(_String: CStr, _Control: CStr) -> CStr:
   ...
 
 @native
 @native_name("wcsrev")
-def Pyi_wcsrev(_String: c_str) -> c_str:
+def Pyi_wcsrev(_String: CStr) -> CStr:
   ...
 
 @native
 @native_name("wcsset")
-def Pyi_wcsset(_String: c_str, _Value: uint) -> c_str:
+def Pyi_wcsset(_String: CStr, _Value: uint) -> CStr:
   ...
 
 @native
 @native_name("wcsspn")
-def Pyi_wcsspn(_String: c_str, _Control: c_str) -> uint64:
+def Pyi_wcsspn(_String: CStr, _Control: CStr) -> uint64:
   ...
 
 @native
 @native_name("wcstok")
-def Pyi_wcstok(_String: c_str, _Delimiter: c_str, _Context: Pointer[c_str]) -> c_str:
+def Pyi_wcstok(_String: CStr, _Delimiter: CStr, _Context: Pointer[CStr]) -> CStr:
   ...
 
 @native
 @native_name("wcstok_s")
-def Pyi_wcstok_s(_String: c_str, _Delimiter: c_str, _Context: Pointer[c_str]) -> c_str:
+def Pyi_wcstok_s(_String: CStr, _Delimiter: CStr, _Context: Pointer[CStr]) -> CStr:
   ...
 
 @native
 @native_name("wcsupr")
-def Pyi_wcsupr(_String: c_str) -> c_str:
+def Pyi_wcsupr(_String: CStr) -> CStr:
   ...
 
 @native
 @native_name("wcsxfrm")
-def Pyi_wcsxfrm(_Destination: c_str, _Source: c_str, _MaxCount: uint64) -> uint64:
+def Pyi_wcsxfrm(_Destination: CStr, _Source: CStr, _MaxCount: uint64) -> uint64:
   ...
 
 @native
@@ -53637,7 +53637,7 @@ def Pyi_wglGetLayerPaletteEntries(arg0: Pointer[Pyi_HDC__], arg1: int, arg2: int
 
 @native
 @native_name("wglGetProcAddress")
-def Pyi_wglGetProcAddress(arg0: c_str) -> uintptr:  # C: long long ()
+def Pyi_wglGetProcAddress(arg0: CStr) -> uintptr:  # C: long long ()
   ...
 
 @native
@@ -53692,7 +53692,7 @@ def Pyi_wglUseFontOutlinesW(arg0: Pointer[Pyi_HDC__], arg1: uint, arg2: uint, ar
 
 @native
 @native_name("wsprintfA")
-def Pyi_wsprintfA(arg0: c_str, arg1: c_str) -> int:
+def Pyi_wsprintfA(arg0: CStr, arg1: CStr) -> int:
   ...
 
 @native
@@ -53702,12 +53702,12 @@ def Pyi_wsprintfW(arg0: Pointer[uint], arg1: Pointer[uint]) -> int:
 
 @native
 @native_name("wvsprintfA")
-def Pyi_wvsprintfA(arg0: c_str, arg1: c_str, arglist: c_str) -> int:
+def Pyi_wvsprintfA(arg0: CStr, arg1: CStr, arglist: CStr) -> int:
   ...
 
 @native
 @native_name("wvsprintfW")
-def Pyi_wvsprintfW(arg0: Pointer[uint], arg1: Pointer[uint], arglist: c_str) -> int:
+def Pyi_wvsprintfW(arg0: Pointer[uint], arg1: Pointer[uint], arglist: CStr) -> int:
   ...
 
 # stats: structs=998 enums=138 aliases=1104 consts=13214 funcs=3290

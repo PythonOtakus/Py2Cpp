@@ -2,12 +2,12 @@
 
 参考 CPython 3.13 ``Modules/_io``、``Objects/fileobject.c``（``FILE*``）与
 ``Lib/_pyio.py`` 中 ``StringIO`` 语义；实现不用 STL，文件层用 C stdio，
-``StringIO`` 用 ``char[:]`` 码点缓冲 + ``str.copy_to``（见编码规范 §9）。
+``StringIO`` 用 ``char[:]`` 码点缓冲 + ``str.copyTo``（见编码规范 §9）。
 """
 from ..builtins import *
 from ..text import str
 from ..util.list import list
-from ..util.memory import append_chars
+from ..util.memory import appendChars
 
 
 @mixin
@@ -34,7 +34,6 @@ class AsyncCloseMixin:
 
 
 @copyable
-@native_name("Py*")
 class StringIO(CloseMixin):
   """内存文本流：``write`` / ``read`` / ``value`` / ``pos`` / ``seek`` / ``tell``。"""
 
@@ -56,6 +55,15 @@ class StringIO(CloseMixin):
 
   def close(self) -> None:
     self._closed = True
+
+  def flush(self) -> None:
+    """内存流无缓冲副作用；保留 API 与 ``TextIOWrapper.flush`` 对齐。"""
+    return
+
+  @property
+  @immutable
+  def isAtty(self) -> bool:
+    return False
 
   @immutable
   def tell(self) -> int:
@@ -85,7 +93,7 @@ class StringIO(CloseMixin):
     sn: int = len(s)
     if sn == 0:
       return 0
-    self._pos = s.copy_to(self._buf, self._pos)
+    self._pos = s.copyTo(self._buf, self._pos)
     return sn
 
   @overload
@@ -95,7 +103,7 @@ class StringIO(CloseMixin):
       return 0
     if end <= 0:
       return 0
-    self._pos = append_chars(self._buf, self._pos, src, end)
+    self._pos = appendChars(self._buf, self._pos, src, end)
     return end
 
   def read(self, size: int = -1) -> str:
@@ -117,7 +125,7 @@ class StringIO(CloseMixin):
     self._pos = at + size
     return str(buf)
 
-  def readline(self, size: int = -1) -> str:
+  def readLine(self, size: int = -1) -> str:
     if self._closed:
       return ""
     n: int = len(self._buf)
@@ -145,11 +153,11 @@ class StringIO(CloseMixin):
     self._pos = at + cnt
     return str(buf)
 
-  def readlines(self, hint: int = -1) -> list[str]:
-    """按行读到 EOF；``hint`` 为已读字符累计上界（对齐 CPython ``TextIOBase.readlines``）。"""
+  def readLines(self, hint: int = -1) -> list[str]:
+    """按行读到 EOF；``hint`` 为已读字符累计上界（对齐 CPython ``TextIOBase.readLines``）。"""
     lines: list[str] = []
     while True:
-      line: str = self.readline()
+      line: str = self.readLine()
       if not line:
         break
       lines.append(line)
@@ -159,8 +167,8 @@ class StringIO(CloseMixin):
           break
     return lines
 
-  def writelines(self, lines: list[str]) -> None:
-    """逐行 ``write``（不自动补换行，对齐 CPython ``TextIOBase.writelines``）。"""
+  def writeLines(self, lines: list[str]) -> None:
+    """逐行 ``write``（不自动补换行，对齐 CPython ``TextIOBase.writeLines``）。"""
     for line in lines:
       self.write(line)
 
@@ -168,7 +176,7 @@ class StringIO(CloseMixin):
     return self
 
   def __next__(self) -> str:
-    line: str = self.readline()
+    line: str = self.readLine()
     if not line:
       raise StopIteration
     return line
@@ -200,13 +208,13 @@ class StringIO(CloseMixin):
   def pos(self, value: int):
     self.seek(value)
 
-  def _ensure_room(self, end: int) -> None:
+  def _ensureRoom(self, end: int) -> None:
     n: int = len(self._buf)
     if end <= n:
       return
     self._buf.reshape(end, 0)
 
-  def clear_buffer(self) -> None:
+  def clearBuffer(self) -> None:
     """清空缓冲（保留容量）；流式 ``dump`` 前可调用。"""
     self._buf.reshape(0, 0)
     self._pos = 0
@@ -214,14 +222,22 @@ class StringIO(CloseMixin):
 
 @native
 @uncopyable
-@native_name("Py*")
 class TextIOWrapper:
-  """基于 ``FILE*`` 的文本文件包装（实现见 ``io.inl``）。"""
+  """基于 ``FILE*`` 的文本文件包装（实现见 ``io.inl``）。
+
+  ``wrapFp`` / ``wrapStd`` 可绑定已有句柄；``owns=False`` 时 ``close``/``with``/析构
+  **不** ``fclose`` 真实标准流（见 ``docs/console.md``）。
+  """
 
   _fp: uintptr
   _closed: bool
+  _owns: bool
 
+  @overload
   def __init__(self, path: str, mode: str = "r"): ...
+
+  @overload
+  def __init__(self, fp: uintptr, owns: bool): ...
 
   def __del__(self): ...
 
@@ -233,9 +249,9 @@ class TextIOWrapper:
 
   def read(self, size: int = -1) -> str: ...
 
-  def readline(self, size: int = -1) -> str: ...
+  def readLine(self, size: int = -1) -> str: ...
 
-  def readlines(self, hint: int = -1) -> list[str]: ...
+  def readLines(self, hint: int = -1) -> list[str]: ...
 
   @overload
   def write(self, data: str) -> int: ...
@@ -243,7 +259,9 @@ class TextIOWrapper:
   @overload
   def write(self, src: char[:], end: int) -> int: ...
 
-  def writelines(self, lines: list[str]) -> None: ...
+  def writeLines(self, lines: list[str]) -> None: ...
+
+  def flush(self) -> None: ...
 
   def __iter__(self) -> Self: ...
 
@@ -255,9 +273,27 @@ class TextIOWrapper:
 
   def tell(self) -> int: ...
 
+  @property
+  @immutable
+  def isAtty(self) -> bool: ...
+
 
 @native
 @global_call("py_*")
 def open(path: str, mode: str = "r", encoding: str = "utf-8") -> TextIOWrapper:
   """``open(path, mode)`` → ``TextIOWrapper``（``encoding`` 暂仅支持类 UTF-8 码点路径）。"""
+  ...
+
+
+@native
+@global_call("py_*")
+def wrapFp(fp: uintptr, owns: bool = False) -> TextIOWrapper:
+  """绑定已有 ``FILE*``（``fp`` 为指针位型）；``owns=False`` 时永不 ``fclose``。"""
+  ...
+
+
+@native
+@global_call("py_*")
+def wrapStd(fd: int) -> TextIOWrapper:
+  """绑定标准流：``0``=stdin、``1``=stdout、``2``=stderr；始终 ``owns=False``。"""
   ...

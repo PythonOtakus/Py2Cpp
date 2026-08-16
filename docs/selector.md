@@ -154,7 +154,7 @@ IDENT    := [A-Za-z_][A-Za-z0-9_]*
 
 - **字段名** 须在 **TypeGraph** 上存在（来自 ``@dataclass`` ``field_types`` / ``dataclass_field_specs``，与 ``@serializable`` 共用）。
 - **根路径取 receiver 字段** 须以 ``.`` 起头（``".teams"``、``"?.title"``）；裸标识符起头（``"teams"``）为 **语法错误**；``[…]`` / ``{…}`` 仍可直接起头（见 §4.12）。
-- **负索引** 与 Python 一致（``[-1]`` = 末元素）；JSON 数组 lazy 导航须与静态链 ``doc.teams[-1]`` **行为一致**（实现时可能扩 ``_array_index`` 或 emit 专用末元素循环）。
+- **负索引** 与 Python 一致（``[-1]`` = 末元素）；JSON 数组 lazy 导航须与静态链 ``doc.teams[-1]`` **行为一致**（实现时可能扩 ``_arrayIndex`` 或 emit 专用末元素循环）。
 - **``dict[K,V]`` 非常量键**、``Union`` 分支选择：**暂不实现**（path 内 **字符串字面量** 键已支持，见 §4.10）。
 
 ### 4.4 过滤步 ``{expr}``（Py2Cpp 表达式）
@@ -283,11 +283,11 @@ mixed: list[str] = team.select(".members{.score > 0}.(name, name)")
 ```python
 org.select(".teams[0]:$t; $t.name")
 org.select(".teams[0]:$t.members[1].name")
-org.select(".teams[0]:$t.members{.score > $t.min_score}.name")
+org.select(".teams[0]:$t.members{.score > $t.minScore}.name")
 org.select(".teams[0]:$t; $t.(members[0].name, members[1].name)")
 org.select(".teams[0]:$t; .teams[1].name")
 # 非法：; 右从根走，filter 不可引用左段 $t
-# org.select(".teams[0]:$t; .teams[0].members{.score > $t.min_score}.name")
+# org.select(".teams[0]:$t; .teams[0].members{.score > $t.minScore}.name")
 ```
 
 ### 4.14 同链作用域
@@ -322,7 +322,7 @@ count_op := "@count" | "@count(" expr ")"
 
 | 后处理 | 输入 | 输出 | 说明 |
 |--------|------|------|------|
-| ``@sort(-.score, .name)`` | ``list[T]`` | ``list[T]`` | 多键 **字典序**；稳定插入排序；键为与 ``{filter}`` **同子集** 的 Py2Cpp 表达式（如 ``.score - $t.min_score``）；比较用 ``py_cmp`` / ``__cmp__`` |
+| ``@sort(-.score, .name)`` | ``list[T]`` | ``list[T]`` | 多键 **字典序**；稳定插入排序；键为与 ``{filter}`` **同子集** 的 Py2Cpp 表达式（如 ``.score - $t.minScore``）；比较用 ``py_cmp`` / ``__cmp__`` |
 | ``@group(.key)`` | ``list[T]`` | ``dict[K, list[T]]`` | 桶 **插入序** |
 | ``@count`` | ``list[T]`` | ``int`` | 元素个数 |
 | ``@count(.field)`` | ``list[T]`` | ``Counter[V]`` | 按字段值 **频数**（与先 ``@group(.field)`` 再数桶等价时，**直接**写 ``@count(.field)``） |
@@ -343,7 +343,7 @@ n: int = org.select(".teams@count")
 by: dict[str, list[Member]] = team.select(".members@group(.dept)")
 freq: Counter[str] = team.select(".members@count(.dept)")
 names: list[Member] = org.select(
-  ".teams[0]:$t; $t.members{.score > $t.min_score}@sort(.name)",
+  ".teams[0]:$t; $t.members{.score > $t.minScore}@sort(.name)",
 )
 # 方案 A：按父节点字段参与排序（须先 :$t 绑定，且整表共用一个父快照）
 org.select(".teams[0]:$t.members{.score > 0}@sort($t.name, -.score, .name)")
@@ -354,7 +354,7 @@ org.select(".teams[0]:$t; $t.members{.score > 0}@sort($t.name, -.score, .name)")
 
 ```python
 team.select(".members@sort(.score - threshold)")
-org.select(".teams[0]:$t; $t.members@sort(.score - $t.min_score, .name)")
+org.select(".teams[0]:$t; $t.members@sort(.score - $t.minScore, .name)")
 ```
 
 **按父节点字段排序（方案 A）**
@@ -362,7 +362,7 @@ org.select(".teams[0]:$t; $t.members@sort(.score - $t.min_score, .name)")
 | 项 | 规则 |
 |----|------|
 | **前提** | 结果 ``list[T]`` 来自**单一**父上下文（如 ``.teams[i]:$t…members``）；``: $t`` 在进入 ``members`` **之前** |
-| **写法** | ``@sort($t.min_score, .name)``、``@group($t.dept)`` 等与 filter 内 ``$t.field`` 相同 |
+| **写法** | ``@sort($t.minScore, .name)``、``@group($t.dept)`` 等与 filter 内 ``$t.field`` 相同 |
 | **语义** | ``$t`` 为**一个** C++ 绑定变量；该链上所有元素共用同一父快照 |
 | **限制** | ``..`` / 多 team 扁平合并进一条 ``list`` 时，**不能**用 ``$t`` 表达「每元素不同父」；须数据模型反指父节点或后续扩展 |
 | **非法** | ``;`` 右从 receiver 根导航时，后处理内引用左段 ``$t``（与 filter 同禁） |
@@ -401,7 +401,7 @@ obj.select(".teams[0].name")
 对齐 ``assign``（``is_translator_only_method``）：
 
 - 类**未**声明 ``select``，或仅为 ``pass`` / ``...`` → **译期专用**，内联。
-- 类有 **真实方法体** 的 ``def select(self, …)`` → 生成 C++，**不**走内联（与 ``list_iterator.assign`` 同理）。
+- 类有 **真实方法体** 的 ``def select(self, …)`` → 生成 C++，**不**走内联（与 ``ListIterator.assign`` 同理）。
 
 ### 5.3 返回类型（恒 ``list[T]``）
 
@@ -452,7 +452,7 @@ TypeNode :=
 | **G3** | ``SequenceBackend`` + 链式切换 | ``[-1]``、``[lo:hi]``、``{expr}``（完整 Py2Cpp 布尔表达式）→ ``list`` | 同上 |
 | **G4** | 投影 ``.(a, b.c)`` + 后缀 | 多路径 ``list[T]``（arm 末步同型） | ``test/lang/test_selector.py`` |
 | **G4+** | 通配 ``[:]``、步长、``..`` | 同上扩展 | ``test/lang/test_selector.py`` |
-| **G5** | 新 ``Document`` 格式 | 注册 Backend | 不改路径语法 |
+| **G5** | 新 ``DocumentType`` 格式 | 注册 Backend | 不改路径语法 |
 
 **G1 优先 Struct、G2 再接 Json** 的理由：先验证 **SelectorPlan + backend 分派** 与 ``assign`` 同级机制，再复用 ``JsonDocument`` 已有 navigate 叶子。
 

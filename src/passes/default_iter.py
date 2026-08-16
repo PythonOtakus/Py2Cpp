@@ -1,6 +1,6 @@
 """为同时实现 ``__getitem__(int)`` 与 ``__len__`` 且未写 ``__iter__`` 的类注入默认序列迭代器。
 
-生成 ``{Host}_iterator``（逻辑同 ``list_iterator``：下标 ``0..len-1``）及 ``__iter__`` → ``return new(self)``。
+生成 ``{Host}_iterator``（逻辑同 ``ListIterator``：下标 ``0..len-1``）及 ``__iter__`` → ``return new(self)``。
 """
 from __future__ import annotations
 
@@ -222,11 +222,23 @@ def _make_iterator_next(element_ann: ast.expr | None) -> ast.FunctionDef:
   return fn
 
 
+def _default_seq_iterator_name(host_name: str) -> str:
+  """``list`` → ``ListIterator``；``MySeq`` → ``MySeqIterator``。"""
+  if "_" in host_name:
+    parts = [p for p in host_name.split("_") if p]
+    base = "".join(p[:1].upper() + p[1:] for p in parts)
+  elif host_name and host_name[0].islower():
+    base = host_name[:1].upper() + host_name[1:]
+  else:
+    base = host_name
+  return f"{base}Iterator"
+
+
 def _make_iterator_class(
   host_info: ClassInfo,
   getitem: ast.FunctionDef,
 ) -> ast.ClassDef:
-  iter_name = f"{host_info.name}_iterator"
+  iter_name = _default_seq_iterator_name(host_info.name)
   type_params = list(host_info.type_params)
   body: list[ast.stmt] = []
   if type_params:
@@ -303,7 +315,7 @@ def expand_default_iter(tr: Translator) -> None:
       continue
     if "__iter__" in info.methods or "__iter__" in info.method_overloads:
       continue
-    if f"{info.name}_iterator" in tr.classes:
+    if _default_seq_iterator_name(info.name) in tr.classes:
       continue
     getitem = _int_getitem_method(info)
     if getitem is None:

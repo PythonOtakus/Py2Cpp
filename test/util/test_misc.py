@@ -5,7 +5,7 @@ from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 
 class CounterGetitemTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
@@ -19,7 +19,7 @@ class CounterGetitemTests(TestCaseMixin):
 
 
 class CounterDictLiteralInitTests(TestCaseMixin):
-  _test_tag = 15
+  _testTag = 15
 
   @override
   def test(self):
@@ -32,7 +32,7 @@ class CounterDictLiteralInitTests(TestCaseMixin):
 
 
 class CounterInitUpdateTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
@@ -52,7 +52,7 @@ class CounterInitUpdateTests(TestCaseMixin):
 
 
 class CounterSubtractTests(TestCaseMixin):
-  _test_tag = 30
+  _testTag = 30
 
   @override
   def test(self):
@@ -69,7 +69,7 @@ class CounterSubtractTests(TestCaseMixin):
 
 
 class CounterTotalMostCommonTests(TestCaseMixin):
-  _test_tag = 40
+  _testTag = 40
 
   @override
   def test(self):
@@ -77,7 +77,7 @@ class CounterTotalMostCommonTests(TestCaseMixin):
     c: Counter[str] = new()
     c.update(src)
     self.assertEqual(c.total(), 6)
-    top: list[tuple[str, int]] = c.most_common(2)
+    top: list[tuple[str, int]] = c.mostCommon(2)
     self.assertEqual(len(top), 2)
     self.assertEqual(c["a"], 3)
     self.assertEqual(c["c"], 2)
@@ -85,7 +85,7 @@ class CounterTotalMostCommonTests(TestCaseMixin):
 
 
 class CounterElementsTests(TestCaseMixin):
-  _test_tag = 50
+  _testTag = 50
 
   @override
   def test(self):
@@ -102,7 +102,7 @@ class CounterElementsTests(TestCaseMixin):
 
 
 class CounterOpsTests(TestCaseMixin):
-  _test_tag = 60
+  _testTag = 60
 
   @override
   def test(self):
@@ -125,21 +125,21 @@ class CounterOpsTests(TestCaseMixin):
     self.assertEqual(i["a"], 1)
     self.assertEqual(i["b"], 1)
     self.assertFalse("z" in i)
-    raw_m: dict[str, int] = {"a": 1, "b": -1}
+    rawM: dict[str, int] = {"a": 1, "b": -1}
     raw: Counter[str] = new()
-    raw.update(raw_m)
+    raw.update(rawM)
     p: Counter[str] = raw.__pos__()  # py2cpp: strict-off
     self.assertEqual(len(p), 1)
     self.assertEqual(p["a"], 1)
-    neg_m: dict[str, int] = {"a": -2}
-    neg_src: Counter[str] = new()
-    neg_src.update(neg_m)
-    n: Counter[str] = -neg_src
+    negM: dict[str, int] = {"a": -2}
+    negSrc: Counter[str] = new()
+    negSrc.update(negM)
+    n: Counter[str] = -negSrc
     self.assertEqual(n["a"], 2)
 
 
 class CounterEqCopyTests(TestCaseMixin):
-  _test_tag = 70
+  _testTag = 70
 
   @override
   def test(self):
@@ -154,7 +154,7 @@ class CounterEqCopyTests(TestCaseMixin):
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

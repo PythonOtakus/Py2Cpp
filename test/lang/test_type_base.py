@@ -4,31 +4,31 @@ from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 from py2cpp.core.exceptions import KeyError, StatisticsError
 
 
-class Container[T]:
+class ContainerType[Element]:
   pass
 
 
-class Box[T](Container[T]):
+class Box[Element](ContainerType[Element]):
   pass
 
 
 class TypeBaseTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
     k: KeyError = new()
     self.assertEqual(k.__class_id__, KeyError.__id__)
-    exc_view: KeyError.__base__ = k
+    excView: KeyError.__base__ = k
     se: StatisticsError = new()
     self.assertEqual(se.__class_id__, StatisticsError.__id__)
-    stat_view: StatisticsError.__base__ = se
-    box_view: Box[int].__base__ = new()
+    statView: StatisticsError.__base__ = se
+    boxView: Box[int].__base__ = new()
 
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

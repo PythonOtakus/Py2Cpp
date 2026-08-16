@@ -94,7 +94,7 @@ type ValOf[T, _V = ..., _W = ...] = (
 | **Fallback** | 默认 ``else T``（恒等，非匹配时原样返回）；严格解包用 ``else Never`` 或省略 ``else`` |
 | **实例化** | 只传非捕获实参：``ListElemOf[list[int]]``；**禁止** ``ListElemOf[..., int]`` |
 | **组合** | 多层解包用别名嵌套：``type Inner[T] = ListElemOf[ListElemOf[T]]``；**勿**在标准库再发明 ``InnerElem`` / ``DeepElem`` |
-| **领域扩展** | 模块内定义：``TaskPayloadOf``（``concur/task.py``）、``JsonDecoder.load_container``（``serde/json.py``） |
+| **领域扩展** | 模块内定义：``TaskPayloadOf``（``concur/task.py``）、``JsonDecoder.loadContainer``（``serde/json.py``） |
 | **与 type if** | 函数**体内**分派仍用 ``if T is list[...]:`` + ``T.Element``；**注解 / 跨函数**优先 ``ListElemOf[T]`` / ``ValOf[T]`` |
 | **与协议关联类型** | ``type Element = ...``（``@protocol`` 成员约束）≠ ``ListElemOf``；前者无 RHS，后者为条件别名 |
 
@@ -164,7 +164,7 @@ type ListOnly[T, _V = ...] = _V if T is list[_V] else Never
 
 **``@boxing`` 类**（如 ``Node[T]`` 已是 ``Node<T>*``）**勿**再包 ``Pointer[…]``；解包用类头形参 ``T``。
 
-**``Json.loads``**：``JsonDecoder.load_container[T]()`` 集中 ``list[…]`` / ``dict[str, …]`` wildcard 分派。
+**``Json.loads``**：``JsonDecoder.loadContainer[T]()`` 集中 ``list[…]`` / ``dict[str, …]`` wildcard 分派。
 
 ---
 

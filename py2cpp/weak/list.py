@@ -5,10 +5,10 @@ from .ref import WeakRef
 
 
 @copyable
-class WeakList[T: refcount]:
+class WeakList[Element: refcount]:
   """``__getitem__(i)`` 按第 i 个**存活**元素计；死引用在访问时剔除。"""
 
-  _refs: list[WeakRef[T]] = []
+  _refs: list[WeakRef[Element]] = []
 
   def __del__(self):
     self.clear()
@@ -21,17 +21,17 @@ class WeakList[T: refcount]:
     self._compact()
     return len(self._refs) > 0
 
-  def __contains__(self, obj: T) -> bool:
+  def __contains__(self, obj: Element) -> bool:
     self._compact()
     for w in self._refs:
       if w.alive and w.value is obj:
         return True
     return False
 
-  def append(self, obj: T) -> None:
-    self._refs.append(WeakRef[T](obj))
+  def append(self, obj: Element) -> None:
+    self._refs.append(WeakRef[Element](obj))
 
-  def __getitem__(self, index: int) -> T:
+  def __getitem__(self, index: int) -> Element:
     self._compact()
     if index < 0 or index >= len(self._refs):
       raise IndexError("weak list index out of range")
@@ -61,20 +61,20 @@ class WeakList[T: refcount]:
         parts.append(format(self._refs[i].value, ""))
     return "WeakList([" + ", ".join(parts) + "])"
 
-  def discard(self, obj: T) -> None:
+  def discard(self, obj: Element) -> None:
     self._compact()
-    out: list[WeakRef[T]] = []
+    out: list[WeakRef[Element]] = []
     for w in self._refs:
       if not (w.alive and w.value is obj):
         out.append(w)
     self._refs = out
 
-  def remove(self, obj: T) -> None:
+  def remove(self, obj: Element) -> None:
     if obj not in self:
       raise IndexError("weak list element not found")
     self.discard(obj)
 
-  def pop(self, index: int = -1) -> T:
+  def pop(self, index: int = -1) -> Element:
     self._compact()
     if not self._refs:
       raise IndexError("pop from empty WeakList")
@@ -82,7 +82,7 @@ class WeakList[T: refcount]:
       index += len(self._refs)
     if index < 0 or index >= len(self._refs):
       raise IndexError("weak list pop index out of range")
-    w: WeakRef[T] = self._refs.pop(index)
+    w: WeakRef[Element] = self._refs.pop(index)
     if not w.alive:
       return self.pop(index)
     return w.value
@@ -91,7 +91,7 @@ class WeakList[T: refcount]:
     self._refs.clear()
 
   def _compact(self) -> None:
-    out: list[WeakRef[T]] = []
+    out: list[WeakRef[Element]] = []
     for w in self._refs:
       if w.alive:
         out.append(w)

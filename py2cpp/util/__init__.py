@@ -9,7 +9,7 @@ from .misc import Counter
 from .set import frozenset, set
 from .list import list, frozenlist
 from .slice import slice
-from .range import range, range_iterator
+from .range import range, RangeIterator
 from .tuple import tuple
 from .vars import LenRangeVar, RangeVar
 from .types import (
@@ -33,7 +33,7 @@ __all__ = [
   "list",
   "slice",
   "range",
-  "range_iterator",
+  "RangeIterator",
   "tuple",
   "RangeVar",
   "LenRangeVar",

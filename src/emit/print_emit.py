@@ -93,7 +93,7 @@ def emit_printf(
   else:
     tr.write_line(f"printf({quote_cpp_string(fmt)});")
   if flush:
-    tr.write_line("fflush(stdout);")
+    tr.write_line("fflush(_py2cpp_c_stdout());")
 
 
 def emit_print(tr: Translator, node: ast.Call) -> None:

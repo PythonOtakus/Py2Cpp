@@ -9,10 +9,10 @@ class Counter:
     return 0
 
 
-def read_wrong() -> int:
+def readWrong() -> int:
   return Counter.value()
   # expect NotImplementedError at translate
 
 
 def main() -> int:
-  return read_wrong()
+  return readWrong()

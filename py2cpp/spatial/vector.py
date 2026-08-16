@@ -26,9 +26,9 @@ class VectorMixin:
   _dim: int @const = 0
   _data: float64[:Self._dim]
 
-  def _copy_from(self, src: Self) -> None:
-    for i in inline_range(Self._dim):
-      self._data.unsafe_set(i, src._data.unsafe_get(i))
+  def _copyFrom(self, src: Self) -> None:
+    for i in inlineRange(Self._dim):
+      self._data.unsafeSet(i, src._data.unsafeGet(i))
 
   @immutable
   def __len__(self) -> int:
@@ -38,19 +38,19 @@ class VectorMixin:
   def __getitem__(self, index: int) -> float64:
     if index < 0 or index >= Self._dim:
       raise IndexError("vector index out of range")
-    return self._data.unsafe_get(index)
+    return self._data.unsafeGet(index)
 
   def __setitem__(self, index: int, value: float64) -> None:
     if index < 0 or index >= Self._dim:
       raise IndexError("vector index out of range")
-    self._data.unsafe_set(index, value)
+    self._data.unsafeSet(index, value)
 
   @immutable
-  def unsafe_get(self, index: int) -> float64:
-    return self._data.unsafe_get(index)
+  def unsafeGet(self, index: int) -> float64:
+    return self._data.unsafeGet(index)
 
-  def unsafe_set(self, index: int, value: float64) -> None:
-    self._data.unsafe_set(index, value)
+  def unsafeSet(self, index: int, value: float64) -> None:
+    self._data.unsafeSet(index, value)
 
   @staticproperty
   @immutable
@@ -61,95 +61,95 @@ class VectorMixin:
   @immutable
   def one() -> Self:
     out: Self = new()
-    for i in inline_range(Self._dim):
-      out._data.unsafe_set(i, 1.0)
+    for i in inlineRange(Self._dim):
+      out._data.unsafeSet(i, 1.0)
     return out
 
   @property
   @immutable
-  def sqr_mag(self) -> float64:
+  def sqrMag(self) -> float64:
     return self.dot(self)
 
   @property.setter
-  def sqr_mag(self, sqr_mag: float64) -> None:
-    self.mag = sqrt(sqr_mag)
+  def sqrMag(self, sqrMag: float64) -> None:
+    self.mag = sqrt(sqrMag)
 
   @property
   @immutable
   def mag(self) -> float64:
-    return sqrt(self.sqr_mag)
+    return sqrt(self.sqrMag)
 
   @property.setter
   def mag(self, mag: float64) -> None:
-    self._copy_from(self.with_mag(mag))
+    self._copyFrom(self.withMag(mag))
 
   @property
   @immutable
   def norm(self) -> Self:
-    return self.with_mag(1.0)
+    return self.withMag(1.0)
 
   @immutable
   def dot(self, other: Self) -> float64:
     acc: float64 = 0.0
-    for i in inline_range(Self._dim):
-      acc += self._data.unsafe_get(i) * other._data.unsafe_get(i)
+    for i in inlineRange(Self._dim):
+      acc += self._data.unsafeGet(i) * other._data.unsafeGet(i)
     return acc
 
   @immutable
   def scaled(self, other: Self) -> Self:
     out: Self = new()
-    for i in inline_range(Self._dim):
-      out._data.unsafe_set(
+    for i in inlineRange(Self._dim):
+      out._data.unsafeSet(
         i,
-        self._data.unsafe_get(i) * other._data.unsafe_get(i),
+        self._data.unsafeGet(i) * other._data.unsafeGet(i),
       )
     return out
 
   def scale(self, other: Self) -> None:
-    for i in inline_range(Self._dim):
-      self._data.unsafe_set(
+    for i in inlineRange(Self._dim):
+      self._data.unsafeSet(
         i,
-        self._data.unsafe_get(i) * other._data.unsafe_get(i),
+        self._data.unsafeGet(i) * other._data.unsafeGet(i),
       )
 
   @immutable
-  def inv_scaled(self, other: Self) -> Self:
+  def invScaled(self, other: Self) -> Self:
     out: Self = new()
-    for i in inline_range(Self._dim):
-      out._data.unsafe_set(
+    for i in inlineRange(Self._dim):
+      out._data.unsafeSet(
         i,
-        self._data.unsafe_get(i) / other._data.unsafe_get(i),
+        self._data.unsafeGet(i) / other._data.unsafeGet(i),
       )
     return out
 
-  def inv_scale(self, other: Self) -> None:
-    for i in inline_range(Self._dim):
-      self._data.unsafe_set(
+  def invScale(self, other: Self) -> None:
+    for i in inlineRange(Self._dim):
+      self._data.unsafeSet(
         i,
-        self._data.unsafe_get(i) / other._data.unsafe_get(i),
+        self._data.unsafeGet(i) / other._data.unsafeGet(i),
       )
 
   @immutable
-  def pow_scaled(self, exponent: float64) -> Self:
+  def powScaled(self, exponent: float64) -> Self:
     out: Self = new()
-    for i in inline_range(Self._dim):
-      out._data.unsafe_set(i, pow(self._data.unsafe_get(i), exponent))
+    for i in inlineRange(Self._dim):
+      out._data.unsafeSet(i, pow(self._data.unsafeGet(i), exponent))
     return out
 
-  def pow_scale(self, exponent: float64) -> None:
-    for i in inline_range(Self._dim):
-      self._data.unsafe_set(i, pow(self._data.unsafe_get(i), exponent))
+  def powScale(self, exponent: float64) -> None:
+    for i in inlineRange(Self._dim):
+      self._data.unsafeSet(i, pow(self._data.unsafeGet(i), exponent))
 
   @property
   @immutable
   def inv(self) -> Self:
     out: Self = new()
-    for i in inline_range(Self._dim):
-      out._data.unsafe_set(i, 1.0 / self._data.unsafe_get(i))
+    for i in inlineRange(Self._dim):
+      out._data.unsafeSet(i, 1.0 / self._data.unsafeGet(i))
     return out
 
   @immutable
-  def with_mag(self, mag: float64) -> Self:
+  def withMag(self, mag: float64) -> Self:
     rate: float64 = abs(self)
     z: float64 = 0.0
     if almost(rate, z):
@@ -157,114 +157,114 @@ class VectorMixin:
     return self * (mag / rate)
 
   def normalize(self) -> None:
-    self._copy_from(self.norm)
+    self._copyFrom(self.norm)
 
   @immutable
-  def clamped(self, min_mag: float64, max_mag: float64) -> Self:
-    sq: float64 = self.sqr_mag
-    if sq < min_mag * min_mag:
-      return self.with_mag(min_mag)
-    if sq > max_mag * max_mag:
-      return self.with_mag(max_mag)
+  def clamped(self, minMag: float64, maxMag: float64) -> Self:
+    sq: float64 = self.sqrMag
+    if sq < minMag * minMag:
+      return self.withMag(minMag)
+    if sq > maxMag * maxMag:
+      return self.withMag(maxMag)
     return self
 
-  def clamp(self, min_mag: float64, max_mag: float64) -> None:
-    self._copy_from(self.clamped(min_mag, max_mag))
+  def clamp(self, minMag: float64, maxMag: float64) -> None:
+    self._copyFrom(self.clamped(minMag, maxMag))
 
   @immutable
-  def sqr_dist_to(self, other: Self) -> float64:
+  def sqrDistTo(self, other: Self) -> float64:
     d: Self = self - other
     return d.dot(d)
 
   @immutable
-  def dist_to(self, other: Self) -> float64:
-    return sqrt(self.sqr_dist_to(other))
+  def distTo(self, other: Self) -> float64:
+    return sqrt(self.sqrDistTo(other))
 
   @immutable
-  def moved_towards(self, target: Self, delta: float64) -> Self:
-    dist: float64 = self.dist_to(target)
+  def movedTowards(self, target: Self, delta: float64) -> Self:
+    dist: float64 = self.distTo(target)
     z: float64 = 0.0
     if almost(dist, z):
       return self
     return self.lerp(target, delta / dist)
 
-  def move_towards(self, target: Self, delta: float64) -> None:
-    self._copy_from(self.moved_towards(target, delta))
+  def moveTowards(self, target: Self, delta: float64) -> None:
+    self._copyFrom(self.movedTowards(target, delta))
 
   @immutable
-  def angle_to(self, other: Self) -> float64:
-    denom: float64 = sqrt(self.sqr_mag * other.sqr_mag)
+  def angleTo(self, other: Self) -> float64:
+    denom: float64 = sqrt(self.sqrMag * other.sqrMag)
     return degrees(acos(self.dot(other) / denom))
 
   @immutable
-  def rotated_towards(self, target: Self, delta: float64) -> Self:
-    ang: float64 = self.angle_to(target)
+  def rotatedTowards(self, target: Self, delta: float64) -> Self:
+    ang: float64 = self.angleTo(target)
     z: float64 = 0.0
     if almost(ang, z):
       return self
     return self.slerp(target, delta / ang)
 
-  def rotate_towards(self, target: Self, delta: float64) -> None:
-    self._copy_from(self.rotated_towards(target, delta))
+  def rotateTowards(self, target: Self, delta: float64) -> None:
+    self._copyFrom(self.rotatedTowards(target, delta))
 
   @immutable
   def project(self, other: Self) -> Self:
-    rate: float64 = other.sqr_mag
+    rate: float64 = other.sqrMag
     z: float64 = 0.0
     if almost(rate, z):
       return new.zero
     s: float64 = self.dot(other) / rate
     out: Self = new()
-    for i in inline_range(Self._dim):
-      out._data.unsafe_set(i, other._data.unsafe_get(i) * s)
+    for i in inlineRange(Self._dim):
+      out._data.unsafeSet(i, other._data.unsafeGet(i) * s)
     return out
 
   @immutable
   def reflect(self, other: Self) -> Self:
     p: Self = self.project(other)
     out: Self = new()
-    for i in inline_range(Self._dim):
-      out._data.unsafe_set(
+    for i in inlineRange(Self._dim):
+      out._data.unsafeSet(
         i,
-        self._data.unsafe_get(i) - 2.0 * p._data.unsafe_get(i),
+        self._data.unsafeGet(i) - 2.0 * p._data.unsafeGet(i),
       )
     return out
 
   @immutable
   def lerp(self, other: Self, t: float64) -> Self:
     out: Self = new()
-    for i in inline_range(Self._dim):
-      out._data.unsafe_set(
+    for i in inlineRange(Self._dim):
+      out._data.unsafeSet(
         i,
-        lerp(self._data.unsafe_get(i), other._data.unsafe_get(i), t),
+        lerp(self._data.unsafeGet(i), other._data.unsafeGet(i), t),
       )
     return out
 
   @immutable
   def slerp(self, other: Self, t: float64) -> Self:
-    theta: float64 = radians(self.angle_to(other))
-    sin_theta: float64 = sin(theta)
+    theta: float64 = radians(self.angleTo(other))
+    sinTheta: float64 = sin(theta)
     z: float64 = 0.0
-    if almost(sin_theta, z):
+    if almost(sinTheta, z):
       return self
-    w0: float64 = sin((1.0 - t) * theta) / sin_theta
-    w1: float64 = sin(t * theta) / sin_theta
+    w0: float64 = sin((1.0 - t) * theta) / sinTheta
+    w1: float64 = sin(t * theta) / sinTheta
     out: Self = new()
-    for i in inline_range(Self._dim):
-      out._data.unsafe_set(
+    for i in inlineRange(Self._dim):
+      out._data.unsafeSet(
         i,
-        self._data.unsafe_get(i) * w0 + other._data.unsafe_get(i) * w1,
+        self._data.unsafeGet(i) * w0 + other._data.unsafeGet(i) * w1,
       )
     return out
 
   @immutable
   def xlerp(self, other: Self, t: float64) -> Self:
-    return self.scaled(other.inv_scaled(self).pow_scaled(t))
+    return self.scaled(other.invScaled(self).powScaled(t))
 
   @immutable
   def __eq__(self, other: Self) -> bool:
-    for i in inline_range(Self._dim):
-      if not almost(self._data.unsafe_get(i), other._data.unsafe_get(i)):
+    for i in inlineRange(Self._dim):
+      if not almost(self._data.unsafeGet(i), other._data.unsafeGet(i)):
         return False
     return True
 
@@ -275,50 +275,50 @@ class VectorMixin:
   @immutable
   def __pos__(self) -> Self:
     out: Self = new()
-    for i in inline_range(Self._dim):
-      out._data.unsafe_set(i, self._data.unsafe_get(i))
+    for i in inlineRange(Self._dim):
+      out._data.unsafeSet(i, self._data.unsafeGet(i))
     return out
 
   @immutable
   def __neg__(self) -> Self:
     out: Self = new()
-    for i in inline_range(Self._dim):
-      out._data.unsafe_set(i, -self._data.unsafe_get(i))
+    for i in inlineRange(Self._dim):
+      out._data.unsafeSet(i, -self._data.unsafeGet(i))
     return out
 
   @immutable
   def __add__(self, other: Self) -> Self:
     out: Self = new()
-    for i in inline_range(Self._dim):
-      out._data.unsafe_set(
+    for i in inlineRange(Self._dim):
+      out._data.unsafeSet(
         i,
-        self._data.unsafe_get(i) + other._data.unsafe_get(i),
+        self._data.unsafeGet(i) + other._data.unsafeGet(i),
       )
     return out
 
   def __iadd__(self, other: Self) -> Self:
-    for i in inline_range(Self._dim):
-      self._data.unsafe_set(
+    for i in inlineRange(Self._dim):
+      self._data.unsafeSet(
         i,
-        self._data.unsafe_get(i) + other._data.unsafe_get(i),
+        self._data.unsafeGet(i) + other._data.unsafeGet(i),
       )
     return self
 
   @immutable
   def __sub__(self, other: Self) -> Self:
     out: Self = new()
-    for i in inline_range(Self._dim):
-      out._data.unsafe_set(
+    for i in inlineRange(Self._dim):
+      out._data.unsafeSet(
         i,
-        self._data.unsafe_get(i) - other._data.unsafe_get(i),
+        self._data.unsafeGet(i) - other._data.unsafeGet(i),
       )
     return out
 
   def __isub__(self, other: Self) -> Self:
-    for i in inline_range(Self._dim):
-      self._data.unsafe_set(
+    for i in inlineRange(Self._dim):
+      self._data.unsafeSet(
         i,
-        self._data.unsafe_get(i) - other._data.unsafe_get(i),
+        self._data.unsafeGet(i) - other._data.unsafeGet(i),
       )
     return self
 
@@ -331,8 +331,8 @@ class VectorMixin:
   @immutable
   def __mul__(self, other: float64) -> Self:
     out: Self = new()
-    for i in inline_range(Self._dim):
-      out._data.unsafe_set(i, self._data.unsafe_get(i) * other)
+    for i in inlineRange(Self._dim):
+      out._data.unsafeSet(i, self._data.unsafeGet(i) * other)
     return out
 
   @overload
@@ -341,8 +341,8 @@ class VectorMixin:
     return self * other
 
   def __imul__(self, other: float64) -> Self:
-    for i in inline_range(Self._dim):
-      self._data.unsafe_set(i, self._data.unsafe_get(i) * other)
+    for i in inlineRange(Self._dim):
+      self._data.unsafeSet(i, self._data.unsafeGet(i) * other)
     return self
 
   @immutable
@@ -356,8 +356,8 @@ class VectorMixin:
 
   def __itruediv__(self, other: float64) -> Self:
     s: float64 = 1.0 / other
-    for i in inline_range(Self._dim):
-      self._data.unsafe_set(i, self._data.unsafe_get(i) * s)
+    for i in inlineRange(Self._dim):
+      self._data.unsafeSet(i, self._data.unsafeGet(i) * s)
     return self
 
   @immutable
@@ -366,15 +366,15 @@ class VectorMixin:
 
   @immutable
   def __mod__(self, mag: float64) -> Self:
-    return self.with_mag(mag)
+    return self.withMag(mag)
 
   def __imod__(self, mag: float64) -> Self:
-    self._copy_from(self.with_mag(mag))
+    self._copyFrom(self.withMag(mag))
     return self
 
   @immutable
   def __xor__(self, other: Self) -> float64:
-    return self.dist_to(other)
+    return self.distTo(other)
 
 
 class Vector2(VectorMixin):
@@ -383,26 +383,26 @@ class Vector2(VectorMixin):
   _dim: int @const = 2
 
   def __init__(self, x: float64 = 0.0, y: float64 = 0.0) -> None:
-    self._data.unsafe_set(0, x)
-    self._data.unsafe_set(1, y)
+    self._data.unsafeSet(0, x)
+    self._data.unsafeSet(1, y)
 
   @property
   @immutable
   def x(self) -> float64:
-    return self._data.unsafe_get(0)
+    return self._data.unsafeGet(0)
 
   @property.setter
   def x(self, value: float64) -> None:
-    self._data.unsafe_set(0, value)
+    self._data.unsafeSet(0, value)
 
   @property
   @immutable
   def y(self) -> float64:
-    return self._data.unsafe_get(1)
+    return self._data.unsafeGet(1)
 
   @property.setter
   def y(self, value: float64) -> None:
-    self._data.unsafe_set(1, value)
+    self._data.unsafeSet(1, value)
 
   @staticproperty
   @immutable
@@ -416,9 +416,9 @@ class Vector2(VectorMixin):
 
   @staticmethod
   @immutable
-  def from_polar(r: float64, phi: float64) -> Self:
-    rad_phi: float64 = radians(phi)
-    u: Self = new(cos(rad_phi), sin(rad_phi))
+  def fromPolar(r: float64, phi: float64) -> Self:
+    radPhi: float64 = radians(phi)
+    u: Self = new(cos(radPhi), sin(radPhi))
     return u * r
 
   @immutable
@@ -427,39 +427,39 @@ class Vector2(VectorMixin):
 
   @immutable
   def rotated(self, angle: float64) -> Self:
-    rad_a: float64 = radians(angle)
-    cos_a: float64 = cos(rad_a)
-    sin_a: float64 = sin(rad_a)
-    rx: float64 = self.x * cos_a - self.y * sin_a
-    ry: float64 = self.x * sin_a + self.y * cos_a
+    radA: float64 = radians(angle)
+    cosA: float64 = cos(radA)
+    sinA: float64 = sin(radA)
+    rx: float64 = self.x * cosA - self.y * sinA
+    ry: float64 = self.x * sinA + self.y * cosA
     return new(rx, ry)
 
   def rotate(self, angle: float64) -> None:
-    self._copy_from(self.rotated(angle))
+    self._copyFrom(self.rotated(angle))
 
   @immutable
   def rotated90(self) -> Self:
     return new(-self.y, self.x)
 
   def rotate90(self) -> None:
-    self._copy_from(self.rotated90())
+    self._copyFrom(self.rotated90())
 
   @immutable
-  def rotated_around(self, center: Self, angle: float64) -> Self:
+  def rotatedAround(self, center: Self, angle: float64) -> Self:
     return (self - center).rotated(angle) + center
 
-  def rotate_around(self, center: Self, angle: float64) -> None:
-    self._copy_from(self.rotated_around(center, angle))
+  def rotateAround(self, center: Self, angle: float64) -> None:
+    self._copyFrom(self.rotatedAround(center, angle))
 
   @immutable
-  def flipped(self, flip_x: bool = False, flip_y: bool = False) -> Self:
-    return new(-self.x if flip_x else self.x, -self.y if flip_y else self.y)
+  def flipped(self, flipX: bool = False, flipY: bool = False) -> Self:
+    return new(-self.x if flipX else self.x, -self.y if flipY else self.y)
 
-  def flip(self, flip_x: bool = False, flip_y: bool = False) -> None:
-    self._copy_from(self.flipped(flip_x, flip_y))
+  def flip(self, flipX: bool = False, flipY: bool = False) -> None:
+    self._copyFrom(self.flipped(flipX, flipY))
 
   @immutable
-  def to_polar(self) -> Self:
+  def toPolar(self) -> Self:
     return new(abs(self), degrees(atan2(self.y, self.x)))
 
   @immutable
@@ -473,36 +473,36 @@ class Vector3(VectorMixin):
   _dim: int @const = 3
 
   def __init__(self, x: float64 = 0.0, y: float64 = 0.0, z: float64 = 0.0) -> None:
-    self._data.unsafe_set(0, x)
-    self._data.unsafe_set(1, y)
-    self._data.unsafe_set(2, z)
+    self._data.unsafeSet(0, x)
+    self._data.unsafeSet(1, y)
+    self._data.unsafeSet(2, z)
 
   @property
   @immutable
   def x(self) -> float64:
-    return self._data.unsafe_get(0)
+    return self._data.unsafeGet(0)
 
   @property.setter
   def x(self, value: float64) -> None:
-    self._data.unsafe_set(0, value)
+    self._data.unsafeSet(0, value)
 
   @property
   @immutable
   def y(self) -> float64:
-    return self._data.unsafe_get(1)
+    return self._data.unsafeGet(1)
 
   @property.setter
   def y(self, value: float64) -> None:
-    self._data.unsafe_set(1, value)
+    self._data.unsafeSet(1, value)
 
   @property
   @immutable
   def z(self) -> float64:
-    return self._data.unsafe_get(2)
+    return self._data.unsafeGet(2)
 
   @property.setter
   def z(self, value: float64) -> None:
-    self._data.unsafe_set(2, value)
+    self._data.unsafeSet(2, value)
 
   @staticproperty
   @immutable
@@ -521,15 +521,15 @@ class Vector3(VectorMixin):
 
   @staticmethod
   @immutable
-  def from_spherical(r: float64, phi: float64, theta: float64) -> Self:
-    rad_phi: float64 = radians(phi)
-    rad_theta: float64 = radians(theta)
-    sin_theta: float64 = sin(rad_theta)
-    cos_theta: float64 = cos(rad_theta)
-    cos_phi: float64 = cos(rad_phi)
-    sin_phi: float64 = sin(rad_phi)
-    p: float64 = sin_theta * r
-    return new(p * cos_phi, p * sin_phi, cos_theta * r)
+  def fromSpherical(r: float64, phi: float64, theta: float64) -> Self:
+    radPhi: float64 = radians(phi)
+    radTheta: float64 = radians(theta)
+    sinTheta: float64 = sin(radTheta)
+    cosTheta: float64 = cos(radTheta)
+    cosPhi: float64 = cos(radPhi)
+    sinPhi: float64 = sin(radPhi)
+    p: float64 = sinTheta * r
+    return new(p * cosPhi, p * sinPhi, cosTheta * r)
 
   @immutable
   def cross(self, other: Self) -> Self:
@@ -540,43 +540,43 @@ class Vector3(VectorMixin):
     )
 
   @immutable
-  def rotated_x(self, angle: float64) -> Self:
-    rad_a: float64 = radians(angle)
-    cos_a: float64 = cos(rad_a)
-    sin_a: float64 = sin(rad_a)
-    ry: float64 = self.y * cos_a - self.z * sin_a
-    rz: float64 = self.y * sin_a + self.z * cos_a
+  def rotatedX(self, angle: float64) -> Self:
+    radA: float64 = radians(angle)
+    cosA: float64 = cos(radA)
+    sinA: float64 = sin(radA)
+    ry: float64 = self.y * cosA - self.z * sinA
+    rz: float64 = self.y * sinA + self.z * cosA
     return new(self.x, ry, rz)
 
-  def rotate_x(self, angle: float64) -> None:
-    self._copy_from(self.rotated_x(angle))
+  def rotateX(self, angle: float64) -> None:
+    self._copyFrom(self.rotatedX(angle))
 
   @immutable
-  def rotated_y(self, angle: float64) -> Self:
-    rad_a: float64 = radians(angle)
-    cos_a: float64 = cos(rad_a)
-    sin_a: float64 = sin(rad_a)
-    rx: float64 = self.x * cos_a + self.z * sin_a
-    rz: float64 = -self.x * sin_a + self.z * cos_a
+  def rotatedY(self, angle: float64) -> Self:
+    radA: float64 = radians(angle)
+    cosA: float64 = cos(radA)
+    sinA: float64 = sin(radA)
+    rx: float64 = self.x * cosA + self.z * sinA
+    rz: float64 = -self.x * sinA + self.z * cosA
     return new(rx, self.y, rz)
 
-  def rotate_y(self, angle: float64) -> None:
-    self._copy_from(self.rotated_y(angle))
+  def rotateY(self, angle: float64) -> None:
+    self._copyFrom(self.rotatedY(angle))
 
   @immutable
-  def rotated_z(self, angle: float64) -> Self:
-    rad_a: float64 = radians(angle)
-    cos_a: float64 = cos(rad_a)
-    sin_a: float64 = sin(rad_a)
-    rx: float64 = self.x * cos_a - self.y * sin_a
-    ry: float64 = self.x * sin_a + self.y * cos_a
+  def rotatedZ(self, angle: float64) -> Self:
+    radA: float64 = radians(angle)
+    cosA: float64 = cos(radA)
+    sinA: float64 = sin(radA)
+    rx: float64 = self.x * cosA - self.y * sinA
+    ry: float64 = self.x * sinA + self.y * cosA
     return new(rx, ry, self.z)
 
-  def rotate_z(self, angle: float64) -> None:
-    self._copy_from(self.rotated_z(angle))
+  def rotateZ(self, angle: float64) -> None:
+    self._copyFrom(self.rotatedZ(angle))
 
   @immutable
-  def apply_quat(self, w: float64, qx: float64, qy: float64, qz: float64) -> Self:
+  def applyQuat(self, w: float64, qx: float64, qy: float64, qz: float64) -> Self:
     qv: Self = new(qx, qy, qz)
     t: Self = qv @ self
     t *= 2.0
@@ -588,66 +588,66 @@ class Vector3(VectorMixin):
     w: float64 = cos(half)
     s: float64 = sin(half)
     n: Self = axis.norm
-    return self.apply_quat(w, n.x * s, n.y * s, n.z * s)
+    return self.applyQuat(w, n.x * s, n.y * s, n.z * s)
 
   def rotate(self, axis: Self, angle: float64) -> None:
-    self._copy_from(self.rotated(axis, angle))
+    self._copyFrom(self.rotated(axis, angle))
 
   @immutable
-  def rotated_around(self, center: Self, axis: Self, angle: float64) -> Self:
+  def rotatedAround(self, center: Self, axis: Self, angle: float64) -> Self:
     return (self - center).rotated(axis, angle) + center
 
-  def rotate_around(self, center: Self, axis: Self, angle: float64) -> None:
-    self._copy_from(self.rotated_around(center, axis, angle))
+  def rotateAround(self, center: Self, axis: Self, angle: float64) -> None:
+    self._copyFrom(self.rotatedAround(center, axis, angle))
 
   @immutable
-  def rotated_euler_angles(self, euler_angles: Self) -> Self:
-    ex: float64 = radians(euler_angles.x * 0.5)
-    ey: float64 = radians(euler_angles.y * 0.5)
-    ez: float64 = radians(euler_angles.z * 0.5)
-    cos_x: float64 = cos(ex)
-    sin_x: float64 = sin(ex)
-    cos_y: float64 = cos(ey)
-    sin_y: float64 = sin(ey)
-    cos_z: float64 = cos(ez)
-    sin_z: float64 = sin(ez)
-    w: float64 = cos_x * cos_y * cos_z + sin_x * sin_y * sin_z
-    qx: float64 = sin_x * cos_y * cos_z - cos_x * sin_y * sin_z
-    qy: float64 = cos_x * sin_y * cos_z + sin_x * cos_y * sin_z
-    qz: float64 = cos_x * cos_y * sin_z - sin_x * sin_y * cos_z
-    return self.apply_quat(w, qx, qy, qz)
+  def rotatedEulerAngles(self, eulerAngles: Self) -> Self:
+    ex: float64 = radians(eulerAngles.x * 0.5)
+    ey: float64 = radians(eulerAngles.y * 0.5)
+    ez: float64 = radians(eulerAngles.z * 0.5)
+    cosX: float64 = cos(ex)
+    sinX: float64 = sin(ex)
+    cosY: float64 = cos(ey)
+    sinY: float64 = sin(ey)
+    cosZ: float64 = cos(ez)
+    sinZ: float64 = sin(ez)
+    w: float64 = cosX * cosY * cosZ + sinX * sinY * sinZ
+    qx: float64 = sinX * cosY * cosZ - cosX * sinY * sinZ
+    qy: float64 = cosX * sinY * cosZ + sinX * cosY * sinZ
+    qz: float64 = cosX * cosY * sinZ - sinX * sinY * cosZ
+    return self.applyQuat(w, qx, qy, qz)
 
-  def rotate_euler_angles(self, euler_angles: Self) -> None:
-    self._copy_from(self.rotated_euler_angles(euler_angles))
+  def rotateEulerAngles(self, eulerAngles: Self) -> None:
+    self._copyFrom(self.rotatedEulerAngles(eulerAngles))
 
   @immutable
   def flipped(
     self,
-    flip_x: bool = False,
-    flip_y: bool = False,
-    flip_z: bool = False,
+    flipX: bool = False,
+    flipY: bool = False,
+    flipZ: bool = False,
   ) -> Self:
     return new(
-      -self.x if flip_x else self.x,
-      -self.y if flip_y else self.y,
-      -self.z if flip_z else self.z,
+      -self.x if flipX else self.x,
+      -self.y if flipY else self.y,
+      -self.z if flipZ else self.z,
     )
 
   def flip(
     self,
-    flip_x: bool = False,
-    flip_y: bool = False,
-    flip_z: bool = False,
+    flipX: bool = False,
+    flipY: bool = False,
+    flipZ: bool = False,
   ) -> None:
-    self._copy_from(self.flipped(flip_x, flip_y, flip_z))
+    self._copyFrom(self.flipped(flipX, flipY, flipZ))
 
   @immutable
-  def to_spherical(self) -> Self:
-    len_v: float64 = abs(self)
-    return new(len_v, degrees(atan2(self.y, self.x)), degrees(acos(self.z / len_v)))
+  def toSpherical(self) -> Self:
+    lenV: float64 = abs(self)
+    return new(lenV, degrees(atan2(self.y, self.x)), degrees(acos(self.z / lenV)))
 
   @immutable
-  def to_vector2(self) -> Vector2:
+  def toVector2(self) -> Vector2:
     return new(self.x, self.y)
 
   @immutable
@@ -655,7 +655,7 @@ class Vector3(VectorMixin):
     return self.cross(other)
 
   def __imatmul__(self, other: Self) -> Self:
-    self._copy_from(self.cross(other))
+    self._copyFrom(self.cross(other))
     return self
 
 
@@ -671,67 +671,67 @@ class Vector4(VectorMixin):
     z: float64 = 0.0,
     w: float64 = 0.0,
   ) -> None:
-    self._data.unsafe_set(0, x)
-    self._data.unsafe_set(1, y)
-    self._data.unsafe_set(2, z)
-    self._data.unsafe_set(3, w)
+    self._data.unsafeSet(0, x)
+    self._data.unsafeSet(1, y)
+    self._data.unsafeSet(2, z)
+    self._data.unsafeSet(3, w)
 
   @property
   @immutable
   def x(self) -> float64:
-    return self._data.unsafe_get(0)
+    return self._data.unsafeGet(0)
 
   @property.setter
   def x(self, value: float64) -> None:
-    self._data.unsafe_set(0, value)
+    self._data.unsafeSet(0, value)
 
   @property
   @immutable
   def y(self) -> float64:
-    return self._data.unsafe_get(1)
+    return self._data.unsafeGet(1)
 
   @property.setter
   def y(self, value: float64) -> None:
-    self._data.unsafe_set(1, value)
+    self._data.unsafeSet(1, value)
 
   @property
   @immutable
   def z(self) -> float64:
-    return self._data.unsafe_get(2)
+    return self._data.unsafeGet(2)
 
   @property.setter
   def z(self, value: float64) -> None:
-    self._data.unsafe_set(2, value)
+    self._data.unsafeSet(2, value)
 
   @property
   @immutable
   def w(self) -> float64:
-    return self._data.unsafe_get(3)
+    return self._data.unsafeGet(3)
 
   @property.setter
   def w(self, value: float64) -> None:
-    self._data.unsafe_set(3, value)
+    self._data.unsafeSet(3, value)
 
   @immutable
   def flipped(
     self,
-    flip_x: bool = False,
-    flip_y: bool = False,
-    flip_z: bool = False,
-    flip_w: bool = False,
+    flipX: bool = False,
+    flipY: bool = False,
+    flipZ: bool = False,
+    flipW: bool = False,
   ) -> Self:
     return new(
-      -self.x if flip_x else self.x,
-      -self.y if flip_y else self.y,
-      -self.z if flip_z else self.z,
-      -self.w if flip_w else self.w,
+      -self.x if flipX else self.x,
+      -self.y if flipY else self.y,
+      -self.z if flipZ else self.z,
+      -self.w if flipW else self.w,
     )
 
   def flip(
     self,
-    flip_x: bool = False,
-    flip_y: bool = False,
-    flip_z: bool = False,
-    flip_w: bool = False,
+    flipX: bool = False,
+    flipY: bool = False,
+    flipZ: bool = False,
+    flipW: bool = False,
   ) -> None:
-    self._copy_from(self.flipped(flip_x, flip_y, flip_z, flip_w))
+    self._copyFrom(self.flipped(flipX, flipY, flipZ, flipW))

@@ -28,13 +28,13 @@ class ProtocolEraseSpec:
 
 
 PROTOCOL_ERASE_ALWAYS: frozenset[str] = frozenset({
-  "Generator",
-  "Coroutine",
-  "AsyncGenerator",
+  "GeneratorType",
+  "CoroutineType",
+  "AsyncGeneratorType",
 })
 """手写 ``templates/core/{generator,coroutine,async_generator}.h``；仍参与 ``make{Name}`` 与类型映射。"""
 
-PROTOCOL_ERASE_FORCE: frozenset[str] = frozenset({"Iterator", "AsyncIterator"})
+PROTOCOL_ERASE_FORCE: frozenset[str] = frozenset({"IteratorType", "AsyncIteratorType"})
 """协议体含 ``Self``，但被其它擦除协议返回类型依赖；仍生成 ``PyIterator`` / ``PyAsyncIterator``。"""
 
 PROTOCOL_ERASE_AUTOGEN_MODULES: frozenset[str] = frozenset({
@@ -49,15 +49,15 @@ PROTOCOL_ERASE_AUTOGEN_MODULES: frozenset[str] = frozenset({
 """自动生成 ``protocol_erase.h`` 的 ``@protocol`` 模块（含域协议；``Self`` 体仍排除）。"""
 
 _REF_ERASED_CPP: dict[str, str] = {
-  "Iterator": "PyIterator",
-  "AsyncIterator": "PyAsyncIterator",
+  "IteratorType": "PyIterator",
+  "AsyncIteratorType": "PyAsyncIterator",
 }
 
 PROTOCOL_ERASE_SKIP: frozenset[str] = frozenset({
-  "IterableIterator",
-  "StringFormat",
+  "IterableIteratorType",
+  "StringFormatType",
 })
-"""``Element``/``Key``/``Value`` 别名已映射；``Self`` 协议（``TextIO``/``Document`` 等）仍不生成 C++。"""
+"""``Element``/``Key``/``Value`` 别名已映射；``Self`` 协议（``TextIOType``/``DocumentType`` 等）仍不生成 C++。"""
 
 # ``protocol_erase.h`` 在全局命名空间；嵌套模块类型须 FQN（``minimal.h`` 中 ``varint.h`` 在其后）。
 _PROTOCOL_ERASE_TYPE_FQN: dict[str, str] = {
@@ -66,32 +66,32 @@ _PROTOCOL_ERASE_TYPE_FQN: dict[str, str] = {
 }
 
 PROTOCOL_ERASE_SPEC_ORDER: tuple[str, ...] = (
-  "Iterator",
-  "AsyncIterator",
-  "Sized",
-  "Hashable",
-  "ContextManager",
-  "Container",
-  "Collection",
-  "Appendable",
-  "MutableMapping",
-  "Iterable",
-  "Reversible",
-  "Awaitable",
-  "AsyncIterable",
-  "AsyncContextManager",
-  "Number",
-  "Cursor",
-  "Dialect",
-  "Connection",
-  "TextWriter",
-  "TextReader",
-  "Encoder",
-  "Decoder",
-  "Navigatable",
+  "IteratorType",
+  "AsyncIteratorType",
+  "SizedType",
+  "HashableType",
+  "ContextManagerType",
+  "ContainerType",
+  "CollectionType",
+  "AppendableType",
+  "MutableMappingType",
+  "IterableType",
+  "ReversibleType",
+  "AwaitableType",
+  "AsyncIterableType",
+  "AsyncContextManagerType",
+  "NumberType",
+  "CursorType",
+  "DialectType",
+  "ConnectionType",
+  "TextWriterType",
+  "TextReaderType",
+  "EncoderType",
+  "DecoderType",
+  "NavigatableType",
 )
 
-PROTOCOL_ERASE_LATE_SPECS: frozenset[str] = frozenset({"Encoder", "Decoder"})
+PROTOCOL_ERASE_LATE_SPECS: frozenset[str] = frozenset({"EncoderType", "DecoderType"})
 """依赖 ``varint`` 完整定义；在 ``numeric/varint.h`` 之后生成 ``protocol_erase_domain.h``。"""
 
 
@@ -184,10 +184,10 @@ def _map_protocol_ann(
   runtime_erase: frozenset[str],
 ) -> str:
   if isinstance(ann, ast.Name) and ann.id == "Self":
-    if protocol_name == "Iterator" and len(type_param_names) == 1:
+    if protocol_name == "IteratorType" and len(type_param_names) == 1:
       tp = type_param_names[0]
       return f"PyIterator<{tp}>&"
-    if protocol_name == "AsyncIterator" and len(type_param_names) == 1:
+    if protocol_name == "AsyncIteratorType" and len(type_param_names) == 1:
       tp = type_param_names[0]
       return f"PyAsyncIterator<{tp}>&"
   return _protocol_ann_to_cpp(
@@ -247,7 +247,7 @@ def _collect_protocol_methods(
           )
       r = ret_cpp(item.returns)
       if (
-        node.name == "Iterator"
+        node.name == "IteratorType"
         and item.name == "__next__"
         and len(tparams) == 1
       ):
@@ -323,7 +323,7 @@ def _protocol_ann_to_cpp(
         )
         prefix = _REF_ERASED_CPP[base]
         return f"{prefix}<{args}>" if args else prefix
-      if base in ("list", "dict", "set", "tuple", "IterResult", "Optional", "Awaitable"):
+      if base in ("list", "dict", "set", "tuple", "IterResult", "Optional", "AwaitableType"):
         args = _protocol_slice_to_cpp_args(
           ann.slice, type_param_names, type_aliases, runtime_erase=runtime_erase,
         )
@@ -372,8 +372,19 @@ def _protocol_slice_to_cpp_args(
   )
 
 
+def _protocol_erase_stem(protocol: str) -> str:
+  """``IteratorType`` → ``Iterator``（C++ ``PyIterator`` / ``makeIterator``）。"""
+  if protocol.endswith("Type"):
+    return protocol[: -len("Type")]
+  if protocol.endswith("Protocol"):
+    return protocol[: -len("Protocol")]
+  return protocol
+
+
 def erased_protocol_cpp_name(protocol: str) -> str:
-  return cpp_ident(f"Py{protocol}")
+  if protocol in _REF_ERASED_CPP:
+    return _REF_ERASED_CPP[protocol]
+  return cpp_ident(f"Py{_protocol_erase_stem(protocol)}")
 
 
 def protocol_uses_self(node: ast.ClassDef, classes: dict[str, ast.ClassDef]) -> bool:
@@ -423,7 +434,7 @@ def load_protocol_runtime_erase_candidates() -> frozenset[str]:
 
 @lru_cache(maxsize=1)
 def load_protocol_erase_specs() -> tuple[ProtocolEraseSpec, ...]:
-  """自动生成 C++ 擦除类的协议（``core/protocols``；排除 ``Generator``/``Coroutine``）。"""
+  """自动生成 C++ 擦除类的协议（``core/protocols``；排除 ``GeneratorType``/``CoroutineType``）。"""
   classes_list = _scan_protocol_classes()
   by_name = {c.name: c for c in classes_list}
   path_by_name: dict[str, str] = {}
@@ -476,7 +487,7 @@ def protocol_erase_specs_for_header(*, late: bool) -> tuple[ProtocolEraseSpec, .
 
 
 def erased_protocol_make_fn(protocol: str) -> str:
-  return f"make{protocol}"
+  return f"make{_protocol_erase_stem(protocol)}"
 
 
 def cpp_make_erased_protocol_expr(erased_cpp_type: str, concrete_expr: str) -> str:
@@ -499,7 +510,10 @@ def is_cpp_erased_protocol_type(cpp_type: str, protocol: str | None = None) -> b
   if not t.startswith("Py"):
     return False
   name = t[2:].split("<", 1)[0]
-  return name in load_protocol_runtime_erase()
+  erase = load_protocol_runtime_erase()
+  if name in erase:
+    return True
+  return any(_protocol_erase_stem(p) == name for p in erase)
 
 
 def parse_erased_protocol_from_cpp(cpp_type: str) -> tuple[str, str] | None:

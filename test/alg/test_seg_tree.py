@@ -2,16 +2,16 @@
 
 from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
-from py2cpp.alg.agg_mode import AggMode
+from py2cpp.alg.agg_mode import AggModeEnum
 from py2cpp.alg.seg_tree import SegTree
 
 
 class SegTreeSumTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
-    st: SegTree = new(5, AggMode.Sum)
+    st: SegTree = new(5, AggModeEnum.Sum)
     for i in range(5):
       st[i] = i + 1
     self.assertTrue(st[:5] == 15)
@@ -20,12 +20,12 @@ class SegTreeSumTests(TestCaseMixin):
 
 
 class SegTreeMinMaxTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
-    mn: SegTree = new(4, AggMode.Min)
-    mx: SegTree = new(4, AggMode.Max)
+    mn: SegTree = new(4, AggModeEnum.Min)
+    mx: SegTree = new(4, AggModeEnum.Max)
     vals: list[int] = [5, 2, 7, 4]
     for i in range(4):
       mn[i] = vals[i]
@@ -37,11 +37,11 @@ class SegTreeMinMaxTests(TestCaseMixin):
 
 
 class SegTreeContainsTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
-    st: SegTree = new(3, AggMode.Sum)
+    st: SegTree = new(3, AggModeEnum.Sum)
     self.assertTrue(0 in st)
     self.assertTrue(2 in st)
     self.assertFalse(3 in st)

@@ -4,16 +4,16 @@ from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 from py2cpp.io import StringIO, open
 from py2cpp.io.file.path import join
-from py2cpp.test.test_temp import _TEST_TEMP, ensure_test_temp
+from py2cpp.test.test_temp import _TestTemp, ensureTestTemp
 
-_IO_TMP: str = join(_TEST_TEMP, "test_io_tmp.txt")
-_IO_WRITELINES: str = join(_TEST_TEMP, "test_io_writelines.txt")
-_IO_ITER: str = join(_TEST_TEMP, "test_io_iter.txt")
-_WITH_TMP: str = join(_TEST_TEMP, "test_with_tmp.txt")
+_IoTmp: str = join(_TestTemp, "test_io_tmp.txt")
+_IoWritelines: str = join(_TestTemp, "test_io_writelines.txt")
+_IoIter: str = join(_TestTemp, "test_io_iter.txt")
+_WithTmp: str = join(_TestTemp, "test_with_tmp.txt")
 
 
 class StringIOWriteTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
@@ -24,7 +24,7 @@ class StringIOWriteTests(TestCaseMixin):
 
 
 class StringIOWriteCharsTests(TestCaseMixin):
-  _test_tag = 2
+  _testTag = 2
 
   @override
   def test(self):
@@ -39,7 +39,7 @@ class StringIOWriteCharsTests(TestCaseMixin):
 
 
 class StringIOReadTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
@@ -52,40 +52,40 @@ class StringIOReadTests(TestCaseMixin):
 
 
 class StringIOReadlineTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
     sio: StringIO = new("a\nb")
-    self.assertEqual(sio.readline(), "a\n")
-    self.assertEqual(sio.readline(), "b")
-    self.assertEqual(sio.readline(), "")
+    self.assertEqual(sio.readLine(), "a\n")
+    self.assertEqual(sio.readLine(), "b")
+    self.assertEqual(sio.readLine(), "")
 
 
 class StringIOReadlinesTests(TestCaseMixin):
-  _test_tag = 21
+  _testTag = 21
 
   @override
   def test(self):
     sio: StringIO = new("a\nbc\ndef\n")
-    got: list[str] = sio.readlines()
+    got: list[str] = sio.readLines()
     self.assertEqual(len(got), 3)
     self.assertEqual(got[0], "a\n")
     self.assertEqual(got[1], "bc\n")
     self.assertEqual(got[2], "def\n")
     sio.seek(0)
-    got2: list[str] = sio.readlines(2)
+    got2: list[str] = sio.readLines(2)
     self.assertEqual(len(got2), 1)
     self.assertEqual(got2[0], "a\n")
     sio.seek(0)
-    got3: list[str] = sio.readlines(5)
+    got3: list[str] = sio.readLines(5)
     self.assertEqual(len(got3), 2)
     self.assertEqual(got3[0], "a\n")
     self.assertEqual(got3[1], "bc\n")
 
 
 class StringIOWritelinesTests(TestCaseMixin):
-  _test_tag = 22
+  _testTag = 22
 
   @override
   def test(self):
@@ -94,12 +94,12 @@ class StringIOWritelinesTests(TestCaseMixin):
     parts.append("ab")
     parts.append("c\n")
     parts.append("d")
-    sio.writelines(parts)
+    sio.writeLines(parts)
     self.assertEqual(sio.value, "abc\nd")
 
 
 class StringIOIterTests(TestCaseMixin):
-  _test_tag = 23
+  _testTag = 23
 
   @override
   def test(self):
@@ -113,7 +113,7 @@ class StringIOIterTests(TestCaseMixin):
 
 
 class StringIOSeekOverwriteTests(TestCaseMixin):
-  _test_tag = 30
+  _testTag = 30
 
   @override
   def test(self):
@@ -125,7 +125,7 @@ class StringIOSeekOverwriteTests(TestCaseMixin):
 
 
 class StringIOCloseTests(TestCaseMixin):
-  _test_tag = 40
+  _testTag = 40
 
   @override
   def test(self):
@@ -137,7 +137,7 @@ class StringIOCloseTests(TestCaseMixin):
 
 
 class StringIOTakeTests(TestCaseMixin):
-  _test_tag = 50
+  _testTag = 50
 
   @override
   def test(self):
@@ -155,7 +155,7 @@ class StringIOTakeTests(TestCaseMixin):
 
 
 class StringIOPosTests(TestCaseMixin):
-  _test_tag = 51
+  _testTag = 51
 
   @override
   def test(self):
@@ -169,87 +169,87 @@ class StringIOPosTests(TestCaseMixin):
 
 
 class FileIOWriteReadTests(TestCaseMixin):
-  _test_tag = 100
+  _testTag = 100
 
   @override
   def test(self):
-    ensure_test_temp()
-    w = open(_IO_TMP, "wb")
+    ensureTestTemp()
+    w = open(_IoTmp, "wb")
     self.assertTrue(w)
     self.assertEqual(w.write("abc\n"), 4)
     w.close()
-    r = open(_IO_TMP, "rb")
+    r = open(_IoTmp, "rb")
     self.assertTrue(r)
     self.assertEqual(r.read(), "abc\n")
     r.close()
 
 
 class FileIOReadlineTests(TestCaseMixin):
-  _test_tag = 110
+  _testTag = 110
 
   @override
   def test(self):
-    ensure_test_temp()
-    w = open(_IO_TMP, "wb")
+    ensureTestTemp()
+    w = open(_IoTmp, "wb")
     w.write("line1\nline2\n")
     w.close()
-    r = open(_IO_TMP, "rb")
-    self.assertEqual(r.readline(), "line1\n")
-    self.assertEqual(r.readline(), "line2\n")
-    self.assertEqual(r.readline(), "")
+    r = open(_IoTmp, "rb")
+    self.assertEqual(r.readLine(), "line1\n")
+    self.assertEqual(r.readLine(), "line2\n")
+    self.assertEqual(r.readLine(), "")
     r.close()
 
 
 class FileIOReadlinesTests(TestCaseMixin):
-  _test_tag = 111
+  _testTag = 111
 
   @override
   def test(self):
-    ensure_test_temp()
-    w = open(_IO_TMP, "wb")
+    ensureTestTemp()
+    w = open(_IoTmp, "wb")
     w.write("a\nbb\nccc\n")
     w.close()
-    r = open(_IO_TMP, "rb")
-    got: list[str] = r.readlines()
+    r = open(_IoTmp, "rb")
+    got: list[str] = r.readLines()
     self.assertEqual(len(got), 3)
     self.assertEqual(got[0], "a\n")
     self.assertEqual(got[1], "bb\n")
     self.assertEqual(got[2], "ccc\n")
     r.seek(0)
-    got2: list[str] = r.readlines(2)
+    got2: list[str] = r.readLines(2)
     self.assertEqual(len(got2), 1)
     self.assertEqual(got2[0], "a\n")
     r.close()
 
 
 class FileIOWritelinesTests(TestCaseMixin):
-  _test_tag = 112
+  _testTag = 112
 
   @override
   def test(self):
-    ensure_test_temp()
-    w = open(_IO_WRITELINES, "wb")
+    ensureTestTemp()
+    w = open(_IoWritelines, "wb")
     parts: list[str] = []
     parts.append("hi")
     parts.append("\n")
     parts.append("there")
-    w.writelines(parts)
+    w.writeLines(parts)
     w.close()
-    r = open(_IO_WRITELINES, "rb")
+    r = open(_IoWritelines, "rb")
     self.assertEqual(r.read(), "hi\nthere")
     r.close()
 
 
 class FileIOIterTests(TestCaseMixin):
-  _test_tag = 113
+  _testTag = 113
 
   @override
   def test(self):
-    ensure_test_temp()
-    w = open(_IO_ITER, "wb")
+    ensureTestTemp()
+    w = open(_IoIter, "wb")
     w.write("p\nq\n")
     w.close()
-    r = open(_IO_ITER, "rb")
+    r = open(_IoIter, "rb")
     out: list[str] = []
     for line in r:
       out.append(line)
@@ -260,15 +260,15 @@ class FileIOIterTests(TestCaseMixin):
 
 
 class FileIOSeekTellTests(TestCaseMixin):
-  _test_tag = 120
+  _testTag = 120
 
   @override
   def test(self):
-    ensure_test_temp()
-    w = open(_IO_TMP, "wb")
+    ensureTestTemp()
+    w = open(_IoTmp, "wb")
     w.write("abcdef")
     w.close()
-    r = open(_IO_TMP, "rb")
+    r = open(_IoTmp, "rb")
     self.assertEqual(r.tell(), 0)
     self.assertEqual(r.read(3), "abc")
     self.assertEqual(r.tell(), 3)
@@ -279,7 +279,7 @@ class FileIOSeekTellTests(TestCaseMixin):
 
 
 class StringIOWithTests(TestCaseMixin):
-  _test_tag = 3
+  _testTag = 3
 
   @override
   def test(self):
@@ -289,21 +289,21 @@ class StringIOWithTests(TestCaseMixin):
 
 
 class FileWithCloseTests(TestCaseMixin):
-  _test_tag = 11
+  _testTag = 11
 
   @override
   def test(self):
-    ensure_test_temp()
-    with open(_WITH_TMP, "wb") as f:
+    ensureTestTemp()
+    with open(_WithTmp, "wb") as f:
       self.assertTrue(f)
       f.write("data")
-    r = open(_WITH_TMP, "rb")
+    r = open(_WithTmp, "rb")
     self.assertEqual(r.read(), "data")
     r.close()
 
 
 class NestedWithTests(TestCaseMixin):
-  _test_tag = 24
+  _testTag = 24
 
   @override
   def test(self):
@@ -316,6 +316,6 @@ class NestedWithTests(TestCaseMixin):
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)

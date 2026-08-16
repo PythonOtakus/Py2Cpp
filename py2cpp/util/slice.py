@@ -3,18 +3,17 @@ from ..builtins import *
 from ..core.exceptions import ValueError
 
 # 与翻译器 ``visit_Subscript`` 中构造 ``PySlice<int,int>(...)`` 的缺省占位一致（仅用于整型界）
-SLICE_START_UNSET: int = -2000000001
-SLICE_STOP_UNSET: int = -2000000002
+SliceStartUnset: int = -2000000001
+SliceStopUnset: int = -2000000002
 
 
-@native_name("PySlice")
-class slice[T, U]:
+class slice[Bound, Step]:
   """``slice(start, stop, step)`` / ``seq[slice(...)]`` 的编译期表示。"""
 
-  def __init__(self, start: T, stop: T, step: U):
-    self._start: T = start
-    self._stop: T = stop
-    self._step: U = step
+  def __init__(self, start: Bound, stop: Bound, step: Step):
+    self._start: Bound = start
+    self._stop: Bound = stop
+    self._step: Step = step
 
   @immutable
   def indices(self, length: int) -> (int, int, int):
@@ -24,7 +23,7 @@ class slice[T, U]:
       raise ValueError("slice step cannot be zero")
     start: int = self._start
     stop: int = self._stop
-    if start == SLICE_START_UNSET:
+    if start == SliceStartUnset:
       if step > 0:
         start = 0
       else:
@@ -42,7 +41,7 @@ class slice[T, U]:
           start = length
         else:
           start = length - 1
-    if stop == SLICE_STOP_UNSET:
+    if stop == SliceStopUnset:
       if step > 0:
         stop = length
       else:

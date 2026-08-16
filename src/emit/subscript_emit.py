@@ -43,7 +43,7 @@ def _view_span_cpp_cast(elem: str, ndim: int) -> str:
     return f'PySpan<{elem}>'
 
 def read_span_view_property(tr: Translator, receiver: ast.expr) -> str | None:
-    """``stack_array`` / ``PyArray`` / ``PyList`` / 2D·3D 数组的 ``.view`` → ``view__get()``。"""
+    """``StackArray`` / ``PyArray`` / ``PyList`` / 2D·3D 数组的 ``.view`` → ``view__get()``。"""
     t = tr._infer_expr_cpp_type(receiver) or tr._expr_cpp_type(receiver)
     stack_nd = cpp_stack_array_ndim(t) if is_stack_array_type(t) else None
     arr_nd = cpp_array_ndim(t) if is_array_type(t) else None
@@ -501,7 +501,7 @@ def visit_subscript(tr: Translator, node: ast.Subscript) -> str:
                     return f'this->{fcpp}->__getitem__({idx})'
                 return _emit_ptr_subscript(tr, f'this->{node.value.attr}', idx, ft)
     if isinstance(node.value, ast.Name) and tr.scope:
-        if scope_binding_storage_cpp(tr.scope, node.value.id) == 'c_str':
+        if scope_binding_storage_cpp(tr.scope, node.value.id) == 'CStr':
             return f'{node.value.id}[{tr.visit(node.slice)}]'
         vt = scope_storage_cpp(tr, node.value.id)
         if is_stack_array_type(vt) or is_span_type(vt):

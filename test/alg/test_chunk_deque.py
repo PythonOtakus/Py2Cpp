@@ -6,23 +6,23 @@ from py2cpp.alg.chunk_deque import ChunkDeque
 
 
 class ChunkDequeAppendPopTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
     dq: ChunkDeque[int] = new(4)
     dq.append(1)
     dq.append(2)
-    dq.appendleft(0)
+    dq.appendLeft(0)
     self.assertTrue(len(dq) == 3)
-    self.assertTrue(dq.popleft() == 0)
+    self.assertTrue(dq.popLeft() == 0)
     self.assertTrue(dq.pop() == 2)
     self.assertTrue(dq.pop() == 1)
     self.assertFalse(dq)
 
 
 class ChunkDequeGetItemTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
@@ -35,7 +35,7 @@ class ChunkDequeGetItemTests(TestCaseMixin):
 
 
 class ChunkDequeClearTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
@@ -46,7 +46,7 @@ class ChunkDequeClearTests(TestCaseMixin):
 
 
 class ChunkDequeContainsDelTests(TestCaseMixin):
-  _test_tag = 30
+  _testTag = 30
 
   @override
   def test(self):
@@ -63,7 +63,7 @@ class ChunkDequeContainsDelTests(TestCaseMixin):
 
 
 class ChunkDequeSpliceTests(TestCaseMixin):
-  _test_tag = 40
+  _testTag = 40
 
   @override
   def test(self):
@@ -80,7 +80,7 @@ class ChunkDequeSpliceTests(TestCaseMixin):
 
 
 class ChunkDequeExtendTests(TestCaseMixin):
-  _test_tag = 50
+  _testTag = 50
 
   @override
   def test(self):
@@ -99,7 +99,7 @@ class ChunkDequeExtendTests(TestCaseMixin):
 
 
 class ChunkDequeInsertPopTests(TestCaseMixin):
-  _test_tag = 60
+  _testTag = 60
 
   @override
   def test(self):
@@ -116,7 +116,7 @@ class ChunkDequeInsertPopTests(TestCaseMixin):
 
 
 class ChunkDequeSetItemTests(TestCaseMixin):
-  _test_tag = 70
+  _testTag = 70
 
   @override
   def test(self):
@@ -130,7 +130,7 @@ class ChunkDequeSetItemTests(TestCaseMixin):
 
 
 class ChunkDequeIterTests(TestCaseMixin):
-  _test_tag = 80
+  _testTag = 80
 
   @override
   def test(self):
@@ -146,7 +146,7 @@ class ChunkDequeIterTests(TestCaseMixin):
 
 
 class ChunkDequeReversedTests(TestCaseMixin):
-  _test_tag = 90
+  _testTag = 90
 
   @override
   def test(self):

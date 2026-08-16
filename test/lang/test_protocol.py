@@ -1,24 +1,24 @@
 from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
-"""``@protocol`` 约束：``Comparable`` / ``Arithmetic`` / ``numbers`` 塔（应编译通过）。"""
+"""``@protocol`` 约束：``ComparableType`` / ``ArithmeticType`` / ``numbers`` 塔（应编译通过）。"""
 
 
-def sorted[T: Comparable](s: list[T]) -> list[T]:
+def sorted[T: ComparableType](s: list[T]) -> list[T]:
   out: list[T] = []
   out.extend(s)
   out.sort()
   return out
 
 
-def half[T: Arithmetic](x: T) -> float:
+def half[T: ArithmeticType](x: T) -> float:
   return x / 2
 
 
-def scale[T: Complex](x: T, n: int) -> int:
+def scale[T: ComplexType](x: T, n: int) -> int:
   return int(x * n)
 
 
-def clamp[T: Real](lo: T, hi: T, x: T) -> T:
+def clamp[T: RealType](lo: T, hi: T, x: T) -> T:
   if x < lo:
     return lo
   if x > hi:
@@ -26,12 +26,12 @@ def clamp[T: Real](lo: T, hi: T, x: T) -> T:
   return x
 
 
-def parity[T: Integral](x: T) -> int:
+def parity[T: IntegralType](x: T) -> int:
   return int(x & 1)
 
 
 class ComparableSortedTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
@@ -42,7 +42,7 @@ class ComparableSortedTests(TestCaseMixin):
 
 
 class ArithmeticOpsTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
@@ -53,7 +53,7 @@ class ArithmeticOpsTests(TestCaseMixin):
 
 
 class NumbersTowerTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
@@ -63,7 +63,7 @@ class NumbersTowerTests(TestCaseMixin):
 
 
 class HashModTests(TestCaseMixin):
-  _test_tag = 30
+  _testTag = 30
 
   @override
   def test(self):
@@ -75,6 +75,6 @@ class HashModTests(TestCaseMixin):
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)

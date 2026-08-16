@@ -1,8 +1,8 @@
-"""``py2cpp.web.openai`` 最简 chat/chat_stream 辅助逻辑回归。"""
+"""``py2cpp.web.openai`` 最简 chat/chatStream 辅助逻辑回归。"""
 from py2cpp import *
 from py2cpp.concur.task import Task
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
-from py2cpp.web.http import ClientResponse, ClientStreamResponse, Request, RequestOptions, Response, StatusCode
+from py2cpp.web.http import ClientResponse, ClientStreamResponse, Request, RequestOptions, Response, StatusCodeEnum
 from py2cpp.web.openai import (
   AsyncOpenAI,
   Conversation,
@@ -11,67 +11,67 @@ from py2cpp.web.openai import (
   McpServer,
   OpenAI,
   OpenAIMessage,
-  _build_chat_body,
-  _build_responses_body,
-  _chat_content,
-  _delta_content,
-  _iter_responses_sse_tokens,
-  _iter_sse_tokens,
-  _response_id,
-  _response_text,
-  _responses_delta,
-  _request_options,
-  _status_error_text,
+  _buildChatBody,
+  _buildResponsesBody,
+  _chatContent,
+  _deltaContent,
+  _iterResponsesSseTokens,
+  _iterSseTokens,
+  _responseId,
+  _responseText,
+  _responsesDelta,
+  _requestOptions,
+  _statusErrorText,
 )
 from py2cpp.web.socket import AsyncTcpSocket
 from py2cpp.web.stream import AsyncStreamReader, AsyncStreamWriter, StreamReader, StreamWriter
 
 
-_CHAT_PORT: int = 18141
+_ChatPort: int = 18141
 
 
-def _local_mcp_echo(args_json: str) -> str:
-  return "echo:" + args_json
+def _localMcpEcho(argsJson: str) -> str:
+  return "echo:" + argsJson
 
 
 class OpenAIChatBodyTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
-    body: str = _build_chat_body("gpt-test", "ping", "be brief", 16, 0.5, False)
+    body: str = _buildChatBody("gpt-test", "ping", "be brief", 16, 0.5, False)
     self.assertTrue('"model":"gpt-test"' in body)
     self.assertTrue('"role":"system"' in body)
     self.assertTrue('"role":"user"' in body)
-    self.assertTrue('"max_tokens":16' in body)
+    self.assertTrue('"maxTokens":16' in body)
     self.assertTrue('"temperature":0.5' in body)
     self.assertFalse('"stream":true' in body)
 
-    stream_body: str = _build_chat_body("gpt-test", "ping", "", 0, -1.0, True)
-    self.assertTrue('"stream":true' in stream_body)
-    self.assertFalse('"role":"system"' in stream_body)
+    streamBody: str = _buildChatBody("gpt-test", "ping", "", 0, -1.0, True)
+    self.assertTrue('"stream":true' in streamBody)
+    self.assertFalse('"role":"system"' in streamBody)
 
 
 class OpenAIChatParseTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
-    text: str = _chat_content('{"choices":[{"message":{"content":"pong"}}]}')
+    text: str = _chatContent('{"choices":[{"message":{"content":"pong"}}]}')
     self.assertEqual(text, "pong")
-    top: str = _chat_content('{"content":"pong-top"}')
+    top: str = _chatContent('{"content":"pong-top"}')
     self.assertEqual(top, "pong-top")
-    nested: str = _chat_content('{"id":"x","choices":[{"index":0,"message":{"role":"assistant","content":"nested"}}]}')
+    nested: str = _chatContent('{"id":"x","choices":[{"index":0,"message":{"role":"assistant","content":"nested"}}]}')
     self.assertEqual(nested, "nested")
 
 
 class OpenAIStreamParseTests(TestCaseMixin):
-  _test_tag = 30
+  _testTag = 30
 
   @override
   def test(self):
     streamed: str = ""
-    for token in _iter_sse_tokens(
+    for token in _iterSseTokens(
       'data: {"choices":[{"delta":{"content":"pong"}}]}\n\n'
       'data: {"choices":[{"delta":{"content":"-stream"}}]}\n\n'
       'data: [DONE]\n\n'
@@ -81,22 +81,22 @@ class OpenAIStreamParseTests(TestCaseMixin):
 
 
 class OpenAIDeltaParseTests(TestCaseMixin):
-  _test_tag = 35
+  _testTag = 35
 
   @override
   def test(self):
-    token: str = _delta_content('{"id":"x","choices":[{"index":0,"delta":{"content":"tok"}}]}')
+    token: str = _deltaContent('{"id":"x","choices":[{"index":0,"delta":{"content":"tok"}}]}')
     self.assertEqual(token, "tok")
 
 
 class OpenAIResponsesBodyTests(TestCaseMixin):
-  _test_tag = 36
+  _testTag = 36
 
   @override
   def test(self):
-    old_msg: OpenAIMessage = new("user", "old")
-    answer_msg: OpenAIMessage = new("assistant", "answer")
-    messages: list[OpenAIMessage] = [old_msg, answer_msg]
+    oldMsg: OpenAIMessage = new("user", "old")
+    answerMsg: OpenAIMessage = new("assistant", "answer")
+    messages: list[OpenAIMessage] = [oldMsg, answerMsg]
     mcp: McpServer = new()
     mcp.label = "docs"
     mcp.url = "https://example.com/mcp"
@@ -104,10 +104,10 @@ class OpenAIResponsesBodyTests(TestCaseMixin):
     fn.label = "local"
     fn.name = "echo"
     fn.description = "Echo local args"
-    fn.parameters_json = "{}"
-    fn.handler = _local_mcp_echo
+    fn.parametersJson = "{}"
+    fn.handler = _localMcpEcho
     mcps: list[McpBase] = [mcp, fn]
-    body: str = _build_responses_body(
+    body: str = _buildResponsesBody(
       "gpt-test",
       "system",
       "summary",
@@ -125,7 +125,7 @@ class OpenAIResponsesBodyTests(TestCaseMixin):
     self.assertTrue('"stream":true' in body)
     self.assertTrue('"type":"mcp"' in body)
     self.assertTrue('"server_label":"docs"' in body)
-    self.assertTrue('"require_approval":"never"' in body)
+    self.assertTrue('"requireApproval":"never"' in body)
     self.assertTrue('"type":"function"' in body)
     self.assertTrue('"name":"echo"' in body)
     self.assertEqual(fn.call('{"x":1}'), 'echo:{"x":1}')
@@ -133,18 +133,18 @@ class OpenAIResponsesBodyTests(TestCaseMixin):
 
 
 class OpenAIResponsesParseTests(TestCaseMixin):
-  _test_tag = 37
+  _testTag = 37
 
   @override
   def test(self):
     raw: str = '{"id":"resp_1","output_text":"pong"}'
-    self.assertEqual(_response_id(raw), "resp_1")
-    self.assertEqual(_response_text(raw), "pong")
+    self.assertEqual(_responseId(raw), "resp_1")
+    self.assertEqual(_responseText(raw), "pong")
     nested: str = '{"output":[{"content":[{"type":"output_text","text":"he"},{"type":"output_text","text":"llo"}]}]}'
-    self.assertEqual(_response_text(nested), "hello")
-    self.assertEqual(_responses_delta('{"type":"response.output_text.delta","delta":"tok"}'), "tok")
+    self.assertEqual(_responseText(nested), "hello")
+    self.assertEqual(_responsesDelta('{"type":"response.output_text.delta","delta":"tok"}'), "tok")
     streamed: str = ""
-    for token in _iter_responses_sse_tokens(
+    for token in _iterResponsesSseTokens(
       'data: {"type":"response.output_text.delta","delta":"a"}\n\n'
       'data: {"type":"response.output_text.delta","delta":"b"}\n\n'
       'data: [DONE]\n\n'
@@ -154,48 +154,48 @@ class OpenAIResponsesParseTests(TestCaseMixin):
 
 
 class OpenAIErrorTextTests(TestCaseMixin):
-  _test_tag = 39
+  _testTag = 39
 
   @override
   def test(self):
-    msg: str = _status_error_text(401, '{"error":{"message":"bad key"}}')
+    msg: str = _statusErrorText(401, '{"error":{"message":"bad key"}}')
     self.assertTrue("HTTP 401 Unauthorized" in msg)
     self.assertTrue("bad key" in msg)
 
 
 class OpenAIRequestHeadersTests(TestCaseMixin):
-  _test_tag = 41
+  _testTag = 41
 
   @override
   def test(self):
     headers: dict[str, str] = {}
-    opts: RequestOptions = _request_options("sk-test", headers, "{}", 1.0)
+    opts: RequestOptions = _requestOptions("sk-test", headers, "{}", 1.0)
     self.assertTrue("Mozilla/5.0" in opts.headers["User-Agent"])
     self.assertEqual(opts.headers["Authorization"], "Bearer sk-test")
     custom: dict[str, str] = {"User-Agent": "custom-client"}
-    opts2: RequestOptions = _request_options("sk-test", custom, "{}", 1.0)
+    opts2: RequestOptions = _requestOptions("sk-test", custom, "{}", 1.0)
     self.assertEqual(opts2.headers["User-Agent"], "custom-client")
 
 
 class OpenAIConversationLocalTests(TestCaseMixin):
-  _test_tag = 38
+  _testTag = 38
 
   @override
   def test(self):
-    client: OpenAI = new(base_url="http://127.0.0.1:1/v1")
-    conv: Conversation = client.conversation("gpt-test", system="sys", max_history_chars=16, compress_target_chars=12)
+    client: OpenAI = new(baseUrl="http://127.0.0.1:1/v1")
+    conv: Conversation = client.conversation("gpt-test", system="sys", maxHistoryChars=16, compressTargetChars=12)
     srv: McpServer = new()
     srv.label = "docs"
     srv.url = "https://example.com/mcp"
-    conv.add_mcp(srv)
+    conv.addMcp(srv)
     fn: McpFuncCall = new()
     fn.label = "local"
     fn.name = "echo"
-    fn.handler = _local_mcp_echo
-    conv.add_mcp(fn)
+    fn.handler = _localMcpEcho
+    conv.addMcp(fn)
     self.assertEqual(conv.model, "gpt-test")
     self.assertEqual(len(conv.mcps), 2)
-    self.assertEqual(conv.call_mcp("local", '{"x":1}'), 'echo:{"x":1}')
+    self.assertEqual(conv.callMcp("local", '{"x":1}'), 'echo:{"x":1}')
     msg1: OpenAIMessage = new("user", "first")
     msg2: OpenAIMessage = new("assistant", "second")
     msg3: OpenAIMessage = new("user", "third")
@@ -212,12 +212,12 @@ class OpenAIConversationLocalTests(TestCaseMixin):
 
 
 class ClientStreamChunkedLineTests(TestCaseMixin):
-  _test_tag = 40
+  _testTag = 40
 
   @override
   def test(self):
     raw: bytes = (
-      b"HTTP/1.1 200 OK\r\n"
+      b"HTTP/1.1 200 Ok\r\n"
       b"Transfer-Encoding: chunked\r\n"
       b"\r\n"
       b"b\r\n"
@@ -230,63 +230,63 @@ class ClientStreamChunkedLineTests(TestCaseMixin):
       b"\r\n"
     )
     reader: StreamReader = new()
-    reader.load_bytes(raw)
-    writer: StreamWriter = new.from_buffer()
-    resp: ClientStreamResponse = new.from_streams(reader, writer)
+    reader.loadBytes(raw)
+    writer: StreamWriter = new.fromBuffer()
+    resp: ClientStreamResponse = new.fromStreams(reader, writer)
     self.assertEqual(resp.status, 200)
-    self.assertEqual(resp.readline(), "data: one")
-    self.assertEqual(resp.readline(), "")
-    self.assertEqual(resp.readline(), "data: two")
+    self.assertEqual(resp.readLine(), "data: one")
+    self.assertEqual(resp.readLine(), "")
+    self.assertEqual(resp.readLine(), "data: two")
 
 
 class ClientStreamTextTests(TestCaseMixin):
-  _test_tag = 45
+  _testTag = 45
 
   @override
   def test(self):
     reader: StreamReader = new()
-    reader.load_bytes(b"plain body")
-    writer: StreamWriter = new.from_buffer()
+    reader.loadBytes(b"plain body")
+    writer: StreamWriter = new.fromBuffer()
     head: ClientResponse = new(status=401)
-    resp: ClientStreamResponse = new.from_head(reader, writer, head)
+    resp: ClientStreamResponse = new.fromHead(reader, writer, head)
     self.assertEqual(resp.text(), "plain body")
 
 
-async def _serve_openai_chat(listener: AsyncTcpSocket) -> None:
+async def _serveOpenaiChat(listener: AsyncTcpSocket) -> None:
   conn: AsyncTcpSocket = await listener.accept()
-  reader: AsyncStreamReader = new.from_socket(conn)
-  writer: AsyncStreamWriter = new.from_socket(conn)
-  req: Request = await new.read_async(reader)
-  resp: Response = new.text_response('{"choices":[{"message":{"content":"pong-async"}}]}', StatusCode.OK)
-  await resp.write_async(writer)
+  reader: AsyncStreamReader = new.fromSocket(conn)
+  writer: AsyncStreamWriter = new.fromSocket(conn)
+  req: Request = await new.readAsync(reader)
+  resp: Response = new.textResponse('{"choices":[{"message":{"content":"pong-async"}}]}', StatusCodeEnum.Ok)
+  await resp.writeAsync(writer)
   reader.close()
   writer.close()
   listener.close()
 
 
-async def _async_chat_roundtrip() -> str:
+async def _asyncChatRoundtrip() -> str:
   listener: AsyncTcpSocket = new()
-  listener.bind("127.0.0.1", _CHAT_PORT)
+  listener.bind("127.0.0.1", _ChatPort)
   listener.listen(16)
-  server_task: Task[None] = Task.create(_serve_openai_chat(listener))
+  serverTask: Task[None] = Task.create(_serveOpenaiChat(listener))
   await Task.sleep(0)
-  client: AsyncOpenAI = new(base_url=f"http://127.0.0.1:{_CHAT_PORT}/v1")
+  client: AsyncOpenAI = new(baseUrl=f"http://127.0.0.1:{_ChatPort}/v1")
   text: str = await client.chat("gpt-test", "ping")
-  await server_task
+  await serverTask
   return text
 
 
 class AsyncOpenAIChatTests(TestCaseMixin):
-  _test_tag = 50
+  _testTag = 50
 
   @override
   def test(self):
-    self.assertEqual(Task.run(_async_chat_roundtrip()), "pong-async")
+    self.assertEqual(Task.run(_asyncChatRoundtrip()), "pong-async")
 
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

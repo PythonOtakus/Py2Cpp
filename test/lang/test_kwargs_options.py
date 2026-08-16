@@ -16,7 +16,7 @@ class Window:
   height: int = 0
   title: str = ""
 
-  def apply_opts(self, opts: WindowOpts) -> None:
+  def applyOpts(self, opts: WindowOpts) -> None:
     self.width = opts.width
     self.height = opts.height
     self.title = opts.title
@@ -29,18 +29,18 @@ class WindowFromOpts:
   title: str = ""
 
 
-def new_window(**kwargs: WindowOpts) -> Window:
+def newWindow(**kwargs: WindowOpts) -> Window:
   w: Window = new()
-  w.apply_opts(kwargs)
+  w.applyOpts(kwargs)
   return w
 
 
-def use_opts(**kwargs: WindowOpts) -> None:
+def useOpts(**kwargs: WindowOpts) -> None:
   w: Window = new()
-  w.apply_opts(kwargs)
+  w.applyOpts(kwargs)
 
 
-def build_with_new() -> WindowOpts:
+def buildWithNew() -> WindowOpts:
   return new(width=5, height=6, title="mk")
 
 
@@ -53,21 +53,21 @@ class Widget:
 
 
 class KwargsMakeWindowTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
-    w: Window = new_window(width=640, height=480, title="Hi")
+    w: Window = newWindow(width=640, height=480, title="Hi")
     self.assertEqual(w.width, 640)
     self.assertEqual(w.height, 480)
     self.assertEqual(w.title, "Hi")
 
-    relayed: Window = new_window(width=1, height=2, title="R")
+    relayed: Window = newWindow(width=1, height=2, title="R")
     self.assertEqual(relayed.width, 1)
 
 
 class KwargsCtorAssignTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
@@ -75,26 +75,26 @@ class KwargsCtorAssignTests(TestCaseMixin):
     self.assertEqual(direct.width, 100)
     self.assertEqual(direct.title, "Direct")
 
-    from_opts: WindowFromOpts = WindowFromOpts(width=7, height=8, title="O")
-    self.assertEqual(from_opts.width, 7)
-    self.assertEqual(from_opts.title, "O")
+    fromOpts: WindowFromOpts = WindowFromOpts(width=7, height=8, title="O")
+    self.assertEqual(fromOpts.width, 7)
+    self.assertEqual(fromOpts.title, "O")
 
     patched: Window = new()
     patched.assign(width=99, title="A")
     self.assertEqual(patched.width, 99)
     self.assertEqual(patched.title, "A")
 
-    opts_only: WindowOpts = WindowOpts(width=10, height=20, title="x")
-    self.assertEqual(opts_only.width, 10)
+    optsOnly: WindowOpts = WindowOpts(width=10, height=20, title="x")
+    self.assertEqual(optsOnly.width, 10)
 
-    use_opts(width=11, height=12, title="U")
-    built: WindowOpts = build_with_new()
+    useOpts(width=11, height=12, title="U")
+    built: WindowOpts = buildWithNew()
     self.assertEqual(built.width, 5)
     self.assertEqual(built.title, "mk")
 
 
 class KwargsSelfMakeTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
@@ -105,6 +105,6 @@ class KwargsSelfMakeTests(TestCaseMixin):
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)

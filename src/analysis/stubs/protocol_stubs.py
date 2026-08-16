@@ -47,7 +47,7 @@ def _returns_iterator_of_param(ann: ast.expr | None, type_params: set[str]) -> b
     return False
   match ann:
     case ast.Subscript(value=ast.Name(id=base), slice=ast.Name(id=t)):
-      return base in ("Iterator", "AsyncIterator") and t in type_params
+      return base in ("IteratorType", "AsyncIteratorType") and t in type_params
     case _:
       return False
 
@@ -150,7 +150,7 @@ def _scan_protocol_classes() -> list[ast.ClassDef]:
 
 @lru_cache(maxsize=1)
 def load_protocol_param_erase() -> frozenset[str]:
-  """``Comparable`` / ``Iterable[T]`` 等须 ``FuncTypeParams`` 约束的协议（非运行时擦除）。"""
+  """``ComparableType`` / ``IterableType[T]`` 等须 ``FuncTypeParams`` 约束的协议（非运行时擦除）。"""
   from .protocol_erase_stubs import load_protocol_runtime_erase
 
   names = {node.name for node in _scan_protocol_classes()}
@@ -161,7 +161,7 @@ def load_protocol_param_erase() -> frozenset[str]:
 
 @lru_cache(maxsize=1)
 def load_protocol_parametric_receiver() -> frozenset[str]:
-  """``Navigatable[Node]``：方括号内为关联形参，接收者另增模板形参。"""
+  """``NavigatableType[Node]``：方括号内为关联形参，接收者另增模板形参。"""
   out: set[str] = set()
   for node in _scan_protocol_classes():
     tparams = _type_param_names(node)
@@ -175,7 +175,7 @@ def load_protocol_parametric_receiver() -> frozenset[str]:
 
 @lru_cache(maxsize=1)
 def load_protocol_impl_assoc_receiver() -> frozenset[str]:
-  """``Iterable[T]`` → ``Iterable_requires<Impl, T>``（双形参 SFINAE）。"""
+  """``IterableType[T]`` → ``Iterable_requires<Impl, T>``（双形参 SFINAE）。"""
   out: set[str] = set()
   for node in _scan_protocol_classes():
     if _single_assoc_alias_used_as_method_arg(node):

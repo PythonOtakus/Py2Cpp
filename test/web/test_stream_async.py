@@ -5,14 +5,14 @@ from py2cpp.web.socket import AsyncTcpSocket
 from py2cpp.web.stream import AsyncStreamReader, AsyncStreamWriter
 
 
-_PORT: int = 18133
+_Port: int = 18133
 
 
-async def async_stream_server(listener: AsyncTcpSocket) -> None:
+async def asyncStreamServer(listener: AsyncTcpSocket) -> None:
   conn: AsyncTcpSocket = await listener.accept()
-  reader: AsyncStreamReader = new.from_socket(conn)
-  writer: AsyncStreamWriter = new.from_socket(conn)
-  data: bytes = await reader.readexactly(4)
+  reader: AsyncStreamReader = new.fromSocket(conn)
+  writer: AsyncStreamWriter = new.fromSocket(conn)
+  data: bytes = await reader.readExactly(4)
   wrote: int = await writer.write(b"pong")
   await writer.drain()
   reader.close()
@@ -20,36 +20,36 @@ async def async_stream_server(listener: AsyncTcpSocket) -> None:
   listener.close()
 
 
-async def async_stream_roundtrip() -> str:
+async def asyncStreamRoundtrip() -> str:
   listener: AsyncTcpSocket = new()
-  listener.bind("127.0.0.1", _PORT)
+  listener.bind("127.0.0.1", _Port)
   listener.listen(16)
-  server_task: Task[None] = Task.create(async_stream_server(listener))
+  serverTask: Task[None] = Task.create(asyncStreamServer(listener))
   await Task.sleep(0)
   client: AsyncTcpSocket = new()
-  await client.connect("127.0.0.1", _PORT)
-  reader: AsyncStreamReader = new.from_socket(client)
-  writer: AsyncStreamWriter = new.from_socket(client)
+  await client.connect("127.0.0.1", _Port)
+  reader: AsyncStreamReader = new.fromSocket(client)
+  writer: AsyncStreamWriter = new.fromSocket(client)
   wrote: int = await writer.write(b"ping")
   await writer.drain()
-  resp: bytes = await reader.readexactly(4)
-  await server_task
+  resp: bytes = await reader.readExactly(4)
+  await serverTask
   reader.close()
   writer.close()
   return resp.decode()
 
 
 class AsyncStreamRoundtripTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
-    self.assertEqual(Task.run(async_stream_roundtrip()), "pong")
+    self.assertEqual(Task.run(asyncStreamRoundtrip()), "pong")
 
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

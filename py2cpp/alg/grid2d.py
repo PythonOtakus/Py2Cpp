@@ -1,4 +1,4 @@
-"""二维网格与 ``Navigatable[Cell]`` 适配（tilemap / A*）。"""
+"""二维网格与 ``NavigatableType[Cell]`` 适配（tilemap / A*）。"""
 from ..builtins import *
 from ..core.exceptions import IndexError, ValueError
 from ..util.list import list
@@ -6,7 +6,7 @@ from ..util.mixins import ContainerMixin
 
 
 @enum
-class GridConnectivity:
+class GridConnectivityEnum:
   """四向 / 八向邻接（影响 ``GridNav.neighbors`` 与启发式）。"""
 
   Four = 0
@@ -38,7 +38,7 @@ class Grid2D(ContainerMixin):
     self.fill(fill)
 
   def __copy__(self, other: Self):
-    self._ensure_active()
+    self._ensureActive()
     if other.__moved__:
       raise ValueError("move from moved container")
     self._width = other._width
@@ -49,7 +49,7 @@ class Grid2D(ContainerMixin):
         self._cells[y, x] = other._cells[y, x]
 
   def __move__(self, other: Self):
-    self._ensure_active()
+    self._ensureActive()
     if other.__moved__:
       raise ValueError("move from moved container")
     self._width = other._width
@@ -61,38 +61,37 @@ class Grid2D(ContainerMixin):
 
   @immutable
   def copy(self) -> Self:
-    self._ensure_active()
+    self._ensureActive()
     out: Self = new(self._width, self._height, 0)
     out.__copy__(self)
     return out
 
   @immutable
-  def get_width(self) -> int:
+  def getWidth(self) -> int:
     return self._width
 
   @immutable
-  def get_height(self) -> int:
+  def getHeight(self) -> int:
     return self._height
 
   @immutable
-  def in_bounds(self, x: int, y: int) -> bool:
+  def inBounds(self, x: int, y: int) -> bool:
     return 0 <= x < self._width and 0 <= y < self._height
 
   @immutable
-  @immutable
   def get(self, x: int, y: int) -> int:
-    if not self.in_bounds(x, y):
+    if not self.inBounds(x, y):
       raise IndexError("cell out of bounds")
     return self._cells[y, x]
 
   def set(self, x: int, y: int, value: int) -> None:
-    if not self.in_bounds(x, y):
+    if not self.inBounds(x, y):
       raise IndexError("cell out of bounds")
     self._cells[y, x] = value
 
   @immutable
   def walkable(self, x: int, y: int) -> bool:
-    if not self.in_bounds(x, y):
+    if not self.inBounds(x, y):
       return False
     return self.get(x, y) > 0
 
@@ -105,23 +104,23 @@ class Grid2D(ContainerMixin):
 
 
 class GridNav:
-  """``Grid2D`` → ``Navigatable[Cell]``。"""
+  """``Grid2D`` → ``NavigatableType[Cell]``。"""
 
-  def __init__(self, grid: Grid2D, connectivity: GridConnectivity):
+  def __init__(self, grid: Grid2D, connectivity: GridConnectivityEnum):
     self._grid: Grid2D = grid
-    self._conn: GridConnectivity = connectivity
+    self._conn: GridConnectivityEnum = connectivity
 
   @immutable
-  def vertex_count(self) -> int:
-    return self._grid.get_width() * self._grid.get_height()
+  def vertexCount(self) -> int:
+    return self._grid.getWidth() * self._grid.getHeight()
 
   @immutable
-  def to_index(self, u: Cell) -> int:
-    return u.y * self._grid.get_width() + u.x
+  def toIndex(self, u: Cell) -> int:
+    return u.y * self._grid.getWidth() + u.x
 
   @immutable
-  def from_index(self, i: int) -> Cell:
-    w: int = self._grid.get_width()
+  def fromIndex(self, i: int) -> Cell:
+    w: int = self._grid.getWidth()
     if w == 0:
       return new(0, 0)
     y: int = i // w
@@ -142,9 +141,9 @@ class GridNav:
     return out
 
   @immutable
-  def move_cost(self, u: Cell, v: Cell) -> int:
+  def moveCost(self, u: Cell, v: Cell) -> int:
     c: int = self._grid.get(v.x, v.y)
-    if self._conn == GridConnectivity.Eight and u.x != v.x and u.y != v.y:
+    if self._conn == GridConnectivityEnum.Eight and u.x != v.x and u.y != v.y:
       return c * 14 // 10
     return c
 
@@ -156,7 +155,7 @@ class GridNav:
     dy: int = u.y - goal.y
     if dy < 0:
       dy = -dy
-    if self._conn == GridConnectivity.Four:
+    if self._conn == GridConnectivityEnum.Four:
       return dx + dy
     mn: int = dx
     if dy < mn:
@@ -165,14 +164,14 @@ class GridNav:
 
   @immutable
   @staticmethod
-  def _dirs(conn: GridConnectivity) -> list[Cell]:
+  def _dirs(conn: GridConnectivityEnum) -> list[Cell]:
     four: list[Cell] = [
       Cell(0, -1),
       Cell(1, 0),
       Cell(0, 1),
       Cell(-1, 0),
     ]
-    if conn == GridConnectivity.Four:
+    if conn == GridConnectivityEnum.Four:
       return four
     eight: list[Cell] = []
     eight.extend(four)

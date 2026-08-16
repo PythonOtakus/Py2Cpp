@@ -52,7 +52,7 @@ class HostOffset:
 
 
 class PlainDescriptorTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
@@ -64,7 +64,7 @@ class PlainDescriptorTests(TestCaseMixin):
 
 
 class ClampedDescriptorTests(TestCaseMixin):
-  _test_tag = 2
+  _testTag = 2
 
   @override
   def test(self):
@@ -79,7 +79,7 @@ class ClampedDescriptorTests(TestCaseMixin):
 
 
 class OffsetDescriptorTests(TestCaseMixin):
-  _test_tag = 3
+  _testTag = 3
 
   @override
   def test(self):
@@ -92,6 +92,6 @@ class OffsetDescriptorTests(TestCaseMixin):
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)

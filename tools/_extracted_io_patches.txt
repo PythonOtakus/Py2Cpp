@@ -1,0 +1,730 @@
+=== line 22 StrReplace c:/Users/Anantian/source/repos/Py2Cpp/py2cpp/io/protocols.py ===
+
+OLD:
+@protocol
+class TextWriterType:
+  """文本写出端；``TextIOWrapper`` / ``StringIO`` 均实现。"""
+
+  @overload
+  def write(self, s: str) -> int: ...
+
+  @overload
+  def write(self, src: char[:], end: int) -> int: ...
+
+
+@protocol
+class TextReaderType:
+  """文本读入端；``TextIOWrapper`` / ``StringIO`` 均实现。"""
+
+  def read(self, size: int = -1) -> str: ...
+
+
+@protocol
+class TextIOType:
+  """文本双向流（``io.TextIOBase`` 子集）；``StringIO`` / ``TextIOWrapper`` 均实现。"""
+
+  def __bool__(self) -> bool: ...
+
+  def __enter__(self) -> Self: ...
+
+  def __exit__(self): ...
+
+  def read(self, size: int = -1) -> str: ...
+
+  def readline(self, size: int = -1) -> str: ...
+
+  def readlines(self, hint: int = -1) -> list[str]: ...
+
+  @overload
+  def write(self, s: str) -> int: ...
+
+  @overload
+  def write(self, src: char[:], end: int) -> int: ...
+
+  def writelines(self, lines: list[str]) -> None: ...
+
+  def __iter__(self) -> Self: ...
+
+  def __next__(self) -> str: ...
+
+  def close(self) -> None: ...
+
+  def seek(self, pos: int, whence: int = 0) -> int: ...
+
+  def tell(self) -> int: ...
+
+NEW:
+@protocol
+class TextWriterType:
+  """文本写出端；``TextIOWrapper`` / ``StringIO`` 均实现。"""
+
+  @overload
+  def write(self, s: str) -> int: ...
+
+  @overload
+  def write(self, src: char[:], end: int) -> int: ...
+
+  def flush(self) -> None: ...
+
+
+@protocol
+class TextReaderType:
+  """文本读入端；``TextIOWrapper`` / ``StringIO`` 均实现。"""
+
+  def read(self, size: int = -1) -> str: ...
+
+
+@protocol
+class TextIOType:
+  """文本双向流（``io.TextIOBase`` 子集）；``StringIO`` / ``TextIOWrapper`` 均实现。"""
+
+  def __bool__(self) -> bool: ...
+
+  def __enter__(self) -> Self: ...
+
+  def __exit__(self): ...
+
+  def read(self, size: int = -1) -> str: ...
+
+  def readline(self, size: int = -1) -> str: ...
+
+  def readlines(self, hint: int = -1) -> list[str]: ...
+
+  @overload
+  def write(self, s: str) -> int: ...
+
+  @overload
+  def write(self, src: char[:], end: int) -> int: ...
+
+  def writelines(self, lines: list[str]) -> None: ...
+
+  def flush(self) -> None: ...
+
+  def __iter__(self) -> Self: ...
+
+  def __next__(self) -> str: ...
+
+  def close(self) -> None: ...
+
+  def seek(self, pos: int, whence: int = 0) -> int: ...
+
+  def tell(self) -> int: ...
+
+  @property
+  def isatty(self) -> bool: ...
+
+=== line 22 StrReplace c:/Users/Anantian/source/repos/Py2Cpp/py2cpp/io/__init__.py ===
+
+OLD:
+  def close(self) -> None:
+    self._closed = True
+
+  @immutable
+  def tell(self) -> int:
+    return self._pos
+
+NEW:
+  def close(self) -> None:
+    self._closed = True
+
+  def flush(self) -> None:
+    """内存流无缓冲副作用；保留 API 与 ``TextIOWrapper.flush`` 对齐。"""
+    return
+
+  @property
+  @immutable
+  def isatty(self) -> bool:
+    return False
+
+  @immutable
+  def tell(self) -> int:
+    return self._pos
+
+=== line 22 StrReplace c:/Users/Anantian/source/repos/Py2Cpp/py2cpp/io/__init__.py ===
+
+OLD:
+@native
+@uncopyable
+@native_name("Py*")
+class TextIOWrapper:
+  """基于 ``FILE*`` 的文本文件包装（实现见 ``io.inl``）。"""
+
+  _fp: uintptr
+  _closed: bool
+
+  def __init__(self, path: str, mode: str = "r"): ...
+
+  def __del__(self): ...
+
+  def __bool__(self) -> bool: ...
+
+  def __enter__(self) -> Self: ...
+
+  def __exit__(self): ...
+
+  def read(self, size: int = -1) -> str: ...
+
+  def readline(self, size: int = -1) -> str: ...
+
+  def readlines(self, hint: int = -1) -> list[str]: ...
+
+  @overload
+  def write(self, data: str) -> int: ...
+
+  @overload
+  def write(self, src: char[:], end: int) -> int: ...
+
+  def writelines(self, lines: list[str]) -> None: ...
+
+  def __iter__(self) -> Self: ...
+
+  def __next__(self) -> str: ...
+
+  def close(self) -> None: ...
+
+  def seek(self, pos: int, whence: int = 0) -> int: ...
+
+  def tell(self) -> int: ...
+
+
+@native
+@global_call("py_*")
+def open(path: str, mode: str = "r", encoding: str = "utf-8") -> TextIOWrapper:
+  """``open(path, mode)`` → ``TextIOWrapper``（``encoding`` 暂仅支持类 UTF-8 码点路径）。"""
+  ...
+
+
+NEW:
+@native
+@uncopyable
+@native_name("Py*")
+class TextIOWrapper:
+  """基于 ``FILE*`` 的文本文件包装（实现见 ``io.inl``）。
+
+  ``wrap_fp`` / ``wrap_std`` 可绑定已有句柄；``owns=False`` 时 ``close``/``with``/析构
+  **不** ``fclose`` 真实标准流（见 ``docs/console.md``）。
+  """
+
+  _fp: uintptr
+  _closed: bool
+  _owns: bool
+
+  @overload
+  def __init__(self, path: str, mode: str = "r"): ...
+
+  @overload
+  def __init__(self, fp: uintptr, owns: bool): ...
+
+  def __del__(self): ...
+
+  def __bool__(self) -> bool: ...
+
+  def __enter__(self) -> Self: ...
+
+  def __exit__(self): ...
+
+  def read(self, size: int = -1) -> str: ...
+
+  def readline(self, size: int = -1) -> str: ...
+
+  def readlines(self, hint: int = -1) -> list[str]: ...
+
+  @overload
+  def write(self, data: str) -> int: ...
+
+  @overload
+  def write(self, src: char[:], end: int) -> int: ...
+
+  def writelines(self, lines: list[str]) -> None: ...
+
+  def flush(self) -> None: ...
+
+  def __iter__(self) -> Self: ...
+
+  def __next__(self) -> str: ...
+
+  def close(self) -> None: ...
+
+  def seek(self, pos: int, whence: int = 0) -> int: ...
+
+  def tell(self) -> int: ...
+
+  @property
+  @immutable
+  def isatty(self) -> bool: ...
+
+
+@native
+@global_call("py_*")
+def open(path: str, mode: str = "r", encoding: str = "utf-8") -> TextIOWrapper:
+  """``open(path, mode)`` → ``TextIOWrapper``（``encoding`` 暂仅支持类 UTF-8 码点路径）。"""
+  ...
+
+
+@native
+@global_call("py_*")
+def wrap_fp(fp: uintptr, owns: bool = False) -> TextIOWrapper:
+  """绑定已有 ``FILE*``（``fp`` 为指针位型）；``owns=False`` 时永不 ``fclose``。"""
+  ...
+
+
+@native
+@global_call("py_*")
+def wrap_std(fd: int) -> TextIOWrapper:
+  """绑定标准流：``0``=stdin、``1``=stdout、``2``=stderr；始终 ``owns=False``。"""
+  ...
+
+
+=== line 23 Write c:/Users/Anantian/source/repos/Py2Cpp/templates/+io.inl ===
+
+PY2CPP_IGNORE
+#include "py2cpp/io.h"
+#include "py2cpp/text/str.h"
+#include "py2cpp/util/list.h"
+#include "py2cpp/core/iter_result.h"
+PY2CPP_END
+
+#include <stdio.h>
+#include <string.h>
+#if defined(_WIN32)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <io.h>
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
+
+static FILE* _io_fp(PyUPtr fp)
+{
+  return (FILE*)(uintptr_t)fp;
+}
+
+PyTextIOWrapper::PyTextIOWrapper(PyStr path, PyStr mode)
+{
+  _fp = 0;
+  _closed = false;
+  _owns = true;
+  char pbuf[4096];
+  char mbuf[16];
+  path.copy_to_span(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
+  if (mode.__len__() <= 0)
+  {
+    mbuf[0] = 'r';
+    mbuf[1] = '\0';
+  }
+  else
+  {
+    mode.copy_to_span(PySpan<PyByte>((PyByte*)mbuf, (PyInt)sizeof(mbuf), 1));
+  }
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable: 4996)
+#endif
+  _fp = (PyUPtr)(uintptr_t)fopen(pbuf, mbuf);
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
+  if (!_fp)
+  {
+    _closed = true;
+  }
+}
+
+PyTextIOWrapper::PyTextIOWrapper(PyUPtr fp, PyBool owns)
+{
+  _fp = fp;
+  _closed = (fp == 0);
+  _owns = owns;
+}
+
+PyTextIOWrapper::PyTextIOWrapper(PyTextIOWrapper&& other)
+{
+  _fp = other._fp;
+  _closed = other._closed;
+  _owns = other._owns;
+  other._fp = 0;
+  other._closed = true;
+  other._owns = false;
+}
+
+PyTextIOWrapper& PyTextIOWrapper::operator=(PyTextIOWrapper&& other)
+{
+  if (this != &other)
+  {
+    this->close();
+    _fp = other._fp;
+    _closed = other._closed;
+    _owns = other._owns;
+    other._fp = 0;
+    other._closed = true;
+    other._owns = false;
+  }
+  return *this;
+}
+
+PyTextIOWrapper::~PyTextIOWrapper()
+{
+  if ((_fp) && (!_closed) && (_owns))
+  {
+    fclose(_io_fp(_fp));
+    _fp = 0;
+    _closed = true;
+  }
+}
+
+void PyTextIOWrapper::close()
+{
+  if (_closed)
+  {
+    return;
+  }
+  if (_fp)
+  {
+    fflush(_io_fp(_fp));
+    if (_owns)
+    {
+      fclose(_io_fp(_fp));
+      _fp = 0;
+    }
+  }
+  _closed = true;
+}
+
+void PyTextIOWrapper::flush()
+{
+  if ((_fp) && (!_closed))
+  {
+    fflush(_io_fp(_fp));
+  }
+}
+
+PyBool PyTextIOWrapper::isatty__get() const
+{
+  if ((!_fp) || (_closed))
+  {
+    return false;
+  }
+#if defined(_WIN32)
+  int fd = _fileno(_io_fp(_fp));
+  if (fd < 0)
+  {
+    return false;
+  }
+  return _isatty(fd) != 0;
+#else
+  int fd = fileno(_io_fp(_fp));
+  if (fd < 0)
+  {
+    return false;
+  }
+  return isatty(fd) != 0;
+#endif
+}
+
+PyBool PyTextIOWrapper::__bool__() const
+{
+  return ((_fp != 0) && (!_closed));
+}
+
+PyTextIOWrapper::operator PyBool() const
+{
+  return __bool__();
+}
+
+PyInt PyTextIOWrapper::tell()
+{
+  if ((!_fp) || (_closed))
+  {
+    return -1;
+  }
+  return (int)ftell(_io_fp(_fp));
+}
+
+PyInt PyTextIOWrapper::seek(PyInt pos, PyInt whence)
+{
+  if ((!_fp) || (_closed))
+  {
+    return -1;
+  }
+  int origin = SEEK_SET;
+  if (whence == 1)
+  {
+    origin = SEEK_CUR;
+  } else if (whence == 2)
+  {
+    origin = SEEK_END;
+  }
+  return (fseek(_io_fp(_fp), (long)pos, origin) == 0) ? 0 : -1;
+}
+
+PyStr PyTextIOWrapper::read(PyInt size)
+{
+  if ((!_fp) || (_closed))
+  {
+    return PyStr("");
+  }
+  if (size < 0)
+  {
+    char stack[4096];
+    PyArray<PyChar> codes;
+    int total = 0;
+    while (true)
+    {
+      int n = (int)fread(stack, 1, (size_t)sizeof(stack), _io_fp(_fp));
+      if (n <= 0)
+      {
+        break;
+      }
+      int old = codes.__len__();
+      codes.reshape((old + n), old);
+      for (int i = 0; i < n; i++)
+      {
+        codes.__setitem__((old + i), (PyChar)(unsigned char)stack[i]);
+      }
+      total = (total + n);
+    }
+    if (total <= 0)
+    {
+      return PyStr("");
+    }
+    return PyStr(codes);
+  }
+  char stack[4096];
+  int cap = (int)sizeof(stack);
+  if ((size >= 0) && (size < cap))
+  {
+    cap = size;
+  }
+  if (cap <= 0)
+  {
+    return PyStr("");
+  }
+  int n = (int)fread(stack, 1, (size_t)cap, _io_fp(_fp));
+  if (n <= 0)
+  {
+    return PyStr("");
+  }
+  PyArray<PyChar> codes;
+  codes.reshape(n, 0);
+  for (int i = 0; i < n; i++)
+  {
+    codes.__setitem__(i, (PyChar)(unsigned char)stack[i]);
+  }
+  return PyStr(codes);
+}
+
+PyStr PyTextIOWrapper::readline(PyInt size)
+{
+  if ((!_fp) || (_closed))
+  {
+    return PyStr("");
+  }
+  char stack[4096];
+  int cap = (int)sizeof(stack);
+  if ((size > 0) && (size < cap))
+  {
+    cap = size;
+  }
+  if (fgets(stack, cap, _io_fp(_fp)) == nullptr)
+  {
+    return PyStr("");
+  }
+  int n = (int)strlen(stack);
+  PyArray<PyChar> codes;
+  codes.reshape(n, 0);
+  for (int i = 0; i < n; i++)
+  {
+    codes.__setitem__(i, (PyChar)(unsigned char)stack[i]);
+  }
+  return PyStr(codes);
+}
+
+PyInt PyTextIOWrapper::write(PyStr data)
+{
+  if ((!_fp) || (_closed))
+  {
+    return -1;
+  }
+  int n = data.__len__();
+  if (n <= 0)
+  {
+    return 0;
+  }
+  char stack[4096];
+  int at = 0;
+  for (int i = 0; i < n; i++)
+  {
+    if (at >= (int)sizeof(stack))
+    {
+      if (fwrite(stack, 1, (size_t)at, _io_fp(_fp)) != (size_t)at)
+      {
+        return -1;
+      }
+      at = 0;
+    }
+    stack[at] = (char)data.__getitem__(i);
+    at = (at + 1);
+  }
+  if ((at > 0) && (fwrite(stack, 1, (size_t)at, _io_fp(_fp)) != (size_t)at))
+  {
+    return -1;
+  }
+  return n;
+}
+
+PyInt PyTextIOWrapper::write(PyArray<PyChar>& src, PyInt end)
+{
+  if ((!_fp) || (_closed))
+  {
+    return -1;
+  }
+  if (end <= 0)
+  {
+    return 0;
+  }
+  char stack[4096];
+  int at = 0;
+  for (int i = 0; i < end; i++)
+  {
+    if (at >= (int)sizeof(stack))
+    {
+      if (fwrite(stack, 1, (size_t)at, _io_fp(_fp)) != (size_t)at)
+      {
+        return -1;
+      }
+      at = 0;
+    }
+    stack[at] = (char)src.__getitem__(i);
+    at = (at + 1);
+  }
+  if ((at > 0) && (fwrite(stack, 1, (size_t)at, _io_fp(_fp)) != (size_t)at))
+  {
+    return -1;
+  }
+  return end;
+}
+
+PyList<PyStr> PyTextIOWrapper::readlines(PyInt hint)
+{
+  PyList<PyStr> lines;
+  while (true)
+  {
+    PyStr line = readline(-1);
+    if (line.__len__() == 0)
+    {
+      break;
+    }
+    lines.append(line);
+    if (hint >= 0)
+    {
+      hint = (hint - line.__len__());
+      if (hint <= 0)
+      {
+        break;
+      }
+    }
+  }
+  return lines;
+}
+
+void PyTextIOWrapper::writelines(const PyList<PyStr>& lines)
+{
+  int n = lines.__len__();
+  for (int i = 0; i < n; i++)
+  {
+    write(lines.__getitem__(i));
+  }
+}
+
+PyTextIOWrapper& PyTextIOWrapper::__iter__()
+{
+  return *this;
+}
+
+PyIterResult<PyStr, PyStr> PyTextIOWrapper::__next__()
+{
+  PyStr line = readline(-1);
+  if (line.__len__() == 0)
+  {
+    return (PyIterResult<PyStr, PyStr>::Return)(PyStr(""));
+  }
+  return (PyIterResult<PyStr, PyStr>::Yield)(line);
+}
+
+PyTextIOWrapper& PyTextIOWrapper::__enter__()
+{
+  return *this;
+}
+
+void PyTextIOWrapper::__exit__()
+{
+  if (this->_fp)
+  {
+    fflush(_io_fp(this->_fp));
+  }
+  if (this->_owns)
+  {
+    this->close();
+  }
+}
+
+PY2CPP_BEGIN_SCOPE
+PyTextIOWrapper py_open(
+  const PyStr& path,
+  const PyStr& mode,
+  const PyStr& encoding
+)
+{
+  (void)encoding;
+  return PyTextIOWrapper(path, mode);
+}
+
+PyTextIOWrapper py_wrap_fp(PyUPtr fp, PyBool owns)
+{
+  return PyTextIOWrapper(fp, owns);
+}
+
+PyTextIOWrapper py_wrap_std(PyInt fd)
+{
+  FILE* stdfp = nullptr;
+  if (fd == 0)
+  {
+    stdfp = stdin;
+  }
+  else if (fd == 1)
+  {
+    stdfp = stdout;
+  }
+  else if (fd == 2)
+  {
+    stdfp = stderr;
+  }
+  return PyTextIOWrapper((PyUPtr)(uintptr_t)stdfp, false);
+}
+PY2CPP_END_SCOPE
+
+=== line 24 StrReplace c:/Users/Anantian/source/repos/Py2Cpp/templates/+io.inl ===
+
+OLD:
+#include <stdio.h>
+#include <string.h>
+#if defined(_WIN32)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <io.h>
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
+
+NEW:
+#include <stdio.h>
+#include <string.h>
+#if defined(_WIN32)
+#include <io.h>
+#else
+#include <unistd.h>
+#endif

@@ -18,12 +18,12 @@ class LinkNode:
   parent: WeakRef[Self] | None = None
   children: list[Self] @optional = []
 
-  def bind_parent(self, par: Self) -> None:
+  def bindParent(self, par: Self) -> None:
     self.parent = new(par)
 
 
 class WeakRefTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
@@ -38,7 +38,7 @@ class WeakRefTests(TestCaseMixin):
 
 
 class WeakValueDictTests(TestCaseMixin):
-  _test_tag = 2
+  _testTag = 2
 
   @override
   def test(self):
@@ -49,13 +49,13 @@ class WeakValueDictTests(TestCaseMixin):
     self.assertEqual(got.value, 42)
     self.assertEqual(len(cache.keys()), 1)
     self.assertEqual(len(cache.valuerefs()), 1)
-    pair: (str, Node) = cache.popitem()
+    pair: (str, Node) = cache.popItem()
     n = new()
     self.assertFalse("k" in cache)
 
 
 class WeakListTests(TestCaseMixin):
-  _test_tag = 3
+  _testTag = 3
 
   @override
   def test(self):
@@ -71,20 +71,20 @@ class WeakListTests(TestCaseMixin):
 
 
 class WeakRefNestedDestroyTests(TestCaseMixin):
-  _test_tag = 4
+  _testTag = 4
 
   @override
   def test(self):
     root: LinkNode = new("root")
     child: LinkNode = new("child")
     root.children.append(child)
-    child.bind_parent(root)
+    child.bindParent(root)
     self.assertEqual(len(root.children), 1)
 
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

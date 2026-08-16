@@ -6,7 +6,7 @@ from ..builtins import *
 class UIApp:
   @staticmethod
   @native
-  def is_available() -> bool:
+  def isAvailable() -> bool:
     """当前平台 Win32 UI 是否可用（Windows 为 ``True``）。"""
     ...
 

@@ -79,12 +79,12 @@ static void _ui_gdiplus_add_round_rect(
   path.CloseFigure();
 }
 
-static HWND _ui_canvas_hwnd(const UICanvas& self)
+static HWND _ui_canvas_hwnd(const PyUICanvas& self)
 {
   return (HWND)(INT_PTR)self.handle;
 }
 
-static void _ui_canvas_set_hwnd(UICanvas& self, HWND hwnd)
+static void _ui_canvas_set_hwnd(PyUICanvas& self, HWND hwnd)
 {
   self.handle = (PyInt64)((INT_PTR)hwnd);
 }
@@ -103,7 +103,7 @@ static HFONT _ui_canvas_make_font(const PyStr& name, PyInt size, PyBool bold)
   lf.lfCharSet = DEFAULT_CHARSET;
   lf.lfQuality = CLEARTYPE_QUALITY;
   lf.lfPitchAndFamily = FF_DONTCARE;
-  name.copy_to_span(PySpan<PyByte>((PyByte*)lf.lfFaceName, (PyInt)sizeof(lf.lfFaceName), 1));
+  name.copyToSpan(PySpan<PyByte>((PyByte*)lf.lfFaceName, (PyInt)sizeof(lf.lfFaceName), 1));
   return CreateFontIndirectA(&lf);
 }
 
@@ -128,7 +128,7 @@ static void _ui_canvas_ensure_class()
 
 PY2CPP_BEGIN_SCOPE
 
-void UIPaintContext::_gdi_fill_rect(
+void PyUIPaintContext::_gdiFillRect(
   PyInt64 dc, PyInt x, PyInt y, PyInt w, PyInt h, PyInt r, PyInt g, PyInt b)
 {
   HDC hdc = (HDC)(INT_PTR)dc;
@@ -147,8 +147,8 @@ void UIPaintContext::_gdi_fill_rect(
   DeleteObject(br);
 }
 
-void UIPaintContext::_gdi_stroke_rect(
-  PyInt64 dc, PyInt x, PyInt y, PyInt w, PyInt h, PyInt r, PyInt g, PyInt b, PyInt pen_w)
+void PyUIPaintContext::_gdiStrokeRect(
+  PyInt64 dc, PyInt x, PyInt y, PyInt w, PyInt h, PyInt r, PyInt g, PyInt b, PyInt penW)
 {
   HDC hdc = (HDC)(INT_PTR)dc;
   if (!hdc)
@@ -156,7 +156,7 @@ void UIPaintContext::_gdi_stroke_rect(
     return;
   }
   COLORREF col = _ui_canvas_rgb(r, g, b);
-  HPEN pen = CreatePen(PS_SOLID, pen_w, col);
+  HPEN pen = CreatePen(PS_SOLID, penW, col);
   HPEN old_pen = (HPEN)SelectObject(hdc, pen);
   HBRUSH null_br = (HBRUSH)GetStockObject(NULL_BRUSH);
   HBRUSH old_br = (HBRUSH)SelectObject(hdc, null_br);
@@ -166,7 +166,7 @@ void UIPaintContext::_gdi_stroke_rect(
   DeleteObject(pen);
 }
 
-void UIPaintContext::_gdi_draw_line(
+void PyUIPaintContext::_gdiDrawLine(
   PyInt64 dc,
   PyInt x1,
   PyInt y1,
@@ -175,7 +175,7 @@ void UIPaintContext::_gdi_draw_line(
   PyInt r,
   PyInt g,
   PyInt b,
-  PyInt pen_w)
+  PyInt penW)
 {
   HDC hdc = (HDC)(INT_PTR)dc;
   if (!hdc)
@@ -183,7 +183,7 @@ void UIPaintContext::_gdi_draw_line(
     return;
   }
   COLORREF col = _ui_canvas_rgb(r, g, b);
-  HPEN pen = CreatePen(PS_SOLID, pen_w, col);
+  HPEN pen = CreatePen(PS_SOLID, penW, col);
   HPEN old = (HPEN)SelectObject(hdc, pen);
   MoveToEx(hdc, x1, y1, NULL);
   LineTo(hdc, x2, y2);
@@ -191,7 +191,7 @@ void UIPaintContext::_gdi_draw_line(
   DeleteObject(pen);
 }
 
-void UIPaintContext::_gdi_draw_bezier(
+void PyUIPaintContext::_gdiDrawBezier(
   PyInt64 dc,
   PyInt x1,
   PyInt y1,
@@ -204,7 +204,7 @@ void UIPaintContext::_gdi_draw_bezier(
   PyInt r,
   PyInt g,
   PyInt b,
-  PyInt pen_w)
+  PyInt penW)
 {
   HDC hdc = (HDC)(INT_PTR)dc;
   if (!hdc)
@@ -217,7 +217,7 @@ void UIPaintContext::_gdi_draw_bezier(
   {
     Gdiplus::Graphics gfx(hdc);
     _ui_gdiplus_prepare(gfx);
-    Gdiplus::REAL pw = (Gdiplus::REAL)pen_w;
+    Gdiplus::REAL pw = (Gdiplus::REAL)penW;
     if (pw < 1.0f)
     {
       pw = 1.0f;
@@ -242,14 +242,14 @@ void UIPaintContext::_gdi_draw_bezier(
   pts[2].y = cy2;
   pts[3].x = x2;
   pts[3].y = y2;
-  HPEN pen = CreatePen(PS_SOLID, pen_w, col);
+  HPEN pen = CreatePen(PS_SOLID, penW, col);
   HPEN old = (HPEN)SelectObject(hdc, pen);
   PolyBezier(hdc, pts, 4);
   SelectObject(hdc, old);
   DeleteObject(pen);
 }
 
-void UIPaintContext::_gdi_draw_text(
+void PyUIPaintContext::_gdiDrawText(
   PyInt64 dc,
   PyInt x,
   PyInt y,
@@ -259,10 +259,10 @@ void UIPaintContext::_gdi_draw_text(
   PyInt r,
   PyInt g,
   PyInt b,
-  PyStr font_name,
-  PyInt font_size,
-  PyBool font_bold,
-  PyInt text_align)
+  PyStr fontName,
+  PyInt fontSize,
+  PyBool fontBold,
+  PyInt textAlign)
 {
   HDC hdc = (HDC)(INT_PTR)dc;
   if (!hdc)
@@ -270,7 +270,7 @@ void UIPaintContext::_gdi_draw_text(
     return;
   }
   COLORREF col = _ui_canvas_rgb(r, g, b);
-  HFONT font = _ui_canvas_make_font(font_name, font_size, font_bold);
+  HFONT font = _ui_canvas_make_font(fontName, fontSize, fontBold);
   HFONT old_font = (HFONT)SelectObject(hdc, font);
   SetBkMode(hdc, TRANSPARENT);
   SetTextColor(hdc, col);
@@ -280,13 +280,13 @@ void UIPaintContext::_gdi_draw_text(
   tr.right = x + w;
   tr.bottom = y + h;
   char tbuf[512];
-  text.copy_to_span(PySpan<PyByte>((PyByte*)tbuf, (PyInt)sizeof(tbuf), 1));
+  text.copyToSpan(PySpan<PyByte>((PyByte*)tbuf, (PyInt)sizeof(tbuf), 1));
   UINT fmt = DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS;
-  if (text_align == 1)
+  if (textAlign == 1)
   {
     fmt |= DT_RIGHT;
   }
-  else if (text_align == 2)
+  else if (textAlign == 2)
   {
     fmt |= DT_CENTER;
   }
@@ -299,7 +299,7 @@ void UIPaintContext::_gdi_draw_text(
   DeleteObject(font);
 }
 
-void UIPaintContext::_gdi_fill_ellipse(
+void PyUIPaintContext::_gdiFillEllipse(
   PyInt64 dc, PyInt x1, PyInt y1, PyInt x2, PyInt y2, PyInt r, PyInt g, PyInt b)
 {
   HDC hdc = (HDC)(INT_PTR)dc;
@@ -332,7 +332,7 @@ void UIPaintContext::_gdi_fill_ellipse(
   DeleteObject(br);
 }
 
-void UIPaintContext::_gdi_fill_round_rect(
+void PyUIPaintContext::_gdiFillRoundRect(
   PyInt64 dc,
   PyInt x,
   PyInt y,
@@ -381,7 +381,7 @@ void UIPaintContext::_gdi_fill_round_rect(
   DeleteObject(br);
 }
 
-void UIPaintContext::_gdi_stroke_round_rect(
+void PyUIPaintContext::_gdiStrokeRoundRect(
   PyInt64 dc,
   PyInt x,
   PyInt y,
@@ -391,7 +391,7 @@ void UIPaintContext::_gdi_stroke_round_rect(
   PyInt r,
   PyInt g,
   PyInt b,
-  PyInt pen_w)
+  PyInt penW)
 {
   HDC hdc = (HDC)(INT_PTR)dc;
   if (!hdc)
@@ -412,7 +412,7 @@ void UIPaintContext::_gdi_stroke_round_rect(
       (Gdiplus::REAL)w,
       (Gdiplus::REAL)h,
       (Gdiplus::REAL)radius);
-    Gdiplus::REAL pw = (Gdiplus::REAL)pen_w;
+    Gdiplus::REAL pw = (Gdiplus::REAL)penW;
     if (pw < 1.0f)
     {
       pw = 1.0f;
@@ -427,7 +427,7 @@ void UIPaintContext::_gdi_stroke_round_rect(
   {
     dia = 2;
   }
-  HPEN pen = CreatePen(PS_SOLID, pen_w, col);
+  HPEN pen = CreatePen(PS_SOLID, penW, col);
   HPEN old_pen = (HPEN)SelectObject(hdc, pen);
   HBRUSH null_br = (HBRUSH)GetStockObject(NULL_BRUSH);
   HBRUSH old_br = (HBRUSH)SelectObject(hdc, null_br);
@@ -437,7 +437,7 @@ void UIPaintContext::_gdi_stroke_round_rect(
   DeleteObject(pen);
 }
 
-void UIPaintContext::_gdi_fill_rect_in_round_clip(
+void PyUIPaintContext::_gdiFillRectInRoundClip(
   PyInt64 dc,
   PyInt x,
   PyInt y,
@@ -494,7 +494,7 @@ void UIPaintContext::_gdi_fill_rect_in_round_clip(
   DeleteObject(rgn);
 }
 
-PyTuple<PyInt, PyInt> UICanvas::_win_parent_client_size(PyInt64 parent)
+PyTuple<PyInt, PyInt> PyUICanvas::_winParentClientSize(PyInt64 parent)
 {
   HWND hwnd = (HWND)(INT_PTR)parent;
   if (!hwnd)
@@ -506,7 +506,7 @@ PyTuple<PyInt, PyInt> UICanvas::_win_parent_client_size(PyInt64 parent)
   return PyTuple<PyInt, PyInt>((PyInt)(rc.right - rc.left), (PyInt)(rc.bottom - rc.top));
 }
 
-void UICanvas::_win_mount_child(PyInt64 parent, PyInt x, PyInt y, PyInt w, PyInt h)
+void PyUICanvas::_winMountChild(PyInt64 parent, PyInt x, PyInt y, PyInt w, PyInt h)
 {
   _ui_canvas_ensure_class();
   HWND parent_hwnd = (HWND)(INT_PTR)parent;
@@ -538,7 +538,7 @@ void UICanvas::_win_mount_child(PyInt64 parent, PyInt x, PyInt y, PyInt w, PyInt
   UpdateWindow(canvas);
 }
 
-PyTuple<PyInt, PyInt> UICanvas::_win_client_size()
+PyTuple<PyInt, PyInt> PyUICanvas::_winClientSize()
 {
   HWND canvas = _ui_canvas_hwnd(*this);
   if (!canvas)
@@ -550,7 +550,7 @@ PyTuple<PyInt, PyInt> UICanvas::_win_client_size()
   return PyTuple<PyInt, PyInt>((PyInt)(rc.right - rc.left), (PyInt)(rc.bottom - rc.top));
 }
 
-void UICanvas::set_bounds(PyInt x, PyInt y, PyInt w, PyInt h)
+void PyUICanvas::setBounds(PyInt x, PyInt y, PyInt w, PyInt h)
 {
   HWND canvas = _ui_canvas_hwnd(*this);
   if (!canvas)
@@ -560,7 +560,7 @@ void UICanvas::set_bounds(PyInt x, PyInt y, PyInt w, PyInt h)
   MoveWindow(canvas, x, y, w, h, TRUE);
 }
 
-PyTuple<PyInt, PyInt> UICanvas::client_from_screen(PyInt scr_x, PyInt scr_y)
+PyTuple<PyInt, PyInt> PyUICanvas::clientFromScreen(PyInt scr_x, PyInt scr_y)
 {
   HWND canvas = _ui_canvas_hwnd(*this);
   if (!canvas)
@@ -574,7 +574,7 @@ PyTuple<PyInt, PyInt> UICanvas::client_from_screen(PyInt scr_x, PyInt scr_y)
   return PyTuple<PyInt, PyInt>((PyInt)pt.x, (PyInt)pt.y);
 }
 
-void UICanvas::invalidate()
+void PyUICanvas::invalidate()
 {
   HWND canvas = _ui_canvas_hwnd(*this);
   if (!canvas)
@@ -588,7 +588,7 @@ PY2CPP_END_SCOPE
 
 static LRESULT CALLBACK _ui_canvas_wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 {
-  UICanvas* ctx = (UICanvas*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
+  PyUICanvas* ctx = (PyUICanvas*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
   switch (msg)
   {
     case WM_ERASEBKGND:
@@ -605,7 +605,7 @@ static LRESULT CALLBACK _ui_canvas_wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARA
       HBITMAP old_bmp = (HBITMAP)SelectObject(mem, bmp);
       if (ctx)
       {
-        ctx->paint_frame((PyInt64)(INT_PTR)mem, cw, ch);
+        ctx->paintFrame((PyInt64)(INT_PTR)mem, cw, ch);
       }
       else
       {
@@ -638,7 +638,7 @@ static LRESULT CALLBACK _ui_canvas_wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARA
       }
       SetCapture(hwnd);
       SetFocus(hwnd);
-      ctx->on_pointer_down(btn, (PyInt)(short)LOWORD(lp), (PyInt)(short)HIWORD(lp));
+      ctx->onPointerDown(btn, (PyInt)(short)LOWORD(lp), (PyInt)(short)HIWORD(lp));
       return 0;
     }
     case WM_MOUSEMOVE: {
@@ -659,7 +659,7 @@ static LRESULT CALLBACK _ui_canvas_wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARA
       {
         btn = 4;
       }
-      ctx->on_pointer_move(btn, (PyInt)(short)LOWORD(lp), (PyInt)(short)HIWORD(lp));
+      ctx->onPointerMove(btn, (PyInt)(short)LOWORD(lp), (PyInt)(short)HIWORD(lp));
       return 0;
     }
     case WM_LBUTTONUP:
@@ -679,7 +679,7 @@ static LRESULT CALLBACK _ui_canvas_wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARA
       {
         btn = 4;
       }
-      ctx->on_pointer_up(btn, (PyInt)(short)LOWORD(lp), (PyInt)(short)HIWORD(lp));
+      ctx->onPointerUp(btn, (PyInt)(short)LOWORD(lp), (PyInt)(short)HIWORD(lp));
       return 0;
     }
     case WM_MOUSEWHEEL: {
@@ -691,7 +691,7 @@ static LRESULT CALLBACK _ui_canvas_wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARA
       pt.x = (LONG)(short)LOWORD(lp);
       pt.y = (LONG)(short)HIWORD(lp);
       ScreenToClient(hwnd, &pt);
-      ctx->on_wheel((PyInt)(short)HIWORD(wp), (PyInt)pt.x, (PyInt)pt.y);
+      ctx->onWheel((PyInt)(short)HIWORD(wp), (PyInt)pt.x, (PyInt)pt.y);
       return 0;
     }
     case WM_KEYDOWN: {
@@ -699,7 +699,7 @@ static LRESULT CALLBACK _ui_canvas_wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARA
       {
         break;
       }
-      ctx->on_key((PyInt)(UINT)wp);
+      ctx->onKey((PyInt)(UINT)wp);
       return 0;
     }
     default:
@@ -712,7 +712,7 @@ static LRESULT CALLBACK _ui_canvas_wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARA
 
 PY2CPP_BEGIN_SCOPE
 
-void UIPaintContext::_gdi_fill_rect(
+void PyUIPaintContext::_gdiFillRect(
   PyInt64 dc, PyInt x, PyInt y, PyInt w, PyInt h, PyInt r, PyInt g, PyInt b)
 {
   (void)dc;
@@ -725,8 +725,8 @@ void UIPaintContext::_gdi_fill_rect(
   (void)b;
 }
 
-void UIPaintContext::_gdi_stroke_rect(
-  PyInt64 dc, PyInt x, PyInt y, PyInt w, PyInt h, PyInt r, PyInt g, PyInt b, PyInt pen_w)
+void PyUIPaintContext::_gdiStrokeRect(
+  PyInt64 dc, PyInt x, PyInt y, PyInt w, PyInt h, PyInt r, PyInt g, PyInt b, PyInt penW)
 {
   (void)dc;
   (void)x;
@@ -736,10 +736,10 @@ void UIPaintContext::_gdi_stroke_rect(
   (void)r;
   (void)g;
   (void)b;
-  (void)pen_w;
+  (void)penW;
 }
 
-void UIPaintContext::_gdi_draw_line(
+void PyUIPaintContext::_gdiDrawLine(
   PyInt64 dc,
   PyInt x1,
   PyInt y1,
@@ -748,7 +748,7 @@ void UIPaintContext::_gdi_draw_line(
   PyInt r,
   PyInt g,
   PyInt b,
-  PyInt pen_w)
+  PyInt penW)
 {
   (void)dc;
   (void)x1;
@@ -758,10 +758,10 @@ void UIPaintContext::_gdi_draw_line(
   (void)r;
   (void)g;
   (void)b;
-  (void)pen_w;
+  (void)penW;
 }
 
-void UIPaintContext::_gdi_draw_bezier(
+void PyUIPaintContext::_gdiDrawBezier(
   PyInt64 dc,
   PyInt x1,
   PyInt y1,
@@ -774,7 +774,7 @@ void UIPaintContext::_gdi_draw_bezier(
   PyInt r,
   PyInt g,
   PyInt b,
-  PyInt pen_w)
+  PyInt penW)
 {
   (void)dc;
   (void)x1;
@@ -788,10 +788,10 @@ void UIPaintContext::_gdi_draw_bezier(
   (void)r;
   (void)g;
   (void)b;
-  (void)pen_w;
+  (void)penW;
 }
 
-void UIPaintContext::_gdi_draw_text(
+void PyUIPaintContext::_gdiDrawText(
   PyInt64 dc,
   PyInt x,
   PyInt y,
@@ -801,10 +801,10 @@ void UIPaintContext::_gdi_draw_text(
   PyInt r,
   PyInt g,
   PyInt b,
-  PyStr font_name,
-  PyInt font_size,
-  PyBool font_bold,
-  PyInt text_align)
+  PyStr fontName,
+  PyInt fontSize,
+  PyBool fontBold,
+  PyInt textAlign)
 {
   (void)dc;
   (void)x;
@@ -815,13 +815,13 @@ void UIPaintContext::_gdi_draw_text(
   (void)r;
   (void)g;
   (void)b;
-  (void)font_name;
-  (void)font_size;
-  (void)font_bold;
-  (void)text_align;
+  (void)fontName;
+  (void)fontSize;
+  (void)fontBold;
+  (void)textAlign;
 }
 
-void UIPaintContext::_gdi_fill_ellipse(
+void PyUIPaintContext::_gdiFillEllipse(
   PyInt64 dc, PyInt x1, PyInt y1, PyInt x2, PyInt y2, PyInt r, PyInt g, PyInt b)
 {
   (void)dc;
@@ -834,7 +834,7 @@ void UIPaintContext::_gdi_fill_ellipse(
   (void)b;
 }
 
-void UIPaintContext::_gdi_fill_round_rect(
+void PyUIPaintContext::_gdiFillRoundRect(
   PyInt64 dc,
   PyInt x,
   PyInt y,
@@ -856,7 +856,7 @@ void UIPaintContext::_gdi_fill_round_rect(
   (void)b;
 }
 
-void UIPaintContext::_gdi_stroke_round_rect(
+void PyUIPaintContext::_gdiStrokeRoundRect(
   PyInt64 dc,
   PyInt x,
   PyInt y,
@@ -866,7 +866,7 @@ void UIPaintContext::_gdi_stroke_round_rect(
   PyInt r,
   PyInt g,
   PyInt b,
-  PyInt pen_w)
+  PyInt penW)
 {
   (void)dc;
   (void)x;
@@ -877,10 +877,10 @@ void UIPaintContext::_gdi_stroke_round_rect(
   (void)r;
   (void)g;
   (void)b;
-  (void)pen_w;
+  (void)penW;
 }
 
-void UIPaintContext::_gdi_fill_rect_in_round_clip(
+void PyUIPaintContext::_gdiFillRectInRoundClip(
   PyInt64 dc,
   PyInt x,
   PyInt y,
@@ -906,13 +906,13 @@ void UIPaintContext::_gdi_fill_rect_in_round_clip(
   (void)b;
 }
 
-PyTuple<PyInt, PyInt> UICanvas::_win_parent_client_size(PyInt64 parent)
+PyTuple<PyInt, PyInt> PyUICanvas::_winParentClientSize(PyInt64 parent)
 {
   (void)parent;
   return PyTuple<PyInt, PyInt>(0, 0);
 }
 
-void UICanvas::_win_mount_child(PyInt64 parent, PyInt x, PyInt y, PyInt w, PyInt h)
+void PyUICanvas::_winMountChild(PyInt64 parent, PyInt x, PyInt y, PyInt w, PyInt h)
 {
   (void)parent;
   (void)x;
@@ -921,12 +921,12 @@ void UICanvas::_win_mount_child(PyInt64 parent, PyInt x, PyInt y, PyInt w, PyInt
   (void)h;
 }
 
-PyTuple<PyInt, PyInt> UICanvas::_win_client_size()
+PyTuple<PyInt, PyInt> PyUICanvas::_winClientSize()
 {
   return PyTuple<PyInt, PyInt>(0, 0);
 }
 
-void UICanvas::set_bounds(PyInt x, PyInt y, PyInt w, PyInt h)
+void PyUICanvas::setBounds(PyInt x, PyInt y, PyInt w, PyInt h)
 {
   (void)x;
   (void)y;
@@ -934,14 +934,14 @@ void UICanvas::set_bounds(PyInt x, PyInt y, PyInt w, PyInt h)
   (void)h;
 }
 
-PyTuple<PyInt, PyInt> UICanvas::client_from_screen(PyInt scr_x, PyInt scr_y)
+PyTuple<PyInt, PyInt> PyUICanvas::clientFromScreen(PyInt scr_x, PyInt scr_y)
 {
   (void)scr_x;
   (void)scr_y;
   return PyTuple<PyInt, PyInt>(0, 0);
 }
 
-void UICanvas::invalidate()
+void PyUICanvas::invalidate()
 {
 }
 

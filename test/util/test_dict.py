@@ -4,7 +4,7 @@ from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 class DictBasicsTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
@@ -21,7 +21,7 @@ class DictBasicsTests(TestCaseMixin):
 
 
 class DictMutationTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
@@ -31,15 +31,15 @@ class DictMutationTests(TestCaseMixin):
     d[1] = 11
     self.assertEqual(d[1], 11)
     self.assertEqual(len(d), 2)
-    d.setdefault(3, 30)
+    d.setDefault(3, 30)
     self.assertEqual(d[3], 30)
-    self.assertEqual(d.setdefault(3, 99), 30)
+    self.assertEqual(d.setDefault(3, 99), 30)
     d.clear()
     self.assertEqual(len(d), 0)
 
 
 class DictDelTests(TestCaseMixin):
-  _test_tag = 30
+  _testTag = 30
 
   @override
   def test(self):
@@ -52,7 +52,7 @@ class DictDelTests(TestCaseMixin):
 
 
 class DictPopTests(TestCaseMixin):
-  _test_tag = 40
+  _testTag = 40
 
   @override
   def test(self):
@@ -65,14 +65,14 @@ class DictPopTests(TestCaseMixin):
     self.assertEqual(d.get(9, 0), 0)
     d[3] = 30
     d[4] = 40
-    pair: (int, int) = d.popitem()
+    pair: (int, int) = d.popItem()
     self.assertEqual(pair[0], 4)
     self.assertEqual(pair[1], 40)
     self.assertEqual(len(d), 2)
 
 
 class DictLiteralTests(TestCaseMixin):
-  _test_tag = 50
+  _testTag = 50
 
   @override
   def test(self):
@@ -83,7 +83,7 @@ class DictLiteralTests(TestCaseMixin):
 
 
 class DictViewTests(TestCaseMixin):
-  _test_tag = 60
+  _testTag = 60
 
   @override
   def test(self):
@@ -92,14 +92,14 @@ class DictViewTests(TestCaseMixin):
     d[2] = 20
     d[3] = 30
     self.assertEqual(len(d.keys()), 3)
-    sum_k: int = 0
+    sumK: int = 0
     for k in d:
-      sum_k += k
-    self.assertEqual(sum_k, 6)
-    sum_v: int = 0
+      sumK += k
+    self.assertEqual(sumK, 6)
+    sumV: int = 0
     for v in d.values():
-      sum_v += v
-    self.assertEqual(sum_v, 60)
+      sumV += v
+    self.assertEqual(sumV, 60)
     count: int = 0
     for item in d.items():
       count += 1
@@ -108,7 +108,7 @@ class DictViewTests(TestCaseMixin):
 
 
 class DictOrderTests(TestCaseMixin):
-  _test_tag = 70
+  _testTag = 70
 
   @override
   def test(self):
@@ -120,16 +120,16 @@ class DictOrderTests(TestCaseMixin):
     for k in d:
       last = k
     self.assertEqual(last, 3)
-    p3: (int, int) = d.popitem()
-    p2: (int, int) = d.popitem()
-    p1: (int, int) = d.popitem()
+    p3: (int, int) = d.popItem()
+    p2: (int, int) = d.popItem()
+    p1: (int, int) = d.popItem()
     self.assertEqual(p3[0], 3)
     self.assertEqual(p2[0], 2)
     self.assertEqual(p1[0], 1)
 
 
 class DictCopyUpdateTests(TestCaseMixin):
-  _test_tag = 80
+  _testTag = 80
 
   @override
   def test(self):
@@ -146,13 +146,13 @@ class DictCopyUpdateTests(TestCaseMixin):
     keys.append(5)
     keys.append(6)
     keys.append(7)
-    c: dict[int, int] = dict.fromkeys(keys, 0)
+    c: dict[int, int] = dict.fromKeys(keys, 0)
     self.assertEqual(len(c), 3)
     self.assertEqual(c[6], 0)
 
 
 class DictMergeTests(TestCaseMixin):
-  _test_tag = 90
+  _testTag = 90
 
   @override
   def test(self):
@@ -169,7 +169,7 @@ class DictMergeTests(TestCaseMixin):
 
 
 class DictGrowTests(TestCaseMixin):
-  _test_tag = 100
+  _testTag = 100
 
   @override
   def test(self):
@@ -181,7 +181,7 @@ class DictGrowTests(TestCaseMixin):
 
 
 class DictUnpackTests(TestCaseMixin):
-  _test_tag = 110
+  _testTag = 110
 
   @override
   def test(self):
@@ -193,7 +193,7 @@ class DictUnpackTests(TestCaseMixin):
 
 
 class DictComprehensionTests(TestCaseMixin):
-  _test_tag = 120
+  _testTag = 120
 
   @override
   def test(self):
@@ -205,7 +205,7 @@ class DictComprehensionTests(TestCaseMixin):
 
 
 class DictCopyTests(TestCaseMixin):
-  _test_tag = 130
+  _testTag = 130
 
   @override
   def test(self):
@@ -217,7 +217,7 @@ class DictCopyTests(TestCaseMixin):
 
 
 class FrozenDictTests(TestCaseMixin):
-  _test_tag = 140
+  _testTag = 140
 
   @override
   def test(self):
@@ -252,7 +252,7 @@ class FrozenDictTests(TestCaseMixin):
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

@@ -3,78 +3,78 @@ from ..builtins import *
 from ..core.exceptions import ValueError
 from ..serde.base64 import b64encode
 from ..text.bytes import bytes
-from .url import UrlData, _CRLF, _HEADER_END, merge_query, parse_ascii_int
+from .url import UrlData, _Crlf, _HeaderEnd, mergeQuery, parseAsciiInt
 from .stream import AsyncStreamReader, AsyncStreamWriter, StreamReader, StreamWriter
 
 
 @enum
-class StatusCode:
-  CONTINUE = 100
-  SWITCHING_PROTOCOLS = 101
-  PROCESSING = 102
-  EARLY_HINTS = 103
-  OK = 200
-  CREATED = 201
-  ACCEPTED = 202
-  NON_AUTHORITATIVE_INFORMATION = 203
-  NO_CONTENT = 204
-  RESET_CONTENT = 205
-  PARTIAL_CONTENT = 206
-  MULTI_STATUS = 207
-  ALREADY_REPORTED = 208
-  IM_USED = 226
-  MULTIPLE_CHOICES = 300
-  MOVED_PERMANENTLY = 301
-  FOUND = 302
-  SEE_OTHER = 303
-  NOT_MODIFIED = 304
-  USE_PROXY = 305
-  TEMPORARY_REDIRECT = 307
-  PERMANENT_REDIRECT = 308
-  BAD_REQUEST = 400
-  UNAUTHORIZED = 401
-  PAYMENT_REQUIRED = 402
-  FORBIDDEN = 403
-  NOT_FOUND = 404
-  METHOD_NOT_ALLOWED = 405
-  NOT_ACCEPTABLE = 406
-  PROXY_AUTHENTICATION_REQUIRED = 407
-  REQUEST_TIMEOUT = 408
-  CONFLICT = 409
-  GONE = 410
-  LENGTH_REQUIRED = 411
-  PRECONDITION_FAILED = 412
-  CONTENT_TOO_LARGE = 413
-  URI_TOO_LONG = 414
-  UNSUPPORTED_MEDIA_TYPE = 415
-  RANGE_NOT_SATISFIABLE = 416
-  EXPECTATION_FAILED = 417
-  IM_A_TEAPOT = 418
-  MISDIRECTED_REQUEST = 421
-  UNPROCESSABLE_CONTENT = 422
-  LOCKED = 423
-  FAILED_DEPENDENCY = 424
-  TOO_EARLY = 425
-  UPGRADE_REQUIRED = 426
-  PRECONDITION_REQUIRED = 428
-  TOO_MANY_REQUESTS = 429
-  REQUEST_HEADER_FIELDS_TOO_LARGE = 431
-  UNAVAILABLE_FOR_LEGAL_REASONS = 451
-  INTERNAL_SERVER_ERROR = 500
-  NOT_IMPLEMENTED = 501
-  BAD_GATEWAY = 502
-  SERVICE_UNAVAILABLE = 503
-  GATEWAY_TIMEOUT = 504
-  HTTP_VERSION_NOT_SUPPORTED = 505
-  VARIANT_ALSO_NEGOTIATES = 506
-  INSUFFICIENT_STORAGE = 507
-  LOOP_DETECTED = 508
-  NOT_EXTENDED = 510
-  NETWORK_AUTHENTICATION_REQUIRED = 511
+class StatusCodeEnum:
+  Continue = 100
+  SwitchingProtocols = 101
+  Processing = 102
+  EarlyHints = 103
+  Ok = 200
+  Created = 201
+  Accepted = 202
+  NonAuthoritativeInformation = 203
+  NoContent = 204
+  ResetContent = 205
+  PartialContent = 206
+  MultiStatus = 207
+  AlreadyReported = 208
+  ImUsed = 226
+  MultipleChoices = 300
+  MovedPermanently = 301
+  Found = 302
+  SeeOther = 303
+  NotModified = 304
+  UseProxy = 305
+  TemporaryRedirect = 307
+  PermanentRedirect = 308
+  BadRequest = 400
+  Unauthorized = 401
+  PaymentRequired = 402
+  Forbidden = 403
+  NotFound = 404
+  MethodNotAllowed = 405
+  NotAcceptable = 406
+  ProxyAuthenticationRequired = 407
+  RequestTimeout = 408
+  Conflict = 409
+  Gone = 410
+  LengthRequired = 411
+  PreconditionFailed = 412
+  ContentTooLarge = 413
+  UriTooLong = 414
+  UnsupportedMediaType = 415
+  RangeNotSatisfiable = 416
+  ExpectationFailed = 417
+  ImATeapot = 418
+  MisdirectedRequest = 421
+  UnprocessableContent = 422
+  Locked = 423
+  FailedDependency = 424
+  TooEarly = 425
+  UpgradeRequired = 426
+  PreconditionRequired = 428
+  TooManyRequests = 429
+  RequestHeaderFieldsTooLarge = 431
+  UnavailableForLegalReasons = 451
+  InternalServerError = 500
+  NotImplemented = 501
+  BadGateway = 502
+  ServiceUnavailable = 503
+  GatewayTimeout = 504
+  HttpVersionNotSupported = 505
+  VariantAlsoNegotiates = 506
+  InsufficientStorage = 507
+  LoopDetected = 508
+  NotExtended = 510
+  NetworkAuthenticationRequired = 511
 
 
 @immutable
-def reason_phrase(status: int) -> str:
+def reasonPhrase(status: int) -> str:
   match status:
     case 100:
       return "Continue"
@@ -85,7 +85,7 @@ def reason_phrase(status: int) -> str:
     case 103:
       return "Early Hints"
     case 200:
-      return "OK"
+      return "Ok"
     case 201:
       return "Created"
     case 202:
@@ -213,7 +213,7 @@ class BasicAuth:
 
 
 @immutable
-def _cookie_header(cookies: dict[str, str]) -> str:
+def _cookieHeader(cookies: dict[str, str]) -> str:
   if not cookies:
     return ""
   out: str = ""
@@ -227,7 +227,7 @@ def _cookie_header(cookies: dict[str, str]) -> str:
 
 
 @immutable
-def _basic_auth_header(auth: BasicAuth) -> str:
+def _basicAuthHeader(auth: BasicAuth) -> str:
   if not auth.user:
     return ""
   cred: bytes = f"{auth.user}:{auth.password}".encode()
@@ -236,7 +236,7 @@ def _basic_auth_header(auth: BasicAuth) -> str:
 
 
 @immutable
-def parse_ascii_hex(s: str) -> int:
+def parseAsciiHex(s: str) -> int:
   """解析 HTTP chunk-size 的十六进制前缀；遇到 ``;`` 扩展或空白停止。"""
   out: int = 0
   for i in range(len(s)):
@@ -255,17 +255,17 @@ def parse_ascii_hex(s: str) -> int:
 
 
 @immutable
-def _strip_line_end(line: str) -> str:
+def _stripLineEnd(line: str) -> str:
   out: str = line
-  if out.endswith("\n"):
+  if out.endsWith("\n"):
     out = out[:-1]
-  if out.endswith("\r"):
+  if out.endsWith("\r"):
     out = out[:-1]
   return out
 
 
 @immutable
-def _header_is_chunked(headers: dict[str, str]) -> bool:
+def _headerIsChunked(headers: dict[str, str]) -> bool:
   val: str = ""
   if "Transfer-Encoding" in headers:
     val = headers["Transfer-Encoding"]
@@ -277,7 +277,7 @@ def _header_is_chunked(headers: dict[str, str]) -> bool:
 
 
 @immutable
-def _bytes_from_buf(buf: byte[:], n: int) -> bytes:
+def _bytesFromBuf(buf: byte[:], n: int) -> bytes:
   out: byte[:] = new(n)
   for i in range(n):
     out[i] = buf[i]
@@ -285,7 +285,7 @@ def _bytes_from_buf(buf: byte[:], n: int) -> bytes:
 
 
 @immutable
-def _append_one(dst: byte[:] @ref, at: int, b: byte) -> int:
+def _appendOne(dst: byte[:] @ref, at: int, b: byte) -> int:
   need: int = at + 1
   n: int = len(dst)
   if need > n:
@@ -306,43 +306,43 @@ class RequestOptions:
   timeout: float = 0.0
 
   @immutable
-  def _request_path(self, url: UrlData) -> str:
-    query: str = merge_query(url.query, self.params)
+  def _requestPath(self, url: UrlData) -> str:
+    query: str = mergeQuery(url.query, self.params)
     if query:
       return f"{url.path}?{query}"
     return url.path
 
   def encode(self, method: str, url: UrlData) -> bytes:
-    """组包 HTTP/1.1 请求字节（``Connection: close``）。"""
-    path: str = self._request_path(url)
+    """组包 HTTP/1.1 请求字节（``ConnectionType: close``）。"""
+    path: str = self._requestPath(url)
     body: bytes = self.data
     hdrs: dict[str, str] = {}
     for k in self.headers:
       hdrs[k] = self.headers[k]
     hdrs["Host"] = url.host
-    if "Connection" not in hdrs and "connection" not in hdrs:
-      hdrs["Connection"] = "close"
-    cookie_hdr: str = _cookie_header(self.cookies)
-    if cookie_hdr:
+    if "ConnectionType" not in hdrs and "connection" not in hdrs:
+      hdrs["ConnectionType"] = "close"
+    cookieHdr: str = _cookieHeader(self.cookies)
+    if cookieHdr:
       if "Cookie" not in hdrs and "cookie" not in hdrs:
-        hdrs["Cookie"] = cookie_hdr
-    auth_hdr: str = _basic_auth_header(self.auth)
-    if auth_hdr:
+        hdrs["Cookie"] = cookieHdr
+    authHdr: str = _basicAuthHeader(self.auth)
+    if authHdr:
       if "Authorization" not in hdrs and "authorization" not in hdrs:
-        hdrs["Authorization"] = auth_hdr
+        hdrs["Authorization"] = authHdr
     if body:
       if "Content-Length" not in hdrs and "content-length" not in hdrs:
         hdrs["Content-Length"] = f"{len(body)}"
-    w: StreamWriter = new.from_buffer()
-    req_line: str = f"{method} {path} HTTP/1.1\r\n"
-    w.write(req_line.encode())
-    for k in _header_keys(hdrs):
+    w: StreamWriter = new.fromBuffer()
+    reqLine: str = f"{method} {path} HTTP/1.1\r\n"
+    w.write(reqLine.encode())
+    for k in _headerKeys(hdrs):
       line: str = f"{k}: {hdrs[k]}\r\n"
       w.write(line.encode())
-    w.write(_CRLF)
+    w.write(_Crlf)
     if body:
       w.write(body)
-    return w.take_bytes()
+    return w.takeBytes()
 
 
 @dataclass(eq=False, repr=False)
@@ -358,8 +358,8 @@ class Request:
   @staticmethod
   def read(reader: StreamReader @ref) -> Self:
     """自流读取完整 HTTP 请求。"""
-    block: bytes = reader.readuntil(_HEADER_END)
-    lines: list[bytes] = _header_lines(block)
+    block: bytes = reader.readUntil(_HeaderEnd)
+    lines: list[bytes] = _headerLines(block)
     if not lines:
       raise ValueError("empty request")
     req: Self = new()
@@ -377,24 +377,24 @@ class Request:
       line: bytes = lines[i]
       if not line:
         break
-      key: str = _header_key(line)
-      val: str = _header_value(line)
+      key: str = _headerKey(line)
+      val: str = _headerValue(line)
       if key:
         req.headers[key] = val
     clen: int = 0
     if "Content-Length" in req.headers:
-      clen = parse_ascii_int(req.headers["Content-Length"])
+      clen = parseAsciiInt(req.headers["Content-Length"])
     elif "content-length" in req.headers:
-      clen = parse_ascii_int(req.headers["content-length"])
+      clen = parseAsciiInt(req.headers["content-length"])
     if clen > 0:
-      req.body = reader.readexactly(clen)
+      req.body = reader.readExactly(clen)
     return req
 
   @staticmethod
-  async def read_async(reader: AsyncStreamReader @ref) -> Self:
+  async def readAsync(reader: AsyncStreamReader @ref) -> Self:
     """异步自流读取完整 HTTP 请求。"""
-    block: bytes = await reader.readuntil(_HEADER_END)
-    lines: list[bytes] = _header_lines(block)
+    block: bytes = await reader.readUntil(_HeaderEnd)
+    lines: list[bytes] = _headerLines(block)
     if not lines:
       raise ValueError("empty request")
     req: Self = new()
@@ -412,17 +412,17 @@ class Request:
       line: bytes = lines[i]
       if not line:
         break
-      key: str = _header_key(line)
-      val: str = _header_value(line)
+      key: str = _headerKey(line)
+      val: str = _headerValue(line)
       if key:
         req.headers[key] = val
     clen: int = 0
     if "Content-Length" in req.headers:
-      clen = parse_ascii_int(req.headers["Content-Length"])
+      clen = parseAsciiInt(req.headers["Content-Length"])
     elif "content-length" in req.headers:
-      clen = parse_ascii_int(req.headers["content-length"])
+      clen = parseAsciiInt(req.headers["content-length"])
     if clen > 0:
-      req.body = await reader.readexactly(clen)
+      req.body = await reader.readExactly(clen)
     return req
 
   @immutable
@@ -447,7 +447,7 @@ class Response:
   body: bytes @optional = b""
 
   @staticmethod
-  def text_response(text: str, status: StatusCode) -> Self:
+  def textResponse(text: str, status: StatusCodeEnum) -> Self:
     out: Self = new()
     out.status = int(status)
     out.headers = {}
@@ -457,33 +457,33 @@ class Response:
     return out
 
   def write(self, writer: StreamWriter @ref) -> None:
-    """写出 HTTP 响应（``Connection: close``）。"""
+    """写出 HTTP 响应（``ConnectionType: close``）。"""
     if "Content-Length" not in self.headers and "content-length" not in self.headers:
       self.headers["Content-Length"] = f"{len(self.body)}"
-    if "Connection" not in self.headers and "connection" not in self.headers:
-      self.headers["Connection"] = "close"
-    status_line: str = f"HTTP/1.1 {self.status} {reason_phrase(self.status)}\r\n"
-    writer.write(status_line.encode())
-    for k in _header_keys(self.headers):
+    if "ConnectionType" not in self.headers and "connection" not in self.headers:
+      self.headers["ConnectionType"] = "close"
+    statusLine: str = f"HTTP/1.1 {self.status} {reasonPhrase(self.status)}\r\n"
+    writer.write(statusLine.encode())
+    for k in _headerKeys(self.headers):
       hdr: str = f"{k}: {self.headers[k]}\r\n"
       writer.write(hdr.encode())
-    writer.write(_CRLF)
+    writer.write(_Crlf)
     if self.body:
       writer.write(self.body)
     writer.drain()
 
-  async def write_async(self, writer: AsyncStreamWriter @ref) -> None:
-    """异步写出 HTTP 响应（``Connection: close``）。"""
+  async def writeAsync(self, writer: AsyncStreamWriter @ref) -> None:
+    """异步写出 HTTP 响应（``ConnectionType: close``）。"""
     if "Content-Length" not in self.headers and "content-length" not in self.headers:
       self.headers["Content-Length"] = f"{len(self.body)}"
-    if "Connection" not in self.headers and "connection" not in self.headers:
-      self.headers["Connection"] = "close"
-    status_line: str = f"HTTP/1.1 {self.status} {reason_phrase(self.status)}\r\n"
-    wrote: int = await writer.write(status_line.encode())
-    for k in _header_keys(self.headers):
+    if "ConnectionType" not in self.headers and "connection" not in self.headers:
+      self.headers["ConnectionType"] = "close"
+    statusLine: str = f"HTTP/1.1 {self.status} {reasonPhrase(self.status)}\r\n"
+    wrote: int = await writer.write(statusLine.encode())
+    for k in _headerKeys(self.headers):
       hdr: str = f"{k}: {self.headers[k]}\r\n"
       wrote = await writer.write(hdr.encode())
-    wrote = await writer.write(_CRLF)
+    wrote = await writer.write(_Crlf)
     if self.body:
       wrote = await writer.write(self.body)
     await writer.drain()
@@ -498,9 +498,9 @@ class ClientResponse:
   body: bytes @optional = b""
 
   @staticmethod
-  def read_head(reader: StreamReader @ref) -> Self:
-    block: bytes = reader.readuntil(_HEADER_END)
-    lines: list[bytes] = _header_lines(block)
+  def readHead(reader: StreamReader @ref) -> Self:
+    block: bytes = reader.readUntil(_HeaderEnd)
+    lines: list[bytes] = _headerLines(block)
     if not lines:
       raise ValueError("empty response")
     resp: Self = new()
@@ -511,34 +511,34 @@ class ClientResponse:
     sp2: int = first.find(b" ", sp1 + 1)
     if sp2 < 0:
       raise ValueError("bad status line")
-    status_part: bytes = first[sp1 + 1 : sp2]
-    resp.status = parse_ascii_int(status_part.decode())
+    statusPart: bytes = first[sp1 + 1 : sp2]
+    resp.status = parseAsciiInt(statusPart.decode())
     for i in range(1, len(lines)):
       line: bytes = lines[i]
       if not line:
         break
-      key: str = _header_key(line)
-      val: str = _header_value(line)
+      key: str = _headerKey(line)
+      val: str = _headerValue(line)
       if key:
         resp.headers[key] = val
     return resp
 
   @staticmethod
   def read(reader: StreamReader @ref) -> Self:
-    resp: Self = new.read_head(reader)
+    resp: Self = new.readHead(reader)
     clen: int = 0
     if "Content-Length" in resp.headers:
-      clen = parse_ascii_int(resp.headers["Content-Length"])
+      clen = parseAsciiInt(resp.headers["Content-Length"])
     elif "content-length" in resp.headers:
-      clen = parse_ascii_int(resp.headers["content-length"])
+      clen = parseAsciiInt(resp.headers["content-length"])
     if clen > 0:
-      resp.body = reader.readexactly(clen)
+      resp.body = reader.readExactly(clen)
     return resp
 
   @staticmethod
-  async def read_head_async(reader: AsyncStreamReader @ref) -> Self:
-    block: bytes = await reader.readuntil(_HEADER_END)
-    lines: list[bytes] = _header_lines(block)
+  async def readHeadAsync(reader: AsyncStreamReader @ref) -> Self:
+    block: bytes = await reader.readUntil(_HeaderEnd)
+    lines: list[bytes] = _headerLines(block)
     if not lines:
       raise ValueError("empty response")
     resp: Self = new()
@@ -549,22 +549,22 @@ class ClientResponse:
     sp2: int = first.find(b" ", sp1 + 1)
     if sp2 < 0:
       raise ValueError("bad status line")
-    status_part: bytes = first[sp1 + 1 : sp2]
-    resp.status = parse_ascii_int(status_part.decode())
+    statusPart: bytes = first[sp1 + 1 : sp2]
+    resp.status = parseAsciiInt(statusPart.decode())
     for i in range(1, len(lines)):
       line: bytes = lines[i]
       if not line:
         break
-      key: str = _header_key(line)
-      val: str = _header_value(line)
+      key: str = _headerKey(line)
+      val: str = _headerValue(line)
       if key:
         resp.headers[key] = val
     return resp
 
   @staticmethod
-  async def read_async(reader: AsyncStreamReader @ref) -> Self:
-    block: bytes = await reader.readuntil(_HEADER_END)
-    lines: list[bytes] = _header_lines(block)
+  async def readAsync(reader: AsyncStreamReader @ref) -> Self:
+    block: bytes = await reader.readUntil(_HeaderEnd)
+    lines: list[bytes] = _headerLines(block)
     if not lines:
       raise ValueError("empty response")
     resp: Self = new()
@@ -575,23 +575,23 @@ class ClientResponse:
     sp2: int = first.find(b" ", sp1 + 1)
     if sp2 < 0:
       raise ValueError("bad status line")
-    status_part: bytes = first[sp1 + 1 : sp2]
-    resp.status = parse_ascii_int(status_part.decode())
+    statusPart: bytes = first[sp1 + 1 : sp2]
+    resp.status = parseAsciiInt(statusPart.decode())
     for i in range(1, len(lines)):
       line: bytes = lines[i]
       if not line:
         break
-      key: str = _header_key(line)
-      val: str = _header_value(line)
+      key: str = _headerKey(line)
+      val: str = _headerValue(line)
       if key:
         resp.headers[key] = val
     clen: int = 0
     if "Content-Length" in resp.headers:
-      clen = parse_ascii_int(resp.headers["Content-Length"])
+      clen = parseAsciiInt(resp.headers["Content-Length"])
     elif "content-length" in resp.headers:
-      clen = parse_ascii_int(resp.headers["content-length"])
+      clen = parseAsciiInt(resp.headers["content-length"])
     if clen > 0:
-      resp.body = await reader.readexactly(clen)
+      resp.body = await reader.readExactly(clen)
     return resp
 
   @immutable
@@ -612,7 +612,7 @@ class _ClientStreamResponseState(
   _closed: bool = False
   _done: bool = False
   _chunk: bytes = b""
-  _chunk_pos: int = 0
+  _chunkPos: int = 0
 
   def __init__(self):
     self.status = 0
@@ -622,7 +622,7 @@ class _ClientStreamResponseState(
     self._closed = False
     self._done = False
     self._chunk = b""
-    self._chunk_pos = 0
+    self._chunkPos = 0
 
 
 @copyable
@@ -643,17 +643,17 @@ class ClientStreamResponse:
     return self._state.headers
 
   @staticmethod
-  def from_streams(reader: StreamReader @ref, writer: StreamWriter @ref) -> Self:
-    head: ClientResponse = new.read_head(reader)
-    return new.from_head(reader, writer, head)
+  def fromStreams(reader: StreamReader @ref, writer: StreamWriter @ref) -> Self:
+    head: ClientResponse = new.readHead(reader)
+    return new.fromHead(reader, writer, head)
 
   @staticmethod
-  def from_head(reader: StreamReader @ref, writer: StreamWriter @ref, head: ClientResponse) -> Self:
+  def fromHead(reader: StreamReader @ref, writer: StreamWriter @ref, head: ClientResponse) -> Self:
     out: Self = new()
     out._state.status = head.status
     out._state.headers = head.headers
     out._state._reader = reader
-    out._state._chunked = _header_is_chunked(out._state.headers)
+    out._state._chunked = _headerIsChunked(out._state.headers)
     return out
 
   def close(self) -> None:
@@ -662,41 +662,41 @@ class ClientStreamResponse:
     self._state._closed = True
     self._state._reader.close()
 
-  def _read_next_chunk(self) -> bool:
+  def _readNextChunk(self) -> bool:
     if self._state._done:
       return False
-    line_b: bytes = self._state._reader.readuntil(_CRLF)
-    line: str = _strip_line_end(line_b.decode())
-    size: int = parse_ascii_hex(line)
+    lineB: bytes = self._state._reader.readUntil(_Crlf)
+    line: str = _stripLineEnd(lineB.decode())
+    size: int = parseAsciiHex(line)
     if size <= 0:
       self._state._done = True
-      trailer: bytes = self._state._reader.readuntil(_CRLF)
+      trailer: bytes = self._state._reader.readUntil(_Crlf)
       return False
-    self._state._chunk = self._state._reader.readexactly(size)
-    self._state._chunk_pos = 0
-    crlf: bytes = self._state._reader.readexactly(2)
+    self._state._chunk = self._state._reader.readExactly(size)
+    self._state._chunkPos = 0
+    crlf: bytes = self._state._reader.readExactly(2)
     return True
 
-  def _read_chunked_line(self) -> str:
+  def _readChunkedLine(self) -> str:
     buf: byte[:] = b""
     at: int = 0
     while True:
-      while self._state._chunk_pos >= len(self._state._chunk):
-        if not self._read_next_chunk():
-          return _bytes_from_buf(buf, at).decode()
-      b: byte = self._state._chunk[self._state._chunk_pos]
-      self._state._chunk_pos += 1
+      while self._state._chunkPos >= len(self._state._chunk):
+        if not self._readNextChunk():
+          return _bytesFromBuf(buf, at).decode()
+      b: byte = self._state._chunk[self._state._chunkPos]
+      self._state._chunkPos += 1
       if b == ord("\n"):
-        return _bytes_from_buf(buf, at).decode()
+        return _bytesFromBuf(buf, at).decode()
       if b != ord("\r"):
-        at = _append_one(buf, at, b)
+        at = _appendOne(buf, at, b)
 
-  def readline(self) -> str:
+  def readLine(self) -> str:
     """读取 body 中下一行（不含行尾）；chunked 响应会先解码 chunk。"""
     if self._state._chunked:
-      return self._read_chunked_line()
-    line_b: bytes = self._state._reader.readuntil(b"\n")
-    return _strip_line_end(line_b.decode())
+      return self._readChunkedLine()
+    lineB: bytes = self._state._reader.readUntil(b"\n")
+    return _stripLineEnd(lineB.decode())
 
   def body(self) -> bytes:
     """读取当前已缓冲的剩余 body。
@@ -707,7 +707,7 @@ class ClientStreamResponse:
     n: int = self._state._reader.available()
     if n <= 0:
       return b""
-    return self._state._reader.readexactly(n)
+    return self._state._reader.readExactly(n)
 
   def text(self) -> str:
     return self.body().decode()
@@ -725,7 +725,7 @@ class AsyncClientStreamResponse:
   _closed: bool = False
   _done: bool = False
   _chunk: bytes = b""
-  _chunk_pos: int = 0
+  _chunkPos: int = 0
 
   def __init__(self):
     self.status = 0
@@ -736,21 +736,21 @@ class AsyncClientStreamResponse:
     self._closed = False
     self._done = False
     self._chunk = b""
-    self._chunk_pos = 0
+    self._chunkPos = 0
 
   @staticmethod
-  async def from_streams(reader: AsyncStreamReader @ref, writer: AsyncStreamWriter @ref) -> Self:
-    head: ClientResponse = await new.read_head_async(reader)
-    return new.from_head(reader, writer, head)
+  async def fromStreams(reader: AsyncStreamReader @ref, writer: AsyncStreamWriter @ref) -> Self:
+    head: ClientResponse = await new.readHeadAsync(reader)
+    return new.fromHead(reader, writer, head)
 
   @staticmethod
-  def from_head(reader: AsyncStreamReader @ref, writer: AsyncStreamWriter @ref, head: ClientResponse) -> Self:
+  def fromHead(reader: AsyncStreamReader @ref, writer: AsyncStreamWriter @ref, head: ClientResponse) -> Self:
     out: Self = new()
     out.status = head.status
     out.headers = head.headers
     out._reader = reader
     out._writer = writer
-    out._chunked = _header_is_chunked(out.headers)
+    out._chunked = _headerIsChunked(out.headers)
     return out
 
   def close(self) -> None:
@@ -760,46 +760,46 @@ class AsyncClientStreamResponse:
     self._reader.close()
     self._writer.close()
 
-  async def _read_next_chunk(self) -> bool:
+  async def _readNextChunk(self) -> bool:
     if self._done:
       return False
-    line_b: bytes = await self._reader.readuntil(_CRLF)
-    line: str = _strip_line_end(line_b.decode())
-    size: int = parse_ascii_hex(line)
+    lineB: bytes = await self._reader.readUntil(_Crlf)
+    line: str = _stripLineEnd(lineB.decode())
+    size: int = parseAsciiHex(line)
     if size <= 0:
       self._done = True
-      trailer: bytes = await self._reader.readuntil(_CRLF)
+      trailer: bytes = await self._reader.readUntil(_Crlf)
       return False
-    self._chunk = await self._reader.readexactly(size)
-    self._chunk_pos = 0
-    crlf: bytes = await self._reader.readexactly(2)
+    self._chunk = await self._reader.readExactly(size)
+    self._chunkPos = 0
+    crlf: bytes = await self._reader.readExactly(2)
     return True
 
-  async def _read_chunked_line(self) -> str:
+  async def _readChunkedLine(self) -> str:
     buf: byte[:] = b""
     at: int = 0
     while True:
-      while self._chunk_pos >= len(self._chunk):
-        more: bool = await self._read_next_chunk()
+      while self._chunkPos >= len(self._chunk):
+        more: bool = await self._readNextChunk()
         if not more:
-          return _bytes_from_buf(buf, at).decode()
-      b: byte = self._chunk[self._chunk_pos]
-      self._chunk_pos += 1
+          return _bytesFromBuf(buf, at).decode()
+      b: byte = self._chunk[self._chunkPos]
+      self._chunkPos += 1
       if b == ord("\n"):
-        return _bytes_from_buf(buf, at).decode()
+        return _bytesFromBuf(buf, at).decode()
       if b != ord("\r"):
-        at = _append_one(buf, at, b)
+        at = _appendOne(buf, at, b)
 
-  async def readline(self) -> str:
+  async def readLine(self) -> str:
     """异步读取 body 中下一行（不含行尾）；chunked 响应会先解码 chunk。"""
     if self._chunked:
-      return await self._read_chunked_line()
-    line_b: bytes = await self._reader.readuntil(b"\n")
-    return _strip_line_end(line_b.decode())
+      return await self._readChunkedLine()
+    lineB: bytes = await self._reader.readUntil(b"\n")
+    return _stripLineEnd(lineB.decode())
 
 
 @immutable
-def _header_keys(headers: dict[str, str]) -> list[str]:
+def _headerKeys(headers: dict[str, str]) -> list[str]:
   out: list[str] = []
   for k in headers:
     out.append(k)
@@ -807,16 +807,16 @@ def _header_keys(headers: dict[str, str]) -> list[str]:
 
 
 @immutable
-def _header_key(line: bytes) -> str:
+def _headerKey(line: bytes) -> str:
   colon: int = line.find(b":")
   if colon < 0:
     return ""
-  key_part: bytes = line[:colon]
-  return key_part.decode()
+  keyPart: bytes = line[:colon]
+  return keyPart.decode()
 
 
 @immutable
-def _header_value(line: bytes) -> str:
+def _headerValue(line: bytes) -> str:
   colon: int = line.find(b":")
   if colon < 0:
     return ""
@@ -829,7 +829,7 @@ def _header_value(line: bytes) -> str:
 
 
 @immutable
-def _header_lines(block: bytes) -> list[bytes]:
+def _headerLines(block: bytes) -> list[bytes]:
   """``block``（含末尾 ``\\r\\n\\r\\n``）→ 各行 ``bytes``（不含行尾）。"""
   out: list[bytes] = []
   n: int = len(block)
@@ -841,10 +841,10 @@ def _header_lines(block: bytes) -> list[bytes]:
   while i < n:
     if i + 1 < n and buf[i] == ord("\r") and buf[i + 1] == ord("\n"):
       ln: int = i - start
-      line_buf: byte[:] = new(ln)
+      lineBuf: byte[:] = new(ln)
       for j in range(ln):
-        line_buf[j] = buf[start + j]
-      line: bytes = bytes(line_buf)
+        lineBuf[j] = buf[start + j]
+      line: bytes = bytes(lineBuf)
       if not line:
         break
       out.append(line)

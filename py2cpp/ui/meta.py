@@ -4,13 +4,13 @@ from ..builtins import *
 
 @annotation
 class UIInvisibleMeta:
-  """不参与 ``draw_panel``；可与其它 ``@`` 叠用。"""
+  """不参与 ``drawPanel``；可与其它 ``@`` 叠用。"""
 
 
 @annotation
 @dataclass
 class UILabelMeta:
-  """覆盖显示标签；``name @UILabelMeta("显示名")``；用 ``Self.get_field_annotation[UILabelMeta](field)`` 读取 ``.text``。"""
+  """覆盖显示标签；``name @UILabelMeta("显示名")``；用 ``Self.getFieldAnnotation[UILabelMeta](field)`` 读取 ``.text``。"""
 
   text: str
 

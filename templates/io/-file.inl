@@ -48,12 +48,12 @@ static PyStr _os_cbuf_to_pystr(const char* buf)
 
 static void _os_throw_oserror()
 {
-  throw PY2CPP_TYPE(OSError)();
+  throw PY2CPP_TYPE(PyOSError)();
 }
 
 static void _os_throw_filenotfound()
 {
-  throw PY2CPP_TYPE(FileNotFoundError)();
+  throw PY2CPP_TYPE(PyFileNotFoundError)();
 }
 
 static int _os_stat_impl(const char* cpath, struct _stat& st)
@@ -77,32 +77,32 @@ static PyBool _os_path_exists_impl(const char* cpath)
 
 PY2CPP_BEGIN_SCOPE
 
-c_stat fs_stat(const PyStr& path)
+CStat fs_stat(const PyStr& path)
 {
   char pbuf[4096];
-  path.copy_to_span(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
+  path.copyToSpan(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
   struct _stat st;
   if (_os_stat_impl(pbuf, st) != 0)
   {
     _os_throw_filenotfound();
   }
-c_stat out = c_stat();
-  out.st_mode = (int)st.st_mode;
-  out.st_size = (int)st.st_size;
-  out.st_mtime = (double)st.st_mtime;
-  out.st_atime = (double)st.st_atime;
-  out.st_ctime = (double)st.st_ctime;
-  out.st_dev = (int)st.st_dev;
-  out.st_ino = (int)st.st_ino;
+CStat out = CStat();
+  out.stMode = (int)st.st_mode;
+  out.stSize = (int)st.st_size;
+  out.stMtime = (double)st.st_mtime;
+  out.stAtime = (double)st.st_atime;
+  out.stCtime = (double)st.st_ctime;
+  out.stDev = (int)st.st_dev;
+  out.stIno = (int)st.st_ino;
   return out;
 }
 
-c_stat fs_lstat(const PyStr& path)
+CStat fs_lstat(const PyStr& path)
 {
   return fs_stat(path);
 }
 
-PyStr fs_getcwd()
+PyStr fs_getCwd()
 {
 #ifdef _WIN32
   char buf[4096];
@@ -113,7 +113,7 @@ PyStr fs_getcwd()
   return _os_cbuf_to_pystr(buf);
 #else
   char buf[4096];
-  if (getcwd(buf, sizeof(buf)) == nullptr)
+  if (getCwd(buf, sizeof(buf)) == nullptr)
   {
     _os_throw_oserror();
   }
@@ -121,10 +121,10 @@ PyStr fs_getcwd()
 #endif
 }
 
-PY2CPP_TYPE(PyList)<PY2CPP_TYPE(PyStr)> fs_listdir(const PY2CPP_TYPE(PyStr)& path)
+PY2CPP_TYPE(PyList)<PY2CPP_TYPE(PyStr)> fs_listDir(const PY2CPP_TYPE(PyStr)& path)
 {
   char pbuf[4096];
-  path.copy_to_span(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
+  path.copyToSpan(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
   PY2CPP_TYPE(PyList)<PY2CPP_TYPE(PyStr)> out;
 #ifdef _WIN32
   char pattern[4096];
@@ -206,7 +206,7 @@ static void _scandir_state_close(ScandirState* st)
 static ScandirState* _scandir_state_open(const PyStr& pathname)
 {
   char pbuf[4096];
-  pathname.copy_to_span(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
+  pathname.copyToSpan(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
   ScandirState* st = new ScandirState();
   st->path = pathname;
 #ifdef _WIN32
@@ -230,7 +230,7 @@ static ScandirState* _scandir_state_open(const PyStr& pathname)
   return st;
 }
 
-ScandirIterator::ScandirIterator(PyStr pathname)
+PyScandirIterator::PyScandirIterator(PyStr pathname)
 {
   this->_path = pathname;
   this->_state = 0;
@@ -238,13 +238,13 @@ ScandirIterator::ScandirIterator(PyStr pathname)
   this->_state = (PyUPtr)(uintptr_t)st;
 }
 
-ScandirIterator::ScandirIterator(ScandirIterator&& other)
+PyScandirIterator::PyScandirIterator(PyScandirIterator&& other)
   : _path(other._path), _state(other._state)
 {
   other._state = 0;
 }
 
-ScandirIterator& ScandirIterator::operator=(ScandirIterator&& other)
+PyScandirIterator& PyScandirIterator::operator=(PyScandirIterator&& other)
 {
   if (this != &other)
   {
@@ -256,12 +256,12 @@ ScandirIterator& ScandirIterator::operator=(ScandirIterator&& other)
   return *this;
 }
 
-ScandirIterator::~ScandirIterator()
+PyScandirIterator::~PyScandirIterator()
 {
   this->close();
 }
 
-void ScandirIterator::close()
+void PyScandirIterator::close()
 {
   ScandirState* st = (ScandirState*)(uintptr_t)this->_state;
   if (st)
@@ -272,24 +272,24 @@ void ScandirIterator::close()
   }
 }
 
-ScandirIterator& ScandirIterator::__iter__()
+PyScandirIterator& PyScandirIterator::__iter__()
 {
   return *this;
 }
 
-PyIterResult<DirEntry, PyNone> ScandirIterator::__next__()
+PyIterResult<PyDirEntry, PyNone> PyScandirIterator::__next__()
 {
   ScandirState* st = (ScandirState*)(uintptr_t)this->_state;
   if (!st)
   {
-    return (PyIterResult<DirEntry, PyNone>::Return)(PyNone());
+    return (PyIterResult<PyDirEntry, PyNone>::Return)(PyNone());
   }
 #ifdef _WIN32
   for (;;)
   {
     if (!st->pending)
     {
-      return (PyIterResult<DirEntry, PyNone>::Return)(PyNone());
+      return (PyIterResult<PyDirEntry, PyNone>::Return)(PyNone());
     }
     char name_buf[260];
     strncpy(name_buf, st->data.cFileName, sizeof(name_buf) - 1);
@@ -299,11 +299,11 @@ PyIterResult<DirEntry, PyNone> ScandirIterator::__next__()
     {
       PyStr ent_name = _os_cbuf_to_pystr(name_buf);
       PyStr full = path::join(st->path, ent_name);
-      return (PyIterResult<DirEntry, PyNone>::Yield)(DirEntry(ent_name, full));
+      return (PyIterResult<PyDirEntry, PyNone>::Yield)(PyDirEntry(ent_name, full));
     }
     if (!st->pending)
     {
-      return (PyIterResult<DirEntry, PyNone>::Return)(PyNone());
+      return (PyIterResult<PyDirEntry, PyNone>::Return)(PyNone());
     }
   }
 #else
@@ -317,10 +317,10 @@ PyIterResult<DirEntry, PyNone> ScandirIterator::__next__()
     }
     PyStr ent_name = _os_cbuf_to_pystr(name);
     PyStr full = path::join(st->path, ent_name);
-    return (PyIterResult<DirEntry, PyNone>::Yield)(DirEntry(ent_name, full));
+    return (PyIterResult<PyDirEntry, PyNone>::Yield)(PyDirEntry(ent_name, full));
   }
   _scandir_state_close(st);
-  return (PyIterResult<DirEntry, PyNone>::Return)(PyNone());
+  return (PyIterResult<PyDirEntry, PyNone>::Return)(PyNone());
 #endif
 }
 
@@ -328,7 +328,7 @@ void fs_mkdir(const PyStr& path, PyInt mode)
 {
   (void)mode;
   char pbuf[4096];
-  path.copy_to_span(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
+  path.copyToSpan(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
 #ifdef _WIN32
   if (_mkdir(pbuf) != 0)
   {
@@ -345,7 +345,7 @@ void fs_mkdir(const PyStr& path, PyInt mode)
 void fs_remove(const PyStr& path)
 {
   char pbuf[4096];
-  path.copy_to_span(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
+  path.copyToSpan(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
   if ((::remove(pbuf)) != 0)
   {
     _os_throw_oserror();
@@ -355,7 +355,7 @@ void fs_remove(const PyStr& path)
 void fs_rmdir(const PyStr& path)
 {
   char pbuf[4096];
-  path.copy_to_span(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
+  path.copyToSpan(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
 #ifdef _WIN32
   if (_rmdir(pbuf) != 0)
   {
@@ -373,8 +373,8 @@ void fs_replace(const PyStr& src, const PyStr& dst)
 {
   char sbuf[4096];
   char dbuf[4096];
-  src.copy_to_span(PySpan<PyByte>((PyByte*)sbuf, (PyInt)sizeof(sbuf), 1));
-  dst.copy_to_span(PySpan<PyByte>((PyByte*)dbuf, (PyInt)sizeof(dbuf), 1));
+  src.copyToSpan(PySpan<PyByte>((PyByte*)sbuf, (PyInt)sizeof(sbuf), 1));
+  dst.copyToSpan(PySpan<PyByte>((PyByte*)dbuf, (PyInt)sizeof(dbuf), 1));
 #ifdef _WIN32
   if (MoveFileExA(sbuf, dbuf, MOVEFILE_REPLACE_EXISTING) == 0)
   {
@@ -392,8 +392,8 @@ void fs_rename(const PyStr& src, const PyStr& dst)
 {
   char sbuf[4096];
   char dbuf[4096];
-  src.copy_to_span(PySpan<PyByte>((PyByte*)sbuf, (PyInt)sizeof(sbuf), 1));
-  dst.copy_to_span(PySpan<PyByte>((PyByte*)dbuf, (PyInt)sizeof(dbuf), 1));
+  src.copyToSpan(PySpan<PyByte>((PyByte*)sbuf, (PyInt)sizeof(sbuf), 1));
+  dst.copyToSpan(PySpan<PyByte>((PyByte*)dbuf, (PyInt)sizeof(dbuf), 1));
 #ifdef _WIN32
   if (MoveFileExA(sbuf, dbuf, 0) == 0)
   {
@@ -410,7 +410,7 @@ void fs_rename(const PyStr& src, const PyStr& dst)
 void fs_chdir(const PyStr& path)
 {
   char pbuf[4096];
-  path.copy_to_span(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
+  path.copyToSpan(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
 #ifdef _WIN32
   if (_chdir(pbuf) != 0)
   {
@@ -427,7 +427,7 @@ void fs_chdir(const PyStr& path)
 PyBool fs_access(const PyStr& path, PyInt mode)
 {
   char pbuf[4096];
-  path.copy_to_span(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
+  path.copyToSpan(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
 #ifdef _WIN32
   return (_access(pbuf, mode) == 0);
 #else
@@ -438,7 +438,7 @@ PyBool fs_access(const PyStr& path, PyInt mode)
 void fs_chmod(const PyStr& path, PyInt mode)
 {
   char pbuf[4096];
-  path.copy_to_span(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
+  path.copyToSpan(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
 #ifdef _WIN32
   if (_chmod(pbuf, mode) != 0)
   {
@@ -452,10 +452,10 @@ void fs_chmod(const PyStr& path, PyInt mode)
 #endif
 }
 
-void fs_apply_utime(const PyStr& path, double atime, double mtime)
+void fs_applyUtime(const PyStr& path, double atime, double mtime)
 {
   char pbuf[4096];
-  path.copy_to_span(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
+  path.copyToSpan(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
 #ifdef _WIN32
   struct _utimbuf tb;
   tb.actime = (time_t)atime;
@@ -479,8 +479,8 @@ void fs_link(const PyStr& src, const PyStr& dst)
 {
   char sbuf[4096];
   char dbuf[4096];
-  src.copy_to_span(PySpan<PyByte>((PyByte*)sbuf, (PyInt)sizeof(sbuf), 1));
-  dst.copy_to_span(PySpan<PyByte>((PyByte*)dbuf, (PyInt)sizeof(dbuf), 1));
+  src.copyToSpan(PySpan<PyByte>((PyByte*)sbuf, (PyInt)sizeof(sbuf), 1));
+  dst.copyToSpan(PySpan<PyByte>((PyByte*)dbuf, (PyInt)sizeof(dbuf), 1));
 #ifdef _WIN32
   if (CreateHardLinkA(dbuf, sbuf, NULL) == 0)
   {
@@ -498,8 +498,8 @@ void fs_symlink(const PyStr& src, const PyStr& dst)
 {
   char sbuf[4096];
   char dbuf[4096];
-  src.copy_to_span(PySpan<PyByte>((PyByte*)sbuf, (PyInt)sizeof(sbuf), 1));
-  dst.copy_to_span(PySpan<PyByte>((PyByte*)dbuf, (PyInt)sizeof(dbuf), 1));
+  src.copyToSpan(PySpan<PyByte>((PyByte*)sbuf, (PyInt)sizeof(sbuf), 1));
+  dst.copyToSpan(PySpan<PyByte>((PyByte*)dbuf, (PyInt)sizeof(dbuf), 1));
 #ifdef _WIN32
   if (CreateSymbolicLinkA(dbuf, sbuf, 0) == 0)
   {
@@ -513,10 +513,10 @@ void fs_symlink(const PyStr& src, const PyStr& dst)
 #endif
 }
 
-PyStr fs_readlink(const PyStr& path)
+PyStr fs_readLink(const PyStr& path)
 {
   char pbuf[4096];
-  path.copy_to_span(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
+  path.copyToSpan(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
 #ifdef _WIN32
   HANDLE h = CreateFileA(pbuf, GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE),
     NULL, OPEN_EXISTING, (FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS), NULL);
@@ -554,14 +554,14 @@ fs_remove(path);
 PyBool path::exists(const PyStr& path)
 {
   char pbuf[4096];
-  path.copy_to_span(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
+  path.copyToSpan(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
   return _os_path_exists_impl(pbuf);
 }
 
-PyBool path::isfile(const PyStr& path)
+PyBool path::isFile(const PyStr& path)
 {
   char pbuf[4096];
-  path.copy_to_span(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
+  path.copyToSpan(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
   struct _stat st;
   if (_os_stat_impl(pbuf, st) != 0)
   {
@@ -574,10 +574,10 @@ PyBool path::isfile(const PyStr& path)
 #endif
 }
 
-PyBool path::isdir(const PyStr& path)
+PyBool path::isDir(const PyStr& path)
 {
   char pbuf[4096];
-  path.copy_to_span(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
+  path.copyToSpan(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
   struct _stat st;
   if (_os_stat_impl(pbuf, st) != 0)
   {
@@ -590,17 +590,17 @@ PyBool path::isdir(const PyStr& path)
 #endif
 }
 
-PyBool path::lexists(const PyStr& path)
+PyBool path::lExists(const PyStr& path)
 {
   char pbuf[4096];
-  path.copy_to_span(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
+  path.copyToSpan(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
   return _os_path_exists_impl(pbuf);
 }
 
-PyBool path::islink(const PyStr& path)
+PyBool path::isLink(const PyStr& path)
 {
   char pbuf[4096];
-  path.copy_to_span(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
+  path.copyToSpan(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
 #ifdef _WIN32
   DWORD attr = GetFileAttributesA(pbuf);
   if (attr == INVALID_FILE_ATTRIBUTES)
@@ -629,10 +629,10 @@ PyBool path::islink(const PyStr& path)
 #endif
 }
 
-PyBool path::isjunction(const PyStr& path)
+PyBool path::isJunction(const PyStr& path)
 {
   char pbuf[4096];
-  path.copy_to_span(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
+  path.copyToSpan(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
 #ifdef _WIN32
   DWORD attr = GetFileAttributesA(pbuf);
   if (attr == INVALID_FILE_ATTRIBUTES)
@@ -657,16 +657,16 @@ PyBool path::isjunction(const PyStr& path)
 #endif
 }
 
-PyBool path::isdevdrive(const PyStr& path)
+PyBool path::isDevDrive(const PyStr& path)
 {
   (void)path;
   return false;
 }
 
-PyStr path::realpath(const PyStr& path)
+PyStr path::realPath(const PyStr& path)
 {
   char pbuf[4096];
-  path.copy_to_span(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
+  path.copyToSpan(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
 #ifdef _WIN32
   char outbuf[4096];
   DWORD n = GetFullPathNameA(pbuf, (DWORD)sizeof(outbuf), outbuf, NULL);
@@ -677,7 +677,7 @@ PyStr path::realpath(const PyStr& path)
   return _os_cbuf_to_pystr(outbuf);
 #else
   char outbuf[4096];
-  if (realpath(pbuf, outbuf) == NULL)
+  if (realPath(pbuf, outbuf) == NULL)
   {
     _os_throw_oserror();
   }
@@ -685,39 +685,39 @@ PyStr path::realpath(const PyStr& path)
 #endif
 }
 
-PyInt path::getsize(const PyStr& path)
+PyInt path::getSize(const PyStr& path)
 {
-  return fs_stat(path).st_size;
+  return fs_stat(path).stSize;
 }
 
-PyFloat64 path::getmtime(const PyStr& path)
+PyFloat64 path::getMtime(const PyStr& path)
 {
-  return fs_stat(path).st_mtime;
+  return fs_stat(path).stMtime;
 }
 
-PyFloat64 path::getatime(const PyStr& path)
+PyFloat64 path::getAtime(const PyStr& path)
 {
-  return fs_stat(path).st_atime;
+  return fs_stat(path).stAtime;
 }
 
-PyFloat64 path::getctime(const PyStr& path)
+PyFloat64 path::getCtime(const PyStr& path)
 {
-  return fs_stat(path).st_ctime;
+  return fs_stat(path).stCtime;
 }
 
-PyStr path::_path_getcwd()
+PyStr path::_pathGetcwd()
 {
-  return fs_getcwd();
+  return fs_getCwd();
 }
 
-PyInt path::_path_stat_dev(const PyStr& path)
+PyInt path::_pathStatDev(const PyStr& path)
 {
-  return fs_stat(path).st_dev;
+  return fs_stat(path).stDev;
 }
 
-PyInt path::_path_stat_ino(const PyStr& path)
+PyInt path::_pathStatIno(const PyStr& path)
 {
-  return fs_stat(path).st_ino;
+  return fs_stat(path).stIno;
 }
 
 PY2CPP_END_SCOPE

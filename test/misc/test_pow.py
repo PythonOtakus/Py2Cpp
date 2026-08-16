@@ -4,7 +4,7 @@ from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 
 class PowIntTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
@@ -16,7 +16,7 @@ class PowIntTests(TestCaseMixin):
 
 
 class PowVarintTests(TestCaseMixin):
-  _test_tag = 11
+  _testTag = 11
 
   @override
   def test(self):
@@ -35,14 +35,14 @@ class PowVarintTests(TestCaseMixin):
     self.assertEqual(int(r3), 1)
     base: varint = 10
     exp100: varint = 100
-    big_mod: varint = 1000
-    r4: varint = pow(base, exp100, big_mod)
+    bigMod: varint = 1000
+    r4: varint = pow(base, exp100, bigMod)
     self.assertEqual(int(r4), 0)
 
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

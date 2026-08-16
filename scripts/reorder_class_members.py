@@ -86,19 +86,19 @@ CPYTHON_T11: dict[str, list[str]] = {
     "expandtabs", "find", "format", "format_map", "index", "isalnum",
     "isalpha", "isascii", "isdecimal", "isdigit", "isidentifier", "islower",
     "isnumeric", "isprintable", "isspace", "istitle", "isupper", "join",
-    "ljust", "lower", "lstrip", "maketrans", "partition", "removeprefix",
-    "removesuffix", "replace", "rfind", "rindex", "rjust", "rpartition",
+    "ljust", "lower", "lstrip", "maketrans", "partition", "removePrefix",
+    "removeSuffix", "replace", "rfind", "rindex", "rjust", "rpartition",
     "rsplit", "rstrip", "split", "splitlines", "startswith", "strip",
-    "swapcase", "title", "translate", "upper", "zfill",
+    "swapCase", "title", "translate", "upper", "zfill",
   ],
   "bytes": [
     "capitalize", "center", "count", "decode", "endswith", "expandtabs",
     "find", "fromhex", "hex", "index", "isalnum", "isalpha", "isascii",
     "isdigit", "islower", "isspace", "istitle", "isupper", "join", "ljust",
-    "lower", "lstrip", "maketrans", "partition", "removeprefix",
-    "removesuffix", "replace", "rfind", "rindex", "rjust", "rpartition",
+    "lower", "lstrip", "maketrans", "partition", "removePrefix",
+    "removeSuffix", "replace", "rfind", "rindex", "rjust", "rpartition",
     "rsplit", "rstrip", "split", "splitlines", "startswith", "strip",
-    "swapcase", "title", "translate", "upper", "zfill",
+    "swapCase", "title", "translate", "upper", "zfill",
   ],
   "list": [
     "append", "clear", "copy", "count", "extend", "index", "insert", "pop",
@@ -108,7 +108,7 @@ CPYTHON_T11: dict[str, list[str]] = {
     "count", "index",
   ],
   "dict": [
-    "clear", "copy", "get", "items", "keys", "pop", "popitem", "setdefault",
+    "clear", "copy", "get", "items", "keys", "pop", "popItem", "setdefault",
     "update", "values",
   ],
   "frozendict": [
@@ -125,15 +125,15 @@ CPYTHON_T11: dict[str, list[str]] = {
     "issuperset", "symmetric_difference", "union",
   ],
   "deque": [
-    "append", "appendleft", "clear", "copy", "count", "extend",
-    "extendleft", "index", "insert", "pop", "popleft", "remove", "reverse",
+    "append", "appendLeft", "clear", "copy", "count", "extend",
+    "extendLeft", "index", "insert", "pop", "popLeft", "remove", "reverse",
     "rotate",
   ],
   "Path": [
     "anchor", "as_posix", "as_uri", "chmod", "cwd", "exists", "expanduser",
     "glob", "group", "hardlink_to", "home", "is_absolute", "is_block_device",
     "is_char_device", "is_dir", "is_fifo", "is_file", "is_junction",
-    "is_mount", "is_reserved", "is_socket", "is_symlink", "iterdir", "joinpath",
+    "is_mount", "is_reserved", "is_socket", "is_symlink", "iterDir", "joinPath",
     "lchmod", "lstat", "match", "mkdir", "open", "owner", "read_bytes",
     "read_text", "readlink", "relative_to", "rename", "replace", "resolve",
     "rglob", "rmdir", "samefile", "stat", "stem", "suffix", "symlink_to",
@@ -394,7 +394,7 @@ def reorder_file(path: Path) -> bool:
   except SyntaxError as e:
     print(f"  SKIP syntax error: {path}: {e}")
     return False
-  lines = text.splitlines(keepends=True)
+  lines = text.splitlines(keepEnds=True)
   chunks: list[tuple[int, int, str]] = []
   _reorder_in_node(tree, lines, chunks)
   if not chunks:
@@ -402,7 +402,7 @@ def reorder_file(path: Path) -> bool:
   chunks.sort(key=lambda c: c[0], reverse=True)
   out_lines = list(lines)
   for start, end, replacement in chunks:
-    rep_lines = replacement.splitlines(keepends=True)
+    rep_lines = replacement.splitlines(keepEnds=True)
     if rep_lines and not rep_lines[-1].endswith("\n"):
       rep_lines[-1] += "\n"
     out_lines[start - 1 : end] = rep_lines

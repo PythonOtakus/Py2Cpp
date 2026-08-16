@@ -8,20 +8,19 @@ from .slice import slice
 
 
 @copyable
-@native_name("PySpan")
-class span[T]:
-  """绑定 ``stack_array`` / ``array`` / ``list`` 的连续区间。"""
+class span[Element]:
+  """绑定 ``StackArray`` / ``array`` / ``list`` 的连续区间。"""
 
   @overload
   def __init__(self):
-    self._ptr: Pointer[T] = None
+    self._ptr: Pointer[Element] = None
     self._length: int = 0
     self._step: int = 1
 
   @overload
-  def __init__(self, ptr: Pointer[T], length: int, step: int = 1):
+  def __init__(self, ptr: Pointer[Element], length: int, step: int = 1):
     """``length`` 为自 ``ptr`` 起的底层槽位跨度（``step==1`` 时即元素个数）。"""
-    self._ptr: Pointer[T] = ptr
+    self._ptr: Pointer[Element] = ptr
     self._length: int = length
     self._step: int = step
 
@@ -38,10 +37,10 @@ class span[T]:
   def __len__(self) -> int:
     if self._step == 1:
       return self._length
-    return self._slice_count(0, self._length, self._step)
+    return self._sliceCount(0, self._length, self._step)
 
   @immutable
-  def at(self, i: int = 0) -> Pointer[T]:
+  def at(self, i: int = 0) -> Pointer[Element]:
     """逻辑下标 ``i`` 处元素地址（默认 ``0``；``step==1`` 时常用于 ``memcpy``）。"""
     return self._ptr + (i * self._step)
 
@@ -52,9 +51,9 @@ class span[T]:
 
   @immutable
   @overload
-  def __getitem__(self, index: int) -> T:
-    index = self._norm_index(index)
-    if not self._index_in_range(index):
+  def __getitem__(self, index: int) -> Element:
+    index = self._normIndex(index)
+    if not self._indexInRange(index):
       raise IndexError("span index out of range")
     return self._ptr[index * self._step]
 
@@ -62,20 +61,20 @@ class span[T]:
   @overload
   def __getitem__(self, index: slice[int, int]) -> Self:
     trip: (int, int, int) = index.indices(len(self))
-    cnt: int = self._slice_count(trip[0], trip[1], trip[2])
-    ptr: Pointer[T] = self._ptr + (trip[0] * self._step)
-    new_step: int = self._step * trip[2]
-    phys: int = self._extent_from_logical(cnt, new_step)
-    return new(ptr, phys, new_step)
+    cnt: int = self._sliceCount(trip[0], trip[1], trip[2])
+    ptr: Pointer[Element] = self._ptr + (trip[0] * self._step)
+    newStep: int = self._step * trip[2]
+    phys: int = self._extentFromLogical(cnt, newStep)
+    return new(ptr, phys, newStep)
 
   @immutable
-  def __setitem__(self, index: int, value: T):
-    index = self._norm_index(index)
-    if not self._index_in_range(index):
+  def __setitem__(self, index: int, value: Element):
+    index = self._normIndex(index)
+    if not self._indexInRange(index):
       raise IndexError("span index out of range")
     self._ptr[index * self._step] = value
 
-  def fill(self, value: T) -> None:
+  def fill(self, value: Element) -> None:
     if self._ptr is None:
       return
     n: int = len(self)
@@ -84,24 +83,24 @@ class span[T]:
       self._ptr[i * step] = value
 
   @immutable
-  def _extent_from_logical(self, logical_count: int, step: int) -> int:
-    if logical_count == 0:
+  def _extentFromLogical(self, logicalCount: int, step: int) -> int:
+    if logicalCount == 0:
       return 0
-    return (logical_count - 1) * abs(step) + 1
+    return (logicalCount - 1) * abs(step) + 1
 
   @immutable
-  def _index_in_range(self, index: int) -> bool:
+  def _indexInRange(self, index: int) -> bool:
     n: int = len(self)
     return (index >= 0) and (index < n) and (self._ptr is not None)
 
   @immutable
-  def _norm_index(self, index: int) -> int:
+  def _normIndex(self, index: int) -> int:
     if index < 0:
       index = len(self) + index
     return index
 
   @immutable
-  def _slice_count(self, start: int, stop: int, step: int) -> int:
+  def _sliceCount(self, start: int, stop: int, step: int) -> int:
     """切片元素个数（对齐 CPython / ``str`` 切片公式）。"""
     if step > 0:
       if start >= stop:
@@ -114,16 +113,16 @@ class span[T]:
 
 @copyable
 @native_name("PySpan2D")
-class span2d[T]:
-  """绑定 ``stack_array2d`` / ``array2d`` 的连续子矩形。"""
+class span2d[Element]:
+  """绑定 ``StackArray2d`` / ``array2d`` 的连续子矩形。"""
 
   def __init__(
     self,
-    ptr: Pointer[T],
+    ptr: Pointer[Element],
     shape: (int, int),
     stride: int,
   ):
-    self._ptr: Pointer[T] = ptr
+    self._ptr: Pointer[Element] = ptr
     self.shape: (int, int) = shape
     self.stride: int = stride
 
@@ -141,49 +140,49 @@ class span2d[T]:
     return row * self.stride + col
 
   @immutable
-  def _row_in_range(self, row: int) -> bool:
+  def _rowInRange(self, row: int) -> bool:
     return (row >= 0) and (row < self.shape[0])
 
   @immutable
-  def _col_in_range(self, col: int) -> bool:
+  def _colInRange(self, col: int) -> bool:
     return (col >= 0) and (col < self.shape[1])
 
   @immutable
   @overload
-  def __getitem__(self, index: (int, int)) -> T:
+  def __getitem__(self, index: (int, int)) -> Element:
     row: int = index[0]
     col: int = index[1]
-    if not self._row_in_range(row) or not self._col_in_range(col):
+    if not self._rowInRange(row) or not self._colInRange(col):
       raise IndexError("span2d index out of range")
     return self._ptr[self._linear(row, col)]
 
   @immutable
   @overload
   def __getitem__(self, index: (slice[int, int], slice[int, int])) -> Self:
-    row_sl: slice[int, int] = index[0]
-    col_sl: slice[int, int] = index[1]
-    row: (int, int, int) = row_sl.indices(self.shape[0])
-    col: (int, int, int) = col_sl.indices(self.shape[1])
+    rowSl: slice[int, int] = index[0]
+    colSl: slice[int, int] = index[1]
+    row: (int, int, int) = rowSl.indices(self.shape[0])
+    col: (int, int, int) = colSl.indices(self.shape[1])
     if row[2] != 1 or col[2] != 1:
       raise IndexError("span2d slice step must be 1")
-    out_rows: int = row[1] - row[0]
-    out_cols: int = col[1] - col[0]
-    if out_rows < 0:
-      out_rows = 0
-    if out_cols < 0:
-      out_cols = 0
-    ptr: Pointer[T] = self._ptr + self._linear(row[0], col[0])
-    return new(ptr, (out_rows, out_cols), self.stride)
+    outRows: int = row[1] - row[0]
+    outCols: int = col[1] - col[0]
+    if outRows < 0:
+      outRows = 0
+    if outCols < 0:
+      outCols = 0
+    ptr: Pointer[Element] = self._ptr + self._linear(row[0], col[0])
+    return new(ptr, (outRows, outCols), self.stride)
 
   @immutable
-  def __setitem__(self, index: (int, int), value: T):
+  def __setitem__(self, index: (int, int), value: Element):
     row: int = index[0]
     col: int = index[1]
-    if not self._row_in_range(row) or not self._col_in_range(col):
+    if not self._rowInRange(row) or not self._colInRange(col):
       raise IndexError("span2d index out of range")
     self._ptr[self._linear(row, col)] = value
 
-  def fill(self, value: T) -> None:
+  def fill(self, value: Element) -> None:
     if self._ptr is None:
       return
     rows: int = self.shape[0]
@@ -202,16 +201,16 @@ class span2d[T]:
 
 @copyable
 @native_name("PySpan3D")
-class span3d[T]:
-  """绑定 ``stack_array3d`` / ``array3d`` 的连续子块。"""
+class span3d[Element]:
+  """绑定 ``StackArray3d`` / ``array3d`` 的连续子块。"""
 
   def __init__(
     self,
-    ptr: Pointer[T],
+    ptr: Pointer[Element],
     shape: (int, int, int),
     strides: (int, int),
   ):
-    self._ptr: Pointer[T] = ptr
+    self._ptr: Pointer[Element] = ptr
     self.shape: (int, int, int) = shape
     self.strides: (int, int) = strides
 
@@ -234,19 +233,19 @@ class span3d[T]:
     return i * self.strides[0] + j * self.strides[1] + k
 
   @immutable
-  def _in_range(self, idx: int, dim: int) -> bool:
+  def _inRange(self, idx: int, dim: int) -> bool:
     return (idx >= 0) and (idx < dim)
 
   @immutable
   @overload
-  def __getitem__(self, index: (int, int, int)) -> T:
+  def __getitem__(self, index: (int, int, int)) -> Element:
     i: int = index[0]
     j: int = index[1]
     k: int = index[2]
     if (
-      not self._in_range(i, self.shape[0])
-      or not self._in_range(j, self.shape[1])
-      or not self._in_range(k, self.shape[2])
+      not self._inRange(i, self.shape[0])
+      or not self._inRange(j, self.shape[1])
+      or not self._inRange(k, self.shape[2])
     ):
       raise IndexError("span3d index out of range")
     return self._ptr[self._linear(i, j, k)]
@@ -274,23 +273,23 @@ class span3d[T]:
       n1 = 0
     if n2 < 0:
       n2 = 0
-    ptr: Pointer[T] = self._ptr + self._linear(d0[0], d1[0], d2[0])
+    ptr: Pointer[Element] = self._ptr + self._linear(d0[0], d1[0], d2[0])
     return new(ptr, (n0, n1, n2), self.strides)
 
   @immutable
-  def __setitem__(self, index: (int, int, int), value: T):
+  def __setitem__(self, index: (int, int, int), value: Element):
     i: int = index[0]
     j: int = index[1]
     k: int = index[2]
     if (
-      not self._in_range(i, self.shape[0])
-      or not self._in_range(j, self.shape[1])
-      or not self._in_range(k, self.shape[2])
+      not self._inRange(i, self.shape[0])
+      or not self._inRange(j, self.shape[1])
+      or not self._inRange(k, self.shape[2])
     ):
       raise IndexError("span3d index out of range")
     self._ptr[self._linear(i, j, k)] = value
 
-  def fill(self, value: T) -> None:
+  def fill(self, value: Element) -> None:
     if self._ptr is None:
       return
     d0: int = self.shape[0]

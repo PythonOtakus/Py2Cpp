@@ -6,38 +6,38 @@ from py2cpp.ui.window import UIWindow
 
 
 class UIStyleDefaultTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
     st: UIStyle = new()
-    self.assertEqual(st.font_name, "Segoe UI")
-    self.assertEqual(st.font_size, 11)
-    self.assertEqual(st.text_color[0], 0)
-    self.assertEqual(st.panel_color[2], 243)
+    self.assertEqual(st.fontName, "Segoe UI")
+    self.assertEqual(st.fontSize, 11)
+    self.assertEqual(st.textColor[0], 0)
+    self.assertEqual(st.panelColor[2], 243)
     self.assertEqual(st.margin[0], 12)
     self.assertEqual(st.margin[1], 10)
-    self.assertEqual(st.edit_size[0], 260)
-    self.assertEqual(st.edit_size[1], 22)
-    self.assertEqual(st.row_spacing, 4)
-    self.assertEqual(st.form_spacing, 8)
+    self.assertEqual(st.editSize[0], 260)
+    self.assertEqual(st.editSize[1], 22)
+    self.assertEqual(st.rowSpacing, 4)
+    self.assertEqual(st.formSpacing, 8)
 
 
 class UIWindowStyleTests(TestCaseMixin):
-  _test_tag = 2
+  _testTag = 2
 
   @override
   def test(self):
     win: UIWindow = new()
-    self.assertEqual(win.next_y, 10)
-    self.assertEqual(win.style.checkbox_size[1], 18)
-    win.style.edit_size = (300, 28)
-    self.assertEqual(win.style.edit_size[0], 300)
+    self.assertEqual(win.nextY, 10)
+    self.assertEqual(win.style.checkboxSize[1], 18)
+    win.style.editSize = (300, 28)
+    self.assertEqual(win.style.editSize[0], 300)
 
 
 def main() -> int:
   suite: TestSuite = TestSuite()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

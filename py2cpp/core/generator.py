@@ -1,6 +1,6 @@
 """``PyGenerator[Y,S,R]`` 擦除生成器句柄（``templates/core/generator.h``）。
 
-用户仍写 ``Generator[Y,S,R]``（``protocols.Generator``）；仅形参/字段/``@virtual`` 返回映射为本类型。
+用户仍写 ``GeneratorType[Y,S,R]``（``protocols.GeneratorType``）；仅形参/字段/``@virtual`` 返回映射为本类型。
 """
 from ..builtins import *
 

@@ -3,7 +3,7 @@ from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 
-def read_port(cfg: dict[str, int]) -> int:
+def readPort(cfg: dict[str, int]) -> int:
   match cfg:
     case {"port": p}:
       return p
@@ -13,7 +13,7 @@ def read_port(cfg: dict[str, int]) -> int:
       return 8080
 
 
-def nested_cfg(cfg: dict[str, dict[str, int]]) -> int:
+def nestedCfg(cfg: dict[str, dict[str, int]]) -> int:
   match cfg:
     case {"inner": {"x": v}}:
       return v
@@ -21,7 +21,7 @@ def nested_cfg(cfg: dict[str, dict[str, int]]) -> int:
       return -1
 
 
-def rest_keys(cfg: dict[str, int]) -> int:
+def restKeys(cfg: dict[str, int]) -> int:
   match cfg:
     case {"a": 1, **rest}:
       return len(rest)
@@ -30,21 +30,21 @@ def rest_keys(cfg: dict[str, int]) -> int:
 
 
 class MatchMappingTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
-    self.assertEqual(read_port({"port": 9000}), 9000)
-    self.assertEqual(read_port({"host": 0, "port": 77, "extra": 1}), 77)
-    self.assertEqual(read_port({}), 8080)
+    self.assertEqual(readPort({"port": 9000}), 9000)
+    self.assertEqual(readPort({"host": 0, "port": 77, "extra": 1}), 77)
+    self.assertEqual(readPort({}), 8080)
     inner: dict[str, int] = {"x": 42}
-    self.assertEqual(nested_cfg({"inner": inner}), 42)
-    self.assertEqual(rest_keys({"a": 1, "b": 2, "c": 3}), 2)
+    self.assertEqual(nestedCfg({"inner": inner}), 42)
+    self.assertEqual(restKeys({"a": 1, "b": 2, "c": 3}), 2)
 
 
 def main() -> int:
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

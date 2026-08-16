@@ -184,7 +184,7 @@ inline PyInt _py_int_mod_inverse(PyInt a, PyInt mod)
   }
   if (r != 1)
   {
-    throw PY2CPP_TYPE(ValueError)();
+    throw PY2CPP_TYPE(PyValueError)();
   }
   PyInt64 out = t % mod;
   if (out < 0)
@@ -198,7 +198,7 @@ inline PyInt _py_int_pow_mod(PyInt base, PyInt exp, PyInt mod)
 {
   if (mod == 0)
   {
-    throw PY2CPP_TYPE(ValueError)();
+    throw PY2CPP_TYPE(PyValueError)();
   }
   if (mod == 1)
   {
@@ -206,7 +206,7 @@ inline PyInt _py_int_pow_mod(PyInt base, PyInt exp, PyInt mod)
   }
   if (exp == 0 && base == 0)
   {
-    throw PY2CPP_TYPE(ValueError)();
+    throw PY2CPP_TYPE(PyValueError)();
   }
   base = __mod__(base, mod);
   if (exp < 0)
@@ -358,15 +358,15 @@ inline PY2CPP_TYPE(PyStr) repr(PyBool v)
 
 inline PY2CPP_TYPE(PyStr) repr(PyChar v)
 {
-  return (PY2CPP_TYPE(PyStr)("'")).__add__(PY2CPP_TYPE(PyStr)::repr_char(v)).__add__(PY2CPP_TYPE(PyStr)("'"));
+  return (PY2CPP_TYPE(PyStr)("'")).__add__(PY2CPP_TYPE(PyStr)::reprChar(v)).__add__(PY2CPP_TYPE(PyStr)("'"));
 }
 
-static bool str_format_spec_empty(c_str spec)
+static bool str_format_spec_empty(CStr spec)
 {
   return (!spec || !spec[0]);
 }
 
-static void str_format_printf_spec(c_str spec, char* buf, size_t cap)
+static void str_format_printf_spec(CStr spec, char* buf, size_t cap)
 {
   if (!buf || cap == 0)
   {
@@ -387,7 +387,7 @@ static void str_format_printf_spec(c_str spec, char* buf, size_t cap)
   }
 }
 
-inline PY2CPP_TYPE(PyStr) format(PyInt v, c_str format_spec)
+inline PY2CPP_TYPE(PyStr) format(PyInt v, CStr format_spec)
 {
   if (str_format_spec_empty(format_spec))
   {
@@ -398,7 +398,7 @@ inline PY2CPP_TYPE(PyStr) format(PyInt v, c_str format_spec)
   return PY2CPP_TYPE(PyStr)::percent_format(fmt, v);
 }
 
-inline PY2CPP_TYPE(PyStr) format(PyFloat v, c_str format_spec)
+inline PY2CPP_TYPE(PyStr) format(PyFloat v, CStr format_spec)
 {
   if (str_format_spec_empty(format_spec))
   {
@@ -409,7 +409,7 @@ inline PY2CPP_TYPE(PyStr) format(PyFloat v, c_str format_spec)
   return PY2CPP_TYPE(PyStr)::percent_format(fmt, v);
 }
 
-inline PY2CPP_TYPE(PyStr) format(PyBool v, c_str format_spec)
+inline PY2CPP_TYPE(PyStr) format(PyBool v, CStr format_spec)
 {
   if (str_format_spec_empty(format_spec))
   {
@@ -420,7 +420,7 @@ inline PY2CPP_TYPE(PyStr) format(PyBool v, c_str format_spec)
   return PY2CPP_TYPE(PyStr)::percent_format(fmt, v ? "True" : "False");
 }
 
-inline PY2CPP_TYPE(PyStr) format(PyChar v, c_str format_spec)
+inline PY2CPP_TYPE(PyStr) format(PyChar v, CStr format_spec)
 {
   if (str_format_spec_empty(format_spec))
   {
@@ -431,7 +431,7 @@ inline PY2CPP_TYPE(PyStr) format(PyChar v, c_str format_spec)
   return PY2CPP_TYPE(PyStr)::percent_format(fmt, (int)(int32_t)v);
 }
 
-inline PY2CPP_TYPE(PyStr) format(const PY2CPP_TYPE(PyStr)& v, c_str format_spec)
+inline PY2CPP_TYPE(PyStr) format(const PY2CPP_TYPE(PyStr)& v, CStr format_spec)
 {
   (void)format_spec;
   return v;
@@ -502,7 +502,7 @@ static PyBool _py_input_try_console(PY2CPP_TYPE(PyStr)& out)
     {
       if (total <= 0)
       {
-        throw PY2CPP_TYPE(EOFError)();
+        throw PY2CPP_TYPE(PyEOFError)();
       }
       break;
     }
@@ -537,7 +537,7 @@ static PyBool _py_input_try_console(PY2CPP_TYPE(PyStr)& out)
       break;
     }
   }
-  out = PY2CPP_TYPE(PyStr)::from_buf(codes, total);
+  out = PY2CPP_TYPE(PyStr)::fromBuf(codes, total);
   return true;
 }
 #endif
@@ -564,7 +564,7 @@ inline PY2CPP_TYPE(PyStr) py_input(const PY2CPP_TYPE(PyStr)& prompt)
     {
       if (total <= 0)
       {
-        throw PY2CPP_TYPE(EOFError)();
+        throw PY2CPP_TYPE(PyEOFError)();
       }
       break;
     }
@@ -624,9 +624,9 @@ inline PyInt _py_input_scan_value<PyInt>()
   {
     if (feof(stdin))
     {
-      throw PY2CPP_TYPE(EOFError)();
+      throw PY2CPP_TYPE(PyEOFError)();
     }
-    throw PY2CPP_TYPE(ValueError)();
+    throw PY2CPP_TYPE(PyValueError)();
   }
   return out;
 }
@@ -639,9 +639,9 @@ inline PyInt64 _py_input_scan_value<PyInt64>()
   {
     if (feof(stdin))
     {
-      throw PY2CPP_TYPE(EOFError)();
+      throw PY2CPP_TYPE(PyEOFError)();
     }
-    throw PY2CPP_TYPE(ValueError)();
+    throw PY2CPP_TYPE(PyValueError)();
   }
   return out;
 }
@@ -654,9 +654,9 @@ inline PyFloat _py_input_scan_value<PyFloat>()
   {
     if (feof(stdin))
     {
-      throw PY2CPP_TYPE(EOFError)();
+      throw PY2CPP_TYPE(PyEOFError)();
     }
-    throw PY2CPP_TYPE(ValueError)();
+    throw PY2CPP_TYPE(PyValueError)();
   }
   return out;
 }
@@ -669,9 +669,9 @@ inline PyFloat64 _py_input_scan_value<PyFloat64>()
   {
     if (feof(stdin))
     {
-      throw PY2CPP_TYPE(EOFError)();
+      throw PY2CPP_TYPE(PyEOFError)();
     }
-    throw PY2CPP_TYPE(ValueError)();
+    throw PY2CPP_TYPE(PyValueError)();
   }
   return out;
 }
@@ -852,7 +852,7 @@ inline PY2CPP_TYPE(PyStr) repr(PyFloat64 v) {
   return PY2CPP_TYPE(PyStr)(buf);
 }
 
-inline PY2CPP_TYPE(PyStr) format(PyInt64 v, c_str format_spec) {
+inline PY2CPP_TYPE(PyStr) format(PyInt64 v, CStr format_spec) {
   if (str_format_spec_empty(format_spec)) {
     return repr(v);
   }
@@ -861,7 +861,7 @@ inline PY2CPP_TYPE(PyStr) format(PyInt64 v, c_str format_spec) {
   return PY2CPP_TYPE(PyStr)::percent_format(fmt, (long long)v);
 }
 
-inline PY2CPP_TYPE(PyStr) format(PyFloat64 v, c_str format_spec) {
+inline PY2CPP_TYPE(PyStr) format(PyFloat64 v, CStr format_spec) {
   if (str_format_spec_empty(format_spec)) {
     return repr(v);
   }

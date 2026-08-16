@@ -1,35 +1,35 @@
-"""SQL 协议：``Connection`` / ``Cursor`` / ``Dialect``（ORM ``SqlQuery`` 见 P2）。"""
+"""SQL 协议：``ConnectionType`` / ``CursorType`` / ``DialectType``（ORM ``SqlQuery`` 见 P2）。"""
 from ..builtins import *
 from ..core.protocols import protocol
 
 
 @protocol
-class Cursor:
-  def fetchone(self) -> tuple[int] | None:
+class CursorType:
+  def fetchOne(self) -> tuple[int] | None:
     ...
 
-  def fetchall(self) -> list[tuple[int]]:
+  def fetchAll(self) -> list[tuple[int]]:
     ...
 
 
 @protocol
-class Dialect:
+class DialectType:
   def placeholder(self, index: int) -> str:
     ...
 
-  def column_sql(self, field_type: str) -> str:
+  def columnSql(self, fieldType: str) -> str:
     ...
 
-  def last_insert_id_sql(self) -> str:
+  def lastInsertIdSql(self) -> str:
     ...
 
 
 @protocol
-class Connection:
-  def execute(self, sql: str, params: list[int]) -> Cursor:
+class ConnectionType:
+  def execute(self, sql: str, params: list[int]) -> CursorType:
     ...
 
-  def executemany(self, sql: str, seq: list[list[int]]) -> None:
+  def executeMany(self, sql: str, seq: list[list[int]]) -> None:
     ...
 
   def commit(self) -> None:

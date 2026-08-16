@@ -4,5 +4,5 @@ PY2CPP_IGNORE
 PY2CPP_END
 
 PY2CPP_BEGIN( for var_Name in exception_type_names )
-PY2CPP_TYPE(Exception)::Exception(const PY2CPP_ECHO(var_Name)& o) : __cause__(o.__cause__) {}
+PY2CPP_TYPE(Exception)::PyException(const PY2CPP_ECHO(var_Name)& o) : __cause__(o.__cause__) {}
 PY2CPP_END

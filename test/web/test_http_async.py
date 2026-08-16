@@ -4,42 +4,42 @@ from py2cpp import *
 from py2cpp.concur.task import Task
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 from py2cpp.web.client import AsyncClientSession
-from py2cpp.web.http import ClientResponse, Request, Response, StatusCode
+from py2cpp.web.http import ClientResponse, Request, Response, StatusCodeEnum
 from py2cpp.web.server import AsyncServerMixin, RouteGetMeta
 
 
-_PORT: int = 18131
+_Port: int = 18131
 
 
 class HelloAsyncApp(AsyncServerMixin):
   @RouteGetMeta("/hello")
   def hello(self, request: Request) -> Response:
-    return new.text_response("hello-async", StatusCode.OK)
+    return new.textResponse("hello-async", StatusCodeEnum.Ok)
 
 
-async def async_http_roundtrip() -> str:
+async def asyncHttpRoundtrip() -> str:
   app: HelloAsyncApp = new()
-  server_task: Task[None] = Task.create(app.serve_n("127.0.0.1", _PORT, 1))
+  serverTask: Task[None] = Task.create(app.serveN("127.0.0.1", _Port, 1))
   await Task.sleep(0)
   session: AsyncClientSession = new()
-  resp: ClientResponse = await session.get(f"http://127.0.0.1:{_PORT}/hello")
-  await server_task
+  resp: ClientResponse = await session.get(f"http://127.0.0.1:{_Port}/hello")
+  await serverTask
   if resp.status != 200:
     return "bad-status"
   return resp.text()
 
 
 class AsyncHttpRoundtripTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
-    self.assertEqual(Task.run(async_http_roundtrip()), "hello-async")
+    self.assertEqual(Task.run(asyncHttpRoundtrip()), "hello-async")
 
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

@@ -20,12 +20,12 @@ class Window:
   def title(self, value: str) -> None:
     self.__value__ = value
 
-  def assign_title(self, value: str) -> None:
+  def assignTitle(self, value: str) -> None:
     self.title = value
 
 
 class FieldPropertyTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
@@ -36,19 +36,19 @@ class FieldPropertyTests(TestCaseMixin):
 
 
 class PropertyValueFieldTests(TestCaseMixin):
-  _test_tag = 2
+  _testTag = 2
 
   @override
   def test(self):
     win: Window = new()
     self.assertEqual(win.title, "")
-    win.assign_title("hello")
+    win.assignTitle("hello")
     self.assertEqual(win.title, "hello")
 
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

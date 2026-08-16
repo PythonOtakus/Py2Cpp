@@ -4,7 +4,7 @@ from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 class StrSequenceTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
@@ -28,7 +28,7 @@ class StrSequenceTests(TestCaseMixin):
 
 
 class StrCaseTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
@@ -38,7 +38,7 @@ class StrCaseTests(TestCaseMixin):
     self.assertEqual("hi".center(6, 46), "..hi..")
     self.assertEqual("ab".lower(), "ab")
     self.assertEqual("AB".upper(), "AB")
-    self.assertEqual("AbC".swapcase(), "aBc")
+    self.assertEqual("AbC".swapCase(), "aBc")
     self.assertEqual("hello world".title(), "Hello World")
     self.assertEqual("hi".ljust(5), "hi   ")
     self.assertEqual("hi".rjust(5), "   hi")
@@ -47,7 +47,7 @@ class StrCaseTests(TestCaseMixin):
 
 
 class StrFindTests(TestCaseMixin):
-  _test_tag = 30
+  _testTag = 30
 
   @override
   def test(self):
@@ -57,12 +57,12 @@ class StrFindTests(TestCaseMixin):
     self.assertEqual(hay.find("ham"), -1)
     self.assertEqual(hay.rfind("spam"), 6)
     self.assertEqual(hay.index("spam"), 0)
-    self.assertTrue(hay.startswith("spam"))
-    self.assertTrue(hay.endswith("eggs"))
+    self.assertTrue(hay.startsWith("spam"))
+    self.assertTrue(hay.endsWith("eggs"))
 
 
 class StrKmpPathTests(TestCaseMixin):
-  _test_tag = 40
+  _testTag = 40
 
   @override
   def test(self):
@@ -82,7 +82,7 @@ class StrKmpPathTests(TestCaseMixin):
 
 
 class StrStripTests(TestCaseMixin):
-  _test_tag = 50
+  _testTag = 50
 
   @override
   def test(self):
@@ -91,14 +91,14 @@ class StrStripTests(TestCaseMixin):
     self.assertEqual(ws.lstrip(), "spacious   ")
     self.assertEqual(ws.rstrip(), "   spacious")
     self.assertEqual("www.example.com".strip("cmowz."), "example")
-    self.assertEqual("TestHook".removeprefix("Test"), "Hook")
-    self.assertEqual("MiscTests".removesuffix("Tests"), "Misc")
+    self.assertEqual("TestHook".removePrefix("Test"), "Hook")
+    self.assertEqual("MiscTests".removeSuffix("Tests"), "Misc")
     self.assertEqual("spam eggs".replace("spam", "ham"), "ham eggs")
     self.assertEqual("spam spam".replace("spam", "x", 1), "x spam")
 
 
 class StrStriplinesTests(TestCaseMixin):
-  _test_tag = 51
+  _testTag = 51
 
   @override
   def test(self):
@@ -108,14 +108,14 @@ class StrStriplinesTests(TestCaseMixin):
 
       tail: 2
     """
-    self.assertEqual(source.striplines(), "root:\n  child: 1\n\ntail: 2")
-    self.assertEqual(source.striplines(3), "   root:\n     child: 1\n\n   tail: 2")
-    self.assertEqual("\n\n   \n\t\n".striplines(), "")
-    self.assertEqual("""\n    literal\n      inline\n    """.striplines(1), " literal\n   inline")
+    self.assertEqual(source.stripLines(), "root:\n  child: 1\n\ntail: 2")
+    self.assertEqual(source.stripLines(3), "   root:\n     child: 1\n\n   tail: 2")
+    self.assertEqual("\n\n   \n\t\n".stripLines(), "")
+    self.assertEqual("""\n    literal\n      inline\n    """.stripLines(1), " literal\n   inline")
 
 
 class StrSplitTests(TestCaseMixin):
-  _test_tag = 60
+  _testTag = 60
 
   @override
   def test(self):
@@ -124,14 +124,14 @@ class StrSplitTests(TestCaseMixin):
     self.assertEqual(len(parts), 3)
     self.assertEqual(parts[0], "a")
     self.assertEqual(parts[2], "c")
-    ws_parts: list[str] = "  a  b  ".split()
-    self.assertEqual(len(ws_parts), 2)
-    self.assertEqual(ws_parts[0], "a")
+    wsParts: list[str] = "  a  b  ".split()
+    self.assertEqual(len(wsParts), 2)
+    self.assertEqual(wsParts[0], "a")
     rparts: list[str] = "a b c".rsplit(" ", 1)
     self.assertEqual(len(rparts), 2)
     self.assertEqual(rparts[0], "a b")
     self.assertEqual(rparts[1], "c")
-    lines: list[str] = "a\nb".splitlines()
+    lines: list[str] = "a\nb".splitLines()
     self.assertEqual(len(lines), 2)
     jlist: list[str] = []
     jlist.append("a")
@@ -140,7 +140,7 @@ class StrSplitTests(TestCaseMixin):
 
 
 class StrXSplitTests(TestCaseMixin):
-  _test_tag = 61
+  _testTag = 61
 
   @override
   def test(self):
@@ -149,10 +149,10 @@ class StrXSplitTests(TestCaseMixin):
     for part in csv.xsplit(","):
       collected.append(part)
     self.assertEqual(collected, csv.split(","))
-    ws_collected: list[str] = []
+    wsCollected: list[str] = []
     for part in "  a  b  ".xsplit():
-      ws_collected.append(part)
-    self.assertEqual(ws_collected, "  a  b  ".split())
+      wsCollected.append(part)
+    self.assertEqual(wsCollected, "  a  b  ".split())
     g = csv.xsplit(",")
     first: str = ""
     for part in g:
@@ -163,41 +163,41 @@ class StrXSplitTests(TestCaseMixin):
     for part in csv.xsplit(",", 1):
       limited.append(part)
     self.assertEqual(limited, csv.split(",", 1))
-    r_collected: list[str] = []
+    rCollected: list[str] = []
     for part in "a b c".xrsplit(" ", 1):
-      r_collected.append(part)
-    self.assertEqual(r_collected, "a b c".rsplit(" ", 1))
-    r_ws: list[str] = []
+      rCollected.append(part)
+    self.assertEqual(rCollected, "a b c".rsplit(" ", 1))
+    rWs: list[str] = []
     for part in "  a  b  ".xrsplit(1):
-      r_ws.append(part)
-    self.assertEqual(r_ws, "  a  b  ".rsplit(1))
-    sep_parts: list[str] = []
+      rWs.append(part)
+    self.assertEqual(rWs, "  a  b  ".rsplit(1))
+    sepParts: list[str] = []
     for part in "a,b,".xsplit(","):
-      sep_parts.append(part)
-    self.assertEqual(sep_parts, "a,b,".split(","))
+      sepParts.append(part)
+    self.assertEqual(sepParts, "a,b,".split(","))
 
 
 class StrXSplitlinesTests(TestCaseMixin):
-  _test_tag = 62
+  _testTag = 62
 
   @override
   def test(self):
     lines: list[str] = []
-    for line in "a\nb\r\nc".xsplitlines():
+    for line in "a\nb\r\nc".xsplitLines():
       lines.append(line)
-    self.assertEqual(lines, "a\nb\r\nc".splitlines())
+    self.assertEqual(lines, "a\nb\r\nc".splitLines())
     kept: list[str] = []
-    for line in "a\n".xsplitlines(True):
+    for line in "a\n".xsplitLines(True):
       kept.append(line)
-    self.assertEqual(kept, "a\n".splitlines(True))
+    self.assertEqual(kept, "a\n".splitLines(True))
     empty: list[str] = []
-    for line in "".xsplitlines():
+    for line in "".xsplitLines():
       empty.append(line)
     self.assertEqual(len(empty), 0)
 
 
 class StrPartitionTests(TestCaseMixin):
-  _test_tag = 70
+  _testTag = 70
 
   @override
   def test(self):
@@ -210,49 +210,49 @@ class StrPartitionTests(TestCaseMixin):
 
 
 class StrSplitAffixTests(TestCaseMixin):
-  _test_tag = 71
+  _testTag = 71
 
   @override
   def test(self):
     csv: str = "a,b,c"
-    self.assertEqual(csv.split_prefix(","), csv.split(",", 1)[0])
-    self.assertEqual(csv.split_suffix(","), csv.split(",", 1)[1])
-    self.assertEqual(csv.rsplit_prefix(","), csv.rsplit(",", 1)[0])
-    self.assertEqual(csv.rsplit_suffix(","), csv.rsplit(",", 1)[-1])
-    self.assertEqual("no_sep".split_prefix(","), "no_sep")
-    self.assertEqual("no_sep".split_suffix(","), "")
-    self.assertEqual("no_sep".rsplit_prefix(","), "")
-    self.assertEqual("no_sep".rsplit_suffix(","), "no_sep")
+    self.assertEqual(csv.splitPrefix(","), csv.split(",", 1)[0])
+    self.assertEqual(csv.splitSuffix(","), csv.split(",", 1)[1])
+    self.assertEqual(csv.rsplitPrefix(","), csv.rsplit(",", 1)[0])
+    self.assertEqual(csv.rsplitSuffix(","), csv.rsplit(",", 1)[-1])
+    self.assertEqual("no_sep".splitPrefix(","), "no_sep")
+    self.assertEqual("no_sep".splitSuffix(","), "")
+    self.assertEqual("no_sep".rsplitPrefix(","), "")
+    self.assertEqual("no_sep".rsplitSuffix(","), "no_sep")
     ws: str = "  a  b  "
-    self.assertEqual(ws.split_prefix(), ws.split(maxsplit=1)[0])
-    self.assertEqual(ws.split_suffix(), ws.split(maxsplit=1)[1])
-    self.assertEqual(ws.rsplit_prefix(), ws.rsplit(maxsplit=1)[0])
-    self.assertEqual(ws.rsplit_suffix(), ws.rsplit(maxsplit=1)[-1])
-    self.assertEqual("a".split_suffix(), "")
-    self.assertEqual("a".rsplit_suffix(), "a")
+    self.assertEqual(ws.splitPrefix(), ws.split(maxSplit=1)[0])
+    self.assertEqual(ws.splitSuffix(), ws.split(maxSplit=1)[1])
+    self.assertEqual(ws.rsplitPrefix(), ws.rsplit(maxSplit=1)[0])
+    self.assertEqual(ws.rsplitSuffix(), ws.rsplit(maxSplit=1)[-1])
+    self.assertEqual("a".splitSuffix(), "")
+    self.assertEqual("a".rsplitSuffix(), "a")
 
 
 class StrPredicateTests(TestCaseMixin):
-  _test_tag = 80
+  _testTag = 80
 
   @override
   def test(self):
-    self.assertTrue("abc1".isalnum())
-    self.assertTrue("abc".isalpha())
-    self.assertTrue("ascii".isascii())
-    self.assertTrue("123".isdecimal())
-    self.assertTrue("9".isdigit())
-    self.assertTrue("var_1".isidentifier())
-    self.assertTrue("lower".islower())
-    self.assertTrue("123".isnumeric())
-    self.assertTrue("a b".isprintable())
-    self.assertTrue(" \t".isspace())
-    self.assertTrue("Hello World".istitle())
-    self.assertTrue("UPPER".isupper())
+    self.assertTrue("abc1".isAlnum())
+    self.assertTrue("abc".isAlpha())
+    self.assertTrue("ascii".isAscii())
+    self.assertTrue("123".isDecimal())
+    self.assertTrue("9".isDigit())
+    self.assertTrue("var_1".isIdentifier())
+    self.assertTrue("lower".isLower())
+    self.assertTrue("123".isNumeric())
+    self.assertTrue("a b".isPrintable())
+    self.assertTrue(" \t".isSpace())
+    self.assertTrue("Hello World".isTitle())
+    self.assertTrue("UPPER".isUpper())
 
 
 class StrMiscTests(TestCaseMixin):
-  _test_tag = 90
+  _testTag = 90
 
   @override
   def test(self):
@@ -266,38 +266,38 @@ class StrMiscTests(TestCaseMixin):
     for c in "abcde"[1:4]:
       subsum += int(c)
     self.assertEqual(subsum, int(ord("b")) + int(ord("c")) + int(ord("d")))
-    tabbed: str = "a\tb".expandtabs(4)
+    tabbed: str = "a\tb".expandTabs(4)
     self.assertEqual(tabbed.find("   "), 1)
-    tbl: dict[char, char] = str.maketrans("ab", "AB")
+    tbl: dict[char, char] = str.makeTrans("ab", "AB")
     self.assertEqual("abc".translate(tbl), "ABc")
 
 
 class StrStartswithListTests(TestCaseMixin):
-  _test_tag = 100
+  _testTag = 100
 
   @override
   def test(self):
     prefixes: list[str] = []
     prefixes.append("http://")
     prefixes.append("https://")
-    self.assertTrue("https://x.com".startswith(prefixes))
-    self.assertFalse("ftp://x".startswith(prefixes))
+    self.assertTrue("https://x.com".startsWith(prefixes))
+    self.assertFalse("ftp://x".startsWith(prefixes))
     pref: char[:] = "spam"
-    self.assertTrue("spam eggs".startswith(pref))
-    pref_arr: str[:] = new(2)
-    pref_arr[0] = "http://"
-    pref_arr[1] = "https://"
-    self.assertTrue("https://x.com".startswith(pref_arr))
-    self.assertFalse("ftp://x".startswith(pref_arr))
-    suf_arr: str[:] = new(2)
-    suf_arr[0] = ".txt"
-    suf_arr[1] = ".md"
-    self.assertTrue("readme.txt".endswith(suf_arr))
-    self.assertFalse("readme.py".endswith(suf_arr))
+    self.assertTrue("spam eggs".startsWith(pref))
+    prefArr: str[:] = new(2)
+    prefArr[0] = "http://"
+    prefArr[1] = "https://"
+    self.assertTrue("https://x.com".startsWith(prefArr))
+    self.assertFalse("ftp://x".startsWith(prefArr))
+    sufArr: str[:] = new(2)
+    sufArr[0] = ".txt"
+    sufArr[1] = ".md"
+    self.assertTrue("readme.txt".endsWith(sufArr))
+    self.assertFalse("readme.py".endsWith(sufArr))
 
 
 class StrGlobTests(TestCaseMixin):
-  _test_tag = 105
+  _testTag = 105
 
   @override
   def test(self):
@@ -319,7 +319,7 @@ class StrGlobTests(TestCaseMixin):
 
 
 class CharArrayLiteralTests(TestCaseMixin):
-  _test_tag = 110
+  _testTag = 110
 
   @override
   def test(self):
@@ -334,7 +334,7 @@ class CharArrayLiteralTests(TestCaseMixin):
 
 
 class StrFloatScalarInitTests(TestCaseMixin):
-  _test_tag = 120
+  _testTag = 120
 
   @override
   def test(self):
@@ -345,7 +345,7 @@ class StrFloatScalarInitTests(TestCaseMixin):
 
 
 class StrHashCompareTests(TestCaseMixin):
-  _test_tag = 130
+  _testTag = 130
 
   @override
   def test(self):
@@ -364,7 +364,7 @@ class StrHashCompareTests(TestCaseMixin):
 
 
 class ModDivTests(TestCaseMixin):
-  _test_tag = 140
+  _testTag = 140
 
   @override
   def test(self):
@@ -392,30 +392,30 @@ class B:
 
 
 class DefaultReprTests(TestCaseMixin):
-  _test_tag = 200
+  _testTag = 200
 
   @override
   def test(self):
     a: A = new()
     ra = repr(a)
-    self.assertTrue(ra.startswith("<__main__.A object at 0x"))
+    self.assertTrue(ra.startsWith("<__main__.A object at 0x"))
     sa = str(a)
     self.assertEqual(sa, ra)
 
 
 class CustomStrTests(TestCaseMixin):
-  _test_tag = 210
+  _testTag = 210
 
   @override
   def test(self):
     b: B = new()
     self.assertEqual(str(b), "custom-str")
     rb = repr(b)
-    self.assertTrue(rb.startswith("<__main__.B object at 0x"))
+    self.assertTrue(rb.startsWith("<__main__.B object at 0x"))
 
 
 class FormatIntTests(TestCaseMixin):
-  _test_tag = 220
+  _testTag = 220
 
   @override
   def test(self):
@@ -430,7 +430,7 @@ class FormatIntTests(TestCaseMixin):
 
 
 class FormatFloatTests(TestCaseMixin):
-  _test_tag = 230
+  _testTag = 230
 
   @override
   def test(self):
@@ -444,7 +444,7 @@ class FormatFloatTests(TestCaseMixin):
 
 
 class FormatBoolTests(TestCaseMixin):
-  _test_tag = 240
+  _testTag = 240
 
   @override
   def test(self):
@@ -455,7 +455,7 @@ class FormatBoolTests(TestCaseMixin):
 
 
 class FormatStrTests(TestCaseMixin):
-  _test_tag = 250
+  _testTag = 250
 
   @override
   def test(self):
@@ -466,7 +466,7 @@ class FormatStrTests(TestCaseMixin):
 
 
 class FormatListTests(TestCaseMixin):
-  _test_tag = 260
+  _testTag = 260
 
   @override
   def test(self):
@@ -481,7 +481,7 @@ class FormatListTests(TestCaseMixin):
 
 
 class FormatDictTests(TestCaseMixin):
-  _test_tag = 270
+  _testTag = 270
 
   @override
   def test(self):
@@ -494,7 +494,7 @@ class FormatDictTests(TestCaseMixin):
 
 
 class FormatDequeTests(TestCaseMixin):
-  _test_tag = 280
+  _testTag = 280
 
   @override
   def test(self):
@@ -506,7 +506,7 @@ class FormatDequeTests(TestCaseMixin):
 
 
 class FormatCombinedTests(TestCaseMixin):
-  _test_tag = 290
+  _testTag = 290
 
   @override
   def test(self):
@@ -522,7 +522,7 @@ class FormatCombinedTests(TestCaseMixin):
 
 
 class FormatStrFormatTests(TestCaseMixin):
-  _test_tag = 300
+  _testTag = 300
 
   @override
   def test(self):
@@ -537,7 +537,7 @@ class FormatStrFormatTests(TestCaseMixin):
 
 
 class FormatMixedFstringTests(TestCaseMixin):
-  _test_tag = 310
+  _testTag = 310
 
   @override
   def test(self):
@@ -548,7 +548,7 @@ class FormatMixedFstringTests(TestCaseMixin):
 
 
 class StrLiteralFindTests(TestCaseMixin):
-  _test_tag = 330
+  _testTag = 330
 
   @override
   def test(self):
@@ -560,7 +560,7 @@ class StrLiteralFindTests(TestCaseMixin):
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

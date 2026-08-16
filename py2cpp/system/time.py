@@ -1,10 +1,10 @@
-"""``time``：时钟、``c_time`` 与格式化（对齐 Python 3.13 ``time`` 子集）。
+"""``time``：时钟、``CTime`` 与格式化（对齐 Python 3.13 ``time`` 子集）。
 
 参考 [time — Time access and conversions](https://docs.python.org/3.13/library/time.html)
-与 ``Modules/timemodule.c``。C 层：``py_time`` / ``gmtime`` / ``localtime`` / ``mktime`` /
+与 ``Modules/timemodule.c``。C 层：``py_time`` / ``gmTime`` / ``localTime`` / ``mkTime`` /
 ``strftime``（``templates/system/-time.inl`` → ``time.inl``）。**无** ``tzset`` / ``zoneinfo`` / ``*_ns``。
 
-``strptime`` / ``asctime`` / ``ctime`` 在 Python 侧（``strptime`` 为受支持格式码子集）。
+``strptime`` / ``ascTime`` / ``ctime`` 在 Python 侧（``strptime`` 为受支持格式码子集）。
 """
 from ..builtins import *
 from ..core.exceptions import ValueError
@@ -12,12 +12,12 @@ from ..text import str
 
 
 @immutable
-def _weekday_name(wday: int) -> str:
+def _weekdayName(wday: int) -> str:
   return ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][wday]
 
 
 @immutable
-def _month_name(mon: int) -> str:
+def _monthName(mon: int) -> str:
   return [
     "Jan",
     "Feb",
@@ -36,33 +36,34 @@ def _month_name(mon: int) -> str:
 
 @copyable
 @dataclass(repr=False, order=True)
-class c_time:
-  """``c_time``（对齐 ``time.struct_time``；9 元组字段；``n_fields`` = 9）。"""
+@native_name("CTime")
+class CTime:
+  """``CTime``（对齐 ``time.struct_time``；9 元组字段；``n_fields`` = 9）。"""
 
-  tm_year: int = 1970
+  tmYear: int = 1970
 
-  tm_mon: int = 1
+  tmMon: int = 1
 
-  tm_mday: int = 1
+  tmMday: int = 1
 
-  tm_hour: int = 0
+  tmHour: int = 0
 
-  tm_min: int = 0
+  tmMin: int = 0
 
-  tm_sec: int = 0
+  tmSec: int = 0
 
-  tm_wday: int @optional = 0
+  tmWday: int @optional = 0
 
-  tm_yday: int @optional = 1
+  tmYday: int @optional = 1
 
-  tm_isdst: int @optional = -1
+  tmIsdst: int @optional = -1
 
   @immutable
   def __str__(self) -> str:
-    return asctime(self)
+    return ascTime(self)
 
 
-def format_duration(seconds: float64) -> str:
+def formatDuration(seconds: float64) -> str:
   """将秒数格式化为人类可读耗时（``>=1s`` 用秒，否则 ``ms``/``us``/``ns``）。"""
   if seconds >= 1.0:
     return f"{seconds:.6f}s"
@@ -78,13 +79,13 @@ def format_duration(seconds: float64) -> str:
 
 @context
 def stopwatch(tag: str = None):
-  """进入时记下 ``perf_counter``，退出时打印标签与 ``format_duration`` 耗时。"""
+  """进入时记下 ``perfCounter``，退出时打印标签与 ``formatDuration`` 耗时。"""
   label: str = tag or "stopwatch"
-  start: float64 = perf_counter()
+  start: float64 = perfCounter()
   yield
-  end: float64 = perf_counter()
+  end: float64 = perfCounter()
   elapsed: float64 = end - start
-  dur: str = format_duration(elapsed)
+  dur: str = formatDuration(elapsed)
   print(f"stopwatch {label}: {dur}")
 
 
@@ -108,67 +109,67 @@ def monotonic() -> float64:
 
 
 @native
-def perf_counter() -> float64:
+def perfCounter() -> float64:
   """高分辨率性能计数器秒数。"""
   ...
 
 
 @native
-def process_time() -> float64:
+def processTime() -> float64:
   """当前进程 CPU 时间（秒）。"""
   ...
 
 
 @native
-def gmtime(secs: float64) -> c_time:
-  """UTC ``c_time``（纪元秒）。"""
+def gmTime(secs: float64) -> CTime:
+  """UTC ``CTime``（纪元秒）。"""
   ...
 
 
 @native
-def gmtime_now() -> c_time:
-  """``gmtime(time())``。"""
+def gmTimeNow() -> CTime:
+  """``gmTime(time())``。"""
   ...
 
 
 @native
-def localtime(secs: float64) -> c_time:
-  """本地 ``c_time``（纪元秒）。"""
+def localTime(secs: float64) -> CTime:
+  """本地 ``CTime``（纪元秒）。"""
   ...
 
 
 @native
-def localtime_now() -> c_time:
-  """``localtime(time())``。"""
+def localTimeNow() -> CTime:
+  """``localTime(time())``。"""
   ...
 
 
 @native
 @global_call("py_*")
-def mktime(st: c_time) -> float64:
+def mkTime(st: CTime) -> float64:
   """本地日历 → 纪元秒（失败返回 ``-1.0``）。"""
   ...
 
 
 @native
-def py_strftime(fmt: str, st: c_time) -> str:
+def pyStrftime(fmt: str, st: CTime) -> str:
   """``strftime`` C 库实现（格式码以平台支持为准；C++ 同名）。"""
   ...
 
 
 @immutable
-def strftime(fmt: str, st: c_time) -> str:
+def strftime(fmt: str, st: CTime) -> str:
   """``strftime``；``%Y-%m-%d`` 走 Python 组合，其余委托 C。"""
   if fmt == "%Y-%m-%d":
-    return str(st.tm_year) + "-" + _two(st.tm_mon) + "-" + _two(st.tm_mday)
-  return py_strftime(fmt, st)
+    return str(st.tmYear) + "-" + _two(st.tmMon) + "-" + _two(st.tmMday)
+  return pyStrftime(fmt, st)
 
 
 @immutable
-def _parse_int_field(s: str, start: int, width: int) -> int:
+def _parseIntField(s: str, start: int, width: int) -> int:
   end: int = start + width
   part: str = s[start:end]
-  if not part.isdigit():
+  if not part.isDigit():
     raise ValueError("strptime")
   n: int = 0
   for i in range(width):
@@ -177,97 +178,97 @@ def _parse_int_field(s: str, start: int, width: int) -> int:
 
 
 @immutable
-def _strptime_fixed(s: str, fmt: str) -> c_time:
+def _strptimeFixed(s: str, fmt: str) -> CTime:
   """受支持格式：``%Y-%m-%d``、``%Y-%m-%d %H:%M:%S``、``%Y/%m/%d %H:%M:%S``。"""
   match fmt:
     case "%Y-%m-%d":
-      y: int = _parse_int_field(s, 0, 4)
+      y: int = _parseIntField(s, 0, 4)
       if s[4] != ord("-"):
         raise ValueError("strptime")
-      mo: int = _parse_int_field(s, 5, 2)
+      mo: int = _parseIntField(s, 5, 2)
       if s[7] != ord("-"):
         raise ValueError("strptime")
-      d: int = _parse_int_field(s, 8, 2)
+      d: int = _parseIntField(s, 8, 2)
       return new(y, mo, d, 0, 0, 0)
     case "%Y-%m-%d %H:%M:%S":
-      y2: int = _parse_int_field(s, 0, 4)
+      y2: int = _parseIntField(s, 0, 4)
       if s[4] != ord("-"):
         raise ValueError("strptime")
-      mo2: int = _parse_int_field(s, 5, 2)
+      mo2: int = _parseIntField(s, 5, 2)
       if s[7] != ord("-"):
         raise ValueError("strptime")
-      d2: int = _parse_int_field(s, 8, 2)
+      d2: int = _parseIntField(s, 8, 2)
       if s[10] != ord(" "):
         raise ValueError("strptime")
-      h: int = _parse_int_field(s, 11, 2)
+      h: int = _parseIntField(s, 11, 2)
       if s[13] != ord(":"):
         raise ValueError("strptime")
-      mi: int = _parse_int_field(s, 14, 2)
+      mi: int = _parseIntField(s, 14, 2)
       if s[16] != ord(":"):
         raise ValueError("strptime")
-      sec: int = _parse_int_field(s, 17, 2)
+      sec: int = _parseIntField(s, 17, 2)
       return new(y2, mo2, d2, h, mi, sec)
     case "%Y/%m/%d %H:%M:%S":
-      y3: int = _parse_int_field(s, 0, 4)
+      y3: int = _parseIntField(s, 0, 4)
       if s[4] != ord("/"):
         raise ValueError("strptime")
-      mo3: int = _parse_int_field(s, 5, 2)
+      mo3: int = _parseIntField(s, 5, 2)
       if s[7] != ord("/"):
         raise ValueError("strptime")
-      d3: int = _parse_int_field(s, 8, 2)
+      d3: int = _parseIntField(s, 8, 2)
       if s[10] != ord(" "):
         raise ValueError("strptime")
-      h3: int = _parse_int_field(s, 11, 2)
+      h3: int = _parseIntField(s, 11, 2)
       if s[13] != ord(":"):
         raise ValueError("strptime")
-      mi3: int = _parse_int_field(s, 14, 2)
+      mi3: int = _parseIntField(s, 14, 2)
       if s[16] != ord(":"):
         raise ValueError("strptime")
-      sec3: int = _parse_int_field(s, 17, 2)
+      sec3: int = _parseIntField(s, 17, 2)
       return new(y3, mo3, d3, h3, mi3, sec3)
     case _:
       raise ValueError("strptime")
 
 
-def strptime(s: str, fmt: str) -> c_time:
-  """解析固定格式子集（见 ``_strptime_fixed``）。"""
-  return _strptime_fixed(s, fmt)
+def strptime(s: str, fmt: str) -> CTime:
+  """解析固定格式子集（见 ``_strptimeFixed``）。"""
+  return _strptimeFixed(s, fmt)
 
 
 @immutable
-def _zfill_int(n: int, width: int) -> str:
+def _zfillInt(n: int, width: int) -> str:
   """非负整数左补零（``str.zfill``）。"""
   return str(n).zfill(width)
 
 
 @immutable
 def _two(n: int) -> str:
-  return _zfill_int(n, 2)
+  return _zfillInt(n, 2)
 
 
 @immutable
-def asctime(st: c_time) -> str:
+def ascTime(st: CTime) -> str:
   """``Sun Oct  6 12:34:56 2024`` 风格（无时区）。"""
-  t: c_time = st
-  wd: str = _weekday_name(t.tm_wday)
-  mon: str = _month_name(t.tm_mon)
-  pad: str = " " if t.tm_mday < 10 else ""
-  return f"{wd} {mon} {pad}{t.tm_mday} {_two(t.tm_hour)}:{_two(t.tm_min)}:{_two(t.tm_sec)} {t.tm_year}"
+  t: CTime = st
+  wd: str = _weekdayName(t.tmWday)
+  mon: str = _monthName(t.tmMon)
+  pad: str = " " if t.tmMday < 10 else ""
+  return f"{wd} {mon} {pad}{t.tmMday} {_two(t.tmHour)}:{_two(t.tmMin)}:{_two(t.tmSec)} {t.tmYear}"
 
 
 @immutable
-def asctime_now() -> str:
-  """``asctime(localtime_now())``。"""
-  return asctime(localtime_now())
+def ascTimeNow() -> str:
+  """``ascTime(localTimeNow())``。"""
+  return ascTime(localTimeNow())
 
 
 @immutable
 def ctime(secs: float64) -> str:
-  """``asctime(localtime(secs))``。"""
-  return asctime(localtime(secs))
+  """``ascTime(localTime(secs))``。"""
+  return ascTime(localTime(secs))
 
 
 @immutable
-def ctime_now() -> str:
-  """``asctime(localtime_now())``（同 CPython ``ctime()``）。"""
-  return asctime(localtime_now())
+def ctimeNow() -> str:
+  """``ascTime(localTimeNow())``（同 CPython ``ctime()``）。"""
+  return ascTime(localTimeNow())

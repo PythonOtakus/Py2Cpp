@@ -112,6 +112,10 @@ UMBRELLA_MSVC_UNDEF_MACROS: tuple[str, ...] = (
   "S_IFIFO",
   "S_IFLNK",
   "S_IFSOCK",
+  # stdio.h：``stdin``/``stdout``/``stderr`` 为宏（MSVC → ``__acrt_iob_func``）
+  "stdin",
+  "stdout",
+  "stderr",
   "Yield",
   "Return",
 )
@@ -218,7 +222,7 @@ SLICE_FRONT_MODULES_REL: frozenset[str] = frozenset({
 
 STDLIB_CODEGEN_MODULES: dict[str, str] = {
   "util/tuple": "tuple",
-  "util/stack_array": "stack_array",
+  "util/stack_array": "StackArray",
   "core/delegate": "delegate",
   "core/generator": "generator",
   "core/coroutine": "coroutine",

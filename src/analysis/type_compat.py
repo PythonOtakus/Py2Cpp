@@ -43,7 +43,7 @@ _KNOWN_SCALARS = frozenset({
   cpp_ident("byte"),
   cpp_ident("PyNone"),
   cpp_ident("Never"),
-  "c_str",
+  "CStr",
   "void*",
 })
 

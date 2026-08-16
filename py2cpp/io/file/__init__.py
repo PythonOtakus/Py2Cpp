@@ -7,128 +7,129 @@ from ...core.exceptions import OSError, FileNotFoundError
 from ...util.list import list
 from ...text import str
 from .path import (
-  basename as path_basename,
-  dirname as path_dirname,
-  exists as path_exists,
-  isdir as path_isdir,
-  isfile as path_isfile,
-  islink as path_islink,
-  join as path_join,
-  split as path_split,
+  baseName as pathBaseName,
+  dirName as pathDirName,
+  exists as pathExists,
+  isDir as pathIsDir,
+  isFile as pathIsFile,
+  isLink as pathIsLink,
+  join as pathJoin,
+  split as pathSplit,
 )
 
-S_IFDIR: int = 0x4000
-S_IFREG: int = 0x8000
-S_IFLNK: int = 0xA000
-S_IFCHR: int = 0x2000
-S_IFBLK: int = 0x6000
-S_IFIFO: int = 0x1000
-S_IFSOCK: int = 0xC000
-F_OK: int = 0
-R_OK: int = 4
-W_OK: int = 2
-X_OK: int = 1
+SIfdir: int = 0x4000
+SIfreg: int = 0x8000
+SIflnk: int = 0xA000
+SIfchr: int = 0x2000
+SIfblk: int = 0x6000
+SIfifo: int = 0x1000
+SIfsock: int = 0xC000
+FOk: int = 0
+ROk: int = 4
+WOk: int = 2
+XOk: int = 1
 
 name: str = "nt"
 sep: str = "\\"
-altsep: str = "/"
-extsep: str = "."
-pathsep: str = ";"
-curdir: str = "."
-pardir: str = ".."
-defpath: str = ".;C:\\bin"
-devnull: str = "nul"
+AltSep: str = "/"
+ExtSep: str = "."
+PathSep: str = ";"
+CurDir: str = "."
+ParDir: str = ".."
+DefPath: str = ".;C:\\bin"
+DevNull: str = "nul"
 
 
 @copyable
-class c_stat:
-  """``c_stat``（``os.stat`` / ``os.lstat`` 结果）。"""
+@native_name("CStat")
+class CStat:
+  """``CStat``（``os.stat`` / ``os.lstat`` 结果）。"""
 
   def __init__(self):
-    self.st_mode: int = 0
-    self.st_size: int = 0
-    self.st_mtime: float64 = 0.0
-    self.st_atime: float64 = 0.0
-    self.st_ctime: float64 = 0.0
-    self.st_dev: int = 0
-    self.st_ino: int = 0
+    self.stMode: int = 0
+    self.stSize: int = 0
+    self.stMtime: float64 = 0.0
+    self.stAtime: float64 = 0.0
+    self.stCtime: float64 = 0.0
+    self.stDev: int = 0
+    self.stIno: int = 0
 
 
 @dataclass
 class DirEntry:
-  """``os.scandir`` 项（``name`` + 绝对 ``full_path``）。"""
+  """``os.scandir`` 项（``name`` + 绝对 ``fullPath``）。"""
 
   name: str = ""
-  full_path: str = ""
+  fullPath: str = ""
 
   @immutable
-  def is_dir(self) -> bool:
-    return path_isdir(self.full_path)
+  def isDir(self) -> bool:
+    return pathIsDir(self.fullPath)
 
   @immutable
-  def is_file(self) -> bool:
-    return path_isfile(self.full_path)
+  def isFile(self) -> bool:
+    return pathIsFile(self.fullPath)
 
   @immutable
-  def is_symlink(self) -> bool:
-    return path_islink(self.full_path)
+  def isSymlink(self) -> bool:
+    return pathIsLink(self.fullPath)
 
   @immutable
-  def stat(self) -> c_stat:
-    return stat(self.full_path)
+  def stat(self) -> CStat:
+    return stat(self.fullPath)
 
 
 @native
 @native_name("fs_*")
-def getcwd() -> str:
+def getCwd() -> str:
   """当前工作目录。"""
   ...
 
 
 @immutable
 @native_name("fs_*")
-def getcwdb() -> bytes:
-  return getcwd().encode()
+def getCwdb() -> bytes:
+  return getCwd().encode()
 
 
 @native
 @native_name("fs_*")
-def stat(pathname: str) -> c_stat:
+def stat(pathName: str) -> CStat:
   """路径元数据；不存在时 ``FileNotFoundError``。"""
   ...
 
 
 @native
 @native_name("fs_*")
-def lstat(pathname: str) -> c_stat:
+def lstat(pathName: str) -> CStat:
   """``stat`` 别名（Windows 上与 ``stat`` 相同）。"""
   ...
 
 
 @native
 @native_name("fs_*")
-def listdir(pathname: str = ".") -> list[str]:
+def listDir(pathName: str = ".") -> list[str]:
   """目录项名（不含 ``.`` / ``..``）。"""
   ...
 
 
 @native
 @native_name("fs_*")
-def mkdir(pathname: str, mode: int = 0o777) -> None:
+def mkdir(pathName: str, mode: int = 0o777) -> None:
   """创建单级目录。"""
   ...
 
 
 @native_name("fs_*")
-def makedirs(name: str, mode: int = 0o777, exist_ok: bool = False) -> None:
-  """递归创建目录（对齐 ``os.makedirs``）。"""
-  parts: (str, str) = path_split(name)
+def makeDirs(name: str, mode: int = 0o777, existOk: bool = False) -> None:
+  """递归创建目录（对齐 ``os.makeDirs``）。"""
+  parts: (str, str) = pathSplit(name)
   head: str = parts[0]
   tail: str = parts[1]
   if tail:
-    makedirs(head, mode, exist_ok)
-  if path_exists(name):
-    if exist_ok and path_isdir(name):
+    makeDirs(head, mode, existOk)
+  if pathExists(name):
+    if existOk and pathIsDir(name):
       return
     raise OSError()
   mkdir(name, mode)
@@ -136,31 +137,31 @@ def makedirs(name: str, mode: int = 0o777, exist_ok: bool = False) -> None:
 
 @native
 @native_name("fs_*")
-def remove(pathname: str) -> None:
+def remove(pathName: str) -> None:
   """删除文件。"""
   ...
 
 
 @native
 @native_name("fs_*")
-def unlink(pathname: str) -> None:
+def unlink(pathName: str) -> None:
   """删除文件（``remove`` 别名）。"""
   ...
 
 
 @native
 @native_name("fs_*")
-def rmdir(pathname: str) -> None:
+def rmdir(pathName: str) -> None:
   """删除空目录。"""
   ...
 
 
 @native_name("fs_*")
-def removedirs(name: str) -> None:
+def removeDirs(name: str) -> None:
   rmdir(name)
-  parent: str = path_dirname(name)
+  parent: str = pathDirName(name)
   if parent and parent != name:
-    removedirs(parent)
+    removeDirs(parent)
 
 
 @native
@@ -179,45 +180,45 @@ def rename(src: str, dst: str) -> None:
 
 @native_name("fs_*")
 def renames(old: str, new: str) -> None:
-  head: str = path_dirname(new)
-  if head and not path_exists(head):
-    makedirs(head)
+  head: str = pathDirName(new)
+  if head and not pathExists(head):
+    makeDirs(head)
   rename(old, new)
 
 
 @native
 @native_name("fs_*")
-def chdir(pathname: str) -> None:
+def chdir(pathName: str) -> None:
   """切换当前工作目录。"""
   ...
 
 
 @native
 @native_name("fs_*")
-def access(pathname: str, mode: int) -> bool:
-  """检测访问权限（``F_OK`` / ``R_OK`` / ``W_OK`` / ``X_OK``）。"""
+def access(pathName: str, mode: int) -> bool:
+  """检测访问权限（``FOk`` / ``ROk`` / ``WOk`` / ``XOk``）。"""
   ...
 
 
 @native
 @native_name("fs_*")
-def chmod(pathname: str, mode: int) -> None:
+def chmod(pathName: str, mode: int) -> None:
   """修改权限位。"""
   ...
 
 
 @native
 @native_name("fs_*")
-def apply_utime(pathname: str, atime: float64, mtime: float64) -> None:
+def applyUtime(pathName: str, atime: float64, mtime: float64) -> None:
   ...
 
 
 @native_name("fs_*")
-def utime(pathname: str, times: (float64, float64)) -> None:
+def utime(pathName: str, times: (float64, float64)) -> None:
   """设置访问/修改时间（``(atime, mtime)``）。"""
   at: float64 = times[0]
   mt: float64 = times[1]
-  apply_utime(pathname, at, mt)
+  applyUtime(pathName, at, mt)
 
 
 @native
@@ -236,7 +237,7 @@ def symlink(src: str, dst: str) -> None:
 
 @native
 @native_name("fs_*")
-def readlink(pathname: str) -> str:
+def readLink(pathName: str) -> str:
   """读取符号链接目标。"""
   ...
 
@@ -246,42 +247,41 @@ def walk(
   top: str,
   topdown: bool = True,
   followlinks: bool = False,
-) -> Generator[(str, list[str], list[str]), None, None]:
+) -> GeneratorType[(str, list[str], list[str]), None, None]:
   """目录树遍历（``os.walk`` 子集；无 ``onerror`` 回调）。"""
   stack: list[str] = []
   stack.append(top)
   while stack:
     current: str = stack.pop()
     dirs: list[str] = []
-    nondirs: list[str] = []
+    nonDirs: list[str] = []
     ent: DirEntry = new()
     for ent in scandir(current):
-      if ent.is_dir():
-        if not followlinks or not ent.is_symlink():
+      if ent.isDir():
+        if not followlinks or not ent.isSymlink():
           dirs.append(ent.name)
         else:
-          nondirs.append(ent.name)
+          nonDirs.append(ent.name)
       else:
-        nondirs.append(ent.name)
+        nonDirs.append(ent.name)
     if topdown:
-      yield current, dirs, nondirs
+      yield current, dirs, nonDirs
     idx: int = 0
     for idx in range(len(dirs) - 1, -1, -1):
-      stack.append(path_join(current, dirs[idx]))
+      stack.append(pathJoin(current, dirs[idx]))
     if not topdown:
-      yield current, dirs, nondirs
+      yield current, dirs, nonDirs
 
 
 @native
 @uncopyable
-@native_name("ScandirIterator")
-class scandir_iterator:
+class ScandirIterator:
   """惰性 ``os.scandir`` 迭代器（Win ``FindNextFile`` / POSIX ``readdir``）。"""
 
   _path: str = ""
   _state: uintptr = 0
 
-  def __init__(self, pathname: str = "."):
+  def __init__(self, pathName: str = "."):
     ...
 
   def __del__(self):
@@ -297,6 +297,6 @@ class scandir_iterator:
     ...
 
 
-def scandir(pathname: str = ".") -> scandir_iterator:
+def scandir(pathName: str = ".") -> ScandirIterator:
   """目录扫描（惰性；对齐 CPython 3.13 ``os.scandir``）。"""
-  return new(pathname)
+  return new(pathName)

@@ -10,6 +10,7 @@ PY2CPP_END
 #include "py_types.h"
 #include <type_traits>
 #include <utility>
+#include <stdio.h>
 
 #include "py2cpp/util/tuple.h"
 #include "py2cpp/text/str.h"
@@ -362,11 +363,27 @@ auto repr(const T* obj) -> decltype(static_cast<PY2CPP_TYPE(PyStr)>(obj->__repr_
 }
 
 /* format(value, format_spec) → value.__format__(PyStr(format_spec)) */
-PY2CPP_TYPE(PyStr) format(PyInt v, c_str format_spec = "");
-PY2CPP_TYPE(PyStr) format(PyFloat v, c_str format_spec = "");
-PY2CPP_TYPE(PyStr) format(PyBool v, c_str format_spec = "");
-PY2CPP_TYPE(PyStr) format(PyChar v, c_str format_spec = "");
-PY2CPP_TYPE(PyStr) format(const PY2CPP_TYPE(PyStr)& v, c_str format_spec = "");
+PY2CPP_TYPE(PyStr) format(PyInt v, CStr format_spec = "");
+PY2CPP_TYPE(PyStr) format(PyFloat v, CStr format_spec = "");
+PY2CPP_TYPE(PyStr) format(PyBool v, CStr format_spec = "");
+PY2CPP_TYPE(PyStr) format(PyChar v, CStr format_spec = "");
+PY2CPP_TYPE(PyStr) format(const PY2CPP_TYPE(PyStr)& v, CStr format_spec = "");
+/// 枚举（``enum class``）按底层整型 ``format``。
+template<typename E>
+typename std::enable_if<std::is_enum<E>::value, PY2CPP_TYPE(PyStr)>::type
+format(E v, CStr format_spec = "")
+{
+  return format((PyInt)v, format_spec);
+}
+/// C ``FILE*`` stdout（避免 ``using`` 绑到 ``py2cpp::console::stdout`` / ``PyTextIOWrapper``）。
+inline FILE* _py2cpp_c_stdout()
+{
+#if defined(_MSC_VER)
+  return __acrt_iob_func(1);
+#else
+  return ::stdout;
+#endif
+}
 PY2CPP_TYPE(PyStr) py_input();
 PY2CPP_TYPE(PyStr) py_input(const PY2CPP_TYPE(PyStr)& prompt);
 
@@ -377,7 +394,7 @@ template<typename T>
 T py_input_typed(const PY2CPP_TYPE(PyStr)& prompt);
 
 template<typename T>
-auto format(const T& obj, c_str format_spec) -> decltype(obj.__format__(PY2CPP_TYPE(PyStr)(format_spec ? format_spec : "")))
+auto format(const T& obj, CStr format_spec) -> decltype(obj.__format__(PY2CPP_TYPE(PyStr)(format_spec ? format_spec : "")))
 {
   return obj.__format__(PY2CPP_TYPE(PyStr)(format_spec ? format_spec : ""));
 }
@@ -413,8 +430,8 @@ PyFloat64 __pow__(PyFloat64 base, PyInt64 exp);
 inline PyInt64 hash(PyInt64 v);
 PY2CPP_TYPE(PyStr) repr(PyInt64 v);
 PY2CPP_TYPE(PyStr) repr(PyFloat64 v);
-PY2CPP_TYPE(PyStr) format(PyInt64 v, c_str format_spec = "");
-PY2CPP_TYPE(PyStr) format(PyFloat64 v, c_str format_spec = "");
+PY2CPP_TYPE(PyStr) format(PyInt64 v, CStr format_spec = "");
+PY2CPP_TYPE(PyStr) format(PyFloat64 v, CStr format_spec = "");
 
 /* ``chr`` / ``ord``（``ord('x')`` 译期折叠为 ``PyChar``；运行时仅 ``chr``） */
 PY2CPP_TYPE(PyStr) chr(PyInt i);

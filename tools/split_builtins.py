@@ -10,7 +10,7 @@ PY2CPP = ROOT / "py2cpp"
 EXTRA_IMPORTS: dict[str, list[str]] = {
   "text/bytes.py": ["from .str import str"],
   "util/arena.py": ["from .list import list"],
-  "text/mixins.py": ["from ..core.protocols import Generator"],
+  "text/mixins.py": ["from ..core.protocols import GeneratorType"],
 }
 
 

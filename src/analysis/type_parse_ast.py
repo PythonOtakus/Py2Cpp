@@ -95,16 +95,16 @@ def _parse_name_node(
   scalars = {
     "int", "int64", "uint", "uint64", "uintptr", "float", "float64", "bool",
     "str", "bytes", "char", "byte", "object", "RefCount", "IterResult", "Result",
-    "Optional", "Generator", "Coroutine", "AsyncGenerator", "Awaitable",
-    "AsyncIterable", "AsyncIterator", "ContextManager", "AsyncContextManager",
+    "Optional", "GeneratorType", "CoroutineType", "AsyncGeneratorType", "AwaitableType",
+    "AsyncIterableType", "AsyncIteratorType", "ContextManagerType", "AsyncContextManagerType",
     "PyNone", "void", "Never",
   }
   if name in scalars:
     return TypeNode.scalar(cpp_ident(name))
   if name == "None":
     return TypeNode.scalar(cpp_ident("PyNone"))
-  if name == "c_str":
-    return TypeNode.scalar("c_str")
+  if name == "CStr":
+    return TypeNode.scalar("CStr")
   expanded = parser._expand_type_alias_name(
     name, type_params, self_class=self_class, _seen=alias_seen,
   )
@@ -253,7 +253,7 @@ def _parse_subscript_node(
 
       return type_node_from_cpp_string(spec, classes=parser._classes)
   if isinstance(node.value, ast.Name) and node.value.id in (
-    "IterResult", "Result", "WeakRef", "Generator", "Coroutine", "AsyncGenerator",
+    "IterResult", "Result", "WeakRef", "GeneratorType", "CoroutineType", "AsyncGeneratorType",
   ):
     raise _UseCppStringBridge()
   if isinstance(node.value, ast.Name):

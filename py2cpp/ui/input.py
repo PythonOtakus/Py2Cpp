@@ -3,18 +3,18 @@ from ..builtins import *
 
 
 @native
-def cursor_screen_pos() -> (int, int):
+def cursorScreenPos() -> (int, int):
   """``GetCursorPos`` → 屏幕坐标。"""
   ...
 
 
 @native
-def shift_down() -> bool:
+def shiftDown() -> bool:
   """``GetKeyState(VK_SHIFT)``。"""
   ...
 
 
 @native
-def ctrl_down() -> bool:
+def ctrlDown() -> bool:
   """``GetKeyState(VK_CONTROL)``。"""
   ...

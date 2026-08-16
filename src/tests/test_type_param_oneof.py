@@ -39,10 +39,10 @@ class ParseTypevarOneofTests(unittest.TestCase):
     self.assertNotIn("T", proto)
 
   def test_oneof_with_protocol_intersection(self):
-    mod = ast.parse("class M[T: DictKey & oneof[int, str]]:\n  pass\n")
+    mod = ast.parse("class M[T: DictKeyType & oneof[int, str]]:\n  pass\n")
     _, _, _, proto, oneof, _, _, _ = parse_class_type_params(mod.body[0])
     self.assertEqual(oneof["T"], ("int", "str"))
-    self.assertEqual(proto["T"], ("DictKey",))
+    self.assertEqual(proto["T"], ("DictKeyType",))
 
   def test_cpp_oneof_expr(self):
     expr = cpp_oneof_static_assert_expr("T", ("char", "byte"))

@@ -9,7 +9,7 @@ from ..util.mixins import ContainerMixin
 
 
 @boxing
-class _ChunkNode[Element](friends=(ChunkDeque,)):
+class _ChunkNodeUnsafe[Element](friends=(ChunkDeque,)):
   def __init__(self):
     self._data: list[Element] = []
     self.prev: Self = None
@@ -51,26 +51,26 @@ class ChunkDequeReverseIterator[Element]:
 class ChunkDeque[Element](ContainerMixin):
   """分块双端队列；``splice`` / ``extend`` / ``insert`` 提供可拼接序列（rope）语义。"""
 
-  DEFAULT_BLOCK_SIZE: int @const = 512
+  DefaultBlockSize: int @const = 512
 
-  def __init__(self, block_size: int = 512):
-    if block_size <= 0:
-      raise ValueError("block_size must be positive")
-    self._block_size: int = block_size
-    self._head: _ChunkNode[Element] = None
-    self._tail: _ChunkNode[Element] = None
+  def __init__(self, blockSize: int = 512):
+    if blockSize <= 0:
+      raise ValueError("blockSize must be positive")
+    self._blockSize: int = blockSize
+    self._head: _ChunkNodeUnsafe[Element] = None
+    self._tail: _ChunkNodeUnsafe[Element] = None
     self._len: int = 0
 
   def __del__(self):
     self.clear()
 
   def __copy__(self, other: Self):
-    self._ensure_active()
+    self._ensureActive()
     if other.__moved__:
       raise ValueError("move from moved container")
     self.clear()
-    self._block_size = other._block_size
-    cur: _ChunkNode[Element] = other._head
+    self._blockSize = other._blockSize
+    cur: _ChunkNodeUnsafe[Element] = other._head
     while cur is not None:
       for j in range(len(cur._data)):
         self.append(cur._data[j])
@@ -78,13 +78,13 @@ class ChunkDeque[Element](ContainerMixin):
 
   @immutable
   def copy(self) -> Self:
-    self._ensure_active()
-    out: Self = new(self._block_size)
+    self._ensureActive()
+    out: Self = new(self._blockSize)
     out.__copy__(self)
     return out
 
   def __move__(self, other: Self):
-    self._ensure_active()
+    self._ensureActive()
     if other.__moved__:
       raise ValueError("move from moved container")
     if self._len > 0:
@@ -93,7 +93,7 @@ class ChunkDeque[Element](ContainerMixin):
       self._head = None
       self._tail = None
       self._len = 0
-    self._block_size = other._block_size
+    self._blockSize = other._blockSize
     self._head = other._head
     self._tail = other._tail
     self._len = other._len
@@ -102,10 +102,10 @@ class ChunkDeque[Element](ContainerMixin):
     other._len = 0
 
   def append(self, x: Element) -> None:
-    if self._tail is not None and len(self._tail._data) < self._block_size:
+    if self._tail is not None and len(self._tail._data) < self._blockSize:
       self._tail._data.append(x)
     else:
-      node: _ChunkNode[Element] = new()
+      node: _ChunkNodeUnsafe[Element] = new()
       node._data.append(x)
       if self._tail is not None:
         self._tail.next = node
@@ -116,11 +116,11 @@ class ChunkDeque[Element](ContainerMixin):
         self._tail = node
     self._len += 1
 
-  def appendleft(self, x: Element) -> None:
-    if self._head is not None and len(self._head._data) < self._block_size:
+  def appendLeft(self, x: Element) -> None:
+    if self._head is not None and len(self._head._data) < self._blockSize:
       self._head._data.insert(0, x)
     else:
-      node: _ChunkNode[Element] = new()
+      node: _ChunkNodeUnsafe[Element] = new()
       node._data.append(x)
       if self._head is not None:
         node.next = self._head
@@ -132,9 +132,9 @@ class ChunkDeque[Element](ContainerMixin):
     self._len += 1
 
   def clear(self) -> None:
-    cur: _ChunkNode[Element] = self._head
+    cur: _ChunkNodeUnsafe[Element] = self._head
     while cur is not None:
-      nxt: _ChunkNode[Element] = cur.next
+      nxt: _ChunkNodeUnsafe[Element] = cur.next
       destroy(cur)
       free(cur)
       cur = nxt
@@ -155,7 +155,7 @@ class ChunkDeque[Element](ContainerMixin):
     if i < 0 or i >= self._len:
       raise IndexError("index out of range")
     remain: int = i
-    node: _ChunkNode[Element] = self._head
+    node: _ChunkNodeUnsafe[Element] = self._head
     while node is not None:
       n: int = len(node._data)
       if remain < n:
@@ -172,7 +172,7 @@ class ChunkDeque[Element](ContainerMixin):
 
   @immutable
   def __contains__(self, item: Element) -> bool:
-    cur: _ChunkNode[Element] = self._head
+    cur: _ChunkNodeUnsafe[Element] = self._head
     while cur is not None:
       for j in range(len(cur._data)):
         if cur._data[j] == item:
@@ -186,7 +186,7 @@ class ChunkDeque[Element](ContainerMixin):
     if index < 0 or index >= self._len:
       raise IndexError("assignment index out of range")
     remain: int = index
-    node: _ChunkNode[Element] = self._head
+    node: _ChunkNodeUnsafe[Element] = self._head
     off: int = 0
     while node is not None:
       n: int = len(node._data)
@@ -197,14 +197,14 @@ class ChunkDeque[Element](ContainerMixin):
       node = node.next
     node._data.pop(off)
     if not node._data:
-      self._unlink_node(node)
+      self._unlinkNode(node)
     self._len -= 1
 
   def __setitem__(self, i: int, value: Element) -> None:
     if i < 0 or i >= self._len:
       raise IndexError("index out of range")
     remain: int = i
-    node: _ChunkNode[Element] = self._head
+    node: _ChunkNodeUnsafe[Element] = self._head
     while node is not None:
       n: int = len(node._data)
       if remain < n:
@@ -214,7 +214,7 @@ class ChunkDeque[Element](ContainerMixin):
       node = node.next
     raise IndexError("index out of range")
 
-  def _unlink_node(self, node: _ChunkNode[Element]) -> None:
+  def _unlinkNode(self, node: _ChunkNodeUnsafe[Element]) -> None:
     if node.prev is not None:
       node.prev.next = node.next
     else:
@@ -228,14 +228,14 @@ class ChunkDeque[Element](ContainerMixin):
     destroy(node)
     free(node)
 
-  def splice(self, splice_pos: int) -> Self:
-    """``[0, splice_pos)`` 留本对象，返回 ``[splice_pos, end)`` 新序列。"""
-    if splice_pos < 0 or splice_pos > self._len:
+  def splice(self, splicePos: int) -> Self:
+    """``[0, splicePos)`` 留本对象，返回 ``[splicePos, end)`` 新序列。"""
+    if splicePos < 0 or splicePos > self._len:
       raise IndexError("splice position out of range")
-    right: Self = new(self._block_size)
-    if splice_pos == self._len:
+    right: Self = new(self._blockSize)
+    if splicePos == self._len:
       return right
-    if splice_pos == 0:
+    if splicePos == 0:
       right._head = self._head
       right._tail = self._tail
       right._len = self._len
@@ -243,8 +243,8 @@ class ChunkDeque[Element](ContainerMixin):
       self._tail = None
       self._len = 0
       return right
-    remain: int = splice_pos
-    node: _ChunkNode[Element] = self._head
+    remain: int = splicePos
+    node: _ChunkNodeUnsafe[Element] = self._head
     off: int = 0
     while node is not None:
       n: int = len(node._data)
@@ -256,7 +256,7 @@ class ChunkDeque[Element](ContainerMixin):
     if off == 0:
       right._head = node
       right._tail = self._tail
-      right._len = self._len - splice_pos
+      right._len = self._len - splicePos
       if node.prev is not None:
         node.prev.next = None
         self._tail = node.prev
@@ -264,32 +264,32 @@ class ChunkDeque[Element](ContainerMixin):
         self._head = None
         self._tail = None
       node.prev = None
-      self._len = splice_pos
+      self._len = splicePos
       return right
-    tail_data: list[Element] = []
+    tailData: list[Element] = []
     for j in range(off, len(node._data)):
-      tail_data.append(node._data[j])
+      tailData.append(node._data[j])
     while len(node._data) > off:
       node._data.pop()
-    new_node: _ChunkNode[Element] = new()
-    new_node._data = tail_data
-    new_node.next = node.next
+    newNode: _ChunkNodeUnsafe[Element] = new()
+    newNode._data = tailData
+    newNode.next = node.next
     if node.next is not None:
-      node.next.prev = new_node
+      node.next.prev = newNode
       right._tail = self._tail
     else:
-      right._tail = new_node
+      right._tail = newNode
     node.next = None
     self._tail = node
-    new_node.prev = None
-    right._head = new_node
-    right._len = self._len - splice_pos
-    self._len = splice_pos
+    newNode.prev = None
+    right._head = newNode
+    right._len = self._len - splicePos
+    self._len = splicePos
     return right
 
   def extend(self, other: Self) -> None:
     """尾部拼接 ``other`` 的元素（拷贝）；调用方应 ``other.clear()`` 释放原块。"""
-    cur: _ChunkNode[Element] = other._head
+    cur: _ChunkNodeUnsafe[Element] = other._head
     while cur is not None:
       for j in range(len(cur._data)):
         self.append(cur._data[j])
@@ -312,7 +312,7 @@ class ChunkDeque[Element](ContainerMixin):
       raise IndexError("pop from empty ChunkDeque")
     value: Element = self._tail._data.pop()
     if not self._tail._data:
-      self._unlink_node(self._tail)
+      self._unlinkNode(self._tail)
     self._len -= 1
     return value
 
@@ -327,16 +327,16 @@ class ChunkDeque[Element](ContainerMixin):
     if index == self._len - 1:
       return self.pop()
     if index == 0:
-      return self.popleft()
+      return self.popLeft()
     value: Element = self[index]
     del self[index]
     return value
 
-  def popleft(self) -> Element:
+  def popLeft(self) -> Element:
     if not self:
       raise IndexError("pop from empty ChunkDeque")
     value: Element = self._head._data.pop(0)
     if not self._head._data:
-      self._unlink_node(self._head)
+      self._unlinkNode(self._head)
     self._len -= 1
     return value

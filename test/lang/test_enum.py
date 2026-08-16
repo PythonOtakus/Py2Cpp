@@ -4,163 +4,163 @@ from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 
 @enum
-class Mode:
-  OFF = 0
-  ON = ...
-  DEBUG = ...
+class ModeEnum:
+  Off = 0
+  On = ...
+  Debug = ...
 
 
 @enum
-class Wide(int64):
-  LO = 1
-  HI = ...
+class WideEnum(int64):
+  Lo = 1
+  Hi = ...
 
 
 @enum
-class Ext(Mode):
-  EXTRA = 10
-  MORE = ...
+class ExtEnum(ModeEnum):
+  Extra = 10
+  More = ...
 
 
 @enum(flag=True)
-class Perm:
-  READ = ...
-  WRITE = ...
-  EXEC = ...
+class PermFlag:
+  Read = ...
+  Write = ...
+  Exec = ...
 
 
 @enum(flag=True)
-class PermExt(Perm):
-  ADMIN = ...
+class PermExtFlag(PermFlag):
+  Admin = ...
 
 
-def match_perm_single(v: Perm) -> int:
+def matchPermSingle(v: PermFlag) -> int:
   match v:
-    case Perm.READ:
+    case PermFlag.Read:
       return 1
-    case Perm.WRITE:
+    case PermFlag.Write:
       return 2
     case _:
       return 0
 
 
-def match_perm_flags(v: Perm) -> int:
+def matchPermFlags(v: PermFlag) -> int:
   match v:
-    case Perm.READ | Perm.WRITE:
+    case PermFlag.Read | PermFlag.Write:
       return 3
-    case Perm.READ:
+    case PermFlag.Read:
       return 1
     case _:
       return 0
 
 
-def count_modes() -> int:
+def countModes() -> int:
   n: int = 0
-  for m in Mode:
+  for m in ModeEnum:
     n += 1
   return n
 
 
-def first_mode() -> Mode:
-  first: Mode = Mode.OFF
-  for m in Mode:
+def firstMode() -> ModeEnum:
+  first: ModeEnum = ModeEnum.Off
+  for m in ModeEnum:
     first = m
     break
   return first
 
 
 class EnumBasicTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
-    self.assertTrue(Mode.ON != Mode.OFF)
-    self.assertTrue(Mode.DEBUG != Mode.ON)
-    lo: Wide = Wide.LO
-    self.assertTrue(lo == Wide.LO)
-    self.assertTrue(Wide.HI != Wide.LO)
-    self.assertTrue(Ext.ON != Ext.OFF)
-    self.assertTrue(Ext.OFF != Ext.EXTRA)
-    self.assertTrue(Ext.MORE != Ext.EXTRA)
-    self.assertTrue(Ext.ON != Ext.EXTRA)
-    self.assertEqual(str(Mode.ON), "Mode.ON")
-    self.assertEqual(repr(Mode.ON), "<Mode.ON: 1>")
-    self.assertEqual(repr(Mode.OFF), "<Mode.OFF: 0>")
+    self.assertTrue(ModeEnum.On != ModeEnum.Off)
+    self.assertTrue(ModeEnum.Debug != ModeEnum.On)
+    lo: WideEnum = WideEnum.Lo
+    self.assertTrue(lo == WideEnum.Lo)
+    self.assertTrue(WideEnum.Hi != WideEnum.Lo)
+    self.assertTrue(ExtEnum.On != ExtEnum.Off)
+    self.assertTrue(ExtEnum.Off != ExtEnum.Extra)
+    self.assertTrue(ExtEnum.More != ExtEnum.Extra)
+    self.assertTrue(ExtEnum.On != ExtEnum.Extra)
+    self.assertEqual(str(ModeEnum.On), "ModeEnum.On")
+    self.assertEqual(repr(ModeEnum.On), "<ModeEnum.On: 1>")
+    self.assertEqual(repr(ModeEnum.Off), "<ModeEnum.Off: 0>")
 
 
 class EnumInheritTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
-    self.assertTrue(Ext.EXTRA == Ext.EXTRA)
-    self.assertTrue(Ext.MORE != Ext.ON)
-    on: Ext = Ext.ON
-    self.assertTrue(on == Ext.ON)
-    self.assertTrue(Ext.OFF != Ext.ON)
+    self.assertTrue(ExtEnum.Extra == ExtEnum.Extra)
+    self.assertTrue(ExtEnum.More != ExtEnum.On)
+    on: ExtEnum = ExtEnum.On
+    self.assertTrue(on == ExtEnum.On)
+    self.assertTrue(ExtEnum.Off != ExtEnum.On)
 
 
 class EnumFlagTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
-    self.assertTrue(Perm.READ != Perm.WRITE)
-    self.assertTrue(Perm.WRITE != Perm.EXEC)
-    self.assertTrue(Perm.READ != Perm.EXEC)
-    rw: Perm = Perm.READ
-    self.assertTrue(rw == Perm.READ)
-    self.assertTrue(PermExt.ADMIN != PermExt.EXEC)
-    self.assertTrue(PermExt.READ == PermExt.READ)
-    both: Perm = Perm.READ | Perm.WRITE
-    self.assertTrue(both != Perm.READ)
-    self.assertTrue(both != Perm.WRITE)
-    all3: Perm = Perm.READ | Perm.WRITE | Perm.EXEC
+    self.assertTrue(PermFlag.Read != PermFlag.Write)
+    self.assertTrue(PermFlag.Write != PermFlag.Exec)
+    self.assertTrue(PermFlag.Read != PermFlag.Exec)
+    rw: PermFlag = PermFlag.Read
+    self.assertTrue(rw == PermFlag.Read)
+    self.assertTrue(PermExtFlag.Admin != PermExtFlag.Exec)
+    self.assertTrue(PermExtFlag.Read == PermExtFlag.Read)
+    both: PermFlag = PermFlag.Read | PermFlag.Write
+    self.assertTrue(both != PermFlag.Read)
+    self.assertTrue(both != PermFlag.Write)
+    all3: PermFlag = PermFlag.Read | PermFlag.Write | PermFlag.Exec
     self.assertTrue(all3 != both)
-    self.assertEqual(str(both), "Perm.READ|Perm.WRITE")
-    self.assertEqual(repr(both), "<Perm.READ|Perm.WRITE: 3>")
-    self.assertEqual(repr(Perm.READ), "<Perm.READ: 1>")
+    self.assertEqual(str(both), "PermFlag.Read|PermFlag.Write")
+    self.assertEqual(repr(both), "<PermFlag.Read|PermFlag.Write: 3>")
+    self.assertEqual(repr(PermFlag.Read), "<PermFlag.Read: 1>")
 
 
 class EnumFlagMatchTests(TestCaseMixin):
-  _test_tag = 30
+  _testTag = 30
 
   @override
   def test(self):
-    self.assertEqual(match_perm_single(Perm.READ), 1)
-    self.assertEqual(match_perm_single(Perm.WRITE), 2)
-    self.assertEqual(match_perm_single(Perm.EXEC), 0)
-    self.assertEqual(match_perm_flags(Perm.READ), 3)
-    self.assertEqual(match_perm_flags(Perm.WRITE), 3)
-    self.assertEqual(match_perm_flags(Perm.READ | Perm.WRITE), 0)
+    self.assertEqual(matchPermSingle(PermFlag.Read), 1)
+    self.assertEqual(matchPermSingle(PermFlag.Write), 2)
+    self.assertEqual(matchPermSingle(PermFlag.Exec), 0)
+    self.assertEqual(matchPermFlags(PermFlag.Read), 3)
+    self.assertEqual(matchPermFlags(PermFlag.Write), 3)
+    self.assertEqual(matchPermFlags(PermFlag.Read | PermFlag.Write), 0)
 
 
 class EnumLenIterTests(TestCaseMixin):
-  _test_tag = 40
+  _testTag = 40
 
   @override
   def test(self):
-    self.assertEqual(len(Mode), 3)
-    self.assertEqual(len(Ext), 5)
-    self.assertEqual(len(Perm), 3)
-    self.assertEqual(count_modes(), 3)
-    self.assertTrue(first_mode() == Mode.OFF)
+    self.assertEqual(len(ModeEnum), 3)
+    self.assertEqual(len(ExtEnum), 5)
+    self.assertEqual(len(PermFlag), 3)
+    self.assertEqual(countModes(), 3)
+    self.assertTrue(firstMode() == ModeEnum.Off)
 
 
 class EnumIntCtorTests(TestCaseMixin):
-  _test_tag = 50
+  _testTag = 50
 
   @override
   def test(self):
-    self.assertEqual(int(Mode.ON), 1)
-    self.assertTrue(Mode(1) == Mode.ON)
-    self.assertEqual(int(Wide.LO), 1)
-    self.assertTrue(Wide(1) == Wide.LO)
+    self.assertEqual(int(ModeEnum.On), 1)
+    self.assertTrue(ModeEnum(1) == ModeEnum.On)
+    self.assertEqual(int(WideEnum.Lo), 1)
+    self.assertTrue(WideEnum(1) == WideEnum.Lo)
 
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

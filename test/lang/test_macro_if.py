@@ -3,7 +3,7 @@ from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 
-def platform_tag() -> int:
+def platformTag() -> int:
   if "_WIN32" in __macro__:
     return 1
   elif "__linux__" in __macro__:
@@ -15,11 +15,11 @@ def platform_tag() -> int:
 
 
 class MacroIfModuleTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
-    tag: int = platform_tag()
+    tag: int = platformTag()
     if "_WIN32" in __macro__:
       self.assertEqual(tag, 1)
     elif "__linux__" in __macro__:
@@ -32,6 +32,6 @@ class MacroIfModuleTests(TestCaseMixin):
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)

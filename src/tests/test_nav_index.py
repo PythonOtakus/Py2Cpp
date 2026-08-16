@@ -152,13 +152,13 @@ class Holder:
 from py2cpp import *
 
 @enum
-class AggMode:
+class AggModeEnum:
   Min = 0
   Max = 1
   Sum = 2
 """
     _out, _manifest, shard = _translate_snippet(src, name="nav_enum.py")
-    cls = next(s for s in shard["symbols"] if s["kind"] == "class" and s["name"] == "AggMode")
+    cls = next(s for s in shard["symbols"] if s["kind"] == "class" and s["name"] == "AggModeEnum")
     self.assertEqual(cls.get("role"), "enum")
     self.assertIn("decl", cls["cpp"])
     members = {
@@ -168,7 +168,7 @@ class AggMode:
     }
     self.assertEqual(set(members), {"Min", "Max", "Sum"})
     self.assertIn("decl", members["Min"]["cpp"])
-    self.assertEqual(members["Min"]["cppQual"], "AggMode::Min")
+    self.assertEqual(members["Min"]["cppQual"], "AggModeEnum::Min")
     shard["_tmp"].cleanup()
 
   def test_union_variant_prefers_factory(self):
@@ -289,14 +289,14 @@ namespace py2cpp
     header = """
 namespace py2cpp
 {
-  enum class AggMode : PyInt
+  enum class AggModeEnum : PyInt
   {
     Min = 0,
   };
 }
 """
     lines = header.splitlines()
-    node = ast.parse("class AggMode: pass").body[0]
+    node = ast.parse("class AggModeEnum: pass").body[0]
     info = ClassInfo(node, "py2cpp/alg/agg_mode")
     self.assertEqual(_class_decl_line(lines, info), 4)
 

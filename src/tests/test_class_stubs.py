@@ -16,9 +16,9 @@ _CPP_RENAME_ONLY = frozenset({
 })
 
 _CODEGEN_NATIVE_SAMPLES = {
-  "set_reverse_iterator": "PySetReverseIterator",
-  "tuple_iterator": "PyTupleIterator",
-  "stack_array_iterator": "PyStackArrayIterator",
+  "SetReverseIterator": "PySetReverseIterator",
+  "TupleIterator": "PyTupleIterator",
+  "StackArrayIterator": "PyStackArrayIterator",
 }
 
 # 抽样：原 ``CPP_RENAME`` 大表项，现由标准库类装饰器提供
@@ -66,11 +66,11 @@ class ClassStubRegistryTests(unittest.TestCase):
 
   def test_host_bound_iterator_view_cpp_bases(self):
     bases = load_host_bound_iterator_view_cpp_bases()
-    self.assertIn(cpp_ident("list_iterator"), bases)
-    self.assertIn(cpp_ident("dict_keys_view"), bases)
+    self.assertIn(cpp_ident("ListIterator"), bases)
+    self.assertIn(cpp_ident("DictKeysView"), bases)
     self.assertIn("ECSComponentTableIterator", bases)
-    self.assertNotIn(cpp_ident("str_iterator"), bases)
-    self.assertNotIn(cpp_ident("tuple_iterator"), bases)
+    self.assertNotIn(cpp_ident("StrIterator"), bases)
+    self.assertNotIn(cpp_ident("TupleIterator"), bases)
 
 
 if __name__ == "__main__":

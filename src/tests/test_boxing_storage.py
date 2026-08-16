@@ -8,25 +8,24 @@ from src.analysis.ir import ClassInfo
 class TestBoxingStorage(unittest.TestCase):
   def test_generic_template_args_become_pointer(self):
     src = '''
-from py2cpp import DictKey, Self, boxing
+from py2cpp import DictKeyType, Self, boxing
 
 @boxing
-@native_name("PyDictEntry")
-class dict_entry[Key: DictKey, Value]:
+class DictEntryUnsafe[Key: DictKeyType, Value]:
   pass
 '''
     info = ClassInfo(ast.parse(src).body[-1], module_path="py2cpp/util/dict.py")
-    classes = {"dict_entry": info}
-    t = "PyDictEntry<Key, Value>"
+    classes = {"DictEntryUnsafe": info}
+    t = "PyDictEntryUnsafe<Key, Value>"
     self.assertEqual(
       ClassInfo.apply_boxing_storage_cpp_type(t, classes),
-      "PyDictEntry<Key, Value>*",
+      "PyDictEntryUnsafe<Key, Value>*",
     )
     self.assertEqual(
       ClassInfo.apply_boxing_storage_cpp_type(
         f"PyArray<{t}>", classes,
       ),
-      "PyArray<PyDictEntry<Key, Value>*>",
+      "PyArray<PyDictEntryUnsafe<Key, Value>*>",
     )
 
 

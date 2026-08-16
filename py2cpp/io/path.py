@@ -11,52 +11,52 @@ from ..text import str
 from ..util.list import list
 from . import TextIOWrapper
 from .file import (
-  S_IFBLK,
-  S_IFCHR,
-  S_IFDIR,
-  S_IFIFO,
-  S_IFLNK,
-  S_IFREG,
-  S_IFSOCK,
+  SIfblk,
+  SIfchr,
+  SIfdir,
+  SIfifo,
+  SIflnk,
+  SIfreg,
+  SIfsock,
   chmod as fs_chmod,
-  getcwd,
+  getCwd,
   link as fs_link,
   lstat,
   rename as fs_rename,
   replace as fs_replace,
   scandir,
   stat,
-  c_stat,
+  CStat,
   symlink as fs_symlink,
-  readlink as fs_readlink,
+  readLink as fs_readlink,
   utime as fs_utime,
 )
 from .file import mkdir as fs_mkdir, remove as fs_remove, rmdir as fs_rmdir
 from .file import DirEntry
 from .file.path import (
-  abspath,
-  basename,
-  dirname,
+  absPath,
+  baseName,
+  dirName,
   exists,
-  isabs,
-  isdevdrive,
-  isdir,
-  isfile,
-  isjunction,
-  islink,
-  ismount,
-  isreserved,
+  isAbs,
+  isDevDrive,
+  isDir,
+  isFile,
+  isJunction,
+  isLink,
+  isMount,
+  isReserved,
   join,
-  normcase,
-  normpath,
-  realpath,
-  relpath,
-  samefile as path_samefile,
-  splitroot,
+  normCase,
+  normPath,
+  realPath,
+  relPath,
+  sameFile as path_samefile,
+  splitRoot,
 )
 
-_PATH_SEP: str = "\\"
-_PATH_ALT: str = "/"
+_PathSep: str = "\\"
+_PathAlt: str = "/"
 
 
 @copyable
@@ -65,16 +65,16 @@ class Path:
 
   @staticmethod
   @immutable
-  def _stem_of_name(name: str) -> str:
-    suf: str = Self._suffix_of_name(name)
+  def _stemOfName(name: str) -> str:
+    suf: str = Self._suffixOfName(name)
     if not suf:
       return name
     return name[: len(name) - len(suf)]
 
   @staticmethod
   @immutable
-  def _suffix_of_name(name: str) -> str:
-    """``PurePath.suffix``（``pathlib`` 规则，非 ``os.path.splitext``）。"""
+  def _suffixOfName(name: str) -> str:
+    """``PurePath.suffix``（``pathlib`` 规则，非 ``os.path.splitExt``）。"""
     i: int = name.rfind(".")
     if 0 < i < len(name) - 1:
       return name[i:]
@@ -82,18 +82,18 @@ class Path:
 
   @staticmethod
   @immutable
-  def _norm_pattern(pattern: str) -> str:
-    return normpath(pattern.replace(_PATH_ALT, _PATH_SEP))
+  def _normPattern(pattern: str) -> str:
+    return normPath(pattern.replace(_PathAlt, _PathSep))
 
   @staticmethod
   @immutable
-  def _tail_segments(path: str) -> list[str]:
+  def _tailSegments(path: str) -> list[str]:
     rest: str
-    *_, rest = splitroot(path)
+    *_, rest = splitRoot(path)
     if not rest:
       return []
-    norm: str = rest.replace(_PATH_ALT, _PATH_SEP)
-    raw: list[str] = norm.split(_PATH_SEP)
+    norm: str = rest.replace(_PathAlt, _PathSep)
+    raw: list[str] = norm.split(_PathSep)
     out: list[str] = []
     for part in raw:
       if part and part != ".":
@@ -102,15 +102,15 @@ class Path:
 
   @staticmethod
   @immutable
-  def _split_parts(path: str) -> (str, str, list[str]):
+  def _splitParts(path: str) -> (str, str, list[str]):
     drive: str
     root: str
-    drive, root, _ = splitroot(path)
-    return drive, root, Self._tail_segments(path)
+    drive, root, _ = splitRoot(path)
+    return drive, root, Self._tailSegments(path)
 
   @staticmethod
   @immutable
-  def _text_encoding(encoding: str) -> str:
+  def _textEncoding(encoding: str) -> str:
     """``io.text_encoding`` 子集：空串视为默认 UTF-8（无 locale 探测）。"""
     if not encoding:
       return "utf-8"
@@ -118,62 +118,62 @@ class Path:
 
   @staticmethod
   @immutable
-  def _glob_select(
+  def _globSelect(
     root: str,
     pattern: str,
-  ) -> Generator[str, None, None]:
-    pat: str = Self._norm_pattern(pattern)
-    if isabs(pat):
+  ) -> GeneratorType[str, None, None]:
+    pat: str = Self._normPattern(pattern)
+    if isAbs(pat):
       raise OSError("Non-relative patterns are unsupported")
     if not pat:
       raise ValueError("Unacceptable pattern")
-    parts: list[str] = Self._tail_segments(pat)
+    parts: list[str] = Self._tailSegments(pat)
     if not parts:
       raise ValueError("Unacceptable pattern")
-    yield from Self._glob_select_parts(root, parts, 0)
+    yield from Self._globSelectParts(root, parts, 0)
 
   @staticmethod
-  def _glob_select_dir(
+  def _globSelectDir(
     base: str,
     part: str,
     parts: list[str],
     idx: int,
-  ) -> Generator[str, None, None]:
-    if not isdir(base):
+  ) -> GeneratorType[str, None, None]:
+    if not isDir(base):
       return
     ent: DirEntry = new()
     for ent in scandir(base):
       if not ent.name.glob(part):
         continue
       child: str = join(base, ent.name)
-      yield from Self._glob_select_parts(child, parts, idx + 1)
+      yield from Self._globSelectParts(child, parts, idx + 1)
 
   @staticmethod
-  def _glob_select_parts(
+  def _globSelectParts(
     base: str,
     parts: list[str],
     idx: int,
-  ) -> Generator[str, None, None]:
+  ) -> GeneratorType[str, None, None]:
     if idx >= len(parts):
       if exists(base):
         yield base
       return
     part: str = parts[idx]
     if part == "**":
-      yield from Self._glob_select_parts(base, parts, idx + 1)
-      if not isdir(base):
+      yield from Self._globSelectParts(base, parts, idx + 1)
+      if not isDir(base):
         return
       ent: DirEntry = new()
       for ent in scandir(base):
         child: str = join(base, ent.name)
-        if isdir(child):
-          yield from Self._glob_select_parts(child, parts, idx)
+        if isDir(child):
+          yield from Self._globSelectParts(child, parts, idx)
       return
-    yield from Self._glob_select_dir(base, part, parts, idx)
+    yield from Self._globSelectDir(base, part, parts, idx)
 
   @staticmethod
   @immutable
-  def _str_to_bytes(raw: str) -> bytes:
+  def _strToBytes(raw: str) -> bytes:
     n: int = len(raw)
     if n == 0:
       empty: bytes = b""
@@ -185,7 +185,7 @@ class Path:
 
   @staticmethod
   @immutable
-  def _bytes_to_write_buf(data: bytes) -> char[:]:
+  def _bytesToWriteBuf(data: bytes) -> char[:]:
     n: int = len(data)
     buf: char[:] = new(n)
     for i in range(n):
@@ -194,27 +194,27 @@ class Path:
 
   @staticmethod
   @immutable
-  def _mode_is(st: c_stat, kind: int) -> bool:
-    return (st.st_mode & 0xF000) == kind
+  def _modeIs(st: CStat, kind: int) -> bool:
+    return (st.stMode & 0xF000) == kind
 
   @staticmethod
   @immutable
   def cwd() -> Self:
-    return new(getcwd())
+    return new(getCwd())
 
   @staticmethod
   @immutable
   def home() -> Self:
-    return new(environ.expanduser("~"))
+    return new(environ.expandUser("~"))
 
   @staticmethod
   @immutable
-  def from_uri(uri: str) -> Self:
+  def fromUri(uri: str) -> Self:
     """``file:`` URI → ``Path``（子集：``file:///`` / ``file://host/``）。"""
-    if not uri.startswith("file:"):
+    if not uri.startsWith("file:"):
       raise ValueError("URI does not start with 'file:'")
     rest: str = uri[5:]
-    if rest.startswith("//"):
+    if rest.startsWith("//"):
       slash: int = rest.find("/", 2)
       if slash < 0:
         raise ValueError("Invalid file URI")
@@ -222,10 +222,10 @@ class Path:
     rest = rest.lstrip("/")
     if not rest:
       return new("/")
-    return new(rest.replace("/", _PATH_SEP))
+    return new(rest.replace("/", _PathSep))
 
   def __init__(self, path: str = ""):
-    self._path: str = normpath(path)
+    self._path: str = normPath(path)
 
   @immutable
   def __str__(self) -> str:
@@ -247,14 +247,14 @@ class Path:
   @immutable
   def drive(self) -> str:
     d: str
-    d, *_ = Self._split_parts(self._path)
+    d, *_ = Self._splitParts(self._path)
     return d
 
   @property
   @immutable
   def root(self) -> str:
     r: str
-    _, r, _ = Self._split_parts(self._path)
+    _, r, _ = Self._splitParts(self._path)
     return r
 
   @property
@@ -265,12 +265,12 @@ class Path:
   @property
   @immutable
   def name(self) -> str:
-    return basename(self._path)
+    return baseName(self._path)
 
   @property
   @immutable
   def parent(self) -> Self:
-    return new(dirname(self._path))
+    return new(dirName(self._path))
 
   @property
   @immutable
@@ -291,7 +291,7 @@ class Path:
     d: str
     r: str
     tail: list[str]
-    d, r, tail = Self._split_parts(self._path)
+    d, r, tail = Self._splitParts(self._path)
     if d or r:
       head: list[str] = []
       head.append(d + r)
@@ -303,21 +303,21 @@ class Path:
   @property
   @immutable
   def stem(self) -> str:
-    return Self._stem_of_name(basename(self._path))
+    return Self._stemOfName(baseName(self._path))
 
   @property
   @immutable
   def suffix(self) -> str:
-    return Self._suffix_of_name(basename(self._path))
+    return Self._suffixOfName(baseName(self._path))
 
   @property
   @immutable
   def suffixes(self) -> list[str]:
     name: str = self.name
-    if name.endswith("."):
+    if name.endsWith("."):
       return []
     trimmed: str = name
-    while trimmed.startswith("."):
+    while trimmed.startsWith("."):
       trimmed = trimmed[1:]
     chunks: list[str] = trimmed.split(".")
     if len(chunks) <= 1:
@@ -340,25 +340,25 @@ class Path:
     return self._path
 
   @immutable
-  def as_posix(self) -> str:
+  def asPosix(self) -> str:
     return self._path.replace("\\", "/")
 
   @immutable
-  def as_uri(self) -> str:
-    abs_p: Self = self.absolute()
-    posix: str = abs_p.as_posix()
+  def asUri(self) -> str:
+    absP: Self = self.absolute()
+    posix: str = absP.asPosix()
     if not posix:
       return "file:///"
-    if posix.startswith("//"):
+    if posix.startsWith("//"):
       return "file:" + posix
     return "file:///" + posix
 
   @immutable
-  def is_absolute(self) -> bool:
-    return isabs(self._path)
+  def isAbsolute(self) -> bool:
+    return isAbs(self._path)
 
   @immutable
-  def is_relative_to(self, other: str) -> bool:
+  def isRelativeTo(self, other: str) -> bool:
     op: Self = new(other)
     if op == self:
       return True
@@ -373,51 +373,51 @@ class Path:
     return False
 
   @immutable
-  def is_reserved(self) -> bool:
-    return isreserved(self._path)
+  def isReserved(self) -> bool:
+    return isReserved(self._path)
 
   @immutable
-  def match(self, path_pattern: str) -> bool:
-    pat: str = Self._norm_pattern(path_pattern)
-    pat_parts: list[str] = Self._tail_segments(pat)
-    if not pat_parts:
+  def match(self, pathPattern: str) -> bool:
+    pat: str = Self._normPattern(pathPattern)
+    patParts: list[str] = Self._tailSegments(pat)
+    if not patParts:
       raise ValueError("empty pattern")
-    path_parts: list[str] = Self._tail_segments(self._path)
-    if len(path_parts) < len(pat_parts):
+    pathParts: list[str] = Self._tailSegments(self._path)
+    if len(pathParts) < len(patParts):
       return False
-    if len(path_parts) > len(pat_parts) and isabs(pat):
+    if len(pathParts) > len(patParts) and isAbs(pat):
       return False
-    start: int = len(path_parts) - len(pat_parts)
-    for i in range(len(pat_parts)):
-      if not path_parts[start + i].glob(pat_parts[i]):
+    start: int = len(pathParts) - len(patParts)
+    for i in range(len(patParts)):
+      if not pathParts[start + i].glob(patParts[i]):
         return False
     return True
 
   @immutable
-  def full_match(self, pattern: str) -> bool:
-    pat: str = Self._norm_pattern(pattern)
-    if isabs(pat):
-      return normcase(self._path) == normcase(pat) or self._path.glob(pat)
+  def fullMatch(self, pattern: str) -> bool:
+    pat: str = Self._normPattern(pattern)
+    if isAbs(pat):
+      return normCase(self._path) == normCase(pat) or self._path.glob(pat)
     full: str = self._path
     if pat.find("**") >= 0:
       hit: str = ""
-      for hit in Self._glob_select(dirname(full) if dirname(full) else ".", pat):
-        if normcase(hit) == normcase(full):
+      for hit in Self._globSelect(dirName(full) if dirName(full) else ".", pat):
+        if normCase(hit) == normCase(full):
           return True
       return False
     return full.glob(pat)
 
   @immutable
-  def relative_to(self, other: str, walk_up: bool = False) -> Self:
-    if walk_up:
-      raise ValueError("walk_up is not supported")
+  def relativeTo(self, other: str, walkUp: bool = False) -> Self:
+    if walkUp:
+      raise ValueError("walkUp is not supported")
     op: Self = new(other)
-    if not self.is_relative_to(other):
+    if not self.isRelativeTo(other):
       raise ValueError("path is not relative to base")
-    return new(relpath(self._path, str(op)))
+    return new(relPath(self._path, str(op)))
 
   @immutable
-  def with_segments(self, *segments: str[:]) -> Self:
+  def withSegments(self, *segments: str[:]) -> Self:
     if not segments:
       return new(self._path)
     out: str = ""
@@ -430,7 +430,7 @@ class Path:
     return new(out)
 
   @immutable
-  def joinpath(self, *parts: str[:]) -> Self:
+  def joinPath(self, *parts: str[:]) -> Self:
     out: str = self._path
     part: str = ""
     for part in parts:
@@ -438,101 +438,101 @@ class Path:
     return new(out)
 
   @immutable
-  def with_name(self, name: str) -> Self:
-    return new(join(dirname(self._path), name))
+  def withName(self, name: str) -> Self:
+    return new(join(dirName(self._path), name))
 
   @immutable
-  def with_stem(self, stem: str) -> Self:
-    base: str = basename(self._path)
-    return new(join(dirname(self._path), stem + Self._suffix_of_name(base)))
+  def withStem(self, stem: str) -> Self:
+    base: str = baseName(self._path)
+    return new(join(dirName(self._path), stem + Self._suffixOfName(base)))
 
   @immutable
-  def with_suffix(self, suffix: str) -> Self:
+  def withSuffix(self, suffix: str) -> Self:
     """返回新 ``Path``；``suffix`` 须以 ``.`` 开头（对齐 CPython）。"""
-    if not suffix or not suffix.startswith("."):
+    if not suffix or not suffix.startsWith("."):
       raise ValueError("Invalid suffix")
-    base: str = basename(self._path)
-    root: str = Self._stem_of_name(base)
-    return new(join(dirname(self._path), root + suffix))
+    base: str = baseName(self._path)
+    root: str = Self._stemOfName(base)
+    return new(join(dirName(self._path), root + suffix))
 
   @immutable
   def absolute(self) -> Self:
-    if self.is_absolute():
+    if self.isAbsolute():
       return new(self._path)
     if not self._path:
-      return new(abspath("."))
-    return new(abspath(self._path))
+      return new(absPath("."))
+    return new(absPath(self._path))
 
   @immutable
   def resolve(self, strict: bool = False) -> Self:
     _ = strict
     base: str = self._path
-    if not isabs(base):
-      base = abspath(base)
-    return new(realpath(base))
+    if not isAbs(base):
+      base = absPath(base)
+    return new(realPath(base))
 
   @immutable
-  def expanduser(self) -> Self:
-    return new(environ.expanduser(self._path))
+  def expandUser(self) -> Self:
+    return new(environ.expandUser(self._path))
 
   @immutable
   def exists(self) -> bool:
     return exists(self._path)
 
   @immutable
-  def is_dir(self) -> bool:
-    return isdir(self._path)
+  def isDir(self) -> bool:
+    return isDir(self._path)
 
   @immutable
-  def is_file(self) -> bool:
-    return isfile(self._path)
+  def isFile(self) -> bool:
+    return isFile(self._path)
 
   @immutable
-  def is_symlink(self) -> bool:
-    return islink(self._path)
+  def isSymlink(self) -> bool:
+    return isLink(self._path)
 
   @immutable
-  def is_junction(self) -> bool:
-    return isjunction(self._path)
+  def isJunction(self) -> bool:
+    return isJunction(self._path)
 
   @immutable
-  def is_mount(self) -> bool:
-    return ismount(self._path)
+  def isMount(self) -> bool:
+    return isMount(self._path)
 
   @immutable
-  def is_block_device(self) -> bool:
+  def isBlockDevice(self) -> bool:
     if not self.exists():
       return False
-    return Self._mode_is(self.stat(), S_IFBLK)
+    return Self._modeIs(self.stat(), SIfblk)
 
   @immutable
-  def is_char_device(self) -> bool:
+  def isCharDevice(self) -> bool:
     if not self.exists():
       return False
-    return Self._mode_is(self.stat(), S_IFCHR)
+    return Self._modeIs(self.stat(), SIfchr)
 
   @immutable
-  def is_fifo(self) -> bool:
+  def isFifo(self) -> bool:
     if not self.exists():
       return False
-    return Self._mode_is(self.stat(), S_IFIFO)
+    return Self._modeIs(self.stat(), SIfifo)
 
   @immutable
-  def is_socket(self) -> bool:
+  def isSocket(self) -> bool:
     if not self.exists():
       return False
-    return Self._mode_is(self.stat(), S_IFSOCK)
+    return Self._modeIs(self.stat(), SIfsock)
 
   @immutable
-  def stat(self) -> c_stat:
+  def stat(self) -> CStat:
     return stat(self._path)
 
   @immutable
-  def lstat(self) -> c_stat:
+  def lstat(self) -> CStat:
     return lstat(self._path)
 
   @immutable
-  def samefile(self, other: str) -> bool:
+  def sameFile(self, other: str) -> bool:
     return path_samefile(self._path, str(Self(other)))
 
   @immutable
@@ -543,70 +543,70 @@ class Path:
   def group(self) -> str:
     raise OSError()
 
-  def iterdir(self) -> Generator[Self, None, None]:
-    if not self.is_dir():
+  def iterDir(self) -> GeneratorType[Self, None, None]:
+    if not self.isDir():
       raise FileNotFoundError()
     ent: DirEntry = new()
     for ent in scandir(self._path):
       child: Self = new(join(self._path, ent.name))
       yield child
 
-  def glob(self, pattern: str) -> Generator[Self, None, None]:
+  def glob(self, pattern: str) -> GeneratorType[Self, None, None]:
     hit: str = ""
-    for hit in Self._glob_select(self._path, pattern):
+    for hit in Self._globSelect(self._path, pattern):
       child: Self = new(hit)
       yield child
 
-  def rglob(self, pattern: str) -> Generator[Self, None, None]:
+  def rglob(self, pattern: str) -> GeneratorType[Self, None, None]:
     if not pattern:
       raise ValueError("Unacceptable pattern")
     hit: str = ""
-    for hit in Self._glob_select(self._path, "**" + _PATH_SEP + pattern):
+    for hit in Self._globSelect(self._path, "**" + _PathSep + pattern):
       child: Self = new(hit)
       yield child
 
   @staticmethod
-  def _walk_step(root: str, dirs: list[str], files: list[str]) -> WalkStep:
-    return new(root_str=root, dirs=dirs, files=files)
+  def _walkStep(root: str, dirs: list[str], files: list[str]) -> WalkStep:
+    return new(rootStr=root, dirs=dirs, files=files)
 
   def walk(
     self,
-    top_down: bool = True,
-    on_error: bool = False,
-    follow_symlinks: bool = False,
-  ) -> Generator[WalkStep, None, None]:
+    topDown: bool = True,
+    onError: bool = False,
+    followSymlinks: bool = False,
+  ) -> GeneratorType[WalkStep, None, None]:
     """目录树遍历（语义对齐 ``os.walk`` / ``pathlib.Path.walk``）。"""
-    _ = on_error
+    _ = onError
     stack: list[str] = []
     stack.append(self._path)
     while stack:
       current: str = stack.pop()
       dirs: list[str] = []
-      nondirs: list[str] = []
+      nonDirs: list[str] = []
       ent: DirEntry = new()
       for ent in scandir(current):
-        if ent.is_dir():
-          if not follow_symlinks or not ent.is_symlink():
+        if ent.isDir():
+          if not followSymlinks or not ent.isSymlink():
             dirs.append(ent.name)
           else:
-            nondirs.append(ent.name)
+            nonDirs.append(ent.name)
         else:
-          nondirs.append(ent.name)
-      if top_down:
-        yield Self._walk_step(current, dirs, nondirs)
+          nonDirs.append(ent.name)
+      if topDown:
+        yield Self._walkStep(current, dirs, nonDirs)
       idx: int = 0
       for idx in range(len(dirs) - 1, -1, -1):
         stack.append(join(current, dirs[idx]))
-      if not top_down:
-        yield Self._walk_step(current, dirs, nondirs)
+      if not topDown:
+        yield Self._walkStep(current, dirs, nonDirs)
 
   def mkdir(
-    self, mode: int = 0o777, parents: bool = False, exist_ok: bool = False
+    self, mode: int = 0o777, parents: bool = False, existOk: bool = False
   ) -> None:
     """创建目录（对齐 CPython 3.13 ``Path.mkdir``；无 ``try``/``except``，显式检测）。"""
     if self.exists():
-      if self.is_dir():
-        if exist_ok:
+      if self.isDir():
+        if existOk:
           return
         raise FileExistsError()
       raise FileExistsError()
@@ -619,8 +619,8 @@ class Path:
       par.mkdir(mode, True, True)
     fs_mkdir(self._path, mode)
 
-  def chmod(self, mode: int, follow_symlinks: bool = True) -> None:
-    if follow_symlinks:
+  def chmod(self, mode: int, followSymlinks: bool = True) -> None:
+    if followSymlinks:
       fs_chmod(self._path, mode)
     else:
       self.lchmod(mode)
@@ -628,9 +628,9 @@ class Path:
   def lchmod(self, mode: int) -> None:
     fs_chmod(self._path, mode)
 
-  def touch(self, mode: int = 0o666, exist_ok: bool = True) -> None:
+  def touch(self, mode: int = 0o666, existOk: bool = True) -> None:
     if not self.exists():
-      if not exist_ok:
+      if not existOk:
         raise FileNotFoundError()
       f: TextIOWrapper = new(self._path, "wb")
       f.close()
@@ -649,27 +649,27 @@ class Path:
     _ = buffering
     _ = errors
     _ = newline
-    _ = Self._text_encoding(encoding)
+    _ = Self._textEncoding(encoding)
     return new(self._path, mode)
 
-  def read_text(
+  def readText(
     self, encoding: str = "", errors: str = "", newline: str = ""
   ) -> str:
     _ = errors
     _ = newline
-    _ = Self._text_encoding(encoding)
+    _ = Self._textEncoding(encoding)
     f: TextIOWrapper = new(self._path, "r")
     data: str = f.read()
     f.close()
     return data
 
-  def read_bytes(self) -> bytes:
+  def readBytes(self) -> bytes:
     f: TextIOWrapper = new(self._path, "rb")
     data: str = f.read()
     f.close()
-    return Self._str_to_bytes(data)
+    return Self._strToBytes(data)
 
-  def write_text(
+  def writeText(
     self,
     data: str,
     encoding: str = "",
@@ -678,15 +678,15 @@ class Path:
   ) -> int:
     _ = errors
     _ = newline
-    _ = Self._text_encoding(encoding)
+    _ = Self._textEncoding(encoding)
     f: TextIOWrapper = new(self._path, "w")
     n: int = f.write(data)
     f.close()
     return n
 
-  def write_bytes(self, data: bytes) -> int:
+  def writeBytes(self, data: bytes) -> int:
     f: TextIOWrapper = new(self._path, "wb")
-    buf: char[:] = Self._bytes_to_write_buf(data)
+    buf: char[:] = Self._bytesToWriteBuf(data)
     n: int = f.write(buf, len(data))
     f.close()
     return n
@@ -694,13 +694,13 @@ class Path:
   def rmdir(self) -> None:
     fs_rmdir(self._path)
 
-  def unlink(self, missing_ok: bool = False) -> None:
+  def unlink(self, missingOk: bool = False) -> None:
     """删除文件（对齐 ``pathlib.Path.unlink`` → ``os.unlink``）。"""
     if not self.exists():
-      if missing_ok:
+      if missingOk:
         return
       raise FileNotFoundError()
-    if self.is_dir():
+    if self.isDir():
       raise OSError()
     fs_remove(self._path)
 
@@ -712,14 +712,14 @@ class Path:
     fs_replace(self._path, str(target))
     return new(str(target))
 
-  def readlink(self) -> Self:
+  def readLink(self) -> Self:
     return new(fs_readlink(self._path))
 
-  def symlink_to(self, target: str, target_is_directory: bool = False) -> None:
-    _ = target_is_directory
+  def symlinkTo(self, target: str, targetIsDirectory: bool = False) -> None:
+    _ = targetIsDirectory
     fs_symlink(target, self._path)
 
-  def hardlink_to(self, target: str) -> None:
+  def hardlinkTo(self, target: str) -> None:
     fs_link(target, self._path)
 
 
@@ -727,11 +727,11 @@ class Path:
 class WalkStep:
   """``Path.walk`` 单步（``root`` 为 ``Path``；``dirs``/``files`` 为相对名，对齐 CPython 3.13）。"""
 
-  root_str: str = ""
+  rootStr: str = ""
   dirs: list[str] = []
   files: list[str] = []
 
   @property
   @immutable
   def root(self) -> Path:
-    return new(self.root_str)
+    return new(self.rootStr)

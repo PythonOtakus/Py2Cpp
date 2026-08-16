@@ -4,14 +4,14 @@ from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 from py2cpp.serde.base64 import (
   b64decode,
   b64encode,
-  encodebytes,
-  urlsafe_b64decode,
-  urlsafe_b64encode,
+  encodeBytes,
+  urlsafeB64decode,
+  urlsafeB64encode,
 )
 
 
 class B64EncodeTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
@@ -24,7 +24,7 @@ class B64EncodeTests(TestCaseMixin):
 
 
 class B64DecodeTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
@@ -36,24 +36,24 @@ class B64DecodeTests(TestCaseMixin):
 
 
 class UrlSafeTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
     raw: bytes = b"\xfb\xef\xbe"
-    enc: bytes = urlsafe_b64encode(raw)
+    enc: bytes = urlsafeB64encode(raw)
     self.assertEqual(enc, b"----")
-    self.assertEqual(urlsafe_b64decode(enc), raw)
-    self.assertEqual(urlsafe_b64decode("----"), raw)
+    self.assertEqual(urlsafeB64decode(enc), raw)
+    self.assertEqual(urlsafeB64decode("----"), raw)
 
 
 class EncodeBytesTests(TestCaseMixin):
-  _test_tag = 30
+  _testTag = 30
 
   @override
   def test(self):
     payload: bytes = b"x" * 57 + b"y"
-    wrapped: bytes = encodebytes(payload)
+    wrapped: bytes = encodeBytes(payload)
     self.assertEqual(b64decode(wrapped), payload)
 
 

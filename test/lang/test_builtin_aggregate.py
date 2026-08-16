@@ -9,7 +9,7 @@ def _neg(v: int) -> int:
 
 
 class BuiltinMinMaxTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
@@ -30,7 +30,7 @@ class BuiltinMinMaxTests(TestCaseMixin):
 
 
 class BuiltinSumTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
@@ -46,7 +46,7 @@ class BuiltinSumTests(TestCaseMixin):
 
 
 class BuiltinGenExpTests(TestCaseMixin):
-  _test_tag = 40
+  _testTag = 40
 
   @override
   def test(self):
@@ -63,7 +63,7 @@ class BuiltinGenExpTests(TestCaseMixin):
 
 
 class BuiltinAnyAllTests(TestCaseMixin):
-  _test_tag = 30
+  _testTag = 30
 
   @override
   def test(self):
@@ -71,20 +71,20 @@ class BuiltinAnyAllTests(TestCaseMixin):
     self.assertTrue(any(mix))
     zeros: list[int] = [0, 0]
     self.assertFalse(any(zeros))
-    all_pos: list[int] = [1, 2, 3]
-    self.assertTrue(all(all_pos))
-    has_zero: list[int] = [1, 0, 3]
-    self.assertFalse(all(has_zero))
-    none_left: list[int] = []
-    self.assertFalse(any(none_left))
-    self.assertTrue(all(none_left))
+    allPos: list[int] = [1, 2, 3]
+    self.assertTrue(all(allPos))
+    hasZero: list[int] = [1, 0, 3]
+    self.assertFalse(all(hasZero))
+    noneLeft: list[int] = []
+    self.assertFalse(any(noneLeft))
+    self.assertTrue(all(noneLeft))
     self.assertTrue(any(range(1, 3)))
     self.assertFalse(all(range(2)))
 
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

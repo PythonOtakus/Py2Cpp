@@ -32,7 +32,7 @@ class ReplaceIfBadVar:
       self.__value__ = self._bad
 
 
-def clamped_id(x: int @ClampedIntVar(0, 100)) -> int @ClampedIntVar(0, 100):
+def clampedId(x: int @ClampedIntVar(0, 100)) -> int @ClampedIntVar(0, 100):
   return x + 1
 
 
@@ -51,25 +51,25 @@ class Service:
 
 
 class FuncDescriptorParamTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
-    self.assertEqual(clamped_id(10), 11)
-    self.assertEqual(clamped_id(50), 51)
+    self.assertEqual(clampedId(10), 11)
+    self.assertEqual(clampedId(50), 51)
 
 
 class FuncDescriptorReturnValidateTests(TestCaseMixin):
-  _test_tag = 2
+  _testTag = 2
 
   @override
   def test(self):
     # 返回路径同样走 ClampedIntVar(0,100)；越界在译器单测中断言 throw
-    self.assertEqual(clamped_id(99), 100)
+    self.assertEqual(clampedId(99), 100)
 
 
 class FuncDescriptorStaticTests(TestCaseMixin):
-  _test_tag = 3
+  _testTag = 3
 
   @override
   def test(self):
@@ -77,7 +77,7 @@ class FuncDescriptorStaticTests(TestCaseMixin):
 
 
 class FuncDescriptorReplaceTests(TestCaseMixin):
-  _test_tag = 4
+  _testTag = 4
 
   @override
   def test(self):
@@ -90,6 +90,6 @@ class FuncDescriptorReplaceTests(TestCaseMixin):
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)

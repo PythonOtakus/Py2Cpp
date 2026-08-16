@@ -85,10 +85,10 @@ class Host:
   def test_generic_descriptor_substitutes_value_type(self):
     src = """
 from py2cpp import descriptor
-from py2cpp.util.protocols import Comparable
+from py2cpp.util.protocols import ComparableType
 
 @descriptor
-class RangeVar[T: Comparable]:
+class RangeVar[T: ComparableType]:
   def __init__(self, lo: T, hi: T):
     self._lo = lo
     self._hi = hi
@@ -114,7 +114,7 @@ class Host:
     value_arg = [a for a in setter.args.args if a.arg != "self"][0]
     self.assertIsInstance(value_arg.annotation, ast.Name)
     self.assertEqual(value_arg.annotation.id, "int")
-    self.assertEqual(host.properties["level"].descriptor_protocol_bounds, ("Comparable",))
+    self.assertEqual(host.properties["level"].descriptor_protocol_bounds, ("ComparableType",))
 
 
 if __name__ == "__main__":

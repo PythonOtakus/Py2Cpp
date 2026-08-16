@@ -8,7 +8,7 @@ class BadMixin:
   def leak(self, cond: bool) -> Self:
     if cond:
       vs: VarStack = new()
-      for f in Self.iter_fields(public_only=True):
+      for f in Self.iterFields(publicOnly=True):
         vs.push(getattr(self, f))
     return new(*vs)
 

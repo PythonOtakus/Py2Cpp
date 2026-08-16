@@ -65,7 +65,7 @@ def _storage_needs_cpp_bridge(
       return True
     if isinstance(node.value, ast.Name):
       name = node.value.id
-      if name in ("WeakRef", "RefCount", "Generator", "Coroutine", "AsyncGenerator"):
+      if name in ("WeakRef", "RefCount", "GeneratorType", "CoroutineType", "AsyncGeneratorType"):
         return True
       if name in parser._type_aliases:
         ali = parser._type_aliases[name]

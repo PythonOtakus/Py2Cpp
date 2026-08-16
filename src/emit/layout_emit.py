@@ -116,9 +116,9 @@ def _strip_leading_protocol_traits_preamble(lines: list[str]) -> list[str]:
 
 
 def _split_core_protocol_traits_for_traits_header(lines: list[str]) -> tuple[list[str], list[str]]:
-  """``StringFormat`` 探测 ``PyStr``，留 ``core/protocols.h`` 避免 ``protocol_traits.h`` MSVC ICE。"""
+  """``StringFormatType`` 探测 ``PyStr``，留 ``core/protocols.h`` 避免 ``protocol_traits.h`` MSVC ICE。"""
   for i, line in enumerate(lines):
-    if line.startswith("/* @protocol StringFormat"):
+    if line.startswith("/* @protocol StringFormatType"):
       return lines[:i], lines[i:]
   return lines, []
 
@@ -368,7 +368,12 @@ def write_per_module_headers(tr: Translator) -> None:
       "",
     ]
     # UI 等可能先于万能头 io-late ``#undef`` 拉入本头；在头内再清一轮 Win 宏（如 ``stat``）
-    if module_path in ("py2cpp/io/path", "py2cpp/io/file/path", "py2cpp/io/file"):
+    if module_path in (
+      "py2cpp/io/path",
+      "py2cpp/io/file/path",
+      "py2cpp/io/file",
+      "py2cpp/console",
+    ):
       from ..constant.stdlib_modules import UMBRELLA_MSVC_UNDEF_MACROS
 
       content.append("#ifdef _MSC_VER")

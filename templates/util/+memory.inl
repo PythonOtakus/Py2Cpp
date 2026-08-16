@@ -8,7 +8,7 @@ PY2CPP_END
 
 PY2CPP_BEGIN_SCOPE
 
-void copy_buf(PyChar* dst, PyChar* src, PyInt n) {
+void copyBuf(PyChar* dst, PyChar* src, PyInt n) {
   if ((n <= 0) || (dst == nullptr) || (src == nullptr)) {
     return;
   }
@@ -18,7 +18,7 @@ void copy_buf(PyChar* dst, PyChar* src, PyInt n) {
       static_cast<size_t>(n) * sizeof(PyChar));
 }
 
-PyUInt64 load_u64_le(PyChar* p, PyInt off) {
+PyUInt64 loadU64Le(PyChar* p, PyInt off) {
   if (p == nullptr) {
     return (PyUInt64)0;
   }
@@ -29,7 +29,7 @@ PyUInt64 load_u64_le(PyChar* p, PyInt off) {
   return v;
 }
 
-PyUInt64 load_u64_le_bytes(PyByte* p, PyInt off) {
+PyUInt64 loadU64LeBytes(PyByte* p, PyInt off) {
   if (p == nullptr) {
     return (PyUInt64)0;
   }

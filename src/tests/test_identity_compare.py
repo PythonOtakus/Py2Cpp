@@ -76,12 +76,12 @@ def check(x: int) -> bool:
 from py2cpp import new, Self, boxing
 
 @boxing
-class Node:
+class NodeUnsafe:
   prev: Self
   def __init__(self):
     self.prev = None
 
-def has_prev(n: Node) -> bool:
+def has_prev(n: NodeUnsafe) -> bool:
   return n.prev is not None
 """
     with tempfile.TemporaryDirectory() as tmp:

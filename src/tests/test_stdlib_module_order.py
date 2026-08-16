@@ -39,17 +39,15 @@ class StdlibModuleOrderTests(unittest.TestCase):
     self.assertLess(ordered.index("util/list"), ordered.index("util/pool"))
     self.assertLess(ordered.index("util/stack_array"), ordered.index("util/pool"))
 
-  def test_navigate_after_protocols_in_alg_tier(self):
+  def test_package_root_after_children(self):
+    mods = ("console", "console/exceptions", "console/render", "console/task")
     ma = {
-      stdlib_module_path("alg/navigate"): ModuleAnalysis(
-        path=stdlib_module_path("alg/navigate"),
-        includes=[stdlib_header_include("alg/protocols")],
+      stdlib_module_path("console"): ModuleAnalysis(
+        path=stdlib_module_path("console"),
+        includes=[],
       ),
     }
-    mods = ("alg/navigate", "alg/protocols", "alg/mono_queue")
     ordered = order_stdlib_modules_by_header_deps(mods, ma)
-    self.assertLess(ordered.index("alg/protocols"), ordered.index("alg/navigate"))
-
-
-if __name__ == "__main__":
-  unittest.main()
+    self.assertLess(ordered.index("console/exceptions"), ordered.index("console"))
+    self.assertLess(ordered.index("console/render"), ordered.index("console"))
+    self.assertLess(ordered.index("console/task"), ordered.index("console"))

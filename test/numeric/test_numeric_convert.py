@@ -7,7 +7,7 @@ type Int = ModInt[int, 1000000007]
 
 
 class VarIntConvertTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
@@ -20,7 +20,7 @@ class VarIntConvertTests(TestCaseMixin):
 
 
 class ModIntConvertTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
@@ -31,7 +31,7 @@ class ModIntConvertTests(TestCaseMixin):
 
 
 class ComplexConvertTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
@@ -43,13 +43,13 @@ class ComplexConvertTests(TestCaseMixin):
     self.assertEqual(complex().imag, 0)
     self.assertEqual(complex(2, -1).real, 2)
     self.assertEqual(complex(2, -1).imag, -1)
-    real_only: complex = 7 + 0j
-    self.assertEqual(float(real_only), 7.0)
-    self.assertEqual(int(real_only), 7)
+    realOnly: complex = 7 + 0j
+    self.assertEqual(float(realOnly), 7.0)
+    self.assertEqual(int(realOnly), 7)
 
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)

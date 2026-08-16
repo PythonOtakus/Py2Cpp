@@ -10,7 +10,7 @@
 | ``trie.clear()`` | 清空 |
 | ``trie.update(words)`` / ``trie.update(other)`` | 批量并入（类似 ``set.update``） |
 | ``word in trie`` | 是否插入过完整词（``__contains__``） |
-| ``trie.startswith(prefix)`` | 以 ``prefix`` 为前缀的已插入串个数 |
+| ``trie.startsWith(prefix)`` | 以 ``prefix`` 为前缀的已插入串个数 |
 | ``len(trie)`` / ``bool(trie)`` | 已插入串总数（含重复 ``add``） |
 """
 from ..builtins import *
@@ -28,10 +28,10 @@ class Trie(ContainerMixin):
     self._pass: list[int] = []
     self._end: list[int] = []
     self._count: int = 0
-    self._new_node()
+    self._newNode()
 
   def __copy__(self, other: Self):
-    self._ensure_active()
+    self._ensureActive()
     if other.__moved__:
       raise ValueError("move from moved container")
     nxt: list[dict[char, int]] = []
@@ -50,7 +50,7 @@ class Trie(ContainerMixin):
       self._end.append(other._end[i])
 
   def __move__(self, other: Self):
-    self._ensure_active()
+    self._ensureActive()
     if other.__moved__:
       raise ValueError("move from moved container")
     self._next = other._next
@@ -64,16 +64,16 @@ class Trie(ContainerMixin):
     other._pass = pas
     other._end = end
     other._count = 0
-    other._new_node()
+    other._newNode()
 
   @immutable
   def copy(self) -> Self:
-    self._ensure_active()
+    self._ensureActive()
     out: Self = new()
     out.__copy__(self)
     return out
 
-  def _new_node(self) -> int:
+  def _newNode(self) -> int:
     child: dict[char, int] = {}
     self._next.append(child)
     self._pass.append(0)
@@ -86,7 +86,7 @@ class Trie(ContainerMixin):
       self._pass[u] += 1
       c: char = word[i]
       if c not in self._next[u]:
-        self._next[u][c] = self._new_node()
+        self._next[u][c] = self._newNode()
       u = self._next[u][c]
     self._pass[u] += 1
     self._end[u] += 1
@@ -135,21 +135,21 @@ class Trie(ContainerMixin):
     self._pass = []
     self._end = []
     self._count = 0
-    self._new_node()
+    self._newNode()
 
-  def _merge_from(self, src: Self, u: int, prefix: str) -> None:
+  def _mergeFrom(self, src: Self, u: int, prefix: str) -> None:
     if src._end[u] > 0:
       for j in range(src._end[u]):
         self.add(prefix)
     for c in src._next[u]:
       child: str = prefix + c
-      self._merge_from(src, src._next[u][c], child)
+      self._mergeFrom(src, src._next[u][c], child)
 
   @overload
   def update(self, other: Self) -> None:
     if other.__moved__:
       raise ValueError("move from moved container")
-    self._merge_from(other, 0, "")
+    self._mergeFrom(other, 0, "")
 
   @overload
   def update(self, words: list[str]) -> None:
@@ -167,7 +167,7 @@ class Trie(ContainerMixin):
     return self._end[u] > 0
 
   @immutable
-  def startswith(self, prefix: str) -> int:
+  def startsWith(self, prefix: str) -> int:
     u: int = 0
     for i in range(len(prefix)):
       c: char = prefix[i]

@@ -8,10 +8,10 @@ class Box:
   x: int = 0
 
 
-def call_missing(box) -> int:
+def callMissing(box) -> int:
   return box.bump()
 
 
 def main() -> int:
   b: Box = new()
-  return call_missing(b)
+  return callMissing(b)

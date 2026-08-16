@@ -3,15 +3,13 @@ from ..builtins import *
 from ..core.exceptions import IndexError
 
 
-@native_name("PyTupleIterator")
-class tuple_iterator[*Args]:
+class TupleIterator[*Args]:
   """C++ 迭代器类型名；``for x in t`` 在常量下标路径上内联， seldom 显式构造。"""
 
   pass
 
 
 @native
-@native_name("PyTuple")
 class tuple[*Args]:
   """元素由 PyTuple<T...>(a, b, ...) 构造；下标 t[i] 在编译期常量 i 时映射为 get<i>()。"""
 

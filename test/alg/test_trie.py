@@ -6,7 +6,7 @@ from py2cpp.alg.trie import Trie
 
 
 class TriePrefixTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
@@ -17,28 +17,28 @@ class TriePrefixTests(TestCaseMixin):
     self.assertTrue("ab" in t)
     self.assertTrue("abc" in t)
     self.assertFalse("a" in t)
-    self.assertTrue(t.startswith("ab") == 2)
-    self.assertTrue(t.startswith("b") == 1)
-    self.assertTrue(t.startswith("z") == 0)
+    self.assertTrue(t.startsWith("ab") == 2)
+    self.assertTrue(t.startsWith("b") == 1)
+    self.assertTrue(t.startsWith("z") == 0)
     self.assertTrue(len(t) == 3)
     self.assertTrue(bool(t))
 
 
 class TrieSingleTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
     t: Trie = new()
     t.add("x")
     self.assertTrue("x" in t)
-    self.assertTrue(t.startswith("") == 1)
+    self.assertTrue(t.startsWith("") == 1)
     self.assertFalse("xy" in t)
     self.assertTrue(len(t) == 1)
 
 
 class TrieUpdateListTests(TestCaseMixin):
-  _test_tag = 30
+  _testTag = 30
 
   @override
   def test(self):
@@ -47,12 +47,12 @@ class TrieUpdateListTests(TestCaseMixin):
     t.update(words)
     self.assertTrue("ab" in t)
     self.assertTrue("bc" in t)
-    self.assertTrue(t.startswith("a") == 1)
+    self.assertTrue(t.startsWith("a") == 1)
     self.assertTrue(len(t) == 2)
 
 
 class TrieUpdateSelfTests(TestCaseMixin):
-  _test_tag = 35
+  _testTag = 35
 
   @override
   def test(self):
@@ -63,12 +63,12 @@ class TrieUpdateSelfTests(TestCaseMixin):
     t.update(src)
     self.assertTrue("he" in t)
     self.assertTrue("she" in t)
-    self.assertTrue(t.startswith("sh") == 1)
+    self.assertTrue(t.startsWith("sh") == 1)
     self.assertTrue(len(t) == 2)
 
 
 class TrieEmptyTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
@@ -76,11 +76,11 @@ class TrieEmptyTests(TestCaseMixin):
     self.assertFalse(bool(t))
     self.assertFalse(t)
     self.assertFalse("x" in t)
-    self.assertTrue(t.startswith("") == 0)
+    self.assertTrue(t.startsWith("") == 0)
 
 
 class TrieRemoveTests(TestCaseMixin):
-  _test_tag = 40
+  _testTag = 40
 
   @override
   def test(self):
@@ -90,12 +90,12 @@ class TrieRemoveTests(TestCaseMixin):
     t.remove("ab")
     self.assertFalse("ab" in t)
     self.assertTrue("abc" in t)
-    self.assertTrue(t.startswith("ab") == 1)
+    self.assertTrue(t.startsWith("ab") == 1)
     self.assertTrue(len(t) == 1)
 
 
 class TrieRemoveDuplicateTests(TestCaseMixin):
-  _test_tag = 41
+  _testTag = 41
 
   @override
   def test(self):
@@ -108,7 +108,7 @@ class TrieRemoveDuplicateTests(TestCaseMixin):
 
 
 class TrieClearTests(TestCaseMixin):
-  _test_tag = 42
+  _testTag = 42
 
   @override
   def test(self):
@@ -117,11 +117,11 @@ class TrieClearTests(TestCaseMixin):
     t.clear()
     self.assertFalse(bool(t))
     self.assertFalse("a" in t)
-    self.assertTrue(t.startswith("a") == 0)
+    self.assertTrue(t.startsWith("a") == 0)
 
 
 class TrieDiscardTests(TestCaseMixin):
-  _test_tag = 43
+  _testTag = 43
 
   @override
   def test(self):

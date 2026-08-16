@@ -9,7 +9,7 @@ from py2cpp.math import (
   fsum,
   gcd,
   hypot,
-  isclose,
+  isClose,
   isqrt,
   lcm,
   perm,
@@ -22,7 +22,7 @@ from py2cpp.math import (
 
 
 class MathConstantsTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
@@ -31,13 +31,13 @@ class MathConstantsTests(TestCaseMixin):
 
 
 class MathScalarAttrTests(TestCaseMixin):
-  _test_tag = 5
+  _testTag = 5
 
   @override
   def test(self):
     self.assertTrue(float64.isInf(float64.Inf))
     self.assertTrue(float.isNaN(float.NaN))
-    self.assertTrue(float64.isfinite(1.0))
+    self.assertTrue(float64.isFinite(1.0))
     self.assertEqual(int.Min, -2147483648)
     self.assertEqual(int.Max, 2147483647)
     self.assertTrue(int64.Min < 0)
@@ -46,17 +46,17 @@ class MathScalarAttrTests(TestCaseMixin):
 
 
 class MathSqrtTrigTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
     self.assertEqual(sqrt(9.0), 9.0 ** 0.5)
     s: float64 = sin(radians(90.0))
-    self.assertTrue(isclose(s, 1.0, rel_tol=1e-12))
+    self.assertTrue(isClose(s, 1.0, relTol=1e-12))
 
 
 class MathHypotDistTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
@@ -67,7 +67,7 @@ class MathHypotDistTests(TestCaseMixin):
 
 
 class MathIntegerTests(TestCaseMixin):
-  _test_tag = 30
+  _testTag = 30
 
   @override
   def test(self):
@@ -81,7 +81,7 @@ class MathIntegerTests(TestCaseMixin):
 
 
 class MathAggregateTests(TestCaseMixin):
-  _test_tag = 40
+  _testTag = 40
 
   @override
   def test(self):
@@ -91,15 +91,15 @@ class MathAggregateTests(TestCaseMixin):
 
 
 class MathDegreesTests(TestCaseMixin):
-  _test_tag = 50
+  _testTag = 50
 
   @override
   def test(self):
-    self.assertTrue(isclose(degrees(pi), 180.0))
+    self.assertTrue(isClose(degrees(pi), 180.0))
 
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)

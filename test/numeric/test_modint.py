@@ -5,7 +5,7 @@ from py2cpp.numeric.modint import ModInt
 type Int = ModInt[int, 1000000007]
 
 class ModIntArithmeticTests(TestCaseMixin):
-    _test_tag = 1
+    _testTag = 1
 
     @override
     def test(self):
@@ -20,11 +20,11 @@ class ModIntArithmeticTests(TestCaseMixin):
         self.assertEqual(a // b, 500000002)
         f: Int = a ** 3
         self.assertEqual(int(f), 999999999)
-        inv_a: Int = a.inv
-        self.assertEqual(int(a * inv_a), 1)
+        invA: Int = a.inv
+        self.assertEqual(int(a * invA), 1)
 
 class ModIntNormalizeTests(TestCaseMixin):
-    _test_tag = 10
+    _testTag = 10
 
     @override
     def test(self):
@@ -34,6 +34,6 @@ class ModIntNormalizeTests(TestCaseMixin):
 
 def main():
     suite: TestSuite = new()
-    for Class in TestCaseMixin.iter_subclasses(sort_const='_test_tag'):
+    for Class in TestCaseMixin.iterSubclasses(sortConst='_testTag'):
         suite.addTest(Class())
     return TextTestRunner().run(suite)

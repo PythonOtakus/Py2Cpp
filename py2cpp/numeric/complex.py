@@ -1,16 +1,15 @@
-"""复数 ``complex[T: Real]``（CPython 3.13 ``complex`` 核心语义）。"""
+"""复数 ``complex[T: RealType]``（CPython 3.13 ``complex`` 核心语义）。"""
 from __future__ import annotations
 
 from ..builtins import *
 from ..core.exceptions import TypeError, ValueError
-from .protocols import Real
+from .protocols import RealType
 from ..math import hypot
 from ..math.complex import exp, log
 
 
 @copyable
-@native_name("PyComplex")
-class complex[T: Real = float]:
+class complex[Scalar: RealType = float]:
   """``complex`` / ``complex128``；实部/虚部均为 ``T``。"""
 
   @staticmethod
@@ -25,23 +24,23 @@ class complex[T: Real = float]:
 
   @staticmethod
   @immutable
-  def isfinite(z: Self) -> bool:
-    return float.isfinite(z.real) and float.isfinite(z.imag)
+  def isFinite(z: Self) -> bool:
+    return float.isFinite(z.real) and float.isFinite(z.imag)
 
-  def __init__(self, real: T = 0, imag: T = 0):
-    self._real: T = real
-    self._imag: T = imag
+  def __init__(self, real: Scalar = 0, imag: Scalar = 0):
+    self._real: Scalar = real
+    self._imag: Scalar = imag
 
   def __copy__(self, other: Self):
     self._real = other._real
     self._imag = other._imag
 
   @property
-  def real(self) -> T:
+  def real(self) -> Scalar:
     return self._real
 
   @property
-  def imag(self) -> T:
+  def imag(self) -> Scalar:
     return self._imag
 
   @staticproperty
@@ -65,16 +64,16 @@ class complex[T: Real = float]:
     return new(self._real, self._imag)
 
   @immutable
-  def __abs__(self) -> T:
+  def __abs__(self) -> Scalar:
     xr: float64 = self._real
     xi: float64 = self._imag
     h: float64 = hypot(xr, xi)
-    mag: T = h
+    mag: Scalar = h
     return mag
 
   @immutable
   def __float__(self) -> float:
-    z: T = 0
+    z: Scalar = 0
     if self._imag != z:
       raise TypeError("can't convert complex to float")
     r: float = self._real
@@ -82,7 +81,7 @@ class complex[T: Real = float]:
 
   @immutable
   def __int__(self) -> int:
-    z: T = 0
+    z: Scalar = 0
     if self._imag != z:
       raise TypeError("can't convert complex to int")
     n: int = self._real
@@ -94,7 +93,7 @@ class complex[T: Real = float]:
 
   @immutable
   def __bool__(self) -> bool:
-    z: T = 0
+    z: Scalar = 0
     return self._real != z or self._imag != z
 
   @immutable
@@ -107,8 +106,8 @@ class complex[T: Real = float]:
 
   @overload
   @immutable
-  def __add__(self, other: T) -> Self:
-    z: T = 0
+  def __add__(self, other: Scalar) -> Self:
+    z: Scalar = 0
     return new(self._real + other, self._imag + z)
 
   @overload
@@ -118,14 +117,14 @@ class complex[T: Real = float]:
 
   @overload
   @immutable
-  def __radd__(self, other: T) -> Self:
-    z: T = 0
+  def __radd__(self, other: Scalar) -> Self:
+    z: Scalar = 0
     return new(other + self._real, z + self._imag)
 
   @overload
   @immutable
-  def __sub__(self, other: T) -> Self:
-    z: T = 0
+  def __sub__(self, other: Scalar) -> Self:
+    z: Scalar = 0
     return new(self._real - other, self._imag - z)
 
   @overload
@@ -135,35 +134,35 @@ class complex[T: Real = float]:
 
   @overload
   @immutable
-  def __rsub__(self, other: T) -> Self:
-    z: T = 0
+  def __rsub__(self, other: Scalar) -> Self:
+    z: Scalar = 0
     return new(other - self._real, z - self._imag)
 
   @overload
   @immutable
-  def __mul__(self, other: T) -> Self:
-    ar: T = self._real
-    ai: T = self._imag
+  def __mul__(self, other: Scalar) -> Self:
+    ar: Scalar = self._real
+    ai: Scalar = self._imag
     return new(ar * other, ai * other)
 
   @overload
   @immutable
   def __mul__(self, other: Self) -> Self:
-    ar: T = self._real
-    ai: T = self._imag
-    br: T = other._real
-    bi: T = other._imag
+    ar: Scalar = self._real
+    ai: Scalar = self._imag
+    br: Scalar = other._real
+    bi: Scalar = other._imag
     return new(ar * br - ai * bi, ar * bi + ai * br)
 
   @overload
   @immutable
-  def __rmul__(self, other: T) -> Self:
+  def __rmul__(self, other: Scalar) -> Self:
     return self * other
 
   @overload
   @immutable
-  def __truediv__(self, other: T) -> Self:
-    z: T = 0
+  def __truediv__(self, other: Scalar) -> Self:
+    z: Scalar = 0
     if other == z:
       raise ValueError("complex division by zero")
     return new(self._real / other, self._imag / other)
@@ -171,23 +170,23 @@ class complex[T: Real = float]:
   @overload
   @immutable
   def __truediv__(self, other: Self) -> Self:
-    br: T = other._real
-    bi: T = other._imag
-    denom: T = br * br + bi * bi
-    z: T = 0
+    br: Scalar = other._real
+    bi: Scalar = other._imag
+    denom: Scalar = br * br + bi * bi
+    z: Scalar = 0
     if denom == z:
       raise ValueError("complex division by zero")
-    ar: T = self._real
-    ai: T = self._imag
+    ar: Scalar = self._real
+    ai: Scalar = self._imag
     return new((ar * br + ai * bi) / denom, (ai * br - ar * bi) / denom)
 
   @overload
   @immutable
-  def __rtruediv__(self, other: T) -> Self:
-    br: T = self._real
-    bi: T = self._imag
-    denom: T = br * br + bi * bi
-    z: T = 0
+  def __rtruediv__(self, other: Scalar) -> Self:
+    br: Scalar = self._real
+    bi: Scalar = self._imag
+    denom: Scalar = br * br + bi * bi
+    z: Scalar = 0
     if denom == z:
       raise ValueError("complex division by zero")
     return new(other * br / denom, -other * bi / denom)
@@ -212,10 +211,10 @@ class complex[T: Real = float]:
 
   @overload
   @immutable
-  def __pow__(self, exponent: T) -> Self:
+  def __pow__(self, exponent: Scalar) -> Self:
     w: Self = log(self)
-    sr: T = w._real * exponent
-    si: T = w._imag * exponent
+    sr: Scalar = w._real * exponent
+    si: Scalar = w._imag * exponent
     return exp(Self(sr, si))
 
   @overload
@@ -227,8 +226,8 @@ class complex[T: Real = float]:
 
   @overload
   @immutable
-  def __rpow__(self, other: T) -> Self:
-    z: T = 0
+  def __rpow__(self, other: Scalar) -> Self:
+    z: Scalar = 0
     base: Self = new(other, z)
     return base ** self
 

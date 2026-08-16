@@ -140,7 +140,7 @@ def _parse_keywords(
             num_threads_s = str(n)
         else:
           num_threads_s = tr.visit(kw.value)
-      case "chunksize":
+      case "chunkSize":
         n = _const_int(kw.value)
         if n is not None:
           if n <= 0:

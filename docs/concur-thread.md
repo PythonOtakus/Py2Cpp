@@ -163,7 +163,7 @@ Thread(target: Callable[[], None], name: str = "", daemon: bool = False)
 |---|---|
 | `templates/core/refcount.h` | 原子引用计数 |
 | `templates/core/delegate.h` | owning callable |
-| `py2cpp/core/exceptions.py` | `BrokenBarrierError`、`TimeoutError`、`CancelledError`、`InvalidStateError`、`BrokenThreadPool` 等异常 |
+| `py2cpp/core/exceptions.py` | `BrokenBarrierError`、`TimeoutError`、`CancelledError`、`InvalidStateError`、`BrokenThreadPoolError` 等异常 |
 | `py2cpp/util/deque.py` 或新增 queue primitive | ThreadPool 阻塞工作队列 |
 | `src/compile.py` | GCC/Clang 编译链接增加 `-pthread` |
 | `docs/参考手册.md` | 模块和线程安全模型 |
@@ -205,7 +205,7 @@ owning target / name copy
 - 主线程在 runtime 初始化时登记；
 - 新线程从原子计数器分配 cookie；
 - cookie 不作为永久身份或数组下标；
-- `Thread.current.native_id` 使用平台 API：Windows `GetCurrentThreadId`，Linux `gettid`，macOS `pthread_threadid_np`。
+- `Thread.current.nativeId` 使用平台 API：Windows `GetCurrentThreadId`，Linux `gettid`，macOS `pthread_threadid_np`。
 
 ### 7.3 普通 Lock
 
@@ -233,7 +233,7 @@ state 包含 `owner_ident + recursion_count + mutex + condition_variable`：
 - 非 owner 等待 owner 清空；
 - 非 owner release 抛 RuntimeError；
 - count 归零后清空 owner 并唤醒 waiter；
-- 为 Condition 提供 `_release_save()`、`_acquire_restore()`、`_is_owned()`；
+- 为 Condition 提供 `_releaseSave()`、`_acquireRestore()`、`_isOwned()`；
 - 完全释放和恢复必须保留递归层数。
 
 ### 7.5 timeout
@@ -262,7 +262,7 @@ Semaphore
 BoundedSemaphore
 Thread.current
 Thread.main
-Thread.active_count
+Thread.activeCount
 Thread.actives
 ```
 
@@ -271,19 +271,19 @@ Thread.actives
 当前已落地子集：
 
 - `Thread(target: Callable[[], None], name="", daemon=False)`；
-- `Thread.current`、`Thread.main`、`Thread.active_count` 与 `Thread.actives`：返回持有同一 native handle 的稳定 `Thread` 包装，不返回 raw 指针；不再保留同义模块级全局函数；
+- `Thread.current`、`Thread.main`、`Thread.activeCount` 与 `Thread.actives`：返回持有同一 native handle 的稳定 `Thread` 包装，不返回 raw 指针；不再保留同义模块级全局函数；
 - `Lock`；
 - `RLock`：owner 递归、非 owner release 抛错、为 `Condition` 提供完整释放/恢复递归层数；
-- `Condition`：支持默认 `RLock`、外部 `Lock` / `RLock`、`wait`、`wait_for`、`notify`、`notify_all` 与上下文管理器；
-- `Event`：Python 组合层基于 `Condition + atomic[bool]`，支持 `is_set`、`set`、`clear`、`wait`；
+- `Condition`：支持默认 `RLock`、外部 `Lock` / `RLock`、`wait`、`waitFor`、`notify`、`notifyAll` 与上下文管理器；
+- `Event`：Python 组合层基于 `Condition + atomic[bool]`，支持 `isSet`、`set`、`clear`、`wait`；
 - `Semaphore` / `BoundedSemaphore`：Python 组合层基于 `Condition + atomic[int]`，支持 `acquire`、`release(n)` 与上下文管理器；
-- `atomic[T]`：共享 native 原子状态，支持 `load/store/exchange/compare_exchange/fetch_add/fetch_sub`；
-- `Queue[T]`：对齐 Python 3.13 `queue.Queue` 的 FIFO、`put/get`、`put_nowait/get_nowait`、`qsize/__bool__/full`、`task_done/join`、`shutdown(immediate=False)` 主线语义；
-- `Barrier`：基于 `Condition + atomic[int]` 的 Python 组合层实现，支持 `wait/reset/abort/parties/n_waiting/broken` 与 action 主线；
-- `Future[R]`：`@refcount` 共享状态，支持 `cancel/cancelled/running/done/result/exception/set_running_or_notify_cancel/set_result/set_exception`；
-- `ThreadPool[R]`：`@refcount` 共享线程池状态，使用 `Queue[_WorkItem[R]] + Thread` worker，支持 `submit/shutdown(wait, cancel_futures)`；
-- `Empty`、`Full`、`ShutDown`；
-- `BrokenBarrierError`、`CancelledError`、`TimeoutError`、`InvalidStateError`、`BrokenThreadPool`；
+- `atomic[T]`：共享 native 原子状态，支持 `load/store/exchange/compareExchange/fetchAdd/fetchSub`；
+- `Queue[T]`：对齐 Python 3.13 `queue.Queue` 的 FIFO、`put/get`、`putNowait/getNowait`、`qsize/__bool__/full`、`taskDone/join`、`shutdown(immediate=False)` 主线语义；
+- `Barrier`：基于 `Condition + atomic[int]` 的 Python 组合层实现，支持 `wait/reset/abort/parties/nWaiting/broken` 与 action 主线；
+- `Future[R]`：`@refcount` 共享状态，支持 `cancel/cancelled/running/done/result/exception/setRunningOrNotifyCancel/setResult/setException`；
+- `ThreadPool[R]`：`@refcount` 共享线程池状态，使用 `Queue[_WorkItem[R]] + Thread` worker，支持 `submit/shutdown(wait, cancelFutures)`；
+- `EmptyError`、`FullError`、`ShutDownError`；
+- `BrokenBarrierError`、`CancelledError`、`TimeoutError`、`InvalidStateError`、`BrokenThreadPoolError`；
 - `name: T @thread_local = value` 类字段：生成 C++11 `static thread_local`，通过 `Self.name` / `Class.name` / `self.name` 访问。
 
 当前仍未承诺的管理能力：daemon shutdown manager、alien/dummy thread、trace/profile hook、Timer 与 `threading.local` 动态属性对象。
@@ -293,7 +293,7 @@ Thread.actives
 ```python
 Future[R]
 ThreadPool
-BrokenThreadPool
+BrokenThreadPoolError
 CancelledError
 InvalidStateError
 ```
@@ -393,19 +393,19 @@ class Future[R]:
 class ThreadPool[R]:
   def __init__(
     self,
-    max_workers: int = 0,
-    thread_name_prefix: str = "",
+    maxWorkers: int = 0,
+    threadNamePrefix: str = "",
     initializer: Callable[[], None] | None = None,
   ): ...
 
   def submit(self, fn: Callable[[], R]) -> Future[R]: ...
-  def shutdown(self, wait: bool = True, cancel_futures: bool = False) -> None: ...
+  def shutdown(self, wait: bool = True, cancelFutures: bool = False) -> None: ...
 ```
 
 差异与约束：
 
 - 当前实现是静态类型友好的 `ThreadPool[R]`：一个 pool 处理同一返回类型 `R` 的任务；异构 `submit[R]` 需要后续 type-erased Future；
-- 当前实现默认 `max_workers=4`；`min(32, cpu_count + 4)` 需要补 `cpu_count` native leaf 后恢复；
+- 当前实现默认 `maxWorkers=4`；`min(32, cpu_count + 4)` 需要补 `cpu_count` native leaf 后恢复；
 - `initializer` 首版使用零参数 callable，参数由 owning 闭包预绑定；
 - `submit` 首版只接受零参数 callable，返回 `Future[R]`；当前回归覆盖模块函数 callable，泛型 `@refcount` 方法调用点的 lambda 返回类型推断仍需在译器调用分派中补强；
 - CPython 的 `map`、`as_completed`、`wait` 先不作为首版目标；
@@ -427,9 +427,9 @@ PENDING -> CANCELLED -> CANCELLED_AND_NOTIFIED
 - `cancel()` 只能取消尚未 RUNNING 的任务；
 - 已 RUNNING 或 FINISHED 时 cancel 返回 False；
 - 重复 cancel 返回 True；
-- worker 执行前必须调用 `set_running_or_notify_cancel()`；
+- worker 执行前必须调用 `setRunningOrNotifyCancel()`；
 - 若 Future 已取消，worker 不执行任务；
-- `set_result` 和 `set_exception` 只能从 RUNNING/PENDING 的合法路径进入 FINISHED；
+- `setResult` 和 `setException` 只能从 RUNNING/PENDING 的合法路径进入 FINISHED；
 - 状态变化通过 Condition 通知所有等待者；
 - result/exception 使用 monotonic deadline 等待；
 - 保存异常时必须避免 slicing，不能只存基类 `Exception` 值。
@@ -438,7 +438,7 @@ PENDING -> CANCELLED -> CANCELLED_AND_NOTIFIED
 
 - `CancelledError`；
 - `InvalidStateError`；
-- `BrokenThreadPool`；
+- `BrokenThreadPoolError`；
 - `TimeoutError`，若项目已有内建异常则复用，否则补到 `core.exceptions` 或 `concur.thread` 中并记录差异。
 
 ### 10.3 WorkItem
@@ -452,11 +452,11 @@ OwnedCallable[R]
 
 执行流程：
 
-1. 调用 `future.set_running_or_notify_cancel()`；
+1. 调用 `future.setRunningOrNotifyCancel()`；
 2. 返回 False 时直接丢弃 work item；
 3. 调用 callable；
-4. 成功则 `future.set_result(result)`；
-5. 抛异常则 `future.set_exception(exc)`；
+4. 成功则 `future.setResult(result)`；
+5. 抛异常则 `future.setException(exc)`；
 6. 释放 callable 捕获和 work item 引用。
 
 首版不支持 `fn, *args, **kwargs`，调用者通过 owning callable 绑定参数。
@@ -476,7 +476,7 @@ closed flag
 
 - `put` 在锁下入队并 notify_one；
 - `get` 阻塞直到有 work item 或 sentinel；
-- `get_nowait` 供 shutdown(cancel_futures=True) 和 initializer failed drain 使用；
+- `getNowait` 供 shutdown(cancelFutures=True) 和 initializer failed drain 使用；
 - 队列不承诺公平性；
 - sentinel 使用明确的 variant/union，不能用裸 `None` 与合法任务混淆；
 - 队列元素持有 work item 生命周期，worker 取走后负责释放。
@@ -496,20 +496,20 @@ worker 参考 CPython 3.13：
 7. 需要退出时重新放入 sentinel 唤醒其他 worker，然后返回；
 8. worker 外层 catch 所有异常，记录诊断并保持进程不 terminate。
 
-`_idle_semaphore` 的作用是避免在已有 idle worker 时继续创建新线程。`submit` 入队后调用 `_adjust_thread_count()`，若能立即 acquire idle semaphore，说明已有空闲线程，不新建线程。
+`_idle_semaphore` 的作用是避免在已有 idle worker 时继续创建新线程。`submit` 入队后调用 `_adjustThreadCount()`，若能立即 acquire idle semaphore，说明已有空闲线程，不新建线程。
 
 ### 10.6 创建线程
 
-`_adjust_thread_count()`：
+`_adjustThreadCount()`：
 
 - 若有 idle worker，直接返回；
-- 当前线程数小于 max_workers 时创建新 Thread；
-- 线程名使用 `thread_name_prefix + "_" + index`；
+- 当前线程数小于 maxWorkers 时创建新 Thread；
+- 线程名使用 `threadNamePrefix + "_" + index`；
 - worker target 必须由 owning callable/state 保活；
 - 新线程加入 `_threads` 集合和全局 pool registry；
 - start 失败时必须从集合、registry、队列状态中回滚。
 
-默认 `max_workers` 参考 CPython 3.13：
+默认 `maxWorkers` 参考 CPython 3.13：
 
 ```text
 min(32, cpu_count + 4)
@@ -519,10 +519,10 @@ min(32, cpu_count + 4)
 
 ### 10.7 shutdown
 
-`shutdown(wait=True, cancel_futures=False)`：
+`shutdown(wait=True, cancelFutures=False)`：
 
 - 持 `_shutdown_lock` 设置 `_shutdown = True`；
-- `cancel_futures=True` 时 drain 队列，并取消尚未开始的 Future；
+- `cancelFutures=True` 时 drain 队列，并取消尚未开始的 Future；
 - 已 RUNNING 的任务不取消；
 - 入队一个 sentinel 唤醒阻塞 worker；
 - `wait=True` 时 join 所有 worker；
@@ -536,8 +536,8 @@ initializer 失败后：
 
 - 设置 `_broken` 文本；
 - drain work queue；
-- 对所有未开始任务设置 `BrokenThreadPool` 异常；
-- 后续 `submit` 抛 `BrokenThreadPool`；
+- 对所有未开始任务设置 `BrokenThreadPoolError` 异常；
+- 后续 `submit` 抛 `BrokenThreadPoolError`；
 - 已开始任务按自身路径完成；
 - worker 不再继续取普通任务。
 
@@ -583,13 +583,13 @@ _waiters: list[Lock]
 
 `notify(n)` 要求持有底锁，从队列取出至多 n 个 waiter 并 release 它们，但不释放 Condition 底锁。被唤醒线程需等 notifier 离开临界区后继续。
 
-`wait_for(predicate, timeout)` 在持锁状态先求值，使用循环抵抗竞态/伪唤醒，并复用同一个绝对 deadline。
+`waitFor(predicate, timeout)` 在持锁状态先求值，使用循环抵抗竞态/伪唤醒，并复用同一个绝对 deadline。
 
 当前实现为 native 条件变量叶子：`Condition` 仍绑定真实的外部 `Lock` / `RLock`，`wait()` 仍完整释放底锁并在返回前恢复 RLock 递归层数；waiter 队列由 native `waiters/signals` 计数表达，而不是在 Python 层显式维护每 waiter 一把 `Lock`。这是实现形态差异，不改变当前公开语义。`Event`、`Semaphore` 和 `BoundedSemaphore` 则保留在 Python 组合层，不额外引入整类 native 状态。
 
 ### 11.3 Event
 
-Event 基于 `Condition + bool flag`：初始 clear；set 设置 flag 并 notify_all；clear 只清 flag；set 后新 waiter 立即通过。已被 set 唤醒的 waiter 即使随后发生 clear，本次仍应按成功返回，不能做成自动复位事件。
+Event 基于 `Condition + bool flag`：初始 clear；set 设置 flag 并 notifyAll；clear 只清 flag；set 后新 waiter 立即通过。已被 set 唤醒的 waiter 即使随后发生 clear，本次仍应按成功返回，不能做成自动复位事件。
 
 ### 11.4 Semaphore
 
@@ -613,7 +613,7 @@ Event 基于 `Condition + bool flag`：初始 clear；set 设置 flag 并 notify
 
 ## 12. Registry 与 Thread 静态入口
 
-registry 已支撑 `Thread.current` / `Thread.main` / `Thread.active_count` / `Thread.actives`，后续继续支撑 shutdown：
+registry 已支撑 `Thread.current` / `Thread.main` / `Thread.activeCount` / `Thread.actives`，后续继续支撑 shutdown：
 
 - 受 native mutex 保护；
 - 保存带原子引用计数的 `_ThreadHandle` state，不能保存 raw `Thread*`；
@@ -710,14 +710,14 @@ native 模板预计使用：
 - Condition 未持锁 wait/notify 异常；
 - notify 后 notifier 仍持有底锁；
 - RLock 多层递归经过 wait 后恢复；
-- wait_for 抵抗无关通知；
+- waitFor 抵抗无关通知；
 - Event set/clear/wait/set 后立即 clear 竞态。
 
 ### 15.4 Semaphore/Barrier
 
 - Semaphore 初值、非阻塞、timeout、release(n)；
 - BoundedSemaphore 过量 release 原子失败；
-- Barrier 多轮、index、timeout、action、reset、abort、broken、n_waiting。
+- Barrier 多轮、index、timeout、action、reset、abort、broken、nWaiting。
 
 ### 15.5 refcount/callable
 
@@ -730,20 +730,20 @@ native 模板预计使用：
 
 ### 15.6 ThreadPool/Future
 
-- 默认 max_workers；
+- 默认 maxWorkers；
 - submit 返回 typed Future；
 - Future cancel/running/done/result/exception；
 - result timeout 抛 TimeoutError；
 - 任务异常经 Future.result 重新抛出；
 - 已取消任务不执行；
 - idle worker 存在时不创建新线程；
-- max_workers 限制；
+- maxWorkers 限制；
 - shutdown 后 submit 抛 RuntimeError；
 - shutdown(wait=True) 等待所有 worker；
 - shutdown(wait=False) 不悬空队列/state；
-- cancel_futures=True 只取消未开始任务；
+- cancelFutures=True 只取消未开始任务；
 - initializer 成功时每个 worker 调用一次；
-- initializer 失败后池 broken，排队任务得到 BrokenThreadPool；
+- initializer 失败后池 broken，排队任务得到 BrokenThreadPoolError；
 - sentinel 唤醒所有 worker；
 - pool 对象提前释放时 worker 能有序退出。
 
@@ -782,7 +782,7 @@ native 模板预计使用：
 - Future 状态机和异常类型；
 - 阻塞 work queue；
 - ThreadPool submit、worker loop、idle semaphore；
-- shutdown、cancel_futures、broken pool；
+- shutdown、cancelFutures、broken pool；
 - ThreadPool 测试矩阵。
 
 ### 阶段 5：高级兼容
@@ -853,6 +853,6 @@ native 模板预计使用：
 4. Future 是否首版支持 `add_done_callback`；
 5. Barrier 纳入首版还是后续阶段；
 6. 首个合入版本是否要求同时通过 GCC/Clang，还是先以 MSVC 为门槛；
-7. 已确定：不保留 `current_thread()` 等模块级全局函数；线程 registry 仅通过 `Thread.current` / `Thread.main` / `Thread.active_count` / `Thread.actives` 暴露。
+7. 已确定：不保留 `current_thread()` 等模块级全局函数；线程 registry 仅通过 `Thread.current` / `Thread.main` / `Thread.activeCount` / `Thread.actives` 暴露。
 
 这些选择只影响迭代边界，不改变基础安全要求。

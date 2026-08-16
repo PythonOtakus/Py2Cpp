@@ -13,7 +13,7 @@ from .fstring_emit import emit_format_expr, plan_format_literal
 from .binop_emit import _identity_addr_expr
 from .literal_map_lookup_emit import try_emit_dict_literal_get
 from .numeric_cast_emit import try_emit_float_ctor, try_emit_int_ctor, try_emit_numeric_ctor, try_emit_primitive_ctor
-from .literal_sequence_lookup_emit import try_emit_str_literal_find_call, try_emit_str_literal_striplines_call
+from .literal_sequence_lookup_emit import try_emit_str_literal_find_call, try_emit_str_literal_stripLines_call
 from ..passes.static_reflect import static_field_name
 from ..passes.union_expand import union_variant_names, union_variant_param_cpp_types
 from ..emit.layout_config_emit import _JSON_API_METHODS_NEED_TYPE_ARG
@@ -107,11 +107,11 @@ def class_info_from_receiver(tr: Translator, receiver: ast.expr) -> ClassInfo | 
     if is_bytes_type(t):
         return tr.classes.get('bytes')
     if t and is_py_coroutine_type(t):
-        proto = tr.classes.get('Coroutine')
+        proto = tr.classes.get('CoroutineType')
         if proto is not None:
             return proto
     if t and is_py_generator_type(t):
-        proto = tr.classes.get('Generator')
+        proto = tr.classes.get('GeneratorType')
         if proto is not None:
             return proto
     info = tr._class_info_for_type(t)
@@ -547,9 +547,10 @@ def class_subscript_static_call_return_type(tr: Translator, info: ClassInfo, met
     ret = (ret_lead + ret_trail).strip()
     if not ret:
         return None
-    if len(info.type_params) == 1 and ret == cpp_ident(info.type_params[0]):
+    # 类形参名保持原样（勿 ``cpp_ident`` → ``PyElement``）
+    if len(info.type_params) == 1 and ret == info.type_params[0]:
         return _qualified_class_template_cpp(tr, info, type_arg)
-    tp = cpp_ident(info.type_params[0]) if info.type_params else ''
+    tp = info.type_params[0] if info.type_params else ''
     if tp and ret.endswith(tp) and (ret != tp):
         ret = ret[:-len(tp)] + type_arg
     return ret
@@ -979,7 +980,7 @@ def templated_instance_call_return_type(tr: Translator, info: ClassInfo, method:
         return None
     ret = sig_return_storage_cpp(sig)
     if len(sig.func_ft.template_names) == 1:
-        tp = cpp_ident(sig.func_ft.template_names[0])
+        tp = sig.func_ft.template_names[0]
         if ret == tp:
             return type_arg
         ret = ret.replace(f'<{tp}>', f'<{type_arg}>')
@@ -1279,7 +1280,7 @@ def emit_call_expr(tr: Translator, node: ast.Call):
                 elif len(node.args) == 1:
                     inner = tr._visit_value_expr(node.args[0])
                 else:
-                    raise NotImplementedError('deque[T](...) 仅支持 deque[T]() 或 deque[T](maxlen)；元素请用 []')
+                    raise NotImplementedError('deque[T](...) 仅支持 deque[T]() 或 deque[T](maxLen)；元素请用 []')
             else:
                 inner = ', '.join((tr._visit_value_expr(a) for a in node.args))
             return emit_construct(tr, base, args_t, inner, name)
@@ -1297,7 +1298,7 @@ def emit_call_expr(tr: Translator, node: ast.Call):
                 elif len(node.args) == 1:
                     inner = tr._visit_value_expr(node.args[0])
                 else:
-                    raise NotImplementedError('deque[T](...) 仅支持 deque[T]() 或 deque[T](maxlen)；元素请用 []')
+                    raise NotImplementedError('deque[T](...) 仅支持 deque[T]() 或 deque[T](maxLen)；元素请用 []')
             else:
                 inner = ', '.join((tr._visit_value_expr(a) for a in node.args))
             return emit_construct(tr, base, args_t, inner, py_class)
@@ -1331,10 +1332,13 @@ def emit_call_expr(tr: Translator, node: ast.Call):
                 )
             if name in _DEDUCED_TEMPLATE_FUNCS:
                 return _emit_deduced_template_call(tr, name, node)
+            # 类/方法形参默认构造：``YieldValue()`` / ``T()``，勿走 ``cpp_ident`` → ``Py…``
+            if name in tr._active_type_params():
+                return f'{name}({args})'
             if name == 'len':
                 arg = node.args[0]
                 from ..analysis.type_emit import scope_binding_storage_cpp
-                if isinstance(arg, ast.Name) and tr.scope and scope_binding_storage_cpp(tr.scope, arg.id) == 'c_str':
+                if isinstance(arg, ast.Name) and tr.scope and scope_binding_storage_cpp(tr.scope, arg.id) == 'CStr':
                     return f'(int)strlen({arg.id})'
                 from .variadic_template_emit import try_emit_variadic_pack_len
                 vt_len = try_emit_variadic_pack_len(tr, arg)
@@ -1518,6 +1522,23 @@ def emit_call_expr(tr: Translator, node: ast.Call):
             mod_fn = _try_emit_active_module_function_call(tr, name, node, args)
             if mod_fn is not None:
                 return mod_fn
+            # 导入绑定缺失时仍按 ``@global_call``/``@native_name`` 解析（如模块常量 emit）
+            hit = tr._module_function_info_for_name(name)
+            if hit is not None:
+                mp, func_def = hit
+                from ..analysis.ir import FuncTypeParams
+                func_ft = FuncTypeParams.collect(func_def)
+                if func_ft.template_names or _template_deduction_param_indices(func_def, func_ft):
+                    return _emit_module_function_call(tr, mp, func_def, node)
+                cpp = tr._module_function_cpp_name(mp, func_def)
+                if '::' not in cpp and cpp not in PRIMITIVE_HEADER_MAP:
+                    ns = namespace_qualifier_for_module(mp)
+                    if ns:
+                        cpp = f'::{ns}::{cpp}'
+                callee = tr._qualify_import_call(cpp, name, module_path=mp)
+                if args:
+                    return f'{callee}({args})'
+                return f'{callee}()'
             return f'{name}({args})'
         case ast.Attribute(value=ast.Name(id=recv), attr=attr) if tr._recv_is_host_class(recv):
             if recv == 'Self':
@@ -1552,7 +1573,7 @@ def emit_call_expr(tr: Translator, node: ast.Call):
                 if out is not None:
                     return out
         case ast.Attribute(value=ast.Name(id=tp), attr=attr) if tp in tr._active_type_params():
-            tp_cpp = cpp_ident(tp)
+            tp_cpp = tp  # 形参别名（``using YieldValue = _YieldValue``），勿加 ``Py``
             mcpp = tr._attr_cpp_name(ast.Name(id=tp), attr)
             arg_str = emit_call_args(tr, node, param_cpp_types=call_param_cpp_types(tr, node.func, call=node))
             if arg_str:
@@ -1579,7 +1600,7 @@ def emit_call_expr(tr: Translator, node: ast.Call):
                 is_static = sig is not None and sig.is_static or (ov_sigs is not None and ov_sigs[0].is_static)
                 if is_static and (sig is not None or ov_sigs is not None):
                     mcpp = info.cpp_member_name(attr)
-                    if info.name == 'dict' and attr == 'fromkeys' and (len(node.args) >= 2):
+                    if info.name == 'dict' and attr == 'fromKeys' and (len(node.args) >= 2):
                         keys_t = tr._infer_expr_cpp_type(node.args[0])
                         val_t = tr._infer_expr_cpp_type(node.args[1])
                         k_t = list_elem_type(keys_t) or cpp_ident('int')
@@ -1593,7 +1614,7 @@ def emit_call_expr(tr: Translator, node: ast.Call):
                         if (
                             info.name == 'Task'
                             and info.module_path.endswith('concur/task')
-                            and attr == 'run_thread'
+                            and attr == 'runThread'
                             and node.args
                         ):
                             run_thread_ret = _callable_return_type_from_expr(tr, node.args[0])
@@ -1655,8 +1676,8 @@ def emit_call_expr(tr: Translator, node: ast.Call):
                 return try_emit_dict_literal_get(tr, val, node.args[0], node.args[1])
             if isinstance(val, ast.Constant) and isinstance(val.value, str) and (attr in ('find', 'index', 'rfind', 'rindex')):
                 return try_emit_str_literal_find_call(tr, val.value, attr, node)
-            if isinstance(val, ast.Constant) and isinstance(val.value, str) and attr == 'striplines':
-                inline = try_emit_str_literal_striplines_call(val.value, node)
+            if isinstance(val, ast.Constant) and isinstance(val.value, str) and attr == 'stripLines':
+                inline = try_emit_str_literal_stripLines_call(val.value, node)
                 if inline is not None:
                     return inline
             if attr == '__getitem__' and len(node.args) == 1:

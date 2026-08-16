@@ -1,19 +1,19 @@
-"""``util.memory``：通用叶子 ``@native``（``copy_buf`` / ``load_u64_le*``）；``str.from_buf`` 见 ``test_str``。"""
+"""``util.memory``：通用叶子 ``@native``（``copyBuf`` / ``loadU64Le*``）；``str.fromBuf`` 见 ``test_str``。"""
 from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 from py2cpp.util.memory import (
-  append_chars,
-  copy_buf,
-  copy_buf_ref,
-  load_u64_le,
-  load_u64_le_bytes,
-  load_u64_le_bytes_ref,
-  load_u64_le_ref,
+  appendChars,
+  copyBuf,
+  copyBufRef,
+  loadU64Le,
+  loadU64LeBytes,
+  loadU64LeBytesRef,
+  loadU64LeRef,
 )
 
 
 class MemoryAppendCharsTests(TestCaseMixin):
-  _test_tag = 5
+  _testTag = 5
 
   @override
   def test(self):
@@ -23,49 +23,49 @@ class MemoryAppendCharsTests(TestCaseMixin):
     src[2] = ord("c")
     dst: char[:] = new(4)
     dst[0] = ord("x")
-    at: int = append_chars(dst, 1, src, 3)
+    at: int = appendChars(dst, 1, src, 3)
     self.assertEqual(at, 4)
-    self.assertEqual(str.from_buf(dst, 4), "xabc")
+    self.assertEqual(str.fromBuf(dst, 4), "xabc")
 
 
 class MemoryLeafCopySegTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
     raw: str = "hello"
-    src_buf: char[:] = new(5)
+    srcBuf: char[:] = new(5)
     for i in range(5):
-      src_buf[i] = char(raw[i])
-    dst_f: char[:] = new(8)
-    dst_r: char[:] = new(8)
-    copy_buf(dst_f.view.at(0), src_buf.view.at(0), 5)
-    copy_buf_ref(dst_r.view.at(0), src_buf.view.at(0), 5)
-    self.assertEqual(str.from_buf(dst_f, 5), str.from_buf_ref(dst_r, 5))
+      srcBuf[i] = char(raw[i])
+    dstF: char[:] = new(8)
+    dstR: char[:] = new(8)
+    copyBuf(dstF.view.at(0), srcBuf.view.at(0), 5)
+    copyBufRef(dstR.view.at(0), srcBuf.view.at(0), 5)
+    self.assertEqual(str.fromBuf(dstF, 5), str.fromBufRef(dstR, 5))
 
 
 class MemoryLeafLoadU64Tests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
     raw: str = "ABCDEFGH"
-    raw_buf: char[:] = new(8)
+    rawBuf: char[:] = new(8)
     for i in range(8):
-      raw_buf[i] = char(raw[i])
-    got_f = load_u64_le(raw_buf.view.at(0), 0)
-    got_r = load_u64_le_ref(raw_buf.view.at(0), 0)
-    self.assertEqual(got_f, got_r)
+      rawBuf[i] = char(raw[i])
+    gotF = loadU64Le(rawBuf.view.at(0), 0)
+    gotR = loadU64LeRef(rawBuf.view.at(0), 0)
+    self.assertEqual(gotF, gotR)
     expect: uint64 = 0
     for i in range(8):
       part: uint64 = int(raw[i]) & 0xFF
       sh: uint64 = i * 8
       expect |= part << sh
-    self.assertEqual(got_f, expect)
+    self.assertEqual(gotF, expect)
 
 
 class MemoryLeafLoadU64BytesTests(TestCaseMixin):
-  _test_tag = 25
+  _testTag = 25
 
   @override
   def test(self):
@@ -78,14 +78,14 @@ class MemoryLeafLoadU64BytesTests(TestCaseMixin):
     buf[5] = ord("6")
     buf[6] = ord("7")
     buf[7] = ord("8")
-    got_f = load_u64_le_bytes(buf.view.at(0), 0)
-    got_r = load_u64_le_bytes_ref(buf.view.at(0), 0)
-    self.assertEqual(got_f, got_r)
+    gotF = loadU64LeBytes(buf.view.at(0), 0)
+    gotR = loadU64LeBytesRef(buf.view.at(0), 0)
+    self.assertEqual(gotF, gotR)
 
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

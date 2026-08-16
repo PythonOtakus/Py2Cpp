@@ -32,7 +32,7 @@ class DSU(ContainerMixin):
       self._size[i] = 1
 
   def __copy__(self, other: Self):
-    self._ensure_active()
+    self._ensureActive()
     if other.__moved__:
       raise ValueError("move from moved container")
     self._n = other._n
@@ -50,7 +50,7 @@ class DSU(ContainerMixin):
       self._size[i] = other._size[i]
 
   def __move__(self, other: Self):
-    self._ensure_active()
+    self._ensureActive()
     if other.__moved__:
       raise ValueError("move from moved container")
     self._n = other._n
@@ -64,7 +64,7 @@ class DSU(ContainerMixin):
 
   @immutable
   def copy(self) -> Self:
-    self._ensure_active()
+    self._ensureActive()
     out: Self = new(0)
     out.__copy__(self)
     return out
@@ -86,15 +86,15 @@ class DSU(ContainerMixin):
     if x not in self:
       raise IndexError("dsu index out of range")
 
-  def _find_root(self, x: int) -> int:
+  def _findRoot(self, x: int) -> int:
     p: int = self._parent[x]
     if p != x:
-      self._parent[x] = self._find_root(p)
+      self._parent[x] = self._findRoot(p)
     return self._parent[x]
 
   def __getitem__(self, x: int) -> int:
     self._check(x)
-    return self._find_root(x)
+    return self._findRoot(x)
 
   def __setitem__(self, a: int, b: int) -> None:
     self._check(a)
@@ -115,5 +115,5 @@ class DSU(ContainerMixin):
 
   def count(self, x: int) -> int:
     self._check(x)
-    root: int = self._find_root(x)
+    root: int = self._findRoot(x)
     return self._size[root]

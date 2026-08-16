@@ -8,28 +8,28 @@ class Holder:
   y: int = 0
 
 
-def read_x(h: Holder) -> int:
+def readX(h: Holder) -> int:
   return getattr(h, "x")
 
 
-def write_y(h: Holder) -> None:
+def writeY(h: Holder) -> None:
   setattr(h, "y", 9)
 
 
 class StaticReflectTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
     h: Holder = new()
     h.x = 3
-    self.assertEqual(read_x(h), 3)
-    write_y(h)
+    self.assertEqual(readX(h), 3)
+    writeY(h)
     self.assertEqual(h.y, 9)
 
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)

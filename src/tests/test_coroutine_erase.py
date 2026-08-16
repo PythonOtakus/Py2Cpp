@@ -10,7 +10,7 @@ class PyCoroutineTypeTests(unittest.TestCase):
 
     def test_parse_coroutine_ann_storage(self):
         tp = TypeParser()
-        ann = ast.parse('Coroutine[int, None, None]').body[0].value
+        ann = ast.parse('CoroutineType[int, None, None]').body[0].value
         cpp = tp.parse_storage_type(ann, set())
         self.assertEqual(cpp, 'PyCoroutine<PyInt, PyNone, PyNone>')
 

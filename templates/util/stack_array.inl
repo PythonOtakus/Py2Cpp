@@ -200,17 +200,17 @@ static PyInt _slice_count3d(PyInt start, PyInt stop, PyInt step)
   return ((start - stop) - step - 1) / (-step);
 }
 
-template<typename T, PyInt D0, PyInt D1, PyInt D2, PyInt O0, PyInt O1, PyInt O2>
-PySpan3D<T> PyStackArray3D<T, D0, D1, D2, O0, O1, O2>::PY2CPP_GETTER(view)() const
+template<typename T, PyInt Dim0, PyInt Dim1, PyInt Dim2, PyInt Off0, PyInt Off1, PyInt Off2>
+PySpan3D<T> PyStackArray3D<T, Dim0, Dim1, Dim2, Off0, Off1, Off2>::PY2CPP_GETTER(view)() const
 {
   return PySpan3D<T>(
     PY2CPP_GETTER(_buf)(),
-    PyTuple<PyInt, PyInt, PyInt>(D0, D1, D2),
-    PyTuple<PyInt, PyInt>(D1 * D2, D2));
+    PyTuple<PyInt, PyInt, PyInt>(Dim0, Dim1, Dim2),
+    PyTuple<PyInt, PyInt>(Dim1 * Dim2, Dim2));
 }
 
-template<typename T, PyInt D0, PyInt D1, PyInt D2, PyInt O0, PyInt O1, PyInt O2>
-PY2CPP_TYPE(PyArray3D)<T> PyStackArray3D<T, D0, D1, D2, O0, O1, O2>::_getslice3d(
+template<typename T, PyInt Dim0, PyInt Dim1, PyInt Dim2, PyInt Off0, PyInt Off1, PyInt Off2>
+PY2CPP_TYPE(PyArray3D)<T> PyStackArray3D<T, Dim0, Dim1, Dim2, Off0, Off1, Off2>::_getslice3d(
   PySlice<PyInt, PyInt> sl0,
   PySlice<PyInt, PyInt> sl1,
   PySlice<PyInt, PyInt> sl2) const
@@ -225,19 +225,19 @@ PY2CPP_TYPE(PyArray3D)<T> PyStackArray3D<T, D0, D1, D2, O0, O1, O2>::_getslice3d
   PyInt e2;
   PyInt t2;
   {
-    auto trip = sl0.indices(D0);
+    auto trip = sl0.indices(Dim0);
     s0 = trip.template get<0>();
     e0 = trip.template get<1>();
     t0 = trip.template get<2>();
   }
   {
-    auto trip = sl1.indices(D1);
+    auto trip = sl1.indices(Dim1);
     s1 = trip.template get<0>();
     e1 = trip.template get<1>();
     t1 = trip.template get<2>();
   }
   {
-    auto trip = sl2.indices(D2);
+    auto trip = sl2.indices(Dim2);
     s2 = trip.template get<0>();
     e2 = trip.template get<1>();
     t2 = trip.template get<2>();
@@ -263,7 +263,7 @@ PY2CPP_TYPE(PyArray3D)<T> PyStackArray3D<T, D0, D1, D2, O0, O1, O2>::_getslice3d
             {
               out.__setitem__(
                 PyTuple<PyInt, PyInt, PyInt>(o0, o1, o2),
-                __getitem__(PyTuple<PyInt, PyInt, PyInt>(O0 + i, O1 + j, O2 + k)));
+                __getitem__(PyTuple<PyInt, PyInt, PyInt>(Off0 + i, Off1 + j, Off2 + k)));
               o2 += 1;
             }
           }
@@ -273,7 +273,7 @@ PY2CPP_TYPE(PyArray3D)<T> PyStackArray3D<T, D0, D1, D2, O0, O1, O2>::_getslice3d
             {
               out.__setitem__(
                 PyTuple<PyInt, PyInt, PyInt>(o0, o1, o2),
-                __getitem__(PyTuple<PyInt, PyInt, PyInt>(O0 + i, O1 + j, O2 + k)));
+                __getitem__(PyTuple<PyInt, PyInt, PyInt>(Off0 + i, Off1 + j, Off2 + k)));
               o2 += 1;
             }
           }
@@ -291,7 +291,7 @@ PY2CPP_TYPE(PyArray3D)<T> PyStackArray3D<T, D0, D1, D2, O0, O1, O2>::_getslice3d
             {
               out.__setitem__(
                 PyTuple<PyInt, PyInt, PyInt>(o0, o1, o2),
-                __getitem__(PyTuple<PyInt, PyInt, PyInt>(O0 + i, O1 + j, O2 + k)));
+                __getitem__(PyTuple<PyInt, PyInt, PyInt>(Off0 + i, Off1 + j, Off2 + k)));
               o2 += 1;
             }
           }
@@ -301,7 +301,7 @@ PY2CPP_TYPE(PyArray3D)<T> PyStackArray3D<T, D0, D1, D2, O0, O1, O2>::_getslice3d
             {
               out.__setitem__(
                 PyTuple<PyInt, PyInt, PyInt>(o0, o1, o2),
-                __getitem__(PyTuple<PyInt, PyInt, PyInt>(O0 + i, O1 + j, O2 + k)));
+                __getitem__(PyTuple<PyInt, PyInt, PyInt>(Off0 + i, Off1 + j, Off2 + k)));
               o2 += 1;
             }
           }
@@ -327,7 +327,7 @@ PY2CPP_TYPE(PyArray3D)<T> PyStackArray3D<T, D0, D1, D2, O0, O1, O2>::_getslice3d
             {
               out.__setitem__(
                 PyTuple<PyInt, PyInt, PyInt>(o0, o1, o2),
-                __getitem__(PyTuple<PyInt, PyInt, PyInt>(O0 + i, O1 + j, O2 + k)));
+                __getitem__(PyTuple<PyInt, PyInt, PyInt>(Off0 + i, Off1 + j, Off2 + k)));
               o2 += 1;
             }
           }
@@ -337,7 +337,7 @@ PY2CPP_TYPE(PyArray3D)<T> PyStackArray3D<T, D0, D1, D2, O0, O1, O2>::_getslice3d
             {
               out.__setitem__(
                 PyTuple<PyInt, PyInt, PyInt>(o0, o1, o2),
-                __getitem__(PyTuple<PyInt, PyInt, PyInt>(O0 + i, O1 + j, O2 + k)));
+                __getitem__(PyTuple<PyInt, PyInt, PyInt>(Off0 + i, Off1 + j, Off2 + k)));
               o2 += 1;
             }
           }
@@ -355,7 +355,7 @@ PY2CPP_TYPE(PyArray3D)<T> PyStackArray3D<T, D0, D1, D2, O0, O1, O2>::_getslice3d
             {
               out.__setitem__(
                 PyTuple<PyInt, PyInt, PyInt>(o0, o1, o2),
-                __getitem__(PyTuple<PyInt, PyInt, PyInt>(O0 + i, O1 + j, O2 + k)));
+                __getitem__(PyTuple<PyInt, PyInt, PyInt>(Off0 + i, Off1 + j, Off2 + k)));
               o2 += 1;
             }
           }
@@ -365,7 +365,7 @@ PY2CPP_TYPE(PyArray3D)<T> PyStackArray3D<T, D0, D1, D2, O0, O1, O2>::_getslice3d
             {
               out.__setitem__(
                 PyTuple<PyInt, PyInt, PyInt>(o0, o1, o2),
-                __getitem__(PyTuple<PyInt, PyInt, PyInt>(O0 + i, O1 + j, O2 + k)));
+                __getitem__(PyTuple<PyInt, PyInt, PyInt>(Off0 + i, Off1 + j, Off2 + k)));
               o2 += 1;
             }
           }

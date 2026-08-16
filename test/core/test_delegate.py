@@ -36,27 +36,27 @@ def _triple(x: int) -> int:
   return x + x + x
 
 
-def _prefix_text(s: str) -> str:
+def _prefixText(s: str) -> str:
   return "fn:" + s
 
 
-def add_inc(target: Func[int]) -> None:
+def addInc(target: Func[int]) -> None:
   target += _inc
 
 
-def call_target(target: Func[int], x: int) -> int:
+def callTarget(target: Func[int], x: int) -> int:
   return target(x)
 
 
-def attach_slot(d: Func[int], slot: Callable[[int], int]) -> None:
+def attachSlot(d: Func[int], slot: Callable[[int], int]) -> None:
   d += slot
 
 
-def detach_slot(d: Func[int], slot: Callable[[int], int]) -> None:
+def detachSlot(d: Func[int], slot: Callable[[int], int]) -> None:
   d -= slot
 
 
-def invoke_slot(slot: Callable[[int], int], x: int) -> int:
+def invokeSlot(slot: Callable[[int], int], x: int) -> int:
   return slot(x)
 
 
@@ -99,13 +99,13 @@ class CopyCallableBox:
 class SlotFactory:
   v: int = 0
 
-  def make_slot(self) -> Callable[[int], int]:
+  def makeSlot(self) -> Callable[[int], int]:
     slot = lambda x: self.v + x
     return slot
 
 
 class DelegateBasicTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
@@ -126,21 +126,21 @@ class DelegateBasicTests(TestCaseMixin):
     cmp: Compare[int, int] = new()
     cmp += _add
     self.assertEqual(cmp(2, 3), 5)
-    lam_d: Func[int] = new()
-    lam_d += lambda x: x + 1
-    self.assertEqual(lam_d(5), 6)
-    lam_d += _triple
-    self.assertEqual(lam_d(5), 15)
-    inc_lam = lambda x: x + 1
-    cached_d: Func[int] = new()
-    cached_d += inc_lam
-    self.assertEqual(cached_d(5), 6)
-    cached_d -= inc_lam
-    self.assertFalse(cached_d)
+    lamD: Func[int] = new()
+    lamD += lambda x: x + 1
+    self.assertEqual(lamD(5), 6)
+    lamD += _triple
+    self.assertEqual(lamD(5), 15)
+    incLam = lambda x: x + 1
+    cachedD: Func[int] = new()
+    cachedD += incLam
+    self.assertEqual(cachedD(5), 6)
+    cachedD -= incLam
+    self.assertFalse(cachedD)
 
 
 class DelegateMemberTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   v: int = 0
 
@@ -157,18 +157,18 @@ class DelegateMemberTests(TestCaseMixin):
     d -= self.apply
     self.assertFalse(d)
     self.v = 0
-    add_v = lambda x: self.v + x
-    d += add_v
+    addV = lambda x: self.v + x
+    d += addV
     self.assertEqual(d(3), 3)
     self.assertEqual(self.v, 0)
     self.v = 10
     self.assertEqual(d(3), 13)
-    d -= add_v
+    d -= addV
     self.assertFalse(d)
 
 
 class DelegateFieldTests(TestCaseMixin):
-  _test_tag = 30
+  _testTag = 30
 
   @override
   def test(self):
@@ -182,7 +182,7 @@ class DelegateFieldTests(TestCaseMixin):
 
 
 class CallableFieldTests(TestCaseMixin):
-  _test_tag = 40
+  _testTag = 40
 
   @override
   def test(self):
@@ -197,12 +197,12 @@ class CallableFieldTests(TestCaseMixin):
     text: TextSlotHolder = new()
     text.slot = lambda s: "lam:" + s
     self.assertEqual(text.call("ok"), "lam:ok")
-    text.slot = _prefix_text
+    text.slot = _prefixText
     self.assertEqual(text.call("ok"), "fn:ok")
 
 
 class CopyableInheritanceCallableTests(TestCaseMixin):
-  _test_tag = 45
+  _testTag = 45
 
   @override
   def test(self):
@@ -217,44 +217,44 @@ class CopyableInheritanceCallableTests(TestCaseMixin):
     self.assertEqual(items[0].label, "base")
     box: CopyCallableBox = new()
     box.slot = lambda s: "copy:" + s
-    copied_box: CopyCallableBox = box
-    self.assertEqual(copied_box.call("ok"), "copy:ok")
+    copiedBox: CopyCallableBox = box
+    self.assertEqual(copiedBox.call("ok"), "copy:ok")
 
 
 class DelegateParamTests(TestCaseMixin):
-  _test_tag = 50
+  _testTag = 50
 
   @override
   def test(self):
     d: Func[int] = new()
-    add_inc(d)
-    self.assertEqual(call_target(d, 3), 4)
+    addInc(d)
+    self.assertEqual(callTarget(d, 3), 4)
     d += _double
-    self.assertEqual(call_target(d, 3), 6)
+    self.assertEqual(callTarget(d, 3), 6)
 
 
 class CallableParamTests(TestCaseMixin):
-  _test_tag = 60
+  _testTag = 60
 
   @override
   def test(self):
     d: Func[int] = new()
     slot = lambda x: x + 2
-    self.assertEqual(invoke_slot(slot, 4), 6)
-    attach_slot(d, slot)
+    self.assertEqual(invokeSlot(slot, 4), 6)
+    attachSlot(d, slot)
     self.assertEqual(d(3), 5)
-    detach_slot(d, slot)
+    detachSlot(d, slot)
     self.assertFalse(d)
 
 
 class CallableLifetimeTests(TestCaseMixin):
-  _test_tag = 70
+  _testTag = 70
 
   @override
   def test(self):
     factory: SlotFactory = new()
     factory.v = 10
-    slot: Callable[[int], int] = factory.make_slot()
+    slot: Callable[[int], int] = factory.makeSlot()
     self.assertEqual(slot(3), 13)
     factory.v = 20
     self.assertEqual(slot(3), 23)
@@ -262,7 +262,7 @@ class CallableLifetimeTests(TestCaseMixin):
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

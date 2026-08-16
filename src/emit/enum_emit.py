@@ -151,10 +151,9 @@ def enum_pystr_cast_expr(tr: Translator, info: ClassInfo, value_expr: str) -> st
     return f'static_cast<{ps}>({helper}{{{value_expr}}})'
 
 def enum_to_underlying_cast_expr(tr: Translator, info: ClassInfo, value_expr: str) -> str:
-    """``int(E.MEM)`` / ``int64(E.MEM)`` → ``static_cast<PyInt>(ModePyInt{…})`` 等。"""
+    """``int(E.MEM)`` / ``int64(E.MEM)`` → ``static_cast<底层>(…)``（勿经临时 helper，避免 MSVC 实参临时触雷）。"""
     u = info.enum_underlying_cpp
-    helper = enum_scalar_helper_cpp(tr, info)
-    return f'static_cast<{u}>({helper}{{{value_expr}}})'
+    return f'static_cast<{u}>({value_expr})'
 
 def enum_to_int_cast_expr(tr: Translator, info: ClassInfo, value_expr: str) -> str:
     """``int(E.MEM)`` → ``PyInt``（``int64`` 底层时经 ``PyInt64`` 再收窄）。"""
@@ -165,7 +164,7 @@ def enum_to_int_cast_expr(tr: Translator, info: ClassInfo, value_expr: str) -> s
     return enum_to_underlying_cast_expr(tr, info, value_expr)
 
 def try_emit_enum_ctor(tr: Translator, node: ast.Call) -> str | None:
-    """``StatusCode(200)`` → ``static_cast<StatusCode>(static_cast<PyInt>(200))``。"""
+    """``StatusCodeEnum(200)`` → ``static_cast<StatusCodeEnum>(static_cast<PyInt>(200))``。"""
     if not isinstance(node.func, ast.Name):
         return None
     info = enum_class_for_name(tr, node.func.id)

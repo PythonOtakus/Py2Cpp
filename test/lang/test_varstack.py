@@ -1,4 +1,4 @@
-"""``VarStack`` + ``Self.iter_fields``：mixin 内 ``push`` / ``new(*s)`` / ``fn(*s)`` 译期展开。"""
+"""``VarStack`` + ``Self.iterFields``：mixin 内 ``push`` / ``new(*s)`` / ``fn(*s)`` 译期展开。"""
 from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 from py2cpp.math import almost, lerp
@@ -12,43 +12,43 @@ class VarStackMixin:
     @immutable
     def filled() -> Self:
         vs: VarStack = new()
-        for f in Self.iter_fields(public_only=True):
+        for f in Self.iterFields(publicOnly=True):
             vs.push(1.0)
         return new(*vs)
 
     @immutable
     def summed(self, other: Self) -> Self:
         vs: VarStack = new()
-        for f in Self.iter_fields(public_only=True):
+        for f in Self.iterFields(publicOnly=True):
             vs.push(getattr(self, f) + getattr(other, f))
         return new(*vs)
 
     @immutable
     def copied(self) -> Self:
         vs: VarStack = new()
-        for f in Self.iter_fields(public_only=True):
+        for f in Self.iterFields(publicOnly=True):
             vs.push(getattr(self, f))
         return new(*vs)
 
     @immutable
     def delta(self, other: Self) -> Self:
         vs: VarStack = new()
-        for f in Self.iter_fields(public_only=True):
+        for f in Self.iterFields(publicOnly=True):
             vs.push(getattr(other, f) - getattr(self, f))
         return new(*vs)
 
     @staticmethod
     @immutable
-    def lerp_pair(a: Self, b: Self, t: float64) -> Self:
+    def lerpPair(a: Self, b: Self, t: float64) -> Self:
         vs: VarStack = new()
-        for f in Self.iter_fields(public_only=True):
+        for f in Self.iterFields(publicOnly=True):
             vs.push(lerp(getattr(a, f), getattr(b, f), t))
         return new(*vs)
 
     @immutable
-    def replace_tail(self, tail: float64) -> Self:
+    def replaceTail(self, tail: float64) -> Self:
         vs: VarStack = new()
-        for f in Self.iter_fields(public_only=True):
+        for f in Self.iterFields(publicOnly=True):
             vs.push(getattr(self, f))
         _: float64 = vs.pop()
         vs.push(tail)
@@ -59,9 +59,9 @@ class VarStackPopMixin:
     """三维宿主专用：``pop`` 后 ``*vs`` 仍至少剩两分量。"""
 
     @immutable
-    def sum_except_last(self) -> float64:
+    def sumExceptLast(self) -> float64:
         vs: VarStack = new()
-        for f in Self.iter_fields(public_only=True):
+        for f in Self.iterFields(publicOnly=True):
             vs.push(getattr(self, f))
         vs.pop()
         return sum2(*vs)
@@ -71,9 +71,9 @@ class VarStackTopMixin:
     """``top()`` 可在 ``if`` 等内层作用域读取栈顶。"""
 
     @immutable
-    def peek_top(self) -> float64:
+    def peekTop(self) -> float64:
         vs: VarStack = new()
-        for f in Self.iter_fields(public_only=True):
+        for f in Self.iterFields(publicOnly=True):
             vs.push(getattr(self, f))
         top: float64 = 0.0
         if self:
@@ -97,7 +97,7 @@ class Vec3Stack(VarStackMixin, VarStackPopMixin, VarStackTopMixin):
     z: float64 = 0.0
 
 class MixinFilledVec2Tests(TestCaseMixin):
-    _test_tag = 1
+    _testTag = 1
 
     @override
     def test(self):
@@ -106,7 +106,7 @@ class MixinFilledVec2Tests(TestCaseMixin):
         self.assertTrue(almost(v.y, 1.0))
 
 class MixinFilledVec3Tests(TestCaseMixin):
-    _test_tag = 2
+    _testTag = 2
 
     @override
     def test(self):
@@ -116,7 +116,7 @@ class MixinFilledVec3Tests(TestCaseMixin):
         self.assertTrue(almost(v.z, 1.0))
 
 class MixinSummedVec2Tests(TestCaseMixin):
-    _test_tag = 3
+    _testTag = 3
 
     @override
     def test(self):
@@ -126,7 +126,7 @@ class MixinSummedVec2Tests(TestCaseMixin):
         self.assertTrue(almost(s.y, 6.0))
 
 class MixinDualStackVec2Tests(TestCaseMixin):
-    _test_tag = 4
+    _testTag = 4
 
     @override
     def test(self):
@@ -140,46 +140,46 @@ class MixinDualStackVec2Tests(TestCaseMixin):
         self.assertTrue(almost(d.y, 6.0))
 
 class MixinLerpPairVec2Tests(TestCaseMixin):
-    _test_tag = 5
+    _testTag = 5
 
     @override
     def test(self):
         a: Vec2Stack = new(0.0, 10.0)
         b: Vec2Stack = new(10.0, 0.0)
-        m: Vec2Stack = new.lerp_pair(a, b, 0.25)
+        m: Vec2Stack = new.lerpPair(a, b, 0.25)
         self.assertTrue(almost(m.x, 2.5))
         self.assertTrue(almost(m.y, 7.5))
 
 class MixinPopReplaceTailVec2Tests(TestCaseMixin):
-    _test_tag = 6
+    _testTag = 6
 
     @override
     def test(self):
         v: Vec2Stack = new(1.0, 2.0)
-        r: Vec2Stack = v.replace_tail(9.0)
+        r: Vec2Stack = v.replaceTail(9.0)
         self.assertTrue(almost(r.x, 1.0))
         self.assertTrue(almost(r.y, 9.0))
 
 class MixinPopUnpackVec3Tests(TestCaseMixin):
-    _test_tag = 7
+    _testTag = 7
 
     @override
     def test(self):
         v: Vec3Stack = new(1.0, 2.0, 30.0)
-        s: float64 = v.sum_except_last()
+        s: float64 = v.sumExceptLast()
         self.assertTrue(almost(s, 3.0))
 
 class MixinTopInnerScopeVec3Tests(TestCaseMixin):
-    _test_tag = 8
+    _testTag = 8
 
     @override
     def test(self):
         v: Vec3Stack = new(1.0, 2.0, 30.0)
-        t: float64 = v.peek_top()
+        t: float64 = v.peekTop()
         self.assertTrue(almost(t, 30.0))
 
 class SpatialVector2ZeroTests(TestCaseMixin):
-    _test_tag = 10
+    _testTag = 10
 
     @override
     def test(self):
@@ -189,7 +189,7 @@ class SpatialVector2ZeroTests(TestCaseMixin):
         self.assertFalse(z)
 
 class SpatialVector3AddTests(TestCaseMixin):
-    _test_tag = 11
+    _testTag = 11
 
     @override
     def test(self):
@@ -201,7 +201,7 @@ class SpatialVector3AddTests(TestCaseMixin):
         self.assertTrue(almost(s.z, 9.0))
 
 class SpatialVector4NegTests(TestCaseMixin):
-    _test_tag = 12
+    _testTag = 12
 
     @override
     def test(self):
@@ -213,7 +213,7 @@ class SpatialVector4NegTests(TestCaseMixin):
         self.assertTrue(almost(n.w, 4.0))
 
 class SpatialVector3LerpTests(TestCaseMixin):
-    _test_tag = 13
+    _testTag = 13
 
     @override
     def test(self):
@@ -225,7 +225,7 @@ class SpatialVector3LerpTests(TestCaseMixin):
 
 def main() -> int:
     suite: TestSuite = new()
-    for Class in TestCaseMixin.iter_subclasses(sort_const='_test_tag'):
+    for Class in TestCaseMixin.iterSubclasses(sortConst='_testTag'):
         suite.addTest(Class())
     return TextTestRunner().run(suite)
 if __name__ == '__main__':

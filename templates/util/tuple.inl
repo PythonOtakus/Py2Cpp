@@ -53,7 +53,7 @@ typename _PyTupleElem<0, _PyTupleHolder<Args...>>::elem_t& PyTuple<Args...>::__g
 {
   if (index < 0 || index >= (int)sizeof...(Args))
   {
-    throw PY2CPP_TYPE(IndexError)();
+    throw PY2CPP_TYPE(PyIndexError)();
   }
   return _py_tuple_get_runtime(index, this->_h);
 }
@@ -63,7 +63,7 @@ const typename _PyTupleElem<0, _PyTupleHolder<Args...>>::elem_t& PyTuple<Args...
 {
   if (index < 0 || index >= (int)sizeof...(Args))
   {
-    throw PY2CPP_TYPE(IndexError)();
+    throw PY2CPP_TYPE(PyIndexError)();
   }
   return _py_tuple_get_runtime(index, const_cast<_PyTupleHolder<Args...>&>(this->_h));
 }

@@ -9,7 +9,7 @@ class Widget:
     label: str = ''
 
 @boxing
-class Cell:
+class CellUnsafe:
 
     def __init__(self, n: int=0):
         self.n: int = n
@@ -29,7 +29,7 @@ def dup[T: copyable](v: T) -> T:
     return out
 
 class RefcountConstraintTests(TestCaseMixin):
-    _test_tag = 1
+    _testTag = 1
 
     @override
     def test(self):
@@ -43,19 +43,19 @@ class RefcountConstraintTests(TestCaseMixin):
         self.assertFalse(r.alive)
 
 class BoxingConstraintTests(TestCaseMixin):
-    _test_tag = 2
+    _testTag = 2
 
     @override
     def test(self):
-        p: Pointer[Cell] = alloc[Cell]()
-        init(p, Cell(7))
+        p: Pointer[CellUnsafe] = alloc[CellUnsafe]()
+        init(p, CellUnsafe(7))
         self.assertEqual(peek(p), 7)
-        lst: list[Cell] = []
+        lst: list[CellUnsafe] = []
         lst.append(p)
         self.assertEqual(len(lst), 1)
 
 class CopyableConstraintTests(TestCaseMixin):
-    _test_tag = 3
+    _testTag = 3
 
     @override
     def test(self):
@@ -66,7 +66,7 @@ class CopyableConstraintTests(TestCaseMixin):
 
 def main():
     suite: TestSuite = new()
-    for Class in TestCaseMixin.iter_subclasses(sort_const='_test_tag'):
+    for Class in TestCaseMixin.iterSubclasses(sortConst='_testTag'):
         suite.addTest(Class())
     return TextTestRunner().run(suite)
 if __name__ == '__main__':

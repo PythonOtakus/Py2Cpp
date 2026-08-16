@@ -1,11 +1,11 @@
-"""``inline_range`` 集成：``@mixin`` 矩阵 ``Self._dim`` 定长循环。"""
+"""``inlineRange`` 集成：``@mixin`` 矩阵 ``Self._dim`` 定长循环。"""
 from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 from py2cpp.spatial.matrix import Matrix3
 
 
 class InlineRangeMatrixTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
@@ -20,7 +20,7 @@ class InlineRangeMatrixTests(TestCaseMixin):
 
 def main() -> int:
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

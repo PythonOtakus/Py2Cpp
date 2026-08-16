@@ -4,7 +4,7 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING
 
-from ..constant.stdlib_layout import EXCEPTIONS_NS
+from ..constant.stdlib_layout import cpp_exception_type, EXCEPTIONS_NS
 from ..analysis.ir import cpp_ident, cpp_param
 from ..analysis.module_namespace import qualify_symbol_in_module
 from ..analysis.patterns import temp_name
@@ -14,13 +14,13 @@ from ..analysis.type_emit import bind_scope_var
 if TYPE_CHECKING:
   from ..translator import Translator, _TryFrame
 
-_GROUP_TY = f"{EXCEPTIONS_NS}::ExceptionGroup"
-_KIND_TY = f"{EXCEPTIONS_NS}::ExcSlot::Enum"
+_GROUP_TY = cpp_exception_type('ExceptionGroup')
+_KIND_TY = f"{EXCEPTIONS_NS}::ExcTypeUnion::Enum"
 _FORBIDDEN_STAR_TYPES = frozenset({"BaseExceptionGroup", "ExceptionGroup"})
 
 
 def _exc_cpp_type(exc_name: str) -> str:
-  return f"{EXCEPTIONS_NS}::{exc_name}"
+  return cpp_exception_type(exc_name)
 
 
 def _pybool_cast(expr: str) -> str:
@@ -170,7 +170,7 @@ def _emit_star_handler_body(
         bind_scope_var(tr.scope, handler.name, _GROUP_TY, classes=tr.classes)
       tr.write_line(f"const {_GROUP_TY}& {pname} = {matched};")
     tr._emit_body(handler.body)
-  tr.write_line(f"{active}.copy_from({rest});")
+  tr.write_line(f"{active}.copyFrom({rest});")
 
 
 def emit_try(tr: Translator, node: ast.Try) -> None:
@@ -227,7 +227,7 @@ def emit_try_star(tr: Translator, node: ast.TryStar) -> None:
       tr._emit_body(node.body)
     with tr._use_block(f"catch (const {_GROUP_TY}& __eg_in)"):
       tr.write_line(f"{_GROUP_TY} {active};")
-      tr.write_line(f"{active}.copy_from(__eg_in);")
+      tr.write_line(f"{active}.copyFrom(__eg_in);")
       tr.write_line(f"{_GROUP_TY} {matched};")
       tr.write_line(f"{_GROUP_TY} {rest};")
       for handler in node.handlers:

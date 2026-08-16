@@ -3,41 +3,41 @@
 from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 from py2cpp.io.file.path import (
-  basename,
-  dirname,
-  isabs,
+  baseName,
+  dirName,
+  isAbs,
   join,
-  normpath,
+  normPath,
   split,
-  splitdrive,
-  splitext,
+  splitDrive,
+  splitExt,
 )
 
 
 class FilePathJoinTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
     p: str = join("foo", "bar")
     self.assertEqual(p, "foo\\bar")
-    self.assertEqual(basename(p), "bar")
-    self.assertEqual(dirname(p), "foo")
-    self.assertEqual(normpath("foo//bar\\"), "foo\\bar")
+    self.assertEqual(baseName(p), "bar")
+    self.assertEqual(dirName(p), "foo")
+    self.assertEqual(normPath("foo//bar\\"), "foo\\bar")
 
 
 class FilePathSplitTests(TestCaseMixin):
-  _test_tag = 5
+  _testTag = 5
 
   @override
   def test(self):
-    pair: (str, str) = splitext("dir\\file.txt")
+    pair: (str, str) = splitExt("dir\\file.txt")
     self.assertEqual(pair[0], "dir\\file")
     self.assertEqual(pair[1], ".txt")
-    pair = splitext("archive.tar.gz")
+    pair = splitExt("archive.tar.gz")
     self.assertEqual(pair[0], "archive.tar")
     self.assertEqual(pair[1], ".gz")
-    pair = splitext(".cshrc")
+    pair = splitExt(".cshrc")
     self.assertEqual(pair[0], ".cshrc")
     self.assertEqual(pair[1], "")
     parts: (str, str) = split("foo\\bar")
@@ -46,16 +46,16 @@ class FilePathSplitTests(TestCaseMixin):
     parts = split("\\foo")
     self.assertEqual(parts[0], "\\")
     self.assertEqual(parts[1], "foo")
-    drv_pair: (str, str) = splitdrive("C:\\Windows")
-    self.assertEqual(drv_pair[0], "C:")
-    self.assertEqual(drv_pair[1], "\\Windows")
-    self.assertTrue(isabs("C:\\x"))
-    self.assertFalse(isabs("relative"))
+    drvPair: (str, str) = splitDrive("C:\\Windows")
+    self.assertEqual(drvPair[0], "C:")
+    self.assertEqual(drvPair[1], "\\Windows")
+    self.assertTrue(isAbs("C:\\x"))
+    self.assertFalse(isAbs("relative"))
 
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

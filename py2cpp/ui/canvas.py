@@ -5,7 +5,7 @@ from .window import UIWindow
 
 
 @enum
-class DrawCmdKind:
+class DrawCmdEnum:
   FillRect = 0
   StrokeRect = 1
   DrawLine = 2
@@ -19,7 +19,7 @@ class DrawCmdKind:
 
 @copyable
 class DrawCmd:
-  kind: DrawCmdKind = DrawCmdKind.FillRect
+  kind: DrawCmdEnum = DrawCmdEnum.FillRect
   x: int = 0
   y: int = 0
   w: int = 0
@@ -29,13 +29,13 @@ class DrawCmd:
   r: int = 0
   g: int = 0
   b: int = 0
-  pen_w: int = 1
+  penW: int = 1
   radius: int = 0
   text: str = ""
-  font_name: str = "Segoe UI"
-  font_size: int = 11
-  font_bold: bool = False
-  text_align: int = 0
+  fontName: str = "Segoe UI"
+  fontSize: int = 11
+  fontBold: bool = False
+  textAlign: int = 0
 
 
 @copyable
@@ -45,13 +45,13 @@ class UICanvasFont:
   bold: bool = False
 
 
-# ``draw_text`` / ``DrawCmd.text_align``
-TEXT_ALIGN_LEFT: int = 0
-TEXT_ALIGN_RIGHT: int = 1
-TEXT_ALIGN_CENTER: int = 2
+# ``drawText`` / ``DrawCmd.textAlign``
+TextAlignLeft: int = 0
+TextAlignRight: int = 1
+TextAlignCenter: int = 2
 
 
-def _bezier_controls(x1: int, y1: int, x2: int, y2: int) -> (int, int, int, int):
+def _bezierControls(x1: int, y1: int, x2: int, y2: int) -> (int, int, int, int):
   """水平 cubic 控制点（与旧 ``+canvas.inl`` 几何一致）。"""
   dx: int = x2 - x1
   if dx < 0:
@@ -72,7 +72,7 @@ class UIPaintContext:
   _dc: int64 = 0
   _cmds: list[DrawCmd, 0] = []
 
-  def begin_frame(
+  def beginFrame(
     self,
     dc: int64,
     width: int,
@@ -88,36 +88,36 @@ class UIPaintContext:
     for i in range(len(self._cmds) - 1, -1, -1):
       self._cmds.pop(i)
 
-  def cmd_count(self) -> int:
+  def cmdCount(self) -> int:
     return len(self._cmds)
 
-  def scaled_font_size(self) -> int:
+  def scaledFontSize(self) -> int:
     sz: int = int(float64(self.font.size) * self.zoom)
     if sz < 1:
       sz = 1
     return sz
 
-  def _push_color(self, cmd: DrawCmd @ref, color: (int, int, int)) -> None:
+  def _pushColor(self, cmd: DrawCmd @ref, color: (int, int, int)) -> None:
     cmd.r = color[0]
     cmd.g = color[1]
     cmd.b = color[2]
 
-  def _push_font(self, cmd: DrawCmd @ref) -> None:
-    cmd.font_name = self.font.name
-    cmd.font_size = self.scaled_font_size()
-    cmd.font_bold = self.font.bold
+  def _pushFont(self, cmd: DrawCmd @ref) -> None:
+    cmd.fontName = self.font.name
+    cmd.fontSize = self.scaledFontSize()
+    cmd.fontBold = self.font.bold
 
-  def fill_rect(self, x: int, y: int, w: int, h: int, color: (int, int, int)) -> None:
+  def fillRect(self, x: int, y: int, w: int, h: int, color: (int, int, int)) -> None:
     cmd: DrawCmd = new()
-    cmd.kind = DrawCmdKind.FillRect
+    cmd.kind = DrawCmdEnum.FillRect
     cmd.x = x
     cmd.y = y
     cmd.w = w
     cmd.h = h
-    self._push_color(cmd, color)
+    self._pushColor(cmd, color)
     self._cmds.append(cmd)
 
-  def stroke_rect(
+  def strokeRect(
     self,
     x: int,
     y: int,
@@ -127,16 +127,16 @@ class UIPaintContext:
     width: int = 1,
   ) -> None:
     cmd: DrawCmd = new()
-    cmd.kind = DrawCmdKind.StrokeRect
+    cmd.kind = DrawCmdEnum.StrokeRect
     cmd.x = x
     cmd.y = y
     cmd.w = w
     cmd.h = h
-    cmd.pen_w = width
-    self._push_color(cmd, color)
+    cmd.penW = width
+    self._pushColor(cmd, color)
     self._cmds.append(cmd)
 
-  def draw_line(
+  def drawLine(
     self,
     x1: int,
     y1: int,
@@ -146,16 +146,16 @@ class UIPaintContext:
     width: int = 1,
   ) -> None:
     cmd: DrawCmd = new()
-    cmd.kind = DrawCmdKind.DrawLine
+    cmd.kind = DrawCmdEnum.DrawLine
     cmd.x = x1
     cmd.y = y1
     cmd.x2 = x2
     cmd.y2 = y2
-    cmd.pen_w = width
-    self._push_color(cmd, color)
+    cmd.penW = width
+    self._pushColor(cmd, color)
     self._cmds.append(cmd)
 
-  def draw_bezier(
+  def drawBezier(
     self,
     x1: int,
     y1: int,
@@ -165,16 +165,16 @@ class UIPaintContext:
     width: int = 2,
   ) -> None:
     cmd: DrawCmd = new()
-    cmd.kind = DrawCmdKind.DrawBezier
+    cmd.kind = DrawCmdEnum.DrawBezier
     cmd.x = x1
     cmd.y = y1
     cmd.x2 = x2
     cmd.y2 = y2
-    cmd.pen_w = width
-    self._push_color(cmd, color)
+    cmd.penW = width
+    self._pushColor(cmd, color)
     self._cmds.append(cmd)
 
-  def draw_text(
+  def drawText(
     self,
     x: int,
     y: int,
@@ -185,28 +185,28 @@ class UIPaintContext:
     align: int = 0,
   ) -> None:
     cmd: DrawCmd = new()
-    cmd.kind = DrawCmdKind.DrawText
+    cmd.kind = DrawCmdEnum.DrawText
     cmd.x = x
     cmd.y = y
     cmd.w = w
     cmd.h = h
     cmd.text = text
-    cmd.text_align = align
-    self._push_color(cmd, color)
-    self._push_font(cmd)
+    cmd.textAlign = align
+    self._pushColor(cmd, color)
+    self._pushFont(cmd)
     self._cmds.append(cmd)
 
-  def fill_ellipse(self, x1: int, y1: int, x2: int, y2: int, color: (int, int, int)) -> None:
+  def fillEllipse(self, x1: int, y1: int, x2: int, y2: int, color: (int, int, int)) -> None:
     cmd: DrawCmd = new()
-    cmd.kind = DrawCmdKind.FillEllipse
+    cmd.kind = DrawCmdEnum.FillEllipse
     cmd.x = x1
     cmd.y = y1
     cmd.x2 = x2
     cmd.y2 = y2
-    self._push_color(cmd, color)
+    self._pushColor(cmd, color)
     self._cmds.append(cmd)
 
-  def fill_round_rect(
+  def fillRoundRect(
     self,
     x: int,
     y: int,
@@ -216,16 +216,16 @@ class UIPaintContext:
     color: (int, int, int),
   ) -> None:
     cmd: DrawCmd = new()
-    cmd.kind = DrawCmdKind.FillRoundRect
+    cmd.kind = DrawCmdEnum.FillRoundRect
     cmd.x = x
     cmd.y = y
     cmd.w = w
     cmd.h = h
     cmd.radius = radius
-    self._push_color(cmd, color)
+    self._pushColor(cmd, color)
     self._cmds.append(cmd)
 
-  def stroke_round_rect(
+  def strokeRoundRect(
     self,
     x: int,
     y: int,
@@ -236,54 +236,54 @@ class UIPaintContext:
     width: int = 1,
   ) -> None:
     cmd: DrawCmd = new()
-    cmd.kind = DrawCmdKind.StrokeRoundRect
+    cmd.kind = DrawCmdEnum.StrokeRoundRect
     cmd.x = x
     cmd.y = y
     cmd.w = w
     cmd.h = h
     cmd.radius = radius
-    cmd.pen_w = width
-    self._push_color(cmd, color)
+    cmd.penW = width
+    self._pushColor(cmd, color)
     self._cmds.append(cmd)
 
-  def fill_rect_in_round_clip(
+  def fillRectInRoundClip(
     self,
     x: int,
     y: int,
     w: int,
     h: int,
-    round_w: int,
-    round_h: int,
+    roundW: int,
+    roundH: int,
     radius: int,
     color: (int, int, int),
   ) -> None:
-    """在 ``(x,y,round_w,round_h)`` 圆角区域内填充 ``(x,y,w,h)``（节点标题栏）。"""
+    """在 ``(x,y,roundW,roundH)`` 圆角区域内填充 ``(x,y,w,h)``（节点标题栏）。"""
     cmd: DrawCmd = new()
-    cmd.kind = DrawCmdKind.FillRectInRoundClip
+    cmd.kind = DrawCmdEnum.FillRectInRoundClip
     cmd.x = x
     cmd.y = y
     cmd.w = w
     cmd.h = h
-    cmd.x2 = round_w
-    cmd.y2 = round_h
+    cmd.x2 = roundW
+    cmd.y2 = roundH
     cmd.radius = radius
-    self._push_color(cmd, color)
+    self._pushColor(cmd, color)
     self._cmds.append(cmd)
 
   @native
-  def _gdi_fill_rect(
+  def _gdiFillRect(
     self, dc: int64, x: int, y: int, w: int, h: int, r: int, g: int, b: int,
   ) -> None:
     ...
 
   @native
-  def _gdi_stroke_rect(
-    self, dc: int64, x: int, y: int, w: int, h: int, r: int, g: int, b: int, pen_w: int,
+  def _gdiStrokeRect(
+    self, dc: int64, x: int, y: int, w: int, h: int, r: int, g: int, b: int, penW: int,
   ) -> None:
     ...
 
   @native
-  def _gdi_draw_line(
+  def _gdiDrawLine(
     self,
     dc: int64,
     x1: int,
@@ -293,12 +293,12 @@ class UIPaintContext:
     r: int,
     g: int,
     b: int,
-    pen_w: int,
+    penW: int,
   ) -> None:
     ...
 
   @native
-  def _gdi_draw_bezier(
+  def _gdiDrawBezier(
     self,
     dc: int64,
     x1: int,
@@ -312,12 +312,12 @@ class UIPaintContext:
     r: int,
     g: int,
     b: int,
-    pen_w: int,
+    penW: int,
   ) -> None:
     ...
 
   @native
-  def _gdi_draw_text(
+  def _gdiDrawText(
     self,
     dc: int64,
     x: int,
@@ -328,21 +328,21 @@ class UIPaintContext:
     r: int,
     g: int,
     b: int,
-    font_name: str,
-    font_size: int,
-    font_bold: bool,
-    text_align: int,
+    fontName: str,
+    fontSize: int,
+    fontBold: bool,
+    textAlign: int,
   ) -> None:
     ...
 
   @native
-  def _gdi_fill_ellipse(
+  def _gdiFillEllipse(
     self, dc: int64, x1: int, y1: int, x2: int, y2: int, r: int, g: int, b: int,
   ) -> None:
     ...
 
   @native
-  def _gdi_fill_round_rect(
+  def _gdiFillRoundRect(
     self,
     dc: int64,
     x: int,
@@ -357,7 +357,7 @@ class UIPaintContext:
     ...
 
   @native
-  def _gdi_stroke_round_rect(
+  def _gdiStrokeRoundRect(
     self,
     dc: int64,
     x: int,
@@ -368,20 +368,20 @@ class UIPaintContext:
     r: int,
     g: int,
     b: int,
-    pen_w: int,
+    penW: int,
   ) -> None:
     ...
 
   @native
-  def _gdi_fill_rect_in_round_clip(
+  def _gdiFillRectInRoundClip(
     self,
     dc: int64,
     x: int,
     y: int,
     w: int,
     h: int,
-    round_w: int,
-    round_h: int,
+    roundW: int,
+    roundH: int,
     radius: int,
     r: int,
     g: int,
@@ -398,19 +398,19 @@ class UIPaintContext:
     for i in range(n):
       cmd: DrawCmd = self._cmds[i]
       match cmd.kind:
-        case DrawCmdKind.FillRect:
-          self._gdi_fill_rect(dc, cmd.x, cmd.y, cmd.w, cmd.h, cmd.r, cmd.g, cmd.b)
-        case DrawCmdKind.StrokeRect:
-          self._gdi_stroke_rect(
-            dc, cmd.x, cmd.y, cmd.w, cmd.h, cmd.r, cmd.g, cmd.b, cmd.pen_w,
+        case DrawCmdEnum.FillRect:
+          self._gdiFillRect(dc, cmd.x, cmd.y, cmd.w, cmd.h, cmd.r, cmd.g, cmd.b)
+        case DrawCmdEnum.StrokeRect:
+          self._gdiStrokeRect(
+            dc, cmd.x, cmd.y, cmd.w, cmd.h, cmd.r, cmd.g, cmd.b, cmd.penW,
           )
-        case DrawCmdKind.DrawLine:
-          self._gdi_draw_line(
-            dc, cmd.x, cmd.y, cmd.x2, cmd.y2, cmd.r, cmd.g, cmd.b, cmd.pen_w,
+        case DrawCmdEnum.DrawLine:
+          self._gdiDrawLine(
+            dc, cmd.x, cmd.y, cmd.x2, cmd.y2, cmd.r, cmd.g, cmd.b, cmd.penW,
           )
-        case DrawCmdKind.DrawBezier:
-          cx1, cy1, cx2, cy2 = _bezier_controls(cmd.x, cmd.y, cmd.x2, cmd.y2)
-          self._gdi_draw_bezier(
+        case DrawCmdEnum.DrawBezier:
+          cx1, cy1, cx2, cy2 = _bezierControls(cmd.x, cmd.y, cmd.x2, cmd.y2)
+          self._gdiDrawBezier(
             dc,
             cmd.x,
             cmd.y,
@@ -423,10 +423,10 @@ class UIPaintContext:
             cmd.r,
             cmd.g,
             cmd.b,
-            cmd.pen_w,
+            cmd.penW,
           )
-        case DrawCmdKind.DrawText:
-          self._gdi_draw_text(
+        case DrawCmdEnum.DrawText:
+          self._gdiDrawText(
             dc,
             cmd.x,
             cmd.y,
@@ -436,21 +436,21 @@ class UIPaintContext:
             cmd.r,
             cmd.g,
             cmd.b,
-            cmd.font_name,
-            cmd.font_size,
-            cmd.font_bold,
-            cmd.text_align,
+            cmd.fontName,
+            cmd.fontSize,
+            cmd.fontBold,
+            cmd.textAlign,
           )
-        case DrawCmdKind.FillEllipse:
-          self._gdi_fill_ellipse(
+        case DrawCmdEnum.FillEllipse:
+          self._gdiFillEllipse(
             dc, cmd.x, cmd.y, cmd.x2, cmd.y2, cmd.r, cmd.g, cmd.b,
           )
-        case DrawCmdKind.FillRoundRect:
-          self._gdi_fill_round_rect(
+        case DrawCmdEnum.FillRoundRect:
+          self._gdiFillRoundRect(
             dc, cmd.x, cmd.y, cmd.w, cmd.h, cmd.radius, cmd.r, cmd.g, cmd.b,
           )
-        case DrawCmdKind.StrokeRoundRect:
-          self._gdi_stroke_round_rect(
+        case DrawCmdEnum.StrokeRoundRect:
+          self._gdiStrokeRoundRect(
             dc,
             cmd.x,
             cmd.y,
@@ -460,10 +460,10 @@ class UIPaintContext:
             cmd.r,
             cmd.g,
             cmd.b,
-            cmd.pen_w,
+            cmd.penW,
           )
-        case DrawCmdKind.FillRectInRoundClip:
-          self._gdi_fill_rect_in_round_clip(
+        case DrawCmdEnum.FillRectInRoundClip:
+          self._gdiFillRectInRoundClip(
             dc,
             cmd.x,
             cmd.y,
@@ -482,26 +482,26 @@ class UIPaintContext:
 
 @dataclass(eq=False, repr=False)
 class UICanvas(UIWidget):
-  pan_x: float64 = 0.0
-  pan_y: float64 = 0.0
+  panX: float64 = 0.0
+  panY: float64 = 0.0
   zoom: float64 = 1.0
-  zoom_min: float64 = 0.25
-  zoom_max: float64 = 2.0
+  zoomMin: float64 = 0.25
+  zoomMax: float64 = 2.0
   font: UICanvasFont = new()
   _pctx: UIPaintContext = new()
 
   @native
-  def _win_parent_client_size(self, parent: int64) -> (int, int):
+  def _winParentClientSize(self, parent: int64) -> (int, int):
     """父窗口客户区宽高。"""
     ...
 
   @native
-  def _win_mount_child(self, parent: int64, x: int, y: int, w: int, h: int) -> None:
+  def _winMountChild(self, parent: int64, x: int, y: int, w: int, h: int) -> None:
     """创建/重建画布子 HWND 并挂到 ``parent``。"""
     ...
 
   @native
-  def _win_client_size(self) -> (int, int):
+  def _winClientSize(self) -> (int, int):
     """本控件客户区宽高；未 mount 时 ``(0,0)``。"""
     ...
 
@@ -513,7 +513,7 @@ class UICanvas(UIWidget):
     ww: int = w
     wh: int = h
     if ww < 0 or wh < 0:
-      cw, ch = self._win_parent_client_size(parent)
+      cw, ch = self._winParentClientSize(parent)
       if ww < 0:
         ww = cw - x
       if wh < 0:
@@ -522,23 +522,23 @@ class UICanvas(UIWidget):
       ww = 1
     if wh < 1:
       wh = 1
-    self._win_mount_child(parent, x, y, ww, wh)
+    self._winMountChild(parent, x, y, ww, wh)
 
   @native
-  def set_bounds(self, x: int, y: int, w: int, h: int) -> None:
+  def setBounds(self, x: int, y: int, w: int, h: int) -> None:
     """``MoveWindow`` 调整已 mount 的子窗口。"""
     ...
 
   @native
-  def client_from_screen(self, scr_x: int, scr_y: int) -> (int, int):
+  def clientFromScreen(self, scrX: int, scrY: int) -> (int, int):
     """屏幕坐标 → 本控件客户区坐标。"""
     ...
 
-  def contains_screen_point(self, scr_x: int, scr_y: int) -> bool:
+  def containsScreenPoint(self, scrX: int, scrY: int) -> bool:
     if self.handle == 0:
       return False
-    cx, cy = self.client_from_screen(scr_x, scr_y)
-    cw, ch = self._win_client_size()
+    cx, cy = self.clientFromScreen(scrX, scrY)
+    cw, ch = self._winClientSize()
     if cx < 0 or cy < 0:
       return False
     if cx >= cw or cy >= ch:
@@ -550,63 +550,63 @@ class UICanvas(UIWidget):
     """请求重绘。"""
     ...
 
-  def world_to_screen(self, wx: float64, wy: float64) -> (float64, float64):
-    sx: float64 = (wx + self.pan_x) * self.zoom
-    sy: float64 = (wy + self.pan_y) * self.zoom
+  def worldToScreen(self, wx: float64, wy: float64) -> (float64, float64):
+    sx: float64 = (wx + self.panX) * self.zoom
+    sy: float64 = (wy + self.panY) * self.zoom
     return sx, sy
 
-  def screen_to_world(self, sx: float64, sy: float64) -> (float64, float64):
-    wx: float64 = sx / self.zoom - self.pan_x
-    wy: float64 = sy / self.zoom - self.pan_y
+  def screenToWorld(self, sx: float64, sy: float64) -> (float64, float64):
+    wx: float64 = sx / self.zoom - self.panX
+    wy: float64 = sy / self.zoom - self.panY
     return wx, wy
 
-  def screen_to_world_at(self, sx: float64, sy: float64, zoom: float64) -> (float64, float64):
-    wx: float64 = sx / zoom - self.pan_x
-    wy: float64 = sy / zoom - self.pan_y
+  def screenToWorldAt(self, sx: float64, sy: float64, zoom: float64) -> (float64, float64):
+    wx: float64 = sx / zoom - self.panX
+    wy: float64 = sy / zoom - self.panY
     return wx, wy
 
-  def paint_frame(self, dc: int64, width: int, height: int) -> None:
-    self._pctx.begin_frame(dc, width, height, self.font, self.zoom)
-    self.on_paint(self._pctx)
+  def paintFrame(self, dc: int64, width: int, height: int) -> None:
+    self._pctx.beginFrame(dc, width, height, self.font, self.zoom)
+    self.onPaint(self._pctx)
     self._pctx.commit()
 
   @virtual
-  def on_paint(self, ctx: UIPaintContext @ref) -> None:
+  def onPaint(self, ctx: UIPaintContext @ref) -> None:
     pass
 
   @virtual
-  def on_pointer_down(self, btn: int, sx: int, sy: int) -> None:
+  def onPointerDown(self, btn: int, sx: int, sy: int) -> None:
     pass
 
   @virtual
-  def on_pointer_move(self, btn: int, sx: int, sy: int) -> None:
+  def onPointerMove(self, btn: int, sx: int, sy: int) -> None:
     pass
 
   @virtual
-  def on_pointer_up(self, btn: int, sx: int, sy: int) -> None:
+  def onPointerUp(self, btn: int, sx: int, sy: int) -> None:
     pass
 
   @virtual
-  def on_key(self, key: int) -> None:
+  def onKey(self, key: int) -> None:
     pass
 
   @virtual
-  def on_wheel(self, delta: int, sx: int, sy: int) -> None:
+  def onWheel(self, delta: int, sx: int, sy: int) -> None:
     if delta == 0:
       return
-    old_zoom: float64 = self.zoom
+    oldZoom: float64 = self.zoom
     step: float64 = 0.1
     if delta > 0:
       self.zoom += step
     else:
       self.zoom -= step
-    if self.zoom < self.zoom_min:
-      self.zoom = self.zoom_min
-    if self.zoom > self.zoom_max:
-      self.zoom = self.zoom_max
-    if self.zoom == old_zoom:
+    if self.zoom < self.zoomMin:
+      self.zoom = self.zoomMin
+    if self.zoom > self.zoomMax:
+      self.zoom = self.zoomMax
+    if self.zoom == oldZoom:
       return
-    wx, wy = self.screen_to_world_at(float64(sx), float64(sy), old_zoom)
-    self.pan_x = float64(sx) / self.zoom - wx
-    self.pan_y = float64(sy) / self.zoom - wy
+    wx, wy = self.screenToWorldAt(float64(sx), float64(sy), oldZoom)
+    self.panX = float64(sx) / self.zoom - wx
+    self.panY = float64(sy) / self.zoom - wy
     self.invalidate()

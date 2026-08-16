@@ -1,9 +1,9 @@
-"""``util.Arena``：分配、``str.adopt_span``、``reset``。"""
+"""``util.Arena``：分配、``str.adoptSpan``、``reset``。"""
 from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 class ArenaAdoptTests(TestCaseMixin):
-    _test_tag = 10
+    _testTag = 10
 
     @override
     def test(self):
@@ -21,24 +21,24 @@ class ArenaAdoptTests(TestCaseMixin):
         owned[2] = l1
         owned[3] = l2
         owned[4] = o
-        s.adopt_span(owned)
+        s.adoptSpan(owned)
         ar.release(p)
         self.assertEqual(len(s), 5)
         self.assertEqual(s[0], 'h')
         ar.reset()
 
 class ArenaEmptyAdoptTests(TestCaseMixin):
-    _test_tag = 20
+    _testTag = 20
 
     @override
     def test(self):
         s: str = ''
-        s.adopt_span(span[char](None, 0, 1))
+        s.adoptSpan(span[char](None, 0, 1))
         self.assertEqual(len(s), 0)
 
 def main():
     suite: TestSuite = new()
-    for Class in TestCaseMixin.iter_subclasses(sort_const='_test_tag'):
+    for Class in TestCaseMixin.iterSubclasses(sortConst='_testTag'):
         suite.addTest(Class())
     return TextTestRunner().run(suite)
 if __name__ == '__main__':

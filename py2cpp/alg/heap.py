@@ -11,60 +11,60 @@
 """
 from ..builtins import *
 from ..core.exceptions import IndexError, KeyError
-from ..util.protocols import Comparable, DictKey
+from ..util.protocols import ComparableType, DictKeyType
 from ..util.dict import dict
 from ..util.list import list
 from ..util.mixins import ContainerMixin
 
 
-class Heap[T: Comparable](ContainerMixin):
+class Heap[Element: ComparableType](ContainerMixin):
   """数组二叉最小堆；根为 ``_data[0]``。"""
 
   def __init__(self):
-    self._data: list[T] = []
+    self._data: list[Element] = []
 
   def __copy__(self, other: Self):
-    self._ensure_active()
+    self._ensureActive()
     if other.__moved__:
       raise ValueError("move from moved container")
-    data: list[T] = []
+    data: list[Element] = []
     self._data = data
     for i in range(len(other._data)):
       self._data.append(other._data[i])
 
   def __move__(self, other: Self):
-    self._ensure_active()
+    self._ensureActive()
     if other.__moved__:
       raise ValueError("move from moved container")
     self._data = other._data
-    data: list[T] = []
+    data: list[Element] = []
     other._data = data
 
   @immutable
   def copy(self) -> Self:
-    self._ensure_active()
+    self._ensureActive()
     out: Self = new()
     out.__copy__(self)
     return out
 
-  def push(self, x: T) -> None:
+  def push(self, x: Element) -> None:
     self._data.append(x)
-    self._sift_up(len(self._data) - 1)
+    self._siftUp(len(self._data) - 1)
 
-  def pop(self) -> T:
+  def pop(self) -> Element:
     if not self._data:
       raise IndexError("pop from empty heap")
     n: int = len(self._data)
-    out: T = self.top()
+    out: Element = self.top()
     if n == 1:
       self._data.pop()
       return out
     self._data[0] = self._data[n - 1]
     self._data.pop()
-    self._sift_down(0)
+    self._siftDown(0)
     return out
 
-  def top(self) -> T:
+  def top(self) -> Element:
     if not self._data:
       raise IndexError("top from empty heap")
     return self._data[0]
@@ -87,7 +87,7 @@ class Heap[T: Comparable](ContainerMixin):
   def _left(i: int) -> int:
     return i * 2 + 1
 
-  def _sift_up(self, i: int) -> None:
+  def _siftUp(self, i: int) -> None:
     while i > 0:
       p: int = Self._parent(i)
       if self._data[p] <= self._data[i]:
@@ -95,7 +95,7 @@ class Heap[T: Comparable](ContainerMixin):
       self._data[p], self._data[i] = self._data[i], self._data[p]
       i = p
 
-  def _sift_down(self, i: int) -> None:
+  def _siftDown(self, i: int) -> None:
     n: int = len(self._data)
     while True:
       left: int = Self._left(i)
@@ -111,80 +111,80 @@ class Heap[T: Comparable](ContainerMixin):
       i = best
 
 
-class IndexedHeap[T: Comparable & DictKey](ContainerMixin):
+class IndexedHeap[Element: ComparableType & DictKeyType](ContainerMixin):
   """二叉最小堆 + 元素→下标表；``_swap`` 时同步更新 ``_pos``。"""
 
   def __init__(self):
-    self._data: list[T] = []
-    self._pos: dict[T, int] = {}
+    self._data: list[Element] = []
+    self._pos: dict[Element, int] = {}
 
   def __copy__(self, other: Self):
-    self._ensure_active()
+    self._ensureActive()
     if other.__moved__:
       raise ValueError("move from moved container")
-    data: list[T] = []
-    pos: dict[T, int] = {}
+    data: list[Element] = []
+    pos: dict[Element, int] = {}
     self._data = data
     self._pos = pos
     for i in range(len(other._data)):
-      x: T = other._data[i]
+      x: Element = other._data[i]
       self._data.append(x)
       self._pos[x] = i
 
   def __move__(self, other: Self):
-    self._ensure_active()
+    self._ensureActive()
     if other.__moved__:
       raise ValueError("move from moved container")
     self._data = other._data
     self._pos = other._pos
-    data: list[T] = []
-    pos: dict[T, int] = {}
+    data: list[Element] = []
+    pos: dict[Element, int] = {}
     other._data = data
     other._pos = pos
 
   @immutable
   def copy(self) -> Self:
-    self._ensure_active()
+    self._ensureActive()
     out: Self = new()
     out.__copy__(self)
     return out
 
-  def push(self, x: T) -> None:
+  def push(self, x: Element) -> None:
     if x in self._pos:
       return
     self._data.append(x)
     i: int = len(self._data) - 1
     self._pos[x] = i
-    self._sift_up(i)
+    self._siftUp(i)
 
-  def pop(self) -> T:
+  def pop(self) -> Element:
     if not self._data:
       raise IndexError("pop from empty heap")
-    out: T = self.top()
-    self._erase_at(0)
+    out: Element = self.top()
+    self._eraseAt(0)
     return out
 
-  def top(self) -> T:
+  def top(self) -> Element:
     if not self._data:
       raise IndexError("top from empty heap")
     return self._data[0]
 
-  def remove(self, x: T) -> None:
+  def remove(self, x: Element) -> None:
     if x not in self._pos:
       raise KeyError("remove")
-    self._erase_at(self._pos[x])
+    self._eraseAt(self._pos[x])
 
-  def discard(self, x: T) -> None:
+  def discard(self, x: Element) -> None:
     if x not in self._pos:
       return
-    self._erase_at(self._pos[x])
+    self._eraseAt(self._pos[x])
 
   def clear(self) -> None:
     self._data = []
     self._pos = {}
 
   @immutable
-  def __contains__(self, x: T) -> bool:
+  def __contains__(self, x: Element) -> bool:
     return x in self._pos
 
   @immutable
@@ -211,14 +211,14 @@ class IndexedHeap[T: Comparable & DictKey](ContainerMixin):
     if i > j:
       self._swap(j, i)
       return
-    b: T = self._data.pop(j)
-    a: T = self._data.pop(i)
+    b: Element = self._data.pop(j)
+    a: Element = self._data.pop(i)
     self._data.insert(i, b)
     self._data.insert(j, a)
     self._pos[b] = i
     self._pos[a] = j
 
-  def _erase_at(self, i: int) -> None:
+  def _eraseAt(self, i: int) -> None:
     del self._pos[self._data[i]]
     n: int = len(self._data)
     if i == n - 1:
@@ -228,11 +228,11 @@ class IndexedHeap[T: Comparable & DictKey](ContainerMixin):
     self._pos[self._data[i]] = i
     self._data.pop()
     if i > 0 and self._data[i] < self._data[Self._parent(i)]:
-      self._sift_up(i)
+      self._siftUp(i)
     else:
-      self._sift_down(i)
+      self._siftDown(i)
 
-  def _sift_up(self, i: int) -> None:
+  def _siftUp(self, i: int) -> None:
     while i > 0:
       p: int = Self._parent(i)
       if self._data[p] <= self._data[i]:
@@ -240,7 +240,7 @@ class IndexedHeap[T: Comparable & DictKey](ContainerMixin):
       self._swap(p, i)
       i = p
 
-  def _sift_down(self, i: int) -> None:
+  def _siftDown(self, i: int) -> None:
     n: int = len(self._data)
     while True:
       left: int = Self._left(i)

@@ -36,7 +36,9 @@ class DelegateInfo:
     return tuple(out)
 
   def cpp_name(self) -> str:
-    return self.name
+    from ..constant.language import default_py_class_cpp_name
+
+    return default_py_class_cpp_name(self.name)
 
   def is_template(self) -> bool:
     return bool(self.all_template_names)

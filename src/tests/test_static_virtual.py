@@ -34,7 +34,7 @@ class ProtocolStaticVirtualProbeTests(unittest.TestCase):
 
   def test_traits_lines_include_static_probe(self):
     lines = protocol_traits_lines(
-      "IParsable",
+      "IParsableType",
       [],
       static_method_specs=[("parse", "Self", ("const PyStr&",), ())],
     )
@@ -103,7 +103,7 @@ def main():
   def test_rejects_static_protocol_impl_without_override(self):
     src = """
 @protocol
-class IParsable:
+class IParsableType:
   @staticmethod
   @abstract
   def parse(s: str) -> Self: ...
@@ -113,7 +113,7 @@ class Widget:
   def parse(s: str) -> Self:
     return new(0)
 
-def try_parse[T: IParsable](s: str) -> T:
+def try_parse[T: IParsableType](s: str) -> T:
   return T.parse(s)
 
 def main():

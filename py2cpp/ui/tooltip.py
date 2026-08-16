@@ -13,7 +13,7 @@ class UITooltipHost:
     ...
 
   @native
-  def show_at_client(self, win: UIWindow @ref, text: str, cx: int, cy: int) -> None:
+  def showAtClient(self, win: UIWindow @ref, text: str, cx: int, cy: int) -> None:
     """在窗口客户区 ``(cx,cy)`` 显示提示。"""
     ...
 

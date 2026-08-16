@@ -1,31 +1,31 @@
 """蓝图画布控件（``UIFlowCanvas``）。"""
 from ...builtins import *
-from ..canvas import TEXT_ALIGN_LEFT, TEXT_ALIGN_RIGHT, UICanvas, UIPaintContext
+from ..canvas import TextAlignLeft, TextAlignRight, UICanvas, UIPaintContext
 from ..events import UIEvent, UIValueChanged
-from ..input import ctrl_down, shift_down
+from ..input import ctrlDown, shiftDown
 from .catalog import FlowNodeCatalog
 from .history import FlowGraphHistory
 from .layout import (
-  NODE_CORNER_RADIUS,
-  PIN_LABEL_PAD,
-  ROW_HEIGHT,
-  TITLE_HEIGHT,
-  graph_to_screen,
-  hit_test_node,
-  hit_test_pin,
-  node_height,
-  node_screen_width,
-  nodes_in_graph_rect,
-  pin_graph_pos,
-  screen_to_graph,
+  NodeCornerRadius,
+  PinLabelPad,
+  RowHeight,
+  TitleHeight,
+  graphToScreen,
+  hitTestNode,
+  hitTestPin,
+  nodeHeight,
+  nodeScreenWidth,
+  nodesInGraphRect,
+  pinGraphPos,
+  screenToGraph,
 )
-from .model import FlowGraph, FlowNode, FlowPinKind
-from .serialize import paste_subgraph, subgraph_to_json
+from .model import FlowGraph, FlowNode, FlowPinEnum
+from .serialize import pasteSubgraph, subgraphToJson
 from .style import UIFlowStyle
 
 
-MARQUEE_MIN_DRAG: int = 4
-PASTE_OFFSET: float64 = 24.0
+MarqueeMinDrag: int = 4
+PasteOffset: float64 = 24.0
 
 
 @dataclass(eq=False, repr=False)
@@ -34,350 +34,350 @@ class UIFlowCanvas(UICanvas):
   catalog: FlowNodeCatalog = new()
   style: UIFlowStyle = new()
   history: FlowGraphHistory = new()
-  clipboard_json: str = ""
-  selected_node: int = -1
-  selected_nodes: list[int, 0] @optional = []
-  _wire_active: bool = False
-  _wire_x1: float64 = 0.0
-  _wire_y1: float64 = 0.0
-  _wire_x2: float64 = 0.0
-  _wire_y2: float64 = 0.0
-  _wire_exec: bool = True
-  _drag_pan: bool = False
-  _pan_last_sx: float64 = 0.0
-  _pan_last_sy: float64 = 0.0
-  _drag_node: bool = False
-  _drag_node_id: int = -1
-  _drag_moved: bool = False
-  _drag_last_gx: float64 = 0.0
-  _drag_last_gy: float64 = 0.0
-  _wire_from_pin: int = -1
-  _marquee_active: bool = False
-  _marquee_additive: bool = False
-  _marquee_sx: int = 0
-  _marquee_sy: int = 0
-  _marquee_ex: int = 0
-  _marquee_ey: int = 0
+  clipboardJson: str = ""
+  selectedNode: int = -1
+  selectedNodes: list[int, 0] @optional = []
+  _wireActive: bool = False
+  _wireX1: float64 = 0.0
+  _wireY1: float64 = 0.0
+  _wireX2: float64 = 0.0
+  _wireY2: float64 = 0.0
+  _wireExec: bool = True
+  _dragPan: bool = False
+  _panLastSx: float64 = 0.0
+  _panLastSy: float64 = 0.0
+  _dragNode: bool = False
+  _dragNodeId: int = -1
+  _dragMoved: bool = False
+  _dragLastGx: float64 = 0.0
+  _dragLastGy: float64 = 0.0
+  _wireFromPin: int = -1
+  _marqueeActive: bool = False
+  _marqueeAdditive: bool = False
+  _marqueeSx: int = 0
+  _marqueeSy: int = 0
+  _marqueeEx: int = 0
+  _marqueeEy: int = 0
 
-  graph_changed: UIEvent = new()
-  selection_changed: UIValueChanged[int] = new()
+  graphChanged: UIEvent = new()
+  selectionChanged: UIValueChanged[int] = new()
 
-  def _is_node_selected(self, node_id: int) -> bool:
-    for nid in self.selected_nodes:
-      if nid == node_id:
+  def _isNodeSelected(self, nodeId: int) -> bool:
+    for nid in self.selectedNodes:
+      if nid == nodeId:
         return True
     return False
 
-  def _set_selection(self, node_ids: list[int, 0]) -> None:
-    for i in range(len(self.selected_nodes) - 1, -1, -1):
-      self.selected_nodes.pop(i)
-    for nid in node_ids:
-      self.selected_nodes.append(nid)
+  def _setSelection(self, nodeIds: list[int, 0]) -> None:
+    for i in range(len(self.selectedNodes) - 1, -1, -1):
+      self.selectedNodes.pop(i)
+    for nid in nodeIds:
+      self.selectedNodes.append(nid)
     primary: int = -1
-    if self.selected_nodes:
-      primary = self.selected_nodes[0]
-    self.selected_node = primary
-    self.selection_changed(primary)
+    if self.selectedNodes:
+      primary = self.selectedNodes[0]
+    self.selectedNode = primary
+    self.selectionChanged(primary)
 
-  def _toggle_node_selection(self, node_id: int) -> None:
+  def _toggleNodeSelection(self, nodeId: int) -> None:
     found: bool = False
-    for i in range(len(self.selected_nodes)):
-      if self.selected_nodes[i] == node_id:
-        self.selected_nodes.pop(i)
+    for i in range(len(self.selectedNodes)):
+      if self.selectedNodes[i] == nodeId:
+        self.selectedNodes.pop(i)
         found = True
         break
     if not found:
-      self.selected_nodes.append(node_id)
+      self.selectedNodes.append(nodeId)
     primary: int = -1
-    if self.selected_nodes:
-      primary = self.selected_nodes[0]
-    self.selected_node = primary
-    self.selection_changed(primary)
+    if self.selectedNodes:
+      primary = self.selectedNodes[0]
+    self.selectedNode = primary
+    self.selectionChanged(primary)
 
-  def _has_selection(self) -> bool:
-    for _ in self.selected_nodes:
+  def _hasSelection(self) -> bool:
+    for _ in self.selectedNodes:
       return True
     return False
 
-  def _record_undo(self) -> None:
+  def _recordUndo(self) -> None:
     self.history.push(self.graph)
 
-  def select_all_nodes(self) -> None:
+  def selectAllNodes(self) -> None:
     ids: list[int, 0] = []
     for node in self.graph.nodes:
       ids.append(node.id)
-    self._set_selection(ids)
+    self._setSelection(ids)
     self.invalidate()
 
-  def _clear_selection_state(self) -> None:
-    for i in range(len(self.selected_nodes) - 1, -1, -1):
-      self.selected_nodes.pop(i)
-    self.selected_node = -1
-    self.selection_changed(-1)
+  def _clearSelectionState(self) -> None:
+    for i in range(len(self.selectedNodes) - 1, -1, -1):
+      self.selectedNodes.pop(i)
+    self.selectedNode = -1
+    self.selectionChanged(-1)
 
-  def clear_selection(self) -> None:
-    self._clear_selection_state()
+  def clearSelection(self) -> None:
+    self._clearSelectionState()
     self.invalidate()
 
-  def copy_selection_json(self) -> str:
-    if not self._has_selection():
+  def copySelectionJson(self) -> str:
+    if not self._hasSelection():
       return ""
-    return subgraph_to_json(self.graph, self.selected_nodes)
+    return subgraphToJson(self.graph, self.selectedNodes)
 
-  def copy_to_clipboard(self) -> None:
-    self.clipboard_json = self.copy_selection_json()
+  def copyToClipboard(self) -> None:
+    self.clipboardJson = self.copySelectionJson()
 
-  def paste_from_clipboard(self) -> None:
-    self.paste_json(self.clipboard_json)
+  def pasteFromClipboard(self) -> None:
+    self.pasteJson(self.clipboardJson)
 
-  def _merge_selection(self, node_ids: list[int, 0]) -> None:
-    for nid in node_ids:
-      if not self._is_node_selected(nid):
-        self.selected_nodes.append(nid)
+  def _mergeSelection(self, nodeIds: list[int, 0]) -> None:
+    for nid in nodeIds:
+      if not self._isNodeSelected(nid):
+        self.selectedNodes.append(nid)
     primary: int = -1
-    if self.selected_nodes:
-      primary = self.selected_nodes[0]
-    self.selected_node = primary
-    self.selection_changed(primary)
+    if self.selectedNodes:
+      primary = self.selectedNodes[0]
+    self.selectedNode = primary
+    self.selectionChanged(primary)
 
-  def cut_selection(self) -> str:
-    text: str = self.copy_selection_json()
+  def cutSelection(self) -> str:
+    text: str = self.copySelectionJson()
     empty: str = ""
     if text == empty:
       return empty
-    self._record_undo()
-    to_remove: list[int, 0] = []
-    for nid in self.selected_nodes:
-      to_remove.append(nid)
-    for nid in to_remove:
-      self.graph.remove_node(nid)
-    self._clear_selection_state()
-    self.graph_changed()
+    self._recordUndo()
+    toRemove: list[int, 0] = []
+    for nid in self.selectedNodes:
+      toRemove.append(nid)
+    for nid in toRemove:
+      self.graph.removeNode(nid)
+    self._clearSelectionState()
+    self.graphChanged()
     self.invalidate()
     return text
 
-  def delete_selected(self) -> None:
-    if not self._has_selection():
+  def deleteSelected(self) -> None:
+    if not self._hasSelection():
       return
-    self._record_undo()
-    to_remove: list[int, 0] = []
-    for nid in self.selected_nodes:
-      to_remove.append(nid)
-    for nid in to_remove:
-      self.graph.remove_node(nid)
-    self._clear_selection_state()
-    self.graph_changed()
+    self._recordUndo()
+    toRemove: list[int, 0] = []
+    for nid in self.selectedNodes:
+      toRemove.append(nid)
+    for nid in toRemove:
+      self.graph.removeNode(nid)
+    self._clearSelectionState()
+    self.graphChanged()
     self.invalidate()
 
-  def paste_json(self, text: str) -> None:
+  def pasteJson(self, text: str) -> None:
     empty: str = ""
     if text == empty:
       return
-    self._record_undo()
-    off: float64 = PASTE_OFFSET
-    new_ids: list[int, 0] = paste_subgraph(self.graph, text, off, off)
-    self._set_selection(new_ids)
-    self.graph_changed()
+    self._recordUndo()
+    off: float64 = PasteOffset
+    newIds: list[int, 0] = pasteSubgraph(self.graph, text, off, off)
+    self._setSelection(newIds)
+    self.graphChanged()
     self.invalidate()
 
-  def undo_graph(self) -> bool:
+  def undoGraph(self) -> bool:
     if self.history.undo(self.graph):
-      self._clear_selection_state()
-      self.graph_changed()
+      self._clearSelectionState()
+      self.graphChanged()
       self.invalidate()
       return True
     return False
 
-  def redo_graph(self) -> bool:
+  def redoGraph(self) -> bool:
     if self.history.redo(self.graph):
-      self._clear_selection_state()
-      self.graph_changed()
+      self._clearSelectionState()
+      self.graphChanged()
       self.invalidate()
       return True
     return False
 
-  def _pin_index(self, node: FlowNode @ref, pin_id: int) -> int:
+  def _pinIndex(self, node: FlowNode @ref, pinId: int) -> int:
     pi: int = 0
     for p in node.pins:
-      if p.id == pin_id:
+      if p.id == pinId:
         return pi
       pi += 1
     return -1
 
-  def _paint_grid(self, ctx: UIPaintContext @ref) -> None:
-    minor: int = self.style.grid_minor_step
-    major: int = self.style.grid_major_step
+  def _paintGrid(self, ctx: UIPaintContext @ref) -> None:
+    minor: int = self.style.gridMinorStep
+    major: int = self.style.gridMajorStep
     if minor < 4:
       minor = 4
     if major < minor:
       major = minor * 8
     for x in range(0, ctx.width, minor):
       if (x % major) == 0:
-        ctx.draw_line(x, 0, x, ctx.height, self.style.grid_major)
+        ctx.drawLine(x, 0, x, ctx.height, self.style.gridMajor)
       else:
-        ctx.draw_line(x, 0, x, ctx.height, self.style.grid_minor)
+        ctx.drawLine(x, 0, x, ctx.height, self.style.gridMinor)
     for y in range(0, ctx.height, minor):
       if (y % major) == 0:
-        ctx.draw_line(0, y, ctx.width, y, self.style.grid_major)
+        ctx.drawLine(0, y, ctx.width, y, self.style.gridMajor)
       else:
-        ctx.draw_line(0, y, ctx.width, y, self.style.grid_minor)
+        ctx.drawLine(0, y, ctx.width, y, self.style.gridMinor)
 
-  def _draw_edges(self, ctx: UIPaintContext @ref) -> None:
+  def _drawEdges(self, ctx: UIPaintContext @ref) -> None:
     for edge in self.graph.edges:
-      src_pin = self.graph.find_pin(edge.from_pin)
-      dst_pin = self.graph.find_pin(edge.to_pin)
-      src_node = self.graph.find_node(src_pin.node_id)
-      dst_node = self.graph.find_node(dst_pin.node_id)
-      sidx: int = self._pin_index(src_node, edge.from_pin)
-      didx: int = self._pin_index(dst_node, edge.to_pin)
-      x1, y1 = pin_graph_pos(src_node, sidx)
-      x2, y2 = pin_graph_pos(dst_node, didx)
-      sx1, sy1 = graph_to_screen(x1, y1, self.pan_x, self.pan_y, self.zoom)
-      sx2, sy2 = graph_to_screen(x2, y2, self.pan_x, self.pan_y, self.zoom)
-      if src_pin.kind == FlowPinKind.ExecOut:
-        ctx.draw_bezier(int(sx1), int(sy1), int(sx2), int(sy2), self.style.wire_exec)
+      srcPin = self.graph.findPin(edge.fromPin)
+      dstPin = self.graph.findPin(edge.toPin)
+      srcNode = self.graph.findNode(srcPin.nodeId)
+      dstNode = self.graph.findNode(dstPin.nodeId)
+      sidx: int = self._pinIndex(srcNode, edge.fromPin)
+      didx: int = self._pinIndex(dstNode, edge.toPin)
+      x1, y1 = pinGraphPos(srcNode, sidx)
+      x2, y2 = pinGraphPos(dstNode, didx)
+      sx1, sy1 = graphToScreen(x1, y1, self.panX, self.panY, self.zoom)
+      sx2, sy2 = graphToScreen(x2, y2, self.panX, self.panY, self.zoom)
+      if srcPin.kind == FlowPinEnum.ExecOut:
+        ctx.drawBezier(int(sx1), int(sy1), int(sx2), int(sy2), self.style.wireExec)
       else:
-        ctx.draw_bezier(int(sx1), int(sy1), int(sx2), int(sy2), self.style.wire_data)
-    if self._wire_active:
-      wx1, wy1 = graph_to_screen(self._wire_x1, self._wire_y1, self.pan_x, self.pan_y, self.zoom)
-      wx2, wy2 = graph_to_screen(self._wire_x2, self._wire_y2, self.pan_x, self.pan_y, self.zoom)
-      if self._wire_exec:
-        ctx.draw_bezier(int(wx1), int(wy1), int(wx2), int(wy2), self.style.wire_exec)
+        ctx.drawBezier(int(sx1), int(sy1), int(sx2), int(sy2), self.style.wireData)
+    if self._wireActive:
+      wx1, wy1 = graphToScreen(self._wireX1, self._wireY1, self.panX, self.panY, self.zoom)
+      wx2, wy2 = graphToScreen(self._wireX2, self._wireY2, self.panX, self.panY, self.zoom)
+      if self._wireExec:
+        ctx.drawBezier(int(wx1), int(wy1), int(wx2), int(wy2), self.style.wireExec)
       else:
-        ctx.draw_bezier(int(wx1), int(wy1), int(wx2), int(wy2), self.style.wire_data)
+        ctx.drawBezier(int(wx1), int(wy1), int(wx2), int(wy2), self.style.wireData)
 
-  def _draw_nodes(self, ctx: UIPaintContext @ref) -> None:
-    title_h: int = int(float64(TITLE_HEIGHT) * self.zoom)
-    if title_h < 1:
-      title_h = 1
-    row_h: int = int(float64(ROW_HEIGHT) * self.zoom)
-    if row_h < 1:
-      row_h = 1
-    sw: int = node_screen_width(self.zoom)
-    corner: int = int(float64(NODE_CORNER_RADIUS) * self.zoom)
+  def _drawNodes(self, ctx: UIPaintContext @ref) -> None:
+    titleH: int = int(float64(TitleHeight) * self.zoom)
+    if titleH < 1:
+      titleH = 1
+    rowH: int = int(float64(RowHeight) * self.zoom)
+    if rowH < 1:
+      rowH = 1
+    sw: int = nodeScreenWidth(self.zoom)
+    corner: int = int(float64(NodeCornerRadius) * self.zoom)
     if corner < 2:
       corner = 2
-    pad: int = int(float64(PIN_LABEL_PAD) * self.zoom)
+    pad: int = int(float64(PinLabelPad) * self.zoom)
     if pad < 4:
       pad = 4
-    pin_r: int = int(6.0 * self.zoom)
-    if pin_r < 4:
-      pin_r = 4
+    pinR: int = int(6.0 * self.zoom)
+    if pinR < 4:
+      pinR = 4
     for node in self.graph.nodes:
       rows: int = len(node.pins)
       if rows < 1:
         rows = 1
-      h: int = node_height(rows)
-      nsx, nsy = graph_to_screen(node.x, node.y, self.pan_x, self.pan_y, self.zoom)
-      ctx.fill_round_rect(
+      h: int = nodeHeight(rows)
+      nsx, nsy = graphToScreen(node.x, node.y, self.panX, self.panY, self.zoom)
+      ctx.fillRoundRect(
         int(nsx),
         int(nsy),
         sw,
         int(float64(h) * self.zoom),
         corner,
-        self.style.node_body,
+        self.style.nodeBody,
       )
-      ctx.fill_rect_in_round_clip(
+      ctx.fillRectInRoundClip(
         int(nsx),
         int(nsy),
         sw,
-        title_h,
+        titleH,
         sw,
         int(float64(h) * self.zoom),
         corner,
-        self.style.node_title,
+        self.style.nodeTitle,
       )
-      if self._is_node_selected(node.id):
-        ctx.stroke_round_rect(
+      if self._isNodeSelected(node.id):
+        ctx.strokeRoundRect(
           int(nsx),
           int(nsy),
           sw,
           int(float64(h) * self.zoom),
           corner,
-          self.style.node_selected,
+          self.style.nodeSelected,
           2,
         )
       else:
-        ctx.stroke_round_rect(
+        ctx.strokeRoundRect(
           int(nsx),
           int(nsy),
           sw,
           int(float64(h) * self.zoom),
           corner,
-          self.style.node_border,
+          self.style.nodeBorder,
           1,
         )
-      saved_size: int = ctx.font.size
-      ctx.font.size = self.style.title_font_size
-      ctx.draw_text(
+      savedSize: int = ctx.font.size
+      ctx.font.size = self.style.titleFontSize
+      ctx.drawText(
         int(nsx) + pad,
         int(nsy),
         sw - pad * 2,
-        title_h,
+        titleH,
         node.title,
-        self.style.text_color,
+        self.style.textColor,
       )
-      ctx.font.size = self.style.font_size
+      ctx.font.size = self.style.fontSize
       pi: int = 0
       for pin in node.pins:
-        px, py = pin_graph_pos(node, pi)
-        psx, psy = graph_to_screen(px, py, self.pan_x, self.pan_y, self.zoom)
-        if pin.kind in {FlowPinKind.ExecIn, FlowPinKind.ExecOut}:
-          ctx.fill_ellipse(
-            int(psx) - pin_r,
-            int(psy) - pin_r,
-            int(psx) + pin_r,
-            int(psy) + pin_r,
-            self.style.wire_exec,
+        px, py = pinGraphPos(node, pi)
+        psx, psy = graphToScreen(px, py, self.panX, self.panY, self.zoom)
+        if pin.kind in {FlowPinEnum.ExecIn, FlowPinEnum.ExecOut}:
+          ctx.fillEllipse(
+            int(psx) - pinR,
+            int(psy) - pinR,
+            int(psx) + pinR,
+            int(psy) + pinR,
+            self.style.wireExec,
           )
         else:
-          ctx.fill_ellipse(
-            int(psx) - pin_r,
-            int(psy) - pin_r,
-            int(psx) + pin_r,
-            int(psy) + pin_r,
-            self.style.wire_data,
+          ctx.fillEllipse(
+            int(psx) - pinR,
+            int(psy) - pinR,
+            int(psx) + pinR,
+            int(psy) + pinR,
+            self.style.wireData,
           )
         if pin.name:
-          label_y: int = int(nsy) + title_h + pi * row_h
-          label_w: int = sw - pad * 2 - pin_r
-          if label_w < 8:
-            label_w = 8
-          is_out: bool = pin.kind in {FlowPinKind.ExecOut, FlowPinKind.DataOut}
-          if is_out:
-            ctx.draw_text(
+          labelY: int = int(nsy) + titleH + pi * rowH
+          labelW: int = sw - pad * 2 - pinR
+          if labelW < 8:
+            labelW = 8
+          isOut: bool = pin.kind in {FlowPinEnum.ExecOut, FlowPinEnum.DataOut}
+          if isOut:
+            ctx.drawText(
               int(nsx) + pad,
-              label_y,
-              label_w,
-              row_h,
+              labelY,
+              labelW,
+              rowH,
               pin.name,
-              self.style.pin_label_color,
-              TEXT_ALIGN_RIGHT,
+              self.style.pinLabelColor,
+              TextAlignRight,
             )
           else:
-            ctx.draw_text(
-              int(nsx) + pad + pin_r,
-              label_y,
-              label_w,
-              row_h,
+            ctx.drawText(
+              int(nsx) + pad + pinR,
+              labelY,
+              labelW,
+              rowH,
               pin.name,
-              self.style.pin_label_color,
-              TEXT_ALIGN_LEFT,
+              self.style.pinLabelColor,
+              TextAlignLeft,
             )
         pi += 1
-      ctx.font.size = saved_size
+      ctx.font.size = savedSize
 
   @override
-  def on_paint(self, ctx: UIPaintContext @ref) -> None:
-    ctx.fill_rect(0, 0, ctx.width, ctx.height, self.style.bg_color)
-    self._paint_grid(ctx)
-    self._draw_edges(ctx)
-    self._draw_nodes(ctx)
-    if self._marquee_active:
-      x1: int = self._marquee_sx
-      y1: int = self._marquee_sy
-      x2: int = self._marquee_ex
-      y2: int = self._marquee_ey
+  def onPaint(self, ctx: UIPaintContext @ref) -> None:
+    ctx.fillRect(0, 0, ctx.width, ctx.height, self.style.bgColor)
+    self._paintGrid(ctx)
+    self._drawEdges(ctx)
+    self._drawNodes(ctx)
+    if self._marqueeActive:
+      x1: int = self._marqueeSx
+      y1: int = self._marqueeSy
+      x2: int = self._marqueeEx
+      y2: int = self._marqueeEy
       rx: int = x1
       ry: int = y1
       rw: int = x2 - x1
@@ -388,186 +388,186 @@ class UIFlowCanvas(UICanvas):
       if rh < 0:
         ry = y2
         rh = -rh
-      ctx.stroke_rect(rx, ry, rw, rh, self.style.node_selected, 1)
+      ctx.strokeRect(rx, ry, rw, rh, self.style.nodeSelected, 1)
 
-  def _pin_is_output(self, pin_id: int) -> bool:
-    pin = self.graph.find_pin(pin_id)
-    return pin.kind in {FlowPinKind.ExecOut, FlowPinKind.DataOut}
+  def _pinIsOutput(self, pinId: int) -> bool:
+    pin = self.graph.findPin(pinId)
+    return pin.kind in {FlowPinEnum.ExecOut, FlowPinEnum.DataOut}
 
-  def _begin_wire(self, pin_id: int, gx: float64, gy: float64) -> None:
-    pin = self.graph.find_pin(pin_id)
-    node = self.graph.find_node(pin.node_id)
-    self._wire_from_pin = pin_id
-    self._wire_active = True
-    self._wire_exec = pin.kind == FlowPinKind.ExecOut
-    pin_idx: int = self._pin_index(node, pin_id)
-    wire_x, wire_y = pin_graph_pos(node, pin_idx)
-    self._wire_x1 = wire_x
-    self._wire_y1 = wire_y
-    self._wire_x2 = gx
-    self._wire_y2 = gy
+  def _beginWire(self, pinId: int, gx: float64, gy: float64) -> None:
+    pin = self.graph.findPin(pinId)
+    node = self.graph.findNode(pin.nodeId)
+    self._wireFromPin = pinId
+    self._wireActive = True
+    self._wireExec = pin.kind == FlowPinEnum.ExecOut
+    pinIdx: int = self._pinIndex(node, pinId)
+    wireX, wireY = pinGraphPos(node, pinIdx)
+    self._wireX1 = wireX
+    self._wireY1 = wireY
+    self._wireX2 = gx
+    self._wireY2 = gy
 
   @override
-  def on_pointer_down(self, btn: int, sx: int, sy: int) -> None:
+  def onPointerDown(self, btn: int, sx: int, sy: int) -> None:
     if btn in {2, 4}:
-      self._drag_pan = True
-      self._pan_last_sx = float64(sx)
-      self._pan_last_sy = float64(sy)
+      self._dragPan = True
+      self._panLastSx = float64(sx)
+      self._panLastSy = float64(sy)
       return
-    gx, gy = screen_to_graph(float64(sx), float64(sy), self.pan_x, self.pan_y, self.zoom)
+    gx, gy = screenToGraph(float64(sx), float64(sy), self.panX, self.panY, self.zoom)
     if btn != 1:
       return
-    pin_id: int = hit_test_pin(self.graph, gx, gy)
-    if pin_id >= 0 and self._pin_is_output(pin_id):
-      self._begin_wire(pin_id, gx, gy)
+    pinId: int = hitTestPin(self.graph, gx, gy)
+    if pinId >= 0 and self._pinIsOutput(pinId):
+      self._beginWire(pinId, gx, gy)
       self.invalidate()
       return
-    node_id: int = hit_test_node(self.graph, gx, gy)
-    if node_id >= 0:
-      if shift_down():
-        self._toggle_node_selection(node_id)
+    nodeId: int = hitTestNode(self.graph, gx, gy)
+    if nodeId >= 0:
+      if shiftDown():
+        self._toggleNodeSelection(nodeId)
       else:
         ids: list[int, 0] = []
-        ids.append(node_id)
-        self._set_selection(ids)
-      self._drag_node = True
-      self._drag_node_id = node_id
-      self._drag_moved = False
-      self._drag_last_gx = gx
-      self._drag_last_gy = gy
+        ids.append(nodeId)
+        self._setSelection(ids)
+      self._dragNode = True
+      self._dragNodeId = nodeId
+      self._dragMoved = False
+      self._dragLastGx = gx
+      self._dragLastGy = gy
       self.invalidate()
       return
-    self._marquee_active = True
-    self._marquee_additive = shift_down()
-    self._marquee_sx = sx
-    self._marquee_sy = sy
-    self._marquee_ex = sx
-    self._marquee_ey = sy
-    if not self._marquee_additive:
-      self._clear_selection_state()
+    self._marqueeActive = True
+    self._marqueeAdditive = shiftDown()
+    self._marqueeSx = sx
+    self._marqueeSy = sy
+    self._marqueeEx = sx
+    self._marqueeEy = sy
+    if not self._marqueeAdditive:
+      self._clearSelectionState()
     self.invalidate()
 
   @override
-  def on_pointer_move(self, btn: int, sx: int, sy: int) -> None:
-    if self._drag_pan:
-      dx: float64 = float64(sx) - self._pan_last_sx
-      dy: float64 = float64(sy) - self._pan_last_sy
-      self.pan_x += dx / self.zoom
-      self.pan_y += dy / self.zoom
-      self._pan_last_sx = float64(sx)
-      self._pan_last_sy = float64(sy)
+  def onPointerMove(self, btn: int, sx: int, sy: int) -> None:
+    if self._dragPan:
+      dx: float64 = float64(sx) - self._panLastSx
+      dy: float64 = float64(sy) - self._panLastSy
+      self.panX += dx / self.zoom
+      self.panY += dy / self.zoom
+      self._panLastSx = float64(sx)
+      self._panLastSy = float64(sy)
       self.invalidate()
       return
-    gx, gy = screen_to_graph(float64(sx), float64(sy), self.pan_x, self.pan_y, self.zoom)
-    if self._wire_active:
-      self._wire_x2 = gx
-      self._wire_y2 = gy
+    gx, gy = screenToGraph(float64(sx), float64(sy), self.panX, self.panY, self.zoom)
+    if self._wireActive:
+      self._wireX2 = gx
+      self._wireY2 = gy
       self.invalidate()
       return
-    if self._marquee_active:
-      self._marquee_ex = sx
-      self._marquee_ey = sy
+    if self._marqueeActive:
+      self._marqueeEx = sx
+      self._marqueeEy = sy
       self.invalidate()
       return
-    if self._drag_node and self._drag_node_id >= 0:
-      dx = gx - self._drag_last_gx
-      dy = gy - self._drag_last_gy
+    if self._dragNode and self._dragNodeId >= 0:
+      dx = gx - self._dragLastGx
+      dy = gy - self._dragLastGy
       if dx != 0.0 or dy != 0.0:
-        if not self._drag_moved:
-          self._record_undo()
-          self._drag_moved = True
-        for nid in self.selected_nodes:
-          self.graph.move_node(nid, dx, dy)
-      self._drag_last_gx = gx
-      self._drag_last_gy = gy
+        if not self._dragMoved:
+          self._recordUndo()
+          self._dragMoved = True
+        for nid in self.selectedNodes:
+          self.graph.moveNode(nid, dx, dy)
+      self._dragLastGx = gx
+      self._dragLastGy = gy
       self.invalidate()
 
   @override
-  def on_pointer_up(self, btn: int, sx: int, sy: int) -> None:
+  def onPointerUp(self, btn: int, sx: int, sy: int) -> None:
     if btn in {2, 4}:
-      self._drag_pan = False
+      self._dragPan = False
       return
     if btn != 1:
       return
-    if self._marquee_active:
-      self._marquee_active = False
-      dx: int = self._marquee_ex - self._marquee_sx
-      dy: int = self._marquee_ey - self._marquee_sy
+    if self._marqueeActive:
+      self._marqueeActive = False
+      dx: int = self._marqueeEx - self._marqueeSx
+      dy: int = self._marqueeEy - self._marqueeSy
       if dx < 0:
         dx = -dx
       if dy < 0:
         dy = -dy
-      if dx < MARQUEE_MIN_DRAG and dy < MARQUEE_MIN_DRAG:
-        if not self._marquee_additive:
-          self._clear_selection_state()
+      if dx < MarqueeMinDrag and dy < MarqueeMinDrag:
+        if not self._marqueeAdditive:
+          self._clearSelectionState()
       else:
-        gx1, gy1 = screen_to_graph(float64(self._marquee_sx), float64(self._marquee_sy), self.pan_x, self.pan_y, self.zoom)
-        gx2, gy2 = screen_to_graph(float64(self._marquee_ex), float64(self._marquee_ey), self.pan_x, self.pan_y, self.zoom)
-        picked: list[int, 0] = nodes_in_graph_rect(self.graph, gx1, gy1, gx2, gy2)
-        if self._marquee_additive:
-          self._merge_selection(picked)
+        gx1, gy1 = screenToGraph(float64(self._marqueeSx), float64(self._marqueeSy), self.panX, self.panY, self.zoom)
+        gx2, gy2 = screenToGraph(float64(self._marqueeEx), float64(self._marqueeEy), self.panX, self.panY, self.zoom)
+        picked: list[int, 0] = nodesInGraphRect(self.graph, gx1, gy1, gx2, gy2)
+        if self._marqueeAdditive:
+          self._mergeSelection(picked)
         else:
-          self._set_selection(picked)
+          self._setSelection(picked)
       self.invalidate()
       return
-    if self._wire_active:
-      gx, gy = screen_to_graph(float64(sx), float64(sy), self.pan_x, self.pan_y, self.zoom)
-      pin_id = hit_test_pin(self.graph, gx, gy)
-      if pin_id >= 0 and self._wire_from_pin >= 0:
-        self._record_undo()
+    if self._wireActive:
+      gx, gy = screenToGraph(float64(sx), float64(sy), self.panX, self.panY, self.zoom)
+      pinId = hitTestPin(self.graph, gx, gy)
+      if pinId >= 0 and self._wireFromPin >= 0:
+        self._recordUndo()
         try:
-          self.graph.connect(self._wire_from_pin, pin_id)
-          self.graph_changed()
+          self.graph.connect(self._wireFromPin, pinId)
+          self.graphChanged()
         except ValueError:
           pass
-      self._wire_active = False
-      self._wire_from_pin = -1
+      self._wireActive = False
+      self._wireFromPin = -1
       self.invalidate()
       return
-    self._drag_node = False
-    self._drag_node_id = -1
-    self._drag_moved = False
+    self._dragNode = False
+    self._dragNodeId = -1
+    self._dragMoved = False
 
-  def add_node_from_kind(self, kind_id: str, gx: float64, gy: float64) -> int:
-    self._record_undo()
-    tpl = self.catalog.find(kind_id)
-    pins = self.catalog.clone_pins(kind_id)
-    nid: int = self.graph.add_node(kind_id, tpl.title, gx, gy, pins)
-    self.graph_changed()
+  def addNodeFromKind(self, kindId: str, gx: float64, gy: float64) -> int:
+    self._recordUndo()
+    tpl = self.catalog.find(kindId)
+    pins = self.catalog.clonePins(kindId)
+    nid: int = self.graph.addNode(kindId, tpl.title, gx, gy, pins)
+    self.graphChanged()
     return nid
 
-  def cancel_interaction(self) -> None:
-    self._wire_active = False
-    self._wire_from_pin = -1
-    self._drag_pan = False
-    self._drag_node = False
-    self._drag_node_id = -1
-    self._drag_moved = False
-    self._marquee_active = False
-    self.clear_selection()
+  def cancelInteraction(self) -> None:
+    self._wireActive = False
+    self._wireFromPin = -1
+    self._dragPan = False
+    self._dragNode = False
+    self._dragNodeId = -1
+    self._dragMoved = False
+    self._marqueeActive = False
+    self.clearSelection()
 
   @override
-  def on_key(self, key: int) -> None:
+  def onKey(self, key: int) -> None:
     if key == 27:
-      self.cancel_interaction()
+      self.cancelInteraction()
       return
     if key == 46:
-      self.delete_selected()
+      self.deleteSelected()
       return
-    if not ctrl_down():
+    if not ctrlDown():
       return
     match key:
       case 90:
-        self.undo_graph()
+        self.undoGraph()
       case 89:
-        self.redo_graph()
+        self.redoGraph()
       case 88:
-        self.clipboard_json = self.cut_selection()
+        self.clipboardJson = self.cutSelection()
       case 67:
-        self.copy_to_clipboard()
+        self.copyToClipboard()
       case 86:
-        self.paste_from_clipboard()
+        self.pasteFromClipboard()
       case 65:
-        self.select_all_nodes()
+        self.selectAllNodes()
       case _:
         pass

@@ -31,7 +31,7 @@ class PyStackArray
 {
   T _data[Length];
 
-  PyBool _index_in_range(PyInt index) const
+  PyBool _indexInRange(PyInt index) const
   {
     return ((index >= Offset) && (index < (Offset + Length)));
   }
@@ -61,27 +61,27 @@ public:
 
   T& __getitem__(PyInt index)
   {
-    if (!_index_in_range(index))
+    if (!_indexInRange(index))
     {
-      throw PY2CPP_TYPE(IndexError)();
+      throw PY2CPP_TYPE(PyIndexError)();
     }
     return _data[(index - Offset)];
   }
 
   const T& __getitem__(PyInt index) const
   {
-    if (!_index_in_range(index))
+    if (!_indexInRange(index))
     {
-      throw PY2CPP_TYPE(IndexError)();
+      throw PY2CPP_TYPE(PyIndexError)();
     }
     return _data[(index - Offset)];
   }
 
   void __setitem__(PyInt index, T value)
   {
-    if (!_index_in_range(index))
+    if (!_indexInRange(index))
     {
-      throw PY2CPP_TYPE(IndexError)();
+      throw PY2CPP_TYPE(PyIndexError)();
     }
     _data[(index - Offset)] = value;
   }
@@ -104,17 +104,17 @@ public:
     }
   }
 
-  T& unsafe_get(PyInt index)
+  T& unsafeGet(PyInt index)
   {
     return _data[(index - Offset)];
   }
 
-  const T& unsafe_get(PyInt index) const
+  const T& unsafeGet(PyInt index) const
   {
     return _data[(index - Offset)];
   }
 
-  void unsafe_set(PyInt index, T value)
+  void unsafeSet(PyInt index, T value)
   {
     _data[(index - Offset)] = value;
   }
@@ -155,17 +155,17 @@ public:
 
   T& __getitem__(PyInt index)
   {
-    throw PY2CPP_TYPE(IndexError)();
+    throw PY2CPP_TYPE(PyIndexError)();
   }
 
   const T& __getitem__(PyInt index) const
   {
-    throw PY2CPP_TYPE(IndexError)();
+    throw PY2CPP_TYPE(PyIndexError)();
   }
 
   void __setitem__(PyInt index, T value)
   {
-    throw PY2CPP_TYPE(IndexError)();
+    throw PY2CPP_TYPE(PyIndexError)();
   }
 
   PY2CPP_TYPE(PyArray)<T, 0> _getslice(PySlice<PyInt, PyInt> sl) const;
@@ -178,19 +178,19 @@ public:
   {
   }
 
-  T& unsafe_get(PyInt index)
+  T& unsafeGet(PyInt index)
   {
-    throw PY2CPP_TYPE(IndexError)();
+    throw PY2CPP_TYPE(PyIndexError)();
   }
 
-  const T& unsafe_get(PyInt index) const
+  const T& unsafeGet(PyInt index) const
   {
-    throw PY2CPP_TYPE(IndexError)();
+    throw PY2CPP_TYPE(PyIndexError)();
   }
 
-  void unsafe_set(PyInt index, T value)
+  void unsafeSet(PyInt index, T value)
   {
-    throw PY2CPP_TYPE(IndexError)();
+    throw PY2CPP_TYPE(PyIndexError)();
   }
 
   PyBool __bool__() const
@@ -253,12 +253,12 @@ class PyStackArray2D
 {
   T _data[Rows * Cols];
 
-  PyBool _row_in_range(PyInt row) const
+  PyBool _rowInRange(PyInt row) const
   {
     return ((row >= RowOff) && (row < (RowOff + Rows)));
   }
 
-  PyBool _col_in_range(PyInt col) const
+  PyBool _colInRange(PyInt col) const
   {
     return ((col >= ColOff) && (col < (ColOff + Cols)));
   }
@@ -288,9 +288,9 @@ public:
   {
     PyInt row = index.template get<0>();
     PyInt col = index.template get<1>();
-    if (!_row_in_range(row) || !_col_in_range(col))
+    if (!_rowInRange(row) || !_colInRange(col))
     {
-      throw PY2CPP_TYPE(IndexError)();
+      throw PY2CPP_TYPE(PyIndexError)();
     }
     return _data[_linear(row, col)];
   }
@@ -299,9 +299,9 @@ public:
   {
     PyInt row = index.template get<0>();
     PyInt col = index.template get<1>();
-    if (!_row_in_range(row) || !_col_in_range(col))
+    if (!_rowInRange(row) || !_colInRange(col))
     {
-      throw PY2CPP_TYPE(IndexError)();
+      throw PY2CPP_TYPE(PyIndexError)();
     }
     return _data[_linear(row, col)];
   }
@@ -310,9 +310,9 @@ public:
   {
     PyInt row = index.template get<0>();
     PyInt col = index.template get<1>();
-    if (!_row_in_range(row) || !_col_in_range(col))
+    if (!_rowInRange(row) || !_colInRange(col))
     {
-      throw PY2CPP_TYPE(IndexError)();
+      throw PY2CPP_TYPE(PyIndexError)();
     }
     _data[_linear(row, col)] = value;
   }
@@ -337,17 +337,17 @@ public:
     }
   }
 
-  T& unsafe_get(PyInt row, PyInt col)
+  T& unsafeGet(PyInt row, PyInt col)
   {
     return _data[_linear(row, col)];
   }
 
-  const T& unsafe_get(PyInt row, PyInt col) const
+  const T& unsafeGet(PyInt row, PyInt col) const
   {
     return _data[_linear(row, col)];
   }
 
-  void unsafe_set(PyInt row, PyInt col, T value)
+  void unsafeSet(PyInt row, PyInt col, T value)
   {
     _data[_linear(row, col)] = value;
   }
@@ -363,19 +363,19 @@ public:
   }
 };
 
-template<typename T, PyInt D0, PyInt D1, PyInt D2, PyInt O0, PyInt O1, PyInt O2>
+template<typename T, PyInt Dim0, PyInt Dim1, PyInt Dim2, PyInt Off0, PyInt Off1, PyInt Off2>
 class PyStackArray3D
 {
-  T _data[D0 * D1 * D2];
+  T _data[Dim0 * Dim1 * Dim2];
 
-  PyBool _in_range(PyInt i, PyInt off, PyInt dim) const
+  PyBool _inRange(PyInt i, PyInt off, PyInt dim) const
   {
     return ((i >= off) && (i < (off + dim)));
   }
 
   PyInt _linear(PyInt i, PyInt j, PyInt k) const
   {
-    return (((i - O0) * D1) + (j - O1)) * D2 + (k - O2);
+    return (((i - Off0) * Dim1) + (j - Off1)) * Dim2 + (k - Off2);
   }
 
 public:
@@ -386,7 +386,7 @@ public:
 
   explicit PyStackArray3D()
   {
-    for (PyInt n = 0; n < (D0 * D1 * D2); n += 1)
+    for (PyInt n = 0; n < (Dim0 * Dim1 * Dim2); n += 1)
     {
       _data[n] = T();
     }
@@ -399,9 +399,9 @@ public:
     PyInt i = index.template get<0>();
     PyInt j = index.template get<1>();
     PyInt k = index.template get<2>();
-    if (!_in_range(i, O0, D0) || !_in_range(j, O1, D1) || !_in_range(k, O2, D2))
+    if (!_inRange(i, Off0, Dim0) || !_inRange(j, Off1, Dim1) || !_inRange(k, Off2, Dim2))
     {
-      throw PY2CPP_TYPE(IndexError)();
+      throw PY2CPP_TYPE(PyIndexError)();
     }
     return _data[_linear(i, j, k)];
   }
@@ -411,9 +411,9 @@ public:
     PyInt i = index.template get<0>();
     PyInt j = index.template get<1>();
     PyInt k = index.template get<2>();
-    if (!_in_range(i, O0, D0) || !_in_range(j, O1, D1) || !_in_range(k, O2, D2))
+    if (!_inRange(i, Off0, Dim0) || !_inRange(j, Off1, Dim1) || !_inRange(k, Off2, Dim2))
     {
-      throw PY2CPP_TYPE(IndexError)();
+      throw PY2CPP_TYPE(PyIndexError)();
     }
     return _data[_linear(i, j, k)];
   }
@@ -423,9 +423,9 @@ public:
     PyInt i = index.template get<0>();
     PyInt j = index.template get<1>();
     PyInt k = index.template get<2>();
-    if (!_in_range(i, O0, D0) || !_in_range(j, O1, D1) || !_in_range(k, O2, D2))
+    if (!_inRange(i, Off0, Dim0) || !_inRange(j, Off1, Dim1) || !_inRange(k, Off2, Dim2))
     {
-      throw PY2CPP_TYPE(IndexError)();
+      throw PY2CPP_TYPE(PyIndexError)();
     }
     _data[_linear(i, j, k)] = value;
   }
@@ -435,9 +435,9 @@ public:
     PySlice<PyInt, PyInt> sl1,
     PySlice<PyInt, PyInt> sl2) const;
 
-  void __copy__(const PyStackArray3D<T, D0, D1, D2, O0, O1, O2>& other)
+  void __copy__(const PyStackArray3D<T, Dim0, Dim1, Dim2, Off0, Off1, Off2>& other)
   {
-    for (PyInt n = 0; n < (D0 * D1 * D2); n += 1)
+    for (PyInt n = 0; n < (Dim0 * Dim1 * Dim2); n += 1)
     {
       _data[n] = other._data[n];
     }
@@ -445,30 +445,30 @@ public:
 
   void fill(T value)
   {
-    for (PyInt n = 0; n < (D0 * D1 * D2); n += 1)
+    for (PyInt n = 0; n < (Dim0 * Dim1 * Dim2); n += 1)
     {
       _data[n] = value;
     }
   }
 
-  T& unsafe_get(PyInt i, PyInt j, PyInt k)
+  T& unsafeGet(PyInt i, PyInt j, PyInt k)
   {
     return _data[_linear(i, j, k)];
   }
 
-  const T& unsafe_get(PyInt i, PyInt j, PyInt k) const
+  const T& unsafeGet(PyInt i, PyInt j, PyInt k) const
   {
     return _data[_linear(i, j, k)];
   }
 
-  void unsafe_set(PyInt i, PyInt j, PyInt k, T value)
+  void unsafeSet(PyInt i, PyInt j, PyInt k, T value)
   {
     _data[_linear(i, j, k)] = value;
   }
 
   PyBool __bool__() const
   {
-    return (D0 > 0) && (D1 > 0) && (D2 > 0);
+    return (Dim0 > 0) && (Dim1 > 0) && (Dim2 > 0);
   }
 
   explicit operator PyBool() const

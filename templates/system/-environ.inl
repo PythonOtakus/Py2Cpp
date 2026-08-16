@@ -19,7 +19,7 @@ PY2CPP_END
 
 static void _env_throw_oserror()
 {
-  throw PY2CPP_TYPE(OSError)();
+  throw PY2CPP_TYPE(PyOSError)();
 }
 
 static PyStr _env_nchars_to_pystr(const char* p, int n)
@@ -41,7 +41,7 @@ static PyStr _env_nchars_to_pystr(const char* p, int n)
 static PyBool _env_key_has(const PyStr& key)
 {
   char kbuf[4096];
-  key.copy_to_span(PySpan<PyByte>((PyByte*)kbuf, (PyInt)sizeof(kbuf), 1));
+  key.copyToSpan(PySpan<PyByte>((PyByte*)kbuf, (PyInt)sizeof(kbuf), 1));
 #ifdef _WIN32
   char vbuf[1];
   DWORD n = GetEnvironmentVariableA(kbuf, vbuf, 1);
@@ -62,7 +62,7 @@ static PyBool _env_key_has(const PyStr& key)
 static PyStr _env_get_value(const PyStr& key)
 {
   char kbuf[4096];
-  key.copy_to_span(PySpan<PyByte>((PyByte*)kbuf, (PyInt)sizeof(kbuf), 1));
+  key.copyToSpan(PySpan<PyByte>((PyByte*)kbuf, (PyInt)sizeof(kbuf), 1));
 #ifdef _WIN32
   char vbuf[32767];
   DWORD n = GetEnvironmentVariableA(kbuf, vbuf, (DWORD)sizeof(vbuf));
@@ -89,7 +89,7 @@ PyStr PyEnviron::__getitem__(PyStr key) const
 {
   if ((!_env_key_has(key)))
   {
-    throw PY2CPP_TYPE(KeyError)(key);
+    throw PY2CPP_TYPE(PyKeyError)(key);
   }
   return _env_get_value(key);
 }
@@ -98,8 +98,8 @@ void PyEnviron::__setitem__(PyStr key, PyStr value)
 {
   char kbuf[4096];
   char vbuf[32767];
-  key.copy_to_span(PySpan<PyByte>((PyByte*)kbuf, (PyInt)sizeof(kbuf), 1));
-  value.copy_to_span(PySpan<PyByte>((PyByte*)vbuf, (PyInt)sizeof(vbuf), 1));
+  key.copyToSpan(PySpan<PyByte>((PyByte*)kbuf, (PyInt)sizeof(kbuf), 1));
+  value.copyToSpan(PySpan<PyByte>((PyByte*)vbuf, (PyInt)sizeof(vbuf), 1));
 #ifdef _WIN32
   if (SetEnvironmentVariableA(kbuf, vbuf) == 0)
   {
@@ -117,10 +117,10 @@ void PyEnviron::__delitem__(PyStr key)
 {
   if ((!_env_key_has(key)))
   {
-    throw PY2CPP_TYPE(KeyError)(key);
+    throw PY2CPP_TYPE(PyKeyError)(key);
   }
   char kbuf[4096];
-  key.copy_to_span(PySpan<PyByte>((PyByte*)kbuf, (PyInt)sizeof(kbuf), 1));
+  key.copyToSpan(PySpan<PyByte>((PyByte*)kbuf, (PyInt)sizeof(kbuf), 1));
 #ifdef _WIN32
   if (SetEnvironmentVariableA(kbuf, NULL) == 0)
   {

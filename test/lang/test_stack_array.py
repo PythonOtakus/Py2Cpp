@@ -4,40 +4,40 @@ from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 
-def sum_stack(buf: int[:4]) -> int:
+def sumStack(buf: int[:4]) -> int:
   total: int = 0
   for i in range(len(buf)):
     total += buf[i]
   return total
 
 
-def sum_stack_for(buf: int[:4]) -> int:
+def sumStackFor(buf: int[:4]) -> int:
   total: int = 0
   for x in buf:
     total += x
   return total
 
 
-def sum_offset_for(seg: int[1:3]) -> int:
+def sumOffsetFor(seg: int[1:3]) -> int:
   total: int = 0
   for x in seg:
     total += x
   return total
 
 
-def sum_slice(seg: int[:]) -> int:
+def sumSlice(seg: int[:]) -> int:
   return seg[0] + seg[1]
 
 
-def sum_view(seg: int[1:3]) -> int:
+def sumView(seg: int[1:3]) -> int:
   return seg[1] + seg[2]
 
 
-def sum_span(seg: span[int]) -> int:
+def sumSpan(seg: span[int]) -> int:
   return seg[0] + seg[1]
 
 
-def sum_span_for(seg: span[int]) -> int:
+def sumSpanFor(seg: span[int]) -> int:
   total: int = 0
   for x in seg:
     total += x
@@ -45,7 +45,7 @@ def sum_span_for(seg: span[int]) -> int:
 
 
 class StackArrayLocalTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
@@ -53,17 +53,17 @@ class StackArrayLocalTests(TestCaseMixin):
     self.assertEqual(len(buf), 4)
     self.assertEqual(buf[0], 10)
     self.assertEqual(buf[1] + buf[3], 60)
-    self.assertEqual(sum_stack(buf), 100)
-    self.assertEqual(sum_stack_for(buf), 100)
+    self.assertEqual(sumStack(buf), 100)
+    self.assertEqual(sumStackFor(buf), 100)
 
 
 class StackArrayForTests(TestCaseMixin):
-  _test_tag = 8
+  _testTag = 8
 
   @override
   def test(self):
     view: int[1:3] = [20, 30]
-    self.assertEqual(sum_offset_for(view), 50)
+    self.assertEqual(sumOffsetFor(view), 50)
     acc: int = 0
     for x in view:
       acc += x
@@ -71,7 +71,7 @@ class StackArrayForTests(TestCaseMixin):
 
 
 class StackArrayLen3Tests(TestCaseMixin):
-  _test_tag = 2
+  _testTag = 2
 
   @override
   def test(self):
@@ -84,7 +84,7 @@ class StackArrayLen3Tests(TestCaseMixin):
 
 
 class StackArrayHeapSliceTests(TestCaseMixin):
-  _test_tag = 3
+  _testTag = 3
 
   @override
   def test(self):
@@ -97,7 +97,7 @@ class StackArrayHeapSliceTests(TestCaseMixin):
     self.assertEqual(len(sub), 2)
     self.assertEqual(sub[0], 20)
     self.assertEqual(sub[1], 30)
-    self.assertEqual(sum_slice(sub), 50)
+    self.assertEqual(sumSlice(sub), 50)
     tail: int[:] = buf[2:4]
     self.assertEqual(len(tail), 2)
     self.assertEqual(tail[0] + tail[1], 70)
@@ -106,7 +106,7 @@ class StackArrayHeapSliceTests(TestCaseMixin):
 
 
 class StackArraySpanViewTests(TestCaseMixin):
-  _test_tag = 4
+  _testTag = 4
 
   @override
   def test(self):
@@ -120,7 +120,7 @@ class StackArraySpanViewTests(TestCaseMixin):
     self.assertEqual(len(sub), 2)
     self.assertEqual(sub[0], 20)
     self.assertEqual(sub[1], 30)
-    self.assertEqual(sum_span(sub), 50)
+    self.assertEqual(sumSpan(sub), 50)
     buf[1] = 99
     self.assertEqual(sub[0], 99)
     whole: span[int] = buf.view
@@ -135,7 +135,7 @@ class StackArraySpanViewTests(TestCaseMixin):
 
 
 class StackArraySpanForTests(TestCaseMixin):
-  _test_tag = 7
+  _testTag = 7
 
   @override
   def test(self):
@@ -145,32 +145,32 @@ class StackArraySpanForTests(TestCaseMixin):
     buf[2] = 30
     buf[3] = 40
     whole: span[int] = buf.view
-    self.assertEqual(sum_span_for(whole), 100)
+    self.assertEqual(sumSpanFor(whole), 100)
     sub: span[int] = whole[1:3]
-    self.assertEqual(sum_span_for(sub), 50)
+    self.assertEqual(sumSpanFor(sub), 50)
     acc: int = 0
     for x in sub:
       acc += x
     self.assertEqual(acc, 50)
     vw2: span[int] = buf.view
     tail: span[int] = vw2[2:4]
-    self.assertEqual(sum_span_for(tail), 70)
+    self.assertEqual(sumSpanFor(tail), 70)
     sub[1] = 88
     self.assertEqual(buf[2], 88)
     self.assertEqual(tail[0], 88)
 
 
 class StackArraySubsliceAnnTests(TestCaseMixin):
-  _test_tag = 5
+  _testTag = 5
 
   @override
   def test(self):
     view: int[1:3] = [20, 30]
-    self.assertEqual(sum_view(view), 50)
+    self.assertEqual(sumView(view), 50)
 
 
 class StackArrayZeroOffsetSliceTests(TestCaseMixin):
-  _test_tag = 6
+  _testTag = 6
 
   @override
   def test(self):
@@ -184,6 +184,6 @@ class StackArrayZeroOffsetSliceTests(TestCaseMixin):
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)

@@ -5,7 +5,7 @@ from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 
 class BytesSequenceTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
@@ -21,21 +21,21 @@ class BytesSequenceTests(TestCaseMixin):
 
 
 class BytesFindTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
-    # ``count`` / ``find`` / ``rfind`` / ``startswith`` / ``endswith``（KMP 路径）
+    # ``count`` / ``find`` / ``rfind`` / ``startsWith`` / ``endsWith``（KMP 路径）
     hay: bytes = b"spam, spam, eggs"
     self.assertEqual(hay.count(b"spam"), 2)
     self.assertEqual(hay.find(b"eggs"), 12)
     self.assertEqual(hay.rfind(b"spam"), 6)
-    self.assertTrue(hay.startswith(b"spam"))
-    self.assertTrue(hay.endswith(b"eggs"))
+    self.assertTrue(hay.startsWith(b"spam"))
+    self.assertTrue(hay.endsWith(b"eggs"))
 
 
 class BytesSplitTests(TestCaseMixin):
-  _test_tag = 30
+  _testTag = 30
 
   @override
   def test(self):
@@ -45,14 +45,14 @@ class BytesSplitTests(TestCaseMixin):
     parts.append(b"b")
     parts.append(b"c")
     self.assertEqual(b"a,b,c".split(b","), parts)
-    ws_parts: list[bytes] = []
-    ws_parts.append(b"a")
-    ws_parts.append(b"b")
-    self.assertEqual(b"  a  b  ".split(), ws_parts)
-    rs_parts: list[bytes] = []
-    rs_parts.append(b"a|b")
-    rs_parts.append(b"c")
-    self.assertEqual(b"a|b|c".rsplit(b"|", 1), rs_parts)
+    wsParts: list[bytes] = []
+    wsParts.append(b"a")
+    wsParts.append(b"b")
+    self.assertEqual(b"  a  b  ".split(), wsParts)
+    rsParts: list[bytes] = []
+    rsParts.append(b"a|b")
+    rsParts.append(b"c")
+    self.assertEqual(b"a|b|c".rsplit(b"|", 1), rsParts)
     xparts: list[bytes] = []
     for part in b"a,b,c".xsplit(b","):
       xparts.append(part)
@@ -60,39 +60,39 @@ class BytesSplitTests(TestCaseMixin):
     xrs: list[bytes] = []
     for part in b"a|b|c".xrsplit(b"|", 1):
       xrs.append(part)
-    self.assertEqual(xrs, rs_parts)
+    self.assertEqual(xrs, rsParts)
     xlines: list[bytes] = []
-    for line in b"a\nb".xsplitlines():
+    for line in b"a\nb".xsplitLines():
       xlines.append(line)
-    self.assertEqual(xlines, b"a\nb".splitlines())
+    self.assertEqual(xlines, b"a\nb".splitLines())
     part: bytes = b"a=b".partition(b"=")[0]
     self.assertEqual(part, b"a")
     self.assertEqual(b"a=b".partition(b"=")[1], b"=")
     self.assertEqual(b"a=b".partition(b"=")[2], b"b")
     self.assertEqual(b"x".replace(b"x", b"y"), b"y")
-    self.assertEqual(b"a,b,c".split_prefix(b","), b"a")
-    self.assertEqual(b"a,b,c".split_suffix(b","), b"b,c")
-    self.assertEqual(b"a|b|c".rsplit_prefix(b"|"), b"a|b")
-    self.assertEqual(b"a|b|c".rsplit_suffix(b"|"), b"c")
-    self.assertEqual(b"  a  b  ".split_prefix(), b"a")
-    self.assertEqual(b"  a  b  ".rsplit_suffix(), b"b")
+    self.assertEqual(b"a,b,c".splitPrefix(b","), b"a")
+    self.assertEqual(b"a,b,c".splitSuffix(b","), b"b,c")
+    self.assertEqual(b"a|b|c".rsplitPrefix(b"|"), b"a|b")
+    self.assertEqual(b"a|b|c".rsplitSuffix(b"|"), b"c")
+    self.assertEqual(b"  a  b  ".splitPrefix(), b"a")
+    self.assertEqual(b"  a  b  ".rsplitSuffix(), b"b")
 
 
 class BytesStripTests(TestCaseMixin):
-  _test_tag = 40
+  _testTag = 40
 
   @override
   def test(self):
-    # ``strip`` / ``removeprefix`` / ``removesuffix``
+    # ``strip`` / ``removePrefix`` / ``removeSuffix``
     ws: bytes = b"   hi   "
     self.assertEqual(ws.strip(), b"hi")
-    self.assertEqual(b"pre_hook".removeprefix(b"pre_"), b"hook")
-    self.assertEqual(b"file.txt".removesuffix(b".txt"), b"file")
-    self.assertEqual(b"\n  a\n    b\n".striplines(1), b" a\n   b")
+    self.assertEqual(b"pre_hook".removePrefix(b"pre_"), b"hook")
+    self.assertEqual(b"file.txt".removeSuffix(b".txt"), b"file")
+    self.assertEqual(b"\n  a\n    b\n".stripLines(1), b" a\n   b")
 
 
 class BytesJoinDecodeTests(TestCaseMixin):
-  _test_tag = 50
+  _testTag = 50
 
   @override
   def test(self):
@@ -106,7 +106,7 @@ class BytesJoinDecodeTests(TestCaseMixin):
 
 
 class BytesCtorTests(TestCaseMixin):
-  _test_tag = 60
+  _testTag = 60
 
   @override
   def test(self):
@@ -118,45 +118,45 @@ class BytesCtorTests(TestCaseMixin):
 
 
 class BytesTranslateTests(TestCaseMixin):
-  _test_tag = 70
+  _testTag = 70
 
   @override
   def test(self):
-    # ``maketrans`` / ``translate``（含 delete 表项）
-    tbl: dict[byte, byte] = bytes.maketrans(b"ab", b"AB")
+    # ``makeTrans`` / ``translate``（含 delete 表项）
+    tbl: dict[byte, byte] = bytes.makeTrans(b"ab", b"AB")
     self.assertEqual(b"abc".translate(tbl), b"ABc")
     self.assertEqual(b"abc".translate(tbl, delete=b""), b"ABc")
     self.assertEqual(b"abc".translate(tbl, delete=b"c"), b"AB")
-    del_tbl: dict[byte, byte] = {}
-    del_tbl[ord("b")] = 0xFF
-    self.assertEqual(b"abc".translate(del_tbl), b"ac")
+    delTbl: dict[byte, byte] = {}
+    delTbl[ord("b")] = 0xFF
+    self.assertEqual(b"abc".translate(delTbl), b"ac")
 
 
 class BytesStartswithListTests(TestCaseMixin):
-  _test_tag = 80
+  _testTag = 80
 
   @override
   def test(self):
-    # ``startswith`` / ``endswith`` 多段 ``list[bytes]`` 与 ``byte[:]`` 缓冲
+    # ``startsWith`` / ``endsWith`` 多段 ``list[bytes]`` 与 ``byte[:]`` 缓冲
     prefixes: list[bytes] = []
     prefixes.append(b"spam")
     prefixes.append(b"ham")
-    self.assertTrue(b"spam eggs".startswith(prefixes))
+    self.assertTrue(b"spam eggs".startsWith(prefixes))
     pref: byte[:] = b"egg"
-    self.assertTrue(b"eggs".startswith(pref))
-    pref_arr: bytes[:] = new(2)
-    pref_arr[0] = b"spam"
-    pref_arr[1] = b"ham"
-    self.assertTrue(b"spam eggs".startswith(pref_arr))
-    suf_arr: bytes[:] = new(2)
-    suf_arr[0] = b"eggs"
-    suf_arr[1] = b"ham"
-    self.assertTrue(b"spam eggs".endswith(suf_arr))
-    self.assertFalse(b"spam egg".endswith(suf_arr))
+    self.assertTrue(b"eggs".startsWith(pref))
+    prefArr: bytes[:] = new(2)
+    prefArr[0] = b"spam"
+    prefArr[1] = b"ham"
+    self.assertTrue(b"spam eggs".startsWith(prefArr))
+    sufArr: bytes[:] = new(2)
+    sufArr[0] = b"eggs"
+    sufArr[1] = b"ham"
+    self.assertTrue(b"spam eggs".endsWith(sufArr))
+    self.assertFalse(b"spam egg".endsWith(sufArr))
 
 
 class BytesGlobTests(TestCaseMixin):
-  _test_tag = 85
+  _testTag = 85
 
   @override
   def test(self):
@@ -167,29 +167,29 @@ class BytesGlobTests(TestCaseMixin):
 
 
 class BytesCaseTests(TestCaseMixin):
-  _test_tag = 90
+  _testTag = 90
 
   @override
   def test(self):
-    # 大小写、``capitalize``、``expandtabs``、谓词、``ljust`` / ``zfill``
+    # 大小写、``capitalize``、``expandTabs``、谓词、``ljust`` / ``zfill``
     self.assertEqual(b"ab".upper(), b"AB")
     self.assertEqual(b"AB".lower(), b"ab")
     self.assertEqual(b"hello".capitalize(), b"Hello")
-    self.assertEqual(b"a\tb".expandtabs(4).find(b"   "), 1)
-    self.assertTrue(b"abc1".isalnum())
-    self.assertTrue(b"abc".isalpha())
-    self.assertTrue(b"ascii".isascii())
-    self.assertTrue(b"123".isdigit())
-    self.assertTrue(b"lower".islower())
-    self.assertTrue(b" \t".isspace())
-    self.assertTrue(b"UPPER".isupper())
+    self.assertEqual(b"a\tb".expandTabs(4).find(b"   "), 1)
+    self.assertTrue(b"abc1".isAlnum())
+    self.assertTrue(b"abc".isAlpha())
+    self.assertTrue(b"ascii".isAscii())
+    self.assertTrue(b"123".isDigit())
+    self.assertTrue(b"lower".isLower())
+    self.assertTrue(b" \t".isSpace())
+    self.assertTrue(b"UPPER".isUpper())
     self.assertEqual(b"x".ljust(3), b"x  ")
     self.assertEqual(b"42".zfill(5), b"00042")
 
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

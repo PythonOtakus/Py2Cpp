@@ -5,7 +5,7 @@ from py2cpp.math import almost
 from py2cpp.spatial.color import Color, ColorMatrix
 
 class ColorBasicTests(TestCaseMixin):
-    _test_tag = 1
+    _testTag = 1
 
     @override
     def test(self):
@@ -21,18 +21,18 @@ class ColorBasicTests(TestCaseMixin):
         self.assertTrue(almost(mid.r, 0.5))
         self.assertTrue(almost(mid.g, 0.5))
         self.assertTrue(almost(mid.b, 0.5))
-        faded: Color = white.with_alpha(0.25)
+        faded: Color = white.withAlpha(0.25)
         self.assertTrue(almost(faded.a, 0.25))
         red: Color = new(1.0, 0.0, 0.0, 1.0)
-        packed: int = red.to_argb()
-        back: Color = new.from_argb(packed)
+        packed: int = red.toArgb()
+        back: Color = new.fromArgb(packed)
         self.assertTrue(almost(back.r, 1.0))
         self.assertTrue(almost(back.g, 0.0))
         self.assertTrue(almost(back.b, 0.0))
         self.assertTrue(almost(back.a, 1.0))
 
 class ColorOpsTests(TestCaseMixin):
-    _test_tag = 2
+    _testTag = 2
 
     @override
     def test(self):
@@ -58,7 +58,7 @@ class ColorOpsTests(TestCaseMixin):
         self.assertTrue(a @ b == a * b)
 
 class ColorMatrixTests(TestCaseMixin):
-    _test_tag = 3
+    _testTag = 3
 
     @override
     def test(self):
@@ -68,8 +68,8 @@ class ColorMatrixTests(TestCaseMixin):
         self.assertTrue(almost(out.r, 0.2))
         self.assertTrue(almost(out.g, 0.4))
         self.assertTrue(almost(out.b, 0.6))
-        gray_m: ColorMatrix = new.grayscale()
-        g: Color = gray_m.apply(c)
+        grayM: ColorMatrix = new.grayscale()
+        g: Color = grayM.apply(c)
         self.assertTrue(almost(g.r, g.g))
         self.assertTrue(almost(g.g, g.b))
         self.assertFalse(ColorMatrix.zero)
@@ -81,7 +81,7 @@ class ColorMatrixTests(TestCaseMixin):
 
 def main() -> int:
     suite: TestSuite = new()
-    for Class in TestCaseMixin.iter_subclasses(sort_const='_test_tag'):
+    for Class in TestCaseMixin.iterSubclasses(sortConst='_testTag'):
         suite.addTest(Class())
     return TextTestRunner().run(suite)
 if __name__ == '__main__':

@@ -2,23 +2,23 @@
 from ..builtins import *
 from .complex import complex, complex128
 from .decimal import (
-  RoundingMode,
+  RoundingModeEnum,
   Context,
   Decimal,
-  getcontext,
-  setcontext,
+  getContext,
+  setContext,
 )
 from .fraction import Fraction
 from .varint import varint
 
 __all__ = [
-  "RoundingMode",
+  "RoundingModeEnum",
   "Context",
   "Decimal",
   "Fraction",
   "complex",
   "complex128",
-  "getcontext",
-  "setcontext",
+  "getContext",
+  "setContext",
   "varint",
 ]

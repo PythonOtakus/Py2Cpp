@@ -34,7 +34,7 @@ def run(xs: list[int]) -> int:
     )
     self.assertIn("for (PyInt fi", cpp)
     self.assertIn(".__getitem__", cpp)
-    self.assertNotIn("enumerate_iterator", cpp)
+    self.assertNotIn("EnumerateIterator", cpp)
 
   def test_enumerate_with_start(self):
     cpp = self._translate(
@@ -49,7 +49,7 @@ def run(xs: list[int]) -> int:
 ''',
     )
     self.assertIn("(5) + fi", cpp)
-    self.assertNotIn("enumerate_iterator", cpp)
+    self.assertNotIn("EnumerateIterator", cpp)
 
   def test_enumerate_reversed_list(self):
     cpp = self._translate(
@@ -64,7 +64,7 @@ def run(xs: list[int]) -> int:
 ''',
     )
     self.assertIn("__len__() - 1 - fi", cpp)
-    self.assertNotIn("enumerate_iterator", cpp)
+    self.assertNotIn("EnumerateIterator", cpp)
 
 
 if __name__ == "__main__":

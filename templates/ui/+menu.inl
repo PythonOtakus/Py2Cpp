@@ -65,7 +65,7 @@ static HMENU _ui_menu_create_flow()
 
 PY2CPP_BEGIN_SCOPE
 
-void UIMenuBar::attach(window::UIWindow& win)
+void PyUIMenuBar::attach(window::PyUIWindow& win)
 {
   HWND hwnd = (HWND)(INT_PTR)win.handle;
   if (!hwnd)
@@ -78,11 +78,11 @@ void UIMenuBar::attach(window::UIWindow& win)
   DrawMenuBar(hwnd);
 }
 
-void UIMenuBar::build_flow_default()
+void PyUIMenuBar::buildFlowDefault()
 {
 }
 
-void UIMenuBar::set_run_enabled(PyBool play, PyBool play_sel, PyBool stop)
+void PyUIMenuBar::setRunEnabled(PyBool play, PyBool play_sel, PyBool stop)
 {
   HMENU bar = (HMENU)(INT_PTR)this->handle;
   if (!bar)
@@ -105,16 +105,16 @@ PY2CPP_END_SCOPE
 
 PY2CPP_BEGIN_SCOPE
 
-void UIMenuBar::attach(window::UIWindow& win)
+void PyUIMenuBar::attach(window::PyUIWindow& win)
 {
   (void)win;
 }
 
-void UIMenuBar::build_flow_default()
+void PyUIMenuBar::buildFlowDefault()
 {
 }
 
-void UIMenuBar::set_run_enabled(PyBool play, PyBool play_sel, PyBool stop)
+void PyUIMenuBar::setRunEnabled(PyBool play, PyBool play_sel, PyBool stop)
 {
   (void)play;
   (void)play_sel;

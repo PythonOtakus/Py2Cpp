@@ -10,4 +10,4 @@ PROTOCOL_SCAN_REL_PATHS: tuple[str, ...] = (
   "sql/protocols",
 )
 
-PROTOCOL_PARAM_ERASE_EXCLUDE: frozenset[str] = frozenset({"Equatable"})
+PROTOCOL_PARAM_ERASE_EXCLUDE: frozenset[str] = frozenset({"EquatableType"})

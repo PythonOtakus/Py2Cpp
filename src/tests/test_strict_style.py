@@ -714,7 +714,7 @@ def main():
 
   def test_s06b_rejects_pool_slot_loc_ctor_with_typed_ann(self):
     self._expect_strict_fail(
-      """class pool_slot_loc:
+      """class PoolSlotLoc:
   block: int = 0
   offset: int = 0
 
@@ -723,7 +723,7 @@ def main():
     self.offset = offset
 
 def main():
-  loc: pool_slot_loc = pool_slot_loc(-1, -1)
+  loc: PoolSlotLoc = PoolSlotLoc(-1, -1)
   return loc.block
 """,
       "S06b",
@@ -1148,7 +1148,7 @@ def main():
 
   def test_s03_list_class_allows_literal_with_self_return(self):
     self._translate(
-      """class list[T]:
+      """class list[Element]:
   def blank(self) -> Self:
     return []
 
@@ -1162,7 +1162,7 @@ def main():
 
   def test_s03_list_class_rejects_empty_new_with_self_return(self):
     self._expect_strict_fail(
-      """class list[T]:
+      """class list[Element]:
   def blank(self) -> Self:
     return new()
 
@@ -1399,15 +1399,15 @@ def main():
 
   def test_s09_allows_other_type_param_same_template(self):
     self._translate(
-      """from py2cpp import Self, new, ref
-
-class Box[T]:
-  def pair[U](self, other: Box[U] @ref) -> int:
+      """
+class Box[Element]:
+  def pair[Item](self, other: Box[Item] @ref) -> int:
     return 0
 
 def main():
   a: Box[int] = new()
   b: Box[int] = new()
+  _ = 0
   return a.pair(b)
 """
     )
@@ -1416,16 +1416,14 @@ def main():
     self._translate(
       """from py2cpp import *
 
-class Task[T]:
+class Task[Element]:
   @staticmethod
   def sleep() -> Task[None]:
-    t: Task[None] = new()
-    return t
+    return new()
 
   @staticmethod
-  def gather[U](*items: Task[U][:]) -> Task[list[U]]:
-    g: Task[list[U]] = new()
-    return g
+  def gather[Item](*items: Task[Item][:]) -> Task[list[Item]]:
+    return new()
 
 def main():
   Task[int].sleep()
@@ -1437,9 +1435,9 @@ def main():
     self._expect_strict_fail(
       """from py2cpp import *
 
-class Task[T]:
-  def copy(self) -> Task[T]:
-    out: Task[T] = new()
+class Task[Element]:
+  def copy(self) -> Task[Element]:
+    out: Task[Element] = new()
     return out
 
 def main():
@@ -1609,7 +1607,7 @@ def main():
       """from py2cpp import *
 
 @protocol
-class IParsable:
+class IParsableType:
   @staticmethod
   @abstract
   def parse(s: str) -> Self: ...
@@ -1619,7 +1617,7 @@ class Widget:
   def parse(s: str) -> Self:
     return new(0)
 
-def try_parse[T: IParsable](s: str) -> T:
+def try_parse[T: IParsableType](s: str) -> T:
   return T.parse(s)
 
 def main():
@@ -1834,7 +1832,7 @@ def grow(b: Buf) -> None:
 
   def test_s16_rejects_unused_header_type_param(self):
     self._expect_strict_fail(
-      """def bad[Nav, Node: DictKey](nav: Navigatable[Node], start: Node) -> Node:
+      """def bad[Nav, Node: DictKeyType](nav: NavigatableType[Node], start: Node) -> Node:
   return start
 """,
       "S19",
@@ -1842,7 +1840,7 @@ def grow(b: Buf) -> None:
 
   def test_s16_allows_navigatable_node_pattern(self):
     self._translate(
-      """def ok[Node: DictKey](nav: Navigatable[Node], start: Node) -> Node:
+      """def ok[Node: DictKeyType](nav: NavigatableType[Node], start: Node) -> Node:
   return start
 """,
     )
@@ -3278,7 +3276,7 @@ def main():
 
   def test_s37_rejects_pynone_annotation(self):
     self._expect_strict_fail(
-      """def gen() -> Generator[int, PyNone, PyNone]:
+      """def gen() -> GeneratorType[int, PyNone, PyNone]:
   yield 1
 
 def main():
@@ -3289,7 +3287,7 @@ def main():
 
   def test_s37_allows_none_annotation(self):
     self._translate(
-      """def gen() -> Generator[int, None, None]:
+      """def gen() -> GeneratorType[int, None, None]:
   yield 1
 
 def main():
@@ -3299,7 +3297,7 @@ def main():
 
   def test_s38_rejects_for_yield_delegation(self):
     self._expect_strict_fail(
-      """def gen(xs: list[int]) -> Generator[int, None, None]:
+      """def gen(xs: list[int]) -> GeneratorType[int, None, None]:
   for x in xs:
     yield x
 
@@ -3311,7 +3309,7 @@ def main():
 
   def test_s38_allows_yield_from(self):
     self._translate(
-      """def gen(xs: list[int]) -> Generator[int, None, None]:
+      """def gen(xs: list[int]) -> GeneratorType[int, None, None]:
   yield from xs
 
 def main():
@@ -3321,7 +3319,7 @@ def main():
 
   def test_s38_allows_for_else_yield(self):
     self._translate(
-      """def gen() -> Generator[int, None, None]:
+      """def gen() -> GeneratorType[int, None, None]:
   for i in range(3):
     yield i
   else:
@@ -3340,6 +3338,163 @@ def main():
 
 def main():
   return 0
+"""
+    )
+
+  def test_s47_rejects_enum_without_enum_suffix(self):
+    self._expect_strict_fail(
+      """@enum
+class Mode:
+  Off = 0
+  On = 1
+
+def main():
+  return int(Mode.On)
+""",
+      "S47",
+    )
+
+  def test_s47_rejects_flag_without_flag_suffix(self):
+    self._expect_strict_fail(
+      """@enum(flag=True)
+class Perm:
+  Read = 1
+  Write = 2
+
+def main():
+  return int(Perm.Read)
+""",
+      "S47",
+    )
+
+  def test_s47_rejects_protocol_without_type_suffix(self):
+    self._expect_strict_fail(
+      """@protocol
+class Sized:
+  def __len__(self) -> int: ...
+
+def main():
+  return 0
+""",
+      "S47",
+    )
+
+  def test_s47_rejects_boxing_without_unsafe_suffix(self):
+    self._expect_strict_fail(
+      """@boxing
+class Cell:
+  def __init__(self, n: int = 0):
+    self.n: int = n
+
+def main():
+  return 0
+""",
+      "S47",
+    )
+
+  def test_s47_allows_cpython_exception_names(self):
+    self._translate(
+      """class StopIteration(Exception):
+  pass
+
+class ExceptionGroup(Exception):
+  pass
+
+def main():
+  return 0
+"""
+    )
+
+  def test_s47_rejects_union_without_union_suffix(self):
+    self._expect_strict_fail(
+      """@union
+class Message:
+  @variant
+  class Quit:
+    pass
+
+def main():
+  return 0
+""",
+      "S47",
+    )
+
+  def test_s47_allows_result_optional_iter_result(self):
+    self._translate(
+      """def take(r: Result[int, str], o: Optional[int], ir: IterResult[int, None]) -> int:
+  return 0
+
+def main():
+  return 0
+"""
+    )
+
+  def test_s47_rejects_exception_without_error_suffix(self):
+    self._expect_strict_fail(
+      """class Boom(Exception):
+  pass
+
+def main():
+  raise Boom()
+""",
+      "S47",
+    )
+
+  def test_s47_allows_enum_and_protocol_suffixes(self):
+    self._translate(
+      """@enum
+class ModeEnum:
+  Off = 0
+  On = 1
+
+def main():
+  return int(ModeEnum.On)
+"""
+    )
+
+  def test_s48_rejects_single_letter_class_type_param(self):
+    self._expect_strict_fail(
+      """class Box[T]:
+  value: T = new()
+
+def main():
+  return 0
+""",
+      "S48",
+    )
+
+  def test_s48_rejects_letter_digit_class_type_param(self):
+    self._expect_strict_fail(
+      """class Box[T1]:
+  value: T1 = new()
+
+def main():
+  return 0
+""",
+      "S48",
+    )
+
+  def test_s48_allows_semantic_class_type_param(self):
+    self._translate(
+      """class Box[Element]:
+  value: Element
+
+  def __init__(self, value: Element):
+    self.value = value
+
+def main():
+  b: Box[int] = new(1)
+  return b.value
+"""
+    )
+
+  def test_s48_allows_short_function_type_param(self):
+    self._translate(
+      """def identity[T](x: T) -> T:
+  return x
+
+def main():
+  return identity(1)
 """
     )
 

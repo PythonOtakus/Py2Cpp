@@ -11,40 +11,48 @@ from ..core.exceptions import Exception, RuntimeError, ValueError
 from ..text import str
 
 
-_THREAD_INITIAL: int = 0
-_THREAD_STARTED: int = 1
-_THREAD_STOPPED: int = 2
+@enum
+class _ThreadPhaseEnum:
+  Initial = 0
+  Started = 1
+  Stopped = 2
 
-_BARRIER_RESETTING: int = -1
-_BARRIER_BROKEN: int = -2
-_BARRIER_FILLING: int = 0
-_BARRIER_DRAINING: int = 1
 
-_FUTURE_PENDING: int = 0
-_FUTURE_RUNNING: int = 1
-_FUTURE_CANCELLED: int = 2
-_FUTURE_FINISHED: int = 3
-_FUTURE_EXCEPTION: int = 4
+@enum
+class _BarrierStateEnum:
+  Resetting = -1
+  Broken = -2
+  Filling = 0
+  Draining = 1
+
+
+@enum
+class _FutureStateEnum:
+  Pending = 0
+  Running = 1
+  Cancelled = 2
+  Finished = 3
+  Exception = 4
 
 
 @native
-def _barrier_no_action() -> None:
+def _barrierNoAction() -> None:
   ...
 
 
-class Empty(Exception):
-  """``Queue.get_nowait()`` 或非阻塞/超时 ``get`` 在无元素时抛出。"""
+class EmptyError(Exception):
+  """``Queue.getNowait()`` 或非阻塞/超时 ``get`` 在无元素时抛出。"""
 
   pass
 
 
-class Full(Exception):
-  """``Queue.put_nowait()`` 或非阻塞/超时 ``put`` 在队列满时抛出。"""
+class FullError(Exception):
+  """``Queue.putNowait()`` 或非阻塞/超时 ``put`` 在队列满时抛出。"""
 
   pass
 
 
-class ShutDown(Exception):
+class ShutDownError(Exception):
   """``Queue.shutdown()`` 后对队列执行不允许的 ``put`` / ``get`` 时抛出。"""
 
   pass
@@ -74,7 +82,7 @@ class InvalidStateError(Exception):
   pass
 
 
-class BrokenThreadPool(RuntimeError):
+class BrokenThreadPoolError(RuntimeError):
   """线程池进入 broken 状态后提交任务时抛出。"""
 
   pass
@@ -82,12 +90,11 @@ class BrokenThreadPool(RuntimeError):
 
 @native
 @copyable
-@native_name("PyAtomic")
-class atomic[T]:
+class atomic[Value]:
   """``std::atomic`` 风格的共享原子值句柄。
 
   复制 ``atomic[T]`` 共享同一个 native 原子状态，适合被 owning lambda 捕获后跨线程更新。
-  首版面向 C++11 ``std::atomic<T>`` 可实例化的标量类型；``fetch_add`` / ``fetch_sub`` 仅用于整数等支持该操作的类型。
+  首版面向 C++11 ``std::atomic<T>`` 可实例化的标量类型；``fetchAdd`` / ``fetchSub`` 仅用于整数等支持该操作的类型。
   """
 
   _state: uintptr = 0
@@ -96,41 +103,40 @@ class atomic[T]:
   def __init__(self): ...
 
   @overload
-  def __init__(self, value: T): ...
+  def __init__(self, value: Value): ...
 
   def __del__(self): ...
 
   def __copy__(self, other: Self): ...
 
   @immutable
-  def load(self) -> T:
+  def load(self) -> Value:
     """读取当前值。"""
     ...
 
-  def store(self, value: T) -> None:
+  def store(self, value: Value) -> None:
     """写入新值。"""
     ...
 
-  def exchange(self, value: T) -> T:
+  def exchange(self, value: Value) -> Value:
     """写入新值并返回旧值。"""
     ...
 
-  def compare_exchange(self, expected: T, desired: T) -> bool:
+  def compareExchange(self, expected: Value, desired: Value) -> bool:
     """若当前值等于 ``expected``，写入 ``desired`` 并返回 True。"""
     ...
 
-  def fetch_add(self, delta: T) -> T:
+  def fetchAdd(self, delta: Value) -> Value:
     """原子加；返回修改前的旧值。"""
     ...
 
-  def fetch_sub(self, delta: T) -> T:
+  def fetchSub(self, delta: Value) -> Value:
     """原子减；返回修改前的旧值。"""
     ...
 
 
 @native
 @copyable
-@native_name("Py*")
 class Lock(friends=(Condition,)):
   """Python 风格二态 Lock：无 owner，允许跨线程 release。"""
 
@@ -166,7 +172,6 @@ class Lock(friends=(Condition,)):
 
 @native
 @copyable
-@native_name("Py*")
 class RLock(friends=(Condition,)):
   """Python 风格递归锁：只有 owner 线程可以释放。"""
 
@@ -192,15 +197,15 @@ class RLock(friends=(Condition,)):
     ...
 
   @immutable
-  def _is_owned(self) -> bool:
+  def _isOwned(self) -> bool:
     """当前线程是否持有锁，供 ``Condition`` 校验。"""
     ...
 
-  def _release_save(self) -> int:
+  def _releaseSave(self) -> int:
     """完全释放递归锁并返回原递归层数，供 ``Condition.wait`` 使用。"""
     ...
 
-  def _acquire_restore(self, count: int) -> None:
+  def _acquireRestore(self, count: int) -> None:
     """重新获取递归锁并恢复递归层数，供 ``Condition.wait`` 使用。"""
     ...
 
@@ -215,7 +220,6 @@ class RLock(friends=(Condition,)):
 
 @native
 @copyable
-@native_name("Py*")
 class Condition:
   """Python 3.13 ``threading.Condition`` 子集，默认使用 ``RLock`` 作为底锁。"""
 
@@ -248,7 +252,7 @@ class Condition:
     ...
 
   @immutable
-  def _is_owned(self) -> bool:
+  def _isOwned(self) -> bool:
     """当前调用者是否持有底锁。"""
     ...
 
@@ -256,7 +260,7 @@ class Condition:
     """释放底锁并等待通知；被通知返回 True，超时返回 False。"""
     ...
 
-  def wait_for(self, predicate: Callable[[], bool], timeout: float64 = -1.0) -> bool:
+  def waitFor(self, predicate: Callable[[], bool], timeout: float64 = -1.0) -> bool:
     """在持锁状态循环等待 ``predicate`` 变为 True。"""
     ...
 
@@ -264,7 +268,7 @@ class Condition:
     """唤醒至多 ``n`` 个等待者；调用者必须持有底锁。"""
     ...
 
-  def notify_all(self) -> None:
+  def notifyAll(self) -> None:
     """唤醒所有等待者；调用者必须持有底锁。"""
     ...
 
@@ -278,7 +282,6 @@ class Condition:
 
 
 @copyable
-@native_name("Py*")
 class Event:
   """Python 3.13 ``threading.Event`` 子集。"""
 
@@ -290,7 +293,7 @@ class Event:
     self._flag = new(False)
 
   @immutable
-  def is_set(self) -> bool:
+  def isSet(self) -> bool:
     """事件标志是否已设置。"""
     return self._flag.load()
 
@@ -299,7 +302,7 @@ class Event:
     self._cond.acquire()
     try:
       self._flag.store(True)
-      self._cond.notify_all()
+      self._cond.notifyAll()
     finally:
       self._cond.release()
 
@@ -317,14 +320,13 @@ class Event:
     self._cond.acquire()
     try:
       if not self._flag.load():
-        signaled = self._cond.wait_for(lambda: self._flag.load(), timeout)
+        signaled = self._cond.waitFor(lambda: self._flag.load(), timeout)
     finally:
       self._cond.release()
     return signaled
 
 
 @copyable
-@native_name("Py*")
 class Semaphore:
   """Python 3.13 ``threading.Semaphore`` 子集。"""
 
@@ -354,11 +356,11 @@ class Semaphore:
             while self._value.load() <= 0:
               self._cond.wait()
           else:
-            ok: bool = self._cond.wait_for(lambda: self._value.load() > 0, timeout)
+            ok: bool = self._cond.waitFor(lambda: self._value.load() > 0, timeout)
             if not ok:
               return False
         if self._value.load() > 0:
-          self._value.fetch_sub(1)
+          self._value.fetchSub(1)
           acquired = True
     finally:
       self._cond.release()
@@ -370,7 +372,7 @@ class Semaphore:
       raise ValueError("n must be one or more")
     self._cond.acquire()
     try:
-      self._value.fetch_add(n)
+      self._value.fetchAdd(n)
       self._cond.notify(n)
     finally:
       self._cond.release()
@@ -386,20 +388,19 @@ class Semaphore:
 
 
 @copyable
-@native_name("Py*")
 class BoundedSemaphore:
   """带上界检查的 ``Semaphore``；过量 ``release`` 抛 ``ValueError``。"""
 
   _cond: Condition
   _value: atomic[int]
-  _initial_value: int = 0
+  _initialValue: int = 0
 
   def __init__(self, value: int = 1):
     if value < 0:
       raise ValueError("semaphore initial value must be >= 0")
     self._cond = new()
     self._value = new(value)
-    self._initial_value = value
+    self._initialValue = value
 
   def acquire(self, blocking: bool = True, timeout: float64 = -1.0) -> bool:
     """计数大于零时递减并返回 True，否则按参数等待。"""
@@ -418,11 +419,11 @@ class BoundedSemaphore:
             while self._value.load() <= 0:
               self._cond.wait()
           else:
-            ok: bool = self._cond.wait_for(lambda: self._value.load() > 0, timeout)
+            ok: bool = self._cond.waitFor(lambda: self._value.load() > 0, timeout)
             if not ok:
               return False
         if self._value.load() > 0:
-          self._value.fetch_sub(1)
+          self._value.fetchSub(1)
           acquired = True
     finally:
       self._cond.release()
@@ -434,9 +435,9 @@ class BoundedSemaphore:
       raise ValueError("n must be one or more")
     self._cond.acquire()
     try:
-      if self._value.load() + n > self._initial_value:
+      if self._value.load() + n > self._initialValue:
         raise ValueError("Semaphore released too many times")
-      self._value.fetch_add(n)
+      self._value.fetchAdd(n)
       self._cond.notify(n)
     finally:
       self._cond.release()
@@ -452,7 +453,6 @@ class BoundedSemaphore:
 
 
 @copyable
-@native_name("Py*")
 class Barrier:
   """Python 3.13 ``threading.Barrier`` 子集，基于 ``Condition`` 组合实现。"""
 
@@ -462,19 +462,19 @@ class Barrier:
   _count: atomic[int]
   _state: atomic[int]
   _timeout: float64 = -1.0
-  _has_action: bool = False
+  _hasAction: bool = False
 
   @overload
   def __init__(self, parties: int):
     if parties < 1:
       raise ValueError("parties must be >= 1")
     self._cond = new()
-    self._action = _barrier_no_action
+    self._action = _barrierNoAction
     self._parties = parties
     self._count = new(0)
-    self._state = new(_BARRIER_FILLING)
+    self._state = new(int(_BarrierStateEnum.Filling))
     self._timeout = -1.0
-    self._has_action = False
+    self._hasAction = False
 
   @overload
   def __init__(self, parties: int, timeout: float64):
@@ -483,12 +483,12 @@ class Barrier:
     if timeout < -1.0:
       raise ValueError("timeout value must be non-negative")
     self._cond = new()
-    self._action = _barrier_no_action
+    self._action = _barrierNoAction
     self._parties = parties
     self._count = new(0)
-    self._state = new(_BARRIER_FILLING)
+    self._state = new(int(_BarrierStateEnum.Filling))
     self._timeout = timeout
-    self._has_action = False
+    self._hasAction = False
 
   @overload
   def __init__(self, parties: int, action: Callable[[], None]):
@@ -498,9 +498,9 @@ class Barrier:
     self._action = action
     self._parties = parties
     self._count = new(0)
-    self._state = new(_BARRIER_FILLING)
+    self._state = new(int(_BarrierStateEnum.Filling))
     self._timeout = -1.0
-    self._has_action = True
+    self._hasAction = True
 
   @overload
   def __init__(self, parties: int, action: Callable[[], None], timeout: float64):
@@ -512,22 +512,22 @@ class Barrier:
     self._action = action
     self._parties = parties
     self._count = new(0)
-    self._state = new(_BARRIER_FILLING)
+    self._state = new(int(_BarrierStateEnum.Filling))
     self._timeout = timeout
-    self._has_action = True
+    self._hasAction = True
 
   def _enter(self) -> None:
-    while self._state.load() in {_BARRIER_DRAINING, _BARRIER_RESETTING}:
+    while self._state.load() in {int(_BarrierStateEnum.Draining), int(_BarrierStateEnum.Resetting)}:
       self._cond.wait()
-    if self._state.load() == _BARRIER_BROKEN:
+    if self._state.load() == int(_BarrierStateEnum.Broken):
       raise BrokenBarrierError()
 
   def _release(self) -> None:
     try:
-      if self._has_action:
+      if self._hasAction:
         self._action()
-      self._state.store(_BARRIER_DRAINING)
-      self._cond.notify_all()
+      self._state.store(int(_BarrierStateEnum.Draining))
+      self._cond.notifyAll()
     except:
       self._break()
       raise BrokenBarrierError()
@@ -535,40 +535,40 @@ class Barrier:
   def _wait(self, timeout: float64) -> None:
     if timeout < -1.0:
       raise ValueError("timeout value must be non-negative")
-    ok: bool = self._cond.wait_for(lambda: self._state.load() != _BARRIER_FILLING, timeout)
+    ok: bool = self._cond.waitFor(lambda: self._state.load() != int(_BarrierStateEnum.Filling), timeout)
     if not ok:
       self._break()
       raise BrokenBarrierError()
-    if self._state.load() < _BARRIER_FILLING:
+    if self._state.load() < int(_BarrierStateEnum.Filling):
       raise BrokenBarrierError()
 
   def _exit(self) -> None:
     if self._count.load() == 0:
-      if self._state.load() in {_BARRIER_DRAINING, _BARRIER_RESETTING}:
-        self._state.store(_BARRIER_FILLING)
-        self._cond.notify_all()
+      if self._state.load() in {int(_BarrierStateEnum.Draining), int(_BarrierStateEnum.Resetting)}:
+        self._state.store(int(_BarrierStateEnum.Filling))
+        self._cond.notifyAll()
 
   def _break(self) -> None:
-    self._state.store(_BARRIER_BROKEN)
-    self._cond.notify_all()
+    self._state.store(int(_BarrierStateEnum.Broken))
+    self._cond.notifyAll()
 
   def wait(self, timeout: float64 = -1.0) -> int:
     """等待一轮 barrier 完成，并返回本轮 ``0..parties-1`` 的 index。"""
-    actual_timeout: float64 = timeout
-    if actual_timeout < 0.0:
-      actual_timeout = self._timeout
+    actualTimeout: float64 = timeout
+    if actualTimeout < 0.0:
+      actualTimeout = self._timeout
     self._cond.acquire()
     try:
       self._enter()
-      index: int = self._count.fetch_add(1)
+      index: int = self._count.fetchAdd(1)
       try:
         if index + 1 == self._parties:
           self._release()
         else:
-          self._wait(actual_timeout)
+          self._wait(actualTimeout)
         return index
       finally:
-        self._count.fetch_sub(1)
+        self._count.fetchSub(1)
         self._exit()
     finally:
       self._cond.release()
@@ -579,11 +579,11 @@ class Barrier:
     self._cond.acquire()
     try:
       if self._count.load() > 0:
-        if self._state.load() in {_BARRIER_FILLING, _BARRIER_BROKEN}:
-          self._state.store(_BARRIER_RESETTING)
-        self._cond.notify_all()
+        if self._state.load() in {int(_BarrierStateEnum.Filling), int(_BarrierStateEnum.Broken)}:
+          self._state.store(int(_BarrierStateEnum.Resetting))
+        self._cond.notifyAll()
       else:
-        self._state.store(_BARRIER_FILLING)
+        self._state.store(int(_BarrierStateEnum.Filling))
     finally:
       self._cond.release()
 
@@ -600,112 +600,112 @@ class Barrier:
     return self._parties
 
   @property
-  def n_waiting(self) -> int:
+  def nWaiting(self) -> int:
     waiting: int = 0
-    if self._state.load() == _BARRIER_FILLING:
+    if self._state.load() == int(_BarrierStateEnum.Filling):
       waiting = self._count.load()
     return waiting
 
   @property
   def broken(self) -> bool:
-    is_broken: bool = False
-    is_broken = self._state.load() == _BARRIER_BROKEN
-    return is_broken
+    isBroken: bool = False
+    isBroken = self._state.load() == int(_BarrierStateEnum.Broken)
+    return isBroken
 
 
 @refcount
-class Future[R]:
+class Future[Value]:
   """``concurrent.futures.Future`` 的静态类型子集。"""
 
   cond: Condition = new()
-  state: atomic[int] = new(_FUTURE_PENDING)
-  result_value: R
+  state: atomic[int] = new(int(_FutureStateEnum.Pending))
+  resultValue: Value
 
   def cancel(self) -> bool:
     cancelled: bool = False
     self.cond.acquire()
     try:
       state: int = self.state.load()
-      if state == _FUTURE_PENDING:
-        self.state.store(_FUTURE_CANCELLED)
-        self.cond.notify_all()
+      if state == int(_FutureStateEnum.Pending):
+        self.state.store(int(_FutureStateEnum.Cancelled))
+        self.cond.notifyAll()
         cancelled = True
       else:
-        cancelled = state == _FUTURE_CANCELLED
+        cancelled = state == int(_FutureStateEnum.Cancelled)
     finally:
       self.cond.release()
     return cancelled
 
   @immutable
   def cancelled(self) -> bool:
-    return self.state.load() == _FUTURE_CANCELLED
+    return self.state.load() == int(_FutureStateEnum.Cancelled)
 
   @immutable
   def running(self) -> bool:
-    return self.state.load() == _FUTURE_RUNNING
+    return self.state.load() == int(_FutureStateEnum.Running)
 
   @immutable
   def done(self) -> bool:
-    return self.state.load() >= _FUTURE_CANCELLED
+    return self.state.load() >= int(_FutureStateEnum.Cancelled)
 
-  def set_running_or_notify_cancel(self) -> bool:
-    should_run: bool = False
+  def setRunningOrNotifyCancel(self) -> bool:
+    shouldRun: bool = False
     self.cond.acquire()
     try:
       state: int = self.state.load()
-      if state == _FUTURE_CANCELLED:
-        self.cond.notify_all()
-        should_run = False
-      elif state == _FUTURE_PENDING:
-        self.state.store(_FUTURE_RUNNING)
-        should_run = True
+      if state == int(_FutureStateEnum.Cancelled):
+        self.cond.notifyAll()
+        shouldRun = False
+      elif state == int(_FutureStateEnum.Pending):
+        self.state.store(int(_FutureStateEnum.Running))
+        shouldRun = True
       else:
         raise InvalidStateError()
     finally:
       self.cond.release()
-    return should_run
+    return shouldRun
 
-  def set_result(self, result: R) -> None:
+  def setResult(self, result: Value) -> None:
     self.cond.acquire()
     try:
       state: int = self.state.load()
-      if state not in {_FUTURE_RUNNING, _FUTURE_PENDING}:
+      if state not in {int(_FutureStateEnum.Running), int(_FutureStateEnum.Pending)}:
         raise InvalidStateError()
-      self.result_value = result
-      self.state.store(_FUTURE_FINISHED)
-      self.cond.notify_all()
+      self.resultValue = result
+      self.state.store(int(_FutureStateEnum.Finished))
+      self.cond.notifyAll()
     finally:
       self.cond.release()
 
-  def set_exception(self) -> None:
+  def setException(self) -> None:
     self.cond.acquire()
     try:
       state: int = self.state.load()
-      if state not in {_FUTURE_RUNNING, _FUTURE_PENDING}:
+      if state not in {int(_FutureStateEnum.Running), int(_FutureStateEnum.Pending)}:
         raise InvalidStateError()
-      self.state.store(_FUTURE_EXCEPTION)
-      self.cond.notify_all()
+      self.state.store(int(_FutureStateEnum.Exception))
+      self.cond.notifyAll()
     finally:
       self.cond.release()
 
-  def result(self, timeout: float64 = -1.0) -> R:
+  def result(self, timeout: float64 = -1.0) -> Value:
     if timeout < -1.0:
       raise ValueError("timeout value must be non-negative")
     self.cond.acquire()
     try:
-      if self.state.load() < _FUTURE_CANCELLED:
-        ok: bool = self.cond.wait_for(lambda: self.state.load() >= _FUTURE_CANCELLED, timeout)
+      if self.state.load() < int(_FutureStateEnum.Cancelled):
+        ok: bool = self.cond.waitFor(lambda: self.state.load() >= int(_FutureStateEnum.Cancelled), timeout)
         if not ok:
           raise TimeoutError()
       state: int = self.state.load()
-      if state == _FUTURE_CANCELLED:
+      if state == int(_FutureStateEnum.Cancelled):
         raise CancelledError()
-      if state == _FUTURE_EXCEPTION:
+      if state == int(_FutureStateEnum.Exception):
         raise RuntimeError("Future task raised")
-      return self.result_value
+      return self.resultValue
     finally:
       self.cond.release()
-    return self.result_value
+    return self.resultValue
 
   def exception(self, timeout: float64 = -1.0) -> bool:
     """首版返回是否保存了任务异常；完整异常对象 type-erasure 后续补齐。"""
@@ -713,14 +713,14 @@ class Future[R]:
       raise ValueError("timeout value must be non-negative")
     self.cond.acquire()
     try:
-      if self.state.load() < _FUTURE_CANCELLED:
-        ok: bool = self.cond.wait_for(lambda: self.state.load() >= _FUTURE_CANCELLED, timeout)
+      if self.state.load() < int(_FutureStateEnum.Cancelled):
+        ok: bool = self.cond.waitFor(lambda: self.state.load() >= int(_FutureStateEnum.Cancelled), timeout)
         if not ok:
           raise TimeoutError()
       state: int = self.state.load()
-      if state == _FUTURE_CANCELLED:
+      if state == int(_FutureStateEnum.Cancelled):
         raise CancelledError()
-      return state == _FUTURE_EXCEPTION
+      return state == int(_FutureStateEnum.Exception)
     finally:
       self.cond.release()
     return False
@@ -728,13 +728,12 @@ class Future[R]:
 
 @native
 @copyable
-@native_name("Py*")
-class Queue[T]:
+class Queue[Element]:
   """Python 3.13 ``queue.Queue`` 子集：多生产者、多消费者 FIFO 阻塞队列。"""
 
   _state: uintptr = 0
 
-  def __init__(self, maxsize: int = 0): ...
+  def __init__(self, maxSize: int = 0): ...
 
   def __del__(self): ...
 
@@ -752,41 +751,40 @@ class Queue[T]:
 
   @immutable
   def full(self) -> bool:
-    """队列当前是否已达到 ``maxsize``。"""
+    """队列当前是否已达到 ``maxSize``。"""
     ...
 
-  def put(self, item: T, block: bool = True, timeout: float64 = -1.0) -> None:
-    """入队；满队列按 ``block`` / ``timeout`` 等待，失败抛 ``Full``。"""
+  def put(self, item: Element, block: bool = True, timeout: float64 = -1.0) -> None:
+    """入队；满队列按 ``block`` / ``timeout`` 等待，失败抛 ``FullError``。"""
     ...
 
-  def put_nowait(self, item: T) -> None:
+  def putNowait(self, item: Element) -> None:
     """等价于 ``put(item, block=False)``。"""
     ...
 
-  def get(self, block: bool = True, timeout: float64 = -1.0) -> T:
-    """出队；空队列按 ``block`` / ``timeout`` 等待，失败抛 ``Empty``。"""
+  def get(self, block: bool = True, timeout: float64 = -1.0) -> Element:
+    """出队；空队列按 ``block`` / ``timeout`` 等待，失败抛 ``EmptyError``。"""
     ...
 
-  def get_nowait(self) -> T:
+  def getNowait(self) -> Element:
     """等价于 ``get(block=False)``。"""
     ...
 
-  def task_done(self) -> None:
+  def taskDone(self) -> None:
     """声明一个由 ``get`` 取出的任务处理完成。"""
     ...
 
   def join(self) -> None:
-    """阻塞直到所有已 ``put`` 的任务都被 ``task_done`` 确认。"""
+    """阻塞直到所有已 ``put`` 的任务都被 ``taskDone`` 确认。"""
     ...
 
   def shutdown(self, immediate: bool = False) -> None:
-    """关闭队列；关闭后 ``put`` 抛 ``ShutDown``，空队列 ``get`` 抛 ``ShutDown``。"""
+    """关闭队列；关闭后 ``put`` 抛 ``ShutDownError``，空队列 ``get`` 抛 ``ShutDownError``。"""
     ...
 
 
 @native
 @copyable
-@native_name("Py*")
 class _ThreadHandle:
   """native thread state 句柄；公共状态机由 ``Thread`` 包装。"""
 
@@ -816,7 +814,7 @@ class _ThreadHandle:
 
   @staticproperty
   @immutable
-  def active_count() -> int:
+  def activeCount() -> int:
     """返回当前活动线程数量。"""
     ...
 
@@ -844,7 +842,7 @@ class _ThreadHandle:
 
   @property
   @immutable
-  def native_id(self) -> int64:
+  def nativeId(self) -> int64:
     """平台 native thread id；未启动为 0。"""
     ...
 
@@ -888,15 +886,15 @@ class Thread:
     self._handle = new()
     self._target = target
     self._name = name
-    self._phase = _THREAD_INITIAL
+    self._phase = int(_ThreadPhaseEnum.Initial)
     self._daemon = False
 
   @staticmethod
-  def from_handle(handle: _ThreadHandle) -> Self:
-    thread: Self = new(_barrier_no_action)
+  def fromHandle(handle: _ThreadHandle) -> Self:
+    thread: Self = new(_barrierNoAction)
     thread._handle = handle
     thread._name = handle.name
-    thread._phase = _THREAD_STARTED
+    thread._phase = int(_ThreadPhaseEnum.Started)
     thread._daemon = handle.daemon
     return thread
 
@@ -906,48 +904,48 @@ class Thread:
     handles: list[_ThreadHandle] = _ThreadHandle.actives
     threads: list[Self] = []
     for i in range(len(handles)):
-      threads.append(Self.from_handle(handles[i]))
+      threads.append(Self.fromHandle(handles[i]))
     return threads
 
   @staticproperty
   @immutable
   def current() -> Self:
     """返回当前线程的 ``Thread`` 包装。"""
-    return new.from_handle(_ThreadHandle.current)
+    return new.fromHandle(_ThreadHandle.current)
 
   @staticproperty
   @immutable
   def main() -> Self:
     """返回主线程的 ``Thread`` 包装。"""
-    return new.from_handle(_ThreadHandle.main)
+    return new.fromHandle(_ThreadHandle.main)
 
   @staticproperty
   @immutable
-  def active_count() -> int:
+  def activeCount() -> int:
     """返回当前活动线程数量。"""
-    return _ThreadHandle.active_count
+    return _ThreadHandle.activeCount
 
   def start(self) -> None:
-    if self._phase != _THREAD_INITIAL:
+    if self._phase != int(_ThreadPhaseEnum.Initial):
       raise RuntimeError("threads can only be started once")
     self._handle.start(self._target, self._name, self._daemon)
-    self._phase = _THREAD_STARTED
+    self._phase = int(_ThreadPhaseEnum.Started)
 
   def run(self) -> None:
     self._target()
 
   def join(self, timeout: float64 = -1.0) -> None:
-    if self._phase == _THREAD_INITIAL:
+    if self._phase == int(_ThreadPhaseEnum.Initial):
       raise RuntimeError("cannot join thread before it is started")
     current: Self = new.current
     if current.ident == self.ident:
       raise RuntimeError("cannot join current thread")
-    wait_timeout: float64 = timeout
-    if wait_timeout < 0.0:
-      wait_timeout = -1.0
-    finished: bool = self._handle.join(wait_timeout)
+    waitTimeout: float64 = timeout
+    if waitTimeout < 0.0:
+      waitTimeout = -1.0
+    finished: bool = self._handle.join(waitTimeout)
     if finished:
-      self._phase = _THREAD_STOPPED
+      self._phase = int(_ThreadPhaseEnum.Stopped)
 
   @property
   def name(self) -> str:
@@ -962,76 +960,76 @@ class Thread:
     return self._handle.ident
 
   @property
-  def native_id(self) -> int64:
-    return self._handle.native_id
+  def nativeId(self) -> int64:
+    return self._handle.nativeId
 
   @property
   def alive(self) -> bool:
-    if self._phase == _THREAD_INITIAL:
+    if self._phase == int(_ThreadPhaseEnum.Initial):
       return False
     return self._handle.alive
 
 
 @copyable
-class _WorkItem[R]:
-  future: Future[R]
-  fn: Callable[[], R]
+class _WorkItem[Value]:
+  future: Future[Value]
+  fn: Callable[[], Value]
 
   @overload
   def __init__(self):
     self.future = new()
 
   @overload
-  def __init__(self, future: Future[R], fn: Callable[[], R]):
+  def __init__(self, future: Future[Value], fn: Callable[[], Value]):
     self.future = future
     self.fn = fn
 
 
 @refcount
-class ThreadPool[R]:
+class ThreadPool[Value]:
   """静态类型线程池：一个池处理同一返回类型 ``R`` 的零参数任务。"""
 
   lock: Lock = new()
-  work_queue: Queue[_WorkItem[R]] = new()
+  workQueue: Queue[_WorkItem[Value]] = new()
   threads: list[Thread] = []
-  max_workers: int = 0
-  thread_name_prefix: str
-  shutdown_flag: atomic[bool] = new(False)
+  maxWorkers: int = 0
+  threadNamePrefix: str
+  shutdownFlag: atomic[bool] = new(False)
   broken: atomic[bool] = new(False)
-  thread_counter: atomic[int] = new(0)
+  threadCounter: atomic[int] = new(0)
 
-  def __init__(self, max_workers: int = 4, thread_name_prefix: str = "ThreadPool"):
-    self.max_workers = max_workers
-    self.thread_name_prefix = thread_name_prefix
+  def __init__(self, maxWorkers: int = 4, threadNamePrefix: str = "ThreadPool"):
+    self.maxWorkers = maxWorkers
+    self.threadNamePrefix = threadNamePrefix
 
-  def submit(self, fn: Callable[[], R]) -> Future[R]:
-    future: Future[R] = new()
+  def submit(self, fn: Callable[[], Value]) -> Future[Value]:
+    future: Future[Value] = new()
     self.lock.acquire()
     try:
       if self.broken.load():
-        raise BrokenThreadPool()
-      if self.shutdown_flag.load():
+        raise BrokenThreadPoolError()
+      if self.shutdownFlag.load():
         raise RuntimeError("cannot schedule new futures after shutdown")
-      self.work_queue.put(_WorkItem[R](future, fn))
-      self._adjust_thread_count()
+      self.workQueue.put(_WorkItem[Value](future, fn))
+      self._adjustThreadCount()
     finally:
       self.lock.release()
     return future
 
-  def shutdown(self, wait: bool = True, cancel_futures: bool = False) -> None:
+  def shutdown(self, wait: bool = True, cancelFutures: bool = False) -> None:
     threads: list[Thread] = []
     self.lock.acquire()
     try:
-      self.shutdown_flag.store(True)
-      if cancel_futures:
+      self.shutdownFlag.store(True)
+      if cancelFutures:
         while True:
           try:
-            item: _WorkItem[R] = self.work_queue.get_nowait()
+            item: _WorkItem[Value] = self.workQueue.getNowait()
             item.future.cancel()
-            self.work_queue.task_done()
-          except Empty:
+            self.workQueue.taskDone()
+          except EmptyError:
             break
-      self.work_queue.shutdown()
+      self.workQueue.shutdown()
       for i in range(len(self.threads)):
         threads.append(self.threads[i])
     finally:
@@ -1040,11 +1038,11 @@ class ThreadPool[R]:
       for i in range(len(threads)):
         threads[i].join()
 
-  def _adjust_thread_count(self) -> None:
-    if len(self.threads) >= self.max_workers:
+  def _adjustThreadCount(self) -> None:
+    if len(self.threads) >= self.maxWorkers:
       return
-    index: int = self.thread_counter.fetch_add(1)
-    name: str = self.thread_name_prefix + "_" + str(index)
+    index: int = self.threadCounter.fetchAdd(1)
+    name: str = self.threadNamePrefix + "_" + str(index)
     worker: Thread = new(lambda: self._worker(), name)
     worker.start()
     self.threads.append(worker)
@@ -1052,18 +1050,18 @@ class ThreadPool[R]:
   def _worker(self) -> None:
     while True:
       try:
-        item: _WorkItem[R] = self.work_queue.get()
-        self._run_item(item)
-      except ShutDown:
+        item: _WorkItem[Value] = self.workQueue.get()
+        self._runItem(item)
+      except ShutDownError:
         return
 
-  def _run_item(self, item: _WorkItem[R]) -> None:
+  def _runItem(self, item: _WorkItem[Value]) -> None:
     try:
-      if item.future.set_running_or_notify_cancel():
+      if item.future.setRunningOrNotifyCancel():
         try:
-          result: R = item.fn()
-          item.future.set_result(result)
+          result: Value = item.fn()
+          item.future.setResult(result)
         except:
-          item.future.set_exception()
+          item.future.setException()
     finally:
-      self.work_queue.task_done()
+      self.workQueue.taskDone()

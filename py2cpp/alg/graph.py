@@ -1,4 +1,4 @@
-"""邻接表与 ``Navigatable[int]`` 适配。"""
+"""邻接表与 ``NavigatableType[int]`` 适配。"""
 from ..builtins import *
 from ..core.exceptions import IndexError, ValueError
 from ..util.list import list
@@ -25,7 +25,7 @@ class AdjList(ContainerMixin):
       self._adj.append(row)
 
   def __copy__(self, other: Self):
-    self._ensure_active()
+    self._ensureActive()
     if other.__moved__:
       raise ValueError("move from moved container")
     self._n = other._n
@@ -39,7 +39,7 @@ class AdjList(ContainerMixin):
       self._adj.append(row)
 
   def __move__(self, other: Self):
-    self._ensure_active()
+    self._ensureActive()
     if other.__moved__:
       raise ValueError("move from moved container")
     self._n = other._n
@@ -48,17 +48,17 @@ class AdjList(ContainerMixin):
     other._adj = []
 
   @immutable
-  def vertex_count(self) -> int:
+  def vertexCount(self) -> int:
     return self._n
 
-  def add_edge(self, u: int, v: int, w: int = 1) -> None:
+  def addEdge(self, u: int, v: int, w: int = 1) -> None:
     if u < 0 or u >= self._n or v < 0 or v >= self._n:
       raise IndexError("vertex out of range")
     self._adj[u].append(Edge(v, w))
 
-  def add_undirected(self, u: int, v: int, w: int = 1) -> None:
-    self.add_edge(u, v, w)
-    self.add_edge(v, u, w)
+  def addUndirected(self, u: int, v: int, w: int = 1) -> None:
+    self.addEdge(u, v, w)
+    self.addEdge(v, u, w)
 
   @immutable
   def neighbors(self, u: int) -> list[Edge]:
@@ -68,7 +68,7 @@ class AdjList(ContainerMixin):
 
 
 class GraphNav:
-  """``AdjList`` → ``Navigatable[int]``；``h`` 为启发式查表（可传空 ``list``）。"""
+  """``AdjList`` → ``NavigatableType[int]``；``h`` 为启发式查表（可传空 ``list``）。"""
 
   def __init__(self, graph: AdjList, h: list[int]):
     self._g: AdjList = graph
@@ -78,15 +78,15 @@ class GraphNav:
       self._h.append(h[i])
 
   @immutable
-  def vertex_count(self) -> int:
-    return self._g.vertex_count()
+  def vertexCount(self) -> int:
+    return self._g.vertexCount()
 
   @immutable
-  def to_index(self, u: int) -> int:
+  def toIndex(self, u: int) -> int:
     return u
 
   @immutable
-  def from_index(self, i: int) -> int:
+  def fromIndex(self, i: int) -> int:
     return i
 
   @immutable
@@ -98,7 +98,7 @@ class GraphNav:
     return out
 
   @immutable
-  def move_cost(self, u: int, v: int) -> int:
+  def moveCost(self, u: int, v: int) -> int:
     edges: list[Edge] = self._g.neighbors(u)
     for e in edges:
       if e.to == v:

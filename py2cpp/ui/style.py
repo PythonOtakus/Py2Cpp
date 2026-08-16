@@ -6,18 +6,18 @@ from ..builtins import *
 class UIStyle:
   """Win32 Panel 主题；逻辑像素，``UIWindow.show`` 时按窗口 DPI 缩放。"""
 
-  font_name: str = "Segoe UI"
-  font_size: int = 11
-  text_color: (int, int, int) = (0, 0, 0)
-  panel_color: (int, int, int) = (243, 243, 243)
+  fontName: str = "Segoe UI"
+  fontSize: int = 11
+  textColor: (int, int, int) = (0, 0, 0)
+  panelColor: (int, int, int) = (243, 243, 243)
   margin: (int, int) = (12, 10)
   # 表单控件左缘额外偏移（一体窗右栏 Inspector 等）
-  form_origin_x: int = 0
-  form_origin_y: int = 0
-  label_size: (int, int) = (88, 22)
-  edit_size: (int, int) = (260, 22)
-  slider_size: (int, int) = (260, 22)
-  checkbox_size: (int, int) = (18, 18)
-  button_size: (int, int) = (260, 22)
-  row_spacing: int = 4
-  form_spacing: int = 8
+  formOriginX: int = 0
+  formOriginY: int = 0
+  labelSize: (int, int) = (88, 22)
+  editSize: (int, int) = (260, 22)
+  sliderSize: (int, int) = (260, 22)
+  checkboxSize: (int, int) = (18, 18)
+  buttonSize: (int, int) = (260, 22)
+  rowSpacing: int = 4
+  formSpacing: int = 8

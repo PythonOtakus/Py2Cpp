@@ -1,6 +1,6 @@
 # TypeNode：结构化类型 IR 迁移方案
 
-Py2Cpp 译器将 Python 类型注解 lower 为 C++ 类型名。当前主路径是 **AST → C++ 字符串**，中间变换（`@boxing`、`Self`、条件别名匹配等）大量依赖字符串前缀/相等，易出现 `_Key` vs `Key` 一类漏判（见 `dict_entry.next` 修复）。
+Py2Cpp 译器将 Python 类型注解 lower 为 C++ 类型名。当前主路径是 **AST → C++ 字符串**，中间变换（`@boxing`、`Self`、条件别名匹配等）大量依赖字符串前缀/相等，易出现 `_Key` vs `Key` 一类漏判（见 `DictEntryUnsafe.next` 修复）。
 
 **TypeNode** 是在 AST 与 C++ 文本之间的 **不可变结构化 IR**：匹配、存储语义变换在树上完成；**仅 emit 边界** `render()` 成 C++ spellings。
 
@@ -20,7 +20,7 @@ ast.expr  ──parse_type_node──►  TypeNode（语义层）
 
 | 层 | 职责 | 示例 |
 |----|------|------|
-| **语义 TypeNode** | 「是什么类型」 | `Template(py="dict_entry", cpp="PyDictEntry", [Key, Value])` |
+| **语义 TypeNode** | 「是什么类型」 | `Template(py="DictEntryUnsafe", cpp="PyDictEntry", [Key, Value])` |
 | **Storage 变换** | 按 `ClassInfo` **身份**加指针 / `PyRefCount<>` | `@boxing` → `Pointer(inner)` |
 | **Render** | 命名策略 → C++ 文本 | 模板头 `_Key`；类体 `Key`（`using Key = _Key`） |
 
@@ -49,13 +49,13 @@ ast.expr  ──parse_type_node──►  TypeNode（语义层）
 class TypeKind(Enum):
   VOID, NEVER, SCALAR, TYPE_PARAM, SELF
   TEMPLATE, POINTER, OPTIONAL, REF, REFCOUNT
-  ARRAY   # PyArray / stack_array / span；array_kind 区分
+  ARRAY   # PyArray / StackArray / span；array_kind 区分
 
 @dataclass(frozen=True)
 class TypeNode:
   kind: TypeKind
   name: str = ""           # C++ 基名：PyInt、PyList
-  py_name: str = ""        # 可选 Python 类名：list、dict_entry
+  py_name: str = ""        # 可选 Python 类名：list、DictEntryUnsafe
   args: tuple[TypeNode, ...] = ()
   inner: TypeNode | None = None
   array_kind: str = "heap" # heap | stack | span | …
@@ -63,7 +63,7 @@ class TypeNode:
 
 核心 API：
 
-- `TypeNode.template(py_name, cpp_name, *args)`
+- `TypeNode.template(py_name, cppName, *args)`
 - `TypeNode.pointer(inner)` / `optional(inner)` / `type_param(name)`
 - `bind_self(host: TypeNode) -> TypeNode`
 - `apply_storage(classes) -> TypeNode`（`type_storage.py`）
@@ -273,7 +273,7 @@ render(apply_storage(parse_type_node(ast))) == parse_storage_type(ast)  # 存储
 |----|------|
 | ``MethodSig/FunctionSig.ret_lead`` / ``param_types`` | ``sync_sig_cache`` 渲染缓存；读路径经 ``type_emit`` 只认 node |
 | ``translator.scope.param_types`` / ``var_types`` | ``bind_scope_var`` / ``bind_scope_param`` 双写；读经 ``scope_storage_cpp`` |
-| ``type_node_from_cpp_string`` | slice/stack 数组、条件别名、WeakRef/Generator 等特殊 C++ 片段 |
+| ``type_node_from_cpp_string`` | slice/stack 数组、条件别名、WeakRef/GeneratorType 等特殊 C++ 片段 |
 | ``parse_type_node`` 回退 | 复杂 AST（``IterResult``/``Result``/``slice[T]``/NTTP 等）仍 ``_UseCppStringBridge`` |
 
 ### Phase 18 — AST 直 lower + refcount node 化（已完成）
@@ -317,7 +317,7 @@ render(apply_storage(parse_type_node(ast))) == parse_storage_type(ast)  # 存储
 | ``MethodSig/FunctionSig.ret_lead`` / ``param_types`` | ``sync_sig_cache`` 由 node 渲染；读经 ``type_emit`` |
 | ``Scope.var_types`` / ``param_types`` | ``bind_scope_var`` / ``bind_scope_param`` 同步；读经 ``scope_storage_cpp`` |
 | ``field_types`` | 仅 ``__ann__*`` AST 占位 |
-| ``type_node_from_cpp_string`` | 桥接：slice/stack 数组、条件别名、WeakRef/Generator 等 |
+| ``type_node_from_cpp_string`` | 桥接：slice/stack 数组、条件别名、WeakRef/GeneratorType 等 |
 | ``parse_type_node`` 回退 | ``IterResult``/``Result``/``slice[T]``/NTTP 等 ``_UseCppStringBridge`` |
 | ``auto`` / 空类型 | 无 ``TypeNode``；读路径字符串 fallback |
 

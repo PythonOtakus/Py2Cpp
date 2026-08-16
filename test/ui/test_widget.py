@@ -14,7 +14,7 @@ from py2cpp.ui.widget import (
 
 
 class UICheckBoxNoWindowTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
@@ -24,7 +24,7 @@ class UICheckBoxNoWindowTests(TestCaseMixin):
 
 
 class UILineEditNoWindowTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
@@ -34,7 +34,7 @@ class UILineEditNoWindowTests(TestCaseMixin):
 
 
 class UIIntEditNoWindowTests(TestCaseMixin):
-  _test_tag = 30
+  _testTag = 30
 
   @override
   def test(self):
@@ -44,7 +44,7 @@ class UIIntEditNoWindowTests(TestCaseMixin):
 
 
 class UIFloatEditNoWindowTests(TestCaseMixin):
-  _test_tag = 35
+  _testTag = 35
 
   @override
   def test(self):
@@ -55,7 +55,7 @@ class UIFloatEditNoWindowTests(TestCaseMixin):
 
 
 class UISliderNoWindowTests(TestCaseMixin):
-  _test_tag = 40
+  _testTag = 40
 
   @override
   def test(self):
@@ -67,28 +67,28 @@ class UISliderNoWindowTests(TestCaseMixin):
 
 
 class UIButtonNoWindowTests(TestCaseMixin):
-  _test_tag = 50
+  _testTag = 50
 
   @override
   def test(self):
     btn: UIPushButton = new()
-    btn.text = "OK"
-    self.assertEqual(btn.text, "OK")
+    btn.text = "Ok"
+    self.assertEqual(btn.text, "Ok")
 
 
 class UIButtonLayoutTests(TestCaseMixin):
-  _test_tag = 60
+  _testTag = 60
 
   @override
   def test(self):
     cfg: ButtonPanel = new()
-    win = cfg.create_panel("Test", 480, 320)
+    win = cfg.createPanel("Test", 480, 320)
     self.assertTrue(win.handle != 0)
     win.close()
 
 
 class UIButtonHandlerTests(TestCaseMixin):
-  _test_tag = 70
+  _testTag = 70
 
   @override
   def test(self):
@@ -99,7 +99,7 @@ class UIButtonHandlerTests(TestCaseMixin):
 
 
 class UIButtonCustomLabelTests(TestCaseMixin):
-  _test_tag = 80
+  _testTag = 80
 
   @override
   def test(self):
@@ -125,7 +125,7 @@ class ButtonPanel(UIPanelMixin, friends=(UIButtonHandlerTests, UIButtonCustomLab
 
 def main() -> int:
   suite: TestSuite = TestSuite()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

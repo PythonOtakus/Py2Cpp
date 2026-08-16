@@ -15,8 +15,8 @@
 
 | 方向 | 典型场景 |
 |------|----------|
-| **Python → C++** | `class list` / `def reverse` / 字段 / property / `AggMode.Min` / `Result.Ok` → `.h` / `.inl` |
-| **C++ → Python** | `PyList::append`、`capacity__set`、`enum class AggMode` 成员 → 对应 `.py` / `.pyi` 行 |
+| **Python → C++** | `class list` / `def reverse` / 字段 / property / `AggModeEnum.Min` / `Result.Ok` → `.h` / `.inl` |
+| **C++ → Python** | `PyList::append`、`capacity__set`、`enum class AggModeEnum` 成员 → 对应 `.py` / `.pyi` 行 |
 
 覆盖粒度：**定义级符号**（类、成员、模块函数、别名、枚举成员、union 变体、delegate 等），**不是**函数体内逐行映射。
 
@@ -176,13 +176,13 @@ generated/.cache/nav/
 | 模块函数 | `def open` | 自由函数 | ✅ |
 | 类内 `type` | `type Item = int` | `using Item` | ✅ |
 | 模块 `type`（含条件） | `type OkOf[…] = …` | `using` | ✅ |
-| `@enum` 类型 | `class AggMode` | `enum class AggMode` | ✅ |
-| `@enum` 成员 | `Min = 0` | `AggMode::Min` | ✅ |
+| `@enum` 类型 | `class AggModeEnum` | `enum class AggModeEnum` | ✅ |
+| `@enum` 成员 | `Min = 0` | `AggModeEnum::Min` | ✅ |
 | `@union` / `@variant` | `Result.Ok` | 工厂 / Tag / Payload | ✅ 工厂优先 |
 | `@mixin` | mixin 方法 | 宿主 `.inl` | ✅ py + 宿主 |
 | `@descriptor` | 描述符源 | — | ✅ 仅 Python |
 | `@annotation` | 元数据 | — | ❌ 不索引 |
-| `@protocol` | `Iterator` | — | ✅ 仅 Python |
+| `@protocol` | `IteratorType` | — | ✅ 仅 Python |
 | `@delegate` | `def UIEvent` | `class UIEvent` | ✅ |
 | `@overload` | 同名多签名 | 多重载 | ✅ 全部列出 |
 | `@native` + 模板 | FFI / paste | `.inl` | ⚠ impl 可能在模板 |
@@ -196,7 +196,7 @@ generated/.cache/nav/
 | ID | 现象 | 修复 |
 |----|------|------|
 | BUG-1 | `list.reverse` → 错误文件 | enclosing class 缩进 + method owner |
-| BUG-2 | `_tim_compute_minrun` → 调用点 | `_impl_definition_line` 跳过 `this->` |
+| BUG-2 | `_timComputeMinrun` → 调用点 | `_impl_definition_line` 跳过 `this->` |
 | BUG-3 | 前向声明 | `_class_decl_line` 跳过 `class Foo;` |
 | BUG-4 | setter 用 `set_*` | `property_setter_method_for` → `name__set` |
 | BUG-5 | `@staticproperty` 缺失 | 索引 `static_properties` |
@@ -255,11 +255,11 @@ python main.py py2cpp\__init__.py -o generated --no-main
 | 位点 | 期望 |
 |------|------|
 | `class list` | `list.h` 类定义（非前向声明） |
-| `def reverse` / `_tim_compute_minrun` | `list.inl` **定义**行 |
+| `def reverse` / `_timComputeMinrun` | `list.inl` **定义**行 |
 | `capacity` getter/setter | `capacity__get` / `capacity__set` |
 | `Matrix3.zero` / `Vector2.zero` | `zero__get` |
 | `type Item` / 自动 `Element` | `using …` |
-| `AggMode.Min` | `AggMode::Min` |
+| `AggModeEnum.Min` | `AggModeEnum::Min` |
 | `Result.Ok` / `new.Ok` | 工厂 `static … Ok(` |
 | `ui/events.py` → `UIEvent` | `class UIEvent` |
 | `@protocol` 类名 | 仅 Python 定义行 |

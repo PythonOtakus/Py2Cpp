@@ -31,16 +31,16 @@ class YamlRepresenterError(YamlError):
 
 
 @immutable
-def _json_quote(value: str) -> str:
-  return JsonEncoder.encode_str(value)
+def _jsonQuote(value: str) -> str:
+  return JsonEncoder.encodeStr(value)
 
 
 @immutable
-def _is_digit_text(value: str) -> bool:
+def _isDigitText(value: str) -> bool:
   if not value:
     return False
   start: int = 0
-  if value.startswith("-") or value.startswith("+"):
+  if value.startsWith("-") or value.startsWith("+"):
     start = 1
   if start >= len(value):
     return False
@@ -52,7 +52,7 @@ def _is_digit_text(value: str) -> bool:
 
 
 @immutable
-def _is_float_text(value: str) -> bool:
+def _isFloatText(value: str) -> bool:
   if not value:
     return False
   if value in {".inf", "+.inf", "-.inf", ".nan"}:
@@ -65,7 +65,7 @@ def _is_float_text(value: str) -> bool:
 
 
 @immutable
-def _strip_comment(value: str) -> str:
+def _stripComment(value: str) -> str:
   quote: int = 0
   for i in range(len(value)):
     c: char = value[i]
@@ -89,7 +89,7 @@ def _strip_comment(value: str) -> str:
 
 
 @immutable
-def _decode_quoted(value: str) -> str:
+def _decodeQuoted(value: str) -> str:
   if len(value) < 2:
     return value
   if value[0] == ord("'") and value[-1] == ord("'"):
@@ -101,14 +101,14 @@ def _decode_quoted(value: str) -> str:
 
 
 @immutable
-def _scalar_json(value: str) -> str:
+def _scalarJson(value: str) -> str:
   text: str = value.strip()
-  if text.startswith("!!str "):
-    return _json_quote(_decode_quoted(text[6:].strip()))
-  if text.startswith("!!int ") or text.startswith("!!float ") or text.startswith("!!bool "):
+  if text.startsWith("!!str "):
+    return _jsonQuote(_decodeQuoted(text[6:].strip()))
+  if text.startsWith("!!int ") or text.startsWith("!!float ") or text.startsWith("!!bool "):
     text = text[6:].strip()
-  if text.startswith("!"):
-    if text.startswith("!!"):
+  if text.startsWith("!"):
+    if text.startsWith("!!"):
       raise YamlConstructorError()
     if text.find(" ") > 0:
       text = text[text.find(" ") + 1:].strip()
@@ -116,8 +116,8 @@ def _scalar_json(value: str) -> str:
       raise YamlConstructorError()
   if not text:
     return "null"
-  if (text.startswith('"') and text.endswith('"')) or (text.startswith("'") and text.endswith("'")):
-    return _json_quote(_decode_quoted(text))
+  if (text.startsWith('"') and text.endsWith('"')) or (text.startsWith("'") and text.endsWith("'")):
+    return _jsonQuote(_decodeQuoted(text))
   lower: str = text.lower()
   match lower:
     case "null":
@@ -138,15 +138,15 @@ def _scalar_json(value: str) -> str:
       return "0"
     case _:
       pass
-  if _is_digit_text(text):
+  if _isDigitText(text):
     return text
-  if _is_float_text(text):
+  if _isFloatText(text):
     return text
-  return _json_quote(text)
+  return _jsonQuote(text)
 
 
 @immutable
-def _split_flow_parts(body: str) -> list[str]:
+def _splitFlowParts(body: str) -> list[str]:
   parts: list[str] = []
   start: int = 0
   depth: int = 0
@@ -187,16 +187,16 @@ def _split_flow_parts(body: str) -> list[str]:
 class _YamlParser:
   lines: list[str] = []
   pos: int = 0
-  anchor_names: list[str] = []
-  anchor_values: list[str] = []
+  anchorNames: list[str] = []
+  anchorValues: list[str] = []
 
   def __init__(self, source: str):
     self.lines = []
-    self.anchor_names = []
-    self.anchor_values = []
-    for raw in source.splitlines():
+    self.anchorNames = []
+    self.anchorValues = []
+    for raw in source.splitLines():
       line: str = raw.replace("\t", "  ")
-      if line.strip() in {"", "---", "..."} or line.strip().startswith("%"):
+      if line.strip() in {"", "---", "..."} or line.strip().startsWith("%"):
         continue
       self.lines.append(line)
     self.pos = 0
@@ -210,12 +210,12 @@ class _YamlParser:
 
   @immutable
   def _content(self, line: str) -> str:
-    return _strip_comment(line.strip())
+    return _stripComment(line.strip())
 
   def _error(self, message: str) -> None:
     raise YamlParserError()
 
-  def _next_nonempty(self, start: int) -> int:
+  def _nextNonempty(self, start: int) -> int:
     i: int = start
     while i < len(self.lines) and not self._content(self.lines[i]):
       i += 1
@@ -224,25 +224,25 @@ class _YamlParser:
   def parse(self) -> str:
     if not self.lines:
       return "null"
-    return self._parse_block(self._indent(self.lines[0]))
+    return self._parseBlock(self._indent(self.lines[0]))
 
-  def _parse_block(self, indent: int) -> str:
-    i: int = self._next_nonempty(self.pos)
+  def _parseBlock(self, indent: int) -> str:
+    i: int = self._nextNonempty(self.pos)
     if i >= len(self.lines):
       return "null"
     self.pos = i
     content: str = self._content(self.lines[i])
-    if content.startswith("-"):
+    if content.startsWith("-"):
       if len(content) == 1:
-        return self._parse_sequence(indent)
+        return self._parseSequence(indent)
       if content[1] == " ":
-        return self._parse_sequence(indent)
-    if self._mapping_split(content) < 0:
+        return self._parseSequence(indent)
+    if self._mappingSplit(content) < 0:
       self.pos += 1
-      return self._flow_or_scalar(content)
-    return self._parse_mapping(indent)
+      return self._flowOrScalar(content)
+    return self._parseMapping(indent)
 
-  def _parse_sequence(self, indent: int) -> str:
+  def _parseSequence(self, indent: int) -> str:
     parts: list[str] = []
     while self.pos < len(self.lines):
       line: str = self.lines[self.pos]
@@ -253,27 +253,27 @@ class _YamlParser:
       content: str = self._content(line)
       if current != indent:
         break
-      if not content.startswith("-"):
+      if not content.startsWith("-"):
         break
       if len(content) > 1 and content[1] != " ":
         break
       rest: str = content[1:].strip()
       self.pos += 1
       if not rest:
-        self.pos = self._next_nonempty(self.pos)
+        self.pos = self._nextNonempty(self.pos)
         if self.pos < len(self.lines) and self._indent(self.lines[self.pos]) > indent:
-          parts.append(self._parse_block(self._indent(self.lines[self.pos])))
+          parts.append(self._parseBlock(self._indent(self.lines[self.pos])))
         else:
           parts.append("null")
-      elif self._mapping_split(rest) >= 0:
-        parts.append(self._parse_inline_mapping(rest, indent + 2))
-      elif rest.startswith("|") or rest.startswith(">"):
-        parts.append(self._parse_multiline(indent, rest.startswith(">"), -1 if rest.find("-") >= 0 else 1 if rest.find("+") >= 0 else 0))
+      elif self._mappingSplit(rest) >= 0:
+        parts.append(self._parseInlineMapping(rest, indent + 2))
+      elif rest.startsWith("|") or rest.startsWith(">"):
+        parts.append(self._parseMultiline(indent, rest.startsWith(">"), -1 if rest.find("-") >= 0 else 1 if rest.find("+") >= 0 else 0))
       else:
-        parts.append(self._flow_or_scalar(rest))
+        parts.append(self._flowOrScalar(rest))
     return "[" + ",".join(parts) + "]"
 
-  def _parse_mapping(self, indent: int) -> str:
+  def _parseMapping(self, indent: int) -> str:
     parts: list[str] = []
     while self.pos < len(self.lines):
       line: str = self.lines[self.pos]
@@ -282,44 +282,44 @@ class _YamlParser:
         continue
       current: int = self._indent(line)
       content: str = self._content(line)
-      if current != indent or content.startswith("-"):
+      if current != indent or content.startsWith("-"):
         break
-      split: int = self._mapping_split(content)
+      split: int = self._mappingSplit(content)
       if split < 0:
         self._error("expected mapping key and ':'")
       key: str = content[:split].strip()
-      if key.startswith("?"):
+      if key.startsWith("?"):
         self._error("complex mapping keys are unsupported")
       rest: str = content[split + 1:].strip()
       self.pos += 1
       value: str
-      if rest.startswith("|") or rest.startswith(">"):
-        value = self._parse_multiline(indent, rest.startswith(">"), -1 if rest.find("-") >= 0 else 1 if rest.find("+") >= 0 else 0)
+      if rest.startsWith("|") or rest.startsWith(">"):
+        value = self._parseMultiline(indent, rest.startsWith(">"), -1 if rest.find("-") >= 0 else 1 if rest.find("+") >= 0 else 0)
       elif rest:
-        value = self._flow_or_scalar(rest)
+        value = self._flowOrScalar(rest)
       else:
-        self.pos = self._next_nonempty(self.pos)
+        self.pos = self._nextNonempty(self.pos)
         if self.pos < len(self.lines) and self._indent(self.lines[self.pos]) > indent:
-          value = self._parse_block(self._indent(self.lines[self.pos]))
+          value = self._parseBlock(self._indent(self.lines[self.pos]))
         else:
           value = "null"
       if key == "<<":
-        merge_text: str = rest
-        if merge_text.startswith("*"):
-          parts.extend(self._merge_anchor(merge_text[1:].strip()))
-        elif merge_text.startswith("[") and merge_text.endswith("]"):
-          for alias in _split_flow_parts(merge_text[1:-1]):
-            if not alias.startswith("*"):
+        mergeText: str = rest
+        if mergeText.startsWith("*"):
+          parts.extend(self._mergeAnchor(mergeText[1:].strip()))
+        elif mergeText.startsWith("[") and mergeText.endsWith("]"):
+          for alias in _splitFlowParts(mergeText[1:-1]):
+            if not alias.startsWith("*"):
               self._error("merge sequence requires aliases")
-            parts.extend(self._merge_anchor(alias[1:].strip()))
+            parts.extend(self._mergeAnchor(alias[1:].strip()))
         else:
           self._error("merge requires an alias")
       else:
-        parts.append(_json_quote(_decode_quoted(key)) + ":" + value)
+        parts.append(_jsonQuote(_decodeQuoted(key)) + ":" + value)
     return "{" + ",".join(parts) + "}"
 
   @immutable
-  def _mapping_split(self, value: str) -> int:
+  def _mappingSplit(self, value: str) -> int:
     quote: int = 0
     depth: int = 0
     for i in range(len(value)):
@@ -354,24 +354,24 @@ class _YamlParser:
           pass
     return -1
 
-  def _parse_inline_mapping(self, first: str, child_indent: int) -> str:
-    split: int = self._mapping_split(first)
+  def _parseInlineMapping(self, first: str, childIndent: int) -> str:
+    split: int = self._mappingSplit(first)
     key: str = first[:split].strip()
     rest: str = first[split + 1:].strip()
     parts: list[str] = []
     if rest:
-      parts.append(_json_quote(_decode_quoted(key)) + ":" + self._flow_or_scalar(rest))
+      parts.append(_jsonQuote(_decodeQuoted(key)) + ":" + self._flowOrScalar(rest))
     else:
-      parts.append(_json_quote(_decode_quoted(key)) + ":null")
+      parts.append(_jsonQuote(_decodeQuoted(key)) + ":null")
     while self.pos < len(self.lines):
       line: str = self.lines[self.pos]
       if not self._content(line):
         self.pos += 1
         continue
-      if self._indent(line) != child_indent:
+      if self._indent(line) != childIndent:
         break
       content: str = self._content(line)
-      split = self._mapping_split(content)
+      split = self._mappingSplit(content)
       if split < 0:
         break
       key = content[:split].strip()
@@ -379,130 +379,130 @@ class _YamlParser:
       self.pos += 1
       value: str
       if rest:
-        value = self._flow_or_scalar(rest)
+        value = self._flowOrScalar(rest)
       else:
-        self.pos = self._next_nonempty(self.pos)
-        value = self._parse_block(self._indent(self.lines[self.pos])) if self.pos < len(self.lines) and self._indent(self.lines[self.pos]) > child_indent else "null"
+        self.pos = self._nextNonempty(self.pos)
+        value = self._parseBlock(self._indent(self.lines[self.pos])) if self.pos < len(self.lines) and self._indent(self.lines[self.pos]) > childIndent else "null"
       if key == "<<":
-        merge_text: str = rest
-        if merge_text.startswith("*"):
-          parts.extend(self._merge_anchor(merge_text[1:].strip()))
-        elif merge_text.startswith("[") and merge_text.endswith("]"):
-          for alias in _split_flow_parts(merge_text[1:-1]):
-            if not alias.startswith("*"):
+        mergeText: str = rest
+        if mergeText.startsWith("*"):
+          parts.extend(self._mergeAnchor(mergeText[1:].strip()))
+        elif mergeText.startsWith("[") and mergeText.endsWith("]"):
+          for alias in _splitFlowParts(mergeText[1:-1]):
+            if not alias.startsWith("*"):
               self._error("merge sequence requires aliases")
-            parts.extend(self._merge_anchor(alias[1:].strip()))
+            parts.extend(self._mergeAnchor(alias[1:].strip()))
         else:
           self._error("merge requires an alias")
       else:
-        parts.append(_json_quote(_decode_quoted(key)) + ":" + value)
+        parts.append(_jsonQuote(_decodeQuoted(key)) + ":" + value)
     return "{" + ",".join(parts) + "}"
 
-  def _parse_multiline(self, parent_indent: int, folded: bool, chomp: int = 0) -> str:
+  def _parseMultiline(self, parentIndent: int, folded: bool, chomp: int = 0) -> str:
     values: list[str] = []
     while self.pos < len(self.lines):
       line: str = self.lines[self.pos]
-      if line.strip() and self._indent(line) <= parent_indent:
+      if line.strip() and self._indent(line) <= parentIndent:
         break
       self.pos += 1
-      if self._indent(line) > parent_indent:
-        values.append(line[parent_indent + 2:])
+      if self._indent(line) > parentIndent:
+        values.append(line[parentIndent + 2:])
       else:
         values.append("")
     separator: str = " " if folded else "\n"
     text: str = separator.join(values)
     if chomp < 0:
-      return _json_quote(text.rstrip("\n"))
+      return _jsonQuote(text.rstrip("\n"))
     if chomp > 0:
-      return _json_quote(text.rstrip("\n") + "\n\n")
-    return _json_quote(text.rstrip("\n") + "\n")
+      return _jsonQuote(text.rstrip("\n") + "\n\n")
+    return _jsonQuote(text.rstrip("\n") + "\n")
 
-  def _anchor_index(self, name: str) -> int:
-    for index in range(len(self.anchor_names)):
-      if self.anchor_names[index] == name:
+  def _anchorIndex(self, name: str) -> int:
+    for index in range(len(self.anchorNames)):
+      if self.anchorNames[index] == name:
         return index
     return -1
 
-  def _set_anchor(self, name: str, value: str) -> None:
-    index: int = self._anchor_index(name)
+  def _setAnchor(self, name: str, value: str) -> None:
+    index: int = self._anchorIndex(name)
     if index < 0:
-      self.anchor_names.append(name)
-      self.anchor_values.append(value)
+      self.anchorNames.append(name)
+      self.anchorValues.append(value)
     else:
-      self.anchor_values[index] = value
+      self.anchorValues[index] = value
 
-  def _merge_anchor(self, name: str) -> list[str]:
-    index: int = self._anchor_index(name)
+  def _mergeAnchor(self, name: str) -> list[str]:
+    index: int = self._anchorIndex(name)
     if index < 0:
       self._error("unknown merge alias")
-    encoded: str = self.anchor_values[index]
-    if not encoded.startswith("{") or not encoded.endswith("}"):
+    encoded: str = self.anchorValues[index]
+    if not encoded.startsWith("{") or not encoded.endsWith("}"):
       self._error("merge alias must be a mapping")
     body: str = encoded[1:-1].strip()
     if not body:
       return []
-    return _split_flow_parts(body)
-  def _flow_or_scalar(self, value: str) -> str:
+    return _splitFlowParts(body)
+  def _flowOrScalar(self, value: str) -> str:
     text: str = value.strip()
-    if text.startswith("&"):
+    if text.startsWith("&"):
       sep: int = text.find(" ")
       if sep < 0:
         self._error("anchor needs a value")
       name: str = text[1:sep]
-      encoded: str = self._flow_or_scalar(text[sep + 1:].strip())
-      self._set_anchor(name, encoded)
+      encoded: str = self._flowOrScalar(text[sep + 1:].strip())
+      self._setAnchor(name, encoded)
       return encoded
-    if text.startswith("*"):
-      index = self._anchor_index(text[1:].strip())
+    if text.startsWith("*"):
+      index = self._anchorIndex(text[1:].strip())
       if index < 0:
         self._error("unknown alias")
-      return self.anchor_values[index]
-    if text.startswith("[") and text.endswith("]"):
+      return self.anchorValues[index]
+    if text.startsWith("[") and text.endsWith("]"):
       body: str = text[1:-1].strip()
       if not body:
         return "[]"
       items: list[str] = []
-      flow_parts: list[str] = _split_flow_parts(body)
-      for part in flow_parts:
-        items.append(self._flow_or_scalar(part))
+      flowParts: list[str] = _splitFlowParts(body)
+      for part in flowParts:
+        items.append(self._flowOrScalar(part))
       return "[" + ",".join(items) + "]"
-    if text.startswith("{") and text.endswith("}"):
+    if text.startsWith("{") and text.endsWith("}"):
       body: str = text[1:-1].strip()
       if not body:
         return "{}"
       items: list[str] = []
-      flow_parts: list[str] = _split_flow_parts(body)
-      for part in flow_parts:
-        split: int = self._mapping_split(part.strip())
+      flowParts: list[str] = _splitFlowParts(body)
+      for part in flowParts:
+        split: int = self._mappingSplit(part.strip())
         if split < 0:
           self._error("invalid flow mapping")
         key: str = part[:split].strip()
         val: str = part[split + 1:].strip()
-        items.append(_json_quote(_decode_quoted(key)) + ":" + self._flow_or_scalar(val))
+        items.append(_jsonQuote(_decodeQuoted(key)) + ":" + self._flowOrScalar(val))
       return "{" + ",".join(items) + "}"
-    return _scalar_json(text)
+    return _scalarJson(text)
 
 
 @copyable
 class YamlEncoder:
   indent: int = 2
-  flow_style: bool = True
+  flowStyle: bool = True
 
   def encode[T](self, value: T) -> str:
     return Json.dumps(value, 0)
 
 
 @immutable
-def _yaml_documents(source: str) -> list[str]:
+def _yamlDocuments(source: str) -> list[str]:
   docs: list[str] = []
   lines: list[str] = []
-  for line in source.splitlines():
+  for line in source.splitLines():
     marker: str = line.strip()
     if marker in {"---", "..."}:
       if lines:
         docs.append("\n".join(lines))
         lines = []
-    elif not marker.startswith("%"):
+    elif not marker.startsWith("%"):
       lines.append(line)
   if lines:
     docs.append("\n".join(lines))
@@ -516,9 +516,9 @@ class Yaml:
     return Json.loads[T](normalized)
 
   @staticmethod
-  def loads_all[T](s: str) -> list[T]:
+  def loadsAll[T](s: str) -> list[T]:
     result: list[T] = []
-    for doc in _yaml_documents(s):
+    for doc in _yamlDocuments(s):
       result.append(Self.loads[T](doc))
     return result
 
@@ -531,15 +531,15 @@ class Yaml:
     return Self.loads[T](fp.read())
 
   @staticmethod
-  def load_all[T](fp: TextIOWrapper) -> list[T]:
-    return Self.loads_all[T](fp.read())
+  def loadAll[T](fp: TextIOWrapper) -> list[T]:
+    return Self.loadsAll[T](fp.read())
 
   @staticmethod
-  def load_all_string[T](fp: StringIO) -> list[T]:
-    return Self.loads_all[T](fp.read())
+  def loadAllString[T](fp: StringIO) -> list[T]:
+    return Self.loadsAll[T](fp.read())
 
   @staticmethod
-  def load_string[T](fp: StringIO) -> T:
+  def loadString[T](fp: StringIO) -> T:
     return Self.loads[T](fp.read())
 
   @staticmethod
@@ -547,7 +547,7 @@ class Yaml:
     fp.write(Self.dumps[T](obj, indent))
 
   @staticmethod
-  def dump_string[T](obj: T, fp: StringIO, indent: int = 2) -> None:
-    fp.clear_buffer()
+  def dumpString[T](obj: T, fp: StringIO, indent: int = 2) -> None:
+    fp.clearBuffer()
     fp.write(Self.dumps[T](obj, indent))
 

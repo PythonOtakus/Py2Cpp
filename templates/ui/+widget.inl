@@ -41,7 +41,7 @@ static PyInt _ui_widget_clamp_int(PyInt value, PyInt lo, PyInt hi)
 
 PY2CPP_BEGIN_SCOPE
 
-void UICheckBox::_sync_to_native()
+void PyUICheckBox::_syncToNative()
 {
   HWND ctrl = (HWND)(INT_PTR)handle;
   if (!ctrl)
@@ -60,7 +60,7 @@ void UICheckBox::_sync_to_native()
   }
 }
 
-void UILineEdit::_sync_to_native()
+void PyUILineEdit::_syncToNative()
 {
   HWND ctrl = (HWND)(INT_PTR)handle;
   if (!ctrl)
@@ -68,7 +68,7 @@ void UILineEdit::_sync_to_native()
     return;
   }
   char want[512];
-  text__value.copy_to_span(PySpan<PyByte>((PyByte*)want, (PyInt)sizeof(want), 1));
+  text__value.copyToSpan(PySpan<PyByte>((PyByte*)want, (PyInt)sizeof(want), 1));
   char cur[512];
   _ui_widget_read_edit_text(ctrl, cur, (int)sizeof(cur));
   if (strcmp(cur, want) != 0)
@@ -77,7 +77,7 @@ void UILineEdit::_sync_to_native()
   }
 }
 
-void UIIntEdit::_sync_to_native()
+void PyUIIntEdit::_syncToNative()
 {
   HWND ctrl = (HWND)(INT_PTR)handle;
   if (!ctrl)
@@ -94,7 +94,7 @@ void UIIntEdit::_sync_to_native()
   }
 }
 
-void UIFloatEdit::_sync_to_native()
+void PyUIFloatEdit::_syncToNative()
 {
   HWND ctrl = (HWND)(INT_PTR)handle;
   if (!ctrl)
@@ -111,7 +111,7 @@ void UIFloatEdit::_sync_to_native()
   }
 }
 
-void UISlider::_sync_to_native()
+void PyUISlider::_syncToNative()
 {
   HWND ctrl = (HWND)(INT_PTR)handle;
   if (!ctrl)
@@ -132,23 +132,23 @@ PY2CPP_END_SCOPE
 
 PY2CPP_BEGIN_SCOPE
 
-void UICheckBox::_sync_to_native()
+void PyUICheckBox::_syncToNative()
 {
 }
 
-void UILineEdit::_sync_to_native()
+void PyUILineEdit::_syncToNative()
 {
 }
 
-void UIIntEdit::_sync_to_native()
+void PyUIIntEdit::_syncToNative()
 {
 }
 
-void UIFloatEdit::_sync_to_native()
+void PyUIFloatEdit::_syncToNative()
 {
 }
 
-void UISlider::_sync_to_native()
+void PyUISlider::_syncToNative()
 {
 }
 

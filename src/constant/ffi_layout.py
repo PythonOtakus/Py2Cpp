@@ -163,16 +163,23 @@ def ffi_cpp_namespace_segment(segment: str) -> str:
 
 
 def ffi_pyi_prefix() -> str:
-  return "Pyi_"
+  return "Pyi"
 
 
 def ffi_c_struct_using_target(info: object) -> str:
-  """``using Pyi_sqlite3 = ::sqlite3`` 右侧：全局 C typedef/标签名。"""
+  """``using PyiSqlite3 = ::sqlite3`` 右侧：全局 C typedef/标签名。"""
   tag = getattr(info, "cpp_rename", None) or ""
   if not tag:
     name = getattr(info, "name", "") or ""
     pref = ffi_pyi_prefix()
-    tag = name[len(pref):] if name.startswith(pref) else name
+    legacy = "Pyi_"
+    if name.startswith(legacy):
+      tag = name[len(legacy):]
+    elif name.startswith(pref) and len(name) > len(pref) and name[len(pref)].isupper():
+      # 无 @native_name 时无法可靠还原；保留启发式剥前缀
+      tag = name[len(pref):]
+    else:
+      tag = name
   return f"::{tag}"
 
 

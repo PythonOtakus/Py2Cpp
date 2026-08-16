@@ -17,13 +17,13 @@ class TransformMixin[Vec, Rot, Mat]:
   name: str = "Anonymous"
   _parent: WeakRef[Self] | None = None
   _children: list[Self] @optional = []
-  _local_position: Vec = new.zero
-  _local_rotation: Rot = new.identity
-  _local_scale: Vec = new.one
+  _localPosition: Vec = new.zero
+  _localRotation: Rot = new.identity
+  _localScale: Vec = new.one
 
   @staticmethod
   @immutable
-  def _is_descendant_of(node: Self, ancestor: Self) -> bool:
+  def _isDescendantOf(node: Self, ancestor: Self) -> bool:
     cur: Self = node
     while True:
       if cur is ancestor:
@@ -48,7 +48,7 @@ class TransformMixin[Vec, Rot, Mat]:
     if old is not None:
       old.detach(self)
     if value is not None:
-      if value is self or Self._is_descendant_of(value, self):
+      if value is self or Self._isDescendantOf(value, self):
         raise ValueError("transform parent would create a cycle")
       value.attach(self)
 
@@ -64,7 +64,7 @@ class TransformMixin[Vec, Rot, Mat]:
 
   @property
   @immutable
-  def child_count(self) -> int:
+  def childCount(self) -> int:
     return len(self._children)
 
   @property
@@ -74,24 +74,24 @@ class TransformMixin[Vec, Rot, Mat]:
 
   def attach(self, child: Self) -> None:
     self._children.append(child)
-    child.bind_parent(self)
+    child.bindParent(self)
 
   def detach(self, child: Self) -> None:
     for i in range(len(self._children)):
       if self._children[i] is child:
         self._children.pop(i)
-        child.unbind_parent()
+        child.unbindParent()
         return
 
-  def detach_all(self) -> None:
+  def detachAll(self) -> None:
     for i in range(len(self._children)):
-      self._children[i].unbind_parent()
+      self._children[i].unbindParent()
     self._children.clear()
 
-  def bind_parent(self, par: Self) -> None:
+  def bindParent(self, par: Self) -> None:
     self._parent = new(par)
 
-  def unbind_parent(self) -> None:
+  def unbindParent(self) -> None:
     self._parent = None
 
   def find(self, name: str) -> Self | None:
@@ -111,70 +111,70 @@ class TransformMixin[Vec, Rot, Mat]:
 
   @property
   @immutable
-  def local_matrix(self) -> Mat:
-    return new.transform(self._local_position, self._local_rotation, self._local_scale)
+  def localMatrix(self) -> Mat:
+    return new.transform(self._localPosition, self._localRotation, self._localScale)
 
   @property
   @immutable
-  def local_inv_matrix(self) -> Mat:
-    return self.local_matrix.inv
+  def localInvMatrix(self) -> Mat:
+    return self.localMatrix.inv
 
   @property
   @immutable
-  def local_to_world_matrix(self) -> Mat:
-    m: Mat = self.local_matrix
+  def localToWorldMatrix(self) -> Mat:
+    m: Mat = self.localMatrix
     par: Self | None = self.parent
     while par is not None:
-      m = par.local_matrix @ m
+      m = par.localMatrix @ m
       par = par.parent
     return m
 
   @property
   @immutable
-  def world_to_local_matrix(self) -> Mat:
-    return self.local_to_world_matrix.inv
+  def worldToLocalMatrix(self) -> Mat:
+    return self.localToWorldMatrix.inv
 
   @immutable
-  def local_to_world_point(self, point: Vec) -> Vec:
-    return self.local_to_world_matrix.apply_to_point(point)
+  def localToWorldPoint(self, point: Vec) -> Vec:
+    return self.localToWorldMatrix.applyToPoint(point)
 
   @immutable
-  def local_to_world_vector(self, vector: Vec) -> Vec:
-    return self.local_to_world_matrix.apply_to_vector(vector)
+  def localToWorldVector(self, vector: Vec) -> Vec:
+    return self.localToWorldMatrix.applyToVector(vector)
 
   @immutable
-  def world_to_local_point(self, point: Vec) -> Vec:
-    return self.world_to_local_matrix.apply_to_point(point)
+  def worldToLocalPoint(self, point: Vec) -> Vec:
+    return self.worldToLocalMatrix.applyToPoint(point)
 
   @immutable
-  def world_to_local_vector(self, vector: Vec) -> Vec:
-    return self.world_to_local_matrix.apply_to_vector(vector)
+  def worldToLocalVector(self, vector: Vec) -> Vec:
+    return self.worldToLocalMatrix.applyToVector(vector)
 
   @property
   @immutable
   def position(self) -> Vec:
-    p: Vec = self.local_position
+    p: Vec = self.localPosition
     par: Self | None = self.parent
     if par is not None:
-      return par.local_to_world_point(p)
+      return par.localToWorldPoint(p)
     return p
 
   @property.setter
   def position(self, value: Vec) -> None:
     par: Self | None = self.parent
     if par is not None:
-      local: Vec = par.world_to_local_point(value)
-      self.local_position = local
+      local: Vec = par.worldToLocalPoint(value)
+      self.localPosition = local
     else:
-      self.local_position = value
+      self.localPosition = value
 
   @property
   @immutable
   def rotation(self) -> Rot:
-    rot: Rot = self.local_rotation
+    rot: Rot = self.localRotation
     par: Self | None = self.parent
     while par is not None:
-      rot = par.local_rotation @ rot
+      rot = par.localRotation @ rot
       par = par.parent
     return rot
 
@@ -183,14 +183,14 @@ class TransformMixin[Vec, Rot, Mat]:
     par: Self | None = self.parent
     if par is not None:
       local: Rot = value @ ~par.rotation
-      self.local_rotation = local
+      self.localRotation = local
     else:
-      self.local_rotation = value
+      self.localRotation = value
 
   @property
   @immutable
   def scale(self) -> Vec:
-    return self.local_to_world_matrix.scale
+    return self.localToWorldMatrix.scale
 
   def translate(self, translation: Vec) -> None:
     self.position += translation
@@ -205,76 +205,76 @@ class Transform2D(TransformMixin[Vector2, Rotator, Matrix3]):
 
   @property
   @immutable
-  def local_position(self) -> Vector2:
-    return new(self._local_position.x, self._local_position.y)
+  def localPosition(self) -> Vector2:
+    return new(self._localPosition.x, self._localPosition.y)
 
   @property.setter
-  def local_position(self, value: Vector2) -> None:
-    self._local_position.x = value.x
-    self._local_position.y = value.y
+  def localPosition(self, value: Vector2) -> None:
+    self._localPosition.x = value.x
+    self._localPosition.y = value.y
 
   @property
   @immutable
-  def local_rotation(self) -> Rotator:
-    return new(self._local_rotation.w, self._local_rotation.z)
+  def localRotation(self) -> Rotator:
+    return new(self._localRotation.w, self._localRotation.z)
 
   @property.setter
-  def local_rotation(self, value: Rotator) -> None:
-    self._local_rotation.w = value.w
-    self._local_rotation.z = value.z
+  def localRotation(self, value: Rotator) -> None:
+    self._localRotation.w = value.w
+    self._localRotation.z = value.z
   @property
   @immutable
-  def local_angle(self) -> float64:
-    return self._local_rotation.to_angle()
+  def localAngle(self) -> float64:
+    return self._localRotation.toAngle()
 
   @property.setter
-  def local_angle(self, value: float64) -> None:
-    r: Rotator = new.from_angle(value)
-    self._local_rotation.w = r.w
-    self._local_rotation.z = r.z
+  def localAngle(self, value: float64) -> None:
+    r: Rotator = new.fromAngle(value)
+    self._localRotation.w = r.w
+    self._localRotation.z = r.z
 
   @property
   @immutable
-  def local_scale(self) -> Vector2:
-    return new(self._local_scale.x, self._local_scale.y)
+  def localScale(self) -> Vector2:
+    return new(self._localScale.x, self._localScale.y)
 
   @property.setter
-  def local_scale(self, value: Vector2) -> None:
-    self._local_scale.x = value.x
-    self._local_scale.y = value.y
+  def localScale(self, value: Vector2) -> None:
+    self._localScale.x = value.x
+    self._localScale.y = value.y
 
   @property
   @immutable
   def angle(self) -> float64:
     rot: Rotator = self.rotation
-    return rot.to_angle()
+    return rot.toAngle()
 
   @property.setter
   def angle(self, value: float64) -> None:
-    self.rotation = new.from_angle(value)
+    self.rotation = new.fromAngle(value)
 
   @property
   @immutable
   def right(self) -> Vector2:
-    return self.local_to_world_vector(Vector2.right)
+    return self.localToWorldVector(Vector2.right)
 
   @property
   @immutable
   def down(self) -> Vector2:
-    return self.local_to_world_vector(Vector2.down)
+    return self.localToWorldVector(Vector2.down)
 
   def rotate(self, angle: float64) -> None:
-    delta: Rotator = new.from_angle(angle)
+    delta: Rotator = new.fromAngle(angle)
     self.rotation = delta @ self.rotation
 
-  def rotate_around(self, center: Vector2, angle: float64) -> None:
+  def rotateAround(self, center: Vector2, angle: float64) -> None:
     pos: Vector2 = self.position
-    self.position = pos.rotated_around(center, angle)
-    delta: Rotator = new.from_angle(angle)
+    self.position = pos.rotatedAround(center, angle)
+    delta: Rotator = new.fromAngle(angle)
     self.rotation = delta @ self.rotation
 
-  def look_at(self, target: Vector2) -> None:
-    self.rotation = new.look_at(target - self.position)
+  def lookAt(self, target: Vector2) -> None:
+    self.rotation = new.lookAt(target - self.position)
 
 
 @refcount
@@ -286,89 +286,89 @@ class Transform3D(TransformMixin[Vector3, Quaternion, Matrix4]):
 
   @property
   @immutable
-  def local_position(self) -> Vector3:
-    return new(self._local_position.x, self._local_position.y, self._local_position.z)
+  def localPosition(self) -> Vector3:
+    return new(self._localPosition.x, self._localPosition.y, self._localPosition.z)
 
   @property.setter
-  def local_position(self, value: Vector3) -> None:
-    self._local_position.x = value.x
-    self._local_position.y = value.y
-    self._local_position.z = value.z
+  def localPosition(self, value: Vector3) -> None:
+    self._localPosition.x = value.x
+    self._localPosition.y = value.y
+    self._localPosition.z = value.z
 
   @property
   @immutable
-  def local_rotation(self) -> Quaternion:
+  def localRotation(self) -> Quaternion:
     return new(
-      self._local_rotation.w,
-      self._local_rotation.x,
-      self._local_rotation.y,
-      self._local_rotation.z,
+      self._localRotation.w,
+      self._localRotation.x,
+      self._localRotation.y,
+      self._localRotation.z,
     )
 
   @property.setter
-  def local_rotation(self, value: Quaternion) -> None:
-    self._local_rotation.w = value.w
-    self._local_rotation.x = value.x
-    self._local_rotation.y = value.y
-    self._local_rotation.z = value.z
+  def localRotation(self, value: Quaternion) -> None:
+    self._localRotation.w = value.w
+    self._localRotation.x = value.x
+    self._localRotation.y = value.y
+    self._localRotation.z = value.z
   @property
   @immutable
-  def local_euler_angles(self) -> Vector3:
-    return self._local_rotation.to_euler_angles()
+  def localEulerAngles(self) -> Vector3:
+    return self._localRotation.toEulerAngles()
 
   @property.setter
-  def local_euler_angles(self, value: Vector3) -> None:
-    q: Quaternion = new.from_euler_angles(value)
-    self._local_rotation.w = q.w
-    self._local_rotation.x = q.x
-    self._local_rotation.y = q.y
-    self._local_rotation.z = q.z
+  def localEulerAngles(self, value: Vector3) -> None:
+    q: Quaternion = new.fromEulerAngles(value)
+    self._localRotation.w = q.w
+    self._localRotation.x = q.x
+    self._localRotation.y = q.y
+    self._localRotation.z = q.z
 
   @property
   @immutable
-  def local_scale(self) -> Vector3:
-    return new(self._local_scale.x, self._local_scale.y, self._local_scale.z)
+  def localScale(self) -> Vector3:
+    return new(self._localScale.x, self._localScale.y, self._localScale.z)
 
   @property.setter
-  def local_scale(self, value: Vector3) -> None:
-    self._local_scale.x = value.x
-    self._local_scale.y = value.y
-    self._local_scale.z = value.z
+  def localScale(self, value: Vector3) -> None:
+    self._localScale.x = value.x
+    self._localScale.y = value.y
+    self._localScale.z = value.z
 
   @property
   @immutable
-  def euler_angles(self) -> Vector3:
+  def eulerAngles(self) -> Vector3:
     rot: Quaternion = self.rotation
-    return rot.to_euler_angles()
+    return rot.toEulerAngles()
 
   @property.setter
-  def euler_angles(self, value: Vector3) -> None:
-    self.rotation = new.from_euler_angles(value)
+  def eulerAngles(self, value: Vector3) -> None:
+    self.rotation = new.fromEulerAngles(value)
 
   @property
   @immutable
   def right(self) -> Vector3:
-    return self.local_to_world_vector(Vector3.right)
+    return self.localToWorldVector(Vector3.right)
 
   @property
   @immutable
   def down(self) -> Vector3:
-    return self.local_to_world_vector(Vector3.down)
+    return self.localToWorldVector(Vector3.down)
 
   @property
   @immutable
   def forward(self) -> Vector3:
-    return self.local_to_world_vector(Vector3.forward)
+    return self.localToWorldVector(Vector3.forward)
 
   def rotate(self, axis: Vector3, angle: float64) -> None:
-    delta: Quaternion = new.from_axis_angle(axis, angle)
+    delta: Quaternion = new.fromAxisAngle(axis, angle)
     self.rotation = delta @ self.rotation
 
-  def rotate_around(self, center: Vector3, axis: Vector3, angle: float64) -> None:
+  def rotateAround(self, center: Vector3, axis: Vector3, angle: float64) -> None:
     pos: Vector3 = self.position
-    self.position = pos.rotated_around(center, axis, angle)
-    delta: Quaternion = new.from_axis_angle(axis, angle)
+    self.position = pos.rotatedAround(center, axis, angle)
+    delta: Quaternion = new.fromAxisAngle(axis, angle)
     self.rotation = delta @ self.rotation
 
-  def look_at(self, target: Vector3) -> None:
-    self.rotation = new.look_at(target - self.position)
+  def lookAt(self, target: Vector3) -> None:
+    self.rotation = new.lookAt(target - self.position)

@@ -1,7 +1,7 @@
 """异常类型占位（翻译为 C++ 中对应的异常类或错误路径）。
 
 ``ExceptionGroup`` 的 ``append`` / ``assign`` / ``clear`` / ``__len__`` 等为 ``@native`` 桩；
-``ExcSlot`` 由 ``@union.mro`` 生成；``ExceptionGroup`` 容器逻辑由 ``exception_group_gen`` 注入。
+``ExcTypeUnion`` 由 ``@union.mro`` 生成；``ExceptionGroup`` 容器逻辑由 ``exception_group_gen`` 注入。
 """
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ class Exception:
   """所有内置异常的基类。"""
 
   @virtual
-  def add_note(self, note: str) -> None:
+  def addNote(self, note: str) -> None:
     """PEP 678 子集：为异常附加说明（虚函数触发 ``__class_id__`` 动态派发）。"""
     pass
 
@@ -53,8 +53,8 @@ class OverflowError(Exception):
   pass
 
 
-class InvalidOperation(Exception):
-  """``decimal`` 无效运算（对齐 CPython ``decimal.InvalidOperation``）。"""
+class InvalidOperationError(Exception):
+  """``decimal`` 无效运算（对齐 CPython ``decimal.InvalidOperationError``）。"""
 
   pass
 
@@ -102,7 +102,7 @@ class AssertionError(Exception):
 
 
 @union.mro
-class ExcSlot(base=Exception):
+class ExcTypeUnion(base=Exception):
   """``except*`` 单异常槽；MRO 变体与 ``Enum`` 由译器自 MRO 闭集生成；额外枚举式变体用 ``@variant class …``。"""
 
   @variant
@@ -120,7 +120,7 @@ class BaseExceptionGroup(Exception):
 class ExceptionGroup(BaseExceptionGroup):
   """``ExceptionGroup(message, exceptions)``（对齐 Python 3.13 子集）。
 
-  ``len(eg)`` / ``if eg`` / ``eg.clear()`` / ``eg.copy_from(other)`` / ``eg.append(exc)``。
+  ``len(eg)`` / ``if eg`` / ``eg.clear()`` / ``eg.copyFrom(other)`` / ``eg.append(exc)``。
   ``except*`` 捕获的 ``as eg`` 绑定为匹配子组；构造 ``ExceptionGroup("", […])`` 由译器展开为
   ``clear`` + 逐元素 ``append``。
   """
@@ -139,10 +139,10 @@ class ExceptionGroup(BaseExceptionGroup):
     """清空槽位。"""
     ...
 
-  def copy_from(self, other: Self) -> None:
+  def copyFrom(self, other: Self) -> None:
     """自 ``other`` 拷贝槽位（``except*`` 拆分内部使用）。"""
     ...
 
   def append[T: Exception](self, e: T) -> None:
-    """追加单个异常（``ExcSlot`` 变体工厂）。"""
+    """追加单个异常（``ExcTypeUnion`` 变体工厂）。"""
     ...

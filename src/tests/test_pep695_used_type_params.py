@@ -8,7 +8,7 @@ from src.analysis.ir import pep695_declared_type_params, pep695_used_type_params
 class Pep695UsedTypeParamsTests(unittest.TestCase):
   def test_navigatable_header_node_only(self):
     mod = ast.parse(
-      "def f[Node: DictKey](nav: Navigatable[Node], start: Node) -> Node: return start\n"
+      "def f[Node: DictKeyType](nav: NavigatableType[Node], start: Node) -> Node: return start\n"
     )
     fn = mod.body[0]
     declared = frozenset(pep695_declared_type_params(fn))
@@ -18,7 +18,7 @@ class Pep695UsedTypeParamsTests(unittest.TestCase):
 
   def test_unused_nav_in_header(self):
     mod = ast.parse(
-      "def f[Nav, Node: DictKey](nav: Navigatable[Node], start: Node) -> Node: return start\n"
+      "def f[Nav, Node: DictKeyType](nav: NavigatableType[Node], start: Node) -> Node: return start\n"
     )
     fn = mod.body[0]
     declared = frozenset(pep695_declared_type_params(fn))

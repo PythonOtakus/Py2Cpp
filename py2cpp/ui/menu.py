@@ -8,7 +8,7 @@ class UIMenuBar:
   """顶层 ``UIWindow`` 菜单；``WM_COMMAND`` 由 ``+menu.inl`` 转发至 ``owner``。"""
 
   handle: int64 = 0
-  _owner_ptr: int64 = 0
+  _ownerPtr: int64 = 0
 
   @native
   def attach(self, win: UIWindow @ref) -> None:
@@ -16,11 +16,11 @@ class UIMenuBar:
     ...
 
   @native
-  def build_flow_default(self) -> None:
+  def buildFlowDefault(self) -> None:
     """File / Edit / View / Run（Run 项默认 grayed）。"""
     ...
 
   @native
-  def set_run_enabled(self, play: bool, play_sel: bool, stop: bool) -> None:
+  def setRunEnabled(self, play: bool, playSel: bool, stop: bool) -> None:
     """P2 启用 Run 菜单项。"""
     ...

@@ -5,28 +5,28 @@ from py2cpp.alg.graph import AdjList, GraphNav
 
 
 class AdjListTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
     g: AdjList = new(3)
-    g.add_undirected(0, 1, 2)
-    g.add_edge(1, 2, 1)
-    empty_h: list[int] = []
-    nav: GraphNav = new(g, empty_h)
-    self.assertTrue(nav.vertex_count() == 3)
+    g.addUndirected(0, 1, 2)
+    g.addEdge(1, 2, 1)
+    emptyH: list[int] = []
+    nav: GraphNav = new(g, emptyH)
+    self.assertTrue(nav.vertexCount() == 3)
     nbrs: list[int] = nav.neighbors(0)
     self.assertTrue(len(nbrs) == 1)
-    self.assertTrue(nav.move_cost(0, 1) == 2)
+    self.assertTrue(nav.moveCost(0, 1) == 2)
 
 
 class GraphNavHeuristicTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
     g: AdjList = new(2)
-    g.add_edge(0, 1, 1)
+    g.addEdge(0, 1, 1)
     h: list[int] = [3, 0]
     nav: GraphNav = new(g, h)
     self.assertTrue(nav.heuristic(0, 1) == 3)
@@ -34,6 +34,6 @@ class GraphNavHeuristicTests(TestCaseMixin):
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)

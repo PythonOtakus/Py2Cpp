@@ -7,12 +7,12 @@ from typing import TYPE_CHECKING
 from ..analysis.ir import cpp_param
 from ..analysis.type_emit import scope_has_type_binding, scope_storage_cpp
 from ..analysis.patterns import temp_name
-from ..constant.stdlib_layout import EXCEPTIONS_NS
+from ..constant.stdlib_layout import cpp_exception_type, EXCEPTIONS_NS
 
 if TYPE_CHECKING:
   from ..translator import Translator
 
-_GROUP_TY = f"{EXCEPTIONS_NS}::ExceptionGroup"
+_GROUP_TY = cpp_exception_type('ExceptionGroup')
 _STAR_GROUP_TYPES = frozenset({"ExceptionGroup", "BaseExceptionGroup"})
 
 

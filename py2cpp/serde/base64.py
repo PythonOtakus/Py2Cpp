@@ -1,9 +1,9 @@
 """Base64 编解码（对齐 Python 3.13 ``base64`` 的 RFC 4648 子集）。
 
 参考 CPython 3.13 ``Lib/base64.py``（``b64encode`` / ``b64decode`` 等）；
-核心算法纯 Python；url-safe 字母表用 ``_urlsafe_b64swap`` / ``_urlsafe_b64swap_back``。
+核心算法纯 Python；url-safe 字母表用 ``_urlsafeB64swap`` / ``_urlsafeB64swapBack``。
 
-``standard_b64encode`` / ``standard_b64decode`` / ``decodebytes`` 与 ``b64*`` 等价，调用方直写 ``b64encode``/``b64decode``。
+``standard_b64encode`` / ``standard_b64decode`` / ``decodeBytes`` 与 ``b64*`` 等价，调用方直写 ``b64encode``/``b64decode``。
 ``altchars`` / ``validate`` 暂不在公开签名中（译器默认实参 ``b\"\"`` 会破坏 C++ 形参列表）；url-safe 用 ``urlsafe_*``。
 解码错误抛 ``ValueError``（对齐 ``binascii.Error`` 消息）。
 """
@@ -12,12 +12,12 @@ from ..core.exceptions import ValueError
 from ..text.bytes import bytes
 
 
-MAXLINESIZE: int = 76
-MAXBINSIZE: int = (MAXLINESIZE // 4) * 3
+MaxLineSize: int = 76
+MaxBinSize: int = (MaxLineSize // 4) * 3
 
 
 @immutable
-def _b64_encode_char(v: int) -> byte:
+def _b64EncodeChar(v: int) -> byte:
   if v < 26:
     return ord("A") + v
   if v < 52:
@@ -30,7 +30,7 @@ def _b64_encode_char(v: int) -> byte:
 
 
 @immutable
-def _b64_decode_char(b: byte) -> int:
+def _b64DecodeChar(b: byte) -> int:
   if b >= ord("A") and b <= ord("Z"):
     return b - ord("A")
   if b >= ord("a") and b <= ord("z"):
@@ -45,7 +45,7 @@ def _b64_decode_char(b: byte) -> int:
 
 
 @immutable
-def _bytes_from_decode_data(s: bytes) -> byte[:]:
+def _bytesFromDecodeData(s: bytes) -> byte[:]:
   n: int = len(s)
   buf: byte[:] = new(n)
   for i in range(n):
@@ -54,13 +54,13 @@ def _bytes_from_decode_data(s: bytes) -> byte[:]:
 
 
 @immutable
-def _bytes_from_decode_text(s: str) -> byte[:]:
+def _bytesFromDecodeText(s: str) -> byte[:]:
   encoded: bytes = s.encode()
-  return _bytes_from_decode_data(encoded)
+  return _bytesFromDecodeData(encoded)
 
 
 @immutable
-def _append_bytes(dst: byte[:], at: int, src: byte[:], end: int) -> int:
+def _appendBytes(dst: byte[:], at: int, src: byte[:], end: int) -> int:
   if end <= 0:
     return at
   need: int = at + end
@@ -73,43 +73,43 @@ def _append_bytes(dst: byte[:], at: int, src: byte[:], end: int) -> int:
 
 
 @immutable
-def _is_b64_whitespace(b: byte) -> bool:
+def _isB64Whitespace(b: byte) -> bool:
   return b in " \t\n\r\v\f"
 
 
 @immutable
-def _byte_u(b: byte) -> int:
+def _byteU(b: byte) -> int:
   return b & 0xFF
 
 
 @immutable
-def _b64encode_raw(data: byte[:]) -> bytes:
+def _b64encodeRaw(data: byte[:]) -> bytes:
   n: int = len(data)
   if not n:
     empty: bytes = b""
     return empty
-  out_len: int = ((n + 2) // 3) * 4
-  buf: byte[:] = new(out_len)
+  outLen: int = ((n + 2) // 3) * 4
+  buf: byte[:] = new(outLen)
   at: int = 0
   for i in range(0, n, 3):
-    u0: int = _byte_u(data[i])
+    u0: int = _byteU(data[i])
     u1: int = 0
     u2: int = 0
     if i + 1 < n:
-      u1 = _byte_u(data[i + 1])
+      u1 = _byteU(data[i + 1])
     if i + 2 < n:
-      u2 = _byte_u(data[i + 2])
+      u2 = _byteU(data[i + 2])
     n0: int = u0 >> 2
     n1: int = ((u0 & 3) << 4) | (u1 >> 4)
     n2: int = ((u1 & 15) << 2) | (u2 >> 6)
     n3: int = u2 & 63
-    buf[at] = _b64_encode_char(n0)
-    buf[at + 1] = _b64_encode_char(n1)
+    buf[at] = _b64EncodeChar(n0)
+    buf[at + 1] = _b64EncodeChar(n1)
     if i + 2 < n:
-      buf[at + 2] = _b64_encode_char(n2)
-      buf[at + 3] = _b64_encode_char(n3)
+      buf[at + 2] = _b64EncodeChar(n2)
+      buf[at + 3] = _b64EncodeChar(n3)
     elif i + 1 < n:
-      buf[at + 2] = _b64_encode_char(n2)
+      buf[at + 2] = _b64EncodeChar(n2)
       buf[at + 3] = ord("=")
     else:
       buf[at + 2] = ord("=")
@@ -119,19 +119,19 @@ def _b64encode_raw(data: byte[:]) -> bytes:
 
 
 @immutable
-def _filter_b64_payload(raw: byte[:]) -> byte[:]:
+def _filterB64Payload(raw: byte[:]) -> byte[:]:
   n: int = len(raw)
   buf: byte[:] = new(n)
   at: int = 0
   for i in range(n):
     b: byte = raw[i]
-    if _is_b64_whitespace(b):
+    if _isB64Whitespace(b):
       continue
     if b == ord("="):
       buf[at] = b
       at += 1
       continue
-    if _b64_decode_char(b) >= 0:
+    if _b64DecodeChar(b) >= 0:
       buf[at] = b
       at += 1
       continue
@@ -142,29 +142,29 @@ def _filter_b64_payload(raw: byte[:]) -> byte[:]:
 
 
 @immutable
-def _b64decode_raw(payload: byte[:]) -> bytes:
+def _b64decodeRaw(payload: byte[:]) -> bytes:
   n: int = len(payload)
   if not n:
     empty: bytes = b""
     return empty
   if (n % 4) != 0:
     raise ValueError("Incorrect padding")
-  out_len: int = (n // 4) * 3
+  outLen: int = (n // 4) * 3
   if n >= 1 and payload[n - 1] == ord("="):
-    out_len -= 1
+    outLen -= 1
   if n >= 2 and payload[n - 2] == ord("="):
-    out_len -= 1
-  buf: byte[:] = new(out_len)
+    outLen -= 1
+  buf: byte[:] = new(outLen)
   at: int = 0
   for i in range(0, n, 4):
     c0: byte = payload[i]
     c1: byte = payload[i + 1]
     c2: byte = payload[i + 2]
     c3: byte = payload[i + 3]
-    v0: int = _b64_decode_char(c0)
-    v1: int = _b64_decode_char(c1)
-    v2: int = _b64_decode_char(c2)
-    v3: int = _b64_decode_char(c3)
+    v0: int = _b64DecodeChar(c0)
+    v1: int = _b64DecodeChar(c1)
+    v2: int = _b64DecodeChar(c2)
+    v3: int = _b64DecodeChar(c3)
     if v0 < 0 or v1 < 0:
       raise ValueError("Incorrect padding")
     b0: byte = (v0 << 2) | (v1 >> 4)
@@ -188,29 +188,29 @@ def _b64decode_raw(payload: byte[:]) -> bytes:
 
 
 @immutable
-def _b64decode_view(raw: byte[:]) -> bytes:
-  payload: byte[:] = _filter_b64_payload(raw)
-  return _b64decode_raw(payload)
+def _b64decodeView(raw: byte[:]) -> bytes:
+  payload: byte[:] = _filterB64Payload(raw)
+  return _b64decodeRaw(payload)
 
 
 def b64encode(s: bytes) -> bytes:
   """``bytes`` → Base64 ``bytes``。"""
-  return _b64encode_raw(_bytes_from_decode_data(s))
+  return _b64encodeRaw(_bytesFromDecodeData(s))
 
 
 @overload
 def b64decode(s: str) -> bytes:
-  return _b64decode_view(_bytes_from_decode_text(s))
+  return _b64decodeView(_bytesFromDecodeText(s))
 
 
 @overload
 def b64decode(s: bytes) -> bytes:
   """Base64 ``bytes`` / ASCII ``str`` → 原始 ``bytes``。"""
-  return _b64decode_view(_bytes_from_decode_data(s))
+  return _b64decodeView(_bytesFromDecodeData(s))
 
 
 @immutable
-def _urlsafe_b64swap(out: bytes) -> bytes:
+def _urlsafeB64swap(out: bytes) -> bytes:
   n: int = len(out)
   buf: byte[:] = new(n)
   for i in range(n):
@@ -225,7 +225,7 @@ def _urlsafe_b64swap(out: bytes) -> bytes:
 
 
 @immutable
-def _urlsafe_b64swap_back(raw: byte[:]) -> byte[:]:
+def _urlsafeB64swapBack(raw: byte[:]) -> byte[:]:
   n: int = len(raw)
   buf: byte[:] = new(n)
   for i in range(n):
@@ -239,24 +239,24 @@ def _urlsafe_b64swap_back(raw: byte[:]) -> byte[:]:
   return buf
 
 
-def urlsafe_b64encode(s: bytes) -> bytes:
-  return _urlsafe_b64swap(b64encode(s))
+def urlsafeB64encode(s: bytes) -> bytes:
+  return _urlsafeB64swap(b64encode(s))
 
 
 @overload
-def urlsafe_b64decode(s: str) -> bytes:
-  swapped: byte[:] = _urlsafe_b64swap_back(_bytes_from_decode_text(s))
-  return _b64decode_view(swapped)
+def urlsafeB64decode(s: str) -> bytes:
+  swapped: byte[:] = _urlsafeB64swapBack(_bytesFromDecodeText(s))
+  return _b64decodeView(swapped)
 
 
 @overload
-def urlsafe_b64decode(s: bytes) -> bytes:
-  swapped: byte[:] = _urlsafe_b64swap_back(_bytes_from_decode_data(s))
-  return _b64decode_view(swapped)
+def urlsafeB64decode(s: bytes) -> bytes:
+  swapped: byte[:] = _urlsafeB64swapBack(_bytesFromDecodeData(s))
+  return _b64decodeView(swapped)
 
 
-def encodebytes(s: bytes) -> bytes:
-  """多行 MIME Base64（每段 ``MAXBINSIZE`` 字节 + 换行）。"""
+def encodeBytes(s: bytes) -> bytes:
+  """多行 MIME Base64（每段 ``MaxBinSize`` 字节 + 换行）。"""
   n: int = len(s)
   if not n:
     empty: bytes = b""
@@ -264,16 +264,16 @@ def encodebytes(s: bytes) -> bytes:
   out: byte[:] = new(0)
   at: int = 0
   nl: bytes = b"\n"
-  for i in range(0, n, MAXBINSIZE):
-    end: int = i + MAXBINSIZE
+  for i in range(0, n, MaxBinSize):
+    end: int = i + MaxBinSize
     if end > n:
       end = n
     chunk: bytes = s[i:end]
     line: bytes = b64encode(chunk)
-    line_buf: byte[:] = _bytes_from_decode_data(line)
-    nl_buf: byte[:] = _bytes_from_decode_data(nl)
-    at = _append_bytes(out, at, line_buf, len(line))
-    at = _append_bytes(out, at, nl_buf, 1)
+    lineBuf: byte[:] = _bytesFromDecodeData(line)
+    nlBuf: byte[:] = _bytesFromDecodeData(nl)
+    at = _appendBytes(out, at, lineBuf, len(line))
+    at = _appendBytes(out, at, nlBuf, 1)
   trimmed: byte[:] = new(at)
   for j in range(at):
     trimmed[j] = out[j]

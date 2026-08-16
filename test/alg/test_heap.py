@@ -6,7 +6,7 @@ from py2cpp.alg.heap import Heap, IndexedHeap
 
 
 class HeapMinOrderTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
@@ -24,7 +24,7 @@ class HeapMinOrderTests(TestCaseMixin):
 
 
 class HeapPushPopTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
@@ -39,7 +39,7 @@ class HeapPushPopTests(TestCaseMixin):
 
 
 class IndexedHeapMinOrderTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
@@ -57,7 +57,7 @@ class IndexedHeapMinOrderTests(TestCaseMixin):
 
 
 class IndexedHeapRemoveTests(TestCaseMixin):
-  _test_tag = 21
+  _testTag = 21
 
   @override
   def test(self):
@@ -75,7 +75,7 @@ class IndexedHeapRemoveTests(TestCaseMixin):
 
 
 class IndexedHeapDuplicatePushTests(TestCaseMixin):
-  _test_tag = 22
+  _testTag = 22
 
   @override
   def test(self):
@@ -86,7 +86,7 @@ class IndexedHeapDuplicatePushTests(TestCaseMixin):
 
 
 class IndexedHeapClearTests(TestCaseMixin):
-  _test_tag = 23
+  _testTag = 23
 
   @override
   def test(self):

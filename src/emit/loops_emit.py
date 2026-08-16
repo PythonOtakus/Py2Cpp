@@ -320,7 +320,7 @@ def _iterator_ctor_type(tr: Translator, iter_expr: ast.expr, elem_t: str) -> str
         return stack_it
     if is_py_iterable_type(iter_ty):
         return f'PyIterator<{elem_t}>'
-    return cpp_iterator_type('list_iterator', elem_t)
+    return cpp_iterator_type('ListIterator', elem_t)
 
 def _neighbors_call_list_cpp_type(tr: Translator, call: ast.Call) -> str | None:
     """``nav.neighbors(u)`` 且 ``nav`` 为协议模板形参时，由 ``Node`` 形参/返回值推 ``PyList<…>``。"""
@@ -575,7 +575,7 @@ def _for_enumerate(tr: Translator, node: ast.For) -> None:
             it = temp_name('it')
             res = temp_name('en')
             tuple_var = temp_name('pr')
-            tr.write_line(f"{cpp_ident('enumerate_iterator')}<{elem_t}> {it}({iter_cpp}, {start_s});")
+            tr.write_line(f"{cpp_ident('EnumerateIterator')}<{elem_t}> {it}({iter_cpp}, {start_s});")
             with tr._loop_with_else(node.orelse):
                 with tr._use_block('while (true)'):
                     _emit_iter_next_unpack(tr, it, res, tuple_var, tuple_t)

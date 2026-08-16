@@ -5,7 +5,7 @@ from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 
 class ParallelAssignIntTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
@@ -19,7 +19,7 @@ class ParallelAssignIntTests(TestCaseMixin):
 
 
 class ParallelAssignSwapTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):

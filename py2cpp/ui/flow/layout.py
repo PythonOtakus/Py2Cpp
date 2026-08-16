@@ -1,66 +1,66 @@
 """节点布局、坐标变换与命中检测。"""
 from ...builtins import *
-from .model import FlowGraph, FlowNode, FlowPin, FlowPinKind
+from .model import FlowGraph, FlowNode, FlowPin, FlowPinEnum
 
 
-NODE_WIDTH: int = 240
-TITLE_HEIGHT: int = 34
-ROW_HEIGHT: int = 26
-PIN_HIT_RADIUS: int = 10
-NODE_CORNER_RADIUS: int = 10
-PIN_LABEL_PAD: int = 12
+NodeWidth: int = 240
+TitleHeight: int = 34
+RowHeight: int = 26
+PinHitRadius: int = 10
+NodeCornerRadius: int = 10
+PinLabelPad: int = 12
 
 
-def node_screen_width(zoom: float64) -> int:
-  return int(float64(NODE_WIDTH) * zoom)
+def nodeScreenWidth(zoom: float64) -> int:
+  return int(float64(NodeWidth) * zoom)
 
 
-def node_body_height(pin_rows: int) -> int:
-  if pin_rows < 1:
-    return ROW_HEIGHT
-  return pin_rows * ROW_HEIGHT
+def nodeBodyHeight(pinRows: int) -> int:
+  if pinRows < 1:
+    return RowHeight
+  return pinRows * RowHeight
 
 
-def node_height(pin_count: int) -> int:
-  rows: int = pin_count
+def nodeHeight(pinCount: int) -> int:
+  rows: int = pinCount
   if rows < 1:
     rows = 1
-  return TITLE_HEIGHT + node_body_height(rows)
+  return TitleHeight + nodeBodyHeight(rows)
 
 
-def graph_to_screen(gx: float64, gy: float64, pan_x: float64, pan_y: float64, zoom: float64) -> (float64, float64):
-  sx: float64 = (gx + pan_x) * zoom
-  sy: float64 = (gy + pan_y) * zoom
+def graphToScreen(gx: float64, gy: float64, panX: float64, panY: float64, zoom: float64) -> (float64, float64):
+  sx: float64 = (gx + panX) * zoom
+  sy: float64 = (gy + panY) * zoom
   return sx, sy
 
 
-def screen_to_graph(sx: float64, sy: float64, pan_x: float64, pan_y: float64, zoom: float64) -> (float64, float64):
-  gx: float64 = sx / zoom - pan_x
-  gy: float64 = sy / zoom - pan_y
+def screenToGraph(sx: float64, sy: float64, panX: float64, panY: float64, zoom: float64) -> (float64, float64):
+  gx: float64 = sx / zoom - panX
+  gy: float64 = sy / zoom - panY
   return gx, gy
 
 
-def pin_graph_pos(node: FlowNode @ref, pin_index: int) -> (float64, float64):
+def pinGraphPos(node: FlowNode @ref, pinIndex: int) -> (float64, float64):
   rows: int = len(node.pins)
   if rows < 1:
     rows = 1
-  h: int = node_height(rows)
-  pin: FlowPin = node.pins[pin_index]
-  py: float64 = node.y + float64(TITLE_HEIGHT) + float64(ROW_HEIGHT) * (float64(pin_index) + 0.5)
+  h: int = nodeHeight(rows)
+  pin: FlowPin = node.pins[pinIndex]
+  py: float64 = node.y + float64(TitleHeight) + float64(RowHeight) * (float64(pinIndex) + 0.5)
   px: float64 = node.x
-  if pin.kind in {FlowPinKind.ExecOut, FlowPinKind.DataOut}:
-    px = node.x + float64(NODE_WIDTH)
+  if pin.kind in {FlowPinEnum.ExecOut, FlowPinEnum.DataOut}:
+    px = node.x + float64(NodeWidth)
   return px, py
 
 
-def node_contains(node: FlowNode @ref, gx: float64, gy: float64) -> bool:
+def nodeContains(node: FlowNode @ref, gx: float64, gy: float64) -> bool:
   rows: int = len(node.pins)
   if rows < 1:
     rows = 1
-  h: int = node_height(rows)
+  h: int = nodeHeight(rows)
   if gx < node.x:
     return False
-  if gx > node.x + float64(NODE_WIDTH):
+  if gx > node.x + float64(NodeWidth):
     return False
   if gy < node.y:
     return False
@@ -69,7 +69,7 @@ def node_contains(node: FlowNode @ref, gx: float64, gy: float64) -> bool:
   return True
 
 
-def _rects_overlap(
+def _rectsOverlap(
   ax: float64,
   ay: float64,
   aw: float64,
@@ -90,7 +90,7 @@ def _rects_overlap(
   return True
 
 
-def nodes_in_graph_rect(
+def nodesInGraphRect(
   graph: FlowGraph @ref,
   gx1: float64,
   gy1: float64,
@@ -112,31 +112,31 @@ def nodes_in_graph_rect(
     rows: int = len(node.pins)
     if rows < 1:
       rows = 1
-    if _rects_overlap(rx, ry, rw, rh, node.x, node.y, float64(NODE_WIDTH), float64(node_height(rows))):
+    if _rectsOverlap(rx, ry, rw, rh, node.x, node.y, float64(NodeWidth), float64(nodeHeight(rows))):
       out.append(node.id)
   return out
 
 
-def hit_test_pin(graph: FlowGraph @ref, gx: float64, gy: float64) -> int:
+def hitTestPin(graph: FlowGraph @ref, gx: float64, gy: float64) -> int:
   best: int = -1
-  best_d2: float64 = float64(PIN_HIT_RADIUS * PIN_HIT_RADIUS) + 1.0
+  bestD2: float64 = float64(PinHitRadius * PinHitRadius) + 1.0
   for node in graph.nodes:
     pi: int = 0
     for _ in node.pins:
-      px, py = pin_graph_pos(node, pi)
+      px, py = pinGraphPos(node, pi)
       dx: float64 = gx - px
       dy: float64 = gy - py
       d2: float64 = dx * dx + dy * dy
-      if d2 <= float64(PIN_HIT_RADIUS * PIN_HIT_RADIUS) and d2 < best_d2:
-        best_d2 = d2
+      if d2 <= float64(PinHitRadius * PinHitRadius) and d2 < bestD2:
+        bestD2 = d2
         best = node.pins[pi].id
       pi += 1
   return best
 
 
-def hit_test_node(graph: FlowGraph @ref, gx: float64, gy: float64) -> int:
+def hitTestNode(graph: FlowGraph @ref, gx: float64, gy: float64) -> int:
   best: int = -1
   for node in graph.nodes:
-    if node_contains(node, gx, gy):
+    if nodeContains(node, gx, gy):
       best = node.id
   return best

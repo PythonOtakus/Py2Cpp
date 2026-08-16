@@ -7,7 +7,7 @@ PY2CPP_END
 
 PY2CPP_BEGIN_SCOPE
 
-PyUInt64 numeric_ratio_float64_bits(PyFloat64 x)
+PyUInt64 numeric_ratio_float64Bits(PyFloat64 x)
 {
   union
   {

@@ -1,7 +1,7 @@
-# Serde `Document`：部分访问与增删改查规范
+# Serde `DocumentType`：部分访问与增删改查规范
 
 > **状态**：P1 已落地（`JsonDocument` + **`JsonDocCursor` 懒节点** + 通用 **`__getattr__`/`set_field`** 派发）；非译期零成本 IIFE  
-> **约束**：符合 [编码规范.md](./编码规范.md)；复用 `Encoder`/`Decoder`、`@serializable`；不引入 STL；**暂不支持动态路径**。
+> **约束**：符合 [编码规范.md](./编码规范.md)；复用 `EncoderType`/`DecoderType`、`@serializable`；不引入 STL；**暂不支持动态路径**。
 
 ---
 
@@ -11,7 +11,7 @@
 
 1. **根类型 `T` 与全量 API 一致**（`Json.loads[T]` / `Json.load[T]` 同款 `T`）。
 2. **字段链 / 下标写法与内存对象相同**（`doc.teams[0].name`，无 `get(path)`）。
-3. **格式可扩展**：`Document` 为 `@protocol`；JSON 首实现为 **`JsonDocument`**。
+3. **格式可扩展**：`DocumentType` 为 `@protocol`；JSON 首实现为 **`JsonDocument`**。
 4. **全量读写命名与 `Json` 对齐**：`load()` / `dump()`（非 `materialize` / `snapshot`）。
 
 ---
@@ -19,7 +19,7 @@
 ## 2. 类型分层
 
 ```text
-@protocol Document          # 对外契约（无 C++ 类体）
+@protocol DocumentType          # 对外契约（无 C++ 类体）
        ↑ 结构实现
 @JsonDocument[T]            # 具体类（JSON 后端；方法写在 json.py）
        ↓ __getattr__ / __getitem__
@@ -30,27 +30,27 @@ JsonDecoder + patch helper  # 格式相关（``json.py`` 纯 Python → ``json.i
 
 | 层 | 形态 | 说明 |
 |----|------|------|
-| **`Document`** | `@protocol` | 仅 `...` 声明；供 `def f[D: Document]` 约束；**不**作继承基类 |
+| **`DocumentType`** | `@protocol` | 仅 `...` 声明；供 `def f[D: DocumentType]` 约束；**不**作继承基类 |
 | **`JsonDocument[T]`** | `@dataclass` + `@copyable` 具体类 | 唯一入口 `JsonDocument[T].open(path, mode)`（谁泛型谁传参）；持有 `text`/`dec`/dirty；`dump`/`commit`/`discard`/`__enter__` 等同模块实现 |
 | **`JsonDocCursor[T]`** | `@dataclass` + `@copyable` | 懒节点：`__getattr__`/`__getitem__` 延长路径；`read_*`/`set_field`/`append`/`__delitem__` 调 ``json.py`` helper |
 
 未来其它格式（示例）：
 
 ```text
-YamlDocument[T]   # 平行 @dataclass + YamlDecoder backend，同样实现 Document 方法集
+YamlDocument[T]   # 平行 @dataclass + YamlDecoder backend，同样实现 DocumentType 方法集
 ```
 
-同样实现 `Document` 协议方法集，**不**扩展 `open_read` / `open_write` 等别名。
+同样实现 `DocumentType` 协议方法集，**不**扩展 `open_read` / `open_write` 等别名。
 
 ---
 
-## 3. `Document` 协议（唯一入口 + 与 Json 对称）
+## 3. `DocumentType` 协议（唯一入口 + 与 Json 对称）
 
-定义于 `py2cpp/serde/protocols.py`（与 `Encoder` / `Decoder` 并列）：
+定义于 `py2cpp/serde/protocols.py`（与 `EncoderType` / `DecoderType` 并列）：
 
 ```python
 @protocol
-class Document:
+class DocumentType:
   """持久化文档的部分访问；具体实现如 ``JsonDocument``。"""
 
   @staticmethod
@@ -92,11 +92,11 @@ doc: JsonDocument[Org] = JsonDocument[Org].open(Path("org.json"), "r")
 | `mode` | `"r"` 只读；`"r+"` 读写；`"w"` 截断写（与 `open` 子集一致，首版可实现 `r` / `r+`） |
 | `T` | 根类型，与 `Json.loads[T]` / `Json.load[T]` **相同** |
 
-**禁止**：`open_read` / `open_write` / `Document.with_format(...)` 等第二入口。
+**禁止**：`open_read` / `open_write` / `DocumentType.with_format(...)` 等第二入口。
 
 ### 3.2 `load` / `dump` 与全量 API 对照
 
-| 全量（现有） | Document | 语义 |
+| 全量（现有） | DocumentType | 语义 |
 |--------------|----------|------|
 | `Json.loads[T](s)` | `doc.load()` | 全量解析 → `T`（`doc` 已注解 `JsonDocument[T]`） |
 | `Json.load[T](fp)` | `JsonDocument[T].open(path, "r").load()` | 读文件 + 全量 |
@@ -182,8 +182,8 @@ del doc.deprecated_field
 
 | 文件 | 内容 |
 |------|------|
-| `py2cpp/serde/protocols.py` | `@protocol Document` |
-| `py2cpp/serde/json.py` | `@dataclass JsonDocument[T]`、`JsonDocCursor[T]`、`JsonDocStep` |
+| `py2cpp/serde/protocols.py` | `@protocol DocumentType` |
+| `py2cpp/serde/json.py` | `@dataclass JsonDocument[T]`、`JsonDocCursor[T]`、`JsonDocStepUnion` |
 | `py2cpp/serde/json.py` | ``JsonDocument`` / ``JsonDocCursor`` navigate / patch / commit（纯 Python，译器生成 ``json.inl``） |
 | `src/translator.py` | 通用 **`__getattr__` 派发**、`set_field` 赋值、`JsonDocCursor`→标量 **`read_*` 强制**（非 JSON 特判 pass） |
 
@@ -191,7 +191,7 @@ del doc.deprecated_field
 
 ```python
 @protocol
-class Document:
+class DocumentType:
   ...
 
 @copyable
@@ -229,7 +229,7 @@ class JsonDocument[T]:
 
 - **`JsonDocument.__getattr__(name)`** → 根 cursor（追加字段步）
 - **`cursor[i]` / `cursor.field`** → 延长 `steps`
-- **读**：`read_str()` / `read_int()` / `read_bool()`（赋值/`assertEqual` 对标量时译器插入 `.read_*()`）
+- **读**：`readStr()` / `readInt()` / `readBool()`（赋值/`assertEqual` 对标量时译器插入 `.read_*()`）
 - **改**：`cursor.field = v` → **`set_field`**
 - **删**：`del cursor[i]`
 - **增**：`cursor.append(item)`（list 末级）
@@ -242,11 +242,11 @@ class JsonDocument[T]:
 
 | 能力 | 复用 |
 |------|------|
-| 扫描 / 跳过 | `JsonDecoder.skip_value` / `skip_field` / `try_match_key` |
+| 扫描 / 跳过 | `JsonDecoder.skipValue` / `skipField` / `tryMatchKey` |
 | 读子树 | `load_*` / `User.deserialize(dec)` |
-| 写片段 | `Json.dumps` / `JsonEncoder` / `util.memory.fast_encode` |
+| 写片段 | `Json.dumps` / `JsonEncoder` / `util.memory.fastEncode` |
 | 全量 `load()` | 现有 `Json.loads` 类型 if 链 |
-| patch 提交 | ``json.py``：``Path.write_text`` + ``io.file.replace``（原子替换） |
+| patch 提交 | ``json.py``：``Path.writeText`` + ``io.file.replace``（原子替换） |
 
 首版存储假定：**紧凑 JSON**（`indent==0`、键无转义）；pretty / 乱序键 **回退** `load()` + 内存改 + `commit()` 整文件写（行为正确，性能不保证）。
 
@@ -296,7 +296,7 @@ class JsonDocument[T]:
 
 | 阶段 | 内容 |
 |------|------|
-| **P0** | `TextIOWrapper.read(-1)` EOF；`Document` 协议 + `JsonDocument.open` + `load()` ≡ `loads` |
+| **P0** | `TextIOWrapper.read(-1)` EOF；`DocumentType` 协议 + `JsonDocument.open` + `load()` ≡ `loads` |
 | **P1** | 只读字段链（`View` + `@serializable` codegen）；`dump()` |
 | **P2** | `r+` 增删改 + `commit` / `with` |
 | **P3** | sidecar 索引、perf |

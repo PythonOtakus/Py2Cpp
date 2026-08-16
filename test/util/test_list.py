@@ -4,12 +4,12 @@ from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 
-def _neg_key(v: int) -> int:
+def _negKey(v: int) -> int:
   return -v
 
 
 class ListBasicsTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
@@ -31,7 +31,7 @@ class ListBasicsTests(TestCaseMixin):
 
 
 class ContainerMoveAssignTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
@@ -50,7 +50,7 @@ class ContainerMoveAssignTests(TestCaseMixin):
 
 
 class ListAppendExtendTests(TestCaseMixin):
-  _test_tag = 30
+  _testTag = 30
 
   @override
   def test(self):
@@ -71,7 +71,7 @@ class ListAppendExtendTests(TestCaseMixin):
 
 
 class ListInsertPopRemoveTests(TestCaseMixin):
-  _test_tag = 40
+  _testTag = 40
 
   @override
   def test(self):
@@ -95,7 +95,7 @@ class ListInsertPopRemoveTests(TestCaseMixin):
 
 
 class ListDelTests(TestCaseMixin):
-  _test_tag = 50
+  _testTag = 50
 
   @override
   def test(self):
@@ -110,7 +110,7 @@ class ListDelTests(TestCaseMixin):
 
 
 class ListSearchTests(TestCaseMixin):
-  _test_tag = 60
+  _testTag = 60
 
   @override
   def test(self):
@@ -126,7 +126,7 @@ class ListSearchTests(TestCaseMixin):
 
 
 class ListSortReverseTests(TestCaseMixin):
-  _test_tag = 70
+  _testTag = 70
 
   @override
   def test(self):
@@ -140,7 +140,7 @@ class ListSortReverseTests(TestCaseMixin):
     self.assertEqual(ys[0], 4)
     self.assertEqual(ys[2], 1)
     zs: list[int] = [1, 2, 3]
-    zs.sort(_neg_key, False)
+    zs.sort(_negKey, False)
     self.assertEqual(zs[0], 3)
     self.assertEqual(zs[2], 1)
     rev: list[int] = [1, 2, 3, 4]
@@ -150,7 +150,7 @@ class ListSortReverseTests(TestCaseMixin):
 
 
 class ListSliceTests(TestCaseMixin):
-  _test_tag = 80
+  _testTag = 80
 
   @override
   def test(self):
@@ -172,7 +172,7 @@ class ListSliceTests(TestCaseMixin):
 
 
 class ListAlgebraTests(TestCaseMixin):
-  _test_tag = 90
+  _testTag = 90
 
   @override
   def test(self):
@@ -235,7 +235,7 @@ class EmptySeq:
 
 
 class DefaultSeqIterTests(TestCaseMixin):
-  _test_tag = 100
+  _testTag = 100
 
   @override
   def test(self):
@@ -250,14 +250,14 @@ class DefaultSeqIterTests(TestCaseMixin):
     self.assertTrue(s)
     e: EmptySeq = new()
     self.assertFalse(e)
-    empty_sum: int = 0
+    emptySum: int = 0
     for v in e:
-      empty_sum += v
-    self.assertEqual(empty_sum, 0)
+      emptySum += v
+    self.assertEqual(emptySum, 0)
 
 
 class ListIterTests(TestCaseMixin):
-  _test_tag = 110
+  _testTag = 110
 
   @override
   def test(self):
@@ -269,44 +269,44 @@ class ListIterTests(TestCaseMixin):
       s += x
     self.assertEqual(n, 3)
     self.assertEqual(s, 6)
-    rev_sum: int = 0
+    revSum: int = 0
     rev: list[int] = xs[::-1]
     for val in rev:
-      rev_sum += val
-    self.assertEqual(rev_sum, 6)
+      revSum += val
+    self.assertEqual(revSum, 6)
     acc: list[int] = []
     for val in xs:
       acc.append(val)
     self.assertEqual(len(acc), 3)
     self.assertEqual(acc[0], 1)
     self.assertEqual(acc[2], 3)
-    rev_builtin: int = 0
+    revBuiltin: int = 0
     for x in reversed(xs):
-      rev_builtin += x
-    self.assertEqual(rev_builtin, 6)
+      revBuiltin += x
+    self.assertEqual(revBuiltin, 6)
 
 
 class ListEnumerateTests(TestCaseMixin):
-  _test_tag = 115
+  _testTag = 115
 
   @override
   def test(self):
     xs: list[int] = [10, 20, 30]
-    sum_idx: int = 0
+    sumIdx: int = 0
     for i, x in enumerate(xs):
-      sum_idx += i + x
-    self.assertEqual(sum_idx, 63)
-    last_idx: int = 0
+      sumIdx += i + x
+    self.assertEqual(sumIdx, 63)
+    lastIdx: int = 0
     for idx, x in enumerate(xs, 10):
-      last_idx = idx
-    self.assertEqual(last_idx, 12)
+      lastIdx = idx
+    self.assertEqual(lastIdx, 12)
     comp: list[int] = [x for i, x in enumerate(xs) if i > 0]
     self.assertEqual(len(comp), 2)
     self.assertEqual(comp[0], 20)
 
 
 class ListStrTests(TestCaseMixin):
-  _test_tag = 120
+  _testTag = 120
 
   @override
   def test(self):
@@ -325,7 +325,7 @@ class ListStrTests(TestCaseMixin):
 
 
 class ListLiteralTests(TestCaseMixin):
-  _test_tag = 130
+  _testTag = 130
 
   @override
   def test(self):
@@ -336,7 +336,7 @@ class ListLiteralTests(TestCaseMixin):
 
 
 class ListUnpackTests(TestCaseMixin):
-  _test_tag = 140
+  _testTag = 140
 
   @override
   def test(self):
@@ -353,7 +353,7 @@ class ListUnpackTests(TestCaseMixin):
 
 
 class ListComprehensionTests(TestCaseMixin):
-  _test_tag = 150
+  _testTag = 150
 
   @override
   def test(self):
@@ -371,7 +371,7 @@ class ListComprehensionTests(TestCaseMixin):
 
 
 class FrozenListTests(TestCaseMixin):
-  _test_tag = 208
+  _testTag = 208
 
   @override
   def test(self):
@@ -389,8 +389,8 @@ class FrozenListTests(TestCaseMixin):
     other: frozenlist[int] = [1, 2, 3]
     self.assertTrue(fl == other)
     lit: frozenlist[int] = [4, 5, 6]
-    from_list: list[int] = [1, 2]
-    comp: frozenlist[int] = [x + 10 for x in from_list]
+    fromList: list[int] = [1, 2]
+    comp: frozenlist[int] = [x + 10 for x in fromList]
     self.assertEqual(len(comp), 2)
     self.assertEqual(comp[0], 11)
     self.assertEqual(len(lit), 3)
@@ -399,7 +399,7 @@ class FrozenListTests(TestCaseMixin):
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

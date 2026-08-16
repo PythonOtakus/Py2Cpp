@@ -1,6 +1,6 @@
 """``set[T]`` / ``frozenset[T]``：无序哈希集合（CPython 3.13 子集）。
 
-``FrozenSetMixin`` 为二者共享核心；``frozenset_entry`` 为共用桶节点。
+``FrozenSetMixin`` 为二者共享核心；``FrozenSetEntryUnsafe`` 为共用桶节点。
 仅支持正向 ``__iter__``（桶链顺序，非插入序），**无** ``__reversed__``。
 ``set``：可变；空 ``set()`` / 非空 ``{…}``（勿用 ``{}``，那是 ``dict``）。
 ``frozenset``：不可变；``frozenset()``、``{…}``、``frozenset(iterable)``。
@@ -9,50 +9,49 @@ from ..builtins import *
 from .list import list
 from ..core.exceptions import KeyError, StopIteration, ValueError
 from .mixins import ContainerMixin
-from .protocols import DictKey
+from .protocols import DictKeyType
 
 
 @boxing
-@native_name("PyFrozenSetEntry")
-class frozenset_entry[T: DictKey]:
-  def __init__(self, key: T, next_entry: Self):
-    self.key: T = key
-    self.next: Self = next_entry
+class FrozenSetEntryUnsafe[Element: DictKeyType]:
+  def __init__(self, key: Element, nextEntry: Self):
+    self.key: Element = key
+    self.next: Self = nextEntry
 
 
 @mixin
-class FrozenSetMixin[T: DictKey]:
+class FrozenSetMixin[Element: DictKeyType]:
   """无序哈希集合核心；宿主须声明 ``_capacity``、``_size``、``_buckets`` 并在 ``__init__`` 中初始化。"""
 
   def __del__(self):
-    self._clear_entries()
+    self._clearEntries()
 
   def __copy__(self, other: Self):
-    self._ensure_active()
+    self._ensureActive()
     if other.__moved__:
       raise ValueError("move from moved container")
     if self._size > 0:
-      self._clear_entries()
+      self._clearEntries()
     else:
       self._size = 0
     self._capacity = other._capacity
     self._buckets = new(self._capacity)
     for b in range(other._capacity):
-      cur: frozenset_entry[T] = other._buckets[b]
+      cur: FrozenSetEntryUnsafe[Element] = other._buckets[b]
       while cur is not None:
-        self._insert_new(cur.key)
+        self._insertNew(cur.key)
         cur = cur.next
 
   def __move__(self, other: Self):
-    self._ensure_active()
+    self._ensureActive()
     if other.__moved__:
       raise ValueError("move from moved container")
     if self._size > 0:
-      self._clear_entries()
+      self._clearEntries()
     self._capacity = other._capacity
     self._size = other._size
     self._buckets = other._buckets
-    other._reset_after_move()
+    other._resetAfterMove()
 
   @immutable
   def __bool__(self) -> bool:
@@ -64,7 +63,7 @@ class FrozenSetMixin[T: DictKey]:
     if c:
       return c
     for b in range(self._capacity):
-      cur: frozenset_entry[T] = self._buckets[b]
+      cur: FrozenSetEntryUnsafe[Element] = self._buckets[b]
       while cur is not None:
         if cur.key not in other:
           return 1
@@ -73,21 +72,21 @@ class FrozenSetMixin[T: DictKey]:
 
   @immutable
   def __len__(self) -> int:
-    self._ensure_active()
+    self._ensureActive()
     return self._size
 
   @immutable
-  def __contains__(self, key: T) -> bool:
-    return self._find_node(key) is not None
+  def __contains__(self, key: Element) -> bool:
+    return self._findNode(key) is not None
 
   @immutable
   def __sub__(self, other: Self) -> Self:
     out: Self = new()
     for b in range(self._capacity):
-      cur: frozenset_entry[T] = self._buckets[b]
+      cur: FrozenSetEntryUnsafe[Element] = self._buckets[b]
       while cur is not None:
         if cur.key not in other:
-          out._insert_new(cur.key)
+          out._insertNew(cur.key)
         cur = cur.next
     return out
 
@@ -95,10 +94,10 @@ class FrozenSetMixin[T: DictKey]:
   def __and__(self, other: Self) -> Self:
     out: Self = new()
     for b in range(self._capacity):
-      cur: frozenset_entry[T] = self._buckets[b]
+      cur: FrozenSetEntryUnsafe[Element] = self._buckets[b]
       while cur is not None:
         if cur.key in other:
-          out._insert_new(cur.key)
+          out._insertNew(cur.key)
         cur = cur.next
     return out
 
@@ -106,14 +105,14 @@ class FrozenSetMixin[T: DictKey]:
   def __or__(self, other: Self) -> Self:
     out: Self = new()
     for b in range(self._capacity):
-      cur: frozenset_entry[T] = self._buckets[b]
+      cur: FrozenSetEntryUnsafe[Element] = self._buckets[b]
       while cur is not None:
-        out._insert_new(cur.key)
+        out._insertNew(cur.key)
         cur = cur.next
     for b in range(other._capacity):
-      cur: frozenset_entry[T] = other._buckets[b]
+      cur: FrozenSetEntryUnsafe[Element] = other._buckets[b]
       while cur is not None:
-        out._insert_new(cur.key)
+        out._insertNew(cur.key)
         cur = cur.next
     return out
 
@@ -121,23 +120,23 @@ class FrozenSetMixin[T: DictKey]:
   def __xor__(self, other: Self) -> Self:
     out: Self = new()
     for b in range(self._capacity):
-      cur: frozenset_entry[T] = self._buckets[b]
+      cur: FrozenSetEntryUnsafe[Element] = self._buckets[b]
       while cur is not None:
         if cur.key not in other:
-          out._insert_new(cur.key)
+          out._insertNew(cur.key)
         cur = cur.next
     for b in range(other._capacity):
-      cur: frozenset_entry[T] = other._buckets[b]
+      cur: FrozenSetEntryUnsafe[Element] = other._buckets[b]
       while cur is not None:
         if cur.key not in self:
-          out._insert_new(cur.key)
+          out._insertNew(cur.key)
         cur = cur.next
     return out
 
   @immutable
-  def issubset(self, other: Self) -> bool:
+  def isSubset(self, other: Self) -> bool:
     for b in range(self._capacity):
-      cur: frozenset_entry[T] = self._buckets[b]
+      cur: FrozenSetEntryUnsafe[Element] = self._buckets[b]
       while cur is not None:
         if cur.key not in other:
           return False
@@ -145,78 +144,78 @@ class FrozenSetMixin[T: DictKey]:
     return True
 
   @immutable
-  def issuperset(self, other: Self) -> bool:
-    return other.issubset(self)
+  def isSuperset(self, other: Self) -> bool:
+    return other.isSubset(self)
 
   @immutable
-  def isdisjoint(self, other: Self) -> bool:
+  def isDisjoint(self, other: Self) -> bool:
     for b in range(self._capacity):
-      cur: frozenset_entry[T] = self._buckets[b]
+      cur: FrozenSetEntryUnsafe[Element] = self._buckets[b]
       while cur is not None:
         if cur.key in other:
           return False
         cur = cur.next
     return True
 
-  def _clear_entries(self):
+  def _clearEntries(self):
     for b in range(self._capacity):
-      cur: frozenset_entry[T] = self._buckets[b]
+      cur: FrozenSetEntryUnsafe[Element] = self._buckets[b]
       while cur is not None:
-        nxt: frozenset_entry[T] = cur.next
-        self._free_entry(cur)
+        nxt: FrozenSetEntryUnsafe[Element] = cur.next
+        self._freeEntry(cur)
         cur = nxt
       self._buckets[b] = None
     self._size = 0
 
   @immutable
-  def _find_node(self, key: T) -> frozenset_entry[T]:
+  def _findNode(self, key: Element) -> FrozenSetEntryUnsafe[Element]:
     idx: int = self._index(key)
-    cur: frozenset_entry[T] = self._buckets[idx]
+    cur: FrozenSetEntryUnsafe[Element] = self._buckets[idx]
     while cur is not None:
       if cur.key == key:
         return cur
       cur = cur.next
     return None
 
-  def _free_entry(self, node: frozenset_entry[T]):
+  def _freeEntry(self, node: FrozenSetEntryUnsafe[Element]):
     destroy(node)
     free(node)
 
   @immutable
-  def _index(self, key: T) -> int:
+  def _index(self, key: Element) -> int:
     h: int = key
     if h < 0:
       h = -h
     return h % self._capacity
 
-  def _insert_new(self, key: T) -> None:
-    self._ensure_active()
-    if self._find_node(key) is not None:
+  def _insertNew(self, key: Element) -> None:
+    self._ensureActive()
+    if self._findNode(key) is not None:
       return
     idx: int = self._index(key)
-    entry = frozenset_entry[T](key, self._buckets[idx])
+    entry = FrozenSetEntryUnsafe[Element](key, self._buckets[idx])
     self._buckets[idx] = entry
     self._size += 1
 
-  def _reset_after_move(self):
+  def _resetAfterMove(self):
     self._size = 0
     self._buckets = new(self._capacity)
 
 
 @mixin
-class FrozenSetIteratorMixin[T: DictKey]:
+class FrozenSetIteratorMixin[Element: DictKeyType]:
   """桶链正向迭代；宿主 ``__init__`` 须设 ``_owner``、``_bucket=0``、``_skip=0``。"""
 
   def __iter__(self):
     return self
 
-  def __next__(self) -> T:
+  def __next__(self) -> Element:
     for b in range(self._bucket, self._owner._capacity):
-      cur: frozenset_entry[T] = self._owner._buckets[b]
+      cur: FrozenSetEntryUnsafe[Element] = self._owner._buckets[b]
       n: int = 0
       while cur:
         if n >= self._skip:
-          key: T = cur.key
+          key: Element = cur.key
           self._bucket = b
           self._skip += 1
           return key
@@ -227,33 +226,30 @@ class FrozenSetIteratorMixin[T: DictKey]:
     raise StopIteration
 
 
-@native_name("PySetReverseIterator")
-class set_reverse_iterator[T: DictKey]:
-  """类型名占位；``set`` 无 ``__reversed__``，供 ``new(set_reverse_iterator[T])`` 等派发。"""
+class SetReverseIterator[Element: DictKeyType]:
+  """类型名占位；``set`` 无 ``__reversed__``，供 ``new(SetReverseIterator[T])`` 等派发。"""
 
   pass
 
 
-@native_name("PySetIterator")
-class set_iterator[T: DictKey](FrozenSetIteratorMixin[T]):
-  def __init__(self, owner: set[T]):
-    self._owner: set[T] = owner
+class SetIterator[Element: DictKeyType](FrozenSetIteratorMixin[Element]):
+  def __init__(self, owner: set[Element]):
+    self._owner: set[Element] = owner
     self._bucket: int = 0
     self._skip: int = 0
 
 
-@native_name("PySet")
-class set[T: DictKey](
-  FrozenSetMixin[T],
+class set[Element: DictKeyType](
+  FrozenSetMixin[Element],
   ContainerMixin,
-  friends=(set_iterator,),
+  friends=(SetIterator,),
 ):
   __repr__ = __str__
 
   def __init__(self):
     self._capacity: int = 8
     self._size: int = 0
-    self._buckets: frozenset_entry[T][:] = new(self._capacity)
+    self._buckets: FrozenSetEntryUnsafe[Element][:] = new(self._capacity)
 
   @immutable
   def __str__(self) -> str:
@@ -262,7 +258,7 @@ class set[T: DictKey](
     out: str = "{"
     first: bool = True
     for b in range(self._capacity):
-      cur: frozenset_entry[T] = self._buckets[b]
+      cur: FrozenSetEntryUnsafe[Element] = self._buckets[b]
       while cur is not None:
         if not first:
           out += ", "
@@ -272,7 +268,7 @@ class set[T: DictKey](
     return out + "}"
 
   @immutable
-  def __iter__(self) -> set_iterator[T]:
+  def __iter__(self) -> SetIterator[Element]:
     return new(self)
 
   @property
@@ -293,9 +289,9 @@ class set[T: DictKey](
     self._rehash(value)
 
   def __isub__(self, other: Self) -> Self:
-    scratch: list[T] = []
+    scratch: list[Element] = []
     for b in range(self._capacity):
-      cur: frozenset_entry[T] = self._buckets[b]
+      cur: FrozenSetEntryUnsafe[Element] = self._buckets[b]
       while cur is not None:
         if cur.key in other:
           scratch.append(cur.key)
@@ -305,9 +301,9 @@ class set[T: DictKey](
     return self
 
   def __iand__(self, other: Self) -> Self:
-    scratch: list[T] = []
+    scratch: list[Element] = []
     for b in range(self._capacity):
-      cur: frozenset_entry[T] = self._buckets[b]
+      cur: FrozenSetEntryUnsafe[Element] = self._buckets[b]
       while cur is not None:
         if cur.key not in other:
           scratch.append(cur.key)
@@ -322,7 +318,7 @@ class set[T: DictKey](
 
   def __ixor__(self, other: Self) -> Self:
     for b in range(other._capacity):
-      cur: frozenset_entry[T] = other._buckets[b]
+      cur: FrozenSetEntryUnsafe[Element] = other._buckets[b]
       while cur is not None:
         if cur.key in self:
           self.remove(cur.key)
@@ -331,65 +327,65 @@ class set[T: DictKey](
         cur = cur.next
     return self
 
-  def add(self, key: T) -> None:
-    self._ensure_active()
-    if self._find_node(key) is not None:
+  def add(self, key: Element) -> None:
+    self._ensureActive()
+    if self._findNode(key) is not None:
       return
     idx: int = self._index(key)
-    entry = frozenset_entry[T](key, self._buckets[idx])
+    entry = FrozenSetEntryUnsafe[Element](key, self._buckets[idx])
     self._buckets[idx] = entry
     self._size += 1
-    self._maybe_grow()
+    self._maybeGrow()
 
   def clear(self) -> None:
-    self._clear_entries()
+    self._clearEntries()
 
   @immutable
   def copy(self) -> Self:
-    self._ensure_active()
+    self._ensureActive()
     out: Self = new()
     out.update(self)
     return out
 
-  def discard(self, key: T) -> None:
+  def discard(self, key: Element) -> None:
     if key not in self:
       return
-    self._erase_key(key)
+    self._eraseKey(key)
 
-  def pop(self) -> T:
+  def pop(self) -> Element:
     if self._size == 0:
       raise KeyError("pop")
     for b in range(self._capacity):
-      cur: frozenset_entry[T] = self._buckets[b]
+      cur: FrozenSetEntryUnsafe[Element] = self._buckets[b]
       if cur is not None:
-        key: T = cur.key
-        self._erase_key(key)
+        key: Element = cur.key
+        self._eraseKey(key)
         return key
     raise KeyError("pop")
 
-  def remove(self, key: T) -> None:
+  def remove(self, key: Element) -> None:
     if key not in self:
       raise KeyError("remove")
-    self._erase_key(key)
+    self._eraseKey(key)
 
   def update(self, other: Self) -> None:
     for b in range(other._capacity):
-      cur: frozenset_entry[T] = other._buckets[b]
+      cur: FrozenSetEntryUnsafe[Element] = other._buckets[b]
       while cur is not None:
         self.add(cur.key)
         cur = cur.next
 
-  def _erase_key(self, key: T):
+  def _eraseKey(self, key: Element):
     idx: int = self._index(key)
-    prev: frozenset_entry[T] = None
-    cur: frozenset_entry[T] = self._buckets[idx]
+    prev: FrozenSetEntryUnsafe[Element] = None
+    cur: FrozenSetEntryUnsafe[Element] = self._buckets[idx]
     while cur is not None:
       if cur.key == key:
         if prev is None:
           self._buckets[idx] = cur.next
         else:
           prev.next = cur.next
-        self._free_entry(cur)
+        self._freeEntry(cur)
         self._size -= 1
         return
       prev = cur
@@ -397,51 +393,50 @@ class set[T: DictKey](
     raise KeyError("key not found")
 
   @immutable
-  def _load_limit(self) -> int:
+  def _loadLimit(self) -> int:
     return (self._capacity * 2) // 3 + 1
 
-  def _maybe_grow(self):
-    if self._size < self._load_limit():
+  def _maybeGrow(self):
+    if self._size < self._loadLimit():
       return
-    new_cap: int = self._capacity * 2
-    if new_cap < 8:
-      new_cap = 8
-    self._rehash(new_cap)
+    newCap: int = self._capacity * 2
+    if newCap < 8:
+      newCap = 8
+    self._rehash(newCap)
 
-  def _rehash(self, new_cap: int):
-    scratch: list[T] = []
+  def _rehash(self, newCap: int):
+    scratch: list[Element] = []
     for b in range(self._capacity):
-      cur: frozenset_entry[T] = self._buckets[b]
+      cur: FrozenSetEntryUnsafe[Element] = self._buckets[b]
       while cur is not None:
         scratch.append(cur.key)
         cur = cur.next
-    self._clear_entries()
-    self._capacity = new_cap
-    self._buckets = new(new_cap)
+    self._clearEntries()
+    self._capacity = newCap
+    self._buckets = new(newCap)
     for i in range(len(scratch)):
       self.add(scratch[i])
 
 
-@native_name("PyFrozenSetIterator")
-class frozenset_iterator[T: DictKey](FrozenSetIteratorMixin[T]):
-  def __init__(self, fs: frozenset[T]):
-    self._owner: frozenset[T] = fs
+class FrozenSetIterator[Element: DictKeyType](FrozenSetIteratorMixin[Element]):
+  def __init__(self, fs: frozenset[Element]):
+    self._owner: frozenset[Element] = fs
     self._bucket: int = 0
     self._skip: int = 0
 
 
 @native_name("PyFrozenSet")
-class frozenset[T: DictKey](
-  FrozenSetMixin[T],
+class frozenset[Element: DictKeyType](
+  FrozenSetMixin[Element],
   ContainerMixin,
-  friends=(frozenset_iterator,),
+  friends=(FrozenSetIterator,),
 ):
   __repr__ = __str__
 
   def __init__(self):
     self._capacity: int = 8
     self._size: int = 0
-    self._buckets: frozenset_entry[T][:] = new(self._capacity)
+    self._buckets: FrozenSetEntryUnsafe[Element][:] = new(self._capacity)
 
   @immutable
   def __str__(self) -> str:
@@ -450,7 +445,7 @@ class frozenset[T: DictKey](
     out: str = "frozenset({"
     first: bool = True
     for b in range(self._capacity):
-      cur: frozenset_entry[T] = self._buckets[b]
+      cur: FrozenSetEntryUnsafe[Element] = self._buckets[b]
       while cur is not None:
         if not first:
           out += ", "
@@ -460,7 +455,7 @@ class frozenset[T: DictKey](
     return out + "})"
 
   @immutable
-  def __iter__(self) -> frozenset_iterator[T]:
+  def __iter__(self) -> FrozenSetIterator[Element]:
     return new(self)
 
   @property
@@ -468,14 +463,14 @@ class frozenset[T: DictKey](
   def capacity(self) -> int:
     return self._capacity
 
-  def init_from_set(self, other: set[T]) -> None:
+  def initFromSet(self, other: set[Element]) -> None:
     for key in other:
-      self._insert_new(key)
+      self._insertNew(key)
 
-  def init_from_frozenset(self, other: Self) -> None:
+  def initFromFrozenset(self, other: Self) -> None:
     for key in other:
-      self._insert_new(key)
+      self._insertNew(key)
 
-  def init_from_list(self, items: list[T]) -> None:
+  def initFromList(self, items: list[Element]) -> None:
     for i in range(len(items)):
-      self._insert_new(items[i])
+      self._insertNew(items[i])

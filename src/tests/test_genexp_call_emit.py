@@ -1,4 +1,4 @@
-"""Iterable 形参 + genexp 实参：用户函数调用点内联。"""
+"""IterableType 形参 + genexp 实参：用户函数调用点内联。"""
 from __future__ import annotations
 
 import tempfile
@@ -23,9 +23,9 @@ class GenexpCallEmitTests(unittest.TestCase):
   def test_total_genexp_inline(self):
     cpp = self._translate(
       '''
-from py2cpp import Iterable
+from py2cpp import IterableType
 
-def total[T](xs: Iterable[T], start: int = 0) -> int:
+def total[T](xs: IterableType[T], start: int = 0) -> int:
   acc: int = start
   for x in xs:
     acc += x
@@ -49,9 +49,9 @@ def run(data: list[int]) -> int:
   def test_total_list_normal_call(self):
     cpp = self._translate(
       '''
-from py2cpp import Iterable
+from py2cpp import IterableType
 
-def total[T](xs: Iterable[T]) -> int:
+def total[T](xs: IterableType[T]) -> int:
   acc: int = 0
   for x in xs:
     acc += x
@@ -84,9 +84,9 @@ def run(data: list[int]) -> int:
     with self.assertRaises(TranslationError):
       self._translate(
         '''
-from py2cpp import Iterable
+from py2cpp import IterableType
 
-def bad[T](xs: Iterable[T]) -> int:
+def bad[T](xs: IterableType[T]) -> int:
   if xs:
     return 1
   return 0
@@ -100,9 +100,9 @@ def run(data: list[int]) -> int:
     with self.assertRaises(TranslationError):
       self._translate(
         '''
-from py2cpp import Iterable
+from py2cpp import IterableType
 
-def merge_first[T](a: Iterable[T], b: Iterable[T]) -> int:
+def merge_first[T](a: IterableType[T], b: IterableType[T]) -> int:
   s: int = 0
   for x in a:
     s += x

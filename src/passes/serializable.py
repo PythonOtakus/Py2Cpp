@@ -140,45 +140,45 @@ def _serializable_class(tr: Translator, name: str) -> str | None:
 def _load_fast_field_body(
   decoder: str, ann: ast.expr, target: str, prefix: str,
 ) -> str | None:
-  """``load_key`` 之后：一次 ``skip_spaces`` + 原位解析（避免 ``load_bool`` 等 list 缓冲）。"""
+  """``load_key`` 之后：一次 ``skipSpaces`` + 原位解析（避免 ``load_bool`` 等 list 缓冲）。"""
   if isinstance(ann, ast.Name):
     if ann.id == "bool":
       return (
-        f"{prefix}{decoder}.skip_spaces()\n"
-        f"{prefix}{target} = {decoder}.parse_bool_at()"
+        f"{prefix}{decoder}.skipSpaces()\n"
+        f"{prefix}{target} = {decoder}.parseBoolAt()"
       )
     if ann.id == "int":
       return (
-        f"{prefix}{decoder}.skip_spaces()\n"
-        f"{prefix}{target} = {decoder}.parse_int_at()"
+        f"{prefix}{decoder}.skipSpaces()\n"
+        f"{prefix}{target} = {decoder}.parseIntAt()"
       )
     if ann.id == "varint":
       return (
-        f"{prefix}{decoder}.skip_spaces()\n"
-        f"{prefix}{target} = {decoder}.parse_varint_at()"
+        f"{prefix}{decoder}.skipSpaces()\n"
+        f"{prefix}{target} = {decoder}.parseVarintAt()"
       )
     if ann.id == "str":
-      return f"{prefix}{target} = {decoder}.load_str()"
+      return f"{prefix}{target} = {decoder}.loadStr()"
   elem = _ann_list_elem(ann)
   if elem == "int":
     return (
-      f"{prefix}{decoder}.skip_spaces()\n"
-      f"{prefix}{target} = {decoder}.load_list_int_value()"
+      f"{prefix}{decoder}.skipSpaces()\n"
+      f"{prefix}{target} = {decoder}.loadListIntValue()"
     )
   if elem == "varint":
     return (
-      f"{prefix}{decoder}.skip_spaces()\n"
-      f"{prefix}{target} = {decoder}.load_list_varint_value()"
+      f"{prefix}{decoder}.skipSpaces()\n"
+      f"{prefix}{target} = {decoder}.loadListVarintValue()"
     )
   if elem == "str":
     return (
-      f"{prefix}{decoder}.skip_spaces()\n"
-      f"{prefix}{target} = {decoder}.load_list_str_value()"
+      f"{prefix}{decoder}.skipSpaces()\n"
+      f"{prefix}{target} = {decoder}.loadListStrValue()"
     )
   if elem == "float":
     return (
-      f"{prefix}{decoder}.skip_spaces()\n"
-      f"{prefix}{target} = {decoder}.load_list_float_value()"
+      f"{prefix}{decoder}.skipSpaces()\n"
+      f"{prefix}{target} = {decoder}.loadListFloatValue()"
     )
   return None
 
@@ -188,41 +188,41 @@ def _dump_fast_field_line(
 ) -> str | None:
   if isinstance(ann, ast.Name):
     if ann.id == "bool":
-      return f"{encoder}.dump_field_bool({key}, {access})"
+      return f"{encoder}.dumpFieldBool({key}, {access})"
     if ann.id == "int":
-      return f"{encoder}.dump_field_int({key}, {access})"
+      return f"{encoder}.dumpFieldInt({key}, {access})"
     if ann.id == "varint":
-      return f"{encoder}.dump_field_varint({key}, {access})"
+      return f"{encoder}.dumpFieldVarint({key}, {access})"
     if ann.id in ("float", "float64"):
       return None
     if ann.id == "str":
-      return f"{encoder}.dump_field_str({key}, {access})"
+      return f"{encoder}.dumpFieldStr({key}, {access})"
   elem = _ann_list_elem(ann)
   if elem == "int":
-    return f"{encoder}.dump_field_list_int({key}, {access})"
+    return f"{encoder}.dumpFieldListInt({key}, {access})"
   if elem == "varint":
-    return f"{encoder}.dump_field_list_varint({key}, {access})"
+    return f"{encoder}.dumpFieldListVarint({key}, {access})"
   if elem == "str":
-    return f"{encoder}.dump_field_list_str({key}, {access})"
+    return f"{encoder}.dumpFieldListStr({key}, {access})"
   if elem == "float":
-    return f"{encoder}.dump_field_list_float({key}, {access})"
+    return f"{encoder}.dumpFieldListFloat({key}, {access})"
   return None
 
 
 def _dump_scalar(ann: ast.expr, access: str, encoder: str) -> str | None:
   if isinstance(ann, ast.Name):
     if ann.id == "bool":
-      return f"{encoder}.dump_bool({access})"
+      return f"{encoder}.dumpBool({access})"
     if ann.id == "int":
-      return f"{encoder}.dump_int({access})"
+      return f"{encoder}.dumpInt({access})"
     if ann.id == "varint":
-      return f"{encoder}.dump_varint({access})"
+      return f"{encoder}.dumpVarint({access})"
     if ann.id in ("float", "float64"):
-      return f"{encoder}.dump_float({access})"
+      return f"{encoder}.dumpFloat({access})"
     if ann.id == "str":
-      return f"{encoder}.dump_str({access})"
+      return f"{encoder}.dumpStr({access})"
     if ann.id == "PyNone":
-      return f"{encoder}.dump_str({access})"
+      return f"{encoder}.dumpStr({access})"
   return None
 
 
@@ -241,37 +241,37 @@ def _dump_field_lines(
   elem = _ann_list_elem(ann)
   if elem is not None:
     if elem == "int":
-      return [f"{encoder}.dump_list_int({access})"]
+      return [f"{encoder}.dumpListInt({access})"]
     if elem == "varint":
-      return [f"{encoder}.dump_list_varint({access})"]
+      return [f"{encoder}.dumpListVarint({access})"]
     if elem == "str":
-      return [f"{encoder}.dump_list_str({access})"]
+      return [f"{encoder}.dumpListStr({access})"]
     if elem == "float":
-      return [f"{encoder}.dump_list_float({access})"]
+      return [f"{encoder}.dumpListFloat({access})"]
     if elem == "bool":
       raise NotImplementedError("list[bool] serialize")
     cls = _serializable_class(tr, elem)
     if cls is not None:
       return [
         f"{encoder}.push({encoder}.sep)",
-        f"{encoder}.begin_array()",
+        f"{encoder}.beginArray()",
         f"_n = len({access})",
         f"for _i in range(_n):",
         f"  {access}[_i].serialize({encoder})",
-        f"{encoder}.end_array()",
-        f"{encoder}.sep = {encoder}.comma_sep()",
+        f"{encoder}.endArray()",
+        f"{encoder}.sep = {encoder}.commaSep()",
       ]
 
   val_t = _ann_dict_value(ann)
   if val_t is not None:
     if val_t == "int":
-      return [f"{encoder}.dump_dict_str_int({access})"]
+      return [f"{encoder}.dumpDictStrInt({access})"]
     if val_t == "varint":
-      return [f"{encoder}.dump_dict_str_varint({access})"]
+      return [f"{encoder}.dumpDictStrVarint({access})"]
     if val_t == "str":
-      return [f"{encoder}.dump_dict_str_str({access})"]
+      return [f"{encoder}.dumpDictStrStr({access})"]
     if val_t == "float":
-      return [f"{encoder}.dump_dict_str_float({access})"]
+      return [f"{encoder}.dumpDictStrFloat({access})"]
     if val_t == "bool":
       raise NotImplementedError("dict[str, bool] serialize")
     cls = _serializable_class(tr, val_t)
@@ -284,13 +284,13 @@ def _dump_field_lines(
         f"for _i in range(_n):",
         f"  if _i > 0:",
         f'    {encoder}.push(",")',
-        f"  {encoder}.push(JsonEncoder.encode_str({access}.key_at(_i)))",
+        f"  {encoder}.push(JsonEncoder.encodeStr({access}.keyAt(_i)))",
         f'  {encoder}.push(":")',
         f'  {encoder}.sep = ""',
-        f"  {access}.value_at(_i).serialize({encoder})",
-        f"  {encoder}.sep = {encoder}.comma_sep()",
+        f"  {access}.valueAt(_i).serialize({encoder})",
+        f"  {encoder}.sep = {encoder}.commaSep()",
         f'{encoder}.push("}}")',
-        f"{encoder}.sep = {encoder}.comma_sep()",
+        f"{encoder}.sep = {encoder}.commaSep()",
       ]
 
   raise NotImplementedError(f"@serializable: 不支持的字段类型 {ast.dump(ann)}")
@@ -315,11 +315,11 @@ def _load_scalar_branch(
   if isinstance(ann, ast.Name):
     if ann.id in ("float", "float64"):
       return (
-        f"{indent}{kw} {decoder}.try_match_key({key}):\n"
-        f"{body}{target} = {decoder}.load_float()"
+        f"{indent}{kw} {decoder}.tryMatchKey({key}):\n"
+        f"{body}{target} = {decoder}.loadFloat()"
       )
     if fast_body is not None:
-      return f"{indent}{kw} {decoder}.try_match_key({key}):\n{fast_body}"
+      return f"{indent}{kw} {decoder}.tryMatchKey({key}):\n{fast_body}"
   return None
 
 
@@ -328,16 +328,16 @@ def _load_list_serializable_body(
 ) -> str:
   return (
     f"{body}{target}: list[{cls}] = []\n"
-    f"{body}{decoder}.begin_array()\n"
-    f"{body}{decoder}.skip_spaces()\n"
-    f"{body}if not {decoder}.at_array_end():\n"
+    f"{body}{decoder}.beginArray()\n"
+    f"{body}{decoder}.skipSpaces()\n"
+    f"{body}if not {decoder}.atArrayEnd():\n"
     f"{body}  while True:\n"
     f"{body}    {target}.append({cls}.deserialize({decoder}))\n"
-    f"{body}    {decoder}.skip_spaces()\n"
-    f"{body}    if {decoder}.at_array_end():\n"
+    f"{body}    {decoder}.skipSpaces()\n"
+    f"{body}    if {decoder}.atArrayEnd():\n"
     f"{body}      break\n"
-    f"{body}    {decoder}.expect_char(',')\n"
-    f"{body}    {decoder}.skip_spaces()"
+    f"{body}    {decoder}.expectChar(',')\n"
+    f"{body}    {decoder}.skipSpaces()"
   )
 
 
@@ -347,18 +347,18 @@ def _load_dict_serializable_body(
   inner = body + "  "
   return (
     f"{body}{target} = dict()\n"
-    f"{body}{decoder}.skip_spaces()\n"
-    f"{body}{decoder}.expect_char('{{')\n"
-    f"{body}{decoder}.skip_spaces()\n"
-    f"{body}while not {decoder}.at_object_end():\n"
-    f"{inner}_k: str = {decoder}.read_quoted()\n"
-    f"{inner}{decoder}.skip_spaces()\n"
-    f"{inner}{decoder}.expect_char(':')\n"
+    f"{body}{decoder}.skipSpaces()\n"
+    f"{body}{decoder}.expectChar('{{')\n"
+    f"{body}{decoder}.skipSpaces()\n"
+    f"{body}while not {decoder}.atObjectEnd():\n"
+    f"{inner}_k: str = {decoder}.readQuoted()\n"
+    f"{inner}{decoder}.skipSpaces()\n"
+    f"{inner}{decoder}.expectChar(':')\n"
     f"{inner}{target}[_k] = {cls}.deserialize({decoder})\n"
-    f"{inner}{decoder}.skip_spaces()\n"
-    f"{inner}if not {decoder}.at_object_end():\n"
-    f"{inner}  {decoder}.expect_char(',')\n"
-    f"{inner}  {decoder}.skip_spaces()"
+    f"{inner}{decoder}.skipSpaces()\n"
+    f"{inner}if not {decoder}.atObjectEnd():\n"
+    f"{inner}  {decoder}.expectChar(',')\n"
+    f"{inner}  {decoder}.skipSpaces()"
   )
 
 
@@ -389,7 +389,7 @@ def _load_field_branch(
     cls = _serializable_class(tr, ann.id)
     if cls is not None:
       return (
-        f"{indent}{kw} {decoder}.try_match_key({key}):\n"
+        f"{indent}{kw} {decoder}.tryMatchKey({key}):\n"
         f"{body}{target} = {cls}.deserialize({decoder})"
       )
 
@@ -397,17 +397,17 @@ def _load_field_branch(
   if elem is not None:
     fast_list = _load_fast_field_body(decoder, ann, target, body)
     if elem == "int" and fast_list is not None:
-      return f"{indent}{kw} {decoder}.try_match_key({key}):\n{fast_list}"
+      return f"{indent}{kw} {decoder}.tryMatchKey({key}):\n{fast_list}"
     if elem == "varint" and fast_list is not None:
-      return f"{indent}{kw} {decoder}.try_match_key({key}):\n{fast_list}"
+      return f"{indent}{kw} {decoder}.tryMatchKey({key}):\n{fast_list}"
     if elem == "str" and fast_list is not None:
-      return f"{indent}{kw} {decoder}.try_match_key({key}):\n{fast_list}"
+      return f"{indent}{kw} {decoder}.tryMatchKey({key}):\n{fast_list}"
     if elem == "float" and fast_list is not None:
-      return f"{indent}{kw} {decoder}.try_match_key({key}):\n{fast_list}"
+      return f"{indent}{kw} {decoder}.tryMatchKey({key}):\n{fast_list}"
     cls = _serializable_class(tr, elem)
     if cls is not None:
       return (
-        f"{indent}{kw} {decoder}.try_match_key({key}):\n"
+        f"{indent}{kw} {decoder}.tryMatchKey({key}):\n"
         + _load_list_serializable_body(cls, target, decoder, body)
       )
 
@@ -415,28 +415,28 @@ def _load_field_branch(
   if val_t is not None:
     if val_t == "int":
       return (
-        f"{indent}{kw} {decoder}.try_match_key({key}):\n"
-        f"{body}{target} = {decoder}.load_dict_str_int()"
+        f"{indent}{kw} {decoder}.tryMatchKey({key}):\n"
+        f"{body}{target} = {decoder}.loadDictStrInt()"
       )
     if val_t == "varint":
       return (
-        f"{indent}{kw} {decoder}.try_match_key({key}):\n"
-        f"{body}{target} = {decoder}.load_dict_str_varint()"
+        f"{indent}{kw} {decoder}.tryMatchKey({key}):\n"
+        f"{body}{target} = {decoder}.loadDictStrVarint()"
       )
     if val_t == "str":
       return (
-        f"{indent}{kw} {decoder}.try_match_key({key}):\n"
-        f"{body}{target} = {decoder}.load_dict_str_str()"
+        f"{indent}{kw} {decoder}.tryMatchKey({key}):\n"
+        f"{body}{target} = {decoder}.loadDictStrStr()"
       )
     if val_t == "float":
       return (
-        f"{indent}{kw} {decoder}.try_match_key({key}):\n"
-        f"{body}{target} = {decoder}.load_dict_str_float()"
+        f"{indent}{kw} {decoder}.tryMatchKey({key}):\n"
+        f"{body}{target} = {decoder}.loadDictStrFloat()"
       )
     cls = _serializable_class(tr, val_t)
     if cls is not None:
       return (
-        f"{indent}{kw} {decoder}.try_match_key({key}):\n"
+        f"{indent}{kw} {decoder}.tryMatchKey({key}):\n"
         + _load_dict_serializable_body(cls, target, decoder, body)
       )
 
@@ -520,52 +520,52 @@ def _schema_deserialize_eligible(tr: Translator, specs: list[DataclassFieldSpec]
 def _ordered_field_parse_lines(
   ann: ast.expr, target: str, decoder: str, indent: str,
 ) -> list[str]:
-  """``try_match_key`` 成功后、下一键前的解析语句。"""
+  """``tryMatchKey`` 成功后、下一键前的解析语句。"""
   body = indent
   if isinstance(ann, ast.Name):
     if ann.id == "int":
       return [
-        f"{body}{decoder}.skip_spaces()",
-        f"{body}{target} = {decoder}.parse_int_at()",
+        f"{body}{decoder}.skipSpaces()",
+        f"{body}{target} = {decoder}.parseIntAt()",
       ]
     if ann.id == "varint":
       return [
-        f"{body}{decoder}.skip_spaces()",
-        f"{body}{target} = {decoder}.parse_varint_at()",
+        f"{body}{decoder}.skipSpaces()",
+        f"{body}{target} = {decoder}.parseVarintAt()",
       ]
     if ann.id == "str":
       return [
-        f"{body}{target} = str.from_span({decoder}.load_str_span())",
+        f"{body}{target} = str.fromSpan({decoder}.loadStrSpan())",
       ]
     if ann.id == "bool":
       return [
-        f"{body}{decoder}.skip_spaces()",
-        f"{body}{target} = {decoder}.parse_bool_at()",
+        f"{body}{decoder}.skipSpaces()",
+        f"{body}{target} = {decoder}.parseBoolAt()",
       ]
   elem = _ann_list_elem(ann)
   if elem == "str":
     return [
-      f"{body}{decoder}.skip_spaces()",
+      f"{body}{decoder}.skipSpaces()",
       f"{body}if {decoder}.pos < len({decoder}.s) and {decoder}.s[{decoder}.pos] in '[':",
       f"{body}  if {decoder}.pos + 1 < len({decoder}.s) and {decoder}.s[{decoder}.pos + 1] in ']':",
-      f"{body}    {decoder}.skip_empty_array()",
+      f"{body}    {decoder}.skipEmptyArray()",
       f"{body}    {target} = new()",
       f"{body}  else:",
-      f"{body}    {target} = {decoder}.load_list_str_value()",
+      f"{body}    {target} = {decoder}.loadListStrValue()",
       f"{body}else:",
-      f"{body}  {target} = {decoder}.load_list_str_value()",
+      f"{body}  {target} = {decoder}.loadListStrValue()",
     ]
   if elem == "int":
     return [
-      f"{body}{decoder}.skip_spaces()",
-      f"{body}{target} = {decoder}.load_list_int_value()",
+      f"{body}{decoder}.skipSpaces()",
+      f"{body}{target} = {decoder}.loadListIntValue()",
     ]
   if elem == "varint":
     return [
-      f"{body}{decoder}.skip_spaces()",
-      f"{body}{target} = {decoder}.load_list_varint_value()",
+      f"{body}{decoder}.skipSpaces()",
+      f"{body}{target} = {decoder}.loadListVarintValue()",
     ]
-  return [f"{body}{target} = {decoder}.load_string_slow()"]
+  return [f"{body}{target} = {decoder}.loadStringSlow()"]
 
 
 def _make_return_args(specs: list[DataclassFieldSpec], suffix: str = "_v") -> str:
@@ -582,9 +582,9 @@ def _build_ordered_deserialize_body(
   lines: list[str] = [
     "  _use_generic: bool = False",
     "  _mark: int = decoder.mark()",
-    "  decoder.begin_root_object()",
-    "  decoder.skip_spaces()",
-    "  if decoder.at_object_end():",
+    "  decoder.beginRootObject()",
+    "  decoder.skipSpaces()",
+    "  if decoder.atObjectEnd():",
     f"    return new({ret})",
   ]
 
@@ -595,10 +595,10 @@ def _build_ordered_deserialize_body(
     key = _ensure_json_key_const(tr, info, spec.name)
     ind = "  " + "  " * depth
     bi = ind + "  "
-    lines.append(f"{ind}elif decoder.try_match_key({key}):")
+    lines.append(f"{ind}elif decoder.tryMatchKey({key}):")
     lines.extend(_ordered_field_parse_lines(spec.annotation, f"{spec.name}_v", "decoder", bi))
-    lines.append(f"{bi}decoder.skip_spaces()")
-    lines.append(f"{bi}if decoder.at_object_end():")
+    lines.append(f"{bi}decoder.skipSpaces()")
+    lines.append(f"{bi}if decoder.atObjectEnd():")
     lines.append(f"{bi}  return new({ret})")
     if start + 1 < len(specs):
       _emit_field_chain(depth + 1, start + 1)
@@ -616,21 +616,21 @@ def _build_ordered_deserialize_body(
   lines.append("    decoder.restore(_mark)")
   lines.append("    _use_generic = True")
   lines.append("  if _use_generic:")
-  lines.append("    decoder.begin_root_object()")
+  lines.append("    decoder.beginRootObject()")
   return lines
 
 
 def _cpp_dec_at_char(dec: str, code: int, off: int = 0) -> str:
-  """``dec.pos``（及可选偏移）处是否为 ASCII ``code``（经 ``src_char``，勿 ``PyStr.__getitem__``）。"""
+  """``dec.pos``（及可选偏移）处是否为 ASCII ``code``（经 ``srcChar``，勿 ``PyStr.__getitem__``）。"""
   idx = f"{dec}.pos + {off}" if off else f"{dec}.pos"
-  return f"(({idx} < {dec}.src_len()) && ({dec}.src_char({idx}) == PyChar({code})))"
+  return f"(({idx} < {dec}.srcLen()) && ({dec}.srcChar({idx}) == PyChar({code})))"
 
 
-def _cpp_parse_int_at_expr(dec: str) -> str:
-  """``ascii_ok`` 时用 ``parse_int_at_ascii``，否则 ``parse_int_at``。"""
+def _cpp_parseIntAt_expr(dec: str) -> str:
+  """``asciiOk`` 时用 ``parseIntAtAscii``，否则 ``parseIntAt``。"""
   return (
-    f"({dec}.ascii_ok ? {dec}.parse_int_at_ascii()"
-    f" : {dec}.parse_int_at())"
+    f"({dec}.asciiOk ? {dec}.parseIntAtAscii()"
+    f" : {dec}.parseIntAt())"
   )
 
 
@@ -654,10 +654,10 @@ def _cpp_inline_expect_key(
   off += 1
   total = off
   cond = " && ".join(
-    f"({dec}.src_char({dec}.pos + {o}) == PyChar({code}))" for o, code in checks
+    f"({dec}.srcChar({dec}.pos + {o}) == PyChar({code}))" for o, code in checks
   )
   return [
-    f"  if (({dec}.pos + {total} > {dec}.src_len()) || !({cond}))",
+    f"  if (({dec}.pos + {total} > {dec}.srcLen()) || !({cond}))",
     "  {",
     f"    {dec}.fail(PyStr(\"expected field {field}\"));",
     f"    return {fail_return};",
@@ -692,10 +692,10 @@ def _cpp_inline_object_close(dec: str) -> list[str]:
     "  }",
     "  else",
     "  {",
-    "    dec.skip_field();",
-    "    while (!dec.at_object_end())",
+    "    dec.skipField();",
+    "    while (!dec.atObjectEnd())",
     "    {",
-    "      dec.skip_field();",
+    "      dec.skipField();",
     "    }",
     "  }",
   ]
@@ -711,30 +711,30 @@ def _cpp_ordered_field_lines(
 ) -> list[str]:
   if isinstance(ann, ast.Name):
     if ann.id == "int":
-      return [f"  {target_cpp} = {_cpp_parse_int_at_expr(dec)};"]
+      return [f"  {target_cpp} = {_cpp_parseIntAt_expr(dec)};"]
     if ann.id == "varint":
-      return [f"  {target_cpp} = {dec}.parse_varint_at();"]
+      return [f"  {target_cpp} = {dec}.parseVarintAt();"]
     if ann.id == "str":
       if str_as_span:
-        return [f"  {target_cpp} = {dec}.load_str_span();"]
-      return [f"  {target_cpp} = PyStr::from_span({dec}.load_str_span());"]
+        return [f"  {target_cpp} = {dec}.loadStrSpan();"]
+      return [f"  {target_cpp} = PyStr::fromSpan({dec}.loadStrSpan());"]
     if ann.id == "bool":
       return [
-        "  if ((dec.pos + 4 <= dec.src_len())"
-        " && (dec.src_char(dec.pos) == PyChar(116))"
-        " && (dec.src_char(dec.pos + 1) == PyChar(114))"
-        " && (dec.src_char(dec.pos + 2) == PyChar(117))"
-        " && (dec.src_char(dec.pos + 3) == PyChar(101)))",
+        "  if ((dec.pos + 4 <= dec.srcLen())"
+        " && (dec.srcChar(dec.pos) == PyChar(116))"
+        " && (dec.srcChar(dec.pos + 1) == PyChar(114))"
+        " && (dec.srcChar(dec.pos + 2) == PyChar(117))"
+        " && (dec.srcChar(dec.pos + 3) == PyChar(101)))",
         "  {",
         f"    {target_cpp} = true;",
         "    dec.pos += 4;",
         "  }",
-        "  else if ((dec.pos + 5 <= dec.src_len())"
-        " && (dec.src_char(dec.pos) == PyChar(102))"
-        " && (dec.src_char(dec.pos + 1) == PyChar(97))"
-        " && (dec.src_char(dec.pos + 2) == PyChar(108))"
-        " && (dec.src_char(dec.pos + 3) == PyChar(115))"
-        " && (dec.src_char(dec.pos + 4) == PyChar(101)))",
+        "  else if ((dec.pos + 5 <= dec.srcLen())"
+        " && (dec.srcChar(dec.pos) == PyChar(102))"
+        " && (dec.srcChar(dec.pos + 1) == PyChar(97))"
+        " && (dec.srcChar(dec.pos + 2) == PyChar(108))"
+        " && (dec.srcChar(dec.pos + 3) == PyChar(115))"
+        " && (dec.srcChar(dec.pos + 4) == PyChar(101)))",
         "  {",
         f"    {target_cpp} = false;",
         "    dec.pos += 5;",
@@ -758,7 +758,7 @@ def _cpp_ordered_field_lines(
       "    else",
       "    {",
       f"      {field}_nonempty = true;",
-      f"      {target_cpp} = {dec}.load_list_str_value();",
+      f"      {target_cpp} = {dec}.loadListStrValue();",
       "    }",
       "  }",
       "  else",
@@ -768,7 +768,7 @@ def _cpp_ordered_field_lines(
       "  }",
     ]
   if elem == "int":
-    return [f"  {target_cpp} = {dec}.load_list_int_value();"]
+    return [f"  {target_cpp} = {dec}.loadListIntValue();"]
   return []
 
 
@@ -820,7 +820,7 @@ def _cpp_str_field_ctor_default(spec: DataclassFieldSpec) -> str:
 
 
 def _cpp_fast_ctor_placeholder_args(specs: list[DataclassFieldSpec]) -> str:
-  """快路径 ``init``：标量用 ``_v``，``str`` 用占位（随后 ``str_assign_from_seg``）。"""
+  """快路径 ``init``：标量用 ``_v``，``str`` 用占位（随后 ``strAssignFromSeg``）。"""
   parts: list[str] = []
   for spec in specs:
     if not isinstance(spec.annotation, ast.Name):
@@ -834,7 +834,7 @@ def _cpp_fast_ctor_placeholder_args(specs: list[DataclassFieldSpec]) -> str:
 
 
 def _cpp_is_scalar_int_bool_only(specs: list[DataclassFieldSpec]) -> bool:
-  """仅 ``int``/``bool`` 字段（无 ``str``/``list``/嵌套），可 ``serde_push_slot`` + ``init``。"""
+  """仅 ``int``/``bool`` 字段（无 ``str``/``list``/嵌套），可 ``serdePushSlot`` + ``init``。"""
   for spec in specs:
     if isinstance(spec.annotation, ast.Name):
       if spec.annotation.id in ("int", "bool", "varint"):
@@ -861,9 +861,9 @@ def _cpp_emit_list_push_fast_scalar(
   """纯标量 dataclass：尾槽 ``init``，避免 ``append`` 拷贝。"""
   args = _cpp_ctor_scalar_args(specs)
   return [
-    f"{indent}{cpp_cls}* _slot = {out_var}.serde_push_slot();",
+    f"{indent}{cpp_cls}* _slot = {out_var}.serdePushSlot();",
     f"{indent}init<{cpp_cls}>(_slot, {args});",
-    f"{indent}{out_var}.serde_commit_push();",
+    f"{indent}{out_var}.serdeCommitPush();",
   ]
 
 
@@ -876,22 +876,22 @@ def _cpp_emit_list_push_fast_user(
   """``list`` 尾槽 ``init`` + ``copy_from_span``，避免 ``append`` 再拷贝 ``User``。"""
   ctor_args = _cpp_fast_ctor_placeholder_args(specs)
   lines: list[str] = [
-    f"{indent}{cpp_cls}* _slot = {out_var}.serde_push_slot();",
+    f"{indent}{cpp_cls}* _slot = {out_var}.serdePushSlot();",
     f"{indent}init<{cpp_cls}>(_slot, {ctor_args});",
   ]
   for spec in specs:
     if isinstance(spec.annotation, ast.Name) and spec.annotation.id == "str":
       lines.append(
-        f"{indent}_slot->{spec.name} = dec.str_assign_from_seg({spec.name}_seg);",
+        f"{indent}_slot->{spec.name} = dec.strAssignFromSeg({spec.name}_seg);",
       )
-  lines.append(f"{indent}{out_var}.serde_commit_push();")
+  lines.append(f"{indent}{out_var}.serdeCommitPush();")
   return lines
 
 
 def _cpp_emit_fast_from_ordered_helper(
   cpp_cls: str, specs: list[DataclassFieldSpec], lines_out: list[str],
 ) -> bool:
-  """``copy_from_span`` 收尾：避免 ``from_span`` + ctor ``__copy__`` 双拷贝。"""
+  """``copy_from_span`` 收尾：避免 ``fromSpan`` + ctor ``__copy__`` 双拷贝。"""
   if not _cpp_has_ctor_str_field(specs):
     return False
   helper = _cpp_fast_from_ordered_name(cpp_cls)
@@ -908,7 +908,7 @@ def _cpp_emit_fast_from_ordered_helper(
       params.append(f"PySpan<PyChar> {spec.name}_seg")
     elif spec.annotation.id == "bool":
       params.append(f"PyBool {spec.name}_v")
-  params.append("::py2cpp::serde::json::JsonDecoder& dec")
+  params.append("::py2cpp::serde::json::PyJsonDecoder& dec")
   lines_out.append(
     f"static __forceinline {cpp_cls} {helper}({', '.join(params)})",
   )
@@ -917,7 +917,7 @@ def _cpp_emit_fast_from_ordered_helper(
   for spec in specs:
     if isinstance(spec.annotation, ast.Name) and spec.annotation.id == "str":
       lines_out.append(
-        f"  u.{spec.name} = dec.str_assign_from_seg({spec.name}_seg);",
+        f"  u.{spec.name} = dec.strAssignFromSeg({spec.name}_seg);",
       )
   lines_out.append("  return u;")
   lines_out.append("}")
@@ -1101,7 +1101,7 @@ def _emit_cpp_list_load_fast(
   def_ctor = _cpp_default_ctor_expr(cpp_cls, specs)
   fail_out = f"PyList<{cpp_cls}>()"
   lines_out.append(
-    f"static __forceinline {cpp_cls} {parse_fn}(::py2cpp::serde::json::JsonDecoder& dec)",
+    f"static __forceinline {cpp_cls} {parse_fn}(::py2cpp::serde::json::PyJsonDecoder& dec)",
   )
   lines_out.append("{")
   lines_out.extend(_cpp_emit_ordered_locals(specs, str_as_span=str_as_span))
@@ -1115,17 +1115,17 @@ def _emit_cpp_list_load_fast(
   lines_out.append("")
   lines_out.append(
     f"static __forceinline PyList<{cpp_cls}> {load_fn}"
-    "(::py2cpp::serde::json::JsonDecoder& dec)",
+    "(::py2cpp::serde::json::PyJsonDecoder& dec)",
   )
   lines_out.append("{")
-  lines_out.append("  dec.skip_spaces();")
+  lines_out.append("  dec.skipSpaces();")
   lines_out.append(f"  if (!{_cpp_dec_at_char('dec', 91)})")
   lines_out.append("  {")
   lines_out.append("    dec.fail(PyStr(\"expected [\"));")
   lines_out.append(f"    return {fail_out};")
   lines_out.append("  }")
   lines_out.append("  dec.pos += 1;")
-  lines_out.append("  dec.skip_spaces();")
+  lines_out.append("  dec.skipSpaces();")
   lines_out.append(f"  PyList<{cpp_cls}> out;")
   lines_out.append(f"  if ({_cpp_dec_at_char('dec', 93)})")
   lines_out.append("  {")
@@ -1135,11 +1135,11 @@ def _emit_cpp_list_load_fast(
   lines_out.append("  {")
   _bytes_per = 48 if _cpp_has_ctor_str_field(specs) else 22
   lines_out.append(
-    f"    int _est = (int)((dec.src_len() - dec.pos) / {_bytes_per});",
+    f"    int _est = (int)((dec.srcLen() - dec.pos) / {_bytes_per});",
   )
   lines_out.append("    if (_est > 0)")
   lines_out.append("    {")
-  lines_out.append("      out.set_capacity(_est);")
+  lines_out.append("      out.setCapacity(_est);")
   lines_out.append("    }")
   lines_out.append("  }")
   lines_out.extend(_cpp_emit_ordered_locals(specs, str_as_span=str_as_span))
@@ -1159,21 +1159,21 @@ def _emit_cpp_list_load_fast(
   )
   for line in mega_body:
     lines_out.append(f"  {line}" if line else line)
-  lines_out.append("    dec.skip_spaces();")
+  lines_out.append("    dec.skipSpaces();")
   lines_out.append(f"    if ({_cpp_dec_at_char('dec', 93)})")
   lines_out.append("    {")
   lines_out.append("      dec.pos += 1;")
   lines_out.append("      return out;")
   lines_out.append("    }")
   lines_out.append(
-    "    if ((dec.pos >= dec.src_len()) || (dec.src_char(dec.pos) != PyChar(44)))",
+    "    if ((dec.pos >= dec.srcLen()) || (dec.srcChar(dec.pos) != PyChar(44)))",
   )
   lines_out.append("    {")
   lines_out.append("      dec.fail(PyStr(\"expected , or ]\"));")
   lines_out.append("      return out;")
   lines_out.append("    }")
   lines_out.append("    dec.pos += 1;")
-  lines_out.append("    dec.skip_spaces();")
+  lines_out.append("    dec.skipSpaces();")
   lines_out.append("  }")
   lines_out.append("}")
   for seg in reversed(inl_ns):
@@ -1187,7 +1187,7 @@ def _emit_cpp_list_load_fast(
   call_load = f"::{'::'.join(inl_ns)}::{load_fn}" if inl_ns else load_fn
   lines_out.append(f"template<>")
   lines_out.append(
-    f"PyList<{fq_cls}> JsonDecoder::load_list_element<{fq_cls}>()",
+    f"PyList<{fq_cls}> PyJsonDecoder::loadListElement<{fq_cls}>()",
   )
   lines_out.append("{")
   lines_out.append(f"  return {call_load}(*this);")
@@ -1223,15 +1223,15 @@ def _emit_dataclass_serializable(tr: Translator, info: ClassInfo) -> None:
     if fast is not None:
       field_lines.append(f"  {fast}")
       continue
-    field_lines.append(f"  encoder.dump_key({key})")
+    field_lines.append(f"  encoder.dumpKey({key})")
     for line in _dump_field_lines(tr, spec.annotation, acc, "encoder"):
       field_lines.append(f"  {line}")
   fields_joined = "\n".join(field_lines)
   serialize_src = f"""
 def serialize(self, encoder: JsonEncoder) -> None:
-  encoder.begin_object()
+  encoder.beginObject()
 {fields_joined}
-  encoder.end_object()
+  encoder.endObject()
 """
   ser_fn = _parse_method(serialize_src)
   _register_method(info, ser_fn)
@@ -1258,7 +1258,7 @@ def serialize(self, encoder: JsonEncoder) -> None:
   if ordered_lines:
     generic_loop: list[str] = [
       "    while True:",
-      "      if decoder.at_object_end():",
+      "      if decoder.atObjectEnd():",
       "        break",
     ]
     for branch in parse_branches:
@@ -1267,7 +1267,7 @@ def serialize(self, encoder: JsonEncoder) -> None:
     generic_loop.extend(
       [
         "      else:",
-        "        decoder.skip_field()",
+        "        decoder.skipField()",
       ],
     )
     deserialize_src = f"""
@@ -1283,13 +1283,13 @@ def deserialize(decoder: JsonDecoder) -> {class_name}:
 @staticmethod
 def deserialize(decoder: JsonDecoder) -> {class_name}:
 {chr(10).join(init_lines)}
-  decoder.begin_root_object()
+  decoder.beginRootObject()
   while True:
-    if decoder.at_object_end():
+    if decoder.atObjectEnd():
       break
 {chr(10).join(parse_branches)}
     else:
-      decoder.skip_field()
+      decoder.skipField()
 {chr(10).join(ret_lines)}
 """
   des_fn = _parse_method(deserialize_src)
@@ -1305,13 +1305,13 @@ def _union_case_serialize(
     binds = ""
     body = [
       f"    case new.{vname}():",
-      f'      encoder.begin_variant("{vname}")',
-      "      encoder.end_variant()",
+      f'      encoder.beginVariant("{vname}")',
+      "      encoder.endVariant()",
     ]
     return "\n".join(body)
   binds = ", ".join(f"{f}={f}" for f in variant.fields)
   lines = [f"    case new.{vname}({binds}):"]
-  lines.append(f'      encoder.begin_variant("{vname}")')
+  lines.append(f'      encoder.beginVariant("{vname}")')
   for fname in variant.fields:
     ann = variant.field_annotations[fname]
     key = _ensure_json_key_const(tr, info, fname, variant=vname)
@@ -1319,10 +1319,10 @@ def _union_case_serialize(
     if fast is not None:
       lines.append(f"      {fast}")
       continue
-    lines.append(f"      encoder.dump_key({key})")
+    lines.append(f"      encoder.dumpKey({key})")
     for line in _dump_field_lines(tr, ann, fname, "encoder"):
       lines.append(f"      {line}")
-  lines.append("      encoder.end_variant()")
+  lines.append("      encoder.endVariant()")
   return "\n".join(lines)
 
 
@@ -1364,10 +1364,10 @@ def _union_parse_payload(
     )
     first = False
   loop = [
-    "    while not decoder.at_object_end():",
+    "    while not decoder.atObjectEnd():",
     *branches,
     "      else:",
-    "        decoder.skip_field()",
+    "        decoder.skipField()",
   ]
   return "\n".join(inits + loop), ", ".join(args)
 
@@ -1396,8 +1396,8 @@ def serialize(self, encoder: JsonEncoder) -> None:
     if not variant.fields:
       branches.append(
         f'  if tag == "{vname}":\n'
-        f"    if not decoder.at_object_end():\n"
-        f"      decoder.skip_value()\n"
+        f"    if not decoder.atObjectEnd():\n"
+        f"      decoder.skipValue()\n"
         f"    return new.{vname}()",
       )
       continue
@@ -1410,9 +1410,9 @@ def serialize(self, encoder: JsonEncoder) -> None:
   deserialize_src = f"""
 @staticmethod
 def deserialize(decoder: JsonDecoder) -> {class_name}:
-  decoder.begin_root_object()
-  tag: str = decoder.load_tag_field()
-  decoder.begin_payload_object()
+  decoder.beginRootObject()
+  tag: str = decoder.loadTagField()
+  decoder.beginPayloadObject()
 {chr(10).join(branches)}
   decoder.fail("unknown tag")
 {unreachable}

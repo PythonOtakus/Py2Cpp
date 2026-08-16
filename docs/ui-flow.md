@@ -2,7 +2,7 @@
 
 Py2Cpp 标准库扩展：在 Win32 画布上编辑**节点图**（类似 UE5 Blueprint）。节点由宿主类上 **`@annotation` 标注的方法** 译期注册；引脚由**方法签名**自动生成。
 
-- **Panel 对照**：[`py2cpp/ui/panel.py`](../py2cpp/ui/panel.py) 用 `@UILabelMeta` / `@UIButtonMeta` + `Self.iter_fields` / `Self.iter_methods`；Flow 用 `@FlowNodeMeta` 等 + **新增**方法签名反射 API。
+- **Panel 对照**：[`py2cpp/ui/panel.py`](../py2cpp/ui/panel.py) 用 `@UILabelMeta` / `@UIButtonMeta` + `Self.iterFields` / `Self.iterMethods`；Flow 用 `@FlowNodeMeta` 等 + **新增**方法签名反射 API。
 - **架构总览**：[参考手册 §10.10](./参考手册.md#1010-uiflow蓝图编辑器)（摘要 + 链接本文）。
 - **状态**：**P0/P1 已落地**（画布、壳层、palette、JSON、`UIFlowMixin`）；**P2.1 已落地**（内置 Branch/ForLoop、`FlowRuntime`、Run 菜单启用）。
 
@@ -16,7 +16,7 @@ Py2Cpp 标准库扩展：在 Win32 画布上编辑**节点图**（类似 UE5 Blu
 | **P0** | 可视化编辑器：网格画布、节点框、Exec/Data 引脚、贝塞尔连线、平移缩放、拖拽与连线；**方法 → 节点** 译期目录 ✅ |
 | **P1** | 编辑器壳（顶菜单 + 左 palette + 中画布）、palette 拖拽创建、tooltip、Delete/Esc、JSON 存盘 ✅ |
 | **P2.1** | `flow/runtime.py` + 内置 Branch/ForLoop；Exec walk + Pure 求值；宿主 `flow_invoke_*`（译期 `getattr`）；**Run** Play / Play from Selected / Stop ✅ |
-| **平台** | 与现有 `UIApp` 一致：Windows Win32 + GDI；非 Windows `UIApp.is_available()` 为 false 时 no-op |
+| **平台** | 与现有 `UIApp` 一致：Windows Win32 + GDI；非 Windows `UIApp.isAvailable()` 为 false 时 no-op |
 
 ---
 
@@ -50,7 +50,7 @@ class FlowNodeMeta:
   title: str = ""
   category: str = ""       # palette 分组；空 → ``Self.__name__``
   hidden: bool = False     # 注册但不进 palette
-  inheritable: bool = True # ``Self.iter_methods[FlowNodeMeta](mro=True)`` 时合并基类方法
+  inheritable: bool = True # ``Self.iterMethods[FlowNodeMeta](mro=True)`` 时合并基类方法
 ```
 
 **实际意义**：该方法在图里是一个**带控制流的步骤**。上游 Exec 连到 `execute` 引脚后，将来（P2）会调用 `self.method(…)`，再从 `then` 引脚继续。适合「做一件事并往下走」的逻辑：`fire`、`apply_damage`、`spawn_actor`。
@@ -58,7 +58,7 @@ class FlowNodeMeta:
 **引脚（由签名 + 本注解自动生成，见 §6）**：
 
 - Exec：**In** `execute`、**Out** `then`
-- Data：每个形参（除 `self`）→ **In**；若 `Self.get_method_return_type(method) is not None` → **Out** `Return Value`
+- Data：每个形参（除 `self`）→ **In**；若 `Self.getMethodReturnType(method) is not None` → **Out** `Return Value`
 
 ---
 
@@ -106,8 +106,8 @@ class FlowEventMeta:
 **实际意义**：
 
 1. **控制流起点**：P2 从这类节点开始沿 Exec 边 walk 图；**没有** `execute` 输入引脚，因此**不能**被其它节点的 `then` 连入（与 Begin Play 一致）。
-2. **不是普通函数调用**：表示「当某事件发生时的入口」（生命周期、自定义事件名等）。用户写 `def on_begin(self) -> None: ...`，在 palette 里拖入 `Event Begin Play` 节点，Exec 从该节点**流出**到后续 Callable。
-3. **与 Callable 的区别**：Callable 必须等上游 Exec 到达才运行；Event 由**运行时/编辑器**「触发」或作为**默认根**（例如 `on_flow_ready` 预置一个 Begin 节点）。
+2. **不是普通函数调用**：表示「当某事件发生时的入口」（生命周期、自定义事件名等）。用户写 `def onBegin(self) -> None: ...`，在 palette 里拖入 `Event Begin Play` 节点，Exec 从该节点**流出**到后续 Callable。
+3. **与 Callable 的区别**：Callable 必须等上游 Exec 到达才运行；Event 由**运行时/编辑器**「触发」或作为**默认根**（例如 `onFlowReady` 预置一个 Begin 节点）。
 
 **引脚**：
 
@@ -123,43 +123,43 @@ class FlowEventMeta:
 | 注解 | Exec In | Exec Out | Data In | Data Out | UE 近似 | 典型方法 |
 |------|---------|----------|---------|----------|---------|----------|
 | `@FlowNodeMeta` | ✅ `execute` | ✅ `then` | 形参 | 返回值（若有） | BlueprintCallable | `def fire(self, n: int) -> bool` |
-| `@FlowPureMeta` | ❌ | ❌ | 形参 | 返回值（若有） | BlueprintPure | `def get_hp(self) -> int` |
-| `@FlowEventMeta` | ❌ | ✅ `then` | ❌（P0） | ❌ | Event BeginPlay | `def on_begin(self) -> None` |
+| `@FlowPureMeta` | ❌ | ❌ | 形参 | 返回值（若有） | BlueprintPure | `def getHp(self) -> int` |
+| `@FlowEventMeta` | ❌ | ✅ `then` | ❌（P0） | ❌ | Event BeginPlay | `def onBegin(self) -> None` |
 
 ---
 
 ## 4. 译期方法反射 API（新增）
 
-与 `Self.iter_methods[Ann]()` / `Self.get_method_annotation[Meta](method)` 同层，由 `src/passes/method_meta.py` 展开（**非** CPython 运行时）。
+与 `Self.iterMethods[Ann]()` / `Self.getMethodAnnotation[Meta](method)` 同层，由 `src/passes/method_meta.py` 展开（**非** CPython 运行时）。
 
 | API | 形式 | 译期行为 |
 |-----|------|----------|
-| 方法名列表 | `Self.iter_methods[FlowNodeMeta](mro=True, public_only=…, glob=…)` | 已有；带 `@FlowNodeMeta` 的方法名（声明序） |
-| 形参名 | `Self.iter_method_params(method)` | `for param in Self.iter_method_params(method):` → 展开为各形参标识符；**跳过 `self`** |
-| 形参类型 | `Self.get_method_param_type(method, param)` | 折叠为类型本身；通过 `T is int` 等类型分派转换为 Flow type_id |
-| 返回类型 | `Self.get_method_return_type(method)` | 折叠为类型本身或 `None`；`-> None` 或无返回注解 → **`None`** |
-| 是否有返回值 | `Self.get_method_return_type(method) is not None` | 译期折叠为 `True`/`False` |
+| 方法名列表 | `Self.iterMethods[FlowNodeMeta](mro=True, publicOnly=…, glob=…)` | 已有；带 `@FlowNodeMeta` 的方法名（声明序） |
+| 形参名 | `Self.iterMethodParams(method)` | `for param in Self.iterMethodParams(method):` → 展开为各形参标识符；**跳过 `self`** |
+| 形参类型 | `Self.getMethodParamType(method, param)` | 折叠为类型本身；通过 `T is int` 等类型分派转换为 Flow typeId |
+| 返回类型 | `Self.getMethodReturnType(method)` | 折叠为类型本身或 `None`；`-> None` 或无返回注解 → **`None`** |
+| 是否有返回值 | `Self.getMethodReturnType(method) is not None` | 译期折叠为 `True`/`False` |
 
-### 4.1 用法示例（`_ensure_flow_catalog` 内）
+### 4.1 用法示例（`_ensureFlowCatalog` 内）
 
 ```python
-for method in Self.iter_methods[FlowNodeMeta](mro=True):
-  meta = Self.get_method_annotation[FlowNodeMeta](method)
+for method in Self.iterMethods[FlowNodeMeta](mro=True):
+  meta = Self.getMethodAnnotation[FlowNodeMeta](method)
   ...
-  for param in Self.iter_method_params(method):
-    if Self.get_method_param_type(method, param) is int:
-      type_id: str = "int"
-    catalog.add_data_in_pin(kind_id, param, type_id)
-  return_type = Self.get_method_return_type(method)
+  for param in Self.iterMethodParams(method):
+    if Self.getMethodParamType(method, param) is int:
+      typeId: str = "int"
+    catalog.add_data_in_pin(kindId, param, typeId)
+  return_type = Self.getMethodReturnType(method)
   if return_type is not None:
-    catalog.add_data_out_pin(kind_id, "Return Value", return_type)
+    catalog.add_data_out_pin(kindId, "Return Value", return_type)
 ```
 
 ### 4.2 实现要点（译器）
 
 - **解析源**：宿主 `ClassInfo` 上 `ast.FunctionDef` 的 `args`（含 `posonlyargs` + `args`，跳过首个 `self`）与 `returns`。
-- **`get_param_type` / `get_return_type`**：将注解 AST 映射为 type_id 字符串（§6.2）；不支持泛型/联合的精细区分，P0 用 `"object"`。
-- **`iter_method_params` 展开**：在 `for param in Self.iter_method_params(method_var)` 中，`method_var` 须为**常量方法名**（与 `iter_methods` 循环 unroll 联用，或外层已 unroll 为 `ast.Constant`）。
+- **`get_param_type` / `get_return_type`**：将注解 AST 映射为 typeId 字符串（§6.2）；不支持泛型/联合的精细区分，P0 用 `"object"`。
+- **`iterMethodParams` 展开**：在 `for param in Self.iterMethodParams(method_var)` 中，`method_var` 须为**常量方法名**（与 `iterMethods` 循环 unroll 联用，或外层已 unroll 为 `ast.Constant`）。
 - **挂载**：在 `src/passes/mixins.py` 的 mixin 展开流水线中，于 `expand_iter_methods_*` 之后增加 `expand_iter_method_params` / `expand_method_type_queries`；`reflect/mixin.py` 增加同名 stub（IDE 友好）。
 - **单测**：`src/tests/test_method_meta.py` 增加 param/return 折叠用例。
 
@@ -174,7 +174,7 @@ py2cpp/ui/
   tooltip.py        # UITooltipHost（P1）
   flow/
     meta.py         # FlowNodeMeta, FlowPureMeta, FlowEventMeta
-    model.py        # FlowPinKind, FlowPin, FlowNode, FlowEdge, FlowGraph
+    model.py        # FlowPinEnum, FlowPin, FlowNode, FlowEdge, FlowGraph
     catalog.py      # FlowNodeCatalog, FlowNodeTemplate
     builtins.py     # 内置 Branch / For Loop 模板注册
     runtime.py      # FlowRuntime：图执行
@@ -206,15 +206,15 @@ examples/ui_flow_demo.py
 
 ## 6. 引脚与类型
 
-### 6.1 `FlowPinKind`
+### 6.1 `FlowPinEnum`
 
 ```text
 ExecIn, ExecOut, DataIn, DataOut
 ```
 
-### 6.2 注解 → `type_id`（`get_param_type` / `get_return_type`）
+### 6.2 注解 → `typeId`（`get_param_type` / `get_return_type`）
 
-| Python 注解 | type_id |
+| Python 注解 | typeId |
 |-------------|---------|
 | `bool` | `"bool"` |
 | `int` | `"int"` |
@@ -223,15 +223,15 @@ ExecIn, ExecOut, DataIn, DataOut
 | `None` / `-> None` | （不产生 Data Out） |
 | 其它 / 缺失 | `"object"` |
 
-Exec 引脚无 type_id；UI 着色：Exec 白/灰；Data 按 type_id 色板（与 UE 相近即可）。
+Exec 引脚无 typeId；UI 着色：Exec 白/灰；Data 按 typeId 色板（与 UE 相近即可）。
 
 ### 6.3 节点标识
 
 ```text
-kind_id = Self.__name__ + "." + method_name    # 如 "ShooterLogic.fire"
+kindId = Self.__name__ + "." + methodName    # 如 "ShooterLogic.fire"
 ```
 
-图实例 `FlowNode` 含 `id`（实例）、`kind_id`、`x`/`y`（`float64`）、运行时引脚 id 列表。
+图实例 `FlowNode` 含 `id`（实例）、`kindId`、`x`/`y`（`float64`）、运行时引脚 id 列表。
 
 ### 6.4 连线规则（P0）
 
@@ -239,7 +239,7 @@ kind_id = Self.__name__ + "." + method_name    # 如 "ShooterLogic.fire"
 |------|------|
 | Exec | 仅 `ExecOut` → `ExecIn` |
 | Data | 仅 `DataOut` → `DataIn` |
-| 类型 | `type_id` 相同，或 **In** 端为 `"any"`（P0 不生成 any 引脚；目标 In 为 `object` 时视为宽进） |
+| 类型 | `typeId` 相同，或 **In** 端为 `"any"`（P0 不生成 any 引脚；目标 In 为 `object` 时视为宽进） |
 | 输入唯一 | 每个 **DataIn** / **ExecIn** 最多一条边；新连线替换旧边 |
 | 禁止 | 自连；`FlowEventMeta` 节点无 ExecIn，故无连入 |
 
@@ -252,8 +252,8 @@ kind_id = Self.__name__ + "." + method_name    # 如 "ShooterLogic.fire"
 ```text
 ┌─────────────────────────────────────────────────────────┐
 │  Python：FlowGraph / FlowNodeCatalog / UIFlowMixin      │
-│  译期：iter_methods + iter_method_params + get_*_type   │
-│  交互：UIFlowCanvas.on_pointer_* / on_wheel → graph     │
+│  译期：iterMethods + iterMethodParams + get_*_type   │
+│  交互：UIFlowCanvas.on_pointer_* / onWheel → graph     │
 ├─────────────────────────────────────────────────────────┤
 │  @native：UICanvas mount / invalidate + +canvas.inl     │
 ├─────────────────────────────────────────────────────────┤
@@ -278,8 +278,8 @@ kind_id = Self.__name__ + "." + method_name    # 如 "ShooterLogic.fire"
 | 组件 | 职责 |
 |------|------|
 | `UIFlowShell` | 挂载 menu / palette / canvas；`layout_children`；palette→canvas 拖放桥接 |
-| `UIMenuBar` | Win32 `HMENU`；`WM_COMMAND` → `shell.on_menu_command(id)` |
-| `UIFlowPalette` | 按 `category` 分组折叠列表；拖拽 `kind_id` 到画布创建节点 |
+| `UIMenuBar` | Win32 `HMENU`；`WM_COMMAND` → `shell.onMenuCommand(id)` |
+| `UIFlowPalette` | 按 `category` 分组折叠列表；拖拽 `kindId` 到画布创建节点 |
 | `UIFlowCanvas` | 不变为主编辑面；接收 drop、画布内 hover tooltip |
 | `UITooltipHost` | palette 项 / 画布节点 / 引脚悬浮提示 |
 
@@ -294,37 +294,37 @@ kind_id = Self.__name__ + "." + method_name    # 如 "ShooterLogic.fire"
 ```python
 @mixin
 class UIFlowMixin:
-  _flow_shell: UIFlowShell = new()      # P1：含 canvas / palette / menu
-  _flow_canvas: UIFlowCanvas = new()    # 兼容：shell.canvas 同一实例
-  _flow_catalog: FlowNodeCatalog = new()
-  _flow_catalog_ready: bool = False
-  _flow_win: UIWindow = new()
+  _flowShell: UIFlowShell = new()      # P1：含 canvas / palette / menu
+  _flowCanvas: UIFlowCanvas = new()    # 兼容：shell.canvas 同一实例
+  _flowCatalog: FlowNodeCatalog = new()
+  _flowCatalogReady: bool = False
+  _flowWin: UIWindow = new()
 
-  def _ensure_flow_catalog(self) -> None: ...
-  def draw_flow(self, win: UIWindow @ref) -> None: ...   # P1：shell.attach(win)
-  def create_flow(self, title: str = "", width: int = -1, height: int = -1) -> UIWindow: ...
-  def show_flow(self, title: str = "", width: int = 1280, height: int = 720) -> int: ...
-  def on_flow_ready(self) -> None:
+  def _ensureFlowCatalog(self) -> None: ...
+  def drawFlow(self, win: UIWindow @ref) -> None: ...   # P1：shell.attach(win)
+  def createFlow(self, title: str = "", width: int = -1, height: int = -1) -> UIWindow: ...
+  def showFlow(self, title: str = "", width: int = 1280, height: int = 720) -> int: ...
+  def onFlowReady(self) -> None:
     """可选 override：预置 Event 节点等。"""
     pass
-  def on_flow_run(self) -> None:
+  def onFlowRun(self) -> None:
     """P1 占位；P2 由 Run 菜单调用 FlowRuntime。"""
     pass
-  def on_flow_run_from_selected(self) -> None:
+  def onFlowRunFromSelected(self) -> None:
     """P2：从选中 Event 节点开始执行。"""
     pass
-  def on_flow_stop(self) -> None:
+  def onFlowStop(self) -> None:
     """P2：中止执行（同步首版可 no-op）。"""
     pass
 ```
 
-**P0**：`draw_flow` 曾全客户区 mount 画布。**P1**：改经 `UIFlowShell` 布局（菜单 + 左 palette + 中画布）。
+**P0**：`drawFlow` 曾全客户区 mount 画布。**P1**：改经 `UIFlowShell` 布局（菜单 + 左 palette + 中画布）。
 
-`_ensure_flow_catalog` 须用 `Self.get_method_annotation[…](method)` 读取 `.title` / `.category` / `.hidden`（与 `UIPanelMixin` 同模式），跳过 `hidden=True` 的模板。
+`_ensureFlowCatalog` 须用 `Self.getMethodAnnotation[…](method)` 读取 `.title` / `.category` / `.hidden`（与 `UIPanelMixin` 同模式），跳过 `hidden=True` 的模板。
 
 ### 8.2 菜单栏（P1）
 
-命令 ID 由 `FlowMenuId`（`py2cpp/ui/menu.py` 或 `flow/shell.py`）枚举；`WM_COMMAND` 的 `LOWORD(wParam)` 映射到 `UIFlowShell.on_menu_command`。
+命令 ID 由 `FlowMenuIdEnum`（`py2cpp/ui/menu.py` 或 `flow/shell.py`）枚举；`WM_COMMAND` 的 `LOWORD(wParam)` 映射到 `UIFlowShell.onMenuCommand`。
 
 | 菜单 | 项 | 快捷键 | 行为 | 阶段 |
 |------|-----|--------|------|------|
@@ -342,7 +342,7 @@ class UIFlowMixin:
 
 **Run / `FlowRuntime` 语义（P2.1）**：
 
-1. **Play**（`on_flow_run` → `run_all`）：对每个 Event 节点从 `then` 沿 Exec 边 walk；Callable 经宿主 `flow_invoke_callable`（译期展开 `getattr`）；Pure 在 Data 边求值时经 `flow_invoke_pure`（带节点缓存）。
+1. **Play**（`onFlowRun` → `runAll`）：对每个 Event 节点从 `then` 沿 Exec 边 walk；Callable 经宿主 `flowInvokeCallable`（译期展开 `getattr`）；Pure 在 Data 边求值时经 `flowInvokePure`（带节点缓存）。
 2. **Branch**（`flow.builtin.branch`）：`condition`（bool DataIn）→ `OnTrue` / `OnFalse` ExecOut。
 3. **For Loop**（`flow.builtin.for_loop`）：`count`（int DataIn）→ 循环 `LoopBody`，结束后 `Completed`。
 4. **Stop**：`cancelled=True`；节点边界检查退出。
@@ -352,16 +352,16 @@ class UIFlowMixin:
 
 - 宽 **240px** 固定（P2 再考虑可拖拽分隔条）。
 - 按 `FlowNodeCatalog.categories()` 分组；组头点击折叠/展开；`Events` 组优先。
-- 左键拖拽项 → 在画布客户区释放 → `add_node_from_kind(kind_id, gx, gy)`（`screen_to_graph`）。
+- 左键拖拽项 → 在画布客户区释放 → `addNodeFromKind(kindId, gx, gy)`（`screenToGraph`）。
 - Exec / Pure / Event 行首色点区分（白 / 蓝 / 橙，对齐 `UIFlowStyle`）。
 
 ### 8.4 Tooltip（P1）
 
 | 悬浮目标 | 内容 |
 |----------|------|
-| Palette 项 | `title`、`kind_id`、引脚摘要（由 catalog 拼 `str`） |
+| Palette 项 | `title`、`kindId`、引脚摘要（由 catalog 拼 `str`） |
 | 画布节点 | `node.title` + 引脚列表 |
-| 画布引脚 | `pin.name` + `type_id` + In/Out |
+| 画布引脚 | `pin.name` + `typeId` + In/Out |
 
 可选 P1.1：``@FlowNodeMeta(tip="…")`` 覆盖自动生成文案。
 
@@ -371,12 +371,12 @@ class UIFlowMixin:
 
 ```json
 {
-  "nodes": [{"id": 1, "kind_id": "ShooterLogic.fire", "title": "Fire", "x": 320, "y": 80, "pins": []}],
-  "edges": [{"from_pin": 2, "to_pin": 5}]
+  "nodes": [{"id": 1, "kindId": "ShooterLogic.fire", "title": "Fire", "x": 320, "y": 80, "pins": []}],
+  "edges": [{"fromPin": 2, "toPin": 5}]
 }
 ```
 
-Open 时未知 `kind_id` 跳过该节点；`UIFlowShell._doc_path` 供 Save / Save As。
+Open 时未知 `kindId` 跳过该节点；`UIFlowShell._doc_path` 供 Save / Save As。
 
 ---
 
@@ -407,7 +407,7 @@ class ShooterLogic(UIFlowMixin):
   ammo: int = 30
 
   @FlowEventMeta("Begin Play")
-  def on_begin(self) -> None:
+  def onBegin(self) -> None:
     pass
 
   @FlowNodeMeta("Fire", category="Combat")
@@ -418,28 +418,28 @@ class ShooterLogic(UIFlowMixin):
     return True
 
   @FlowPureMeta("HP")
-  def get_hp(self) -> int:
+  def getHp(self) -> int:
     return self.hp
 
-  def on_flow_ready(self) -> None:
+  def onFlowReady(self) -> None:
     # 可选：在 (x,y) 放置 Begin Play 节点
-    self._flow_canvas.add_node_from_kind("ShooterLogic.on_begin", 80.0, 80.0)
+    self._flowCanvas.addNodeFromKind("ShooterLogic.onBegin", 80.0, 80.0)
 
 
 def main() -> int:
   logic: ShooterLogic = new()
-  return logic.show_flow("Shooter Blueprint", 1280, 720)
+  return logic.showFlow("Shooter Blueprint", 1280, 720)
 ```
 
 P1 起：左侧 palette 按 `category` 分组（`Events` / `Combat` / 类名等），拖拽到画布创建节点；**Run → Play**（F5）在 P2 执行图逻辑。
 
 ---
 
-## 11. 绘制（`ui/canvas` + `UIFlowCanvas.on_paint`）
+## 11. 绘制（`ui/canvas` + `UIFlowCanvas.onPaint`）
 
-- 通用层 `UICanvas` / `UIPaintContext`：`ctx.draw_*` 录命令；**`commit()` 为纯 Python** `match` 分发到 `_gdi_*` 叶子（`+canvas.inl`）。Bezier 控制点在 Python（`_bezier_controls`）；`mount` / `contains_screen_point` 尺寸与命中算术在 Python，Win32 仅 `_win_*` / `client_from_screen` / `set_bounds` / `invalidate`。圆角 / 连线 / 椭圆走 **GDI+** AA；矩形与文字仍用 GDI。`WndProc` + 双缓冲仍为 C++ 回调胶水。
+- 通用层 `UICanvas` / `UIPaintContext`：`ctx.draw_*` 录命令；**`commit()` 为纯 Python** `match` 分发到 `_gdi_*` 叶子（`+canvas.inl`）。Bezier 控制点在 Python（`_bezierControls`）；`mount` / `containsScreenPoint` 尺寸与命中算术在 Python，Win32 仅 `_win_*` / `clientFromScreen` / `setBounds` / `invalidate`。圆角 / 连线 / 椭圆走 **GDI+** AA；矩形与文字仍用 GDI。`WndProc` + 双缓冲仍为 C++ 回调胶水。
 - 双缓冲 `BitBlt`；背景 `#1E1E1E`；网格 minor/major（画布坐标，不随 graph pan 缩放步长）。
-- 节点：圆角框（`NODE_CORNER_RADIUS`）+ 标题栏 / 边框随 `zoom` 缩放；引脚旁显示 `pin.name`（输入左对齐、输出右对齐）；画布字号默认 15pt（随 `zoom`）；palette 侧栏固定 15pt（`UIFlowStyle.palette_font_size`，不随画布缩放）。
+- 节点：圆角框（`NodeCornerRadius`）+ 标题栏 / 边框随 `zoom` 缩放；引脚旁显示 `pin.name`（输入左对齐、输出右对齐）；画布字号默认 15pt（随 `zoom`）；palette 侧栏固定 15pt（`UIFlowStyle.paletteFontSize`，不随画布缩放）。
 - 连线：三次贝塞尔，切线水平离开引脚。
 - Palette 侧栏为 UI chrome，**不**使用 graph `zoom`。
 
@@ -449,8 +449,8 @@ P1 起：左侧 palette 按 `category` 分组（`Events` / `Combat` / 类名等�
 
 | 层 | 路径 | 内容 |
 |----|------|------|
-| 译器单测 | `src/tests/test_method_meta.py` | `iter_method_params` / `get_param_type` / `get_return_type` / `is not None` 折叠 |
-| 集成测 | `test/ui/test_flow.py` | `FlowGraph.connect` 规则、`catalog` 引脚数、`create_flow` 句柄非 0 |
+| 译器单测 | `src/tests/test_method_meta.py` | `iterMethodParams` / `get_param_type` / `get_return_type` / `is not None` 折叠 |
+| 集成测 | `test/ui/test_flow.py` | `FlowGraph.connect` 规则、`catalog` 引脚数、`createFlow` 句柄非 0 |
 | 演示 | `examples/ui_flow_demo.py` | 交互式三节点图 |
 
 ```bat
@@ -464,11 +464,11 @@ build.bat ui/test_flow --seq
 
 ### P0 ✅
 
-- [x] 译期 API：`iter_method_params`、`get_param_type`、`get_return_type`
-- [x] `FlowNodeMeta` / `FlowPureMeta` / `FlowEventMeta` + `_ensure_flow_catalog`
+- [x] 译期 API：`iterMethodParams`、`get_param_type`、`get_return_type`
+- [x] `FlowNodeMeta` / `FlowPureMeta` / `FlowEventMeta` + `_ensureFlowCatalog`
 - [x] `FlowGraph` / `FlowNodeCatalog` / 连线规则
 - [x] `UIFlowCanvas`（继承 `UICanvas`）+ `+canvas.inl`
-- [x] `UIFlowMixin.show_flow`、demo、集成测
+- [x] `UIFlowMixin.showFlow`、demo、集成测
 - [x] **不含**图执行
 
 ### P1（进行中）
@@ -476,11 +476,11 @@ build.bat ui/test_flow --seq
 - [ ] `UIFlowShell` + `UIMenuBar`（File / Edit / View / **Run**）
 - [ ] `UIFlowPalette` 分组列表 + 拖拽创建
 - [ ] `UITooltipHost`（palette + 画布）
-- [ ] `_ensure_flow_catalog` 读 `get_method_annotation`（title / category / hidden）
-- [ ] `FlowGraph.remove_node`、Delete / Esc
+- [ ] `_ensureFlowCatalog` 读 `getMethodAnnotation`（title / category / hidden）
+- [ ] `FlowGraph.removeNode`、Delete / Esc
 - [ ] JSON 序列化（`flow/serialize.py` + `serde/json`）
 - [ ] `@FlowPinMeta("显示名")` 引脚标签
-- [ ] Run 菜单三项注册；P2 前 **disabled** 或调 `on_flow_run*` 空壳
+- [ ] Run 菜单三项注册；P2 前 **disabled** 或调 `onFlowRun*` 空壳
 
 ### P2.1 ✅
 

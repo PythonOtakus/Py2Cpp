@@ -10,7 +10,7 @@ class PyGeneratorTypeTests(unittest.TestCase):
 
     def test_parse_generator_ann_storage(self):
         tp = TypeParser()
-        ann = ast.parse('Generator[int, None, None]').body[0].value
+        ann = ast.parse('GeneratorType[int, None, None]').body[0].value
         cpp = tp.parse_storage_type(ann, set())
         self.assertEqual(cpp, 'PyGenerator<PyInt, PyNone, PyNone>')
 

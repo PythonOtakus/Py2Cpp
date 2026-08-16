@@ -52,11 +52,11 @@ def protocol_module_preamble_lines() -> list[str]:
 
 
 def _probe_ret_cpp(ret_cpp: str) -> str:
-  return "U" if ret_cpp == "Self" else ret_cpp
+  return "U" if ret_cpp in ("Self", "PySelf") else ret_cpp
 
 
 def _probe_param_cpp(param_cpp: str) -> str:
-  return "U" if param_cpp == "Self" else param_cpp
+  return "U" if param_cpp in ("Self", "PySelf") else param_cpp
 
 
 def _ret_type_check(expr: str, ret_cpp: str) -> str:
@@ -347,7 +347,7 @@ def _collect_probe_parts(
     if (p := _sfinae_protocol_member_probe(spec, ret_cpp))
   ]
   member_constraint_list = [s for s, _ in members]
-  reject_pybool_only = protocol_name in ("Comparable", "Equatable")
+  reject_pybool_only = protocol_name in ("ComparableType", "EquatableType")
   node_tpl = None
   if protocol_type_params:
     node_tpl = _parametric_assoc_template_name(

@@ -493,6 +493,9 @@ def resolve_ctor_cpp_type(tr: Translator, name: str) -> str | None:
   eff = tr._effective_import_bindings().get(name)
   if eff is not None and eff.kind in ("function", "delegate"):
     return None
+  # 活跃形参（``YieldValue`` / ``T``）保持原名，勿 ``default_py_class_cpp_name``
+  if name in tr._active_type_params():
+    return name
   cpp = binding_class_cpp_name(tr._effective_import_bindings(), name)
   if cpp:
     return cpp

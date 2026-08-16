@@ -1,6 +1,6 @@
 """``Arena``：解码期临时 ``char`` 分配（``json.loads`` 热路径）。
 
-``acquire`` 返回独立 ``allocRawArray`` 缓冲；``adopt_span`` 后须 ``release``，
+``acquire`` 返回独立 ``allocRawArray`` 缓冲；``adoptSpan`` 后须 ``release``，
 否则 ``reset`` 会释放。``reserve`` 为容量提示（当前无操作，保留 API）。
 """
 from ..builtins import *
@@ -8,7 +8,6 @@ from .list import list
 
 
 @uncopyable
-@native_name("PyArena")
 class Arena:
   """单次 ``loads`` 作用域内的 ``char`` 堆缓冲池。"""
 
@@ -44,7 +43,7 @@ class Arena:
     return p
 
   def release(self, p: Pointer[char]) -> None:
-    """``PyStr.adopt_span`` 后从 ``reset`` 列表移除。"""
+    """``PyStr.adoptSpan`` 后从 ``reset`` 列表移除。"""
     if p is None:
       return
     n: int = len(self._owned)

@@ -80,7 +80,9 @@ _SKIP_MACRO_PREFIXES = (
 )
 
 
-PYI_PREFIX = "Pyi_"
+# 旧前缀（兼容读旧 .pyi）；新导出名无下划线：``PyiSqlite3`` / ``pyiSqlite3Open``
+PYI_PREFIX = "Pyi"
+PYI_PREFIX_LEGACY = "Pyi_"
 
 _PYI_ANN_BUILTINS = frozenset({
   "None",
@@ -96,7 +98,7 @@ _PYI_ANN_BUILTINS = frozenset({
   "char",
   "str",
   "bytes",
-  "c_str",
+  "CStr",
   "Self",
   "object",
 })
@@ -106,18 +108,128 @@ def _is_c_ident(name: str | None) -> bool:
   return bool(name) and name.isidentifier()
 
 
-def pyi_export_name(c_name: str) -> str:
-  """模块级导出名：``Pyi_`` + C 标识符。"""
-  if not _is_c_ident(c_name):
-    return f"{PYI_PREFIX}_anon"
-  if c_name.startswith(PYI_PREFIX):
+def _split_camel_words(s: str) -> list[str]:
+  """无下划线的 C 标识符分词（``GLFWwindow`` / ``XMLHttpRequest`` / ``CreateWindowExW``）。"""
+  if not s:
+    return []
+  # ``GLFWwindow``：全大写缩写后直接小写（无中间 Pascal 大写）；勿与 ``XMLHttp`` 混淆。
+  m = re.fullmatch(r"([A-Z]{2,})([a-z]+)", s)
+  if m:
+    return [m.group(1), m.group(2)]
+  # 缩写后接 Pascal 词：``XML``+``Http``；勿把 ``DATA`` 拆成单字母。
+  parts = re.findall(r"[A-Z]+(?=[A-Z][a-z])|[A-Z]?[a-z]+|[A-Z]+|[0-9]+", s)
+  return parts if parts else [s]
+
+
+def _split_c_ident_words(c_name: str) -> list[str]:
+  """C 标识符 → 词列表（去前导 ``_``；snake / SCREAMING / camel；尾缀 ``A``/``W`` 单独成词）。"""
+  s = (c_name or "").lstrip("_")
+  if not s:
+    return []
+  if "_" in s:
+    parts = [p for p in s.split("_") if p]
+  else:
+    parts = _split_camel_words(s)
+  out: list[str] = []
+  n = len(parts)
+  for i, p in enumerate(parts):
+    # 仅末段剥 WinAPI 宽窄后缀：``STATUSW``→``STATUS``+``W``。
+    # 勿剥 ``DATA``/``MEDIA``/``ROW``（``DAT``+``A`` / ``RO``+``W``）；茎长 ≥6（``STATUS``）。
+    stem = p[:-1]
+    if (
+      i == n - 1
+      and len(stem) >= 6
+      and p[-1] in "AW"
+      and stem.isupper()
+      and stem.isalpha()
+    ):
+      out.append(stem)
+      out.append(p[-1])
+    else:
+      out.append(p)
+  return out
+
+
+def _word_to_pascal_piece(word: str, *, is_last: bool) -> str:
+  if not word:
+    return ""
+  if is_last and word in ("A", "W"):
+    return word
+  if word.isupper() and word.isalpha():
+    return word.capitalize()
+  # ``WIN32`` / ``UTF8`` / ``SHA256`` → ``Win32`` / ``Utf8`` / ``Sha256``
+  if word.isupper() and word.isalnum() and any(c.isalpha() for c in word):
+    runs = re.findall(r"[A-Z]+|[0-9]+", word)
+    return "".join(r.capitalize() if r.isalpha() else r for r in runs)
+  if word[0].islower():
+    return word[0].upper() + word[1:]
+  return word
+
+
+def c_ident_to_pascal(c_name: str) -> str:
+  """``_FOO_BAR`` / ``STATUSW`` / ``WIN32_DATA`` → ``FooBar`` / ``StatusW`` / ``Win32Data``。"""
+  words = _split_c_ident_words(c_name)
+  if not words:
+    return "Anon"
+  n = len(words)
+  return "".join(_word_to_pascal_piece(w, is_last=(i == n - 1)) for i, w in enumerate(words))
+
+
+def c_ident_to_camel(c_name: str) -> str:
+  """结构体字段等：Pascal → 首字母小写（保留尾缀 ``A``/``W``）。"""
+  pascal = c_ident_to_pascal(c_name)
+  if not pascal:
+    return "anon"
+  return pascal[0].lower() + pascal[1:]
+
+
+def pyi_type_export_name(c_name: str, *, is_enum: bool = False) -> str:
+  """类型类名：``Pyi`` + Pascal；仅真正 C ``enum`` 加 ``Enum`` 后缀。"""
+  if not c_name:
+    return f"{PYI_PREFIX}Anon"
+  if c_name.startswith(PYI_PREFIX) and len(c_name) > len(PYI_PREFIX) and c_name[len(PYI_PREFIX)].isupper():
+    base = c_name
+  elif c_name.startswith(PYI_PREFIX_LEGACY):
+    base = PYI_PREFIX + c_ident_to_pascal(c_name[len(PYI_PREFIX_LEGACY):])
+  else:
+    base = PYI_PREFIX + c_ident_to_pascal(c_name)
+  if is_enum and not base.endswith("Enum"):
+    base += "Enum"
+  return base
+
+
+def pyi_func_export_name(c_name: str) -> str:
+  """函数：``pyi`` + Pascal（``wglUseFontOutlinesA`` → ``pyiWglUseFontOutlinesA``）。"""
+  if not c_name:
+    return "pyiAnon"
+  if c_name.startswith("pyi") and len(c_name) > 3:
     return c_name
-  return f"{PYI_PREFIX}{c_name}"
+  return "pyi" + c_ident_to_pascal(c_name)
+
+
+def pyi_const_export_name(c_name: str) -> str:
+  """模块常量：``PyiSqliteOk``（与类型同式 Pascal）。"""
+  return pyi_type_export_name(c_name, is_enum=False)
+
+
+def pyi_field_export_name(c_name: str) -> str:
+  """结构体字段：规范 camelCase。"""
+  py, _ = _py_ident(c_ident_to_camel(c_name))
+  return py
+
+
+def pyi_export_name(c_name: str) -> str:
+  """默认按**类型**导出名（注解改写 / 结构体类）；函数/常量请用专用入口。"""
+  return pyi_type_export_name(c_name)
 
 
 def pyi_c_name_from_export(py_name: str) -> str:
-  """``Pyi_sqlite3`` → ``sqlite3``。"""
-  if py_name.startswith(PYI_PREFIX):
+  """尽力从导出名还原（优先依赖 ``@native_name``；本函数仅剥离已知前缀启发式）。"""
+  if py_name.startswith(PYI_PREFIX_LEGACY):
+    return py_name[len(PYI_PREFIX_LEGACY):]
+  if py_name.startswith("pyi") and len(py_name) > 3 and py_name[3].isupper():
+    return py_name[3:]
+  if py_name.startswith(PYI_PREFIX) and len(py_name) > len(PYI_PREFIX) and py_name[len(PYI_PREFIX)].isupper():
     return py_name[len(PYI_PREFIX):]
   return py_name
 
@@ -128,7 +240,7 @@ def _rewrite_identifiers_in_ann(ann: str, known: set[str]) -> str:
     if w in _PYI_ANN_BUILTINS or w in ("Self", "Function", "Pointer"):
       return w
     if w in known and _is_c_ident(w):
-      return pyi_export_name(w)
+      return pyi_type_export_name(w)
     return w
 
   return re.sub(r"\b[A-Za-z_][A-Za-z0-9_]*\b", repl, ann)
@@ -376,9 +488,10 @@ def _emit_docstring_lines(doc: str, indent: str = "  ") -> list[str]:
 @dataclass
 class FieldDef:
 
-  name: str
+  name: str  # Python 侧 camelCase
   ann: str
   comment: str = ""
+  c_name: str = ""  # 原 C 字段名；与 name 不同时写 ``@native_name``
 
 
 @dataclass
@@ -976,7 +1089,7 @@ class TypeMapper:
         val = int(ch.enum_value)
       except Exception:
         continue
-      py_name = pyi_export_name(c_name)
+      py_name = pyi_const_export_name(c_name)
       seen_consts.add(c_name)
       resolved_consts[c_name] = ConstDef(
         name=c_name,
@@ -1010,9 +1123,9 @@ class TypeMapper:
         known = self.known_type_names()
         ann2 = _rewrite_identifiers_in_ann(ann, known)
         ann2, cmt2 = _sanitize_pyi_ann(ann2, cmt)
-        if keyword.iskeyword(fname):
-          fname = fname + "_"
-        out.append(FieldDef(name=fname, ann=ann2, comment=cmt2))
+        c_fname = fname
+        py_fname = pyi_field_export_name(c_fname)
+        out.append(FieldDef(name=py_fname, ann=ann2, comment=cmt2, c_name=c_fname))
       return out
     finally:
       self._collecting.discard(key)
@@ -1051,7 +1164,7 @@ class TypeMapper:
       if name in ("sqlite3_uint64", "sqlite_uint64"):
         return "uint64", ""
       if name in ("sqlite3_filename",):
-        return "c_str", ""
+        return "CStr", ""
       # Win32 句柄 / void* 宽度别名（函数指针 FARPROC/PROC 等走 Function，不在此列）
       if name in (
         "HANDLE", "HWND", "HINSTANCE", "HMODULE", "HICON", "HCURSOR", "HBRUSH",
@@ -1098,15 +1211,15 @@ class TypeMapper:
           return self._map_function_proto(can_p)
       psp = _type_spelling(pointee).replace("const ", "").strip()
       if pk in (TypeKind.CHAR_S, TypeKind.CHAR_U, TypeKind.SCHAR, TypeKind.UCHAR):
-        return "c_str", ""
+        return "CStr", ""
       if psp in ("char", "signed char", "unsigned char", "WCHAR", "wchar_t"):
-        return "c_str", ""
+        return "CStr", ""
       if pk == TypeKind.VOID:
         return "uintptr", ""
       if pk == TypeKind.TYPEDEF:
         tname = pointee.get_declaration().spelling or ""
         if tname in ("WCHAR", "CHAR", "TCHAR"):
-          return "c_str", ""
+          return "CStr", ""
       # GLfloat* / GLdouble* 等：ELABORATED/TYPEDEF 标量先映成 Pointer[float]/Pointer[float64]
       if pk in (TypeKind.TYPEDEF, TypeKind.ELABORATED):
         inner_ann, inner_cmt = self.map(pointee, is_return=False)
@@ -1254,7 +1367,7 @@ def _resolve_macro_aliases(
       if target is None:
         still.append((name, ref, native))
         continue
-      py_name = pyi_export_name(name)
+      py_name = pyi_const_export_name(name)
       resolved[name] = ConstDef(
         name=name,
         py_name=py_name,
@@ -1350,7 +1463,7 @@ def collect_model(
       )
       mapper._add_enum_constants(
         c,
-        enum_py=pyi_export_name(c.spelling),
+        enum_py=pyi_type_export_name(c.spelling, is_enum=True),
         resolved_consts=resolved_consts,
         seen_consts=seen_consts,
       )
@@ -1385,7 +1498,7 @@ def collect_model(
       ann, val = lit
       seen_consts.add(name)
       _base, _ = _py_ident(name)
-      py_name = pyi_export_name(_base if _base == name else name)
+      py_name = pyi_const_export_name(_base if _base == name else name)
       # 常量始终保留 C 宏名供 #undef / 文档
       native = name
       if ann == "alias":
@@ -1407,7 +1520,7 @@ def collect_model(
     if c_name.startswith("operator"):
       continue
     seen_funcs.add(c_name)
-    py_name = pyi_export_name(c_name)
+    py_name = pyi_func_export_name(c_name)
     ret_ann, ret_cmt = mapper.map(c.result_type, is_return=True)
     ret_ann, ret_cmt = _sanitize_pyi_ann(ret_ann, ret_cmt)
     params: list[ParamDef] = []
@@ -1464,7 +1577,7 @@ def collect_model(
   model.structs = sorted(mapper.structs.values(), key=lambda s: s.c_name)
   model.enums = sorted(mapper.enums.values(), key=lambda e: e.c_name)
   model.aliases = [
-    TypeAliasDef(py_name=pyi_export_name(a), target=pyi_export_name(tgt))
+    TypeAliasDef(py_name=pyi_type_export_name(a), target=pyi_type_export_name(tgt))
     for a, tgt in sorted(mapper.aliases.items())
     if tgt in mapper.structs or tgt in mapper.enums or _is_c_ident(tgt)
   ]
@@ -1474,17 +1587,17 @@ def collect_model(
 
 
 def _rewrite_self_ann(ann: str, c_name: str) -> str:
-  """同类字段注解：``Pointer[Pyi_Foo]`` / ``Pyi_Foo`` → ``Self``（满足 S15）。"""
+  """同类字段注解：``Pointer[PyiFoo]`` / ``PyiFoo`` → ``Self``（满足 S15）。"""
   if not c_name:
     return ann
-  py = pyi_export_name(c_name)
+  py = pyi_type_export_name(c_name)
   ann = re.sub(rf"\b{re.escape(py)}\b", "Self", ann)
   ann = re.sub(rf"\b{re.escape(c_name)}\b", "Self", ann)
   return ann
 
 
 def _render_struct(st: StructDef) -> list[str]:
-  py_cls = pyi_export_name(st.c_name)
+  py_cls = pyi_type_export_name(st.c_name)
   native = st.c_cpp_path or st.c_name
   lines: list[str] = [
     "@native",
@@ -1501,12 +1614,16 @@ def _render_struct(st: StructDef) -> list[str]:
     ann = _rewrite_self_ann(fd.ann, st.c_name)
     ann, cmt_body = _sanitize_pyi_ann(ann, fd.comment)
     cmt = f"  # {cmt_body}" if cmt_body else ""
-    lines.append(f"  {fd.name}: {ann}{cmt}")
+    c_field = fd.c_name or fd.name
+    if c_field != fd.name:
+      lines.append(f'  {fd.name}: {ann} @native_name("{c_field}"){cmt}')
+    else:
+      lines.append(f"  {fd.name}: {ann}{cmt}")
   return lines
 
 
 def _render_enum(en: EnumDef) -> list[str]:
-  py_cls = pyi_export_name(en.c_name)
+  py_cls = pyi_type_export_name(en.c_name, is_enum=True)
   native = en.c_cpp_path or en.c_name
   lines = [
     "@native",
@@ -1536,7 +1653,7 @@ def render_pyi(header: Path, model: FfiModel) -> str:
     "from py2cpp.builtins import *",
     "",
     "# ---------------------------------------------------------------------------",
-    "# Structs / unions（模块名 Pyi_*；@native_name 为 C 标签；C++ using 别名，不生成新 struct）",
+    "# Structs / unions（模块名 Pyi…；@native_name 为 C 标签；C++ using 别名，不生成新 struct）",
     "# ---------------------------------------------------------------------------",
     "",
   ]
@@ -1546,7 +1663,7 @@ def render_pyi(header: Path, model: FfiModel) -> str:
   if model.enums:
     lines.extend([
       "# ---------------------------------------------------------------------------",
-      "# Enums（空 @native 类；C++ using Pyi_E = ::E；成员见 Constants）",
+      "# Enums（空 @native 类；C++ using PyiE = ::E；成员见 Constants；类名带 Enum 后缀）",
       "# ---------------------------------------------------------------------------",
       "",
     ])
@@ -1556,7 +1673,7 @@ def render_pyi(header: Path, model: FfiModel) -> str:
   if model.aliases:
     lines.extend([
       "# ---------------------------------------------------------------------------",
-      "# Typedef aliases（type Pyi_Alias = Pyi_StructTag / Pyi_EnumTag）",
+      "# Typedef aliases（type PyiAlias = PyiStructTag / PyiEnumTag）",
       "# ---------------------------------------------------------------------------",
       "",
     ])
@@ -1566,15 +1683,16 @@ def render_pyi(header: Path, model: FfiModel) -> str:
 
   lines.extend([
     "# ---------------------------------------------------------------------------",
-    "# Constants（#define 与 enum 成员）",
+    "# Constants（#define 与 enum 成员；@native_name 为 C 宏名）",
     "# ---------------------------------------------------------------------------",
     "",
   ])
   for c in model.consts:
-    if c.native:
-      lines.append(f"# C: {c.native}")
     ann, _ = _sanitize_pyi_ann(c.ann, "")
-    lines.append(f"{c.py_name}: {ann} = {c.value}")
+    if c.native and c.native != c.py_name:
+      lines.append(f'{c.py_name}: {ann} @native_name("{c.native}") = {c.value}')
+    else:
+      lines.append(f"{c.py_name}: {ann} = {c.value}")
   if model.consts:
     lines.append("")
 
@@ -1626,14 +1744,14 @@ def run_checks(model: FfiModel, text: str, *, header: Path) -> list[str]:
         errs.append(f"missing function {need}")
     if "SQLITE_OK" not in {c.name for c in model.consts}:
       errs.append("missing SQLITE_OK")
-    if "class Pyi_sqlite3:" not in text:
-      errs.append("missing @native class Pyi_sqlite3")
+    if "class PyiSqlite3:" not in text:
+      errs.append("missing @native class PyiSqlite3")
     if '@native_name("sqlite3")' not in text:
       errs.append("sqlite3 class must keep @native_name")
-    if "Pointer[Pyi_sqlite3]" not in text:
-      errs.append("sqlite3* should map to Pointer[Pyi_sqlite3]")
-    if "Pyi_SQLITE_OK" not in text:
-      errs.append("constants must use Pyi_ prefix")
+    if "Pointer[PyiSqlite3]" not in text:
+      errs.append("sqlite3* should map to Pointer[PyiSqlite3]")
+    if "PyiSqliteOk" not in text:
+      errs.append("constants must use Pyi PascalCase (PyiSqliteOk)")
     if "type sqlite3_h =" in text or "class sqlite3_h" in text:
       errs.append("legacy *_h handle alias must not appear")
   else:
@@ -1648,10 +1766,10 @@ def run_checks(model: FfiModel, text: str, *, header: Path) -> list[str]:
       const_names = {c.name for c in model.consts}
       if "GLFW_MOUSE_BUTTON_LEFT" not in const_names:
         errs.append("missing alias const GLFW_MOUSE_BUTTON_LEFT")
-      if "class Pyi_GLFWwindow:" not in text:
-        errs.append("missing @native class Pyi_GLFWwindow")
-      if "Pointer[Pyi_GLFWwindow]" not in text:
-        errs.append("GLFWwindow* should map to Pointer[Pyi_GLFWwindow]")
+      if "class PyiGlfwWindow:" not in text:
+        errs.append("missing @native class PyiGlfwWindow")
+      if "Pointer[PyiGlfwWindow]" not in text:
+        errs.append("GLFWwindow* should map to Pointer[PyiGlfwWindow]")
       if "GLFWwindow_h" in text:
         errs.append("legacy GLFWwindow_h must not appear")
     elif hname in {"gl.h"}:

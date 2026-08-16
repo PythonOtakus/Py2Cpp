@@ -36,7 +36,7 @@ class TestFfiOpaqueNames(unittest.TestCase):
 
   def test_using_target(self) -> None:
     node = ast.ClassDef(
-      name="Pyi_sqlite3",
+      name="PyiSqlite3",
       bases=[],
       keywords=[],
       body=[ast.Pass()],
@@ -51,7 +51,7 @@ class TestFfiOpaqueNames(unittest.TestCase):
     )
     info = ClassInfo(node, module_path="ffi/sqlite/sqlite3")
     self.assertEqual(ffi_c_struct_using_target(info), "::sqlite3")
-    self.assertEqual(info.cpp_name(), "Pyi_sqlite3")
+    self.assertEqual(info.cpp_name(), "PyiSqlite3")
 
 
 class TestFfiLayout(unittest.TestCase):
@@ -92,7 +92,7 @@ class TestFfiLayout(unittest.TestCase):
     req = ImportRequest(
       level=0,
       module="ffi.sqlite.sqlite3",
-      names=(("Pyi_sqlite3_open", None),),
+      names=(("pyiSqlite3Open", None),),
       is_star=False,
       is_plain_import=False,
     )
@@ -145,12 +145,12 @@ class TestFfiTranslateGlue(unittest.TestCase):
       self.assertIn("#include <sqlite3.h>", text)
       self.assertNotIn("class sqlite3", text)
       self.assertNotIn("struct ::sqlite3", text)
-      self.assertIn("using Pyi_sqlite3 = ::sqlite3;", text)
-      self.assertIn("Pyi_sqlite3_open", text)
-      self.assertIn("Pyi_SQLITE_OK", text)
+      self.assertIn("using PyiSqlite3 = ::sqlite3;", text)
+      self.assertIn("pyiSqlite3Open", text)
+      self.assertIn("PyiSqliteOk", text)
       # 嵌套 C 结构体：using 右侧须带外层限定
       self.assertIn(
-        "using Pyi_sqlite3_index_orderby = ::sqlite3_index_info::sqlite3_index_orderby;",
+        "using PyiSqlite3IndexOrderby = ::sqlite3_index_info::sqlite3_index_orderby;",
         text,
       )
       inl = header.with_suffix(".inl")
@@ -159,7 +159,7 @@ class TestFfiTranslateGlue(unittest.TestCase):
       self.assertIn("py2cpp FFI glue", inl_text)
       self.assertIn("#include <sqlite3.h>", inl_text)
       self.assertIn("::sqlite3_open", inl_text)
-      self.assertIn("Pyi_sqlite3", inl_text)
+      self.assertIn("PyiSqlite3", inl_text)
       self.assertIn("inline", inl_text)
       self.assertNotIn("sqlite3_auto_extension", inl_text)
 

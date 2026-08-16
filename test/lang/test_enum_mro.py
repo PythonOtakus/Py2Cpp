@@ -1,4 +1,4 @@
-"""``@enum.mro``、``__id__`` / ``__class_id__``、``of`` / ``create``（模块内自建 MRO，勿依赖 ``ExcSlot``）。"""
+"""``@enum.mro``、``__id__`` / ``__class_id__``、``of`` / ``create``（模块内自建 MRO，勿依赖 ``ExcTypeUnion``）。"""
 from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
@@ -15,41 +15,41 @@ class Plain:
     pass
 
 @enum.mro
-class PetKind(base=Animal):
-    OTHER = -1
+class PetKindTypeEnum(base=Animal):
+    Other = -1
 
-def classify(p: Animal) -> PetKind:
-    return PetKind.of(p)
+def classify(p: Animal) -> PetKindTypeEnum:
+    return PetKindTypeEnum.of(p)
 
-def make_dog() -> Animal:
-    return PetKind.create(PetKind.Dog)
+def makeDog() -> Animal:
+    return PetKindTypeEnum.create(PetKindTypeEnum.Dog)
 
 class EnumMroIdTests(TestCaseMixin):
-    _test_tag = 1
+    _testTag = 1
 
     @override
     def test(self):
         d: Dog = new()
         self.assertEqual(d.__class_id__, Dog.__id__)
-        self.assertEqual(classify(d), PetKind.Dog)
-        made: Animal = make_dog()
+        self.assertEqual(classify(d), PetKindTypeEnum.Dog)
+        made: Animal = makeDog()
         self.assertTrue(made)
         w: Plain = new()
         self.assertTrue(w.__class_id__ == Plain.__id__)
 
 class EnumMroEnumTests(TestCaseMixin):
-    _test_tag = 10
+    _testTag = 10
 
     @override
     def test(self):
-        self.assertEqual(classify(Cat()), PetKind.Cat)
-        self.assertTrue(PetKind.OTHER != PetKind.Dog)
-        self.assertEqual(str(PetKind.Dog), 'PetKind.Dog')
-        self.assertEqual(repr(PetKind.OTHER), '<PetKind.OTHER: -1>')
+        self.assertEqual(classify(Cat()), PetKindTypeEnum.Cat)
+        self.assertTrue(PetKindTypeEnum.Other != PetKindTypeEnum.Dog)
+        self.assertEqual(str(PetKindTypeEnum.Dog), 'PetKindTypeEnum.Dog')
+        self.assertEqual(repr(PetKindTypeEnum.Other), '<PetKindTypeEnum.Other: -1>')
 
 def main():
     suite: TestSuite = new()
-    for Class in TestCaseMixin.iter_subclasses(sort_const='_test_tag'):
+    for Class in TestCaseMixin.iterSubclasses(sortConst='_testTag'):
         suite.addTest(Class())
     return TextTestRunner().run(suite)
 if __name__ == '__main__':

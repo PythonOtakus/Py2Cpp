@@ -37,7 +37,7 @@ _SCALAR_CAST: dict[str, str] = {
   "float": "PyFloat",
   "float64": "PyFloat64",
   "bool": "PyBool",
-  "c_str": "c_str",
+  "CStr": "CStr",
 }
 
 
@@ -55,7 +55,7 @@ def _parse_ann(node: ast.expr | None) -> _Ann:
   if isinstance(node, ast.Name):
     if node.id == "None":
       return _Ann("void")
-    if node.id == "c_str":
+    if node.id == "CStr":
       return _Ann("cstr")
     if node.id in _SCALAR_CAST:
       return _Ann("scalar", node.id)
@@ -68,7 +68,7 @@ def _parse_ann(node: ast.expr | None) -> _Ann:
       return _Ann("unsupported")
     sl = node.slice
     if isinstance(sl, ast.Name):
-      if sl.id == "c_str":
+      if sl.id == "CStr":
         return _Ann("ptr_cstr")
       if sl.id in _SCALAR_CAST:
         return _Ann("ptr_scalar", sl.id)
@@ -115,7 +115,7 @@ def _emit_arg_expr(pname: str, ann: _Ann, *, c_name: str) -> tuple[list[str], st
       return [], f"reinterpret_cast<double*>({pname})"
     return [], pname
   if ann.kind == "ptr_cstr":
-    # ``c_str*`` ≈ ``const char**``；个别 API（如 ``sqlite3_exec`` errmsg）要 ``char**``
+    # ``CStr*`` ≈ ``const char**``；个别 API（如 ``sqlite3_exec`` errmsg）要 ``char**``
     if c_name == "sqlite3_exec":
       return [], f"reinterpret_cast<char**>(static_cast<void*>({pname}))"
     return [], f"reinterpret_cast<const char**>(static_cast<void*>({pname}))"
@@ -137,7 +137,7 @@ def _ret_store_type(ann: _Ann, fallback: str) -> str:
   if ann.kind == "struct":
     return fallback
   if ann.kind == "cstr":
-    return "c_str"
+    return "CStr"
   if ann.kind == "fn":
     return fallback
   if ann.kind == "scalar":
@@ -147,7 +147,7 @@ def _ret_store_type(ann: _Ann, fallback: str) -> str:
 
 def _wrap_c_call_as_ret(c_call: str, ann: _Ann, store: str) -> str:
   if ann.kind == "cstr":
-    return f"(c_str)({c_call})"
+    return f"(CStr)({c_call})"
   if ann.kind == "fn":
     return f"({store})({c_call})"
   if ann.kind == "scalar":
@@ -158,13 +158,13 @@ def _wrap_c_call_as_ret(c_call: str, ann: _Ann, store: str) -> str:
 
 
 def _qualify_pyi_types(cpp_type: str, ns: str) -> str:
-  """``.inl`` 在命名空间闭合后包含：返回类型在限定名之前，须写 ``ns::Pyi_*``。"""
+  """``.inl`` 在命名空间闭合后包含：返回类型在限定名之前，须写 ``ns::Pyi…``。"""
   if not ns or not cpp_type:
     return cpp_type
   import re
 
   return re.sub(
-    r"(?<![:\w])(Pyi_[A-Za-z0-9_]+)",
+    r"(?<![:\w])(Pyi[A-Z][A-Za-z0-9_]*)",
     rf"{ns}::\1",
     cpp_type,
   )
@@ -254,10 +254,28 @@ def emit_ffi_module_glue(tr: Translator, module_path: str) -> None:
     and node.target.id != "__all__"
   ]
   if const_names:
-    lines.append("// 撤销 C 头对 FFI 常量对应宏的再定义（Pyi_X → X）")
+    lines.append("// 撤销 C 头对 FFI 常量对应宏的再定义（PyiX → X）")
     seen_c: set[str] = set()
+    # 常量节点在 tr.module_constants；优先注解 ``@native_name``
+    from ..analysis.ir import parse_native_name_type_annotation
+
+    const_by_name = {
+      n.target.id: n
+      for mp, n in tr.module_constants
+      if mp == module_path and isinstance(n.target, ast.Name)
+    }
     for name in const_names:
-      c_macro = name[4:] if name.startswith("Pyi_") else name
+      node = const_by_name.get(name)
+      c_macro = (
+        parse_native_name_type_annotation(node.annotation)
+        if node is not None
+        else None
+      )
+      if not c_macro:
+        if name.startswith("Pyi_"):
+          c_macro = name[4:]
+        else:
+          c_macro = name
       if c_macro in seen_c:
         continue
       seen_c.add(c_macro)

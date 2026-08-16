@@ -17,13 +17,13 @@ class PlayerConfig(UIPanelMixin):
     self.clicks += 1
 
   @UIButtonMeta("重置 HP")
-  def reset_hp(self) -> None:
+  def resetHp(self) -> None:
     self.hp = 50
 
 
 def main() -> int:
   cfg: PlayerConfig = new()
-  return cfg.show_panel()
+  return cfg.showPanel()
 
 
 if __name__ == "__main__":

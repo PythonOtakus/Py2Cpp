@@ -3,7 +3,7 @@
 路径：``py2cpp.math.random``（``import random`` 的 CPython 同名模块在 Py2Cpp 中请显式导入本子模块）。
 
 参考 https://docs.python.org/3.13/library/random.html 与 ``Lib/random.py``。
-算法与 CPython 3.13 ``Random``（MT19937、VERSION=3）一致。
+算法与 CPython 3.13 ``Random``（MT19937、Version=3）一致。
 
 **暂未实现**：``betavariate``、``expovariate``、``gammavariate``、``gauss`` / ``normalvariate``、
 ``lognormvariate``、``vonmisesvariate``、``paretovariate``、``weibullvariate``、``triangular``、
@@ -18,16 +18,16 @@ from ..util.list import list
 
 _N: int @const = 624
 _M: int @const = 397
-_MATRIX_A: int @const = 0x9908B0DF
-_UPPER_MASK: int @const = 0x80000000
-_LOWER_MASK: int @const = 0x7FFFFFFF
+_MatrixA: int @const = 0x9908B0DF
+_UpperMask: int @const = 0x80000000
+_LowerMask: int @const = 0x7FFFFFFF
 
 
 @copyable
 class Random:
   """可播种的伪随机数生成器（MT19937）。"""
 
-  VERSION: int @const = 3
+  Version: int @const = 3
 
   @immutable
   @staticmethod
@@ -46,29 +46,29 @@ class Random:
     t: float64 = time()
     keys: list[int] = []
     keys.append(int(t * 256.0) & 0xFFFFFFFF)
-    self._init_by_array(keys)
+    self._initByArray(keys)
 
   @overload
   def seed(self, a: int, version: int = 2) -> None:
     if version == 1:
-      self._init_genrand(a)
+      self._initGenrand(a)
       return
     if version != 2:
       raise ValueError("unsupported seed version")
     keys: list[int] = []
     keys.append(a)
-    self._init_by_array(keys)
+    self._initByArray(keys)
 
-  def _init_genrand(self, seed: int) -> None:
+  def _initGenrand(self, seed: int) -> None:
     self._mt[0] = Self._mask32(seed)
     for i in range(1, _N):
       prev: int = self._mt[i - 1]
       self._mt[i] = Self._mask32(1812433253 * (prev ^ (prev >> 30)) + i)
     self._index = _N
 
-  def _init_by_array(self, key: list[int]) -> None:
+  def _initByArray(self, key: list[int]) -> None:
     """``version=2`` 整数种子路径（对齐 ``_randommodule`` ``init_by_array``）。"""
-    self._init_genrand(19650218)
+    self._initGenrand(19650218)
     i: int = 1
     j: int = 0
     k: int = _N
@@ -98,22 +98,22 @@ class Random:
 
   def _twist(self) -> None:
     for i in range(_N - _M):
-      y: int = (self._mt[i] & _UPPER_MASK) | (self._mt[i + 1] & _LOWER_MASK)
+      y: int = (self._mt[i] & _UpperMask) | (self._mt[i + 1] & _LowerMask)
       self._mt[i] = Self._mask32(self._mt[i + _M] ^ (y >> 1))
       if y & 1:
-        self._mt[i] = Self._mask32(self._mt[i] ^ _MATRIX_A)
+        self._mt[i] = Self._mask32(self._mt[i] ^ _MatrixA)
     for i in range(_N - _M, _N - 1):
-      y = (self._mt[i] & _UPPER_MASK) | (self._mt[i + 1] & _LOWER_MASK)
+      y = (self._mt[i] & _UpperMask) | (self._mt[i + 1] & _LowerMask)
       self._mt[i] = Self._mask32(self._mt[i + _M - _N] ^ (y >> 1))
       if y & 1:
-        self._mt[i] = Self._mask32(self._mt[i] ^ _MATRIX_A)
-    y = (self._mt[_N - 1] & _UPPER_MASK) | (self._mt[0] & _LOWER_MASK)
+        self._mt[i] = Self._mask32(self._mt[i] ^ _MatrixA)
+    y = (self._mt[_N - 1] & _UpperMask) | (self._mt[0] & _LowerMask)
     self._mt[_N - 1] = Self._mask32(self._mt[_M - 1] ^ (y >> 1))
     if y & 1:
-      self._mt[_N - 1] = Self._mask32(self._mt[_N - 1] ^ _MATRIX_A)
+      self._mt[_N - 1] = Self._mask32(self._mt[_N - 1] ^ _MatrixA)
     self._index = 0
 
-  def _genrand_int32(self) -> int:
+  def _genrandInt32(self) -> int:
     if self._index >= _N:
       self._twist()
     raw: int = self._mt[self._index]
@@ -124,19 +124,19 @@ class Random:
     y = Self._mask32(y ^ (y >> 18))
     return y
 
-  def getrandbits(self, k: int) -> uint:
+  def getRandBits(self, k: int) -> uint:
     if k < 0:
       raise ValueError("number of bits must be non-negative")
     if k == 0:
       return 0
     if k <= 32:
-      r: int = self._genrand_int32()
+      r: int = self._genrandInt32()
       return r >> (32 - k)
-    numbytes: int = (k + 7) // 8
+    numBytes: int = (k + 7) // 8
     acc: int = 0
-    for i in range(numbytes):
-      acc = (acc << 8) | (self._genrand_int32() & 0xFF)
-    shift: int = numbytes * 8 - k
+    for i in range(numBytes):
+      acc = (acc << 8) | (self._genrandInt32() & 0xFF)
+    shift: int = numBytes * 8 - k
     return acc >> shift
 
   def _randbelow(self, n: int) -> int:
@@ -147,14 +147,14 @@ class Random:
     while t > 0:
       t >>= 1
       k += 1
-    r: int = self.getrandbits(k)
+    r: int = self.getRandBits(k)
     while r >= n:
-      r = self.getrandbits(k)
+      r = self.getRandBits(k)
     return r
 
   def random(self) -> float64:
-    a: int = self._genrand_int32() >> 5
-    b: int = self._genrand_int32() >> 6
+    a: int = self._genrandInt32() >> 5
+    b: int = self._genrandInt32() >> 6
     num: float64 = a
     num = num * 67108864.0 + b
     den: float64 = 9007199254740992.0
@@ -164,34 +164,34 @@ class Random:
     return a + (b - a) * self.random()
 
   @overload
-  def randrange(self, stop: int) -> int:
-    return self.randrange(0, stop, 1)
+  def randRange(self, stop: int) -> int:
+    return self.randRange(0, stop, 1)
 
   @overload
-  def randrange(self, start: int, stop: int, step: int = 1) -> int:
+  def randRange(self, start: int, stop: int, step: int = 1) -> int:
     if step == 0:
-      raise ValueError("zero step for randrange()")
+      raise ValueError("zero step for randRange()")
     width: int = stop - start
     n: int = 0
     if step > 0:
       if width <= 0:
-        raise ValueError("empty range for randrange()")
+        raise ValueError("empty range for randRange()")
       n = (width + step - 1) // step
     else:
       if width >= 0:
-        raise ValueError("empty range for randrange()")
+        raise ValueError("empty range for randRange()")
       n = (width + step + 1) // step
     return start + self._randbelow(n) * step
 
-  def randint(self, a: int, b: int) -> int:
-    return self.randrange(a, b + 1)
+  def randInt(self, a: int, b: int) -> int:
+    return self.randRange(a, b + 1)
 
-  def randbytes(self, n: int) -> bytes:
+  def randBytes(self, n: int) -> bytes:
     if n < 0:
       raise ValueError("negative argument not allowed")
     out: byte[:] = new(n)
     for i in range(n):
-      out[i] = byte(self._genrand_int32() & 0xFF)
+      out[i] = byte(self._genrandInt32() & 0xFF)
     return bytes(out)
 
   def choice[T](self, seq: list[T]) -> T:
@@ -207,12 +207,12 @@ class Random:
       j: int = self._randbelow(i + 1)
       x[i], x[j] = x[j], x[i]
 
-  def shuffle_with[T](self, x: list[T] @ref, random_fn: Function[[], float64]) -> None:
+  def shuffleWith[T](self, x: list[T] @ref, randomFn: Function[[], float64]) -> None:
     n: int = len(x)
     if n < 2:
       return
     for i in range(n - 1, 0, -1):
-      j = int(random_fn() * (i + 1))
+      j = int(randomFn() * (i + 1))
       if j > i:
         j = i
       x[i], x[j] = x[j], x[i]
@@ -237,7 +237,7 @@ class Random:
       out.append(self.choice(population))
     return out
 
-  def choices_weighted[T](self, population: list[T], weights: list[float64], k: int = 1) -> list[T]:
+  def choicesWeighted[T](self, population: list[T], weights: list[float64], k: int = 1) -> list[T]:
     n: int = len(population)
     if n == 0:
       raise IndexError("cannot choose from an empty population")
@@ -262,17 +262,17 @@ class Random:
           break
     return out2
 
-  def getstate(self) -> (int, list[int]):
+  def getState(self) -> (int, list[int]):
     internal: list[int] = []
     for i in range(_N):
       internal.append(self._mt[i])
     internal.append(self._index)
-    return (Self.VERSION, internal)
+    return (Self.Version, internal)
 
-  def setstate(self, state: (int, list[int])) -> None:
+  def setState(self, state: (int, list[int])) -> None:
     version: int = state[0]
     internal: list[int] = state[1]
-    if version != Self.VERSION:
+    if version != Self.Version:
       raise ValueError("state version mismatch")
     if len(internal) != _N + 1:
       raise ValueError("state is invalid")
@@ -294,12 +294,12 @@ def seed(a: int, version: int = 2) -> None:
   _rng.seed(a, version)
 
 
-def getstate() -> (int, list[int]):
-  return _rng.getstate()
+def getState() -> (int, list[int]):
+  return _rng.getState()
 
 
-def setstate(state: (int, list[int])) -> None:
-  _rng.setstate(state)
+def setState(state: (int, list[int])) -> None:
+  _rng.setState(state)
 
 
 def random() -> float64:
@@ -311,25 +311,25 @@ def uniform(a: float64, b: float64) -> float64:
 
 
 @overload
-def randrange(stop: int) -> int:
-  return _rng.randrange(stop)
+def randRange(stop: int) -> int:
+  return _rng.randRange(stop)
 
 
 @overload
-def randrange(start: int, stop: int, step: int = 1) -> int:
-  return _rng.randrange(start, stop, step)
+def randRange(start: int, stop: int, step: int = 1) -> int:
+  return _rng.randRange(start, stop, step)
 
 
-def randint(a: int, b: int) -> int:
-  return _rng.randint(a, b)
+def randInt(a: int, b: int) -> int:
+  return _rng.randInt(a, b)
 
 
-def getrandbits(k: int) -> uint:
-  return _rng.getrandbits(k)
+def getRandBits(k: int) -> uint:
+  return _rng.getRandBits(k)
 
 
-def randbytes(n: int) -> bytes:
-  return _rng.randbytes(n)
+def randBytes(n: int) -> bytes:
+  return _rng.randBytes(n)
 
 
 def choice[T](seq: list[T]) -> T:
@@ -348,5 +348,5 @@ def choices[T](population: list[T], k: int = 1) -> list[T]:
   return _rng.choices(population, k)
 
 
-def choices_weighted[T](population: list[T], weights: list[float64], k: int = 1) -> list[T]:
-  return _rng.choices_weighted(population, weights, k)
+def choicesWeighted[T](population: list[T], weights: list[float64], k: int = 1) -> list[T]:
+  return _rng.choicesWeighted(population, weights, k)

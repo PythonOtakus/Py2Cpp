@@ -3,7 +3,7 @@
 路径：``py2cpp.math.stat``（``import statistics`` 的 CPython 同名模块在 Py2Cpp 中请显式导入本模块）。
 
 参考 https://docs.python.org/3.13/library/statistics.html 与 ``Lib/statistics.py``。
-容器形参使用 ``Iterable[T]``；组合逻辑为纯 Python，复用 ``py2cpp.math`` 与 ``util.misc.Counter``。
+容器形参使用 ``IterableType[T]``；组合逻辑为纯 Python，复用 ``py2cpp.math`` 与 ``util.misc.Counter``。
 
 **暂未实现**：``kde`` / ``kde_random``、``correlation(..., method='ranked')``、``NormalDist.samples``、``Fraction``/``Decimal`` 精确算术路径。
 """
@@ -11,12 +11,12 @@ from __future__ import annotations
 
 from ..builtins import *
 from ..core.exceptions import StatisticsError, ValueError
-from ..util.protocols import DictKey, Iterable
+from ..util.protocols import DictKeyType, IterableType
 from ..util.list import list
 from ..util.misc import Counter
 from . import erfc, exp, fabs, hypot, log, sqrt, tau
 
-_SQRT2: float64 @const = 1.4142135623730951
+_Sqrt2: float64 @const = 1.4142135623730951
 
 
 # ---------------------------------------------------------------------------
@@ -25,7 +25,7 @@ _SQRT2: float64 @const = 1.4142135623730951
 
 
 @immutable
-def _materialize_f64(data: Iterable[float64]) -> list[float64]:
+def _materializeF64(data: IterableType[float64]) -> list[float64]:
   out: list[float64] = []
   for x in data:
     out.append(x)
@@ -33,7 +33,7 @@ def _materialize_f64(data: Iterable[float64]) -> list[float64]:
 
 
 @immutable
-def _sum_f64(xs: list[float64]) -> float64:
+def _sumF64(xs: list[float64]) -> float64:
   total: float64 = 0.0
   comp: float64 = 0.0
   for i in range(len(xs)):
@@ -46,7 +46,7 @@ def _sum_f64(xs: list[float64]) -> float64:
 
 
 @immutable
-def _bisect_left(a: list[float64], x: float64, lo: int) -> int:
+def _bisectLeft(a: list[float64], x: float64, lo: int) -> int:
   hi: int = len(a)
   while lo < hi:
     mid: int = (lo + hi) // 2
@@ -58,7 +58,7 @@ def _bisect_left(a: list[float64], x: float64, lo: int) -> int:
 
 
 @immutable
-def _bisect_right(a: list[float64], x: float64, lo: int) -> int:
+def _bisectRight(a: list[float64], x: float64, lo: int) -> int:
   hi: int = len(a)
   while lo < hi:
     mid: int = (lo + hi) // 2
@@ -75,7 +75,7 @@ def _sqrtprod(x: float64, y: float64) -> float64:
 
 
 @immutable
-def _normal_dist_inv_cdf(p: float64, mu: float64, sigma: float64) -> float64:
+def _normalDistInvCdf(p: float64, mu: float64, sigma: float64) -> float64:
   q: float64 = p - 0.5
   if fabs(q) <= 0.425:
     r: float64 = 0.180625 - q * q
@@ -132,33 +132,33 @@ def _normal_dist_inv_cdf(p: float64, mu: float64, sigma: float64) -> float64:
     x: float64 = num / den
     return mu + x * sigma
 
-  tail_r: float64 = p if q <= 0.0 else 1.0 - p
-  tail_r = sqrt(-log(tail_r))
+  tailR: float64 = p if q <= 0.0 else 1.0 - p
+  tailR = sqrt(-log(tailR))
   num: float64 = 0.0
   den: float64 = 1.0
-  if tail_r <= 5.0:
-    tail_r -= 1.6
+  if tailR <= 5.0:
+    tailR -= 1.6
     num = (
       (
         (
           (
             (
               (
-                (7.74545014278341407640e-4 * tail_r + 2.27238449892691845833e-2) * tail_r + 2.41780725177450611770e-1
+                (7.74545014278341407640e-4 * tailR + 2.27238449892691845833e-2) * tailR + 2.41780725177450611770e-1
               )
-              * tail_r
+              * tailR
               + 1.27045825245236838258e0
             )
-            * tail_r
+            * tailR
             + 3.64784832476320460504e0
           )
-          * tail_r
+          * tailR
           + 5.76949722146069140550e0
         )
-        * tail_r
+        * tailR
         + 4.6301778488618984109e0
       )
-      * tail_r
+      * tailR
       + 1.42343711074968357734e0
     )
     den = (
@@ -167,46 +167,46 @@ def _normal_dist_inv_cdf(p: float64, mu: float64, sigma: float64) -> float64:
           (
             (
               (
-                (1.05075007164641684324e-9 * tail_r + 5.47593808449534452082e-8) * tail_r + 1.98682901311009748190e-6
+                (1.05075007164641684324e-9 * tailR + 5.47593808449534452082e-8) * tailR + 1.98682901311009748190e-6
               )
-              * tail_r
+              * tailR
               + 5.39034819765571181726e-5
             )
-            * tail_r
+            * tailR
             + 1.08635003577702313740e-3
           )
-          * tail_r
+          * tailR
           + 1.70221530808101306731e-2
         )
-        * tail_r
+        * tailR
         + 1.39135141456819893247e-1
       )
-      * tail_r
+      * tailR
       + 1.0
     )
   else:
-    tail_r -= 5.0
+    tailR -= 5.0
     num = (
       (
         (
           (
             (
               (
-                (2.01033439929228813265e-7 * tail_r + 2.71155556874348757815e-5) * tail_r + 1.24201408437628920243e-3
+                (2.01033439929228813265e-7 * tailR + 2.71155556874348757815e-5) * tailR + 1.24201408437628920243e-3
               )
-              * tail_r
+              * tailR
               + 1.94505165435132943082e-2
             )
-            * tail_r
+            * tailR
             + 1.70245072591715627637e-1
           )
-          * tail_r
+          * tailR
           + 1.32853770818818539260e0
         )
-        * tail_r
+        * tailR
         + 8.4505470897995433549e-1
       )
-      * tail_r
+      * tailR
       + 3.2246712907003980707e-1
     )
     den = (
@@ -215,21 +215,21 @@ def _normal_dist_inv_cdf(p: float64, mu: float64, sigma: float64) -> float64:
           (
             (
               (
-                (2.01033439929228813265e-7 * tail_r + 2.76108934939072005662e-5) * tail_r + 1.29859299146765180637e-3
+                (2.01033439929228813265e-7 * tailR + 2.76108934939072005662e-5) * tailR + 1.29859299146765180637e-3
               )
-              * tail_r
+              * tailR
               + 1.70276605252253405072e-2
             )
-            * tail_r
+            * tailR
             + 1.3903883181237951452e-1
           )
-          * tail_r
+          * tailR
           + 9.1601147851470048629e-1
         )
-        * tail_r
+        * tailR
         + 2.89693918961538066690e0
       )
-      * tail_r
+      * tailR
       + 6.78765410500808900110e0
     )
   x: float64 = num / den
@@ -239,8 +239,8 @@ def _normal_dist_inv_cdf(p: float64, mu: float64, sigma: float64) -> float64:
 
 
 @immutable
-def _normal_cdf(mu: float64, sigma: float64, x: float64) -> float64:
-  return 0.5 * erfc((mu - x) / (sigma * _SQRT2))
+def _normalCdf(mu: float64, sigma: float64, x: float64) -> float64:
+  return 0.5 * erfc((mu - x) / (sigma * _Sqrt2))
 
 
 # ---------------------------------------------------------------------------
@@ -249,26 +249,26 @@ def _normal_cdf(mu: float64, sigma: float64, x: float64) -> float64:
 
 
 @immutable
-def mean(data: Iterable[float64]) -> float64:
-  lst: list[float64] = _materialize_f64(data)
+def mean(data: IterableType[float64]) -> float64:
+  lst: list[float64] = _materializeF64(data)
   n: int = len(lst)
   if n < 1:
     raise StatisticsError("mean requires at least one data point")
-  return _sum_f64(lst) / (n * 1.0)
+  return _sumF64(lst) / (n * 1.0)
 
 
 @immutable
-def _fmean_plain(data: Iterable[float64]) -> float64:
-  lst: list[float64] = _materialize_f64(data)
+def _fmeanPlain(data: IterableType[float64]) -> float64:
+  lst: list[float64] = _materializeF64(data)
   n: int = len(lst)
   if not n:
     raise StatisticsError("fmean requires at least one data point")
-  return _sum_f64(lst) / (n * 1.0)
+  return _sumF64(lst) / (n * 1.0)
 
 
 @immutable
-def _fmean_weighted(data: Iterable[float64], weights: list[float64]) -> float64:
-  xs: list[float64] = _materialize_f64(data)
+def _fmeanWeighted(data: IterableType[float64], weights: list[float64]) -> float64:
+  xs: list[float64] = _materializeF64(data)
   ws: list[float64] = []
   for i in range(len(weights)):
     ws.append(weights[i])
@@ -277,7 +277,7 @@ def _fmean_weighted(data: Iterable[float64], weights: list[float64]) -> float64:
   num: float64 = 0.0
   for i in range(len(xs)):
     num += xs[i] * ws[i]
-  den: float64 = _sum_f64(ws)
+  den: float64 = _sumF64(ws)
   if not den:
     raise StatisticsError("sum of weights must be non-zero")
   return num / den
@@ -285,35 +285,35 @@ def _fmean_weighted(data: Iterable[float64], weights: list[float64]) -> float64:
 
 @overload
 @immutable
-def fmean(data: Iterable[float64]) -> float64:
-  return _fmean_plain(data)
+def fmean(data: IterableType[float64]) -> float64:
+  return _fmeanPlain(data)
 
 
 @overload
 @immutable
-def fmean(data: Iterable[float64], weights: list[float64]) -> float64:
-  return _fmean_weighted(data, weights)
+def fmean(data: IterableType[float64], weights: list[float64]) -> float64:
+  return _fmeanWeighted(data, weights)
 
 
 @immutable
-def geometric_mean(data: Iterable[float64]) -> float64:
+def geometricMean(data: IterableType[float64]) -> float64:
   n: int = 0
-  found_zero: bool = False
+  foundZero: bool = False
   logs: list[float64] = []
   for x in data:
     n += 1
     if x > 0.0 or float64.isNaN(x):
       logs.append(log(x))
     elif x == 0.0:
-      found_zero = True
+      foundZero = True
     else:
       raise StatisticsError("No negative inputs allowed")
   if not n:
     raise StatisticsError("Must have a non-empty dataset")
-  total: float64 = _sum_f64(logs)
+  total: float64 = _sumF64(logs)
   if float64.isNaN(total):
     return float64.NaN
-  if found_zero:
+  if foundZero:
     if total == float64.Inf:
       return float64.NaN
     return 0.0
@@ -321,12 +321,12 @@ def geometric_mean(data: Iterable[float64]) -> float64:
 
 
 @immutable
-def _harmonic_mean_plain(data: Iterable[float64]) -> float64:
+def _harmonicMeanPlain(data: IterableType[float64]) -> float64:
   errmsg: str = "harmonic mean does not support negative values"
-  xs: list[float64] = _materialize_f64(data)
+  xs: list[float64] = _materializeF64(data)
   n: int = len(xs)
   if n < 1:
-    raise StatisticsError("harmonic_mean requires at least one data point")
+    raise StatisticsError("harmonicMean requires at least one data point")
   if n == 1:
     if xs[0] < 0.0:
       raise StatisticsError(errmsg)
@@ -344,18 +344,18 @@ def _harmonic_mean_plain(data: Iterable[float64]) -> float64:
 
 
 @immutable
-def _harmonic_mean_weighted(data: Iterable[float64], weights: list[float64]) -> float64:
+def _harmonicMeanWeighted(data: IterableType[float64], weights: list[float64]) -> float64:
   errmsg: str = "harmonic mean does not support negative values"
-  xs: list[float64] = _materialize_f64(data)
+  xs: list[float64] = _materializeF64(data)
   ws: list[float64] = []
   for i in range(len(weights)):
     ws.append(weights[i])
   n: int = len(xs)
   if len(ws) != n:
-    raise StatisticsError("Number of weights does not match data size")
+    raise StatisticsError("NumberType of weights does not match data size")
   if n < 1:
-    raise StatisticsError("harmonic_mean requires at least one data point")
-  sum_weights: float64 = _sum_f64(ws)
+    raise StatisticsError("harmonicMean requires at least one data point")
+  sumWeights: float64 = _sumF64(ws)
   for i in range(n):
     if ws[i] < 0.0:
       raise StatisticsError(errmsg)
@@ -370,24 +370,24 @@ def _harmonic_mean_weighted(data: Iterable[float64], weights: list[float64]) -> 
       total += w / xs[i]
   if total <= 0.0:
     raise StatisticsError("Weighted sum must be positive")
-  return sum_weights / total
+  return sumWeights / total
 
 
 @overload
 @immutable
-def harmonic_mean(data: Iterable[float64]) -> float64:
-  return _harmonic_mean_plain(data)
+def harmonicMean(data: IterableType[float64]) -> float64:
+  return _harmonicMeanPlain(data)
 
 
 @overload
 @immutable
-def harmonic_mean(data: Iterable[float64], weights: list[float64]) -> float64:
-  return _harmonic_mean_weighted(data, weights)
+def harmonicMean(data: IterableType[float64], weights: list[float64]) -> float64:
+  return _harmonicMeanWeighted(data, weights)
 
 
 @immutable
-def median(data: Iterable[float64]) -> float64:
-  xs: list[float64] = _materialize_f64(data)
+def median(data: IterableType[float64]) -> float64:
+  xs: list[float64] = _materializeF64(data)
   xs.sort()
   n: int = len(xs)
   if not n:
@@ -399,8 +399,8 @@ def median(data: Iterable[float64]) -> float64:
 
 
 @immutable
-def median_low(data: Iterable[float64]) -> float64:
-  xs: list[float64] = _materialize_f64(data)
+def medianLow(data: IterableType[float64]) -> float64:
+  xs: list[float64] = _materializeF64(data)
   xs.sort()
   n: int = len(xs)
   if not n:
@@ -411,8 +411,8 @@ def median_low(data: Iterable[float64]) -> float64:
 
 
 @immutable
-def median_high(data: Iterable[float64]) -> float64:
-  xs: list[float64] = _materialize_f64(data)
+def medianHigh(data: IterableType[float64]) -> float64:
+  xs: list[float64] = _materializeF64(data)
   xs.sort()
   n: int = len(xs)
   if not n:
@@ -421,15 +421,15 @@ def median_high(data: Iterable[float64]) -> float64:
 
 
 @immutable
-def median_grouped(data: Iterable[float64], interval: float64 = 1.0) -> float64:
-  xs: list[float64] = _materialize_f64(data)
+def medianGrouped(data: IterableType[float64], interval: float64 = 1.0) -> float64:
+  xs: list[float64] = _materializeF64(data)
   xs.sort()
   n: int = len(xs)
   if not n:
     raise StatisticsError("no median for empty data")
   x: float64 = xs[n // 2]
-  i: int = _bisect_left(xs, x, 0)
-  j: int = _bisect_right(xs, x, i)
+  i: int = _bisectLeft(xs, x, 0)
+  j: int = _bisectRight(xs, x, i)
   L: float64 = x - interval / 2.0
   cf: float64 = i
   f: float64 = j - i
@@ -437,35 +437,35 @@ def median_grouped(data: Iterable[float64], interval: float64 = 1.0) -> float64:
 
 
 @immutable
-def mode[T: DictKey](data: list[T]) -> T:
+def mode[T: DictKeyType](data: list[T]) -> T:
   if not data:
     raise StatisticsError("no mode for empty data")
   counts: Counter[T, int] = new(data)
-  best: T = counts.key_at(0)
-  best_n: int = 0
+  best: T = counts.keyAt(0)
+  bestN: int = 0
   for i in range(len(counts)):
-    c: int = counts.value_at(i)
-    if c > best_n:
-      best_n = c
-      best = counts.key_at(i)
+    c: int = counts.valueAt(i)
+    if c > bestN:
+      bestN = c
+      best = counts.keyAt(i)
   return best
 
 
 @immutable
-def multimode[T: DictKey](data: list[T]) -> list[T]:
+def multiMode[T: DictKeyType](data: list[T]) -> list[T]:
   counts: Counter[T, int] = new(data)
   if len(counts) < 1:
     empty: list[T] = []
     return empty
   maxcount: int = 0
   for i in range(len(counts)):
-    c: int = counts.value_at(i)
+    c: int = counts.valueAt(i)
     if c > maxcount:
       maxcount = c
   out: list[T] = []
   for i in range(len(counts)):
-    if counts.value_at(i) == maxcount:
-      out.append(counts.key_at(i))
+    if counts.valueAt(i) == maxcount:
+      out.append(counts.keyAt(i))
   return out
 
 
@@ -475,7 +475,7 @@ def multimode[T: DictKey](data: list[T]) -> list[T]:
 
 
 @immutable
-def _variance_at(xs: list[float64], xbar: float64) -> float64:
+def _varianceAt(xs: list[float64], xbar: float64) -> float64:
   n: int = len(xs)
   if n < 2:
     raise StatisticsError("variance requires at least two data points")
@@ -487,28 +487,28 @@ def _variance_at(xs: list[float64], xbar: float64) -> float64:
 
 
 @immutable
-def _variance_list(xs: list[float64]) -> float64:
+def _varianceList(xs: list[float64]) -> float64:
   n: int = len(xs)
   if n < 2:
     raise StatisticsError("variance requires at least two data points")
-  xbar: float64 = _sum_f64(xs) / (n * 1.0)
-  return _variance_at(xs, xbar)
+  xbar: float64 = _sumF64(xs) / (n * 1.0)
+  return _varianceAt(xs, xbar)
 
 
 @overload
 @immutable
-def variance(data: Iterable[float64]) -> float64:
-  return _variance_list(_materialize_f64(data))
+def variance(data: IterableType[float64]) -> float64:
+  return _varianceList(_materializeF64(data))
 
 
 @overload
 @immutable
-def variance(data: Iterable[float64], xbar: float64) -> float64:
-  return _variance_at(_materialize_f64(data), xbar)
+def variance(data: IterableType[float64], xbar: float64) -> float64:
+  return _varianceAt(_materializeF64(data), xbar)
 
 
 @immutable
-def _pvariance_at(xs: list[float64], mu: float64) -> float64:
+def _pvarianceAt(xs: list[float64], mu: float64) -> float64:
   n: int = len(xs)
   if n < 1:
     raise StatisticsError("pvariance requires at least one data point")
@@ -520,47 +520,47 @@ def _pvariance_at(xs: list[float64], mu: float64) -> float64:
 
 
 @immutable
-def _pvariance_list(xs: list[float64]) -> float64:
+def _pvarianceList(xs: list[float64]) -> float64:
   n: int = len(xs)
   if n < 1:
     raise StatisticsError("pvariance requires at least one data point")
-  mu: float64 = _sum_f64(xs) / (n * 1.0)
-  return _pvariance_at(xs, mu)
+  mu: float64 = _sumF64(xs) / (n * 1.0)
+  return _pvarianceAt(xs, mu)
 
 
 @overload
 @immutable
-def pvariance(data: Iterable[float64]) -> float64:
-  return _pvariance_list(_materialize_f64(data))
+def pvariance(data: IterableType[float64]) -> float64:
+  return _pvarianceList(_materializeF64(data))
 
 
 @overload
 @immutable
-def pvariance(data: Iterable[float64], mu: float64) -> float64:
-  return _pvariance_at(_materialize_f64(data), mu)
+def pvariance(data: IterableType[float64], mu: float64) -> float64:
+  return _pvarianceAt(_materializeF64(data), mu)
 
 
 @overload
 @immutable
-def stdev(data: Iterable[float64]) -> float64:
+def stdev(data: IterableType[float64]) -> float64:
   return sqrt(variance(data))
 
 
 @overload
 @immutable
-def stdev(data: Iterable[float64], xbar: float64) -> float64:
+def stdev(data: IterableType[float64], xbar: float64) -> float64:
   return sqrt(variance(data, xbar))
 
 
 @overload
 @immutable
-def pstdev(data: Iterable[float64]) -> float64:
+def pstdev(data: IterableType[float64]) -> float64:
   return sqrt(pvariance(data))
 
 
 @overload
 @immutable
-def pstdev(data: Iterable[float64], mu: float64) -> float64:
+def pstdev(data: IterableType[float64], mu: float64) -> float64:
   return sqrt(pvariance(data, mu))
 
 
@@ -570,10 +570,10 @@ def pstdev(data: Iterable[float64], mu: float64) -> float64:
 
 
 @immutable
-def quantiles(data: Iterable[float64], n: int = 4, method: str = "exclusive") -> list[float64]:
+def quantiles(data: IterableType[float64], n: int = 4, method: str = "exclusive") -> list[float64]:
   if n < 1:
     raise StatisticsError("n must be at least 1")
-  xs: list[float64] = _materialize_f64(data)
+  xs: list[float64] = _materializeF64(data)
   xs.sort()
   ld: int = len(xs)
   if ld < 2:
@@ -616,14 +616,14 @@ def quantiles(data: Iterable[float64], n: int = 4, method: str = "exclusive") ->
 
 
 @immutable
-def _covariance_lists(xs: list[float64], ys: list[float64]) -> float64:
+def _covarianceLists(xs: list[float64], ys: list[float64]) -> float64:
   n: int = len(xs)
   if len(ys) != n:
     raise StatisticsError("covariance requires that both inputs have same number of data points")
   if n < 2:
     raise StatisticsError("covariance requires at least two data points")
-  xbar: float64 = _sum_f64(xs) / (n * 1.0)
-  ybar: float64 = _sum_f64(ys) / (n * 1.0)
+  xbar: float64 = _sumF64(xs) / (n * 1.0)
+  ybar: float64 = _sumF64(ys) / (n * 1.0)
   sxy: float64 = 0.0
   for i in range(n):
     sxy += (xs[i] - xbar) * (ys[i] - ybar)
@@ -631,12 +631,12 @@ def _covariance_lists(xs: list[float64], ys: list[float64]) -> float64:
 
 
 @immutable
-def covariance(x: Iterable[float64], y: Iterable[float64]) -> float64:
-  return _covariance_lists(_materialize_f64(x), _materialize_f64(y))
+def covariance(x: IterableType[float64], y: IterableType[float64]) -> float64:
+  return _covarianceLists(_materializeF64(x), _materializeF64(y))
 
 
 @immutable
-def _correlation_lists(xs: list[float64], ys: list[float64], method: str) -> float64:
+def _correlationLists(xs: list[float64], ys: list[float64], method: str) -> float64:
   n: int = len(xs)
   if len(ys) != n:
     raise StatisticsError("correlation requires that both inputs have same number of data points")
@@ -644,8 +644,8 @@ def _correlation_lists(xs: list[float64], ys: list[float64], method: str) -> flo
     raise StatisticsError("correlation requires at least two data points")
   if method != "linear":
     raise ValueError(f"Unknown method: {method!r}")
-  xbar: float64 = _sum_f64(xs) / (n * 1.0)
-  ybar: float64 = _sum_f64(ys) / (n * 1.0)
+  xbar: float64 = _sumF64(xs) / (n * 1.0)
+  ybar: float64 = _sumF64(ys) / (n * 1.0)
   sxy: float64 = 0.0
   sxx: float64 = 0.0
   syy: float64 = 0.0
@@ -662,8 +662,8 @@ def _correlation_lists(xs: list[float64], ys: list[float64], method: str) -> flo
 
 
 @immutable
-def correlation(x: Iterable[float64], y: Iterable[float64], method: str = "linear") -> float64:
-  return _correlation_lists(_materialize_f64(x), _materialize_f64(y), method)
+def correlation(x: IterableType[float64], y: IterableType[float64], method: str = "linear") -> float64:
+  return _correlationLists(_materializeF64(x), _materializeF64(y), method)
 
 
 @dataclass
@@ -673,7 +673,7 @@ class LinearRegression:
 
 
 @immutable
-def _linear_regression_lists(
+def _linearRegressionLists(
   xs: list[float64],
   ys: list[float64],
   proportional: bool,
@@ -686,8 +686,8 @@ def _linear_regression_lists(
   xbar: float64 = 0.0
   ybar: float64 = 0.0
   if not proportional:
-    xbar = _sum_f64(xs) / (n * 1.0)
-    ybar = _sum_f64(ys) / (n * 1.0)
+    xbar = _sumF64(xs) / (n * 1.0)
+    ybar = _sumF64(ys) / (n * 1.0)
   sxy: float64 = 0.0
   sxx: float64 = 0.0
   for i in range(n):
@@ -705,12 +705,12 @@ def _linear_regression_lists(
 
 
 @immutable
-def linear_regression(
-  x: Iterable[float64],
-  y: Iterable[float64],
+def linearRegression(
+  x: IterableType[float64],
+  y: IterableType[float64],
   proportional: bool = False,
 ) -> LinearRegression:
-  return _linear_regression_lists(_materialize_f64(x), _materialize_f64(y), proportional)
+  return _linearRegressionLists(_materializeF64(x), _materializeF64(y), proportional)
 
 
 # ---------------------------------------------------------------------------
@@ -729,12 +729,12 @@ class NormalDist:
     self._sigma: float64 = sigma
 
   @staticmethod
-  def from_samples(data: Iterable[float64]) -> Self:
-    lst: list[float64] = _materialize_f64(data)
+  def fromSamples(data: IterableType[float64]) -> Self:
+    lst: list[float64] = _materializeF64(data)
     n: int = len(lst)
     if n < 2:
       raise StatisticsError("stdev requires at least two data points")
-    mu: float64 = _sum_f64(lst) / (n * 1.0)
+    mu: float64 = _sumF64(lst) / (n * 1.0)
     ss: float64 = 0.0
     for i in range(n):
       d: float64 = lst[i] - mu
@@ -754,19 +754,19 @@ class NormalDist:
   def cdf(self, x: float64) -> float64:
     if not self._sigma:
       raise StatisticsError("cdf() not defined when sigma is zero")
-    return 0.5 * erfc((self._mu - x) / (self._sigma * _SQRT2))
+    return 0.5 * erfc((self._mu - x) / (self._sigma * _Sqrt2))
 
   @immutable
-  def inv_cdf(self, p: float64) -> float64:
+  def invCdf(self, p: float64) -> float64:
     if p <= 0.0 or p >= 1.0:
       raise StatisticsError("p must be in the range 0.0 < p < 1.0")
-    return _normal_dist_inv_cdf(p, self._mu, self._sigma)
+    return _normalDistInvCdf(p, self._mu, self._sigma)
 
   @immutable
   def quantiles(self, n: int = 4) -> list[float64]:
     out: list[float64] = []
     for i in range(1, n):
-      out.append(self.inv_cdf(i / (n * 1.0)))
+      out.append(self.invCdf(i / (n * 1.0)))
     return out
 
   @immutable
@@ -777,34 +777,34 @@ class NormalDist:
 
   @immutable
   def overlap(self, other: Self) -> float64:
-    X_mu: float64 = self._mu
-    X_sigma: float64 = self._sigma
-    Y_mu: float64 = other._mu
-    Y_sigma: float64 = other._sigma
-    if Y_sigma < X_sigma or (Y_sigma == X_sigma and Y_mu < X_mu):
-      swap_mu: float64 = X_mu
-      X_mu = Y_mu
-      Y_mu = swap_mu
-      swap_sigma: float64 = X_sigma
-      X_sigma = Y_sigma
-      Y_sigma = swap_sigma
-    X_var: float64 = X_sigma * X_sigma
-    Y_var: float64 = Y_sigma * Y_sigma
-    if not X_var or not Y_var:
+    XMu: float64 = self._mu
+    XSigma: float64 = self._sigma
+    YMu: float64 = other._mu
+    YSigma: float64 = other._sigma
+    if YSigma < XSigma or (YSigma == XSigma and YMu < XMu):
+      swapMu: float64 = XMu
+      XMu = YMu
+      YMu = swapMu
+      swapSigma: float64 = XSigma
+      XSigma = YSigma
+      YSigma = swapSigma
+    XVar: float64 = XSigma * XSigma
+    YVar: float64 = YSigma * YSigma
+    if not XVar or not YVar:
       raise StatisticsError("overlap() not defined when sigma is zero")
-    dv: float64 = Y_var - X_var
-    dm: float64 = fabs(Y_mu - X_mu)
+    dv: float64 = YVar - XVar
+    dm: float64 = fabs(YMu - XMu)
     if not dv:
-      return erfc(dm / (2.0 * X_sigma * _SQRT2))
-    a: float64 = X_mu * Y_var - Y_mu * X_var
-    sig_prod: float64 = X_sigma * Y_sigma
-    radic: float64 = sqrt(dm * dm + dv * log(Y_var / X_var))
-    b: float64 = sig_prod * radic
+      return erfc(dm / (2.0 * XSigma * _Sqrt2))
+    a: float64 = XMu * YVar - YMu * XVar
+    sigProd: float64 = XSigma * YSigma
+    radic: float64 = sqrt(dm * dm + dv * log(YVar / XVar))
+    b: float64 = sigProd * radic
     x1: float64 = (a + b) / dv
     x2: float64 = (a - b) / dv
     return 1.0 - (
-      fabs(_normal_cdf(Y_mu, Y_sigma, x1) - _normal_cdf(X_mu, X_sigma, x1))
-      + fabs(_normal_cdf(Y_mu, Y_sigma, x2) - _normal_cdf(X_mu, X_sigma, x2))
+      fabs(_normalCdf(YMu, YSigma, x1) - _normalCdf(XMu, XSigma, x1))
+      + fabs(_normalCdf(YMu, YSigma, x2) - _normalCdf(XMu, XSigma, x2))
     )
 
   @property

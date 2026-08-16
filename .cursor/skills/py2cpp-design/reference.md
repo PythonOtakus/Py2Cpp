@@ -115,7 +115,7 @@ Py2Cpp/
 | 场景 | C++ |
 |------|-----|
 | 普通无注解形参 | `T0`, `T1`… + `template`（`FuncTypeParams`） |
-| `x: Comparable` / `f[T: Bound](…)` | `T`/`T0` + `Bound_requires` |
+| `x: ComparableType` / `f[T: Bound](…)` | `T`/`T0` + `Bound_requires` |
 | PEP 695 头 **不**绑定无注解 `left` | 须 `left: ItL` |
 | 未注解字段 ∈ `INT_FIELDS` | `PyInt` |
 | 其它未注解字段 | `void*` |
@@ -132,7 +132,7 @@ Py2Cpp/
 
 | 包 | 输入 | 产出 |
 |----|------|------|
-| `src/codegen/` | `templates/**`、静态表、`DelegateInfo` / `ExcSlot` 等**构建期**元数据 | runtime 固定 `.h` / `.inl`、`protocol_traits.h`、`minimal.h`（umbrella） |
+| `src/codegen/` | `templates/**`、静态表、`DelegateInfo` / `ExcTypeUnion` 等**构建期**元数据 | runtime 固定 `.h` / `.inl`、`protocol_traits.h`、`minimal.h`（umbrella） |
 | `src/emit/` | AST、`ClassInfo`、模块分析 | 用户/标准库 `.h` / `.cpp` / `.inl` 正文；`layout_emit` 编排写盘 |
 
 `layout_emit` 在 `emit/` 但会调用 `codegen.expand_template` / `umbrella_gen`；`protocol_traits_gen` 在 `codegen/` 但引用 `emit/compile_diagnostic_emit` 文案——属正常交叉。
@@ -148,7 +148,7 @@ Py2Cpp/
 | `umbrella_gen.py` | `minimal.h` 聚合（原 `primitive_types_cpp.py` / 旧名「py2cpp.h」） |
 | `protocol_traits_gen.py` | `@protocol` SFINAE 探测 + ctx → `~protocol_traits*.inl`（原 `protocol_emit.py`） |
 | `delegate_gen.py` | `DelegateInfo` → ctx → `core/~delegate_class.inl`（原 `delegate_cpp.py`） |
-| `exception_group_gen.py` | `ExcSlot` → `core/~exception_group_*` |
+| `exception_group_gen.py` | `ExcTypeUnion` → `core/~exception_group_*` |
 | `brace_style.py` | Allman 大括号 |
 
 已迁 `templates/**` 的模块（`operators`、`io`、`memory`、`time` 等）不再保留独立 `templates/**`；见 [codegen-templates.md](../../../docs/codegen-templates.md)。
@@ -184,13 +184,13 @@ Py2Cpp/
 
 ## 4. 标准库模块（`constant` 发现）
 
-``src/constant/`` 存放译器静态表（**不含** AST 扫描 loader、emit 算法、C++ 模板正文）。**AST loader** 在 ``src/analysis/stubs/``（``*_stubs.py`` + ``paths.py``；读 ``py2cpp/`` 源 + ``constant/`` 表，``@lru_cache``；**无** barrel re-export，消费方显式 ``from …stubs.<mod> import …``）。模块发现见 ``constant/stdlib_discovery.py``（遍历 ``py2cpp/**/*.py``，排除 ``reflect/``、域包空 ``__init__`` 等）→ ``STDLIB_REL_PATHS``；``constant/stdlib_modules.py`` 的 ``UMBRELLA_PREFIX_TIERS`` / ``UMBRELLA_PRIORITY_MODULES`` 定 bulk 域前缀顺序与少数拓扑例外。bootstrap 在 ``analyze`` 后由 ``stdlib_module_order.reorder_stdlib_modules_for_umbrella`` 按 ``ModuleAnalysis.includes`` 对每个 tier 拓扑排序，再写 ``py2cpp/minimal.h``。万能头顺序与 bulk 跳过见 ``constant/umbrella.py``；头文件破环动作与前向声明见 ``constant/header_fixups_data.py``（算法 ``analysis/header_fixups.py``）；``.inl`` 注入规格见 ``constant/inject_specs.py``（hook 构建 ``emit/stdlib_inject_emit.py``）；整模块 codegen 模块表 ``STDLIB_CODEGEN_MODULES`` → ``codegen/stdlib_mirror_codegen``（``write_stdlib_codegen_*``）。语言关键字 / dunder 方法名 / 标量 rename 见 ``constant/language.py``（``operator`` 映射见 ``constant/dunder_ops.py``；类型标记类名见 ``constant/type_markers.py``；命名 helper 留 ``analysis/patterns.py``）。``TRANSLATION_ONLY_FUNCS`` 由 ``stubs.builtin_stubs.load_translation_only_funcs()`` 从包根 ``__init__.py`` 推导；模块函数 C++ 名由 ``@global_call`` AST 扫描（``stubs.class_stubs.lookup_module_function_cpp_name``）。翻译 bootstrap：``python main.py py2cpp/__init__.py -o generated --no-main``。
+``src/constant/`` 存放译器静态表（**不含** AST 扫描 loader、emit 算法、C++ 模板正文）。**AST loader** 在 ``src/analysis/stubs/``（``*_stubs.py`` + ``paths.py``；读 ``py2cpp/`` 源 + ``constant/`` 表，``@lru_cache``；**无** barrel re-export，消费方显式 ``from …stubs.<mod> import …``）。模块发现见 ``constant/stdlib_discovery.py``（遍历 ``py2cpp/**/*.py``，排除 ``reflect/``、域包空 ``__init__`` 等）→ ``STDLIB_REL_PATHS``；``constant/stdlib_modules.py`` 的 ``UMBRELLA_PREFIX_TIERS`` / ``UMBRELLA_PRIORITY_MODULES`` 定 bulk 域前缀顺序与少数拓扑例外。bootstrap 在 ``analyze`` 后由 ``stdlib_module_order.reorder_stdlib_modules_for_umbrella`` 按 ``ModuleAnalysis.includes`` 对每个 tier 拓扑排序，再写 ``py2cpp/minimal.h``。万能头顺序与 bulk 跳过见 ``constant/umbrella.py``；头文件破环动作与前向声明见 ``constant/header_fixups_data.py``（算法 ``analysis/header_fixups.py``）；``.inl`` 注入规格见 ``constant/inject_specs.py``（hook 构建 ``emit/stdlib_inject_emit.py``）；整模块 codegen 模块表 ``STDLIB_CODEGEN_MODULES`` → ``codegen/stdlib_mirror_codegen``（``write_stdlib_codegen_*``）。语言关键字 / dunder 方法名 / 标量 rename 见 ``constant/language.py``（``operator`` 映射见 ``constant/dunder_ops.py``；类型标记类名见 ``constant/type_markers.py``；命名 helper 留 ``analysis/patterns.py``）。``TRANSLATION_ONLY_FUNCS`` 由 ``stubs.builtin_stubs.load_translation_only_funcs()`` 从包根 ``__init__.py`` 推导；模块函数 C++ 名由 ``@globalCall`` AST 扫描（``stubs.class_stubs.lookup_module_function_cpp_name``）。翻译 bootstrap：``python main.py py2cpp/__init__.py -o generated --no-main``。
 
 | 域 | Python 路径 | C++ 命名空间（典型） | 备注 |
 |----|-------------|----------------------|------|
 | core | `core/exceptions` | `py2cpp::core::exceptions` | 异常类型 |
 | core | `core/refcount` | 全局 / 特殊 | `MODULES_WITHOUT_CPP_NAMESPACE` |
-| core | `core/iter_result` | `py2cpp::core::iter_result` | `PyIterResult`、`result_done` |
+| core | `core/iter_result` | `py2cpp::core::iter_result` | `PyIterResult`、`resultDone` |
 | core | `core/optional` | `py2cpp::core::optional` | `PyOptional`（`Optional[T]`） |
 | core | `core/none` | `py2cpp::core::none` | `PyNone` |
 | core | `core/result` | `py2cpp::core::result` | `PyResult<T,E>` |
@@ -210,7 +210,7 @@ Py2Cpp/
 | system | `system/time` | `py2cpp::system::time` | `templates/system/-time.inl` |
 | concur | `concur/task` | `py2cpp::concur::task` | |
 | test | `test/unittest` | `py2cpp::test::unittest` | 集成测显式 ``from py2cpp.test.unittest import TestCaseMixin, …``（非包根 star） |
-| serde | `serde/protocols` | `py2cpp::serde::protocols` | `Encoder` / `Decoder` |
+| serde | `serde/protocols` | `py2cpp::serde::protocols` | `EncoderType` / `DecoderType` |
 | serde | `serde/json` | `py2cpp::serde::json` | 单文件 `JsonEncoder`/`JsonDecoder`；`dumps` / `loads` |
 | ui | `ui/meta` … `ui/window` | `py2cpp::ui::<mod>` | Panel；``UIWindow`` Win32（``templates/ui/+window.inl``）；``__init__.py`` 勿 re-export 子模块 |
 
@@ -259,7 +259,7 @@ Py2Cpp/
 | 项 | 约定 |
 |----|------|
 | 源 | 仓库根 `ffi/`（`ffi.bat`）；Zeus 旁路 `zeus/ffi/`（`zeus\ffi.bat` → 同 `ffi/…` module_path） |
-| 结构体 / 枚举 | 模块级 `Pyi_*`；`@native_name`=C 标签；`using Pyi_X = ::X`；枚举成员作常量；未知字段 `None # C: …` |
+| 结构体 / 枚举 | 模块级 `Pyi_*`；`@nativeName`=C 标签；`using Pyi_X = ::X`；枚举成员作常量；未知字段 `None # C: …` |
 | docstring | C Doxygen → PEP 257（`def`/`class` 下 `"""…"""`）；不进 C++ glue；见 [c-ffi-pyi §7.1](../../../docs/c-ffi-pyi.md#71-c-注释--python-docstring) |
 | C++ | `ffi::…`（**不**挂 `py2cpp::`）；`#include <c_header>` 尖括号防同目录自包含 |
 | 业务 | `py2cpp/sql/sqlite.py` / Zeus `platform`·`render` import 拉闭包；glue allowlist 见 `ffi_layout` |
@@ -302,7 +302,7 @@ Py2Cpp/
 | `@decorator` / `@context` | `decorators` | 翻译期展开 |
 | `@protocol` | `protocol` + `protocol_traits_gen` | SFINAE，非继承 |
 | `@refcount` | 类标记 + `refcount` 生成 | `makeRefCount` |
-| `@boxing` | 类标记 | `new` 堆节点（dict_entry、deque_node） |
+| `@boxing` | 类标记 | `new` 堆节点（DictEntryUnsafe、DequeNodeUnsafe） |
 | `@virtual` / `@override` | 方法装饰 | C++ virtual/override |
 | `@overload` | 方法 | 同名重载集 |
 | `@const` | 字段 | 类/静态常量 |
@@ -310,7 +310,7 @@ Py2Cpp/
 | `@immutable` | 方法 | 不生成非 const 重载 |
 | `@staticmethod` | 方法 | 静态成员 |
 
-类型标记（非装饰器）：`Pointer[T]`、`Callable`、`Self`、`char`、`c_str`。
+类型标记（非装饰器）：`Pointer[T]`、`Callable`、`Self`、`char`、`CStr`。
 
 ---
 
@@ -350,7 +350,7 @@ Py2Cpp/
 | `for i in prange(n)` / `prange(a,b,s)` | ``#pragma omp parallel for`` + 原生 ``for (int i=…)``（同 ``range`` 负 step 分支） |
 | ``th``（默认 ``0``） | 并行阈值：``trip >= th`` 才发射 OpenMP；``th=0`` 恒并行；常量 trip/th 译期选路，否则 ``if (len…) { omp } else { for }`` |
 | 循环体顶层 ``total += …`` 等 | ``reduction(+:total)``（``+/-/*/&/|/^``） |
-| ``schedule`` / ``num_threads`` / ``chunksize`` | 关键字须编译期常量；``static`` 省略 clause |
+| ``schedule`` / ``numThreads`` / ``chunkSize`` | 关键字须编译期常量；``static`` 省略 clause |
 | ``--no-openmp`` | 译期不发射 pragma，降级为普通 ``range`` ``for`` |
 | 编译 | 生成物含 ``#pragma omp`` 时 ``cl /openmp`` 或 ``-fopenmp``（``compile.py`` 自动探测） |
 
@@ -361,14 +361,14 @@ Py2Cpp/
 
 | 内建 | 发射要点 |
 |------|----------|
-| `enumerate` | `for i, x in enumerate(seq[, start])`：``seq`` 可 ``__len__``+``__getitem__(int)`` 时 → 索引 ``for`` + ``i = start + fi``（``_for_enumerate`` / ``_index_for_loop_plan``）；否则 ``enumerate_iterator<T>`` + ``PyTuple<int,T>`` |
-| `zip` | ``zip_iterator`` + ``PyTuple`` 步进（无索引内联） |
+| `enumerate` | `for i, x in enumerate(seq[, start])`：``seq`` 可 ``__len__``+``__getitem__(int)`` 时 → 索引 ``for`` + ``i = start + fi``（``_for_enumerate`` / ``_index_for_loop_plan``）；否则 ``EnumerateIterator<T>`` + ``PyTuple<int,T>`` |
+| `zip` | ``ZipIterator`` + ``PyTuple`` 步进（无索引内联） |
 | `new`（类体字段） | ``buf: char[:] = new(0)`` → 成员 ``_buf = PyArray<PyChar>(0)``（``_emit_field_default_initializer``）；裸 ``new()`` 无类型上下文报错 |
 | `obj.attr`（模板形参） | 无法绑定 ``ClassInfo`` 时 → ``PY2CPP_GETATTR`` + 每 TU ``PY2CPP_DECLARE_GETATTR(attr)``；注解形参 → ``get_attr()`` |
 
 ### 8.3 Pythonic 字面量 → 内联 C++（查阅表）
 
-**原则**：源码仍写规范 Python（`in`、`[]`、`match` 等）；脱糖/内联在译器或容器协议内完成，**勿**在业务模块手写 C 式扫串或重复 `splitext` 语义（见 [编码规范 §7](../../../docs/编码规范.md#7-算法与-pythonic-控制流)）。
+**原则**：源码仍写规范 Python（`in`、`[]`、`match` 等）；脱糖/内联在译器或容器协议内完成，**勿**在业务模块手写 C 式扫串或重复 `splitExt` 语义（见 [编码规范 §7](../../../docs/编码规范.md#7-算法与-pythonic-控制流)）。
 
 #### 8.3.1 元组字面量：禁止作「容器」
 
@@ -454,7 +454,7 @@ Py2Cpp/
 | 成员 | `k in d` / `k not in d` | `__contains__` / 取反 |
 | 长度 | `len(d)` | `__len__()` |
 | 迭代键 | `for k in d:` | `__iter__()`（用户/测试）；**dict 实现体**内 `copy`/`update` 等用 `range(len(_order))` 读 `_order[i]`（防递归，见编码规范） |
-| 不可变 | `fd: frozendict[K,V] = {…}` | 临时 `PyDict` 填键值 → `init_from_dict` |
+| 不可变 | `fd: frozendict[K,V] = {…}` | 临时 `PyDict` 填键值 → `initFromDict` |
 | 空 dict 误用 | `{}` 单独作 set | **禁止**；set 用 `set()` 或 `{a,b}` |
 
 与 **set** 字面量区分：`{a, b}` + `set[T]` 注解 → `PySet`；`{k: v}` + `dict[K,V]` → `PyDict`。
@@ -471,8 +471,8 @@ Py2Cpp/
 | **`{a:x,b:y}[k]`、`{…}.get(k,z)`** | ✅ | 见 **§8.3.3.1**（常量键内联；非常量键/`**` → 临时 `PyDict`） |
 | `return {k: v}`（函数无返回注解） | ❌ | 同左；有 `-> dict[K,V]` 时走注解赋值路径 ✅ |
 | `dict()` / `dict(other)` 构造器一行式 | ⚠️ | 用 `d: dict[K,V] = {}` + `update` / `copy`；无「空 dict() 表达式」内联 |
-| `dict(zip(keys, vals))` | ⚠️ | 无内建脱糖；手写循环 `__setitem__` 或 `dict.fromkeys` + 改值 |
-| `dict.fromkeys(keys, v)` | ✅ 方法 | `PyDict::fromkeys`；非字面量，但替代 `{k: v for k in keys}` |
+| `dict(zip(keys, vals))` | ⚠️ | 无内建脱糖；手写循环 `__setitem__` 或 `dict.fromKeys` + 改值 |
+| `dict.fromKeys(keys, v)` | ✅ 方法 | `PyDict::fromKeys`；非字面量，但替代 `{k: v for k in keys}` |
 | 嵌套 `{1: {2: 3}}` | ⚠️ | 值侧子 `dict` 须各自带注解初始化；**无**递归字面量一次折叠为静态树 |
 | `{**a, **b, **c}` 多重展开 | ✅ | 多次 `update`（`emit_dict_literal` 中 `key is None`） |
 | `{**a, k: expr()}` 动态键/值 | ✅ 键值表达式 | 逐对 `__setitem__(visit(key), visit(val))`；**无**编译期小表优化 |
@@ -516,7 +516,7 @@ Py2Cpp/
 
 | Python | 状态 | 说明 / 目标内联 |
 |--------|------|-----------------|
-| `d.get(k, default)` / `d.setdefault` | ✅ | 方法体内 `in` + `__getitem__` |
+| `d.get(k, default)` / `d.setDefault` | ✅ | 方法体内 `in` + `__getitem__` |
 | `d[k] if k in d else default` | ✅ | 三目 + `in` |
 | `collections.defaultdict(factory)` | ❌ | 无标准库模块；目标：子类或译器脱糖（未做） |
 | `d \|= other` / `d = a \| b` | ✅ | `__ior__` / `__or__` |
@@ -532,11 +532,11 @@ Py2Cpp/
 
 | Python | 状态 | 说明 / 目标内联 |
 |--------|------|-----------------|
-| `frozendict({…})` / `fd: frozendict = {…}` | ✅ | 临时 `PyDict` → `init_from_dict` |
+| `frozendict({…})` / `fd: frozendict = {…}` | ✅ | 临时 `PyDict` → `initFromDict` |
 | `dict(fd)` / `fd.copy()` | ⚠️ | 用 `copy` / 迭代构造；**无** `dict(mapping)` 内建 |
 | `list(d)` / `[*d]` | ❌ / ⚠️ | 键列表须 `for k in d` + `append`；**无** `[*d]` 解包到 list |
 | `set(d)`（键集合） | ⚠️ | `for k in d: s.add(k)`；**无** 一行内建 |
-| `str.translate(table)` 中 `table: dict[int,int] = {…}` | ✅ | 注解 dict 字面量 + `maketrans` 范本 |
+| `str.translate(table)` 中 `table: dict[int,int] = {…}` | ✅ | 注解 dict 字面量 + `makeTrans` 范本 |
 
 **书写建议（在未实现项落地前）**
 
@@ -582,8 +582,8 @@ python main.py <input.py> [-o DIR] [--no-stdlib] [--no-main] [--debug]
 | `test/text/test_bytes.py` | `build_all.bat` | bytes |
 | `test/misc/test_chr_ord.py` | `build_all.bat` | `chr` / `ord` / `byte` |
 | `test/io/test_io.py` | `build_all.bat` | `with`、`py_open` |
-| `test/io/file/test_file.py` | `build_all.bat` | ``os`` 磁盘 API（``getcwd``/``stat``/``listdir``/…） |
-| `test/io/file/test_path.py` | `build_all.bat` | ``os.path``（``join``/``splitext``/…） |
+| `test/io/file/test_file.py` | `build_all.bat` | ``os`` 磁盘 API（``getCwd``/``stat``/``listDir``/…） |
+| `test/io/file/test_path.py` | `build_all.bat` | ``os.path``（``join``/``splitExt``/…） |
 | `test/io/test_path.py` | `build_all.bat` | `Path`、`/` |
 | `test/sql/test_sqlite.py` | `build.bat sql/test_sqlite` | ``py2cpp/sql`` DB-API（P0 已落地）；见 [sql-orm.md](../../../docs/sql-orm.md) |
 | `test/sql/test_sql_orm.py` | `build.bat sql/test_sql_orm`（**设计中，P1**） | ``table[User]()`` + ``*Meta`` / ``all`` / ``get`` / ``append`` |
@@ -613,7 +613,7 @@ python main.py <input.py> [-o DIR] [--no-stdlib] [--no-main] [--debug]
 | `test/import_tests/test_import.py` | `build_all.bat` | import / 命名空间 |
 | `test/fail/test_*_fail.py` | `build_fail.bat` | 预期编译失败 |
 
-**unittest 结构**（编码规范 §10）：`TestCaseMixin` + `@override def test(self)` + `main()` 里 `suite: TestSuite = new()` / `TextTestRunner`；``iter_subclasses(sort_const="_test_tag")`` 按 ``static const`` 升序（``@mixin`` 展开，无运行时反射）。
+**unittest 结构**（编码规范 §10）：`TestCaseMixin` + `@override def test(self)` + `main()` 里 `suite: TestSuite = new()` / `TextTestRunner`；``iterSubclasses(sortConst="_testTag")`` 按 ``static const`` 升序（``@mixin`` 展开，无运行时反射）。
 
 ### 10.2 推荐验证命令
 
@@ -647,7 +647,7 @@ generated\test\misc\test_containers.exe
 | 现象 | 可能原因 | 处理 |
 |------|----------|------|
 | `'cl' 不是内部或外部命令` | 未进 vcvars 环境 | `build_*.bat` 或 Native Tools Prompt |
-| 翻译 OK、链接旧符号 | 未重链 | 全量重编；`main.py -c` / `build_*.bat` 会自动删 `.obj` |
+| 翻译 Ok、链接旧符号 | 未重链 | 全量重编；`main.py -c` / `build_*.bat` 会自动删 `.obj` |
 | LNK2005 | 同时链 `py2cpp.cpp` + 含实现的万能头 | `compile.py` 对 `test/` 已跳过 `py2cpp.cpp` |
 | LNK2019 `py_open` | 缺 `io.inl` 或未链入 | 重译 runtime |
 | `PyRange` 未声明 | 未 include `minimal.h`（或 `util/range`）或 namespace 尾块污染 | 用 `(::py2cpp::util::range::PyRange)(n)`；勿乱改 umbrella |

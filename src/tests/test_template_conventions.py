@@ -147,12 +147,12 @@ class TemplateConventionsTests(unittest.TestCase):
       "namespace py2cpp { namespace io { namespace file {\n",
       "PY2CPP_END\n",
       "\n",
-      "PY2CPP_INJECT_CLASS(ScandirIterator)\n",
+      "PY2CPP_INJECT_CLASS(PyScandirIterator)\n",
       "  void foo();\n",
       "PY2CPP_END\n",
     ]
     hits = scan_inject_class_shell_violations(lines)
-    self.assertTrue(any("class ScandirIterator" in msg for _, msg in hits))
+    self.assertTrue(any("class PyScandirIterator" in msg for _, msg in hits))
 
   def test_t22_rejects_class_name_mismatch(self):
     from src.codegen.template_scan import scan_inject_class_shell_violations

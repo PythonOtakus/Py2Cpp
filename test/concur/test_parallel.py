@@ -5,7 +5,7 @@ from py2cpp.concur.parallel import prange
 
 
 class PrangeFillTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
@@ -17,7 +17,7 @@ class PrangeFillTests(TestCaseMixin):
 
 
 class PrangeReductionTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
@@ -28,7 +28,7 @@ class PrangeReductionTests(TestCaseMixin):
 
 
 class PrangeNegativeStepTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
@@ -39,18 +39,18 @@ class PrangeNegativeStepTests(TestCaseMixin):
 
 
 class PrangeScheduleTests(TestCaseMixin):
-  _test_tag = 30
+  _testTag = 30
 
   @override
   def test(self):
     acc: int = 0
-    for i in prange(32, schedule="dynamic", chunksize=4):
+    for i in prange(32, schedule="dynamic", chunkSize=4):
       acc += 1
     self.assertTrue(acc == 32)
 
 
 class PrangeThresholdTests(TestCaseMixin):
-  _test_tag = 40
+  _testTag = 40
 
   @override
   def test(self):
@@ -66,7 +66,7 @@ class PrangeThresholdTests(TestCaseMixin):
 
 
 class PrangeLenThresholdTests(TestCaseMixin):
-  _test_tag = 50
+  _testTag = 50
 
   @override
   def test(self):
@@ -83,7 +83,7 @@ class PrangeLenThresholdTests(TestCaseMixin):
 
 def main() -> int:
   suite: TestSuite = TestSuite()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

@@ -89,7 +89,7 @@ HtmlDocument @refcount
 
 HtmlNode
   ├─ 强持有 HtmlDocument
-  └─ node_id: uint
+  └─ nodeId: uint
 ```
 
 `HtmlNode` 是可复制的轻量 handle。它不直接拥有 parent 或 child；每次导航都由 document 通过 node ID 查询。
@@ -107,7 +107,7 @@ HtmlNode
 ```python
 @enum
 class HtmlNodeKind:
-  Document
+  DocumentType
   Element
   Text
   Comment

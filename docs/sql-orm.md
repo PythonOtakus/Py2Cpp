@@ -1,7 +1,7 @@
 # SQL / ORM：DB-API + 静态反射表映射规范
 
 > **状态**：**P0 DB-API 已落地**（`protocols.py` + `sqlite.py` + `templates/sql/+sqlite.inl` + `test/sql/test_sqlite.py`）；**ORM P1+ 设计中**（尚无 `orm.py` / `session.py`）。  
-> **约束**：符合 [编码规范.md](./编码规范.md)；**不新增** `@table` 等装饰器或译器 pass；ORM 仅复用既有 `@annotation` *Meta、`@dataclass`、`Self.iter_fields` / `Self.get_field_annotation[Meta](field)`（与 `ui/panel` 同构）；Native 原子化（业务零 `@native`，C++ 仅叶子）；不引入 STL；**暂不支持** SQLAlchemy 级 Query DSL / relationship / migration 框架。
+> **约束**：符合 [编码规范.md](./编码规范.md)；**不新增** `@table` 等装饰器或译器 pass；ORM 仅复用既有 `@annotation` *Meta、`@dataclass`、`Self.iterFields` / `Self.getFieldAnnotation[Meta](field)`（与 `ui/panel` 同构）；Native 原子化（业务零 `@native`，C++ 仅叶子）；不引入 STL；**暂不支持** SQLAlchemy 级 Query DSL / relationship / migration 框架。
 
 ---
 
@@ -11,7 +11,7 @@
 
 1. **DB-API 子集**：对齐 CPython 3.13 `sqlite3` 常用用法（`connect` / `execute` / `fetch*` / `commit`），供手写 SQL。
 2. **ORM Declarative**：``Session.table[Entity]()`` 得 ``Table[Entity]`` 句柄（**禁止**把实体类名作普通实参）；表级 ``append`` / ``get`` / ``all`` / ``create_schema``（P2 批量插 ``extend``）；事务级 ``commit`` / ``rollback`` 仍在 ``Session``。
-3. **译期静态反射**：ORM 列映射由 **`@annotation` *Meta** + `Self.iter_fields` 在 **`session.py` / `orm.py` 标准库内**编译期展开，**零运行时反射**（与 `UIPanelMixin` 同模式）。
+3. **译期静态反射**：ORM 列映射由 **`@annotation` *Meta** + `Self.iterFields` 在 **`session.py` / `orm.py` 标准库内**编译期展开，**零运行时反射**（与 `UIPanelMixin` 同模式）。
 4. **可插拔后端**：协议层与 SQLite 实现分离；未来可增 PostgreSQL 等后端而不改用户 ORM 类。
 5. **Pythonic 增查改删**：P1 **单行插** ``users.append(entity)``；P2+ **批量插** ``extend``、**读/删/改** ``collect``/``remove``/``execute(e.assign…)``（genexp → 内联 **`SqlQuery[T]`**；``assign`` 写入 ``set_sql``/``set_binds``）；P3 **联表读** ``session.collect[RowT](Row(…) for x in a for y in b if x.u == y.v)``（``SqlQuery[RowT]``；**方法须** ``collect[T]``）；**禁止** ``filter(eq)`` / ``touch`` / ``users.iter()`` / ``add`` / ``Join`` 工厂 / ``relationship``。
 
@@ -31,7 +31,7 @@
 ```text
 py2cpp/sql/
   __init__.py          # 薄包根
-  protocols.py         # @protocol：Connection / Cursor / Dialect / SqlQuery[T]
+  protocols.py         # @protocol：ConnectionType / CursorType / DialectType / SqlQuery[T]
   orm.py               # @annotation *Meta、ORM 静态 helper
   session.py           # Session + Table[T]
   sqlite.py            # SQLite 实现 + connect() + 异常
@@ -60,10 +60,10 @@ test/sql/
 C++ 命名空间（建议）：
 
 ```text
-py2cpp::sql::sqlite::Connection
+py2cpp::sql::sqlite::ConnectionType
 py2cpp::sql::Session
 py2cpp::sql::Table<User>              # 模板表句柄
-py2cpp::sql::protocols::Dialect       # 协议 traits，无类体
+py2cpp::sql::protocols::DialectType       # 协议 traits，无类体
 ```
 
 ---
@@ -75,7 +75,7 @@ py2cpp::sql::protocols::Dialect       # 协议 traits，无类体
         ↓
 Session.table[Entity]() → Table[Entity]（ORM 入口；Self = Entity）
         ↓
-Connection + Dialect（protocols.py 契约；sqlite.py 首实现）
+ConnectionType + DialectType（protocols.py 契约；sqlite.py 首实现）
         ↓
 @native 叶子（templates/sql/+sqlite.inl → sqlite.inl → third_party/sqlite/sqlite3.c）
 ```
@@ -112,8 +112,8 @@ flowchart TB
 
 | 层 | 模块 | 职责 |
 |----|------|------|
-| **协议** | `protocols.py` | `Connection`、`Cursor`、`Dialect`、**`SqlQuery[T]`**（genexp 译期产物类型） |
-| **ORM 元数据** | `orm.py` | `TableMeta`、`PrimaryKeyMeta`、`ColumnMeta`、`IgnoreMeta`；`table_name` / `create_schema_sql` 等 **静态 helper**（内部 `Self.iter_fields`） |
+| **协议** | `protocols.py` | `ConnectionType`、`CursorType`、`DialectType`、**`SqlQuery[T]`**（genexp 译期产物类型） |
+| **ORM 元数据** | `orm.py` | `TableMeta`、`PrimaryKeyMeta`、`ColumnMeta`、`IgnoreMeta`；`table_name` / `create_schema_sql` 等 **静态 helper**（内部 `Self.iterFields`） |
 | **Session** | `session.py` | …；P3 ``collect[T](query: SqlQuery[T])`` 联表 |
 | **Table[T]** | `session.py` | ``create_schema``/``append``/``get``/``all``；P2 ``extend``/``collect``/``remove``/``execute``（``SqlQuery[T]`` + genexp） |
 | **后端** | `sqlite.py` | `connect()`、`SqliteConnection`、`SqliteDialect`、异常树 |
@@ -181,8 +181,8 @@ session.close()
 ```
 
 - **``Session.table[T]()``**：PEP 695 泛型工厂；``T`` 为 ``@dataclass`` 实体类；返回 ``Table[T]`` 句柄（可缓存：``users = session.table[User]()``）。
-- **``Table[T]``** 内 ORM 调用 ``orm.py`` 静态 helper，以 **``Self = T``** 做 ``Self.iter_fields`` 译期展开；**不再**向方法传入实体类名。
-- **事务**：``commit`` / ``rollback`` / ``close`` 在 **``Session``**；DML 在 **``Table[T]``** 上，共用同一 ``Connection``。
+- **``Table[T]``** 内 ORM 调用 ``orm.py`` 静态 helper，以 **``Self = T``** 做 ``Self.iterFields`` 译期展开；**不再**向方法传入实体类名。
+- **事务**：``commit`` / ``rollback`` / ``close`` 在 **``Session``**；DML 在 **``Table[T]``** 上，共用同一 ``ConnectionType``。
 
 **命名**：``Table`` 方法**勿**用 ``select``（与译期 ``obj.select("…")`` 路径 DSL 及 [编码规范 S33](./编码规范.md) 区分）；全表物化用 **`all()``**；懒遍历用 **`for u in users`**（P2，**无** ``users.iter()`` 公开方法）。
 
@@ -194,14 +194,14 @@ session.close()
 | ``append(entity)`` | ``void`` | 单行 INSERT；PK==0 时 commit 前写回 |
 | ``get(pk)`` | ``Optional[T]`` | 按 PK SELECT 单行 |
 | ``all()`` | ``list[T]`` | 全表物化 |
-| ``Iterable[T]``（``for u in users``） | 懒序列 | P2；底层 ``SELECT *`` 游标逐行 ``row_to_entity`` |
+| ``IterableType[T]``（``for u in users``） | 懒序列 | P2；底层 ``SELECT *`` 游标逐行 ``row_to_entity`` |
 | ``extend(query)`` / ``collect(query)`` / ``remove(query)`` / ``execute(query)`` | 见 §4.3 | P2；``query: SqlQuery[T]`` + genexp |
 
 ### 4.3 增查改删与 genexp（P2+，Pythonic）
 
-用户写法：**插/读/删** genexp 元素为实体 ``e``；**改** genexp 元素为 **`e.assign(字段=表达式, …)`**（复用 [编码规范 §7.4 ``assign``](./编码规范.md#74-kwargsoptions关键字选项) 译期字段赋值，**无** C++ ``assign`` 成员）。形参统一 **`SqlQuery[T]`**（**非** ``Iterable[T]``）。**单行插**仍用 §4.2 的 ``append(entity)``，**不用** genexp。
+用户写法：**插/读/删** genexp 元素为实体 ``e``；**改** genexp 元素为 **`e.assign(字段=表达式, …)`**（复用 [编码规范 §7.4 ``assign``](./编码规范.md#74-kwargsoptions关键字选项) 译期字段赋值，**无** C++ ``assign`` 成员）。形参统一 **`SqlQuery[T]`**（**非** ``IterableType[T]``）。**单行插**仍用 §4.2 的 ``append(entity)``，**不用** genexp。
 
-**数据源**：``Table[T]`` 实现 **`Iterable[T]`**（``for u in users``）；**禁止** ``users.iter()``。
+**数据源**：``Table[T]`` 实现 **`IterableType[T]`**（``for u in users``）；**禁止** ``users.iter()``。
 
 **``Table[T]`` 增查改删（genexp 路径）**（形参 ``query: SqlQuery[T]``；参考实现体供译器分析 / 回退）：
 
@@ -235,12 +235,12 @@ class Table[T]:
 
 | 方法 | genexp 元素 | ``if`` 子句 | 语义 |
 |------|-------------|-------------|------|
-| ``extend`` | ``e``（待插实体） | 可选 | 批量 ``INSERT``（可 ``executemany``）；**非** ``u for u in users`` 自表遍历 |
+| ``extend`` | ``e``（待插实体） | 可选 | 批量 ``INSERT``（可 ``executeMany``）；**非** ``u for u in users`` 自表遍历 |
 | ``collect`` | ``e`` | 可选 | ``SELECT … WHERE …`` → ``list[T]`` |
 | ``remove`` | ``e`` | 可选 | ``DELETE … WHERE …`` |
 | ``execute`` | **`e.assign(kw=…)`** | 可选 | ``UPDATE … SET … WHERE …``（**一行**条件更新） |
 
-**命名**：``Table.execute`` 为 ORM 条件写；与 ``Connection.execute(sql, params)``（DB-API 原始 SQL）**不同接收者、不同形参**，无歧义。
+**命名**：``Table.execute`` 为 ORM 条件写；与 ``ConnectionType.execute(sql, params)``（DB-API 原始 SQL）**不同接收者、不同形参**，无歧义。
 
 #### 示例：员工表 Alice 工资 +100（一行）
 
@@ -301,7 +301,7 @@ session.commit()
 @protocol
 class SqlQuery[T]:
   """genexp → 内联 ``SqlQuery[T]``；``T``=实体或投影行类型。用户勿手写 ``SqlQuery(...)``。"""
-  def __iter__(self) -> Iterator[T]: ...   # 仅 ``compilable=False`` 回退路径
+  def __iter__(self) -> IteratorType[T]: ...   # 仅 ``compilable=False`` 回退路径
 ```
 
 **``T`` 的含义**（与 ``list[T]`` 返回、格式化列集一致）：
@@ -315,18 +315,18 @@ class SqlQuery[T]:
 
 | 字段 | 内容 |
 |------|------|
-| ``from_sql`` | ``FROM {table} AS {alias}``；多表时为 ``JOIN … ON …`` 链（§4.4） |
+| ``from_sql`` | ``FROM {table} AS {alias}``；多表时为 ``JOIN … On …`` 链（§4.4） |
 | ``where_sql`` | ``WHERE …``（字面量/外层局部 → ``?``） |
 | ``binds`` | 与 ``where_sql`` 中 ``?`` **从左到右** 一致的绑定表达式 |
 | ``set_sql`` | **``execute`` 专用**：由 genexp 元素 ``e.assign(kw=…)`` 在 Phase A 展开（如 ``salary = salary + ?``）；与 [§7.4 ``assign``](./编码规范.md#74-kwargsoptions关键字选项) 同源；非 assign genexp 为空 |
 | ``set_binds`` | ``set_sql`` 中 ``?`` 的绑定（可与 ``binds`` 合并为单序列，实现期定） |
-| ``select_sql`` | 投影列片段：实体 ``T`` 时由 ``Self.iter_fields`` 推导；联表时由 ``Row(…)`` 构造式展开 |
+| ``select_sql`` | 投影列片段：实体 ``T`` 时由 ``Self.iterFields`` 推导；联表时由 ``Row(…)`` 构造式展开 |
 | ``compilable`` | 可下推 SQL 时为 ``true``；否则走 ``for … in query`` 回退 |
 | ``generators`` | 别名 → ``Table[Entity]``（单表 / 多表） |
 
 **单一译器入口**：``SqlQuery[…]`` 形参 + ``GeneratorExp`` 实参 → **`orm_sql_query_emit``** → 内联 **`SqlQuery[T]``**（**一条**路径；**不** per-method emit）。
 
-**运行时**：无 ``SqlQuery`` 堆对象；可译时 Phase B 读内联字段拼最终 SQL 并 ``Connection.execute``。
+**运行时**：无 ``SqlQuery`` 堆对象；可译时 Phase B 读内联字段拼最终 SQL 并 ``ConnectionType.execute``。
 
 | genexp 元素 | ``set_sql`` / ``select_sql`` | 方法 |
 |-------------|------------------------------|------|
@@ -357,7 +357,7 @@ class SqlQuery[T]:
 | ``collect`` | ``SELECT {select_sql} {from_sql} {where_sql}`` | ``row_to_entity[T]`` / ``row_to_dataclass[T]`` |
 | ``remove`` | ``DELETE {from_sql} {where_sql}`` | ``execute`` |
 | ``execute`` | ``UPDATE {table} SET {set_sql} {where_sql}`` | 绑定 ``set_binds`` + ``binds`` |
-| ``extend`` | ``INSERT INTO …`` + 源过滤 | ``executemany`` 等 |
+| ``extend`` | ``INSERT INTO …`` + 源过滤 | ``executeMany`` 等 |
 | ``Session.collect[T]`` | 同 ``collect``（``T`` 为投影行；**方法** 泛型） | ``row_to_dataclass[T]`` |
 
 示例（``collect``）：
@@ -421,7 +421,7 @@ rows: list[OrderUserRow] = session.collect[OrderUserRow](
 |----|------|
 | **genexp 迭代器** | **≥2** 个 ``for var in table``；``table`` 须为 ``Table[Entity]`` 句柄（``session.table[…]()``） |
 | **元素** | 用户 **`@dataclass` 投影行** ``RowT``（**非**表实体）；字段由 ``OrderUserRow(…)`` 构造表达式列出 |
-| **联表条件** | 写在 **最外层** ``if``；其中 **跨表** ``==``（如 ``o.user_id == u.id``）→ SQL ``ON`` / ``JOIN`` |
+| **联表条件** | 写在 **最外层** ``if``；其中 **跨表** ``==``（如 ``o.user_id == u.id``）→ SQL ``On`` / ``JOIN`` |
 | **过滤条件** | ``if`` 中其余谓词（单表字段比较、``and`` 组合、外层局部）→ ``WHERE`` |
 | **JOIN 类型** | 默认 **``INNER JOIN``**；P3 **不做** ``LEFT``/``RIGHT``/``FULL`` |
 | **N 表** | 支持 ``for a in … for b in … for c in …``；``if`` 中提取多对跨表 ``==`` 组成 JOIN 链 |
@@ -453,13 +453,13 @@ P3+ Phase B 拼接结果（示意）：
 ```sql
 SELECT o.id, o.amount, u.name
 FROM "order" AS o
-INNER JOIN user AS u ON o.user_id = u.id
+INNER JOIN user AS u On o.user_id = u.id
 WHERE o.amount > ? AND u.active = ?
 ```
 
-**ON 提取规则**（与 §4.3.2 谓词子集一致）：
+**On 提取规则**（与 §4.3.2 谓词子集一致）：
 
-- ``if`` 为 ``and`` 扁平合取；``left.field == right.field`` 且绑定 **不同** 表别名 → 并入 ``from_sql``（``JOIN … ON``）
+- ``if`` 为 ``and`` 扁平合取；``left.field == right.field`` 且绑定 **不同** 表别名 → 并入 ``from_sql``（``JOIN … On``）
 - 同表 ``==``、与字面量/外层局部比较、链式比较、``Optional`` ``IS NULL`` 等 → ``where_sql`` + ``binds``
 - **无**跨表 ``==`` → 译期 **报错**
 
@@ -479,23 +479,23 @@ WHERE o.amount > ? AND u.active = ?
 ### 4.5 底层 DB-API（公开，对齐 sqlite3 子集）
 
 ```python
-from py2cpp.sql.sqlite import connect, Connection, Cursor
+from py2cpp.sql.sqlite import connect, ConnectionType, CursorType
 
-conn: Connection = connect("app.db")
+conn: ConnectionType = connect("app.db")
 conn.execute("CREATE TABLE t(x INTEGER)")
-conn.executemany("INSERT INTO t VALUES(?)", [[1], [2]])
+conn.executeMany("INSERT INTO t VALUES(?)", [[1], [2]])
 conn.commit()
-cur: Cursor = conn.execute("SELECT x FROM t")
-row: tuple[int, ...] | None = cur.fetchone()
-rows: list[tuple[int, ...]] = cur.fetchall()
+cur: CursorType = conn.execute("SELECT x FROM t")
+row: tuple[int, ...] | None = cur.fetchOne()
+rows: list[tuple[int, ...]] = cur.fetchAll()
 conn.close()
 ```
 
-`Connection` / `Cursor` 类型定义在 **`protocols.py`**；`sqlite.py` 为具体实现。
+`ConnectionType` / `CursorType` 类型定义在 **`protocols.py`**；`sqlite.py` 为具体实现。
 
 入口约定：
 
-- **主入口**：`Session.open(conn)`，`conn` 为 `protocols.Connection` 实现。
+- **主入口**：`Session.open(conn)`，`conn` 为 `protocols.ConnectionType` 实现。
 - **便捷入口**：`py2cpp.sql.sqlite.connect(path)` 返回 SQLite 连接；**不**在 Session 上硬编码路径。
 
 ---
@@ -536,8 +536,8 @@ def table_name() -> str:
 
 @staticmethod
 def create_schema_sql() -> str:
-  for field in Self.iter_fields(public_only=True):
-    if Self.get_field_annotation[IgnoreMeta](field) is not None:
+  for field in Self.iterFields(publicOnly=True):
+    if Self.getFieldAnnotation[IgnoreMeta](field) is not None:
       continue
     ...
 ```
@@ -553,8 +553,8 @@ def create_schema_sql() -> str:
 `orm.py` / `Table[T]` 内默认循环（与 Panel 一致；``Self`` = 实体 ``T``）：
 
 ```python
-for field in Self.iter_fields(public_only=True):
-  if Self.get_field_annotation[IgnoreMeta](field) is not None:
+for field in Self.iterFields(publicOnly=True):
+  if Self.getFieldAnnotation[IgnoreMeta](field) is not None:
     continue
   ...
 ```
@@ -563,14 +563,14 @@ for field in Self.iter_fields(public_only=True):
 |------|------|
 | 公有字段、无 `@IgnoreMeta` | 参与 ORM |
 | `@IgnoreMeta` | 跳过（即使字段名公有） |
-| `_private` | `public_only=True` 时已跳过 |
+| `_private` | `publicOnly=True` 时已跳过 |
 | `Optional[T]` | 列允许 NULL |
 | 非 Optional | DDL `NOT NULL`（P1） |
 | 无 `@PrimaryKeyMeta` 的 dataclass | 不可作为 ``Table[T]`` 实体 |
 
 ### 6.2 类型 → SQL 列类型
 
-由 **`Dialect.column_sql(inner_type)`** 分派（后端可差异）：
+由 **`DialectType.columnSql(inner_type)`** 分派（后端可差异）：
 
 | 字段类型 | SQLite（首后端） | 备注 |
 |----------|------------------|------|
@@ -593,7 +593,7 @@ for field in Self.iter_fields(public_only=True):
 ### 6.4 主键与自增
 
 - P1：**单字段** `@PrimaryKeyMeta`。
-- `Table[T].append` / `extend` 插入时若 PK 字段为 `0`，INSERT 后（``commit`` 前或批量末行）执行 `Dialect.last_insert_id_sql()`（SQLite：`SELECT last_insert_rowid()`），写回对应实体 PK 字段。
+- `Table[T].append` / `extend` 插入时若 PK 字段为 `0`，INSERT 后（``commit`` 前或批量末行）执行 `DialectType.lastInsertIdSql()`（SQLite：`SELECT last_insert_rowid()`），写回对应实体 PK 字段。
 - P1 **不支持**复合主键。
 
 ---
@@ -606,28 +606,28 @@ class SqlQuery[T]:
   """genexp 译期内联产物 ``SqlQuery[T]``；``T``=行/实体类型。字段见 §4.3.1；用户勿构造。"""
 
 @protocol
-class Cursor:
-  def fetchone(self) -> tuple[...] | None: ...
-  def fetchall(self) -> list[tuple[...]]: ...
+class CursorType:
+  def fetchOne(self) -> tuple[...] | None: ...
+  def fetchAll(self) -> list[tuple[...]]: ...
 
 @protocol
-class Connection:
-  def execute(self, sql: str, params: list[...] = []) -> Cursor: ...
-  def executemany(self, sql: str, seq: list[list[...]]) -> None: ...
+class ConnectionType:
+  def execute(self, sql: str, params: list[...] = []) -> CursorType: ...
+  def executeMany(self, sql: str, seq: list[list[...]]) -> None: ...
   def commit(self) -> None: ...
   def rollback(self) -> None: ...
   def close(self) -> None: ...
   @property
-  def dialect(self) -> Dialect: ...
+  def dialect(self) -> DialectType: ...
 
 @protocol
-class Dialect:
+class DialectType:
   def placeholder(self, index: int) -> str: ...
-  def column_sql(self, field_type: str) -> str: ...
-  def last_insert_id_sql(self) -> str: ...
+  def columnSql(self, fieldType: str) -> str: ...
+  def lastInsertIdSql(self) -> str: ...
 ```
 
-| 后端 | `placeholder` | `last_insert_id_sql` 示例 |
+| 后端 | `placeholder` | `lastInsertIdSql` 示例 |
 |------|---------------|---------------------------|
 | SQLite | `?` | `SELECT last_insert_rowid()` |
 | PostgreSQL（未来） | `$1`, `$2`, … | `RETURNING id` 或 `lastval()` |
@@ -657,7 +657,7 @@ class Dialect:
 | **无新语法 / pass** | — | **禁止** `@table`、`expand_table_orm`、`builtins` 新桩 |
 | **`expand_iter_fields_meta`** | 已有 | `orm.py` / `Table[T]` 内 ORM 循环 |
 | **PEP 695 ``table[T]()``** | 已有（类/方法泛型） | ``Session.table[User]()`` → ``Table[User]``；对齐 ``JsonDocument[T].open`` |
-| **`Iterable` / `for … in`** | 已有 | ``Table[T]`` 实现 ``Iterable[T]``；``for u in users`` |
+| **`IterableType` / `for … in`** | 已有 | ``Table[T]`` 实现 ``IterableType[T]``；``for u in users`` |
 | **`assign``（实体 ``e.assign``）** | 已有（§7.4） | Phase A 写入 ``SqlQuery.set_sql`` / ``set_binds``；``execute`` Phase B 拼 ``UPDATE`` |
 | **`SqlQuery[T]` + ``orm_sql_query_emit``** | 新增 | genexp → 内联 ``SqlQuery[T]``（``from``/``where``/``binds``/``set_sql``/``select_sql``/…）；**单入口**；各 DML 方法 Phase B 格式化 |
 | **`Optional[T]`** | `analyzer` 已有 | ORM 读写字段是否 Optional |
@@ -674,8 +674,8 @@ class Dialect:
 | API | P0–P1 | 后续 |
 |-----|-------|------|
 | `connect(path)` / `:memory:` | ✅ | URI、`timeout` |
-| `Connection.execute/executemany/commit/rollback/close` | ✅ | `isolation_level` |
-| `Cursor.fetchone/fetchall` | ✅ | `fetchmany` |
+| `ConnectionType.execute/executeMany/commit/rollback/close` | ✅ | `isolation_level` |
+| `CursorType.fetchOne/fetchAll` | ✅ | `fetchmany` |
 | 参数 `?` | ✅ | 命名 `:name` |
 | 异常层次 | ✅ | 完整子类树 |
 | `register_adapter/converter` | ❌ | ORM 静态映射代替 |
@@ -707,13 +707,13 @@ class Dialect:
 P0  protocols.py + sqlite.py + templates/sql/+sqlite.inl + test/sql/test_sqlite.py
 
 P1  orm.py + session.py（Session + Table[T]）+ test/sql/test_sql_orm.py
-    （*Meta、iter_fields helper、table[T]()、create_schema/append/get/all、Optional、IgnoreMeta）
+    （*Meta、iterFields helper、table[T]()、create_schema/append/get/all、Optional、IgnoreMeta）
 
 P2  extend/collect/remove/execute（SqlQuery + genexp；extend 插实体、execute 须 e.assign）+ test/sql/test_sql_orm_genexp.py
 
 P3  Session.collect[T] 联表（``SqlQuery[RowT]`` + 嵌套 for x in a for y in b）+ test/sql/test_sql_orm_join.py
 
-P4  第二后端 PoC（postgres 协议 + Dialect）
+P4  第二后端 PoC（postgres 协议 + DialectType）
 ```
 
 ---
@@ -735,7 +735,7 @@ P4  第二后端 PoC（postgres 协议 + Dialect）
 - 把实体类名作 **Session 普通实参**（``session.get(User, …)`` 等）；须 ``session.table[User]()``
 - ``Table[T].iter()`` 公开方法；懒遍历写 **`for u in users`** / **`u for u in users if …`**
 - ``Table[T].touch`` / ``Table[T].add``；单行插 ``append``，批量插 ``extend(genexp)``；改字段须 ``execute(e.assign(…) for …)``
-- ``extend``/``collect``/``remove``/``execute`` 形参用 ``Iterable[T]``（须 ``SqlQuery[T]``）
+- ``extend``/``collect``/``remove``/``execute`` 形参用 ``IterableType[T]``（须 ``SqlQuery[T]``）
 - ``Join[…]`` 工厂 / ``table.join(other, on=…)``；联表仅 **嵌套 genexp**（§4.4）
 - per-method 译器 emit；须 **单一** ``orm_sql_query_emit`` → 内联 ``SqlQuery[T]``（§4.3.2）
 - 并列类型 ``OrmSqlPlan`` 等；**产物即 ``SqlQuery[T]``**
@@ -769,8 +769,8 @@ P4  第二后端 PoC（postgres 协议 + Dialect）
 
 ## 16. 参考
 
-- Panel 静态反射：[参考手册 §10.9](./参考手册.md#109-uiPanel译期-iter_fields)
-- `@annotation` / `iter_fields`：[参考手册 §8.2.3](./参考手册.md#823-annotation)
+- Panel 静态反射：[参考手册 §10.9](./参考手册.md#109-uiPanel译期-iterFields)
+- `@annotation` / `iterFields`：[参考手册 §8.2.3](./参考手册.md#823-annotation)
 - genexp / ``SqlQuery[T]``：[参考手册 §8 内建/genexp](./参考手册.md)、§10.1.1 ``sql``；``orm_sql_query_emit`` → 内联 ``SqlQuery[T]`` 见 §4.3
 - 谓词 lowering 参考：[selector.md §4.4](./selector.md#44-过滤步-exprpy2cpp-表达式)
 - 路径 ``select`` DSL（ORM **不**复用）：[selector.md](./selector.md)

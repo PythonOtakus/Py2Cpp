@@ -1,6 +1,6 @@
 """编码规范强检查（``--strict``，默认开启）。
 
-S01–S29 按 A–F 分组（见 ``docs/编码规范.md`` §1.1）；``S06`` 构造优先级用子码 ``S06a``–``S06e``；``S18`` 为覆盖基类 ``@virtual``/``@abstract`` 方法（含继承链上纯虚/虚声明）时子类须 ``@override``；**静态**：覆盖基类 ``@staticmethod``+``@override``，或模块内 ``func[Cls]`` 绑定之 ``@protocol`` 静态虚成员，亦须 ``@staticmethod``+``@override``（不检查 dunder；``@mixin`` 基类豁免）；``S27`` 为 import 布局；``S28`` 为堆/栈数组切片注解；``S29`` 为同类型反向 dunder；``S30`` 为继承顺序（mixin 在实体类前、至多一个实体基类）；``S31`` 禁止显式 ``RefCount``（含 ``RefCount()`` / ``RefCount[T]``；``@refcount`` 类与 ``T: refcount`` 须写 ``T``，清空用 ``new()``）；``S32`` 为 ``@dataclass`` 须至少一个非 ``@optional`` 实例字段；``S33`` 禁止类成员名 ``assign``/``build``/``select``（与译期专用 API 冲突）；``S34`` 禁止非字面量 ``ord``；``S35`` 禁止仅作类型转换且无再赋值的注解临时变量（勿 ``n: int = int(x); return n``）；``S36`` 禁止定长元组解包中未使用的具名绑定（须 ``_`` / ``*_``）；``S37`` 禁止显式 ``PyNone``（须写 ``None``；``py2cpp/core/none.py`` 豁免）；``S38`` 禁止 ``for x in …: yield x``（须 ``yield from …``；``async def`` 异步生成器豁免；``for`` ``else`` 分支除外）；``S41`` 禁止 ``return self._field`` 与 ``self._field = 形参`` 成对的手写 getter/setter（须 ``@property`` 或公有字段）；``S42`` 禁止 trivial ``@property`` getter + 顶层 ``self._field = value`` 与其它语句的 ``@property.setter``（须 ``@property.postsetter`` / 字段简写）；``S45`` 禁止非 ``@dataclass`` 字段使用 ``@optional``；``S46`` 禁止仅为 ``new`` 造类型上下文的注解临时变量（勿 ``sp: T = new(...); self.f = sp`` / ``fn(sp)``，须 ``self.f = new(...)`` 或实参处 ``fn(Cls(...))`` / ``fn(Union.Variant(...))``）。
+S01–S29 按 A–F 分组（见 ``docs/编码规范.md`` §1.1）；``S06`` 构造优先级用子码 ``S06a``–``S06e``；``S18`` 为覆盖基类 ``@virtual``/``@abstract`` 方法（含继承链上纯虚/虚声明）时子类须 ``@override``；**静态**：覆盖基类 ``@staticmethod``+``@override``，或模块内 ``func[Cls]`` 绑定之 ``@protocol`` 静态虚成员，亦须 ``@staticmethod``+``@override``（不检查 dunder；``@mixin`` 基类豁免）；``S27`` 为 import 布局；``S28`` 为堆/栈数组切片注解；``S29`` 为同类型反向 dunder；``S30`` 为继承顺序（mixin 在实体类前、至多一个实体基类）；``S31`` 禁止显式 ``RefCount``（含 ``RefCount()`` / ``RefCount[T]``；``@refcount`` 类与 ``T: refcount`` 须写 ``T``，清空用 ``new()``）；``S32`` 为 ``@dataclass`` 须至少一个非 ``@optional`` 实例字段；``S33`` 禁止类成员名 ``assign``/``build``/``select``（与译期专用 API 冲突）；``S34`` 禁止非字面量 ``ord``；``S35`` 禁止仅作类型转换且无再赋值的注解临时变量（勿 ``n: int = int(x); return n``）；``S36`` 禁止定长元组解包中未使用的具名绑定（须 ``_`` / ``*_``）；``S37`` 禁止显式 ``PyNone``（须写 ``None``；``py2cpp/core/none.py`` 豁免）；``S38`` 禁止 ``for x in …: yield x``（须 ``yield from …``；``async def`` 异步生成器豁免；``for`` ``else`` 分支除外）；``S41`` 禁止 ``return self._field`` 与 ``self._field = 形参`` 成对的手写 getter/setter（须 ``@property`` 或公有字段）；``S42`` 禁止 trivial ``@property`` getter + 顶层 ``self._field = value`` 与其它语句的 ``@property.setter``（须 ``@property.postsetter`` / 字段简写）；``S45`` 禁止非 ``@dataclass`` 字段使用 ``@optional``；``S46`` 禁止仅为 ``new`` 造类型上下文的注解临时变量（勿 ``sp: T = new(...); self.f = sp`` / ``fn(sp)``，须 ``self.f = new(...)`` 或实参处 ``fn(Cls(...))`` / ``fn(Union.Variant(...))``）；``S47`` 强制特殊类型 / Meta / Var / Mixin / 异常类名后缀（见编码规范 §1.0.2）；``S48`` 禁止类 PEP 695 形参使用单字母或单字母+数字（``T`` / ``T1``；须 ``Element`` / ``Key`` 等语义名）。
 检查 ``py2cpp/``、用户模块与 ``test/**``；``test/fail/`` 豁免；``# py2cpp: strict-off`` 可关单文件。
 
 内部 helper 前缀 ``_sNN_`` / ``_check_sNN_`` 与 §1.1 规则 ID 一致。
@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 from ..analysis.stubs.builtin_stubs import DEDUCED_TEMPLATE_MEMORY_FUNCS as _DEDUCED_MEMORY_FUNCS
 from ..analysis.type_pred import is_char_type, is_optional_type, is_str_type
 from ..analysis.type_emit import field_ann_ast
-from ..analysis.ir import ClassInfo, FuncTypeConstraint, FuncTypeParametricBound, FuncTypeParams, FunctionSig, MethodSig, cpp_ident, has_named_decorator, pep695_declared_type_params, pep695_used_type_params, strip_type_annotation_markers
+from ..analysis.ir import ClassInfo, FuncTypeConstraint, FuncTypeParametricBound, FuncTypeParams, FunctionSig, MethodSig, cpp_ident, has_named_decorator, has_enum_mro_decorator, has_union_mro_decorator, pep695_declared_type_params, pep695_used_type_params, strip_type_annotation_markers
 from ..emit.binop_emit import is_single_char_str_constant
 from .enum_expand import enum_member_names
 from .enum_match import _parse_enum_or_value
@@ -74,8 +74,45 @@ S43 = 'S43'
 S44 = 'S44'
 S45 = 'S45'
 S46 = 'S46'
+S47 = 'S47'
+S48 = 'S48'
 _PRIMITIVE_CONVERT_CTORS = frozenset({'int', 'float', 'bool', 'char', 'byte', 'str', 'int64', 'float64', 'uint', 'uint64', 'uintptr'})
-_SLICE_ARRAY_ANN_ROOTS = frozenset({'array', 'array2d', 'array3d', 'stack_array', 'stack_array2d', 'stack_array3d'})
+# 类 PEP 695 形参禁止单字母 / 单字母+数字（``T`` / ``T1``）；会落成 ``using`` 别名，须语义化。
+_SHORT_CLASS_TYPE_PARAM = re.compile(r'^[A-Za-z]\d*$')
+_UNION_NAME_EXEMPT_S47 = frozenset({'Result', 'Optional', 'IterResult'})
+# CPython 同名异常：不强制 ``*Error``（含已以 Error 结尾的内建名）。
+_CPYTHON_EXCEPTION_NAMES_S47 = frozenset({
+    'BaseException', 'Exception', 'GeneratorExit', 'KeyboardInterrupt', 'SystemExit',
+    'StopIteration', 'StopAsyncIteration',
+    'ArithmeticError', 'FloatingPointError', 'OverflowError', 'ZeroDivisionError',
+    'AssertionError', 'AttributeError', 'BufferError', 'EOFError',
+    'ImportError', 'ModuleNotFoundError', 'LookupError', 'IndexError', 'KeyError',
+    'MemoryError', 'NameError', 'UnboundLocalError',
+    'OSError', 'BlockingIOError', 'ChildProcessError', 'ConnectionError',
+    'BrokenPipeError', 'ConnectionAbortedError', 'ConnectionRefusedError',
+    'ConnectionResetError', 'FileExistsError', 'FileNotFoundError',
+    'InterruptedError', 'IsADirectoryError', 'NotADirectoryError',
+    'PermissionError', 'ProcessLookupError', 'TimeoutError',
+    'ReferenceError', 'RuntimeError', 'NotImplementedError', 'RecursionError',
+    'SyntaxError', 'IndentationError', 'TabError',
+    'SystemError', 'TypeError', 'ValueError', 'UnicodeError',
+    'UnicodeDecodeError', 'UnicodeEncodeError', 'UnicodeTranslateError',
+    'Warning', 'UserWarning', 'DeprecationWarning', 'PendingDeprecationWarning',
+    'SyntaxWarning', 'RuntimeWarning', 'FutureWarning', 'ImportWarning',
+    'UnicodeWarning', 'BytesWarning', 'ResourceWarning', 'EncodingWarning',
+    'ExceptionGroup', 'BaseExceptionGroup',
+    'BrokenBarrierError', 'CancelledError', 'InvalidStateError',
+    'StatisticsError', 'JSONDecodeError',
+    'DatabaseError', 'IntegrityError', 'OperationalError',
+})
+_S47_SUFFIX_RULES: tuple[tuple[str, str, str], ...] = (
+    ('protocol', 'Type', '@protocol'),
+    ('boxing', 'Unsafe', '@boxing'),
+    ('annotation', 'Meta', '@annotation'),
+    ('descriptor', 'Var', '@descriptor'),
+    ('mixin', 'Mixin', '@mixin'),
+)
+_SLICE_ARRAY_ANN_ROOTS = frozenset({'array', 'array2d', 'array3d', 'StackArray', 'StackArray2d', 'StackArray3d'})
 _S20_MIN_DISPATCH_BRANCHES = 3
 _S21_MIN_COMPARE_CHAIN_ARMS = 2
 _EMPTY_CONTAINER_FACTORIES = frozenset({'list', 'dict', 'deque', 'tuple', 'frozendict', 'frozenlist'})
@@ -87,10 +124,10 @@ _DESUGAR_CLASS_SUFFIXES = ('_coroutine', '_generator')
 _DESUGAR_PROTO_DUNDERS = frozenset({'__aenter__', '__aexit__'})
 _S01_GLOBAL_DUNDERS = frozenset({'__await__'})
 _AUG_BINOPS = (ast.Add, ast.Sub, ast.Mult, ast.MatMult, ast.FloorDiv, ast.Mod, ast.BitOr, ast.BitAnd, ast.BitXor, ast.LShift, ast.RShift)
-_CPP_STYLE_METHOD_ALLOWLIST = frozenset({'reserve', 'reshape', 'capacity', 'clear', 'insert', 'remove', 'discard', 'update', 'get', 'find', 'index', 'rfind', 'rindex', 'startswith', 'endswith', 'split', 'strip', 'append', 'extend', 'pop', 'popleft', 'appendleft', 'add', 'copy', 'move', 'items', 'keys', 'values', 'getstate', 'setstate', 'join', 'replace', 'format', 'encode', 'decode'})
+_CPP_STYLE_METHOD_ALLOWLIST = frozenset({'reserve', 'reshape', 'capacity', 'clear', 'insert', 'remove', 'discard', 'update', 'get', 'find', 'index', 'rfind', 'rindex', 'startswith', 'endswith', 'startsWith', 'endsWith', 'split', 'strip', 'append', 'extend', 'pop', 'popLeft', 'appendLeft', 'add', 'copy', 'move', 'items', 'keys', 'values', 'getstate', 'setstate', 'getState', 'setState', 'getsize', 'getSize', 'getmtime', 'getMtime', 'getctime', 'getCtime', 'getatime', 'getAtime', 'join', 'replace', 'format', 'encode', 'decode'})
 # 类限定 S02 豁免：空间矩形允许 ``contains`` / ``size``（非容器 ``len`` 语义）
 _S02_CLASS_METHOD_ALLOW: dict[str, frozenset[str]] = {'Rect': frozenset({'contains', 'size'})}
-_CPP_STYLE_METHOD_ALIASES: dict[str, str] = {'push_back': 'append', 'push_copy': 'append', 'pop_back': 'pop', 'emplace_back': 'append', 'emplace': 'append', 'assign_copy': 'copy_from(other)', 'subgroup_len': 'len(container) 或 __len__', 'push_front': 'insert(0, item) 或 deque.appendleft', 'pop_front': 'popleft', 'shrink_to_fit': '勿引入；用容器/缓冲自有扩容语义', 'substr': '切片 s[i:j]', 'erase': 'pop / del / remove', 'is_empty': 'not container', 'isempty': 'not container', 'get_size': 'len(container)', 'contains': 'item in container', 'front': 'seq[0]', 'back': 'seq[-1]', 'size': 'len(container)', 'empty': 'not container 或 if not container', 'length': 'len(container)', 'pushback': 'append', 'popback': 'pop', 'emplaceback': 'append'}
+_CPP_STYLE_METHOD_ALIASES: dict[str, str] = {'push_back': 'append', 'push_copy': 'append', 'pop_back': 'pop', 'emplace_back': 'append', 'emplace': 'append', 'assign_copy': 'copy_from(other)', 'subgroup_len': 'len(container) 或 __len__', 'push_front': 'insert(0, item) 或 deque.appendLeft', 'pop_front': 'popLeft', 'shrink_to_fit': '勿引入；用容器/缓冲自有扩容语义', 'substr': '切片 s[i:j]', 'erase': 'pop / del / remove', 'is_empty': 'not container', 'isempty': 'not container', 'get_size': 'len(container)', 'contains': 'item in container', 'front': 'seq[0]', 'back': 'seq[-1]', 'size': 'len(container)', 'empty': 'not container 或 if not container', 'length': 'len(container)', 'pushback': 'append', 'popback': 'pop', 'emplaceback': 'append'}
 _CAMEL_CASE_BOUNDARY = re.compile('(?<!^)(?=[A-Z])')
 _BUILTIN_CTORS = frozenset({'int', 'float', 'bool', 'new', 'range', 'print', 'len', 'min', 'max', 'abs', 'enumerate', 'zip', 'super', 'type', 'isinstance', 'hasattr', 'getattr', 'setattr', 'ord', 'chr', 'hex', 'oct', 'bin', 'repr', 'str', 'bytes'})
 
@@ -133,6 +170,7 @@ def check_strict_style(tr: TranslatorState):
         _check_static_virtual_protocol_rules(tr, module_path, violations)
         _check_s19_unused_pep695_type_params(tree, module_path, violations)
         _check_s29_reverse_self_dunder(tr, module_path, violations)
+        _check_s47_naming_suffixes(tree, module_path, violations)
     _check_s41_private_field_accessor_pairs(tr, violations)
     _check_s42_prefer_postsetter(tr, violations)
     _check_s26_dataclass_container_optional(tr, violations)
@@ -216,6 +254,84 @@ def check_pynone_source_style(tr: TranslatorState) -> None:
         if first_loc is None and loc is not None:
             first_loc = loc
     raise TranslationError('\n'.join(parts), location=first_loc)
+
+def _s47_enum_is_flag(node: ast.ClassDef) -> bool:
+    for dec in node.decorator_list:
+        if not isinstance(dec, ast.Call) or not isinstance(dec.func, ast.Name) or dec.func.id != 'enum':
+            continue
+        for kw in dec.keywords:
+            if kw.arg == 'flag' and isinstance(kw.value, ast.Constant) and kw.value.value is True:
+                return True
+    return False
+
+def _s47_base_name(base: ast.expr) -> str | None:
+    if isinstance(base, ast.Name):
+        return base.id
+    if isinstance(base, ast.Attribute):
+        return base.attr
+    if isinstance(base, ast.Subscript) and isinstance(base.value, ast.Name):
+        return base.value.id
+    return None
+
+def _s47_collect_exception_names(tree: ast.Module) -> set[str]:
+    """模块内继承 ``Exception`` / ``*Error`` 的类名闭包（含字面 ``Exception``）。"""
+    classes = [n for n in ast.walk(tree) if isinstance(n, ast.ClassDef)]
+    exc: set[str] = {'Exception'}
+    changed = True
+    while changed:
+        changed = False
+        for node in classes:
+            if node.name in exc:
+                continue
+            for base in node.bases:
+                b = _s47_base_name(base)
+                if b is None:
+                    continue
+                if b in exc or b.endswith('Error'):
+                    exc.add(node.name)
+                    changed = True
+                    break
+    return exc
+
+def _s47_require_suffix(name: str, suffix: str) -> bool:
+    return name.endswith(suffix)
+
+def _check_s47_naming_suffixes(tree: ast.Module, module_path: str, violations: list[_Violation]) -> None:
+    """S47：特殊类型 / Meta / Var / Mixin / 异常类名后缀（见编码规范 §1.0.2）。"""
+    exc_names = _s47_collect_exception_names(tree)
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ClassDef):
+            continue
+        name = node.name
+        if has_enum_mro_decorator(node):
+            if not _s47_require_suffix(name, 'TypeEnum'):
+                violations.append(_Violation(S47, _strict_msg(name, f'{name}…TypeEnum', f'class {name}', reason='``@enum.mro`` 类名须以 ``TypeEnum`` 结尾', example='got: @enum.mro class PetKindTypeEnum(base=…):'), node, module_path))
+            continue
+        if has_named_decorator(node, 'enum'):
+            if _s47_enum_is_flag(node):
+                if not _s47_require_suffix(name, 'Flag'):
+                    violations.append(_Violation(S47, _strict_msg(name, f'{name}…Flag', f'class {name}', reason='``@enum(flag=True)`` 类名须以 ``Flag`` 结尾', example='got: @enum(flag=True) class PermFlag:'), node, module_path))
+            elif not _s47_require_suffix(name, 'Enum'):
+                violations.append(_Violation(S47, _strict_msg(name, f'{name}…Enum', f'class {name}', reason='``@enum`` 类名须以 ``Enum`` 结尾', example='got: @enum class ModeEnum:'), node, module_path))
+            continue
+        if has_union_mro_decorator(node):
+            if not _s47_require_suffix(name, 'TypeUnion'):
+                violations.append(_Violation(S47, _strict_msg(name, f'{name}…TypeUnion', f'class {name}', reason='``@union.mro`` 类名须以 ``TypeUnion`` 结尾', example='got: @union.mro class ExcTypeUnion(base=…):'), node, module_path))
+            continue
+        if has_named_decorator(node, 'union'):
+            if name not in _UNION_NAME_EXEMPT_S47 and not _s47_require_suffix(name, 'Union'):
+                violations.append(_Violation(S47, _strict_msg(name, f'{name}…Union', f'class {name}', reason='``@union`` 类名须以 ``Union`` 结尾（豁免 Result / Optional / IterResult）', example='got: @union class MessageUnion:'), node, module_path))
+            continue
+        for deco, suffix, label in _S47_SUFFIX_RULES:
+            if has_named_decorator(node, deco):
+                if not _s47_require_suffix(name, suffix):
+                    violations.append(_Violation(S47, _strict_msg(name, f'{name}…{suffix}', f'class {name}', reason=f'``{label}`` 类名须以 ``{suffix}`` 结尾', example=f'got: {label} class Foo{suffix}:'), node, module_path))
+                break
+        if name in _CPYTHON_EXCEPTION_NAMES_S47:
+            continue
+        if name in exc_names or name.endswith('Exception'):
+            if not name.endswith('Error'):
+                violations.append(_Violation(S47, _strict_msg(name, f'{name}…Error', f'class {name}', reason='异常类除 CPython 同名外须以 ``Error`` 结尾', example='got: class EmptyError(Exception):'), node, module_path))
 
 def _should_check_module(tr: Translator, module_path: str) -> bool:
     norm = module_path.replace('\\', '/')
@@ -365,7 +481,7 @@ def _s03_try_thin_param_forward(node: ast.FunctionDef | ast.AsyncFunctionDef, *,
         return None
     if has_named_decorator(node, 'overload'):
         return None
-    if node.name.startswith('scan_test_'):
+    if node.name.startswith('scan_test_') or node.name.startswith('scanTest'):
         return None
     call = _s03_body_single_forward_call(node.body)
     if call is None:
@@ -509,7 +625,7 @@ def _s06_no_empty_new_message(ann_root: str) -> str:
     lit = _EMPTY_FACTORY_LITERAL.get(ann_root, '[]')
     example = f'`q: {ann_root}[T] = {lit}` 勿 `q: {ann_root}[T] = new()`'
     if ann_root == 'deque':
-        example += '；有界队列用 `new(maxlen)`'
+        example += '；有界队列用 `new(maxLen)`'
     return _strict_msg('无参 `new()`', lit, f'注解为 `{ann_root}[T]` 的初始化/返回值等', example=example, reason=f'空 `{ann_root}` 须字面量，禁止无参 `new()`')
 
 def _expr_name_for_len(arg: ast.expr) -> str:
@@ -2182,6 +2298,20 @@ def _type_param_names(node: ast.ClassDef | ast.FunctionDef | ast.TypeAlias) -> s
             names.add(tp.name)
     return names
 
+def _is_short_class_type_param_name(name: str) -> bool:
+    """``T`` / ``T1`` / ``_K``：单字母（可加数字）；``Element`` / ``Key`` / ``Dim0`` 合法。"""
+    body = name.lstrip('_')
+    return bool(body) and bool(_SHORT_CLASS_TYPE_PARAM.match(body))
+
+def _s48_short_class_type_param_message(class_name: str, param: str) -> str:
+    return _strict_msg(
+        f'class {class_name}[{param}, …]',
+        '语义化形参名（如 Element / Key / Value / Bound）',
+        '类 PEP 695 类型形参列表',
+        reason='类形参会生成 ``using Alias = _Alias``，短名难读且易与译器隐式 ``T0``/``T1`` 混淆',
+        example=f'class {class_name}[Element]: … 勿 class {class_name}[{param}]:',
+    )
+
 def _s15_subscript_slice_matches_class_type_params(sl: ast.expr, class_type_params: list[str]) -> bool:
     """``Task[T]`` 体内 ``Task[T]`` 表当前实例；``Task[None]``/``Task[U]``/``Task[list[U]]`` 等不算。"""
     if not class_type_params:
@@ -2998,7 +3128,7 @@ def _iter_func_type_arg_subscripts(tree: ast.AST):
             yield (node.func.value.id, node.func.slice)
 
 def _func_type_param_protocol_bounds(func: ast.FunctionDef) -> dict[str, tuple[str, ...]]:
-    """PEP 695 头上 ``T: IParsable``（含用户 ``@protocol``）→ 形参协议名。"""
+    """PEP 695 头上 ``T: IParsableType``（含用户 ``@protocol``）→ 形参协议名。"""
     from ..analysis.ir import parse_typevar_protocol_bounds
     out: dict[str, tuple[str, ...]] = {}
     for tp in getattr(func, 'type_params', None) or ():
@@ -3009,7 +3139,7 @@ def _func_type_param_protocol_bounds(func: ast.FunctionDef) -> dict[str, tuple[s
     return out
 
 def _collect_class_protocol_bindings(tr: Translator, module_path: str) -> dict[str, set[str]]:
-    """``func[Widget]`` 且 ``func`` 头上 ``T: IParsable`` → ``Widget`` 绑定 ``IParsable``。"""
+    """``func[Widget]`` 且 ``func`` 头上 ``T: IParsableType`` → ``Widget`` 绑定 ``IParsableType``。"""
     from collections import defaultdict
     bindings: dict[str, set[str]] = defaultdict(set)
     tree = tr.module_asts.get(module_path)
@@ -3401,6 +3531,9 @@ class _StrictStyleChecker(ast.NodeVisitor):
             self.generic_visit(node)
             self._class_stack.pop()
             return
+        for tp in getattr(node, 'type_params', None) or ():
+            if isinstance(tp, ast.TypeVar) and _is_short_class_type_param_name(tp.name):
+                self._add(S48, tp, _s48_short_class_type_param_message(node.name, tp.name))
         info = self.tr.classes.get(node.name)
         prev_params = self._class_type_params
         prev_scope = set(self._scope_type_params)

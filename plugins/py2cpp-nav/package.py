@@ -166,7 +166,7 @@ def main(argv: list[str] | None = None) -> int:
     return 1
   stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
   print(f"已生成: {vsix}")
-  print("安装: VS Code / Cursor → Extensions → … → Install from VSIX…")
+  print("安装: VS Code / CursorType → Extensions → … → Install from VSIX…")
   print(f"打包时间: {stamp}")
   return 0
 

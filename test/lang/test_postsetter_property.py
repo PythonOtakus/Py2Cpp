@@ -4,20 +4,20 @@ from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 
 class PostCounter:
-  last_set: int = 0
+  lastSet: int = 0
 
   @property.postsetter
   def x(self, value: int) -> None:
-    self.last_set = value
+    self.lastSet = value
 
 
 class PostCounterShorthand:
-  last_set: int = 0
+  lastSet: int = 0
 
-  def on_x(self, value: int) -> None:
-    self.last_set = value
+  def onX(self, value: int) -> None:
+    self.lastSet = value
 
-  x: int @property.postsetter(on_x) = 0
+  x: int @property.postsetter(onX) = 0
 
 
 class Point:
@@ -37,7 +37,7 @@ class Point:
 
 
 class InstancePostsetterTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
@@ -45,11 +45,11 @@ class InstancePostsetterTests(TestCaseMixin):
     self.assertEqual(c.x, 0)
     c.x = 7
     self.assertEqual(c.x, 7)
-    self.assertEqual(c.last_set, 7)
+    self.assertEqual(c.lastSet, 7)
 
 
 class InstancePostsetterShorthandTests(TestCaseMixin):
-  _test_tag = 3
+  _testTag = 3
 
   @override
   def test(self):
@@ -57,11 +57,11 @@ class InstancePostsetterShorthandTests(TestCaseMixin):
     self.assertEqual(c.x, 0)
     c.x = 7
     self.assertEqual(c.x, 7)
-    self.assertEqual(c.last_set, 7)
+    self.assertEqual(c.lastSet, 7)
 
 
 class StaticPostsetterTests(TestCaseMixin):
-  _test_tag = 2
+  _testTag = 2
 
   @override
   def test(self):
@@ -73,7 +73,7 @@ class StaticPostsetterTests(TestCaseMixin):
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

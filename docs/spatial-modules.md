@@ -10,8 +10,8 @@
 
 | 模块 | 源码 | 测试 | 说明 |
 |------|------|------|------|
-| `spatial.color` | `py2cpp/spatial/color.py` | `test/spatial/test_color.py` | `[0,1]` 钳制；`lerp`/`with_alpha`/`to_argb`/`from_argb`；矩阵用 `ColorMatrix.apply(color)`（**无** `Color.apply_matrix`，避免同类前向声明） |
-| `spatial.rect` | `py2cpp/spatial/rect.py` | `test/spatial/test_rect.py` | 轴对齐；尺寸属性 **`size`**（``Vector2``；S02 对 ``Rect`` 豁免）；谓词 `contains`/`overlaps`/`embraces`；`&`/`|`；`in`；`apply_matrix(Matrix3)`；**无** `Rect @ Rect` |
+| `spatial.color` | `py2cpp/spatial/color.py` | `test/spatial/test_color.py` | `[0,1]` 钳制；`lerp`/`withAlpha`/`toArgb`/`fromArgb`；矩阵用 `ColorMatrix.apply(color)`（**无** `Color.applyMatrix`，避免同类前向声明） |
+| `spatial.rect` | `py2cpp/spatial/rect.py` | `test/spatial/test_rect.py` | 轴对齐；尺寸属性 **`size`**（``Vector2``；S02 对 ``Rect`` 豁免）；谓词 `contains`/`overlaps`/`embraces`；`&`/`|`；`in`；`applyMatrix(Matrix3)`；**无** `Rect @ Rect` |
 | 其余 | — | — | 未实现 |
 
 ---
@@ -34,7 +34,7 @@
 | 已有 | 关系 |
 |------|------|
 | `py2cpp.spatial.vector` / `matrix` | `Rect` 用 `Vector2`；`ColorMatrix` 可与矩阵语义对齐但**独立类型**（颜色空间，非几何 `Matrix4`） |
-| `py2cpp.spatial.transform` | `Rect` 可提供 `apply_matrix(Matrix3)`；**不**在本扩展重做场景图 |
+| `py2cpp.spatial.transform` | `Rect` 可提供 `applyMatrix(Matrix3)`；**不**在本扩展重做场景图 |
 | `py2cpp.spatial.color` | `Image` 像素用 `Color` 读写；`ColorMatrix` 可作为 `PixelFilter` 作用于整图 |
 | `py2cpp.spatial.rect` | 子图/裁剪/区域填充以 `Rect` 为界 |
 | `py2cpp.math.random.Random` | **标量 PRNG**（MT19937）；`Random2D`/`Random3D` **内部组合**它做 `float`/`int`，对外只暴露空间采样 API |
@@ -100,12 +100,12 @@ test/spatial/
 
 | 类别 | API 示意 |
 |------|----------|
-| 构造 | `new(x, y, w, h)` / `from_pos_size` / `from_min_max`（已实现） |
-| 属性 | `x`/`y`/`width`/`height`，`pos`/`size`，`center`，`x_min`/`x_max`/`y_min`/`y_max` |
+| 构造 | `new(x, y, w, h)` / `fromPosSize` / `fromMinMax`（已实现） |
+| 属性 | `x`/`y`/`width`/`height`，`pos`/`size`，`center`，`xMin`/`xMax`/`yMin`/`yMax` |
 | 变换 | `move`/`moved`，`expand`/`expanded`，`correct`/`corrected`（已实现） |
 | 集合 | `intersect`，`union`，`overlaps`，`embraces`，`contains(point)` / `in`；`&`/`|`（已实现；**无** `@` overlap） |
 | 对齐 | `align_pos` / 锚点（**暂未**实现） |
-| 矩阵 | `apply_matrix(m: Matrix3) -> Rect`（AABB 外包，已实现） |
+| 矩阵 | `applyMatrix(m: Matrix3) -> Rect`（AABB 外包，已实现） |
 
 ### 3.2 类型形态
 
@@ -123,8 +123,8 @@ test/spatial/
 ### 4.1 `Color`（已实现）
 
 - 分量：浮点 `r, g, b, a`，**钳制到 \[0,1\]**（第一期不做 HDR）。
-- 已落地：`lerp` / `with_alpha` / `scaled` / `to_argb` / `from_argb`、预设 `clear`/`black`/`white`/`red`/`green`/`blue`；运算符 `+ - * / & | ~ @ **`（色×色为 Hadamard；`@` 同色×色）。
-- 颜色矩阵变换走 **`matrix.apply(color)`**，不在 `Color` 上挂 `apply_matrix`（C++ 同类前向声明）。
+- 已落地：`lerp` / `withAlpha` / `scaled` / `toArgb` / `fromArgb`、预设 `clear`/`black`/`white`/`red`/`green`/`blue`；运算符 `+ - * / & | ~ @ **`（色×色为 Hadamard；`@` 同色×色）。
+- 颜色矩阵变换走 **`matrix.apply(color)`**，不在 `Color` 上挂 `applyMatrix`（C++ 同类前向声明）。
 - **像素图**：不放在本模块；见 §5 `spatial.image`。
 
 ### 4.2 `ColorMatrix`（已实现）
@@ -157,9 +157,9 @@ zeus render Texture     → GPU 资源（本模块不实现）
 | 构造 | `new(width, height)`；`new.filled(w, h, color)`；可选从 `span`/打包缓冲包装（实现时定） |
 | 属性 | `width` / `height`；只读尺寸 |
 | 像素 | `get(x, y) -> Color` / `set(x, y, color)`；越界策略：钳制或报错（实现前确认） |
-| 区域 | `fill(color)`；`fill_rect(rect, color)`；`blit(src, dst_pos)` / `blit_rect(...)` |
+| 区域 | `fill(color)`；`fillRect(rect, color)`；`blit(src, dst_pos)` / `blit_rect(...)` |
 | 拷贝 | `copy()`；`view`/`sub_image` 若做共享视图须明确所有权（第一期可只做拷贝子矩形） |
-| 变换 | `apply_matrix(ColorMatrix)` 整图或 ROI；可选水平/垂直翻转（二期） |
+| 变换 | `applyMatrix(ColorMatrix)` 整图或 ROI；可选水平/垂直翻转（二期） |
 | 采样 | 可选 `at(u, v)` 双线性（二期；软件绘制有用） |
 
 存储建议：
@@ -189,7 +189,7 @@ zeus render Texture     → GPU 资源（本模块不实现）
 
 ### 5.6 测试要点
 
-- 构造尺寸；`set`/`get` 往返；`fill` / `fill_rect`；`blit` 不越界与裁剪；`ColorMatrix` 整图烟雾；大图拷贝不泄漏（若 `@boxing`/`@refcount` 策略需明确）。
+- 构造尺寸；`set`/`get` 往返；`fill` / `fillRect`；`blit` 不越界与裁剪；`ColorMatrix` 整图烟雾；大图拷贝不泄漏（若 `@boxing`/`@refcount` 策略需明确）。
 
 ---
 
@@ -263,7 +263,7 @@ spatial.Random3D    →  在球/壳/盒等上采样 Vector3
 
 为 UI / 场景对象提供声明式「哪些字段可插值」，以及异步播放（不阻塞主逻辑线程语义上的一帧循环，而是 `await` 可组合）。
 
-对标直觉：tggame `LerpAssign` + 协程；Py2Cpp 侧用 **`@annotation` + `iter_fields`**，而不是元类钩子。
+对标直觉：tggame `LerpAssign` + 协程；Py2Cpp 侧用 **`@annotation` + `iterFields`**，而不是元类钩子。
 
 ### 8.2 `AnimateMeta`
 
@@ -347,7 +347,7 @@ handle.cancel()
 
 ### Phase C：`image`
 
-- `Image` 构造 / 像素 / `fill` / `fill_rect` / `blit`；`ColorMatrix` 整图；`test_image.py`。
+- `Image` 构造 / 像素 / `fill` / `fillRect` / `blit`；`ColorMatrix` 整图；`test_image.py`。
 
 ### Phase D：`random` + `noise`
 

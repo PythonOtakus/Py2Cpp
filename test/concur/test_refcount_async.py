@@ -8,14 +8,14 @@ class RefAsyncState:
   _value: int = 0
   _buf: byte[:] = b""
 
-  def set_value(self, value: int) -> None:
+  def setValue(self, value: int) -> None:
     self._value = value
 
-  async def value_after_tick(self) -> int:
+  async def valueAfterTick(self) -> int:
     await Task.sleep(0)
     return self._value
 
-  async def bytes_after_tick(self) -> bytes:
+  async def bytesAfterTick(self) -> bytes:
     await Task.sleep(0)
     local: byte[:] = new(4)
     for i in range(4):
@@ -24,38 +24,38 @@ class RefAsyncState:
     return bytes(self._buf)
 
 
-async def refcount_async_roundtrip() -> int:
+async def refcountAsyncRoundtrip() -> int:
   st: RefAsyncState = new()
-  st.set_value(41)
-  got: int = await st.value_after_tick()
+  st.setValue(41)
+  got: int = await st.valueAfterTick()
   return got + 1
 
 
-async def refcount_async_bytes_roundtrip() -> str:
+async def refcountAsyncBytesRoundtrip() -> str:
   st: RefAsyncState = new()
-  got: bytes = await st.bytes_after_tick()
+  got: bytes = await st.bytesAfterTick()
   return got.decode()
 
 
 class RefcountAsyncMethodTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
-    self.assertEqual(Task.run(refcount_async_roundtrip()), 42)
+    self.assertEqual(Task.run(refcountAsyncRoundtrip()), 42)
 
 
 class RefcountAsyncBytesTests(TestCaseMixin):
-  _test_tag = 2
+  _testTag = 2
 
   @override
   def test(self):
-    self.assertEqual(Task.run(refcount_async_bytes_roundtrip()), "ABCD")
+    self.assertEqual(Task.run(refcountAsyncBytesRoundtrip()), "ABCD")
 
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

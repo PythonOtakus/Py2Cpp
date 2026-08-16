@@ -1,10 +1,10 @@
 """``Decimal`` 回归（P0 子集）。"""
 from py2cpp import *
-from py2cpp.numeric.decimal import RoundingMode, Context, Decimal, getcontext, setcontext
+from py2cpp.numeric.decimal import RoundingModeEnum, Context, Decimal, getContext, setContext
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 class DecimalStrTests(TestCaseMixin):
-    _test_tag = 1
+    _testTag = 1
 
     @override
     def test(self):
@@ -12,12 +12,12 @@ class DecimalStrTests(TestCaseMixin):
         self.assertEqual(str(Decimal('-0.5')), '-0.5')
         self.assertEqual(str(Decimal('1e3')), '1000')
         nan: Decimal = new('NaN')
-        self.assertTrue(nan.is_nan())
+        self.assertTrue(nan.isNan())
         inf: Decimal = new('Infinity')
-        self.assertTrue(inf.is_infinite())
+        self.assertTrue(inf.isInfinite())
 
 class DecimalArithmeticTests(TestCaseMixin):
-    _test_tag = 10
+    _testTag = 10
 
     @override
     def test(self):
@@ -31,7 +31,7 @@ class DecimalArithmeticTests(TestCaseMixin):
         self.assertEqual(str(e.normalize()), '3.75')
 
 class DecimalCompareTests(TestCaseMixin):
-    _test_tag = 20
+    _testTag = 20
 
     @override
     def test(self):
@@ -42,29 +42,29 @@ class DecimalCompareTests(TestCaseMixin):
         self.assertTrue(Decimal('2') > Decimal('1.99'))
 
 class DecimalContextTests(TestCaseMixin):
-    _test_tag = 30
+    _testTag = 30
 
     @override
     def test(self):
-        ctx: Context = getcontext()
+        ctx: Context = getContext()
         self.assertEqual(ctx.prec, 28)
-        self.assertEqual(ctx.rounding, int(RoundingMode.ROUND_HALF_EVEN))
-        setcontext(Context(prec=10))
-        self.assertEqual(getcontext().prec, 10)
-        setcontext(ctx)
+        self.assertEqual(ctx.rounding, int(RoundingModeEnum.RoundHalfEven))
+        setContext(Context(prec=10))
+        self.assertEqual(getContext().prec, 10)
+        setContext(ctx)
 
 class DecimalRatioTests(TestCaseMixin):
-    _test_tag = 40
+    _testTag = 40
 
     @override
     def test(self):
         d: Decimal = new('1.25')
-        ratio: (varint, varint) = d.as_integer_ratio()
+        ratio: (varint, varint) = d.asIntegerRatio()
         self.assertEqual(int(ratio[0]), 5)
         self.assertEqual(int(ratio[1]), 4)
 
 class DecimalQuantizeTests(TestCaseMixin):
-    _test_tag = 50
+    _testTag = 50
 
     @override
     def test(self):
@@ -74,6 +74,6 @@ class DecimalQuantizeTests(TestCaseMixin):
 
 def main():
     suite: TestSuite = new()
-    for Class in TestCaseMixin.iter_subclasses(sort_const='_test_tag'):
+    for Class in TestCaseMixin.iterSubclasses(sortConst='_testTag'):
         suite.addTest(Class())
     return TextTestRunner().run(suite)

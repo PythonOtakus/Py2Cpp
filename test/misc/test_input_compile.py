@@ -5,11 +5,11 @@ from py2cpp.system.environ import environ
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 
-def read_user_line() -> str:
+def readUserLine() -> str:
   return input("name: ")
 
 
-def read_typed_values() -> int:
+def readTypedValues() -> int:
   a: int = input[int]("i: ")
   b: float = input[float]("f: ")
   if b > 3.4 and b < 3.6:
@@ -18,7 +18,7 @@ def read_typed_values() -> int:
 
 
 class InputCompileTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
@@ -27,10 +27,10 @@ class InputCompileTests(TestCaseMixin):
     mode: str = environ.get("PY2CPP_INPUT_TEST", "")
     match mode:
       case "yes":
-        got: str = read_user_line()
+        got: str = readUserLine()
         self.assertEqual(got, "hello")
       case "typed":
-        self.assertEqual(read_typed_values(), 42)
+        self.assertEqual(readTypedValues(), 42)
       case "eof":
         try:
           _: str = input()
@@ -43,7 +43,7 @@ class InputCompileTests(TestCaseMixin):
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

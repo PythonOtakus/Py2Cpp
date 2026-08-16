@@ -1,4 +1,4 @@
-"""平面 ``Rotator`` 与 ``Quaternion``（对齐 tggame ``Complex`` / ``Quaternion``）。"""
+"""平面 ``Rotator`` 与 ``Quaternion``（对齐 tggame ``ComplexType`` / ``Quaternion``）。"""
 from __future__ import annotations
 
 from ..builtins import *
@@ -26,9 +26,9 @@ class RotatorMixin:
   _dim: int @const = 0
   _data: float64[:Self._dim]
 
-  def _copy_from(self, src: Self) -> None:
-    for i in inline_range(Self._dim):
-      self._data.unsafe_set(i, src._data.unsafe_get(i))
+  def _copyFrom(self, src: Self) -> None:
+    for i in inlineRange(Self._dim):
+      self._data.unsafeSet(i, src._data.unsafeGet(i))
 
   @immutable
   def __len__(self) -> int:
@@ -38,26 +38,26 @@ class RotatorMixin:
   def __getitem__(self, index: int) -> float64:
     if index < 0 or index >= Self._dim:
       raise IndexError("rotator index out of range")
-    return self._data.unsafe_get(index)
+    return self._data.unsafeGet(index)
 
   def __setitem__(self, index: int, value: float64) -> None:
     if index < 0 or index >= Self._dim:
       raise IndexError("rotator index out of range")
-    self._data.unsafe_set(index, value)
+    self._data.unsafeSet(index, value)
 
   @immutable
-  def unsafe_get(self, index: int) -> float64:
-    return self._data.unsafe_get(index)
+  def unsafeGet(self, index: int) -> float64:
+    return self._data.unsafeGet(index)
 
-  def unsafe_set(self, index: int, value: float64) -> None:
-    self._data.unsafe_set(index, value)
+  def unsafeSet(self, index: int, value: float64) -> None:
+    self._data.unsafeSet(index, value)
 
   @staticproperty
   @immutable
   def zero() -> Self:
     out: Self = new()
-    for i in inline_range(Self._dim):
-      out._data.unsafe_set(i, 0.0)
+    for i in inlineRange(Self._dim):
+      out._data.unsafeSet(i, 0.0)
     return out
 
   @staticproperty
@@ -67,36 +67,36 @@ class RotatorMixin:
 
   @property
   @immutable
-  def sqr_mag(self) -> float64:
+  def sqrMag(self) -> float64:
     return self.dot(self)
 
   @property.setter
-  def sqr_mag(self, sqr_mag: float64) -> None:
-    self.mag = sqrt(sqr_mag)
+  def sqrMag(self, sqrMag: float64) -> None:
+    self.mag = sqrt(sqrMag)
 
   @property
   @immutable
   def mag(self) -> float64:
-    return sqrt(self.sqr_mag)
+    return sqrt(self.sqrMag)
 
   @property.setter
   def mag(self, mag: float64) -> None:
-    self._copy_from(self.with_mag(mag))
+    self._copyFrom(self.withMag(mag))
 
   @property
   @immutable
   def norm(self) -> Self:
-    return self.with_mag(1.0)
+    return self.withMag(1.0)
 
   @immutable
   def dot(self, other: Self) -> float64:
     acc: float64 = 0.0
-    for i in inline_range(Self._dim):
-      acc += self._data.unsafe_get(i) * other._data.unsafe_get(i)
+    for i in inlineRange(Self._dim):
+      acc += self._data.unsafeGet(i) * other._data.unsafeGet(i)
     return acc
 
   @immutable
-  def with_mag(self, mag: float64) -> Self:
+  def withMag(self, mag: float64) -> Self:
     rate: float64 = abs(self)
     z: float64 = 0.0
     if almost(rate, z):
@@ -104,23 +104,23 @@ class RotatorMixin:
     return self * (mag / rate)
 
   def normalize(self) -> None:
-    self._copy_from(self.norm)
+    self._copyFrom(self.norm)
 
   @immutable
   def conjugate(self) -> Self:
     out: Self = new()
-    for i in inline_range(Self._dim):
-      v: float64 = self._data.unsafe_get(i)
+    for i in inlineRange(Self._dim):
+      v: float64 = self._data.unsafeGet(i)
       if i == 0:
-        out._data.unsafe_set(i, v)
+        out._data.unsafeSet(i, v)
       else:
-        out._data.unsafe_set(i, -v)
+        out._data.unsafeSet(i, -v)
     return out
 
   @property
   @immutable
   def inv(self) -> Self:
-    sq: float64 = self.sqr_mag
+    sq: float64 = self.sqrMag
     z: float64 = 0.0
     if almost(sq, z):
       return new.zero
@@ -130,17 +130,17 @@ class RotatorMixin:
   @immutable
   def lerp(self, other: Self, t: float64) -> Self:
     out: Self = new()
-    for i in inline_range(Self._dim):
-      out._data.unsafe_set(
+    for i in inlineRange(Self._dim):
+      out._data.unsafeSet(
         i,
-        lerp(self._data.unsafe_get(i), other._data.unsafe_get(i), t),
+        lerp(self._data.unsafeGet(i), other._data.unsafeGet(i), t),
       )
     return out
 
   @immutable
   def __eq__(self, other: Self) -> bool:
-    for i in inline_range(Self._dim):
-      if not almost(self._data.unsafe_get(i), other._data.unsafe_get(i)):
+    for i in inlineRange(Self._dim):
+      if not almost(self._data.unsafeGet(i), other._data.unsafeGet(i)):
         return False
     return True
 
@@ -151,8 +151,8 @@ class RotatorMixin:
   @immutable
   def __pos__(self) -> Self:
     out: Self = new()
-    for i in inline_range(Self._dim):
-      out._data.unsafe_set(i, self._data.unsafe_get(i))
+    for i in inlineRange(Self._dim):
+      out._data.unsafeSet(i, self._data.unsafeGet(i))
     return out
 
   @immutable
@@ -172,8 +172,8 @@ class RotatorMixin:
   @immutable
   def __mul__(self, other: float64) -> Self:
     out: Self = new()
-    for i in inline_range(Self._dim):
-      out._data.unsafe_set(i, self._data.unsafe_get(i) * other)
+    for i in inlineRange(Self._dim):
+      out._data.unsafeSet(i, self._data.unsafeGet(i) * other)
     return out
 
   @overload
@@ -183,7 +183,7 @@ class RotatorMixin:
 
   def __imatmul__(self, other: Self) -> Self:
     prod: Self = self @ other
-    self._copy_from(prod)
+    self._copyFrom(prod)
     return self
 
   @overload
@@ -199,35 +199,35 @@ class RotatorMixin:
 
   @overload
   def __imul__(self, other: float64) -> Self:
-    for i in inline_range(Self._dim):
-      self._data.unsafe_set(i, self._data.unsafe_get(i) * other)
+    for i in inlineRange(Self._dim):
+      self._data.unsafeSet(i, self._data.unsafeGet(i) * other)
     return self
 
   @overload
   def __imul__(self, other: Self) -> Self:
     prod: Self = self @ other
-    self._copy_from(prod)
+    self._copyFrom(prod)
     return self
 
   @overload
   def __itruediv__(self, other: float64) -> Self:
     s: float64 = 1.0 / other
-    for i in inline_range(Self._dim):
-      self._data.unsafe_set(i, self._data.unsafe_get(i) * s)
+    for i in inlineRange(Self._dim):
+      self._data.unsafeSet(i, self._data.unsafeGet(i) * s)
     return self
 
   @overload
   def __itruediv__(self, other: Self) -> Self:
     q: Self = self / other
-    self._copy_from(q)
+    self._copyFrom(q)
     return self
 
   @immutable
   def __mod__(self, mag: float64) -> Self:
-    return self.with_mag(mag)
+    return self.withMag(mag)
 
   def __imod__(self, mag: float64) -> Self:
-    self._copy_from(self.with_mag(mag))
+    self._copyFrom(self.withMag(mag))
     return self
 
   @immutable
@@ -235,45 +235,45 @@ class RotatorMixin:
     return self.pow(exponent)
 
   def __ipow__(self, exponent: float64) -> Self:
-    self._copy_from(self ** exponent)
+    self._copyFrom(self ** exponent)
     return self
 
 
 class Rotator(RotatorMixin):
-  """2D 旋转 ``(w, z)``（tggame ``comp`` / ``Complex``）。"""
+  """2D 旋转 ``(w, z)``（tggame ``comp`` / ``ComplexType``）。"""
 
   _dim: int @const = 2
 
   def __init__(self, w: float64 = 1.0, z: float64 = 0.0) -> None:
-    self._data.unsafe_set(0, w)
-    self._data.unsafe_set(1, z)
+    self._data.unsafeSet(0, w)
+    self._data.unsafeSet(1, z)
 
   @property
   @immutable
   def w(self) -> float64:
-    return self._data.unsafe_get(0)
+    return self._data.unsafeGet(0)
 
   @property.setter
   def w(self, value: float64) -> None:
-    self._data.unsafe_set(0, value)
+    self._data.unsafeSet(0, value)
 
   @property
   @immutable
   def z(self) -> float64:
-    return self._data.unsafe_get(1)
+    return self._data.unsafeGet(1)
 
   @property.setter
   def z(self, value: float64) -> None:
-    self._data.unsafe_set(1, value)
+    self._data.unsafeSet(1, value)
 
   @staticmethod
   @immutable
-  def _from_vec(v: Vector2) -> Self:
+  def _fromVec(v: Vector2) -> Self:
     return new(v.x, v.y)
 
   @staticmethod
   @immutable
-  def _to_vec(c: Self) -> Vector2:
+  def _toVec(c: Self) -> Vector2:
     return new(c.w, c.z)
 
   @immutable
@@ -285,26 +285,26 @@ class Rotator(RotatorMixin):
 
   @staticmethod
   @immutable
-  def from_angle(angle: float64) -> Self:
+  def fromAngle(angle: float64) -> Self:
     rad: float64 = radians(angle)
     return new(cos(rad), sin(rad))
 
   @staticmethod
   @immutable
   def between(origin: Vector2, target: Vector2) -> Self:
-    angle: float64 = origin.angle_to(target)
+    angle: float64 = origin.angleTo(target)
     if origin @ target < 0.0:
       angle = -angle
-    return new.from_angle(angle)
+    return new.fromAngle(angle)
 
   @staticmethod
   @immutable
-  def look_at(forward: Vector2) -> Self:
+  def lookAt(forward: Vector2) -> Self:
     n: Vector2 = forward.norm
     return new(n.x, n.y)
 
   @immutable
-  def to_angle(self) -> float64:
+  def toAngle(self) -> float64:
     return degrees(atan2(self.z, self.w))
 
   @overload
@@ -315,9 +315,9 @@ class Rotator(RotatorMixin):
   @overload
   @immutable
   def __mul__(self, other: Vector2) -> Vector2:
-    v: Self = new._from_vec(other)
+    v: Self = new._fromVec(other)
     r: Self = self @ v
-    return Self._to_vec(r)
+    return Self._toVec(r)
 
   @overload
   @immutable
@@ -330,22 +330,22 @@ class Rotator(RotatorMixin):
     return self * other
 
   @immutable
-  def angle_to(self, other: Self) -> float64:
+  def angleTo(self, other: Self) -> float64:
     return degrees(acos(self.dot(other)))
 
   @immutable
   def pow(self, exponent: float64) -> Self:
-    return new.from_angle(self.to_angle() * exponent)
+    return new.fromAngle(self.toAngle() * exponent)
 
   @immutable
   def slerp(self, other: Self, t: float64) -> Self:
-    theta: float64 = radians(self.angle_to(other))
-    sin_theta: float64 = sin(theta)
+    theta: float64 = radians(self.angleTo(other))
+    sinTheta: float64 = sin(theta)
     z: float64 = 0.0
-    if almost(sin_theta, z):
+    if almost(sinTheta, z):
       return self
-    w0: float64 = sin((1.0 - t) * theta) / sin_theta
-    w1: float64 = sin(t * theta) / sin_theta
+    w0: float64 = sin((1.0 - t) * theta) / sinTheta
+    w1: float64 = sin(t * theta) / sinTheta
     return new(
       self.w * w0 + other.w * w1,
       self.z * w0 + other.z * w1,
@@ -364,55 +364,55 @@ class Quaternion(RotatorMixin):
     y: float64 = 0.0,
     z: float64 = 0.0,
   ) -> None:
-    self._data.unsafe_set(0, w)
-    self._data.unsafe_set(1, x)
-    self._data.unsafe_set(2, y)
-    self._data.unsafe_set(3, z)
+    self._data.unsafeSet(0, w)
+    self._data.unsafeSet(1, x)
+    self._data.unsafeSet(2, y)
+    self._data.unsafeSet(3, z)
 
   @property
   @immutable
   def w(self) -> float64:
-    return self._data.unsafe_get(0)
+    return self._data.unsafeGet(0)
 
   @property.setter
   def w(self, value: float64) -> None:
-    self._data.unsafe_set(0, value)
+    self._data.unsafeSet(0, value)
 
   @property
   @immutable
   def x(self) -> float64:
-    return self._data.unsafe_get(1)
+    return self._data.unsafeGet(1)
 
   @property.setter
   def x(self, value: float64) -> None:
-    self._data.unsafe_set(1, value)
+    self._data.unsafeSet(1, value)
 
   @property
   @immutable
   def y(self) -> float64:
-    return self._data.unsafe_get(2)
+    return self._data.unsafeGet(2)
 
   @property.setter
   def y(self, value: float64) -> None:
-    self._data.unsafe_set(2, value)
+    self._data.unsafeSet(2, value)
 
   @property
   @immutable
   def z(self) -> float64:
-    return self._data.unsafe_get(3)
+    return self._data.unsafeGet(3)
 
   @property.setter
   def z(self, value: float64) -> None:
-    self._data.unsafe_set(3, value)
+    self._data.unsafeSet(3, value)
 
   @staticmethod
   @immutable
-  def _from_vec(v: Vector3) -> Self:
+  def _fromVec(v: Vector3) -> Self:
     return new(0.0, v.x, v.y, v.z)
 
   @staticmethod
   @immutable
-  def _to_vec(q: Self) -> Vector3:
+  def _toVec(q: Self) -> Vector3:
     return new(q.x, q.y, q.z)
 
   @immutable
@@ -426,7 +426,7 @@ class Quaternion(RotatorMixin):
 
   @staticmethod
   @immutable
-  def from_axis_angle(axis: Vector3, angle: float64) -> Self:
+  def fromAxisAngle(axis: Vector3, angle: float64) -> Self:
     half: float64 = radians(angle * 0.5)
     w: float64 = cos(half)
     v: Vector3 = axis % sin(half)
@@ -434,34 +434,34 @@ class Quaternion(RotatorMixin):
 
   @staticmethod
   @immutable
-  def from_euler_angles(euler: Vector3) -> Self:
+  def fromEulerAngles(euler: Vector3) -> Self:
     ex: float64 = radians(euler.x * 0.5)
     ey: float64 = radians(euler.y * 0.5)
     ez: float64 = radians(euler.z * 0.5)
-    cos_x: float64 = cos(ex)
-    sin_x: float64 = sin(ex)
-    cos_y: float64 = cos(ey)
-    sin_y: float64 = sin(ey)
-    cos_z: float64 = cos(ez)
-    sin_z: float64 = sin(ez)
+    cosX: float64 = cos(ex)
+    sinX: float64 = sin(ex)
+    cosY: float64 = cos(ey)
+    sinY: float64 = sin(ey)
+    cosZ: float64 = cos(ez)
+    sinZ: float64 = sin(ez)
     return new(
-      cos_x * cos_y * cos_z + sin_x * sin_y * sin_z,
-      sin_x * cos_y * cos_z - cos_x * sin_y * sin_z,
-      cos_x * sin_y * cos_z + sin_x * cos_y * sin_z,
-      cos_x * cos_y * sin_z - sin_x * sin_y * cos_z,
+      cosX * cosY * cosZ + sinX * sinY * sinZ,
+      sinX * cosY * cosZ - cosX * sinY * sinZ,
+      cosX * sinY * cosZ + sinX * cosY * sinZ,
+      cosX * cosY * sinZ - sinX * sinY * cosZ,
     )
 
   @staticmethod
   @immutable
   def between(origin: Vector3, target: Vector3) -> Self:
     axis: Vector3 = origin @ target
-    return new.from_axis_angle(axis, origin.angle_to(target))
+    return new.fromAxisAngle(axis, origin.angleTo(target))
 
   @staticmethod
   @immutable
-  def look_at(forward: Vector3) -> Self:
-    z_axis: Vector3 = new.forward
-    return new.between(z_axis, forward)
+  def lookAt(forward: Vector3) -> Self:
+    zAxis: Vector3 = new.forward
+    return new.between(zAxis, forward)
 
   @overload
   @immutable
@@ -471,7 +471,7 @@ class Quaternion(RotatorMixin):
   @overload
   @immutable
   def __mul__(self, other: Vector3) -> Vector3:
-    return other.apply_quat(self.w, self.x, self.y, self.z)
+    return other.applyQuat(self.w, self.x, self.y, self.z)
 
   @overload
   @immutable
@@ -484,26 +484,26 @@ class Quaternion(RotatorMixin):
     return self * other
 
   @immutable
-  def angle_to(self, other: Self) -> float64:
+  def angleTo(self, other: Self) -> float64:
     dot: float64 = self.dot(other)
     return degrees(acos(dot * dot * 2.0 - 1.0))
 
   @immutable
-  def to_euler_angles(self) -> Vector3:
-    sin_x: float64 = 2.0 * (self.w * self.x + self.y * self.z)
-    cos_x: float64 = 1.0 - 2.0 * (self.x * self.x + self.y * self.y)
-    sin_y: float64 = 2.0 * (self.w * self.y - self.x * self.z)
-    sin_z: float64 = 2.0 * (self.w * self.z + self.x * self.y)
-    cos_z: float64 = 1.0 - 2.0 * (self.y * self.y + self.z * self.z)
-    return new(degrees(atan2(sin_x, cos_x)), degrees(asin(sin_y)), degrees(atan2(sin_z, cos_z)))
+  def toEulerAngles(self) -> Vector3:
+    sinX: float64 = 2.0 * (self.w * self.x + self.y * self.z)
+    cosX: float64 = 1.0 - 2.0 * (self.x * self.x + self.y * self.y)
+    sinY: float64 = 2.0 * (self.w * self.y - self.x * self.z)
+    sinZ: float64 = 2.0 * (self.w * self.z + self.x * self.y)
+    cosZ: float64 = 1.0 - 2.0 * (self.y * self.y + self.z * self.z)
+    return new(degrees(atan2(sinX, cosX)), degrees(asin(sinY)), degrees(atan2(sinZ, cosZ)))
 
   @immutable
-  def to_axis_angle(self) -> (Vector3, float64):
+  def toAxisAngle(self) -> (Vector3, float64):
     one: float64 = 1.0
-    zero_angle: float64 = 0.0
+    zeroAngle: float64 = 0.0
     if almost(self.w, one):
       axis: Vector3 = new.right
-      return (axis, zero_angle)
+      return (axis, zeroAngle)
     rad: float64 = acos(self.w)
     angle: float64 = degrees(rad * 2.0)
     axis: Vector3 = new(self.x, self.y, self.z)
@@ -526,17 +526,17 @@ class Quaternion(RotatorMixin):
     if angle > 180.0:
       axis = -axis
       angle = 360.0 - angle
-    return new.from_axis_angle(axis, angle * exponent)
+    return new.fromAxisAngle(axis, angle * exponent)
 
   @immutable
   def slerp(self, other: Self, t: float64) -> Self:
     theta: float64 = acos(self.dot(other))
-    sin_theta: float64 = sin(theta)
+    sinTheta: float64 = sin(theta)
     z: float64 = 0.0
-    if almost(sin_theta, z):
+    if almost(sinTheta, z):
       return self
-    w0: float64 = sin((1.0 - t) * theta) / sin_theta
-    w1: float64 = sin(t * theta) / sin_theta
+    w0: float64 = sin((1.0 - t) * theta) / sinTheta
+    w1: float64 = sin(t * theta) / sinTheta
     return new(
       self.w * w0 + other.w * w1,
       self.x * w0 + other.x * w1,

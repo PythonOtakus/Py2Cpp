@@ -15,19 +15,19 @@ class ProtocolEraseStubTests(unittest.TestCase):
   def test_self_detection(self):
     ann = ast.parse("list[Self]").body[0].value
     self.assertTrue(annotation_uses_self(ann))
-    self.assertFalse(annotation_uses_self(ast.parse("Iterator[T]").body[0].value))
+    self.assertFalse(annotation_uses_self(ast.parse("IteratorType[T]").body[0].value))
 
   def test_runtime_erase_includes_generator_not_comparable(self):
     rt = load_protocol_runtime_erase()
-    self.assertIn("Generator", rt)
-    self.assertIn("AsyncGenerator", rt)
-    self.assertIn("ContextManager", rt)
-    self.assertIn("Sized", rt)
-    self.assertNotIn("Comparable", rt)
-    self.assertNotIn("Equatable", rt)
+    self.assertIn("GeneratorType", rt)
+    self.assertIn("AsyncGeneratorType", rt)
+    self.assertIn("ContextManagerType", rt)
+    self.assertIn("SizedType", rt)
+    self.assertNotIn("ComparableType", rt)
+    self.assertNotIn("EquatableType", rt)
 
   def test_make_generator_rename(self):
-    self.assertEqual(erased_protocol_make_fn("Generator"), "makeGenerator")
+    self.assertEqual(erased_protocol_make_fn("GeneratorType"), "makeGenerator")
     expr = cpp_make_generator_expr(
       "PyGenerator<PyInt, PyNone, PyNone>",
       "gen_pair_generator()",
@@ -40,7 +40,7 @@ class ProtocolEraseStubTests(unittest.TestCase):
   def test_always_handwritten(self):
     self.assertEqual(
       PROTOCOL_ERASE_ALWAYS,
-      frozenset({"Generator", "Coroutine", "AsyncGenerator"}),
+      frozenset({"GeneratorType", "CoroutineType", "AsyncGeneratorType"}),
     )
 
   def test_element_alias_maps_to_type_param(self):
@@ -79,11 +79,11 @@ class ProtocolEraseStubTests(unittest.TestCase):
     from src.analysis.stubs.protocol_erase_stubs import load_protocol_erase_specs
 
     names = {s.name for s in load_protocol_erase_specs()}
-    self.assertIn("Encoder", names)
-    self.assertIn("Connection", names)
-    self.assertIn("Navigatable", names)
-    self.assertIn("Container", names)
-    self.assertNotIn("TextIO", names)
+    self.assertIn("EncoderType", names)
+    self.assertIn("ConnectionType", names)
+    self.assertIn("NavigatableType", names)
+    self.assertIn("ContainerType", names)
+    self.assertNotIn("TextIOType", names)
 
 
 if __name__ == "__main__":

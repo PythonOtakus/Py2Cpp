@@ -9,7 +9,6 @@ __all__ = ["Delegate"]
 
 
 @native
-@native_name("PyDelegate")
 class Delegate:
   """占位基类；运行时逻辑见生成的 ``py2cpp/delegate.h``。"""
 

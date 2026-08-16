@@ -1,4 +1,4 @@
-"""I/O 协议：``TextWriter`` / ``TextReader`` / ``TextIO``（``@protocol``，供 ``Json`` 等）。"""
+"""I/O 协议：``TextWriterType`` / ``TextReaderType`` / ``TextIOType``（``@protocol``，供 ``Json`` 等）。"""
 from ..builtins import *
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from ..core.protocols import Self, protocol
 
 
 @protocol
-class TextWriter:
+class TextWriterType:
   """文本写出端；``TextIOWrapper`` / ``StringIO`` 均实现。"""
 
   @overload
@@ -15,16 +15,18 @@ class TextWriter:
   @overload
   def write(self, src: char[:], end: int) -> int: ...
 
+  def flush(self) -> None: ...
+
 
 @protocol
-class TextReader:
+class TextReaderType:
   """文本读入端；``TextIOWrapper`` / ``StringIO`` 均实现。"""
 
   def read(self, size: int = -1) -> str: ...
 
 
 @protocol
-class TextIO:
+class TextIOType:
   """文本双向流（``io.TextIOBase`` 子集）；``StringIO`` / ``TextIOWrapper`` 均实现。"""
 
   def __bool__(self) -> bool: ...
@@ -35,9 +37,9 @@ class TextIO:
 
   def read(self, size: int = -1) -> str: ...
 
-  def readline(self, size: int = -1) -> str: ...
+  def readLine(self, size: int = -1) -> str: ...
 
-  def readlines(self, hint: int = -1) -> list[str]: ...
+  def readLines(self, hint: int = -1) -> list[str]: ...
 
   @overload
   def write(self, s: str) -> int: ...
@@ -45,7 +47,9 @@ class TextIO:
   @overload
   def write(self, src: char[:], end: int) -> int: ...
 
-  def writelines(self, lines: list[str]) -> None: ...
+  def writeLines(self, lines: list[str]) -> None: ...
+
+  def flush(self) -> None: ...
 
   def __iter__(self) -> Self: ...
 
@@ -56,3 +60,6 @@ class TextIO:
   def seek(self, pos: int, whence: int = 0) -> int: ...
 
   def tell(self) -> int: ...
+
+  @property
+  def isAtty(self) -> bool: ...

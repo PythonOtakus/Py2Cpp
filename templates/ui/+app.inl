@@ -13,12 +13,12 @@ PY2CPP_END
 
 PY2CPP_BEGIN_SCOPE
 
-PyBool UIApp::is_available()
+PyBool PyUIApp::isAvailable()
 {
   return true;
 }
 
-PyInt UIApp::run()
+PyInt PyUIApp::run()
 {
   MSG msg;
   while ((GetMessageA(&msg, NULL, 0, 0) > 0))
@@ -29,7 +29,7 @@ PyInt UIApp::run()
   return (PyInt)0;
 }
 
-PyInt UIApp::pump()
+PyInt PyUIApp::pump()
 {
   MSG msg;
   if (!PeekMessageA(&msg, NULL, 0, 0, PM_REMOVE))
@@ -55,17 +55,17 @@ PY2CPP_END_SCOPE
 
 PY2CPP_BEGIN_SCOPE
 
-PyBool UIApp::is_available()
+PyBool PyUIApp::isAvailable()
 {
   return false;
 }
 
-PyInt UIApp::run()
+PyInt PyUIApp::run()
 {
   return (PyInt)0;
 }
 
-PyInt UIApp::pump()
+PyInt PyUIApp::pump()
 {
   return (PyInt)0;
 }

@@ -56,7 +56,7 @@ from ..codegen.protocol_traits_gen import compare_ops_no_pybool_only_helper_line
 from ..codegen.expand_py2cpp_template import expand_exception_pystr_ctor, expand_template
 from ..analysis.stubs.class_stubs import load_stdlib_exception_types
 
-_EXCEPTION_REPR_DECL_SKIP = frozenset({"ExcSlot"})
+_EXCEPTION_REPR_DECL_SKIP = frozenset({"ExcTypeUnion"})
 
 
 def _emit_exception_repr_decl(tr: "Translator", info: ClassInfo) -> None:
@@ -337,7 +337,7 @@ def _emit_module_protocol_traits(tr: 'Translator', module_path: str) -> None:
     for line in protocol_module_preamble_lines():
         tr.write_line(line)
     tr.write_line()
-    if any((info.name in ('Comparable', 'Equatable') for info in protocols)):
+    if any((info.name in ('ComparableType', 'EquatableType') for info in protocols)):
         for line in compare_ops_no_pybool_only_helper_lines():
             tr.write_line(line)
         tr.write_line()
@@ -691,7 +691,7 @@ def _emit_class_declaration(tr: 'Translator', info: ClassInfo):
                         line = tr._rewrite_template_args_to_cpp_params(line, info)
                     tr.write_line(line)
                 if info.module_path.replace('\\', '/').endswith('core/exceptions'):
-                    pystr_ctor = expand_exception_pystr_ctor(info.name)
+                    pystr_ctor = expand_exception_pystr_ctor(info.cpp_name())
                     if pystr_ctor:
                         for line in pystr_ctor.strip().splitlines():
                             tr.write_line(line)

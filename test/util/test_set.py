@@ -3,7 +3,7 @@ from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 class SetBasicsTests(TestCaseMixin):
-    _test_tag = 10
+    _testTag = 10
 
     @override
     def test(self):
@@ -23,7 +23,7 @@ class SetBasicsTests(TestCaseMixin):
         self.assertTrue(3 in s)
 
 class SetMutateTests(TestCaseMixin):
-    _test_tag = 20
+    _testTag = 20
 
     @override
     def test(self):
@@ -43,7 +43,7 @@ class SetMutateTests(TestCaseMixin):
         self.assertEqual(len(s), 0)
 
 class SetAlgebraTests(TestCaseMixin):
-    _test_tag = 30
+    _testTag = 30
 
     @override
     def test(self):
@@ -56,21 +56,21 @@ class SetAlgebraTests(TestCaseMixin):
         self.assertTrue(2 in a)
 
 class SetCompareTests(TestCaseMixin):
-    _test_tag = 40
+    _testTag = 40
 
     @override
     def test(self):
         s1: set[int] = {1, 2}
         s2: set[int] = {1, 2, 3}
-        self.assertTrue(s1.issubset(s2))
-        self.assertFalse(s1.issuperset(s2))
+        self.assertTrue(s1.isSubset(s2))
+        self.assertFalse(s1.isSuperset(s2))
         other: set[int] = {9, 10}
-        self.assertTrue(s1.isdisjoint(other))
+        self.assertTrue(s1.isDisjoint(other))
         c: set[int] = s1.copy()
         self.assertTrue(c == s1)
 
 class FrozenSetTests(TestCaseMixin):
-    _test_tag = 50
+    _testTag = 50
 
     @override
     def test(self):
@@ -81,7 +81,7 @@ class FrozenSetTests(TestCaseMixin):
         self.assertEqual(len(fs2), 2)
 
 class FrozenSetLiteralTests(TestCaseMixin):
-    _test_tag = 60
+    _testTag = 60
 
     @override
     def test(self):
@@ -93,7 +93,7 @@ class FrozenSetLiteralTests(TestCaseMixin):
         self.assertTrue(6 in comp)
 
 class SetCompTests(TestCaseMixin):
-    _test_tag = 70
+    _testTag = 70
 
     @override
     def test(self):
@@ -104,7 +104,7 @@ class SetCompTests(TestCaseMixin):
 
 def main():
     suite: TestSuite = new()
-    for Class in TestCaseMixin.iter_subclasses(sort_const='_test_tag'):
+    for Class in TestCaseMixin.iterSubclasses(sortConst='_testTag'):
         suite.addTest(Class())
     return TextTestRunner().run(suite)
 if __name__ == '__main__':

@@ -1,7 +1,7 @@
 """块状内存原语（``memcpy`` / ``char[:]`` 直写）；``serde`` / ``str`` 热路径共用。
 
-**严格原子化**：``copy_buf`` / ``load_u64_le`` / ``load_u64_le_bytes`` 标 ``@native``（C++ 叶子加速）；
-``str.from_buf`` 见 ``text/str``；``str.from_span`` / ``copy_from_span`` 为纯 Python + ``copy_buf`` 叶子；缓冲扩容见 ``array.reserve``。
+**严格原子化**：``copyBuf`` / ``loadU64Le`` / ``loadU64LeBytes`` 标 ``@native``（C++ 叶子加速）；
+``str.fromBuf`` 见 ``text/str``；``str.fromSpan`` / ``copyFromSpan`` 为纯 Python + ``copyBuf`` 叶子；缓冲扩容见 ``array.reserve``。
 """
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ from ..builtins import *
 
 
 @immutable
-def append_chars(buf: char[:], at: int, src: char[:], end: int) -> int:
-  """把 ``src[0:end]`` 写入 ``buf[at:]``，返回新尾下标（``copy_buf`` + ``reshape``）。"""
+def appendChars(buf: char[:], at: int, src: char[:], end: int) -> int:
+  """把 ``src[0:end]`` 写入 ``buf[at:]``，返回新尾下标（``copyBuf`` + ``reshape``）。"""
   if end <= 0:
     return at
   need: int = at + end
@@ -23,8 +23,8 @@ def append_chars(buf: char[:], at: int, src: char[:], end: int) -> int:
 
 
 @immutable
-def copy_buf_ref(dst: Pointer[char], src: Pointer[char], n: int) -> None:
-  """``src[:n]`` → ``dst``（纯 Python；``@native copy_buf`` 的语义参照）。"""
+def copyBufRef(dst: Pointer[char], src: Pointer[char], n: int) -> None:
+  """``src[:n]`` → ``dst``（纯 Python；``@native copyBuf`` 的语义参照）。"""
   if n <= 0:
     return
   for i in range(n):
@@ -32,14 +32,14 @@ def copy_buf_ref(dst: Pointer[char], src: Pointer[char], n: int) -> None:
 
 
 @native
-def copy_buf(dst: Pointer[char], src: Pointer[char], n: int) -> None:
+def copyBuf(dst: Pointer[char], src: Pointer[char], n: int) -> None:
   """连续 ``n`` 个 ``PyChar``：``src`` → ``dst``（``memcpy``）。"""
   ...
 
 
 @immutable
-def load_u64_le_ref(p: Pointer[char], off: int) -> uint64:
-  """自 ``p+off`` 读 8 字节 little-endian（纯 Python；``@native load_u64_le`` 的语义参照）。"""
+def loadU64LeRef(p: Pointer[char], off: int) -> uint64:
+  """自 ``p+off`` 读 8 字节 little-endian（纯 Python；``@native loadU64Le`` 的语义参照）。"""
   if p is None:
     return 0
   v: uint64 = 0
@@ -52,14 +52,14 @@ def load_u64_le_ref(p: Pointer[char], off: int) -> uint64:
 
 @native
 @immutable
-def load_u64_le(p: Pointer[char], off: int) -> uint64:
+def loadU64Le(p: Pointer[char], off: int) -> uint64:
   """自 ``PyChar`` 缓冲 ``p+off`` 读 8 字节 little-endian（取各码点低 8 位）。"""
   ...
 
 
 @immutable
-def load_u64_le_bytes_ref(p: Pointer[byte], off: int) -> uint64:
-  """自裸 ``byte`` 缓冲 ``p+off`` 读 8 字节（纯 Python；``@native load_u64_le_bytes`` 的语义参照）。"""
+def loadU64LeBytesRef(p: Pointer[byte], off: int) -> uint64:
+  """自裸 ``byte`` 缓冲 ``p+off`` 读 8 字节（纯 Python；``@native loadU64LeBytes`` 的语义参照）。"""
   if p is None:
     return 0
   v: uint64 = 0
@@ -72,6 +72,6 @@ def load_u64_le_bytes_ref(p: Pointer[byte], off: int) -> uint64:
 
 @native
 @immutable
-def load_u64_le_bytes(p: Pointer[byte], off: int) -> uint64:
+def loadU64LeBytes(p: Pointer[byte], off: int) -> uint64:
   """自裸 ``byte`` 缓冲 ``p+off`` 读 8 字节 little-endian（``memcpy``）。"""
   ...

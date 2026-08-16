@@ -1,11 +1,11 @@
 """``str`` / ``bytes`` 共享序列逻辑（``StringMixin[T]``）。
 
-宿主须声明 ``_data: T[:]`` 或 ``_data: array[T, StackLength]``（``StackLength>0`` 时 ``array`` 内联 SSO；``str`` 用 ``StringMixin._SSO_CAP``）；
+宿主须声明 ``_data: T[:]`` 或 ``_data: array[T, StackLength]``（``StackLength>0`` 时 ``array`` 内联 SSO；``str`` 用 ``StringMixin._SsoCap``）；
 ``str(StringMixin[char])``、``bytes(StringMixin[byte])``。
 注解 ``Self`` 的空序列用 ``new()``（S06b）；``char[:]``/``byte[:]`` 缓冲见编码规范 §2.1。
 """
 from ..builtins import *
-from ..core.protocols import Generator
+from ..core.protocols import GeneratorType
 from ..core.exceptions import ValueError
 from ..util.dict import dict
 from ..util.list import list
@@ -13,21 +13,21 @@ from ..util.slice import slice
 
 
 @mixin
-class StringMixin[T: oneof[char, byte]]:
+class StringMixin[Host: oneof[char, byte]]:
   """不可变堆序列（码点/字节）共享核心。"""
 
-  _END_INDEX: int @const = int.Min
-  _SSO_CAP: int @const = 22
+  _EndIndex: int @const = int.Min
+  _SsoCap: int @const = 22
 
   @staticmethod
-  def _append(buf: T[:], at: int, c: T) -> int:
+  def _append(buf: Host[:], at: int, c: Host) -> int:
     buf[at] = c
     return at + 1
 
   @immutable
   @staticmethod
-  def _norm_end(n: int, end: int) -> int:
-    if end == Self._END_INDEX:
+  def _normEnd(n: int, end: int) -> int:
+    if end == Self._EndIndex:
       return n
     if end < 0:
       end += n
@@ -39,7 +39,7 @@ class StringMixin[T: oneof[char, byte]]:
 
   @immutable
   @staticmethod
-  def _norm_start(n: int, start: int) -> int:
+  def _normStart(n: int, start: int) -> int:
     if start < 0:
       start += n
     if start < 0:
@@ -50,7 +50,7 @@ class StringMixin[T: oneof[char, byte]]:
 
   @immutable
   @staticmethod
-  def _kmp_build_lps(sub: Self, subn: int) -> int[:]:
+  def _kmpBuildLps(sub: Self, subn: int) -> int[:]:
     """KMP 前缀函数表（长度 ``subn``）。"""
     lps: int[:] = new(subn)
     length: int = 0
@@ -69,14 +69,14 @@ class StringMixin[T: oneof[char, byte]]:
     return lps
 
   @immutable
-  def _find_sub_forward_kmp(self, sub: Self, i: int, j: int, subn: int) -> int:
+  def _findSubForwardKmp(self, sub: Self, i: int, j: int, subn: int) -> int:
     if subn == 1:
-      c0: T = sub._data[0]
+      c0: Host = sub._data[0]
       for k in range(i, j):
         if self._data[k] == c0:
           return k
       return -1
-    lps: int[:] = Self._kmp_build_lps(sub, subn)
+    lps: int[:] = Self._kmpBuildLps(sub, subn)
     pat: int = 0
     pos: int = i
     while pos < j:
@@ -92,14 +92,14 @@ class StringMixin[T: oneof[char, byte]]:
     return -1
 
   @immutable
-  def _find_sub_backward_kmp(self, sub: Self, i: int, j: int, subn: int) -> int:
+  def _findSubBackwardKmp(self, sub: Self, i: int, j: int, subn: int) -> int:
     if subn == 1:
-      c0: T = sub._data[0]
+      c0: Host = sub._data[0]
       for k in range(j - 1, i - 1, -1):
         if self._data[k] == c0:
           return k
       return -1
-    lps: int[:] = Self._kmp_build_lps(sub, subn)
+    lps: int[:] = Self._kmpBuildLps(sub, subn)
     pat: int = 0
     pos: int = i
     last: int = -1
@@ -119,12 +119,12 @@ class StringMixin[T: oneof[char, byte]]:
   @immutable
   def _sub(self, start: int, end: int) -> Self:
     n: int = len(self)
-    i: int = Self._norm_start(n, start)
-    j: int = Self._norm_end(n, end)
+    i: int = Self._normStart(n, start)
+    j: int = Self._normEnd(n, end)
     if j < i:
       j = i
     m: int = j - i
-    buf: T[:] = new(m)
+    buf: Host[:] = new(m)
     for k in range(m):
       buf[k] = self._data[i + k]
     return new(buf)
@@ -158,7 +158,7 @@ class StringMixin[T: oneof[char, byte]]:
 
   @immutable
   @overload
-  def __getitem__(self, index: int) -> T:
+  def __getitem__(self, index: int) -> Host:
     if index < 0:
       index = len(self._data) + index
     return self._data[index]
@@ -175,14 +175,14 @@ class StringMixin[T: oneof[char, byte]]:
       if start >= stop:
         return new()
       cnt: int = (stop - start + step - 1) // step
-      buf: T[:] = new(cnt)
+      buf: Host[:] = new(cnt)
       for at in range(cnt):
         buf[at] = self._data[start + at * step]
       return new(buf)
     if start <= stop:
       return new()
     cnt: int = (start - stop - step - 1) // (-step)
-    buf: T[:] = new(cnt)
+    buf: Host[:] = new(cnt)
     for at in range(cnt):
       buf[at] = self._data[start + at * step]
     return new(buf)
@@ -194,7 +194,7 @@ class StringMixin[T: oneof[char, byte]]:
   def __add__(self, other: Self) -> Self:
     n: int = len(self._data)
     m: int = len(other._data)
-    buf: T[:] = new(n + m)
+    buf: Host[:] = new(n + m)
     for i in range(n):
       buf[i] = self._data[i]
     for j in range(m):
@@ -206,7 +206,7 @@ class StringMixin[T: oneof[char, byte]]:
       return new()
     unit: int = len(self._data)
     total: int = unit * n
-    buf: T[:] = new(total)
+    buf: Host[:] = new(total)
     at: int = 0
     for _ in range(n):
       for i in range(unit):
@@ -234,48 +234,48 @@ class StringMixin[T: oneof[char, byte]]:
     return self._compare(other) >= 0
 
   @immutable
-  def find(self, sub: Self, start: int = 0, end: int = Self._END_INDEX) -> int:
+  def find(self, sub: Self, start: int = 0, end: int = Self._EndIndex) -> int:
     n: int = len(self)
-    i: int = Self._norm_start(n, start)
-    j: int = Self._norm_end(n, end)
+    i: int = Self._normStart(n, start)
+    j: int = Self._normEnd(n, end)
     subn: int = len(sub)
     if subn == 0:
       return i
     if subn > j - i:
       return -1
-    return self._find_sub_forward_kmp(sub, i, j, subn)
+    return self._findSubForwardKmp(sub, i, j, subn)
 
   @immutable
-  def index(self, sub: Self, start: int = 0, end: int = Self._END_INDEX) -> int:
+  def index(self, sub: Self, start: int = 0, end: int = Self._EndIndex) -> int:
     pos: int = self.find(sub, start, end)
     if pos < 0:
       raise ValueError("substring not found")
     return pos
 
   @immutable
-  def rfind(self, sub: Self, start: int = 0, end: int = Self._END_INDEX) -> int:
+  def rfind(self, sub: Self, start: int = 0, end: int = Self._EndIndex) -> int:
     n: int = len(self)
-    i: int = Self._norm_start(n, start)
-    j: int = Self._norm_end(n, end)
+    i: int = Self._normStart(n, start)
+    j: int = Self._normEnd(n, end)
     subn: int = len(sub)
     if subn == 0:
       return j
     if subn > j - i:
       return -1
-    return self._find_sub_backward_kmp(sub, i, j, subn)
+    return self._findSubBackwardKmp(sub, i, j, subn)
 
   @immutable
-  def rindex(self, sub: Self, start: int = 0, end: int = Self._END_INDEX) -> int:
+  def rindex(self, sub: Self, start: int = 0, end: int = Self._EndIndex) -> int:
     pos: int = self.rfind(sub, start, end)
     if pos < 0:
       raise ValueError("substring not found")
     return pos
 
   @immutable
-  def count(self, sub: Self, start: int = 0, end: int = Self._END_INDEX) -> int:
+  def count(self, sub: Self, start: int = 0, end: int = Self._EndIndex) -> int:
     n: int = len(self)
-    i: int = Self._norm_start(n, start)
-    j: int = Self._norm_end(n, end)
+    i: int = Self._normStart(n, start)
+    j: int = Self._normEnd(n, end)
     subn: int = len(sub)
     if subn == 0:
       if j < i:
@@ -293,7 +293,7 @@ class StringMixin[T: oneof[char, byte]]:
 
   @immutable
   @overload
-  def startswith(self, prefix: Self, start: int = 0, end: int = Self._END_INDEX) -> bool:
+  def startsWith(self, prefix: Self, start: int = 0, end: int = Self._EndIndex) -> bool:
     sub: Self = self._sub(start, end)
     subn: int = len(sub)
     pren: int = len(prefix)
@@ -306,7 +306,7 @@ class StringMixin[T: oneof[char, byte]]:
 
   @immutable
   @overload
-  def startswith(self, prefix: T[:], start: int = 0, end: int = Self._END_INDEX) -> bool:
+  def startsWith(self, prefix: Host[:], start: int = 0, end: int = Self._EndIndex) -> bool:
     sub: Self = self._sub(start, end)
     subn: int = len(sub)
     pren: int = len(prefix)
@@ -319,25 +319,25 @@ class StringMixin[T: oneof[char, byte]]:
 
   @immutable
   @overload
-  def startswith(self, prefixes: list[Self], start: int = 0, end: int = Self._END_INDEX) -> bool:
+  def startsWith(self, prefixes: list[Self], start: int = 0, end: int = Self._EndIndex) -> bool:
     cnt: int = len(prefixes)
     for i in range(cnt):
-      if self.startswith(prefixes[i], start, end):
+      if self.startsWith(prefixes[i], start, end):
         return True
     return False
 
   @immutable
   @overload
-  def startswith(self, prefixes: Self[:], start: int = 0, end: int = Self._END_INDEX) -> bool:
+  def startsWith(self, prefixes: Self[:], start: int = 0, end: int = Self._EndIndex) -> bool:
     cnt: int = len(prefixes)
     for i in range(cnt):
-      if self.startswith(prefixes[i], start, end):
+      if self.startsWith(prefixes[i], start, end):
         return True
     return False
 
   @immutable
   @overload
-  def endswith(self, suffix: Self, start: int = 0, end: int = Self._END_INDEX) -> bool:
+  def endsWith(self, suffix: Self, start: int = 0, end: int = Self._EndIndex) -> bool:
     sub: Self = self._sub(start, end)
     subn: int = len(sub)
     sufn: int = len(suffix)
@@ -351,7 +351,7 @@ class StringMixin[T: oneof[char, byte]]:
 
   @immutable
   @overload
-  def endswith(self, suffix: T[:], start: int = 0, end: int = Self._END_INDEX) -> bool:
+  def endsWith(self, suffix: Host[:], start: int = 0, end: int = Self._EndIndex) -> bool:
     sub: Self = self._sub(start, end)
     subn: int = len(sub)
     sufn: int = len(suffix)
@@ -365,47 +365,47 @@ class StringMixin[T: oneof[char, byte]]:
 
   @immutable
   @overload
-  def endswith(self, suffixes: list[Self], start: int = 0, end: int = Self._END_INDEX) -> bool:
+  def endsWith(self, suffixes: list[Self], start: int = 0, end: int = Self._EndIndex) -> bool:
     cnt: int = len(suffixes)
     for i in range(cnt):
-      if self.endswith(suffixes[i], start, end):
+      if self.endsWith(suffixes[i], start, end):
         return True
     return False
 
   @immutable
   @overload
-  def endswith(self, suffixes: Self[:], start: int = 0, end: int = Self._END_INDEX) -> bool:
+  def endsWith(self, suffixes: Self[:], start: int = 0, end: int = Self._EndIndex) -> bool:
     cnt: int = len(suffixes)
     for i in range(cnt):
-      if self.endswith(suffixes[i], start, end):
+      if self.endsWith(suffixes[i], start, end):
         return True
     return False
 
   @immutable
-  def _glob_normcase(self) -> Self:
-    """``fnmatch`` 大小写规范化（``/``→``\\`` + ASCII ``lower``，对齐 ``io.file.path.normcase``）。"""
+  def _globNormcase(self) -> Self:
+    """``fnmatch`` 大小写规范化（``/``→``\\`` + ASCII ``lower``，对齐 ``io.file.path.normCase``）。"""
     n: int = len(self)
     if n == 0:
       return self
-    buf: T[:] = new(n)
-    alt: T = ord("/")
-    sep: T = ord("\\")
+    buf: Host[:] = new(n)
+    alt: Host = ord("/")
+    sep: Host = ord("\\")
     for i in range(n):
-      c: T = self._data[i]
+      c: Host = self._data[i]
       if c == alt:
         buf[i] = sep
       else:
-        buf[i] = Self._to_lower_char(c)
+        buf[i] = Self._toLowerChar(c)
     return new(buf)
 
   @immutable
-  def _glob_class_body_contains(self, c: T, start: int, end: int) -> bool:
-    has_dash: bool = False
+  def _globClassBodyContains(self, c: Host, start: int, end: int) -> bool:
+    hasDash: bool = False
     for i in range(start, end):
       if self._data[i] == ord("-"):
-        has_dash = True
+        hasDash = True
         break
-    if not has_dash:
+    if not hasDash:
       for i in range(start, end):
         if c == self._data[i]:
           return True
@@ -414,14 +414,14 @@ class StringMixin[T: oneof[char, byte]]:
     i: int = start
     k: int = start + 1
     while True:
-      dash: int = self.find(Self._from_code(ord("-")), k, end)
+      dash: int = self.find(Self._fromCode(ord("-")), k, end)
       if dash < 0:
         tail: Self = self._sub(i, end)
         if tail:
           chunks.append(tail)
         elif chunks:
           last: Self = chunks[-1]
-          chunks[-1] = last + Self._from_code(ord("-"))
+          chunks[-1] = last + Self._fromCode(ord("-"))
         break
       chunks.append(self._sub(i, dash))
       i = dash + 1
@@ -429,12 +429,12 @@ class StringMixin[T: oneof[char, byte]]:
     cnt: int = len(chunks)
     for j in range(cnt):
       chunk: Self = chunks[j]
-      if chunk._glob_class_chunk_contains(c):
+      if chunk._globClassChunkContains(c):
         return True
     return False
 
   @immutable
-  def _glob_class_chunk_contains(self, c: T) -> bool:
+  def _globClassChunkContains(self, c: Host) -> bool:
     cn: int = len(self)
     match cn:
       case 0:
@@ -442,8 +442,8 @@ class StringMixin[T: oneof[char, byte]]:
       case 1:
         return c == self._data[0]
       case 2:
-        lo: T = self._data[0]
-        hi: T = self._data[1]
+        lo: Host = self._data[0]
+        hi: Host = self._data[1]
         if lo <= hi:
           return lo <= c and c <= hi
         if c == lo:
@@ -456,7 +456,7 @@ class StringMixin[T: oneof[char, byte]]:
         return False
 
   @immutable
-  def _glob_class_contains(self, c: T) -> bool:
+  def _globClassContains(self, c: Host) -> bool:
     bn: int = len(self)
     neg: bool = False
     start: int = 0
@@ -465,13 +465,13 @@ class StringMixin[T: oneof[char, byte]]:
       start = 1
     matched: bool = True
     if start < bn:
-      matched = self._glob_class_body_contains(c, start, bn)
+      matched = self._globClassBodyContains(c, start, bn)
     if neg:
       return not matched
     return matched
 
   @immutable
-  def _glob_match_bracket(self, c: T, pi: int) -> int:
+  def _globMatchBracket(self, c: Host, pi: int) -> int:
     """匹配 ``[…]``；成功返回 pattern 新下标，失败返回 ``-1``。"""
     pn: int = len(self)
     j: int = pi + 1
@@ -487,41 +487,41 @@ class StringMixin[T: oneof[char, byte]]:
         return pi + 1
       return -1
     body: Self = self._sub(pi + 1, close)
-    if not body._glob_class_contains(c):
+    if not body._globClassContains(c):
       return -1
     return close + 1
 
   @immutable
-  def _glob_match_at(self, pat: Self, ni: int, pi: int) -> bool:
+  def _globMatchAt(self, pat: Self, ni: int, pi: int) -> bool:
     nn: int = len(self)
     pn: int = len(pat)
     while True:
       if pi >= pn:
         return ni >= nn
-      star_c: T = pat._data[pi]
-      if star_c == ord("*"):
+      starC: Host = pat._data[pi]
+      if starC == ord("*"):
         pi += 1
-        while pi < pn and pat._data[pi] == star_c:
+        while pi < pn and pat._data[pi] == starC:
           pi += 1
         if pi >= pn:
           return True
         for trial in range(ni, nn + 1):
-          if self._glob_match_at(pat, trial, pi):
+          if self._globMatchAt(pat, trial, pi):
             return True
         return False
       if ni >= nn:
         return False
-      pc: T = pat._data[pi]
+      pc: Host = pat._data[pi]
       if pc == ord("?"):
         ni += 1
         pi += 1
         continue
       if pc == ord("["):
-        next_pi: int = pat._glob_match_bracket(self._data[ni], pi)
-        if next_pi < 0:
+        nextPi: int = pat._globMatchBracket(self._data[ni], pi)
+        if nextPi < 0:
           return False
         ni += 1
-        pi = next_pi
+        pi = nextPi
         continue
       if self._data[ni] != pat._data[pi]:
         return False
@@ -529,30 +529,30 @@ class StringMixin[T: oneof[char, byte]]:
       pi += 1
 
   @immutable
-  def _glob_match(self, pat: Self) -> bool:
-    return self._glob_match_at(pat, 0, 0)
+  def _globMatch(self, pat: Self) -> bool:
+    return self._globMatchAt(pat, 0, 0)
 
   @immutable
-  def glob(self, pattern: Self, ignore_case: bool = True) -> bool:
+  def glob(self, pattern: Self, ignoreCase: bool = True) -> bool:
     """Shell 通配匹配（语义对齐 ``fnmatch`` / ``fnmatchcase``；非 ``pathlib.Path.glob``）。"""
     name: Self = self
     pat: Self = pattern
-    if ignore_case:
-      name = self._glob_normcase()
-      pat = pattern._glob_normcase()
-    return name._glob_match(pat)
+    if ignoreCase:
+      name = self._globNormcase()
+      pat = pattern._globNormcase()
+    return name._globMatch(pat)
 
   @immutable
   @staticmethod
-  def _from_code(code: int) -> Self:
+  def _fromCode(code: int) -> Self:
     """单码点/单字节子串（``find(r\"\\n\")`` 等）；勿 ``Self(ord(...))``（``bytes(n)`` 为定长构造）。"""
-    buf: T[:] = new(1)
+    buf: Host[:] = new(1)
     buf[0] = code
     return new(buf)
 
   @immutable
   @staticmethod
-  def _reverse_self_list(items: list[Self]) -> list[Self]:
+  def _reverseSelfList(items: list[Self]) -> list[Self]:
     out: list[Self] = []
     cnt: int = len(items)
     for i in range(cnt):
@@ -562,13 +562,13 @@ class StringMixin[T: oneof[char, byte]]:
   @immutable
   def join(self, iterable: list[Self]) -> Self:
     total: int = 0
-    sep_n: int = len(self)
+    sepN: int = len(self)
     cnt: int = len(iterable)
     for i in range(cnt):
       total += len(iterable[i])
     if cnt > 1:
-      total += sep_n * (cnt - 1)
-    buf: T[:] = new(total)
+      total += sepN * (cnt - 1)
+    buf: Host[:] = new(total)
     at: int = 0
     for i in range(cnt):
       part: Self = iterable[i]
@@ -577,26 +577,26 @@ class StringMixin[T: oneof[char, byte]]:
         buf[at] = part._data[j]
         at += 1
       if i + 1 < cnt:
-        for j in range(sep_n):
+        for j in range(sepN):
           buf[at] = self._data[j]
           at += 1
     return new(buf)
 
   @immutable
-  def removeprefix(self, prefix: Self) -> Self:
+  def removePrefix(self, prefix: Self) -> Self:
     pn: int = len(prefix)
     if pn == 0:
       return self
-    if not self.startswith(prefix):
+    if not self.startsWith(prefix):
       return self
     return self._sub(pn, len(self))
 
   @immutable
-  def removesuffix(self, suffix: Self) -> Self:
+  def removeSuffix(self, suffix: Self) -> Self:
     sn: int = len(suffix)
     if sn == 0:
       return self
-    if not self.endswith(suffix):
+    if not self.endsWith(suffix):
       return self
     return self._sub(0, len(self) - sn)
 
@@ -663,7 +663,7 @@ class StringMixin[T: oneof[char, byte]]:
     n: int = len(self)
     i: int = 0
     if not chars:
-      while i < n and Self._is_field_whitespace(self._data[i]):
+      while i < n and Self._isFieldWhitespace(self._data[i]):
         i += 1
     else:
       while i < n and Self(self._data[i]) in chars:
@@ -681,7 +681,7 @@ class StringMixin[T: oneof[char, byte]]:
     n: int = len(self)
     j: int = n
     if not chars:
-      while j > 0 and Self._is_field_whitespace(self._data[j - 1]):
+      while j > 0 and Self._isFieldWhitespace(self._data[j - 1]):
         j -= 1
     else:
       while j > 0 and Self(self._data[j - 1]) in chars:
@@ -699,11 +699,11 @@ class StringMixin[T: oneof[char, byte]]:
     return self.lstrip(chars).rstrip(chars)
 
   @immutable
-  def striplines(self, min_indent: int = 0) -> Self:
-    """???????????????????? ``min_indent`` ????"""
-    if min_indent < 0:
-      raise ValueError("min_indent must be non-negative")
-    lines: list[Self] = self.splitlines()
+  def stripLines(self, minIndent: int = 0) -> Self:
+    """去掉首尾空行与公共前导空格缩进，再为每行补 ``minIndent`` 个空格。"""
+    if minIndent < 0:
+      raise ValueError("minIndent must be non-negative")
+    lines: list[Self] = self.splitLines()
     begin: int = 0
     end: int = len(lines)
     while begin < end and not lines[begin].strip():
@@ -724,7 +724,7 @@ class StringMixin[T: oneof[char, byte]]:
         common = indent
     if common < 0:
       return new()
-    prefix: Self = Self._from_code(ord(" ")) * min_indent
+    prefix: Self = Self._fromCode(ord(" ")) * minIndent
     out: list[Self] = []
     for i in range(begin, end):
       line: Self = lines[i]
@@ -732,16 +732,16 @@ class StringMixin[T: oneof[char, byte]]:
         out.append(prefix + line._sub(common, len(line)))
       else:
         out.append(Self())
-    return Self._from_code(ord("\n")).join(out)
+    return Self._fromCode(ord("\n")).join(out)
 
   @immutable
   @overload
-  def split(self, maxsplit: int = -1) -> list[Self]:
-    return self.split(Self(), maxsplit)
+  def split(self, maxSplit: int = -1) -> list[Self]:
+    return self.split(Self(), maxSplit)
 
   @immutable
   @overload
-  def split(self, sep: Self, maxsplit: int = -1) -> list[Self]:
+  def split(self, sep: Self, maxSplit: int = -1) -> list[Self]:
     """分隔子串匹配走 ``find``（KMP）。"""
     out: list[Self] = []
     n: int = len(self)
@@ -750,7 +750,7 @@ class StringMixin[T: oneof[char, byte]]:
       i: int = 0
       splits: int = 0
       while i <= n:
-        if maxsplit >= 0 and splits >= maxsplit:
+        if maxSplit >= 0 and splits >= maxSplit:
           out.append(self._sub(i, n))
           return out
         pos: int = self.find(sep, i, n)
@@ -764,15 +764,15 @@ class StringMixin[T: oneof[char, byte]]:
     i: int = 0
     splits: int = 0
     while i < n:
-      while i < n and Self._is_field_whitespace(self._data[i]):
+      while i < n and Self._isFieldWhitespace(self._data[i]):
         i += 1
       if i >= n:
         break
-      if maxsplit >= 0 and splits >= maxsplit:
+      if maxSplit >= 0 and splits >= maxSplit:
         out.append(self._sub(i, n))
         return out
       j: int = i
-      while j < n and not Self._is_field_whitespace(self._data[j]):
+      while j < n and not Self._isFieldWhitespace(self._data[j]):
         j += 1
       out.append(self._sub(i, j))
       i = j
@@ -781,12 +781,12 @@ class StringMixin[T: oneof[char, byte]]:
 
   @immutable
   @overload
-  def rsplit(self, maxsplit: int = -1) -> list[Self]:
-    return self.rsplit(Self(), maxsplit)
+  def rsplit(self, maxSplit: int = -1) -> list[Self]:
+    return self.rsplit(Self(), maxSplit)
 
   @immutable
   @overload
-  def rsplit(self, sep: Self, maxsplit: int = -1) -> list[Self]:
+  def rsplit(self, sep: Self, maxSplit: int = -1) -> list[Self]:
     """分隔子串匹配走 ``rfind``（KMP）。"""
     n: int = len(self)
     sepn: int = len(sep)
@@ -795,7 +795,7 @@ class StringMixin[T: oneof[char, byte]]:
       splits: int = 0
       i: int = n
       while i >= 0:
-        if maxsplit >= 0 and splits >= maxsplit:
+        if maxSplit >= 0 and splits >= maxSplit:
           out.append(self._sub(0, i))
           break
         pos: int = self.rfind(sep, 0, i)
@@ -805,43 +805,43 @@ class StringMixin[T: oneof[char, byte]]:
         out.append(self._sub(pos + sepn, i))
         i = pos
         splits += 1
-      return Self._reverse_self_list(out)
+      return Self._reverseSelfList(out)
     splits = 0
     j: int = n
     while j > 0:
-      while j > 0 and Self._is_field_whitespace(self._data[j - 1]):
+      while j > 0 and Self._isFieldWhitespace(self._data[j - 1]):
         j -= 1
       if j == 0:
         break
-      if maxsplit >= 0 and splits >= maxsplit:
+      if maxSplit >= 0 and splits >= maxSplit:
         out.append(self._sub(0, j))
         break
       k: int = j
-      while k > 0 and not Self._is_field_whitespace(self._data[k - 1]):
+      while k > 0 and not Self._isFieldWhitespace(self._data[k - 1]):
         k -= 1
       out.append(self._sub(k, j))
       j = k
       splits += 1
-    return Self._reverse_self_list(out)
+    return Self._reverseSelfList(out)
 
   @immutable
   @overload
-  def split_prefix(self) -> Self:
-    """无 ``sep``：等同 ``split(maxsplit=1)[0]``（无字段时 ``new()``）；不构造 ``list``。"""
+  def splitPrefix(self) -> Self:
+    """无 ``sep``：等同 ``split(maxSplit=1)[0]``（无字段时 ``new()``）；不构造 ``list``。"""
     n: int = len(self)
     i: int = 0
-    while i < n and Self._is_field_whitespace(self._data[i]):
+    while i < n and Self._isFieldWhitespace(self._data[i]):
       i += 1
     if i >= n:
       return new()
     j: int = i
-    while j < n and not Self._is_field_whitespace(self._data[j]):
+    while j < n and not Self._isFieldWhitespace(self._data[j]):
       j += 1
     return self._sub(i, j)
 
   @immutable
   @overload
-  def split_prefix(self, sep: Self) -> Self:
+  def splitPrefix(self, sep: Self) -> Self:
     """有 ``sep``：等同 ``split(sep, 1)[0]``；``find`` + ``_sub``。"""
     pos: int = self.find(sep)
     if pos < 0:
@@ -850,19 +850,19 @@ class StringMixin[T: oneof[char, byte]]:
 
   @immutable
   @overload
-  def split_suffix(self) -> Self:
-    """无 ``sep``：等同 ``split(maxsplit=1)[1]``（仅一段或无时 ``new()``）；不构造 ``list``。"""
+  def splitSuffix(self) -> Self:
+    """无 ``sep``：等同 ``split(maxSplit=1)[1]``（仅一段或无时 ``new()``）；不构造 ``list``。"""
     n: int = len(self)
     i: int = 0
-    while i < n and Self._is_field_whitespace(self._data[i]):
+    while i < n and Self._isFieldWhitespace(self._data[i]):
       i += 1
     if i >= n:
       return new()
     j: int = i
-    while j < n and not Self._is_field_whitespace(self._data[j]):
+    while j < n and not Self._isFieldWhitespace(self._data[j]):
       j += 1
     i = j
-    while i < n and Self._is_field_whitespace(self._data[i]):
+    while i < n and Self._isFieldWhitespace(self._data[i]):
       i += 1
     if i >= n:
       return new()
@@ -870,7 +870,7 @@ class StringMixin[T: oneof[char, byte]]:
 
   @immutable
   @overload
-  def split_suffix(self, sep: Self) -> Self:
+  def splitSuffix(self, sep: Self) -> Self:
     """有 ``sep``：等同 ``split(sep, 1)[1]`` / ``partition(sep)[2]``；``find`` + ``_sub``。"""
     pos: int = self.find(sep)
     if pos < 0:
@@ -879,21 +879,21 @@ class StringMixin[T: oneof[char, byte]]:
 
   @immutable
   @overload
-  def rsplit_prefix(self) -> Self:
-    """无 ``sep``：等同 ``rsplit(maxsplit=1)[0]``；不构造 ``list``。"""
+  def rsplitPrefix(self) -> Self:
+    """无 ``sep``：等同 ``rsplit(maxSplit=1)[0]``；不构造 ``list``。"""
     n: int = len(self)
     j: int = n
     splits: int = 0
     found: bool = False
     while j > 0:
-      while j > 0 and Self._is_field_whitespace(self._data[j - 1]):
+      while j > 0 and Self._isFieldWhitespace(self._data[j - 1]):
         j -= 1
       if j == 0:
         break
       if splits >= 1:
         return self._sub(0, j)
       k: int = j
-      while k > 0 and not Self._is_field_whitespace(self._data[k - 1]):
+      while k > 0 and not Self._isFieldWhitespace(self._data[k - 1]):
         k -= 1
       found = True
       j = k
@@ -904,7 +904,7 @@ class StringMixin[T: oneof[char, byte]]:
 
   @immutable
   @overload
-  def rsplit_prefix(self, sep: Self) -> Self:
+  def rsplitPrefix(self, sep: Self) -> Self:
     """有 ``sep``：等同 ``rsplit(sep, 1)[0]``；``rfind`` + ``_sub``。"""
     pos: int = self.rfind(sep)
     if pos < 0:
@@ -913,36 +913,36 @@ class StringMixin[T: oneof[char, byte]]:
 
   @immutable
   @overload
-  def rsplit_suffix(self) -> Self:
-    """无 ``sep``：等同 ``rsplit(maxsplit=1)[-1]``；不构造 ``list``。"""
+  def rsplitSuffix(self) -> Self:
+    """无 ``sep``：等同 ``rsplit(maxSplit=1)[-1]``；不构造 ``list``。"""
     n: int = len(self)
     j: int = n
     splits: int = 0
     tail: Self = new()
-    have_tail: bool = False
+    haveTail: bool = False
     while j > 0:
-      while j > 0 and Self._is_field_whitespace(self._data[j - 1]):
+      while j > 0 and Self._isFieldWhitespace(self._data[j - 1]):
         j -= 1
       if j == 0:
         break
       if splits >= 1:
-        if have_tail:
+        if haveTail:
           return tail
         return new()
       k: int = j
-      while k > 0 and not Self._is_field_whitespace(self._data[k - 1]):
+      while k > 0 and not Self._isFieldWhitespace(self._data[k - 1]):
         k -= 1
       tail = self._sub(k, j)
-      have_tail = True
+      haveTail = True
       j = k
       splits += 1
-    if have_tail:
+    if haveTail:
       return tail
     return new()
 
   @immutable
   @overload
-  def rsplit_suffix(self, sep: Self) -> Self:
+  def rsplitSuffix(self, sep: Self) -> Self:
     """有 ``sep``：等同 ``rsplit(sep, 1)[-1]``；``rfind`` + ``_sub``。"""
     pos: int = self.rfind(sep)
     if pos < 0:
@@ -950,25 +950,25 @@ class StringMixin[T: oneof[char, byte]]:
     return self._sub(pos + len(sep), len(self))
 
   @overload
-  def xsplit(self, maxsplit: int = -1) -> Generator[Self, None, None]:
-    return self.xsplit(Self(), maxsplit)
+  def xsplit(self, maxSplit: int = -1) -> GeneratorType[Self, None, None]:
+    return self.xsplit(Self(), maxSplit)
 
   @overload
-  def xsplit(self, sep: Self, maxsplit: int = -1) -> Generator[Self, None, None]:
+  def xsplit(self, sep: Self, maxSplit: int = -1) -> GeneratorType[Self, None, None]:
     """``split`` 的生成器版：逐段 ``yield``，语义与 ``split`` 一致。"""
     i: int = 0
     splits: int = 0
     if not sep:
       while i < len(self):
-        while i < len(self) and Self._is_field_whitespace(self._data[i]):
+        while i < len(self) and Self._isFieldWhitespace(self._data[i]):
           i += 1
         if i >= len(self):
           return
-        if maxsplit >= 0 and splits >= maxsplit:
+        if maxSplit >= 0 and splits >= maxSplit:
           yield self._sub(i, len(self))
           return
         j: int = i
-        while j < len(self) and not Self._is_field_whitespace(self._data[j]):
+        while j < len(self) and not Self._isFieldWhitespace(self._data[j]):
           j += 1
         yield self._sub(i, j)
         i = j
@@ -976,7 +976,7 @@ class StringMixin[T: oneof[char, byte]]:
       return
     sepn: int = len(sep)
     while i <= len(self):
-      if maxsplit >= 0 and splits >= maxsplit:
+      if maxSplit >= 0 and splits >= maxSplit:
         yield self._sub(i, len(self))
         return
       pos: int = self.find(sep, i, len(self))
@@ -988,11 +988,11 @@ class StringMixin[T: oneof[char, byte]]:
       splits += 1
 
   @overload
-  def xrsplit(self, maxsplit: int = -1) -> Generator[Self, None, None]:
-    return self.xrsplit(Self(), maxsplit)
+  def xrsplit(self, maxSplit: int = -1) -> GeneratorType[Self, None, None]:
+    return self.xrsplit(Self(), maxSplit)
 
-  def _xrsplit_collect(
-    self, sep: Self, maxsplit: int, starts: int[:], ends: int[:],
+  def _xrsplitCollect(
+    self, sep: Self, maxSplit: int, starts: int[:], ends: int[:],
   ) -> int:
     """``xrsplit`` 收集阶段：写入 ``starts``/``ends``，返回段数（非生成器，避免嵌套 ``while`` 状态机问题）。"""
     cnt: int = 0
@@ -1002,7 +1002,7 @@ class StringMixin[T: oneof[char, byte]]:
       i: int = len(self)
       done: bool = False
       while i >= 0 and not done:
-        if maxsplit >= 0 and splits >= maxsplit:
+        if maxSplit >= 0 and splits >= maxSplit:
           starts[cnt] = 0
           ends[cnt] = i
           cnt += 1
@@ -1025,18 +1025,18 @@ class StringMixin[T: oneof[char, byte]]:
       j: int = len(self)
       done = False
       while j > 0 and not done:
-        while j > 0 and Self._is_field_whitespace(self._data[j - 1]):
+        while j > 0 and Self._isFieldWhitespace(self._data[j - 1]):
           j -= 1
         if j == 0:
           done = True
-        elif maxsplit >= 0 and splits >= maxsplit:
+        elif maxSplit >= 0 and splits >= maxSplit:
           starts[cnt] = 0
           ends[cnt] = j
           cnt += 1
           done = True
         else:
           k: int = j
-          while k > 0 and not Self._is_field_whitespace(self._data[k - 1]):
+          while k > 0 and not Self._isFieldWhitespace(self._data[k - 1]):
             k -= 1
           starts[cnt] = k
           ends[cnt] = j
@@ -1046,51 +1046,51 @@ class StringMixin[T: oneof[char, byte]]:
     return cnt
 
   @overload
-  def xrsplit(self, sep: Self, maxsplit: int = -1) -> Generator[Self, None, None]:
+  def xrsplit(self, sep: Self, maxSplit: int = -1) -> GeneratorType[Self, None, None]:
     """``rsplit`` 的生成器版：产出顺序与 ``rsplit`` 列表一致（``int[:]`` 存区间，无 ``list[Self]``）。"""
-    starts: int[:] = new(maxsplit + 1 if maxsplit >= 0 else len(self) + 1)
-    ends: int[:] = new(maxsplit + 1 if maxsplit >= 0 else len(self) + 1)
-    cnt: int = self._xrsplit_collect(sep, maxsplit, starts, ends)
-    for out_i in range(cnt - 1, -1, -1):
-      yield self._sub(starts[out_i], ends[out_i])
+    starts: int[:] = new(maxSplit + 1 if maxSplit >= 0 else len(self) + 1)
+    ends: int[:] = new(maxSplit + 1 if maxSplit >= 0 else len(self) + 1)
+    cnt: int = self._xrsplitCollect(sep, maxSplit, starts, ends)
+    for outI in range(cnt - 1, -1, -1):
+      yield self._sub(starts[outI], ends[outI])
 
   @immutable
-  def _find_linebreak(self, start: int, end: int) -> int:
+  def _findLinebreak(self, start: int, end: int) -> int:
     """``[start, end)`` 内首行行界；无则 ``end``。常见 ``\\n``/``\\r`` 等走 ``find``。"""
     best: int = end
-    pos: int = self.find(Self._from_code(ord("\n")), start, end)
+    pos: int = self.find(Self._fromCode(ord("\n")), start, end)
     if pos >= 0 and pos < best:
       best = pos
-    pos = self.find(Self._from_code(ord("\r")), start, end)
+    pos = self.find(Self._fromCode(ord("\r")), start, end)
     if pos >= 0 and pos < best:
       best = pos
-    pos = self.find(Self._from_code(ord("\v")), start, end)
+    pos = self.find(Self._fromCode(ord("\v")), start, end)
     if pos >= 0 and pos < best:
       best = pos
-    pos = self.find(Self._from_code(ord("\f")), start, end)
+    pos = self.find(Self._fromCode(ord("\f")), start, end)
     if pos >= 0 and pos < best:
       best = pos
     if best < end:
       return best
     for i in range(start, end):
-      if Self._is_linebreak(self._data[i]):
+      if Self._isLinebreak(self._data[i]):
         return i
     return end
 
   @immutable
-  def splitlines(self, keepends: bool = False) -> list[Self]:
+  def splitLines(self, keepEnds: bool = False) -> list[Self]:
     out: list[Self] = []
     n: int = len(self)
     i: int = 0
     while i < n:
-      j: int = self._find_linebreak(i, n)
+      j: int = self._findLinebreak(i, n)
       consumed: int = 1
       if j + 1 < n:
-        if Self._is_cr_lf_pair(self._data[j], self._data[j + 1]):
+        if Self._isCrLfPair(self._data[j], self._data[j + 1]):
           consumed = 2
       piece: Self = self._sub(i, j)
-      if keepends and j < n:
-        endb: T[:] = new(consumed)
+      if keepEnds and j < n:
+        endb: Host[:] = new(consumed)
         for k in range(consumed):
           endb[k] = self._data[j + k]
         piece += Self(endb)
@@ -1101,19 +1101,19 @@ class StringMixin[T: oneof[char, byte]]:
     return out
 
   @overload
-  def xsplitlines(self, keepends: bool = False) -> Generator[Self, None, None]:
-    """``splitlines`` 的生成器版：逐行 ``yield``，语义与 ``splitlines`` 一致。"""
+  def xsplitLines(self, keepEnds: bool = False) -> GeneratorType[Self, None, None]:
+    """``splitLines`` 的生成器版：逐行 ``yield``，语义与 ``splitLines`` 一致。"""
     n: int = len(self)
     i: int = 0
     while i < n:
-      j: int = self._find_linebreak(i, n)
+      j: int = self._findLinebreak(i, n)
       consumed: int = 1
       if j + 1 < n:
-        if Self._is_cr_lf_pair(self._data[j], self._data[j + 1]):
+        if Self._isCrLfPair(self._data[j], self._data[j + 1]):
           consumed = 2
       piece: Self = self._sub(i, j)
-      if keepends and j < n:
-        endb: T[:] = new(consumed)
+      if keepEnds and j < n:
+        endb: Host[:] = new(consumed)
         for k in range(consumed):
           endb[k] = self._data[j + k]
         piece += Self(endb)
@@ -1127,196 +1127,196 @@ class StringMixin[T: oneof[char, byte]]:
     n: int = len(self)
     if n == 0:
       return new()
-    buf: T[:] = new(n)
-    buf[0] = Self._to_upper_char(self._data[0])
+    buf: Host[:] = new(n)
+    buf[0] = Self._toUpperChar(self._data[0])
     for i in range(1, n):
-      buf[i] = Self._to_lower_char(self._data[i])
+      buf[i] = Self._toLowerChar(self._data[i])
     return new(buf)
 
   @immutable
   @overload
   def center(self, width: int) -> Self:
-    return self.center(width, Self._default_pad_char())
+    return self.center(width, Self._defaultPadChar())
 
   @immutable
   @overload
-  def center(self, width: int, fillchar: T) -> Self:
+  def center(self, width: int, fillChar: Host) -> Self:
     n: int = len(self)
     if width <= n:
       return self
     pad: int = width - n
     left: int = pad // 2
     right: int = pad - left
-    buf: T[:] = new(width)
+    buf: Host[:] = new(width)
     for i in range(left):
-      buf[i] = fillchar
+      buf[i] = fillChar
     for i in range(n):
       buf[left + i] = self._data[i]
     for i in range(right):
-      buf[left + n + i] = fillchar
+      buf[left + n + i] = fillChar
     return new(buf)
 
   @staticmethod
-  def _expandtabs_resets_col(c: T) -> bool:
+  def _expandTabsResetsCol(c: Host) -> bool:
     return c in "\n\r"
 
   @immutable
-  def expandtabs(self, tabsize: int = 8) -> Self:
+  def expandTabs(self, tabSize: int = 8) -> Self:
     n: int = len(self)
-    out_cap: int = n + n * tabsize
-    buf: T[:] = new(out_cap)
+    outCap: int = n + n * tabSize
+    buf: Host[:] = new(outCap)
     out: int = 0
     col: int = 0
-    sp: T = Self._default_pad_char()
+    sp: Host = Self._defaultPadChar()
     for i in range(n):
-      c: T = self._data[i]
+      c: Host = self._data[i]
       if c == ord("\t"):
-        spaces: int = tabsize - (col % tabsize)
+        spaces: int = tabSize - (col % tabSize)
         if spaces == 0:
-          spaces = tabsize
+          spaces = tabSize
         for _ in range(spaces):
           out = Self._append(buf, out, sp)
           col += 1
-      elif Self._expandtabs_resets_col(c):
+      elif Self._expandTabsResetsCol(c):
         out = Self._append(buf, out, c)
         col = 0
       else:
         out = Self._append(buf, out, c)
         col += 1
-    trimmed: T[:] = new(out)
+    trimmed: Host[:] = new(out)
     for i in range(out):
       trimmed[i] = buf[i]
     return new(trimmed)
 
   @immutable
-  def isalnum(self) -> bool:
+  def isAlnum(self) -> bool:
     if not self:
       return False
     for i in range(len(self)):
-      if not Self._is_alnum_char(self._data[i]):
+      if not Self._isAlnumChar(self._data[i]):
         return False
     return True
 
   @immutable
-  def isalpha(self) -> bool:
+  def isAlpha(self) -> bool:
     if not self:
       return False
     for i in range(len(self)):
-      if not Self._is_alpha_char(self._data[i]):
+      if not Self._isAlphaChar(self._data[i]):
         return False
     return True
 
   @immutable
-  def isascii(self) -> bool:
+  def isAscii(self) -> bool:
     for i in range(len(self)):
-      if not Self._is_ascii(self._data[i]):
+      if not Self._isAscii(self._data[i]):
         return False
     return True
 
   @immutable
-  def isdecimal(self) -> bool:
+  def isDecimal(self) -> bool:
     if not self:
       return False
     for i in range(len(self)):
-      if not Self._is_digit_char(self._data[i]):
+      if not Self._isDigitChar(self._data[i]):
         return False
     return True
 
   @immutable
-  def isdigit(self) -> bool:
-    return self.isdecimal()
+  def isDigit(self) -> bool:
+    return self.isDecimal()
 
   @immutable
-  def islower(self) -> bool:
+  def isLower(self) -> bool:
     n: int = len(self)
     if n == 0:
       return False
-    has_cased: bool = False
+    hasCased: bool = False
     for i in range(n):
-      c: T = self._data[i]
-      if Self._is_cased(c):
-        has_cased = True
+      c: Host = self._data[i]
+      if Self._isCased(c):
+        hasCased = True
         if c < ord("a") or c > ord("z"):
           if c >= ord("A") and c <= ord("Z"):
             return False
-    return has_cased
+    return hasCased
 
   @immutable
-  def isspace(self) -> bool:
+  def isSpace(self) -> bool:
     n: int = len(self)
     if n == 0:
       return False
     for i in range(n):
-      if not Self._is_field_whitespace(self._data[i]):
+      if not Self._isFieldWhitespace(self._data[i]):
         return False
     return True
 
   @immutable
-  def isupper(self) -> bool:
+  def isUpper(self) -> bool:
     n: int = len(self)
     if n == 0:
       return False
-    has_cased: bool = False
+    hasCased: bool = False
     for i in range(n):
-      c: T = self._data[i]
-      if Self._is_cased(c):
-        has_cased = True
+      c: Host = self._data[i]
+      if Self._isCased(c):
+        hasCased = True
         if c < ord("A") or c > ord("Z"):
           if c >= ord("a") and c <= ord("z"):
             return False
-    return has_cased
+    return hasCased
 
   @immutable
   @overload
   def ljust(self, width: int) -> Self:
-    return self.ljust(width, Self._default_pad_char())
+    return self.ljust(width, Self._defaultPadChar())
 
   @immutable
   @overload
-  def ljust(self, width: int, fillchar: T) -> Self:
+  def ljust(self, width: int, fillChar: Host) -> Self:
     n: int = len(self)
     if width <= n:
       return self
-    buf: T[:] = new(width)
+    buf: Host[:] = new(width)
     for i in range(n):
       buf[i] = self._data[i]
     for i in range(n, width):
-      buf[i] = fillchar
+      buf[i] = fillChar
     return new(buf)
 
   @immutable
   def lower(self) -> Self:
     n: int = len(self)
-    buf: T[:] = new(n)
+    buf: Host[:] = new(n)
     for i in range(n):
-      buf[i] = Self._to_lower_char(self._data[i])
+      buf[i] = Self._toLowerChar(self._data[i])
     return new(buf)
 
   @immutable
   @overload
   def rjust(self, width: int) -> Self:
-    return self.rjust(width, Self._default_pad_char())
+    return self.rjust(width, Self._defaultPadChar())
 
   @immutable
   @overload
-  def rjust(self, width: int, fillchar: T) -> Self:
+  def rjust(self, width: int, fillChar: Host) -> Self:
     n: int = len(self)
     if width <= n:
       return self
     pad: int = width - n
-    buf: T[:] = new(width)
+    buf: Host[:] = new(width)
     for i in range(pad):
-      buf[i] = fillchar
+      buf[i] = fillChar
     for i in range(n):
       buf[pad + i] = self._data[i]
     return new(buf)
 
   @immutable
-  def swapcase(self) -> Self:
+  def swapCase(self) -> Self:
     n: int = len(self)
-    buf: T[:] = new(n)
+    buf: Host[:] = new(n)
     for i in range(n):
-      c: T = self._data[i]
+      c: Host = self._data[i]
       if c >= ord("A") and c <= ord("Z"):
         buf[i] = c + 32
       elif c >= ord("a") and c <= ord("z"):
@@ -1328,27 +1328,27 @@ class StringMixin[T: oneof[char, byte]]:
   @immutable
   def title(self) -> Self:
     n: int = len(self)
-    buf: T[:] = new(n)
-    new_word: bool = True
+    buf: Host[:] = new(n)
+    newWord: bool = True
     for i in range(n):
-      c: T = self._data[i]
-      if Self._is_alpha_char(c):
-        if new_word:
-          buf[i] = Self._to_upper_char(c)
-          new_word = False
+      c: Host = self._data[i]
+      if Self._isAlphaChar(c):
+        if newWord:
+          buf[i] = Self._toUpperChar(c)
+          newWord = False
         else:
-          buf[i] = Self._to_lower_char(c)
+          buf[i] = Self._toLowerChar(c)
       else:
         buf[i] = c
-        new_word = True
+        newWord = True
     return new(buf)
 
   @immutable
   def upper(self) -> Self:
     n: int = len(self)
-    buf: T[:] = new(n)
+    buf: Host[:] = new(n)
     for i in range(n):
-      buf[i] = Self._to_upper_char(self._data[i])
+      buf[i] = Self._toUpperChar(self._data[i])
     return new(buf)
 
   @immutable
@@ -1356,68 +1356,68 @@ class StringMixin[T: oneof[char, byte]]:
     n: int = len(self)
     if width <= n:
       return self
-    sign: T = Self._zfill_pad_char()
-    body_start: int = 0
-    has_sign: bool = False
+    sign: Host = Self._zfillPadChar()
+    bodyStart: int = 0
+    hasSign: bool = False
     if n > 0:
-      c0: T = self._data[0]
+      c0: Host = self._data[0]
       if c0 in "+-":
-        has_sign = True
+        hasSign = True
         sign = c0
-        body_start = 1
+        bodyStart = 1
     pad: int = width - n
-    buf: T[:] = new(width)
+    buf: Host[:] = new(width)
     at: int = 0
-    if has_sign:
+    if hasSign:
       buf[at] = sign
       at += 1
-    zc: T = Self._zfill_pad_char()
+    zc: Host = Self._zfillPadChar()
     for _ in range(pad):
       buf[at] = zc
       at += 1
-    for i in range(body_start, n):
+    for i in range(bodyStart, n):
       buf[at] = self._data[i]
       at += 1
     return new(buf)
 
   @staticmethod
   @overload
-  def maketrans(table: dict[T, T]) -> dict[T, T]:
-    """``maketrans(dict)``：直接返回映射表。"""
+  def makeTrans(table: dict[Host, Host]) -> dict[Host, Host]:
+    """``makeTrans(dict)``：直接返回映射表。"""
     return table
 
   @staticmethod
   @overload
-  def maketrans(frm: Self, to: Self, remove: Self = new()) -> dict[T, T]:
-    """``maketrans(from, to[, remove])``；``remove`` 写入 ``_translate_delete_marker``。"""
-    table: dict[T, T] = {}
+  def makeTrans(frm: Self, to: Self, remove: Self = new()) -> dict[Host, Host]:
+    """``makeTrans(from, to[, remove])``；``remove`` 写入 ``_translateDeleteMarker``。"""
+    table: dict[Host, Host] = {}
     n: int = len(frm)
     for i in range(n):
       table[frm._data[i]] = to._data[i]
     zlen: int = len(remove)
     for i in range(zlen):
-      table[remove._data[i]] = Self._translate_delete_marker()
+      table[remove._data[i]] = Self._translateDeleteMarker()
     return table
 
   @immutable
-  def translate(self, table: dict[T, T], delete: Self = new()) -> Self:
-    """``translate(table[, delete])``；表内删除哨兵由宿主 ``_translate_delete_marker`` 提供。"""
+  def translate(self, table: dict[Host, Host], delete: Self = new()) -> Self:
+    """``translate(table[, delete])``；表内删除哨兵由宿主 ``_translateDeleteMarker`` 提供。"""
     n: int = len(self)
-    cap: int = Self._translate_buf_len(n)
-    buf: T[:] = new(cap)
+    cap: int = Self._translateBufLen(n)
+    buf: Host[:] = new(cap)
     at: int = 0
     for i in range(n):
-      c: T = self._data[i]
+      c: Host = self._data[i]
       if Self(c) in delete:
         continue
       if c in table:
-        mapped: T = table[c]
-        if mapped == Self._translate_delete_marker():
+        mapped: Host = table[c]
+        if mapped == Self._translateDeleteMarker():
           continue
         at = Self._append(buf, at, mapped)
       else:
         at = Self._append(buf, at, c)
-    trimmed: T[:] = new(at)
+    trimmed: Host[:] = new(at)
     for k in range(at):
       trimmed[k] = buf[k]
     return new(trimmed)

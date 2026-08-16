@@ -4,7 +4,7 @@ from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 from py2cpp.io.path import Path
 from py2cpp.io.file.path import join
 from py2cpp.serde.json import Json, JsonDocument
-from py2cpp.test.test_temp import _TEST_TEMP, ensure_test_temp
+from py2cpp.test.test_temp import _TestTemp, ensureTestTemp
 
 
 @serializable
@@ -33,7 +33,7 @@ class Org:
   teams: list[Team] @optional = []
 
 
-_SAMPLE: str = (
+_Sample: str = (
   '{"title":"acme","teams":[{"name":"eng","members":'
   '[{"id":1,"name":"bob","active":true,"tags":[]}'
   ']}]}'
@@ -41,30 +41,30 @@ _SAMPLE: str = (
 
 
 class JsonDocumentLoadTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
-    ensure_test_temp()
-    path: Path = new(join(_TEST_TEMP, "_json_doc_load.json"))
-    path.write_text(_SAMPLE)
+    ensureTestTemp()
+    path: Path = new(join(_TestTemp, "_json_doc_load.json"))
+    path.writeText(_Sample)
     doc: JsonDocument[Org] = new.open(str(path), "r")
     org: Org = doc.load()
-    org2: Org = Json.loads[Org](_SAMPLE)
+    org2: Org = Json.loads[Org](_Sample)
     self.assertEqual(org.title, org2.title)
     self.assertEqual(org.teams[0].name, org2.teams[0].name)
     self.assertEqual(org.teams[0].members[0].name, org2.teams[0].members[0].name)
-    self.assertEqual(doc.dump(), _SAMPLE)
+    self.assertEqual(doc.dump(), _Sample)
 
 
 class JsonDocumentReadTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
-    ensure_test_temp()
-    path: Path = new(join(_TEST_TEMP, "_json_doc_read.json"))
-    path.write_text(_SAMPLE)
+    ensureTestTemp()
+    path: Path = new(join(_TestTemp, "_json_doc_read.json"))
+    path.writeText(_Sample)
     doc: JsonDocument[Org] = new.open(str(path), "r")
     name: str = doc.teams[0].members[0].name
     self.assertEqual(name, "bob")
@@ -73,13 +73,13 @@ class JsonDocumentReadTests(TestCaseMixin):
 
 
 class JsonDocumentCrudTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
-    ensure_test_temp()
-    path: Path = new(join(_TEST_TEMP, "_json_doc_crud.json"))
-    path.write_text(_SAMPLE)
+    ensureTestTemp()
+    path: Path = new(join(_TestTemp, "_json_doc_crud.json"))
+    path.writeText(_Sample)
     doc: JsonDocument[Org] = new.open(str(path), "r+")
     doc.teams[0].members[0].name = "alice"
     u: User = new(id=2, name="carol", active=True)
@@ -94,7 +94,7 @@ class JsonDocumentCrudTests(TestCaseMixin):
 
 def main() -> int:
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

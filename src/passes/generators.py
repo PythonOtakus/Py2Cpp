@@ -32,7 +32,7 @@ _FOR_PREFIX = "_for"
 
 @dataclass(frozen=True)
 class GeneratorTypes:
-  """``Generator[Yield, Send, Return]`` 三型参（AST 注解节点）。"""
+  """``GeneratorType[Yield, Send, Return]`` 三型参（AST 注解节点）。"""
 
   yield_ann: ast.expr
   send_ann: ast.expr
@@ -111,8 +111,8 @@ def _parse_generator_ann(annotation: ast.expr | None) -> GeneratorTypes | None:
   if not isinstance(annotation, ast.Subscript):
     return None
   if isinstance(annotation.value, ast.Name) and annotation.value.id in (
-    "Generator",
-    "Coroutine",
+    "GeneratorType",
+    "CoroutineType",
   ):
     elts = _slice_elts(annotation.slice)
     if len(elts) == 3:
@@ -129,7 +129,7 @@ def _parse_generator_ann(annotation: ast.expr | None) -> GeneratorTypes | None:
       return GeneratorTypes(_norm_type_ann(elts[0]), none, none)
   if (
     isinstance(annotation.value, ast.Name)
-    and annotation.value.id == "AsyncGenerator"
+    and annotation.value.id == "AsyncGeneratorType"
   ):
     elts = _slice_elts(annotation.slice)
     none = ast.Name(id="PyNone")
@@ -373,7 +373,7 @@ def _infer_await_completion_ann(
           info = tr.classes.get(ctor)
       if info is not None:
         ret = tr._receiver_method_return_cpp_type(info, "__aenter__")
-        if ret and ret != "Self" and not ret.endswith("_coroutine") and "Coroutine" not in ret:
+        if ret and ret != "Self" and not ret.endswith("_coroutine") and "CoroutineType" not in ret:
           from ..analysis.ir import strip_cpp_ref, cpp_ident
           ret = strip_cpp_ref(ret)
           if ret in ("int", cpp_ident("int")):
@@ -526,7 +526,7 @@ def _infer_hoisted_field_ann(
         if (
           isinstance(it_ann, ast.Subscript)
           and isinstance(it_ann.value, ast.Name)
-          and it_ann.value.id == "list_iterator"
+          and it_ann.value.id == "ListIterator"
         ):
           return copy.deepcopy(it_ann.slice)
   return ast.Name(id="int")
@@ -580,7 +580,7 @@ def _var_ctor_class(name: str, body: list[ast.stmt], tr: Translator) -> str | No
 
 def _list_iterator_ann(elem: ast.expr) -> ast.expr:
   return ast.Subscript(
-    value=ast.Name(id="list_iterator"),
+    value=ast.Name(id="ListIterator"),
     slice=copy.deepcopy(elem),
   )
 
@@ -637,7 +637,7 @@ def _run_thread_return_ann(arg: ast.expr, tr: Translator) -> ast.expr:
 
 
 def _task_await_iter_ann(inner: ast.expr, tr: Translator) -> ast.expr | None:
-  """``Task.sleep/gather/run_thread(...)`` → ``_TaskAwaitIter[…]``（``__await__`` 接收者）。"""
+  """``Task.sleep/gather/runThread(...)`` → ``_TaskAwaitIter[…]``（``__await__`` 接收者）。"""
   if not isinstance(inner, ast.Call) or not isinstance(inner.func, ast.Attribute):
     return None
   recv = inner.func.value
@@ -649,7 +649,7 @@ def _task_await_iter_ann(inner: ast.expr, tr: Translator) -> ast.expr | None:
       value=ast.Name(id="_TaskAwaitIter"),
       slice=ast.Constant(value=None),
     )
-  if meth in ("wait_read", "wait_write"):
+  if meth in ("waitRead", "waitWrite"):
     return ast.Subscript(
       value=ast.Name(id="_TaskAwaitIter"),
       slice=ast.Constant(value=None),
@@ -659,7 +659,7 @@ def _task_await_iter_ann(inner: ast.expr, tr: Translator) -> ast.expr | None:
       value=ast.Name(id="_TaskAwaitIter"),
       slice=ast.Subscript(value=ast.Name(id="list"), slice=ast.Name(id="int")),
     )
-  if meth == "run_thread":
+  if meth == "runThread":
     elem: ast.expr = ast.Name(id="int")
     if inner.args:
       elem = _run_thread_return_ann(inner.args[0], tr)
@@ -694,10 +694,10 @@ def _infer_iter_type(
     case ast.Call(func=ast.Attribute(value=ast.Name(id="Task"), attr=meth)) if meth == "sleep":
       none = ast.Constant(value=None)
       return ast.Subscript(value=ast.Name(id="_TaskAwaitIter"), slice=none)
-    case ast.Call(func=ast.Attribute(value=ast.Name(id="Task"), attr=meth)) if meth in ("wait_read", "wait_write"):
+    case ast.Call(func=ast.Attribute(value=ast.Name(id="Task"), attr=meth)) if meth in ("waitRead", "waitWrite"):
       none = ast.Constant(value=None)
       return ast.Subscript(value=ast.Name(id="_TaskAwaitIter"), slice=none)
-    case ast.Call(func=ast.Attribute(value=ast.Name(id="Task"), attr=meth)) if meth == "run_thread":
+    case ast.Call(func=ast.Attribute(value=ast.Name(id="Task"), attr=meth)) if meth == "runThread":
       elem: ast.expr = ast.Name(id="int")
       if expr.args:
         elem = _run_thread_return_ann(expr.args[0], tr)
@@ -820,7 +820,7 @@ def _infer_iter_type(
         return ast.Name(id=cn)
       if current_gen is not None and current_gen == f"{name}{GENERATOR_SUFFIX}":
         return ast.Name(id=current_gen)
-      if name == "listdir":
+      if name == "listDir":
         return _list_iterator_ann(ast.Name(id="str"))
       if name == "scandir":
         return _scandir_iter_ann()
@@ -843,7 +843,7 @@ def _infer_iter_type(
       val = _find_hoisted_assign_value(var, lookup_body)
       if val is not None:
         match val:
-          case ast.Call(func=ast.Name(id="listdir")):
+          case ast.Call(func=ast.Name(id="listDir")):
             return _list_iterator_ann(ast.Name(id="str"))
           case ast.Call(func=ast.Name(id="scandir")):
             return _scandir_iter_ann()
@@ -1096,7 +1096,7 @@ def _iter_field_uses_copy_from(
   it_field: str,
   class_info,
 ) -> bool:
-  """``PyListIterator`` 等容器迭代器用 ``copy_from``；原生/子生成器用 ``=``。"""
+  """``PyListIterator`` 等容器迭代器用 ``copyFrom``；原生/子生成器用 ``=``。"""
   if class_info is None:
     return True
   from ..analysis.type_emit import field_ann_ast, field_storage_cpp
@@ -1126,16 +1126,16 @@ def _iter_field_uses_copy_from(
 
 
 def _yield_from_iter_uses_assign(ann: ast.expr) -> bool:
-  """容器迭代器用 ``copy_from`` 绑定 owner；子生成器/协程/原生迭代器用复制赋值。"""
+  """容器迭代器用 ``copyFrom`` 绑定 owner；子生成器/协程/原生迭代器用复制赋值。"""
   match ann:
     case ast.Name(id=name):
-      if name in ("ScandirIterator", "scandir_iterator"):
+      if name in ("ScandirIterator", "ScandirIterator"):
         return False
       return not (
         name.endswith(GENERATOR_SUFFIX) or name.endswith(COROUTINE_SUFFIX)
       )
     case ast.Subscript(value=ast.Name(id=name)):
-      if name in ("Generator", "Coroutine", "AsyncGenerator"):
+      if name in ("GeneratorType", "CoroutineType", "AsyncGeneratorType"):
         return False
       if name == "_TaskAwaitIter":
         return False
@@ -1341,7 +1341,7 @@ def _method_coroutine_storage_ann(
 
 
 def _for_iter_needs_seq_hoist(expr: ast.expr) -> bool:
-  """``for x in expr`` 中 ``expr`` 为非常量名且产出 ``list_iterator`` 时须持久化 ``list``。"""
+  """``for x in expr`` 中 ``expr`` 为非常量名且产出 ``ListIterator`` 时须持久化 ``list``。"""
   return not isinstance(expr, ast.Name)
 
 
@@ -1349,7 +1349,7 @@ def _list_ann_from_iter_ann(iter_ann: ast.expr) -> ast.expr | None:
   if (
     isinstance(iter_ann, ast.Subscript)
     and isinstance(iter_ann.value, ast.Name)
-    and iter_ann.value.id == "list_iterator"
+    and iter_ann.value.id == "ListIterator"
   ):
     return ast.Subscript(
       value=ast.Name(id="list"),
@@ -1361,7 +1361,7 @@ def _list_ann_from_iter_ann(iter_ann: ast.expr) -> ast.expr | None:
 def _list_ann_from_generator_name(
   gen_name: str, tr: Translator,
 ) -> tuple[ast.expr, ast.expr] | None:
-  """分态 ``for`` 不能嵌套生成器成员，物化 ``list`` + ``list_iterator``。"""
+  """分态 ``for`` 不能嵌套生成器成员，物化 ``list`` + ``ListIterator``。"""
   info = tr.classes.get(gen_name)
   if info is not None:
     elem = info.type_aliases.get("Element")
@@ -1426,7 +1426,7 @@ def _suspend_for_generator_materialize(
   current_gen: str | None,
   elem_ann: ast.expr | None,
 ) -> tuple[ast.expr, ast.expr] | None:
-  """分态 ``for`` 的成员不能嵌套生成器，须 ``list`` + ``list_iterator``。"""
+  """分态 ``for`` 的成员不能嵌套生成器，须 ``list`` + ``ListIterator``。"""
   if not isinstance(it_ann, ast.Name):
     return None
   name = it_ann.id
@@ -2036,10 +2036,10 @@ def _coroutine_return_ann(func: ast.FunctionDef) -> ast.expr:
       if (
         isinstance(func.returns, ast.Subscript)
         and isinstance(func.returns.value, ast.Name)
-        and func.returns.value.id == "AsyncGenerator"
+        and func.returns.value.id == "AsyncGeneratorType"
       ):
         return ast.Subscript(
-          value=ast.Name(id="Coroutine"),
+          value=ast.Name(id="CoroutineType"),
           slice=ast.Tuple(
             elts=[
               copy.deepcopy(parsed.yield_ann),
@@ -2053,13 +2053,13 @@ def _coroutine_return_ann(func: ast.FunctionDef) -> ast.expr:
   if func.returns is not None:
     ret_ty = copy.deepcopy(func.returns)
     return ast.Subscript(
-      value=ast.Name(id="Coroutine"),
+      value=ast.Name(id="CoroutineType"),
       slice=ast.Tuple(elts=[none, none, ret_ty]),
     )
   r = _infer_return_ann(func.body)
   y = _infer_yield_ann(func.body)
   return ast.Subscript(
-    value=ast.Name(id="Coroutine"),
+    value=ast.Name(id="CoroutineType"),
     slice=ast.Tuple(elts=[copy.deepcopy(y), none, copy.deepcopy(r)]),
   )
 
@@ -2084,7 +2084,7 @@ def _is_task_scheduling_call(expr: ast.expr) -> bool:
     return False
   recv = inner.func.value
   if isinstance(recv, ast.Name) and recv.id == "Task":
-    return inner.func.attr in ("sleep", "gather", "create", "run_thread", "wait_read", "wait_write")
+    return inner.func.attr in ("sleep", "gather", "create", "runThread", "waitRead", "waitWrite")
   return False
 
 
@@ -2339,7 +2339,7 @@ def _expand_classinfo_generators(tr: Translator) -> None:
 def _register_generator_host_friend(
   host: ClassInfo | None, gen_cls: ast.ClassDef,
 ) -> None:
-  """``Host_method_generator`` 须访问宿主 ``_…`` 成员（同 ``list_iterator`` 友元）。"""
+  """``Host_method_generator`` 须访问宿主 ``_…`` 成员（同 ``ListIterator`` 友元）。"""
   if host is None:
     return
   if gen_cls.name not in host.friend_classes:

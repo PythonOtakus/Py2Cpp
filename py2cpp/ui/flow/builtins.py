@@ -1,46 +1,46 @@
 """Flow 内置控制流节点（Branch / For Loop）。"""
 from ...builtins import *
 from .catalog import FlowNodeCatalog, FlowPinSpec
-from .model import FlowNodeKind, FlowPinKind
+from .model import FlowNodeEnum, FlowPinEnum
 
 
-BRANCH_KIND: str = "flow.builtin.branch"
-FOR_LOOP_KIND: str = "flow.builtin.for_loop"
-BUILTIN_CATEGORY: str = "Flow Control"
+BranchKind: str = "flow.builtin.branch"
+ForLoopKind: str = "flow.builtin.for_loop"
+BuiltinCategory: str = "Flow Control"
 
 
-def _exec_in() -> FlowPinSpec:
+def _execIn() -> FlowPinSpec:
   p: FlowPinSpec = new()
   p.name = "execute"
-  p.kind = FlowPinKind.ExecIn
+  p.kind = FlowPinEnum.ExecIn
   return p
 
 
-def _exec_out(name: str) -> FlowPinSpec:
+def _execOut(name: str) -> FlowPinSpec:
   p: FlowPinSpec = new()
   p.name = name
-  p.kind = FlowPinKind.ExecOut
+  p.kind = FlowPinEnum.ExecOut
   return p
 
 
-def _data_in(name: str, type_id: str) -> FlowPinSpec:
+def _dataIn(name: str, typeId: str) -> FlowPinSpec:
   p: FlowPinSpec = new()
   p.name = name
-  p.kind = FlowPinKind.DataIn
-  p.type_id = type_id
+  p.kind = FlowPinEnum.DataIn
+  p.typeId = typeId
   return p
 
 
-def register_flow_builtins(catalog: FlowNodeCatalog @ref) -> None:
-  branch_pins: list[FlowPinSpec, 0] = []
-  branch_pins.append(_exec_in())
-  branch_pins.append(_data_in("condition", "bool"))
-  branch_pins.append(_exec_out("OnTrue"))
-  branch_pins.append(_exec_out("OnFalse"))
-  catalog.register(BRANCH_KIND, "Branch", BUILTIN_CATEGORY, FlowNodeKind.Branch, "", branch_pins)
-  loop_pins: list[FlowPinSpec, 0] = []
-  loop_pins.append(_exec_in())
-  loop_pins.append(_data_in("count", "int"))
-  loop_pins.append(_exec_out("LoopBody"))
-  loop_pins.append(_exec_out("Completed"))
-  catalog.register(FOR_LOOP_KIND, "For Loop", BUILTIN_CATEGORY, FlowNodeKind.ForLoop, "", loop_pins)
+def registerFlowBuiltins(catalog: FlowNodeCatalog @ref) -> None:
+  branchPins: list[FlowPinSpec, 0] = []
+  branchPins.append(_execIn())
+  branchPins.append(_dataIn("condition", "bool"))
+  branchPins.append(_execOut("OnTrue"))
+  branchPins.append(_execOut("OnFalse"))
+  catalog.register(BranchKind, "Branch", BuiltinCategory, FlowNodeEnum.Branch, "", branchPins)
+  loopPins: list[FlowPinSpec, 0] = []
+  loopPins.append(_execIn())
+  loopPins.append(_dataIn("count", "int"))
+  loopPins.append(_execOut("LoopBody"))
+  loopPins.append(_execOut("Completed"))
+  catalog.register(ForLoopKind, "For Loop", BuiltinCategory, FlowNodeEnum.ForLoop, "", loopPins)

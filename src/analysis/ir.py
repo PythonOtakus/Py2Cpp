@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 
 from .patterns import auto_template_type_param_name, escape_cpp_param, property_getter_method_for
 
-from ..constant.language import CPP_RENAME
+from ..constant.language import CPP_RENAME, default_py_class_cpp_name
 from ..constant.type_markers import TYPE_MARKER_CLASSES
 
 
@@ -34,9 +34,9 @@ def _cpp_tpl_prefix(py_class: str) -> str:
 CPP_ARRAY_PREFIX = _cpp_tpl_prefix("array")
 CPP_ARRAY2D_PREFIX = _cpp_tpl_prefix("array2d")
 CPP_ARRAY3D_PREFIX = _cpp_tpl_prefix("array3d")
-CPP_STACK_ARRAY_PREFIX = _cpp_tpl_prefix("stack_array")
-CPP_STACK_ARRAY2D_PREFIX = _cpp_tpl_prefix("stack_array2d")
-CPP_STACK_ARRAY3D_PREFIX = _cpp_tpl_prefix("stack_array3d")
+CPP_STACK_ARRAY_PREFIX = _cpp_tpl_prefix("StackArray")
+CPP_STACK_ARRAY2D_PREFIX = _cpp_tpl_prefix("StackArray2d")
+CPP_STACK_ARRAY3D_PREFIX = _cpp_tpl_prefix("StackArray3d")
 CPP_SPAN_PREFIX = _cpp_tpl_prefix("span")
 CPP_SPAN2D_PREFIX = _cpp_tpl_prefix("span2d")
 CPP_SPAN3D_PREFIX = _cpp_tpl_prefix("span3d")
@@ -197,8 +197,13 @@ def cpp_type_rename(name: str) -> str | None:
 
 
 def cpp_ident(name: str) -> str:
-  """Python 标识符 → C++ 标识符（``@native_name`` + 标量重命名表）。"""
-  return cpp_type_rename(name) or name
+  """Python 类型/类标识符 → C++ 标识符（``@native_name`` / 标量表 / 默认 ``Py`` 前缀）。"""
+  if name == "void":
+    return "void"
+  ren = cpp_type_rename(name)
+  if ren is not None:
+    return ren
+  return default_py_class_cpp_name(name)
 
 
 def cpp_type_param_template_name(py_name: str) -> str:
@@ -856,7 +861,7 @@ def cpp_stack_array_field_decl(cpp_type: str, name: str) -> str:
 
 
 def cpp_iterator_type(iterator_py: str, elem: str, elem2: str | None = None) -> str:
-  """``list_iterator`` + ``T`` → ``PyListIterator<T>``；双参数形如 ``dict_key_iterator<K,V>``。"""
+  """``ListIterator`` + ``T`` → ``PyListIterator<T>``；双参数形如 ``DictKeyIterator<K,V>``。"""
   if elem2 is not None:
     return cpp_template_type(iterator_py, f"{elem}, {elem2}")
   return cpp_template_type(iterator_py, elem)
@@ -1117,7 +1122,7 @@ def iter_result_value_cpp(var: str) -> str:
 
 
 def iter_result_return_value_cpp(var: str) -> str:
-  return f"{var}.return_value__get()"
+  return f"{var}.returnValue__get()"
 
 
 def cpp_option_tag_enum(cpp_type: str) -> str:
@@ -2203,7 +2208,7 @@ def is_ref_type_annotation(ann: ast.expr | None) -> bool:
 
 
 _TYPE_ANNOTATION_METADATA_MARKERS = frozenset(
-  {"const", "final", "optional", "property", "ref", "lazy", "thread_local"},
+  {"const", "final", "optional", "property", "ref", "lazy", "thread_local", "native_name"},
 )
 
 
@@ -2215,6 +2220,28 @@ def is_lazy_type_annotation(ann: ast.expr | None) -> bool:
 def is_thread_local_type_annotation(ann: ast.expr | None) -> bool:
   """``T @thread_local``：类级 ``static thread_local`` 字段。"""
   return _matmult_marker_name(ann, "thread_local")
+
+
+def parse_native_name_type_annotation(ann: ast.expr | None) -> str | None:
+  """``T @native_name(\"CName\")`` → ``CName``（字段 / FFI 常量 C 侧标识）。"""
+  cur = ann
+  while isinstance(cur, ast.BinOp) and isinstance(cur.op, ast.MatMult):
+    right = cur.right
+    if (
+      isinstance(right, ast.Call)
+      and isinstance(right.func, ast.Name)
+      and right.func.id == "native_name"
+      and right.args
+      and isinstance(right.args[0], ast.Constant)
+      and isinstance(right.args[0].value, str)
+    ):
+      return right.args[0].value
+    cur = cur.left
+  return None
+
+
+def is_native_name_type_annotation(ann: ast.expr | None) -> bool:
+  return parse_native_name_type_annotation(ann) is not None
 
 
 def iter_matmult_marker_names(ann: ast.expr | None) -> list[str]:
@@ -2253,6 +2280,7 @@ def _strip_type_annotation_markers_once(ann: ast.expr | None) -> ast.expr | None
     or is_ref_type_annotation(ann)
     or is_lazy_type_annotation(ann)
     or is_thread_local_type_annotation(ann)
+    or is_native_name_type_annotation(ann)
   ):
     return copy.deepcopy(ann.left)
   return copy.deepcopy(ann)
@@ -2272,6 +2300,7 @@ def strip_type_annotation_markers(ann: ast.expr | None) -> ast.expr | None:
     or is_postsetter_type_annotation(out)
     or is_lazy_type_annotation(out)
     or is_thread_local_type_annotation(out)
+    or is_native_name_type_annotation(out)
   ):
     out = _strip_type_annotation_markers_once(out)
   return out
@@ -2342,7 +2371,7 @@ _DECORATOR_BOUND_MUTEX_PAIRS: tuple[frozenset[str], ...] = (
 def split_typevar_bounds(
   bounds: tuple[str, ...],
 ) -> tuple[tuple[str, ...], tuple[str, ...]]:
-  """``T: DictKey & refcount`` → 协议约束 + 装饰器约束。"""
+  """``T: DictKeyType & refcount`` → 协议约束 + 装饰器约束。"""
   proto: list[str] = []
   dec: list[str] = []
   for b in bounds:
@@ -2383,7 +2412,7 @@ def merge_decorator_type_constraint(
 
 @dataclass(frozen=True)
 class FuncTypeParametricBound:
-  """``Impl: Navigatable[Assoc]`` → ``Navigatable_requires<Impl, Assoc>``。"""
+  """``Impl: NavigatableType[Assoc]`` → ``Navigatable_requires<Impl, Assoc>``。"""
 
   protocol: str
   assoc_type_param: str
@@ -2397,7 +2426,7 @@ def _merge_func_type_constraint(
   tp: str,
   bound: str,
 ) -> None:
-  """合并同一模板形参上的多条 ``@protocol`` 约束（如 ``DictKey`` + ``Navigatable``）。"""
+  """合并同一模板形参上的多条 ``@protocol`` 约束（如 ``DictKeyType`` + ``NavigatableType``）。"""
   if tp not in constraints:
     constraints[tp] = bound
     return
@@ -2434,7 +2463,7 @@ def _protocol_assoc_for_parametric_bound(
 def protocol_param_template_from_annotation(
   ann: ast.expr,
 ) -> tuple[str, str | None] | None:
-  """``Comparable`` / ``Iterable[T]`` / ``Navigatable[Node]`` → ``(协议名, 关联形参或 None)``。"""
+  """``ComparableType`` / ``IterableType[T]`` / ``NavigatableType[Node]`` → ``(协议名, 关联形参或 None)``。"""
   match ann:
     case ast.Name(id=name):
       if name in PROTOCOL_FUNC_TYPE_PARAM:
@@ -2907,6 +2936,8 @@ class ClassInfo:
     # 成员访问级别（``analysis.access.resolve_member_access`` 填充）
     self.member_access: dict[str, str] = {}
     self.member_cpp_names: dict[str, str] = {}
+    # ``name: T @native_name(\"C\")`` → C++ 成员名（FFI using 结构体字段）
+    self.field_native_names: dict[str, str] = {}
     # 字段名 → (元素 C++ 类型, "free" | "freeArray")，由 __init__ 中 alloc/allocArray 推断
     self.owned_fields: dict[str, tuple[str, str]] = {}
     # ``allocArray`` 字段在构造使用整数字面量大小时的元素个数
@@ -3165,6 +3196,8 @@ class ClassInfo:
     return None
 
   def cpp_member_name(self, name: str) -> str:
+    if name in self.field_native_names:
+      return self.field_native_names[name]
     if name in self.member_cpp_names:
       return self.member_cpp_names[name]
     return escape_cpp_param(name)
@@ -3431,6 +3464,9 @@ class ClassInfo:
       if name not in self.fields:
         self.fields.append(name)
       self.class_body_field_anns.add(name)
+      native_field = parse_native_name_type_annotation(stmt.annotation)
+      if native_field:
+        self.field_native_names[name] = native_field
       if stmt.annotation is not None:
         write_field_storage(self, name, None)
         write_field_ann_ast(self, name, copy.deepcopy(stmt.annotation))

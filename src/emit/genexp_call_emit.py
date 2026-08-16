@@ -1,4 +1,4 @@
-"""``Iterable[T]`` 形参 + genexp 实参：调用点 IIFE 内联（非内建五函数）。"""
+"""``IterableType[T]`` 形参 + genexp 实参：调用点 IIFE 内联（非内建五函数）。"""
 from __future__ import annotations
 
 import ast
@@ -52,7 +52,7 @@ def try_emit_iterable_genexp_call(tr: Translator, node: ast.Call) -> str | None:
   iterable_params = literal_iterable_param_names(target.func_def)
   if not iterable_params:
     raise TranslationError(
-      "生成器表达式实参须传给注解为 Iterable[...] 的形参",
+      "生成器表达式实参须传给注解为 IterableType[...] 的形参",
       location=location_from_node(tr, node),
     )
 
@@ -67,12 +67,12 @@ def try_emit_iterable_genexp_call(tr: Translator, node: ast.Call) -> str | None:
   ]
   if non_iterable_genexp:
     raise TranslationError(
-      "生成器表达式实参须传给注解为 Iterable[...] 的形参",
+      "生成器表达式实参须传给注解为 IterableType[...] 的形参",
       location=location_from_node(tr, genexp_slots[0][1]),
     )
   if len(genexp_hits) > 1:
     raise TranslationError(
-      "不支持多个 Iterable 形参同时传入生成器表达式",
+      "不支持多个 IterableType 形参同时传入生成器表达式",
       location=location_from_node(tr, node),
     )
   if not genexp_hits:

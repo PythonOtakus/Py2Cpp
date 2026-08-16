@@ -1,8 +1,9 @@
-"""``ExcSlot``（``@union.mro``）→ ``ExceptionGroup`` 头/实现：动态 ctx + 模板。"""
+"""``ExcTypeUnion``（``@union.mro``）→ ``ExceptionGroup`` 头/实现：动态 ctx + 模板。"""
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from ..analysis.ir import cpp_ident
 from ..analysis.patterns import property_getter_method_for
 from ..constant.stdlib_layout import EXCEPTIONS_NS
 from .expand_py2cpp_template import expand_template
@@ -11,7 +12,9 @@ if TYPE_CHECKING:
   from ..analysis.ir import ClassInfo
   from ..translator import Translator
 
-_EXC_SLOT_NAME = "ExcSlot"
+_EXC_SLOT_NAME = "ExcTypeUnion"
+_EXC_SLOT_CPP = cpp_ident(_EXC_SLOT_NAME)
+_EXC_GROUP_CPP = cpp_ident("ExceptionGroup")
 
 
 def _exc_slot_info(tr: Translator) -> ClassInfo | None:
@@ -27,7 +30,7 @@ def _class_members(info: ClassInfo) -> list[tuple[str, str]]:
     cls_name = info.union_mro_member_classes.get(member.name)
     if cls_name is None:
       continue
-    out.append((member.name, cls_name))
+    out.append((member.name, cpp_ident(cls_name)))
   return out
 
 
@@ -40,10 +43,15 @@ def _mro_instance_pairs(tr: Translator, info: ClassInfo) -> list[tuple[str, str]
     for match_m, match_cls in members:
       if slot_m == match_m:
         continue
-      slot_info = tr.classes.get(slot_cls)
+      # union_mro_member_classes 存 Python 名；subclass 查询用原名
+      slot_py = info.union_mro_member_classes.get(slot_m)
+      match_py = info.union_mro_member_classes.get(match_m)
+      if slot_py is None or match_py is None:
+        continue
+      slot_info = tr.classes.get(slot_py)
       if slot_info is None:
         continue
-      if is_subclass_of(slot_info, match_cls, tr):
+      if is_subclass_of(slot_info, match_py, tr):
         pairs.append((slot_m, match_m))
   return pairs
 
@@ -86,21 +94,21 @@ def render_exception_group_impl(tr: Translator) -> str:
       "core/exception_group_fallback.inl",
       apply_allman=True,
     ).strip()
-  qual_enum = f"{EXCEPTIONS_NS}::ExcSlot::Enum"
+  qual_enum = f"{EXCEPTIONS_NS}::{_EXC_SLOT_CPP}::Enum"
   members = _class_members(info)
   pairs = _mro_instance_pairs(tr, info)
   enum_getter = property_getter_method_for("__enum__")
   append_impls = "\n\n".join(
-    f"void ExceptionGroup::append(const {cls}& e)\n"
+    f"void {_EXC_GROUP_CPP}::append(const {cls}& e)\n"
     f"{{\n"
-    f"  push_slot_impl(ExcSlot::{member}(e));\n"
+    f"  push_slot_impl({_EXC_SLOT_CPP}::{member}(e));\n"
     f"}}"
     for member, cls in members
   )
   from_single = "\n\n".join(
-    f"ExceptionGroup exception_group_from_single(const {cls}& e)\n"
+    f"{_EXC_GROUP_CPP} exception_group_from_single(const {cls}& e)\n"
     f"{{\n"
-    f"  ExceptionGroup g;\n"
+    f"  {_EXC_GROUP_CPP} g;\n"
     f"  g.append(e);\n"
     f"  return g;\n"
     f"}}"

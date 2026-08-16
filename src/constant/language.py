@@ -37,6 +37,36 @@ CPP_RENAME: dict[str, str] = {
   "byte": "PyByte",
 }
 
+
+def default_py_class_cpp_name(name: str) -> str:
+  """Python 类名 → 默认 C++ 名：``Py`` 前缀，前导 ``_`` 挪到 ``Py`` 前；小写首字母大写。
+
+  - ``Handle`` → ``PyHandle``；``_Handle`` → ``_PyHandle``；``list`` → ``PyList``
+  - 已是 ``Py``+大写 / ``Pyi…`` / ``pyi…`` 则不再加业务 ``Py``
+  - ``Self`` 保持 ``Self``（协议探测 / typing，勿成 ``PySelf``）
+  """
+  if not name:
+    return name
+  if name == "Self":
+    return "Self"
+  n_us = 0
+  while n_us < len(name) and name[n_us] == "_":
+    n_us += 1
+  body = name[n_us:]
+  if not body:
+    return name
+  if body.startswith("Pyi") or body.startswith("pyi"):
+    return name
+  if body.startswith("Py") and len(body) > 2 and body[2].isupper():
+    return ("_" * n_us) + body
+  # 单字母形参（``T`` / ``U`` / ``E``）保持原样，勿成 ``PyT``
+  if len(body) == 1:
+    return ("_" * n_us) + body
+  if body[0].islower():
+    body = body[0].upper() + body[1:]
+  return ("_" * n_us) + "Py" + body
+
+
 DUNDER_METHODS = frozenset({
   "__init__", "__del__", "__len__", "__getitem__", "__setitem__",
   "__iter__", "__next__", "__contains__", "__bool__", "__str__",

@@ -2,11 +2,11 @@
 from py2cpp import *
 
 
-async def inner() -> AsyncGenerator[int, None]:
+async def inner() -> AsyncGeneratorType[int, None]:
   yield 1
 
 
-async def outer() -> AsyncGenerator[int, None]:
+async def outer() -> AsyncGeneratorType[int, None]:
   yield from inner()
 
 

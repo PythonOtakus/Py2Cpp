@@ -34,7 +34,7 @@ static void _web_ensure_wsa()
   WSADATA wsa;
   if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
   {
-    throw PY2CPP_TYPE(OSError)();
+    throw PY2CPP_TYPE(PyOSError)();
   }
   _web_wsa_ready = true;
 #endif
@@ -42,7 +42,7 @@ static void _web_ensure_wsa()
 
 static void _web_throw_oserror()
 {
-  throw PY2CPP_TYPE(OSError)();
+  throw PY2CPP_TYPE(PyOSError)();
 }
 
 static int _web_last_error()
@@ -269,7 +269,7 @@ void PyTcpSocket::close()
   _web_close_state(_web_socket_state(_state));
 }
 
-PyBool PyTcpSocket::is_closed() const
+PyBool PyTcpSocket::isClosed() const
 {
   PyTcpSocketState* st = _web_socket_state(_state);
   return (!st) || st->closed;
@@ -281,7 +281,7 @@ void PyTcpSocket::connect(PyStr host, PyInt port)
   PyTcpSocketState* st = _web_socket_state(_state);
   _web_close_state(st);
   char hbuf[256];
-  host.copy_to_span(PySpan<PyByte>((PyByte*)hbuf, (PyInt)sizeof(hbuf), 1));
+  host.copyToSpan(PySpan<PyByte>((PyByte*)hbuf, (PyInt)sizeof(hbuf), 1));
 #ifdef _WIN32
   _web_sock_t s = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (s == INVALID_SOCKET)
@@ -333,7 +333,7 @@ void PyTcpSocket::bind(PyStr host, PyInt port)
   PyTcpSocketState* st = _web_socket_state(_state);
   _web_close_state(st);
   char hbuf[256];
-  host.copy_to_span(PySpan<PyByte>((PyByte*)hbuf, (PyInt)sizeof(hbuf), 1));
+  host.copyToSpan(PySpan<PyByte>((PyByte*)hbuf, (PyInt)sizeof(hbuf), 1));
 #ifdef _WIN32
   _web_sock_t s = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (s == INVALID_SOCKET)
@@ -426,7 +426,7 @@ PyTcpSocket PyTcpSocket::accept()
   return out;
 }
 
-void PyTcpSocket::set_blocking(PyBool blocking)
+void PyTcpSocket::setBlocking(PyBool blocking)
 {
   PyTcpSocketState* st = _web_socket_state(_state);
   if (!st)
@@ -443,13 +443,13 @@ void PyTcpSocket::set_blocking(PyBool blocking)
   }
 }
 
-PyInt PyTcpSocket::connect_ex(PyStr host, PyInt port)
+PyInt PyTcpSocket::connectEx(PyStr host, PyInt port)
 {
   _web_ensure_wsa();
   PyTcpSocketState* st = _web_socket_state(_state);
   _web_close_state(st);
   char hbuf[256];
-  host.copy_to_span(PySpan<PyByte>((PyByte*)hbuf, (PyInt)sizeof(hbuf), 1));
+  host.copyToSpan(PySpan<PyByte>((PyByte*)hbuf, (PyInt)sizeof(hbuf), 1));
 #ifdef _WIN32
   _web_sock_t s = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (s == INVALID_SOCKET)
@@ -479,7 +479,7 @@ PyInt PyTcpSocket::connect_ex(PyStr host, PyInt port)
       st->sock = s;
       st->closed = false;
       _web_apply_pending_timeout(st);
-      return SOCKET_WOULD_BLOCK;
+      return SocketWouldBlock;
     }
     _web_close_sock(s);
     _web_throw_oserror();
@@ -513,7 +513,7 @@ PyInt PyTcpSocket::connect_ex(PyStr host, PyInt port)
       st->sock = s;
       st->closed = false;
       _web_apply_pending_timeout(st);
-      return SOCKET_WOULD_BLOCK;
+      return SocketWouldBlock;
     }
     _web_close_sock(s);
     _web_throw_oserror();
@@ -522,10 +522,10 @@ PyInt PyTcpSocket::connect_ex(PyStr host, PyInt port)
   st->sock = s;
   st->closed = false;
   _web_apply_pending_timeout(st);
-  return SOCKET_OK;
+  return SocketOk;
 }
 
-void PyTcpSocket::finish_connect()
+void PyTcpSocket::finishConnect()
 {
   _web_sock_t sock = _web_require_open(_web_socket_state(_state));
   int err = _web_socket_so_error(sock);
@@ -535,7 +535,7 @@ void PyTcpSocket::finish_connect()
   }
 }
 
-PyTcpSocket PyTcpSocket::accept_nonblocking()
+PyTcpSocket PyTcpSocket::acceptNonblocking()
 {
   _web_sock_t sock = _web_require_open(_web_socket_state(_state));
   PyTcpSocket out = PyTcpSocket();
@@ -601,7 +601,7 @@ PyInt PyTcpSocket::send(PyArray<PyByte>& buf, PyInt end)
   return (int)sent;
 }
 
-PyInt PyTcpSocket::send_range_nonblocking(PyArray<PyByte>& buf, PyInt start, PyInt end)
+PyInt PyTcpSocket::sendRangeNonblocking(PyArray<PyByte>& buf, PyInt start, PyInt end)
 {
   _web_sock_t sock = _web_require_open(_web_socket_state(_state));
   int n = buf.__len__();
@@ -626,7 +626,7 @@ PyInt PyTcpSocket::send_range_nonblocking(PyArray<PyByte>& buf, PyInt start, PyI
     int err = _web_last_error();
     if (_web_is_would_block(err))
     {
-      return SOCKET_WOULD_BLOCK;
+      return SocketWouldBlock;
     }
     _web_throw_oserror();
   }
@@ -637,7 +637,7 @@ PyInt PyTcpSocket::send_range_nonblocking(PyArray<PyByte>& buf, PyInt start, PyI
     int err = _web_last_error();
     if (_web_is_would_block(err))
     {
-      return SOCKET_WOULD_BLOCK;
+      return SocketWouldBlock;
     }
     _web_throw_oserror();
   }
@@ -674,7 +674,7 @@ PyInt PyTcpSocket::recv(PyArray<PyByte>& buf, PyInt cap)
   return (int)got;
 }
 
-PyInt PyTcpSocket::recv_nonblocking(PyArray<PyByte>& buf, PyInt cap)
+PyInt PyTcpSocket::recvNonblocking(PyArray<PyByte>& buf, PyInt cap)
 {
   _web_sock_t sock = _web_require_open(_web_socket_state(_state));
   if (cap <= 0)
@@ -694,7 +694,7 @@ PyInt PyTcpSocket::recv_nonblocking(PyArray<PyByte>& buf, PyInt cap)
     int err = _web_last_error();
     if (_web_is_would_block(err))
     {
-      return SOCKET_WOULD_BLOCK;
+      return SocketWouldBlock;
     }
     _web_throw_oserror();
   }
@@ -705,7 +705,7 @@ PyInt PyTcpSocket::recv_nonblocking(PyArray<PyByte>& buf, PyInt cap)
     int err = _web_last_error();
     if (_web_is_would_block(err))
     {
-      return SOCKET_WOULD_BLOCK;
+      return SocketWouldBlock;
     }
     _web_throw_oserror();
   }
@@ -713,7 +713,7 @@ PyInt PyTcpSocket::recv_nonblocking(PyArray<PyByte>& buf, PyInt cap)
   return (int)got;
 }
 
-void PyTcpSocket::set_timeout(PyFloat sec)
+void PyTcpSocket::setTimeout(PyFloat sec)
 {
   PyTcpSocketState* st = _web_socket_state(_state);
   if (!st)
@@ -735,7 +735,7 @@ PyInt64 PyTcpSocket::fileno() const
   return (PyInt64)(uintptr_t)st->sock;
 }
 
-PyBool PyTcpSocket::would_block(PyInt code)
+PyBool PyTcpSocket::wouldBlock(PyInt code)
 {
-  return code == SOCKET_WOULD_BLOCK;
+  return code == SocketWouldBlock;
 }

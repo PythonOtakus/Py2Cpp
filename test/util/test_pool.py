@@ -2,7 +2,7 @@
 
 from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
-from py2cpp.system.time import perf_counter
+from py2cpp.system.time import perfCounter
 
 
 class PoolIntBox:
@@ -11,7 +11,7 @@ class PoolIntBox:
 
 
 class PoolBasicTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
@@ -39,7 +39,7 @@ class PoolBasicTests(TestCaseMixin):
 
 
 class PoolReuseTests(TestCaseMixin):
-  _test_tag = 2
+  _testTag = 2
 
   @override
   def test(self):
@@ -55,7 +55,7 @@ class PoolReuseTests(TestCaseMixin):
 
 
 class PoolGrowLiveTests(TestCaseMixin):
-  _test_tag = 3
+  _testTag = 3
 
   @override
   def test(self):
@@ -77,7 +77,7 @@ class PoolGrowLiveTests(TestCaseMixin):
 
 
 class PoolNestedListLiteralTests(TestCaseMixin):
-  _test_tag = 4
+  _testTag = 4
 
   @override
   def test(self):
@@ -90,11 +90,11 @@ class PoolNestedListLiteralTests(TestCaseMixin):
 
 
 
-def _bench_alloc_free_wall(n: int) -> (float64, int):
+def _benchAllocFreeWall(n: int) -> (float64, int):
   """整段 wall-clock：先 n 次 alloc+init，再 n 次 destroy+free。"""
   slots: list[Pointer[PoolIntBox]] = []
   acc: int = 0
-  t0: float64 = perf_counter()
+  t0: float64 = perfCounter()
   for i in range(n):
     p: Pointer[PoolIntBox] = alloc[PoolIntBox]()
     init(p, PoolIntBox(i))
@@ -104,15 +104,15 @@ def _bench_alloc_free_wall(n: int) -> (float64, int):
     q: Pointer[PoolIntBox] = slots[j]
     destroy(q)
     free(q)
-  total: float64 = perf_counter() - t0
+  total: float64 = perfCounter() - t0
   return (total, acc)
 
 
-def _bench_pool_ping_pong_wall(n: int) -> (float64, int):
+def _benchPoolPingPongWall(n: int) -> (float64, int):
   """整段 wall-clock：单槽 ping-pong acquire/release（旧累加计时口径）。"""
   pl: Pool[PoolIntBox] = new()
   acc: int = 0
-  t0: float64 = perf_counter()
+  t0: float64 = perfCounter()
   cur: Pointer[PoolIntBox] = pl.acquire()
   init(cur, PoolIntBox(0))
   for i in range(n):
@@ -124,22 +124,22 @@ def _bench_pool_ping_pong_wall(n: int) -> (float64, int):
   acc += cur.value
   pl.release(cur)
   pl.clear()
-  total: float64 = perf_counter() - t0
+  total: float64 = perfCounter() - t0
   return (total, acc)
 
 
-def _bench_pool_batch_wall(n: int) -> (float64, int):
+def _benchPoolBatchWall(n: int) -> (float64, int):
   """整段 wall-clock：n 次 acquire+init，再 n 次 release（与 alloc 两阶段对称）。
 
-  同时存活槽数受 ``Pool._SLOT_CAP`` 限制，按块分批以免撑爆栈式空闲表。
+  同时存活槽数受 ``Pool._SlotCap`` 限制，按块分批以免撑爆栈式空闲表。
   """
   pl: Pool[PoolIntBox] = new()
   acc: int = 0
-  t0: float64 = perf_counter()
-  for base in range(0, n, Pool._SLOT_CAP):
+  t0: float64 = perfCounter()
+  for base in range(0, n, Pool._SlotCap):
     chunk: int = n - base
-    if chunk > Pool._SLOT_CAP:
-      chunk = Pool._SLOT_CAP
+    if chunk > Pool._SlotCap:
+      chunk = Pool._SlotCap
     slots: list[Pointer[PoolIntBox]] = []
     for i in range(chunk):
       p: Pointer[PoolIntBox] = pl.acquire()
@@ -150,128 +150,128 @@ def _bench_pool_batch_wall(n: int) -> (float64, int):
     for j in range(len(slots)):
       pl.release(slots[j])
   pl.clear()
-  total: float64 = perf_counter() - t0
+  total: float64 = perfCounter() - t0
   return (total, acc)
 
 
-def _expected_sum(n: int) -> int:
+def _expectedSum(n: int) -> int:
   if n <= 0:
     return 0
   return (n - 1) * n // 2
 
 
-def _print_alloc_vs_pool(
+def _printAllocVsPool(
   n: int,
-  t_alloc: float64,
-  t_pool_batch: float64,
-  t_pool_ping: float64,
+  tAlloc: float64,
+  tPoolBatch: float64,
+  tPoolPing: float64,
 ) -> None:
-  ratio_batch: float64 = 0.0
-  ratio_ping: float64 = 0.0
-  if t_pool_batch > 0.0:
-    ratio_batch = t_alloc / t_pool_batch
-  if t_pool_ping > 0.0:
-    ratio_ping = t_alloc / t_pool_ping
+  ratioBatch: float64 = 0.0
+  ratioPing: float64 = 0.0
+  if tPoolBatch > 0.0:
+    ratioBatch = tAlloc / tPoolBatch
+  if tPoolPing > 0.0:
+    ratioPing = tAlloc / tPoolPing
   print(
-    f"  n={n}  alloc/free={t_alloc:.6f}s  "
-    f"pool_batch={t_pool_batch:.6f}s (alloc/batch={ratio_batch:.2f}x)  "
-    f"pool_ping={t_pool_ping:.6f}s (alloc/ping={ratio_ping:.2f}x)  "
-    f"block_cap={Pool._BLOCK_CAP}"
+    f"  n={n}  alloc/free={tAlloc:.6f}s  "
+    f"pool_batch={tPoolBatch:.6f}s (alloc/batch={ratioBatch:.2f}x)  "
+    f"pool_ping={tPoolPing:.6f}s (alloc/ping={ratioPing:.2f}x)  "
+    f"block_cap={Pool._BlockCap}"
   )
 
 
 class PoolPerf1kTests(TestCaseMixin):
-  _test_tag = 100
+  _testTag = 100
 
   @override
   def test(self):
     n: int = 1000
-    exp: int = _expected_sum(n)
-    r_alloc: (float64, int) = _bench_alloc_free_wall(n)
-    r_batch: (float64, int) = _bench_pool_batch_wall(n)
-    r_ping: (float64, int) = _bench_pool_ping_pong_wall(n)
-    _print_alloc_vs_pool(n, r_alloc[0], r_batch[0], r_ping[0])
-    self.assertEqual(r_alloc[1], exp)
-    self.assertEqual(r_batch[1], exp)
-    self.assertTrue(r_ping[1] >= exp)
-    self.assertTrue(r_alloc[0] >= 0.0)
-    self.assertTrue(r_batch[0] >= 0.0)
-    self.assertTrue(r_ping[0] >= 0.0)
+    exp: int = _expectedSum(n)
+    rAlloc: (float64, int) = _benchAllocFreeWall(n)
+    rBatch: (float64, int) = _benchPoolBatchWall(n)
+    rPing: (float64, int) = _benchPoolPingPongWall(n)
+    _printAllocVsPool(n, rAlloc[0], rBatch[0], rPing[0])
+    self.assertEqual(rAlloc[1], exp)
+    self.assertEqual(rBatch[1], exp)
+    self.assertTrue(rPing[1] >= exp)
+    self.assertTrue(rAlloc[0] >= 0.0)
+    self.assertTrue(rBatch[0] >= 0.0)
+    self.assertTrue(rPing[0] >= 0.0)
 
 
 class PoolPerf10kTests(TestCaseMixin):
-  _test_tag = 101
+  _testTag = 101
 
   @override
   def test(self):
     n: int = 10000
-    exp: int = _expected_sum(n)
-    r_alloc: (float64, int) = _bench_alloc_free_wall(n)
-    r_batch: (float64, int) = _bench_pool_batch_wall(n)
-    r_ping: (float64, int) = _bench_pool_ping_pong_wall(n)
-    _print_alloc_vs_pool(n, r_alloc[0], r_batch[0], r_ping[0])
-    self.assertEqual(r_alloc[1], exp)
-    self.assertEqual(r_batch[1], exp)
-    self.assertTrue(r_ping[1] >= exp)
-    self.assertTrue(r_alloc[0] >= 0.0)
-    self.assertTrue(r_batch[0] >= 0.0)
-    self.assertTrue(r_ping[0] >= 0.0)
+    exp: int = _expectedSum(n)
+    rAlloc: (float64, int) = _benchAllocFreeWall(n)
+    rBatch: (float64, int) = _benchPoolBatchWall(n)
+    rPing: (float64, int) = _benchPoolPingPongWall(n)
+    _printAllocVsPool(n, rAlloc[0], rBatch[0], rPing[0])
+    self.assertEqual(rAlloc[1], exp)
+    self.assertEqual(rBatch[1], exp)
+    self.assertTrue(rPing[1] >= exp)
+    self.assertTrue(rAlloc[0] >= 0.0)
+    self.assertTrue(rBatch[0] >= 0.0)
+    self.assertTrue(rPing[0] >= 0.0)
 
 
 class PoolPerf100kTests(TestCaseMixin):
-  _test_tag = 102
+  _testTag = 102
 
   @override
   def test(self):
     n: int = 100000
-    exp: int = _expected_sum(n)
-    r_alloc: (float64, int) = _bench_alloc_free_wall(n)
-    r_batch: (float64, int) = _bench_pool_batch_wall(n)
-    r_ping: (float64, int) = _bench_pool_ping_pong_wall(n)
-    _print_alloc_vs_pool(n, r_alloc[0], r_batch[0], r_ping[0])
-    self.assertEqual(r_alloc[1], exp)
-    self.assertEqual(r_batch[1], exp)
-    self.assertTrue(r_ping[1] >= exp)
-    self.assertTrue(r_alloc[0] >= 0.0)
-    self.assertTrue(r_batch[0] >= 0.0)
-    self.assertTrue(r_ping[0] >= 0.0)
+    exp: int = _expectedSum(n)
+    rAlloc: (float64, int) = _benchAllocFreeWall(n)
+    rBatch: (float64, int) = _benchPoolBatchWall(n)
+    rPing: (float64, int) = _benchPoolPingPongWall(n)
+    _printAllocVsPool(n, rAlloc[0], rBatch[0], rPing[0])
+    self.assertEqual(rAlloc[1], exp)
+    self.assertEqual(rBatch[1], exp)
+    self.assertTrue(rPing[1] >= exp)
+    self.assertTrue(rAlloc[0] >= 0.0)
+    self.assertTrue(rBatch[0] >= 0.0)
+    self.assertTrue(rPing[0] >= 0.0)
 
 
 class PoolPerfAllocWall100kTests(TestCaseMixin):
-  _test_tag = 103
+  _testTag = 103
 
   @override
   def test(self):
     n: int = 100000
-    r: (float64, int) = _bench_alloc_free_wall(n)
+    r: (float64, int) = _benchAllocFreeWall(n)
     print(f"  [wall] alloc/free n={n}  {r[0]:.6f}s")
-    self.assertEqual(r[1], _expected_sum(n))
+    self.assertEqual(r[1], _expectedSum(n))
 
 
 class PoolPerfPoolBatchWall100kTests(TestCaseMixin):
-  _test_tag = 104
+  _testTag = 104
 
   @override
   def test(self):
     n: int = 100000
-    r: (float64, int) = _bench_pool_batch_wall(n)
+    r: (float64, int) = _benchPoolBatchWall(n)
     print(f"  [wall] pool batch n={n}  {r[0]:.6f}s")
-    self.assertEqual(r[1], _expected_sum(n))
+    self.assertEqual(r[1], _expectedSum(n))
 
 
 class PoolPerfPoolPingWall100kTests(TestCaseMixin):
-  _test_tag = 105
+  _testTag = 105
 
   @override
   def test(self):
     n: int = 100000
-    r: (float64, int) = _bench_pool_ping_pong_wall(n)
+    r: (float64, int) = _benchPoolPingPongWall(n)
     print(f"  [wall] pool ping-pong n={n}  {r[0]:.6f}s")
-    self.assertTrue(r[1] >= _expected_sum(n))
+    self.assertTrue(r[1] >= _expectedSum(n))
 
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)

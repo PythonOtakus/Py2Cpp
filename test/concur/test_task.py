@@ -1,42 +1,42 @@
-"""``Task.run`` / ``Task.sleep`` / ``Task.create`` / ``Task.gather`` / ``Task.period_count``。"""
+"""``Task.run`` / ``Task.sleep`` / ``Task.create`` / ``Task.gather`` / ``Task.periodCount``。"""
 from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 from py2cpp.concur.task import Task, LoopHandle
 from py2cpp.concur.thread import Thread
 
 
-_buf_entries: list[int] = []
+_bufEntries: list[int] = []
 
 
-async def tick_log(tag: int) -> int:
-  _buf_entries.append(tag)
+async def tickLog(tag: int) -> int:
+  _bufEntries.append(tag)
   await Task.sleep(0)
-  _buf_entries.append(tag + 100)
+  _bufEntries.append(tag + 100)
   return tag
 
 
-async def sleep_two_periods() -> int64:
+async def sleepTwoPeriods() -> int64:
   await Task.sleep(0.001)
-  return Task.period_count
+  return Task.periodCount
 
 
-async def gather_two() -> list[int]:
-  a: Task[int] = Task.create(tick_log(1))
-  b: Task[int] = Task.create(tick_log(2))
+async def gatherTwo() -> list[int]:
+  a: Task[int] = Task.create(tickLog(1))
+  b: Task[int] = Task.create(tickLog(2))
   return await Task.gather(a, b)
 
 
-async def duration_after_ticks() -> float64:
+async def durationAfterTicks() -> float64:
   await Task.sleep(0)
   await Task.sleep(0)
   return Task.duration
 
 
-def thread_return_123() -> int:
+def threadReturn123() -> int:
   return 123
 
 
-def thread_worker_not_main() -> int:
+def threadWorkerNotMain() -> int:
   current: Thread = Thread.current
   main: Thread = Thread.main
   if current.ident not in {0, main.ident}:
@@ -44,85 +44,85 @@ def thread_worker_not_main() -> int:
   return 0
 
 
-async def run_thread_value() -> int:
-  return await Task.run_thread(thread_return_123)
+async def runThreadValue() -> int:
+  return await Task.runThread(threadReturn123)
 
 
-async def run_thread_identity() -> int:
-  return await Task.run_thread(thread_worker_not_main)
+async def runThreadIdentity() -> int:
+  return await Task.runThread(threadWorkerNotMain)
 
 
 class TaskSleepZeroTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
-    _buf_entries.clear()
-    Task.run(tick_log(1))
-    self.assertEqual(len(_buf_entries), 2)
-    self.assertEqual(_buf_entries[0], 1)
-    self.assertEqual(_buf_entries[1], 101)
+    _bufEntries.clear()
+    Task.run(tickLog(1))
+    self.assertEqual(len(_bufEntries), 2)
+    self.assertEqual(_bufEntries[0], 1)
+    self.assertEqual(_bufEntries[1], 101)
 
 
 class TaskGatherTests(TestCaseMixin):
-  _test_tag = 2
+  _testTag = 2
 
   @override
   def test(self):
-    _buf_entries.clear()
-    out: list[int] = Task.run(gather_two())
+    _bufEntries.clear()
+    out: list[int] = Task.run(gatherTwo())
     self.assertEqual(len(out), 2)
     self.assertEqual(out[0], 1)
     self.assertEqual(out[1], 2)
-    self.assertEqual(_buf_entries[0], 1)
-    self.assertEqual(_buf_entries[1], 2)
-    self.assertEqual(_buf_entries[2], 101)
-    self.assertEqual(_buf_entries[3], 102)
+    self.assertEqual(_bufEntries[0], 1)
+    self.assertEqual(_bufEntries[1], 2)
+    self.assertEqual(_bufEntries[2], 101)
+    self.assertEqual(_bufEntries[3], 102)
 
 
 class TaskPeriodCountTests(TestCaseMixin):
-  _test_tag = 3
+  _testTag = 3
 
   @override
   def test(self):
     period: float64 = 0.01
-    n: int64 = Task.run(sleep_two_periods(), period=period)
+    n: int64 = Task.run(sleepTwoPeriods(), period=period)
     self.assertEqual(n, 1)
 
 
 class TaskDurationTests(TestCaseMixin):
-  _test_tag = 4
+  _testTag = 4
 
   @override
   def test(self):
     period: float64 = 0.05
-    d: float64 = Task.run(duration_after_ticks(), period=period)
+    d: float64 = Task.run(durationAfterTicks(), period=period)
     self.assertEqual(d, period * 2.0)
 
 
 class TaskMultiRunTests(TestCaseMixin):
-  _test_tag = 5
+  _testTag = 5
 
   @override
   def test(self):
-    _buf_entries.clear()
+    _bufEntries.clear()
     for _ in range(3):
-      v: int = Task.run(tick_log(7))
+      v: int = Task.run(tickLog(7))
       self.assertEqual(v, 7)
-    self.assertEqual(len(_buf_entries), 6)
+    self.assertEqual(len(_bufEntries), 6)
 
 
 class TaskRunThreadTests(TestCaseMixin):
-  _test_tag = 6
+  _testTag = 6
 
   @override
   def test(self):
-    self.assertEqual(Task.run(run_thread_value()), 123)
-    self.assertEqual(Task.run(run_thread_identity()), 1)
+    self.assertEqual(Task.run(runThreadValue()), 123)
+    self.assertEqual(Task.run(runThreadIdentity()), 1)
 
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)

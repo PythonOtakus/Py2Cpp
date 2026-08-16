@@ -74,7 +74,7 @@ class PostInitBox:
 
 
 class PointDataclassTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
@@ -85,11 +85,11 @@ class PointDataclassTests(TestCaseMixin):
     self.assertEqual(p2.y, 0)
     self.assertNotEqual(p, p2)
     rp: str = repr(p)
-    self.assertTrue(rp.startswith("Point("))
+    self.assertTrue(rp.startsWith("Point("))
 
 
 class TagDataclassTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
@@ -98,7 +98,7 @@ class TagDataclassTests(TestCaseMixin):
 
 
 class CopyableDataclassTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
@@ -110,7 +110,7 @@ class CopyableDataclassTests(TestCaseMixin):
 
 
 class RefcountDataclassTests(TestCaseMixin):
-  _test_tag = 30
+  _testTag = 30
 
   @override
   def test(self):
@@ -119,7 +119,7 @@ class RefcountDataclassTests(TestCaseMixin):
 
 
 class FactoryDefaultTests(TestCaseMixin):
-  _test_tag = 40
+  _testTag = 40
 
   @override
   def test(self):
@@ -130,7 +130,7 @@ class FactoryDefaultTests(TestCaseMixin):
 
 
 class NestedMakeDefaultTests(TestCaseMixin):
-  _test_tag = 45
+  _testTag = 45
 
   @override
   def test(self):
@@ -143,7 +143,7 @@ class NestedMakeDefaultTests(TestCaseMixin):
 
 
 class OptionalFieldTests(TestCaseMixin):
-  _test_tag = 50
+  _testTag = 50
 
   @override
   def test(self):
@@ -154,7 +154,7 @@ class OptionalFieldTests(TestCaseMixin):
 
 
 class OrderedDataclassTests(TestCaseMixin):
-  _test_tag = 55
+  _testTag = 55
 
   @override
   def test(self):
@@ -170,7 +170,7 @@ class OrderedDataclassTests(TestCaseMixin):
 
 
 class PostInitTests(TestCaseMixin):
-  _test_tag = 60
+  _testTag = 60
 
   @override
   def test(self):
@@ -181,7 +181,7 @@ class PostInitTests(TestCaseMixin):
 
 
 class FrozenDataclassTests(TestCaseMixin):
-  _test_tag = 65
+  _testTag = 65
 
   @override
   def test(self):
@@ -197,6 +197,6 @@ class FrozenDataclassTests(TestCaseMixin):
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)

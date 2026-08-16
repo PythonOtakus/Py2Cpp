@@ -34,13 +34,18 @@ def _module_header_deps(
 ) -> frozenset[str]:
   mp = stdlib_module_path(rel_mod)
   ma = module_analysis.get(mp)
-  if ma is None:
-    return frozenset()
   deps: set[str] = set()
-  for h in (*ma.includes, *ma.post_class_includes):
-    dep = header_path_to_stdlib_rel(h)
-    if dep is not None and dep != rel_mod and dep in module_set:
-      deps.add(dep)
+  if ma is not None:
+    for h in (*ma.includes, *ma.post_class_includes):
+      dep = header_path_to_stdlib_rel(h)
+      if dep is not None and dep != rel_mod and dep in module_set:
+        deps.add(dep)
+  # ``console`` 包根 ``using`` 再导出子模块异常/类型，子头须先于包根。
+  # 勿对所有 ``pkg``/``pkg/child`` 一律子先父后（``math/complex`` 依赖 ``math`` 中 ``math_sin`` 等）。
+  if rel_mod == "console":
+    for other in module_set:
+      if other.startswith("console/"):
+        deps.add(other)
   return frozenset(deps)
 
 

@@ -42,7 +42,7 @@ _BUILTIN_AND_CONTAINER_TYPE_NAMES = frozenset(
     "ref",
     "view",
     "span",
-    "c_str",
+    "CStr",
   }
 )
 

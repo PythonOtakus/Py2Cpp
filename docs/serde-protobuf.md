@@ -13,7 +13,7 @@
 - 输出符合 Protocol Buffers wire format；
 - 可读取其他语言 protobuf 实现生成的兼容消息；
 - 使用 Py2Cpp `@dataclass` 与字段 `@annotation` 描述 schema；
-- 基于 `Self.iter_fields`、`Self.get_field_annotation`、`Self.get_field_type` 在翻译期展开，不依赖运行时字段反射；
+- 基于 `Self.iterFields`、`Self.getFieldAnnotation`、`Self.getFieldType` 在翻译期展开，不依赖运行时字段反射；
 - 不依赖 STL；
 - 不依赖 Google Protobuf Runtime；
 - 单一真相源为 `py2cpp/serde/protobuf.py`、必要模板、测试和本文档，禁止修改 `generated/`。
@@ -184,12 +184,12 @@ class Sample:
 protobuf 是新静态字段反射 API 的直接使用者。消息 codec 在概念上按如下方式展开：
 
 ```python
-for field in Self.iter_fields[ProtoFieldMeta]():
-  meta = Self.get_field_annotation[ProtoFieldMeta](field)
+for field in Self.iterFields[ProtoFieldMeta]():
+  meta = Self.getFieldAnnotation[ProtoFieldMeta](field)
 
-  if Self.get_field_type(field) is int:
+  if Self.getFieldType(field) is int:
     ...
-  elif Self.get_field_type(field) is str:
+  elif Self.getFieldType(field) is str:
     ...
 ```
 
@@ -216,10 +216,10 @@ if message.name:
 
 实现约束：
 
-- `Self.iter_fields[ProtoFieldMeta]()` 保留字段声明顺序；
-- `Self.get_field_annotation[ProtoFieldMeta](field)` 读取 `number/scalar/packed`；
-- `Self.get_field_type(field)` 返回去除所有 `@` 标记后的真实基础类型；
-- `Self.get_field_type(field) is int` 等比较在翻译期折叠；
+- `Self.iterFields[ProtoFieldMeta]()` 保留字段声明顺序；
+- `Self.getFieldAnnotation[ProtoFieldMeta](field)` 读取 `number/scalar/packed`；
+- `Self.getFieldType(field)` 返回去除所有 `@` 标记后的真实基础类型；
+- `Self.getFieldType(field) is int` 等比较在翻译期折叠；
 - `getattr` / `setattr` 的字段名由现有静态反射折叠为直接成员访问；
 - 不生成运行时 descriptor、字符串字段表或哈希查找。
 
@@ -238,7 +238,7 @@ class WireWriter:
   def write_varint_u64(self, value: uint64) -> None: ...
   def write_fixed32(self, value: uint) -> None: ...
   def write_fixed64(self, value: uint64) -> None: ...
-  def write_bytes(self, value: bytes) -> None: ...
+  def writeBytes(self, value: bytes) -> None: ...
   def write_string(self, value: str) -> None: ...
 
 
@@ -248,12 +248,12 @@ class WireReader:
   _at: int = 0
   _limit: int = 0
 
-  def read_tag(self) -> tuple[int, WireType]: ...
+  def readTag(self) -> tuple[int, WireType]: ...
   def read_varint_u64(self) -> uint64: ...
   def read_fixed32(self) -> uint: ...
   def read_fixed64(self) -> uint64: ...
-  def read_bytes(self) -> bytes: ...
-  def skip_value(self, wire: WireType) -> None: ...
+  def readBytes(self) -> bytes: ...
+  def skipValue(self, wire: WireType) -> None: ...
 ```
 
 实现规则：
@@ -299,7 +299,7 @@ P0 采用 proto3 风格默认值省略：
 P0 解码器必须能跳过未知字段，维持前向兼容：
 
 ```python
-reader.skip_value(wire_type)
+reader.skipValue(wire_type)
 ```
 
 P0 不保留未知字段原始字节；decode 再 encode 时未知字段会丢失。P1 可增加内部 `UnknownProtoFields` 容器实现保留，但在该能力落地前不得提供误导性的 `preserve_unknown` 开关。
@@ -327,7 +327,7 @@ ProtobufError
 1. T 为 `@dataclass`；
 2. 参与编码的每个字段恰有一个 `ProtoFieldMeta`；未标注字段不参与 protobuf；
 3. field number 合法、唯一且不落入保留区间；
-4. `ProtoFieldMeta.scalar` 与 `Self.get_field_type(field)` 兼容；
+4. `ProtoFieldMeta.scalar` 与 `Self.getFieldType(field)` 兼容；
 5. `packed=True` 仅用于 repeated 数值、bool 或 enum；
 6. `list[T]` 的元素类型属于支持集合；
 7. embedded message 类型也满足 protobuf dataclass schema；

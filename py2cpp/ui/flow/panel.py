@@ -1,27 +1,27 @@
-"""``UIFlowMixin``：译期 ``iter_methods`` + 方法签名反射 → ``FlowNodeCatalog``。"""
+"""``UIFlowMixin``：译期 ``iterMethods`` + 方法签名反射 → ``FlowNodeCatalog``。"""
 from ...builtins import *
 from ..app import UIApp
 from ..window import UIWindow
-from .builtins import register_flow_builtins
+from .builtins import registerFlowBuiltins
 from .canvas import UIFlowCanvas
 from .catalog import FlowNodeCatalog, FlowPinSpec
 from .meta import FlowEventMeta, FlowNodeMeta, FlowPureMeta
-from .model import FlowGraph, FlowNodeKind, FlowPinKind
+from .model import FlowGraph, FlowNodeEnum, FlowPinEnum
 from .runtime import FlowRuntime
 from .shell import UIFlowShell
 
 
 @mixin
 class UIFlowMixin:
-  _flow_canvas: UIFlowCanvas = new()
-  _flow_shell: UIFlowShell = new()
-  _flow_catalog: FlowNodeCatalog = new()
-  _flow_catalog_ready: bool = False
-  _flow_runtime: FlowRuntime = new()
-  _flow_win: UIWindow = new()
+  _flowCanvas: UIFlowCanvas = new()
+  _flowShell: UIFlowShell = new()
+  _flowCatalog: FlowNodeCatalog = new()
+  _flowCatalogReady: bool = False
+  _flowRuntime: FlowRuntime = new()
+  _flowWin: UIWindow = new()
 
   @staticmethod
-  def _flow_type_id[T]() -> str:
+  def _flowTypeId[T]() -> str:
     if T is bool:
       return "bool"
     elif T is int:
@@ -33,160 +33,155 @@ class UIFlowMixin:
     else:
       return "object"
 
-  def _flow_pin_exec_in(self) -> FlowPinSpec:
+  def _flowPinExecIn(self) -> FlowPinSpec:
     p: FlowPinSpec = new()
     p.name = "execute"
-    p.kind = FlowPinKind.ExecIn
+    p.kind = FlowPinEnum.ExecIn
     return p
 
-  def _flow_pin_exec_out(self) -> FlowPinSpec:
+  def _flowPinExecOut(self) -> FlowPinSpec:
     p: FlowPinSpec = new()
     p.name = "then"
-    p.kind = FlowPinKind.ExecOut
+    p.kind = FlowPinEnum.ExecOut
     return p
 
-  def _flow_pin_data_in(self, name: str, type_id: str) -> FlowPinSpec:
+  def _flowPinDataIn(self, name: str, typeId: str) -> FlowPinSpec:
     p: FlowPinSpec = new()
     p.name = name
-    p.kind = FlowPinKind.DataIn
-    p.type_id = type_id
+    p.kind = FlowPinEnum.DataIn
+    p.typeId = typeId
     return p
 
-  def _flow_pin_data_out(self, name: str, type_id: str) -> FlowPinSpec:
+  def _flowPinDataOut(self, name: str, typeId: str) -> FlowPinSpec:
     p: FlowPinSpec = new()
     p.name = name
-    p.kind = FlowPinKind.DataOut
-    p.type_id = type_id
+    p.kind = FlowPinEnum.DataOut
+    p.typeId = typeId
     return p
 
-  def _register_flow_node(
+  def _registerFlowNode(
     self,
     method: str,
-    meta_title: str,
-    meta_category: str,
-    node_kind: FlowNodeKind,
+    metaTitle: str,
+    metaCategory: str,
+    nodeKind: FlowNodeEnum,
     pins: list[FlowPinSpec, 0],
   ) -> None:
-    title: str = meta_title
+    title: str = metaTitle
     if not title:
       title = method
-    category: str = meta_category
+    category: str = metaCategory
     if not category:
       category = Self.__name__
-    kind_id: str = Self.__name__ + "." + method
-    self._flow_catalog.register(kind_id, title, category, node_kind, method, pins)
+    kindId: str = Self.__name__ + "." + method
+    self._flowCatalog.register(kindId, title, category, nodeKind, method, pins)
 
-  def _ensure_flow_catalog(self) -> None:
-    if self._flow_catalog_ready:
+  def _ensureFlowCatalog(self) -> None:
+    if self._flowCatalogReady:
       return
-    self._flow_catalog.clear()
-    for method in Self.iter_methods[FlowNodeMeta](mro=True):
-      if Self.get_method_annotation[FlowNodeMeta](method) is None or not Self.get_method_annotation[FlowNodeMeta](method).hidden:
+    self._flowCatalog.clear()
+    for method in Self.iterMethods[FlowNodeMeta](mro=True):
+      if Self.getMethodAnnotation[FlowNodeMeta](method) is None or not Self.getMethodAnnotation[FlowNodeMeta](method).hidden:
         title: str = ""
         category: str = ""
-        if Self.get_method_annotation[FlowNodeMeta](method) is not None:
-          title = Self.get_method_annotation[FlowNodeMeta](method).title
-          category = Self.get_method_annotation[FlowNodeMeta](method).category
+        if Self.getMethodAnnotation[FlowNodeMeta](method) is not None:
+          title = Self.getMethodAnnotation[FlowNodeMeta](method).title
+          category = Self.getMethodAnnotation[FlowNodeMeta](method).category
         pins: list[FlowPinSpec, 0] = []
-        pins.append(self._flow_pin_exec_in())
-        pins.append(self._flow_pin_exec_out())
-        for param in Self.iter_method_params(method):
-          pins.append(self._flow_pin_data_in(param, self._flow_type_id[Self.get_method_param_type(method, param)]()))
-        if Self.get_method_return_type(method) is not None:
-          pins.append(self._flow_pin_data_out("Return Value", self._flow_type_id[Self.get_method_return_type(method)]()))
-        self._register_flow_node(method, title, category, FlowNodeKind.Callable, pins)
-    for method in Self.iter_methods[FlowPureMeta](mro=True):
-      if Self.get_method_annotation[FlowPureMeta](method) is None or not Self.get_method_annotation[FlowPureMeta](method).hidden:
+        pins.append(self._flowPinExecIn())
+        pins.append(self._flowPinExecOut())
+        for param in Self.iterMethodParams(method):
+          pins.append(self._flowPinDataIn(param, self._flowTypeId[Self.getMethodParamType(method, param)]()))
+        if Self.getMethodReturnType(method) is not None:
+          pins.append(self._flowPinDataOut("Return Value", self._flowTypeId[Self.getMethodReturnType(method)]()))
+        self._registerFlowNode(method, title, category, FlowNodeEnum.Callable, pins)
+    for method in Self.iterMethods[FlowPureMeta](mro=True):
+      if Self.getMethodAnnotation[FlowPureMeta](method) is None or not Self.getMethodAnnotation[FlowPureMeta](method).hidden:
         title: str = ""
         category: str = ""
-        if Self.get_method_annotation[FlowPureMeta](method) is not None:
-          title = Self.get_method_annotation[FlowPureMeta](method).title
-          category = Self.get_method_annotation[FlowPureMeta](method).category
+        if Self.getMethodAnnotation[FlowPureMeta](method) is not None:
+          title = Self.getMethodAnnotation[FlowPureMeta](method).title
+          category = Self.getMethodAnnotation[FlowPureMeta](method).category
         pins: list[FlowPinSpec, 0] = []
-        for param in Self.iter_method_params(method):
-          pins.append(self._flow_pin_data_in(param, self._flow_type_id[Self.get_method_param_type(method, param)]()))
-        if Self.get_method_return_type(method) is not None:
-          pins.append(self._flow_pin_data_out("Return Value", self._flow_type_id[Self.get_method_return_type(method)]()))
-        self._register_flow_node(method, title, category, FlowNodeKind.Pure, pins)
-    for method in Self.iter_methods[FlowEventMeta](mro=True):
-      if Self.get_method_annotation[FlowEventMeta](method) is None or not Self.get_method_annotation[FlowEventMeta](method).hidden:
+        for param in Self.iterMethodParams(method):
+          pins.append(self._flowPinDataIn(param, self._flowTypeId[Self.getMethodParamType(method, param)]()))
+        if Self.getMethodReturnType(method) is not None:
+          pins.append(self._flowPinDataOut("Return Value", self._flowTypeId[Self.getMethodReturnType(method)]()))
+        self._registerFlowNode(method, title, category, FlowNodeEnum.Pure, pins)
+    for method in Self.iterMethods[FlowEventMeta](mro=True):
+      if Self.getMethodAnnotation[FlowEventMeta](method) is None or not Self.getMethodAnnotation[FlowEventMeta](method).hidden:
         title: str = ""
         category: str = "Events"
-        if Self.get_method_annotation[FlowEventMeta](method) is not None:
-          title = Self.get_method_annotation[FlowEventMeta](method).title
-          if Self.get_method_annotation[FlowEventMeta](method).category:
-            category = Self.get_method_annotation[FlowEventMeta](method).category
+        if Self.getMethodAnnotation[FlowEventMeta](method) is not None:
+          title = Self.getMethodAnnotation[FlowEventMeta](method).title
+          if Self.getMethodAnnotation[FlowEventMeta](method).category:
+            category = Self.getMethodAnnotation[FlowEventMeta](method).category
         pins: list[FlowPinSpec, 0] = []
-        pins.append(self._flow_pin_exec_out())
-        self._register_flow_node(method, title, category, FlowNodeKind.Event, pins)
-    register_flow_builtins(self._flow_catalog)
-    self._flow_catalog_ready = True
+        pins.append(self._flowPinExecOut())
+        self._registerFlowNode(method, title, category, FlowNodeEnum.Event, pins)
+    registerFlowBuiltins(self._flowCatalog)
+    self._flowCatalogReady = True
 
-  def flow_invoke_callable(
+  def flowInvokeCallable(
     self,
     method: str,
     graph: FlowGraph @ref,
-    node_id: int,
+    nodeId: int,
     rt: FlowRuntime @ref,
   ) -> None:
-    for m in Self.iter_methods[FlowNodeMeta](mro=True):
-      for param in Self.iter_method_params(m):
-        if method == m:
-          getattr(self, m)(rt.eval_data_pin(graph, self._flow_catalog, self, node_id, param))
+    # 动态 ``getattr(self, method)`` 不受支持；宿主 ``@override`` 按方法名派发。
+    return
 
-  def flow_invoke_pure(self, method: str) -> int:
-    for m in Self.iter_methods[FlowPureMeta](mro=True):
-      if method == m:
-        return getattr(self, m)()
+  def flowInvokePure(self, method: str) -> int:
     return 0
 
-  def _wire_flow_shell(self) -> None:
-    self._flow_shell.catalog = self._flow_catalog
-    self._flow_canvas.catalog = self._flow_catalog
-    self._flow_shell.run_play += self.on_flow_run
-    self._flow_shell.run_play_selected += self.on_flow_run_from_selected
-    self._flow_shell.run_stop += self.on_flow_stop
+  def _wireFlowShell(self) -> None:
+    self._flowShell.catalog = self._flowCatalog
+    self._flowCanvas.catalog = self._flowCatalog
+    self._flowShell.runPlay += self.onFlowRun
+    self._flowShell.runPlaySelected += self.onFlowRunFromSelected
+    self._flowShell.runStop += self.onFlowStop
 
-  def draw_flow(self, win: UIWindow @ref) -> None:
-    self._ensure_flow_catalog()
-    self._flow_win = win
-    self._wire_flow_shell()
-    self._flow_shell.attach(win, self._flow_canvas)
-    self._flow_shell.menu.set_run_enabled(True, True, True)
+  def drawFlow(self, win: UIWindow @ref) -> None:
+    self._ensureFlowCatalog()
+    self._flowWin = win
+    self._wireFlowShell()
+    self._flowShell.attach(win, self._flowCanvas)
+    self._flowShell.menu.setRunEnabled(True, True, True)
 
-  def on_flow_ready(self) -> None:
+  def onFlowReady(self) -> None:
     pass
 
-  def on_flow_run(self) -> None:
-    self._flow_runtime.run_all(self._flow_canvas.graph, self._flow_catalog, self)
+  def onFlowRun(self) -> None:
+    self._flowRuntime.runAll(self._flowCanvas.graph, self._flowCatalog, self)
 
-  def on_flow_run_from_selected(self) -> None:
-    nid: int = self._flow_canvas.selected_node
+  def onFlowRunFromSelected(self) -> None:
+    nid: int = self._flowCanvas.selectedNode
     if nid < 0:
       return
-    self._flow_runtime.run_from_selected(self._flow_canvas.graph, self._flow_catalog, self, nid)
+    self._flowRuntime.runFromSelected(self._flowCanvas.graph, self._flowCatalog, self, nid)
 
-  def on_flow_stop(self) -> None:
-    self._flow_runtime.stop()
+  def onFlowStop(self) -> None:
+    self._flowRuntime.stop()
 
-  def create_flow(self, title: str = "", width: int = -1, height: int = -1) -> UIWindow:
-    self._flow_win = new()
-    if not UIApp.is_available():
-      return self._flow_win
-    self._ensure_flow_catalog()
-    self._wire_flow_shell()
-    self._flow_win.title = title
-    if not self._flow_win.title:
-      self._flow_win.title = Self.__name__
-    self._flow_win.show(width, height)
-    self.draw_flow(self._flow_win)
+  def createFlow(self, title: str = "", width: int = -1, height: int = -1) -> UIWindow:
+    self._flowWin = new()
+    if not UIApp.isAvailable():
+      return self._flowWin
+    self._ensureFlowCatalog()
+    self._wireFlowShell()
+    self._flowWin.title = title
+    if not self._flowWin.title:
+      self._flowWin.title = Self.__name__
+    self._flowWin.show(width, height)
+    self.drawFlow(self._flowWin)
     if width < 0 or height < 0:
-      self._flow_win.resize(width, height)
-    self.on_flow_ready()
-    return self._flow_win
+      self._flowWin.resize(width, height)
+    self.onFlowReady()
+    return self._flowWin
 
-  def show_flow(self, title: str = "", width: int = 1280, height: int = 720) -> int:
-    if not UIApp.is_available():
+  def showFlow(self, title: str = "", width: int = 1280, height: int = 720) -> int:
+    if not UIApp.isAvailable():
       return 1
-    win: UIWindow = self.create_flow(title, width, height)
+    win: UIWindow = self.createFlow(title, width, height)
     return UIApp.run()

@@ -82,7 +82,7 @@ def annotated_fields(
   *,
   mro: bool = False,
 ) -> list[str]:
-  """字段 ``T @Ann``，或容器类 ``@Ann`` 修饰的 ``Container[...]`` 字段（保持声明序）。"""
+  """字段 ``T @Ann``，或容器类 ``@Ann`` 修饰的 ``ContainerType[...]`` 字段（保持声明序）。"""
   from .annotation_options import annotation_options_for, walk_entity_bases
 
   extract_field_annotation_meta(host)
@@ -141,7 +141,7 @@ def fields_with_annotated_container(
   *,
   mro: bool = False,
 ) -> list[str]:
-  """字段类型为 ``Container[...]`` 且 ``Container`` 类定义带 ``@marker``（``mro`` 时查实体基类）。"""
+  """字段类型为 ``ContainerType[...]`` 且 ``ContainerType`` 类定义带 ``@marker``（``mro`` 时查实体基类）。"""
   from .annotation_options import annotation_options_for, _class_has_marker
 
   inheritable = False
@@ -170,17 +170,24 @@ def fields_with_annotated_container(
 
 
 def _iter_fields_subscript_annotation(iter_node: ast.expr) -> str | None:
-  match iter_node:
-    case ast.Call(
-      func=ast.Subscript(
-        value=ast.Attribute(value=ast.Name(id="Self"), attr="iter_fields"),
-        slice=sl,
-      ),
-    ):
-      if isinstance(sl, ast.Name):
-        return sl.id
-      if isinstance(sl, ast.Call) and isinstance(sl.func, ast.Name):
-        return sl.func.id
+  if not isinstance(iter_node, ast.Call):
+    return None
+  func = iter_node.func
+  if not isinstance(func, ast.Subscript):
+    return None
+  value = func.value
+  if not (
+    isinstance(value, ast.Attribute)
+    and isinstance(value.value, ast.Name)
+    and value.value.id == "Self"
+    and value.attr in ("iter_fields", "iterFields")
+  ):
+    return None
+  sl = func.slice
+  if isinstance(sl, ast.Name):
+    return sl.id
+  if isinstance(sl, ast.Call) and isinstance(sl.func, ast.Name):
+    return sl.func.id
   return None
 
 
@@ -430,7 +437,7 @@ class _MixinInliner(ast.NodeTransformer):
     return node
 
   def _preserve_bare_self_return_ann(self, ann: ast.expr | None) -> ast.expr | None:
-    """``-> Self`` 保留；``Generator[Self]`` / ``list[Self]`` 等 subscript 内 ``Self`` 仍内联为宿主名。"""
+    """``-> Self`` 保留；``GeneratorType[Self]`` / ``list[Self]`` 等 subscript 内 ``Self`` 仍内联为宿主名。"""
     if ann is None:
       return None
     if isinstance(ann, ast.Name) and ann.id == "Self":
@@ -482,20 +489,31 @@ def _mixin_method_has_unsupported_after_expand(method: ast.FunctionDef) -> bool:
       if isinstance(node.func.value, ast.Name) and node.func.value.id == "Self":
         if node.func.attr in (
           "iter_fields",
+          "iterFields",
           "enum_fields",
+          "enumFields",
           "get_field_annotation",
+          "getFieldAnnotation",
           "get_field_annotations",
+          "getFieldAnnotations",
           "iter_methods",
+          "iterMethods",
           "get_method_annotation",
+          "getMethodAnnotation",
           "iter_method_params",
+          "iterMethodParams",
           "get_method_param_type",
+          "getMethodParamType",
           "get_method_return_type",
+          "getMethodReturnType",
         ):
           return True
       recv = None
       if isinstance(node.func, ast.Attribute) and node.func.attr in (
         "iter_fields",
+        "iterFields",
         "enum_fields",
+        "enumFields",
       ):
         if isinstance(node.func.value, ast.Name):
           recv = node.func.value.id

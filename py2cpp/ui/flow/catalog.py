@@ -1,23 +1,23 @@
 """译期节点模板目录（``FlowNodeCatalog``）。"""
 from ...builtins import *
 from ...core.exceptions import ValueError
-from .model import FlowNodeKind, FlowPin, FlowPinKind
+from .model import FlowNodeEnum, FlowPin, FlowPinEnum
 
 
 @copyable
 class FlowPinSpec:
   name: str = ""
-  kind: FlowPinKind = FlowPinKind.DataIn
-  type_id: str = "object"
+  kind: FlowPinEnum = FlowPinEnum.DataIn
+  typeId: str = "object"
 
 
 @copyable
 class FlowNodeTemplate:
-  kind_id: str = ""
+  kindId: str = ""
   title: str = ""
   category: str = ""
-  node_kind: FlowNodeKind = FlowNodeKind.Callable
-  method_name: str = ""
+  nodeKind: FlowNodeEnum = FlowNodeEnum.Callable
+  methodName: str = ""
   pins: list[FlowPinSpec, 0] = []
 
 
@@ -31,41 +31,41 @@ class FlowNodeCatalog:
 
   def register(
     self,
-    kind_id: str,
+    kindId: str,
     title: str,
     category: str,
-    node_kind: FlowNodeKind,
-    method_name: str,
+    nodeKind: FlowNodeEnum,
+    methodName: str,
     pins: list[FlowPinSpec, 0],
   ) -> None:
     tpl: FlowNodeTemplate = new()
-    tpl.kind_id = kind_id
+    tpl.kindId = kindId
     tpl.title = title
     tpl.category = category
-    tpl.node_kind = node_kind
-    tpl.method_name = method_name
+    tpl.nodeKind = nodeKind
+    tpl.methodName = methodName
     for spec in pins:
       ps: FlowPinSpec = new()
       ps.name = spec.name
       ps.kind = spec.kind
-      ps.type_id = spec.type_id
+      ps.typeId = spec.typeId
       tpl.pins.append(ps)
     self.templates.append(tpl)
 
-  def find(self, kind_id: str) -> FlowNodeTemplate:
+  def find(self, kindId: str) -> FlowNodeTemplate:
     for tpl in self.templates:
-      if tpl.kind_id == kind_id:
+      if tpl.kindId == kindId:
         return tpl
     raise ValueError("flow template not found")
 
-  def clone_pins(self, kind_id: str) -> list[FlowPin, 0]:
-    tpl: FlowNodeTemplate = self.find(kind_id)
+  def clonePins(self, kindId: str) -> list[FlowPin, 0]:
+    tpl: FlowNodeTemplate = self.find(kindId)
     out: list[FlowPin, 0] = []
     for spec in tpl.pins:
       p: FlowPin = new()
       p.name = spec.name
       p.kind = spec.kind
-      p.type_id = spec.type_id
+      p.typeId = spec.typeId
       out.append(p)
     return out
 
@@ -81,34 +81,34 @@ class FlowNodeCatalog:
           break
       if not found:
         out.append(tpl.category)
-    events_first: list[str, 0] = []
+    eventsFirst: list[str, 0] = []
     rest: list[str, 0] = []
     for c in out:
       if c == "Events":
-        events_first.append(c)
+        eventsFirst.append(c)
       else:
         rest.append(c)
     merged: list[str, 0] = []
-    for c in events_first:
+    for c in eventsFirst:
       merged.append(c)
     for c in rest:
       merged.append(c)
     return merged
 
-  def entries_in(self, category: str) -> list[FlowNodeTemplate, 0]:
+  def entriesIn(self, category: str) -> list[FlowNodeTemplate, 0]:
     out: list[FlowNodeTemplate, 0] = []
     for tpl in self.templates:
       if tpl.category == category:
         out.append(tpl)
     return out
 
-  def tip_text(self, kind_id: str) -> str:
-    tpl: FlowNodeTemplate = self.find(kind_id)
+  def tipText(self, kindId: str) -> str:
+    tpl: FlowNodeTemplate = self.find(kindId)
     tip: str = tpl.title
-    tip = tip + "\n" + kind_id
+    tip = tip + "\n" + kindId
     for spec in tpl.pins:
       line: str = spec.name
-      if spec.kind in {FlowPinKind.DataIn, FlowPinKind.DataOut}:
-        line = line + ":" + spec.type_id
+      if spec.kind in {FlowPinEnum.DataIn, FlowPinEnum.DataOut}:
+        line = line + ":" + spec.typeId
       tip = tip + "\n" + line
     return tip

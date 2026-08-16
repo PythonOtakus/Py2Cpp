@@ -407,7 +407,7 @@ def emit_frozenset_literal(
     tr.write_line(f"{spec} {pname};")
   else:
     tr.write_line(f"{pname} = {spec}();")
-  tr.write_line(f"{pname}.init_from_set({cpp_param(tmp)});")
+  tr.write_line(f"{pname}.initFromSet({cpp_param(tmp)});")
 
 
 def emit_frozenlist_literal(
@@ -440,7 +440,7 @@ def emit_frozenlist_literal(
     tr.write_line(f"{spec} {pname};")
   else:
     tr.write_line(f"{pname} = {spec}();")
-  tr.write_line(f"{pname}.init_from_list({cpp_param(tmp)});")
+  tr.write_line(f"{pname}.initFromList({cpp_param(tmp)});")
 
 
 def emit_frozendict_literal(
@@ -472,7 +472,7 @@ def emit_frozendict_literal(
     tr.write_line(f"{spec} {pname};")
   else:
     tr.write_line(f"{pname} = {spec}();")
-  tr.write_line(f"{pname}.init_from_dict({cpp_param(tmp)});")
+  tr.write_line(f"{pname}.initFromDict({cpp_param(tmp)});")
 
 
 def emit_set_comprehension(
@@ -526,7 +526,7 @@ def emit_frozenlist_comprehension(
     tr.write_line(f"{spec} {pname};")
   else:
     tr.write_line(f"{pname} = {spec}();")
-  tr.write_line(f"{pname}.init_from_list({cpp_param(tmp)});")
+  tr.write_line(f"{pname}.initFromList({cpp_param(tmp)});")
 
 
 def emit_frozenset_comprehension(
@@ -559,7 +559,7 @@ def emit_frozenset_comprehension(
     tr.write_line(f"{spec} {pname};")
   else:
     tr.write_line(f"{pname} = {spec}();")
-  tr.write_line(f"{pname}.init_from_set({cpp_param(tmp)});")
+  tr.write_line(f"{pname}.initFromSet({cpp_param(tmp)});")
 
 
 def emit_frozendict_comprehension(
@@ -591,4 +591,4 @@ def emit_frozendict_comprehension(
     tr.write_line(f"{spec} {pname};")
   else:
     tr.write_line(f"{pname} = {spec}();")
-  tr.write_line(f"{pname}.init_from_dict({cpp_param(tmp)});")
+  tr.write_line(f"{pname}.initFromDict({cpp_param(tmp)});")

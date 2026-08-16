@@ -12,21 +12,21 @@
 """
 from ..builtins import *
 from ..core.exceptions import IndexError, ValueError
-from ..numeric.protocols import Complex
+from ..numeric.protocols import ComplexType
 from ..util.mixins import ContainerMixin
 
 
-class FenTree[T: Complex](ContainerMixin):
+class FenTree[Element: ComplexType](ContainerMixin):
   """一点修改 + 前缀和；内部 1-indexed BIT，对外 0-indexed。"""
 
   def __init__(self, n: int):
     if n < 0:
       raise ValueError("n must be non-negative")
     self._n: int = n
-    self._bit: T[:] = new(n + 1)
+    self._bit: Element[:] = new(n + 1)
 
   def __copy__(self, other: Self):
-    self._ensure_active()
+    self._ensureActive()
     if other.__moved__:
       raise ValueError("move from moved container")
     self._n = other._n
@@ -35,7 +35,7 @@ class FenTree[T: Complex](ContainerMixin):
       self._bit[i] = other._bit[i]
 
   def __move__(self, other: Self):
-    self._ensure_active()
+    self._ensureActive()
     if other.__moved__:
       raise ValueError("move from moved container")
     self._n = other._n
@@ -45,7 +45,7 @@ class FenTree[T: Complex](ContainerMixin):
 
   @immutable
   def copy(self) -> Self:
-    self._ensure_active()
+    self._ensureActive()
     out: Self = new(self._n)
     out.__copy__(self)
     return out
@@ -69,15 +69,15 @@ class FenTree[T: Complex](ContainerMixin):
 
   @immutable
   @overload
-  def __getitem__(self, i: int) -> T:
+  def __getitem__(self, i: int) -> Element:
     self._check(i)
     if i == 0:
-      return self._prefix_sum(0)
-    return self._prefix_sum(i) - self._prefix_sum(i - 1)
+      return self._prefixSum(0)
+    return self._prefixSum(i) - self._prefixSum(i - 1)
 
   @immutable
   @overload
-  def __getitem__(self, index: slice[int, int]) -> T:
+  def __getitem__(self, index: slice[int, int]) -> Element:
     start: int
     stop: int
     step: int
@@ -85,14 +85,14 @@ class FenTree[T: Complex](ContainerMixin):
     if step != 1:
       raise ValueError("fentree slice step must be 1")
     if start >= stop:
-      return self._prefix_sum(-1)
-    return self._range_sum(start, stop - 1)
+      return self._prefixSum(-1)
+    return self._rangeSum(start, stop - 1)
 
-  def __setitem__(self, i: int, value: T) -> None:
-    old: T = self[i]
+  def __setitem__(self, i: int, value: Element) -> None:
+    old: Element = self[i]
     self.add(i, value - old)
 
-  def add(self, i: int, delta: T) -> None:
+  def add(self, i: int, delta: Element) -> None:
     self._check(i)
     idx: int = i + 1
     while idx <= self._n:
@@ -100,21 +100,21 @@ class FenTree[T: Complex](ContainerMixin):
       idx += idx & -idx
 
   @immutable
-  def _prefix_sum(self, i: int) -> T:
+  def _prefixSum(self, i: int) -> Element:
     if i < 0:
-      total: T = 0
+      total: Element = 0
       return total
     if i >= self._n:
       raise IndexError("fentree index out of range")
     idx: int = i + 1
-    total: T = 0
+    total: Element = 0
     while idx > 0:
       total += self._bit[idx]
       idx -= idx & -idx
     return total
 
   @immutable
-  def _range_sum(self, left: int, right: int) -> T:
+  def _rangeSum(self, left: int, right: int) -> Element:
     if left > right:
       raise ValueError("empty range")
     if right < 0 or left >= self._n:
@@ -124,6 +124,6 @@ class FenTree[T: Complex](ContainerMixin):
     if right >= self._n:
       right = self._n - 1
     if left == 0:
-      return self._prefix_sum(right)
-    return self._prefix_sum(right) - self._prefix_sum(left - 1)
+      return self._prefixSum(right)
+    return self._prefixSum(right) - self._prefixSum(left - 1)
 

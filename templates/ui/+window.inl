@@ -22,15 +22,15 @@ PY2CPP_END
 namespace py2cpp {
 namespace ui {
 namespace layout {
-PyBool ui_form_on_bn_clicked(window::UIWindow& win, UINT_PTR ctrl_id);
-PyBool ui_form_on_en_change(window::UIWindow& win, UINT_PTR ctrl_id);
-PyBool ui_form_on_hscroll(window::UIWindow& win, HWND ctrl);
+PyBool ui_form_on_bn_clicked(window::PyUIWindow& win, UINT_PTR ctrl_id);
+PyBool ui_form_on_en_change(window::PyUIWindow& win, UINT_PTR ctrl_id);
+PyBool ui_form_on_hscroll(window::PyUIWindow& win, HWND ctrl);
 void ui_form_session_reset();
-void ui_form_on_window_end(window::UIWindow& win);
+void ui_form_on_window_end(window::PyUIWindow& win);
 } // namespace layout
-PyBool ui_menu_on_command(window::UIWindow& win, UINT_PTR cmd_id);
-PyBool ui_flow_on_key(window::UIWindow& win, PyInt vk);
-void ui_flow_shell_on_resize(window::UIWindow& win);
+PyBool ui_menu_on_command(window::PyUIWindow& win, UINT_PTR cmd_id);
+PyBool ui_flow_on_key(window::PyUIWindow& win, PyInt vk);
+void ui_flow_shell_on_resize(window::PyUIWindow& win);
 } // namespace ui
 } // namespace py2cpp
 
@@ -65,21 +65,21 @@ static void _ui_theme_delete_gdi()
   }
 }
 
-static void _ui_theme_ensure_font(const py2cpp::ui::style::UIStyle& style)
+static void _ui_theme_ensure_font(const py2cpp::ui::style::PyUIStyle& style)
 {
   if (_ui_theme_font)
   {
     return;
   }
   char face[LF_FACESIZE];
-  style.font_name.copy_to_span(PySpan<PyByte>((PyByte*)face, (PyInt)sizeof(face), 1));
+  style.fontName.copyToSpan(PySpan<PyByte>((PyByte*)face, (PyInt)sizeof(face), 1));
   if (!face[0])
   {
     strncpy(face, "Segoe UI", (sizeof(face) - 1));
   }
   LOGFONTA lf;
   memset(&lf, 0, sizeof(lf));
-  lf.lfHeight = -MulDiv(style.font_size, _ui_theme_dpi, 96);
+  lf.lfHeight = -MulDiv(style.fontSize, _ui_theme_dpi, 96);
   lf.lfWeight = FW_NORMAL;
   lf.lfCharSet = DEFAULT_CHARSET;
   lf.lfQuality = CLEARTYPE_QUALITY;
@@ -101,7 +101,7 @@ PyInt ui_theme_scale(PyInt px)
   return MulDiv(px, _ui_theme_dpi, 96);
 }
 
-PyInt ui_theme_scale_ctx(const UIWindow& ctx, PyInt px)
+PyInt ui_theme_scale_ctx(const PyUIWindow& ctx, PyInt px)
 {
   (void)ctx;
   return ui_theme_scale(px);
@@ -130,7 +130,7 @@ void ui_theme_ensure_process()
   _ui_theme_process_ready = true;
 }
 
-void ui_theme_attach_panel(HWND hwnd, UIWindow& ctx)
+void ui_theme_attach_panel(HWND hwnd, PyUIWindow& ctx)
 {
   if (!hwnd)
   {
@@ -141,8 +141,8 @@ void ui_theme_attach_panel(HWND hwnd, UIWindow& ctx)
   {
     _ui_theme_dpi = 96;
   }
-  _ui_theme_text = _ui_color_from_rgb(ctx.style.text_color);
-  _ui_theme_panel = _ui_color_from_rgb(ctx.style.panel_color);
+  _ui_theme_text = _ui_color_from_rgb(ctx.style.textColor);
+  _ui_theme_panel = _ui_color_from_rgb(ctx.style.panelColor);
   _ui_theme_delete_gdi();
   _ui_theme_ensure_font(ctx.style);
   _ui_theme_ensure_brush();
@@ -171,53 +171,53 @@ void ui_theme_apply_font(HWND hwnd)
 }
 
 void ui_theme_layout_metrics(
-    const UIWindow& ctx,
+    const PyUIWindow& ctx,
     PyInt* pad_x,
     PyInt* label_w,
     PyInt* row_h,
-    PyInt* row_spacing,
+    PyInt* rowSpacing,
     PyInt* slider_h,
     PyInt* edit_w,
     PyInt* edit_h,
     PyInt* slider_w,
-    PyInt* form_spacing)
+    PyInt* formSpacing)
 {
-  const py2cpp::ui::style::UIStyle& st = ctx.style;
+  const py2cpp::ui::style::PyUIStyle& st = ctx.style;
   if (pad_x)
   {
-    *pad_x = ui_theme_scale(st.margin.template get<0>() + st.form_origin_x);
+    *pad_x = ui_theme_scale(st.margin.template get<0>() + st.formOriginX);
   }
   if (label_w)
   {
-    *label_w = ui_theme_scale(st.label_size.template get<0>());
+    *label_w = ui_theme_scale(st.labelSize.template get<0>());
   }
   if (row_h)
   {
-    *row_h = ui_theme_scale(st.label_size.template get<1>());
+    *row_h = ui_theme_scale(st.labelSize.template get<1>());
   }
-  if (row_spacing)
+  if (rowSpacing)
   {
-    *row_spacing = ui_theme_scale(st.row_spacing);
+    *rowSpacing = ui_theme_scale(st.rowSpacing);
   }
   if (slider_h)
   {
-    *slider_h = ui_theme_scale(st.slider_size.template get<1>());
+    *slider_h = ui_theme_scale(st.sliderSize.template get<1>());
   }
   if (edit_w)
   {
-    *edit_w = ui_theme_scale(st.edit_size.template get<0>());
+    *edit_w = ui_theme_scale(st.editSize.template get<0>());
   }
   if (edit_h)
   {
-    *edit_h = ui_theme_scale(st.edit_size.template get<1>());
+    *edit_h = ui_theme_scale(st.editSize.template get<1>());
   }
   if (slider_w)
   {
-    *slider_w = ui_theme_scale(st.slider_size.template get<0>());
+    *slider_w = ui_theme_scale(st.sliderSize.template get<0>());
   }
-  if (form_spacing)
+  if (formSpacing)
   {
-    *form_spacing = ui_theme_scale(st.form_spacing);
+    *formSpacing = ui_theme_scale(st.formSpacing);
   }
 }
 
@@ -283,12 +283,12 @@ PY2CPP_END_SCOPE
 static const char* _ui_panel_class = "Py2CppUIPanel";
 static PyBool _ui_panel_registered = false;
 
-static HWND _ui_ctx_hwnd(const UIWindow& self)
+static HWND _ui_ctx_hwnd(const PyUIWindow& self)
 {
   return (HWND)(INT_PTR)self.handle;
 }
 
-static void _ui_set_ctx_hwnd(UIWindow& self, HWND hwnd)
+static void _ui_set_ctx_hwnd(PyUIWindow& self, HWND hwnd)
 {
   self.handle = (PyInt64)((INT_PTR)hwnd);
 }
@@ -326,7 +326,7 @@ static LRESULT CALLBACK _ui_panel_wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARAM
       break;
     }
     case WM_COMMAND: {
-UIWindow* ctx = (UIWindow*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
+PyUIWindow* ctx = (PyUIWindow*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
       if (ctx)
       {
         if (py2cpp::ui::ui_menu_on_command(*ctx, (UINT_PTR)LOWORD(wp)))
@@ -350,7 +350,7 @@ UIWindow* ctx = (UIWindow*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
       break;
     }
     case WM_KEYDOWN: {
-      UIWindow* ctx = (UIWindow*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
+      PyUIWindow* ctx = (PyUIWindow*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
       if (ctx)
       {
         if (py2cpp::ui::ui_flow_on_key(*ctx, (PyInt)(UINT)wp))
@@ -361,7 +361,7 @@ UIWindow* ctx = (UIWindow*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
       break;
     }
     case WM_HSCROLL: {
-UIWindow* ctx = (UIWindow*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
+PyUIWindow* ctx = (PyUIWindow*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
       if (ctx)
       {
         if (py2cpp::ui::layout::ui_form_on_hscroll(*ctx, (HWND)lp))
@@ -372,7 +372,7 @@ UIWindow* ctx = (UIWindow*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
       break;
     }
     case WM_SIZE: {
-UIWindow* ctx = (UIWindow*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
+PyUIWindow* ctx = (PyUIWindow*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
       if (ctx)
       {
         py2cpp::ui::ui_flow_shell_on_resize(*ctx);
@@ -380,7 +380,7 @@ UIWindow* ctx = (UIWindow*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
       break;
     }
     case WM_DESTROY: {
-UIWindow* ctx = (UIWindow*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
+PyUIWindow* ctx = (PyUIWindow*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
       if (ctx)
       {
         _ui_set_ctx_hwnd(*ctx, NULL);
@@ -429,7 +429,7 @@ static void _ui_ensure_class()
 
 PY2CPP_BEGIN_SCOPE
 
-void UIWindow::_apply_title()
+void PyUIWindow::_applyTitle()
 {
   HWND panel = _ui_ctx_hwnd(*this);
   if (!panel)
@@ -437,16 +437,16 @@ void UIWindow::_apply_title()
     return;
   }
   char tbuf[512];
-  title__value.copy_to_span(PySpan<PyByte>((PyByte*)tbuf, (PyInt)sizeof(tbuf), 1));
+  title__value.copyToSpan(PySpan<PyByte>((PyByte*)tbuf, (PyInt)sizeof(tbuf), 1));
   SetWindowTextA(panel, tbuf);
 }
 
-void UIWindow::show(PyInt width, PyInt height)
+void PyUIWindow::show(PyInt width, PyInt height)
 {
   py2cpp::ui::layout::ui_form_session_reset();
   _ui_ensure_class();
   char tbuf[512];
-  title__value.copy_to_span(PySpan<PyByte>((PyByte*)tbuf, (PyInt)sizeof(tbuf), 1));
+  title__value.copyToSpan(PySpan<PyByte>((PyByte*)tbuf, (PyInt)sizeof(tbuf), 1));
   PyBool defer_w = (width < 0);
   PyBool defer_h = (height < 0);
   int w = width;
@@ -494,14 +494,14 @@ void UIWindow::show(PyInt width, PyInt height)
   _ui_set_ctx_hwnd(*this, panel);
   SetWindowLongPtrA(panel, GWLP_USERDATA, (LONG_PTR)this);
   ui_theme_attach_panel(panel, *this);
-  next_y = ui_theme_scale_ctx(
-      *this, style.margin.template get<1>() + style.form_origin_y);
-  active_form = (PyInt64)0;
+  nextY = ui_theme_scale_ctx(
+      *this, style.margin.template get<1>() + style.formOriginY);
+  activeForm = (PyInt64)0;
   ShowWindow(panel, show);
   UpdateWindow(panel);
 }
 
-void UIWindow::resize(PyInt width, PyInt height)
+void PyUIWindow::resize(PyInt width, PyInt height)
 {
   HWND panel = _ui_ctx_hwnd(*this);
   if (!panel)
@@ -515,28 +515,28 @@ void UIWindow::resize(PyInt width, PyInt height)
   PyInt pad_x = 0;
   PyInt label_w = 0;
   PyInt row_h = 0;
-  PyInt row_spacing = 0;
+  PyInt rowSpacing = 0;
   PyInt slider_h = 0;
   PyInt edit_w = 0;
   PyInt edit_h = 0;
   PyInt slider_w = 0;
-  PyInt form_spacing = 0;
+  PyInt formSpacing = 0;
   ui_theme_layout_metrics(
       *this,
       &pad_x,
       &label_w,
       &row_h,
-      &row_spacing,
+      &rowSpacing,
       &slider_h,
       &edit_w,
       &edit_h,
       &slider_w,
-      &form_spacing);
+      &formSpacing);
   (void)row_h;
-  (void)row_spacing;
+  (void)rowSpacing;
   (void)slider_h;
   (void)edit_h;
-  PyInt box_w = ui_theme_scale_ctx(*this, style.checkbox_size.template get<0>());
+  PyInt box_w = ui_theme_scale_ctx(*this, style.checkboxSize.template get<0>());
   PyInt ctrl_w = edit_w;
   if (slider_w > ctrl_w)
   {
@@ -546,7 +546,7 @@ void UIWindow::resize(PyInt width, PyInt height)
   {
     ctrl_w = box_w;
   }
-  PyInt btn_w = ui_theme_scale_ctx(*this, style.button_size.template get<0>());
+  PyInt btn_w = ui_theme_scale_ctx(*this, style.buttonSize.template get<0>());
   if (btn_w > ctrl_w)
   {
     ctrl_w = btn_w;
@@ -555,7 +555,7 @@ void UIWindow::resize(PyInt width, PyInt height)
   int client_h = height;
   if (client_w < 0)
   {
-    client_w = pad_x + label_w + form_spacing + ctrl_w + pad_x;
+    client_w = pad_x + label_w + formSpacing + ctrl_w + pad_x;
     if (client_w < 240)
     {
       client_w = 240;
@@ -564,7 +564,7 @@ void UIWindow::resize(PyInt width, PyInt height)
   if (client_h < 0)
   {
     PyInt bottom = ui_theme_scale_ctx(*this, style.margin.template get<1>());
-    client_h = next_y + bottom;
+    client_h = nextY + bottom;
     if (client_h < 160)
     {
       client_h = 160;
@@ -590,7 +590,7 @@ void UIWindow::resize(PyInt width, PyInt height)
   UpdateWindow(panel);
 }
 
-void UIWindow::close()
+void PyUIWindow::close()
 {
   py2cpp::ui::layout::ui_form_on_window_end(*this);
   HWND panel = _ui_ctx_hwnd(*this);
@@ -601,7 +601,7 @@ void UIWindow::close()
   }
 }
 
-PyTuple<PyInt, PyInt> UIWindow::client_origin_screen()
+PyTuple<PyInt, PyInt> PyUIWindow::clientOriginScreen()
 {
   HWND panel = _ui_ctx_hwnd(*this);
   if (!panel)
@@ -615,7 +615,7 @@ PyTuple<PyInt, PyInt> UIWindow::client_origin_screen()
   return PyTuple<PyInt, PyInt>((PyInt)pt.x, (PyInt)pt.y);
 }
 
-PyTuple<PyInt, PyInt> UIWindow::client_size()
+PyTuple<PyInt, PyInt> PyUIWindow::clientSize()
 {
   HWND panel = _ui_ctx_hwnd(*this);
   if (!panel)
@@ -633,37 +633,37 @@ PY2CPP_END_SCOPE
 
 PY2CPP_BEGIN_SCOPE
 
-void UIWindow::_apply_title()
+void PyUIWindow::_applyTitle()
 {
 }
 
-void UIWindow::show(PyInt width, PyInt height)
+void PyUIWindow::show(PyInt width, PyInt height)
 {
   (void)width;
   (void)height;
   handle = (PyInt64)0;
-  next_y = (PyInt)10;
-  active_form = (PyInt64)0;
+  nextY = (PyInt)10;
+  activeForm = (PyInt64)0;
 }
 
-void UIWindow::resize(PyInt width, PyInt height)
+void PyUIWindow::resize(PyInt width, PyInt height)
 {
   (void)width;
   (void)height;
 }
 
-void UIWindow::close()
+void PyUIWindow::close()
 {
   handle = (PyInt64)0;
-  active_form = (PyInt64)0;
+  activeForm = (PyInt64)0;
 }
 
-PyTuple<PyInt, PyInt> UIWindow::client_origin_screen()
+PyTuple<PyInt, PyInt> PyUIWindow::clientOriginScreen()
 {
   return PyTuple<PyInt, PyInt>(0, 0);
 }
 
-PyTuple<PyInt, PyInt> UIWindow::client_size()
+PyTuple<PyInt, PyInt> PyUIWindow::clientSize()
 {
   return PyTuple<PyInt, PyInt>(0, 0);
 }

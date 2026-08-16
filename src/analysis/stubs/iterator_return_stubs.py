@@ -40,24 +40,24 @@ def iter_method_return_type(info: ClassInfo) -> tuple[str, str] | None:
   if hit is not None:
     return hit
 
-  if info.name == "tuple_iterator" and info.is_template():
+  if info.name == "TupleIterator" and info.is_template():
     if info.typevar_tuple and not info.type_params:
-      return f"{cpp_ident('tuple_iterator')}<{info.typevar_tuple}...>", ""
+      return f"{cpp_ident('TupleIterator')}<{info.typevar_tuple}...>", ""
     if info.type_params:
-      return cpp_iterator_type("tuple_iterator", info.type_params[0]), ""
+      return cpp_iterator_type("TupleIterator", info.type_params[0]), ""
 
   if info.name in ("tuple", "PyTuple") and info.is_template():
     if info.typevar_tuple and not info.type_params:
-      return f"{cpp_ident('tuple_iterator')}<{info.typevar_tuple}...>", ""
+      return f"{cpp_ident('TupleIterator')}<{info.typevar_tuple}...>", ""
     if info.type_params:
-      return cpp_iterator_type("tuple_iterator", info.type_params[0]), ""
+      return cpp_iterator_type("TupleIterator", info.type_params[0]), ""
 
-  if info.name == "zip_iterator" and len(info.type_params) >= 2:
+  if info.name == "ZipIterator" and len(info.type_params) >= 2:
     p = ", ".join(info.type_params)
-    return f"{cpp_ident('zip_iterator')}<{p}>&", ""
+    return f"{cpp_ident('ZipIterator')}<{p}>&", ""
 
-  if info.name == "enumerate_iterator" and info.type_params:
-    return f"{cpp_ident('enumerate_iterator')}<{info.type_params[0]}>&", ""
+  if info.name == "EnumerateIterator" and info.type_params:
+    return f"{cpp_ident('EnumerateIterator')}<{info.type_params[0]}>&", ""
 
   return None
 

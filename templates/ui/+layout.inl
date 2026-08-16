@@ -22,29 +22,29 @@ namespace py2cpp {
 namespace ui {
 namespace window {
 void ui_theme_ensure_process();
-void ui_theme_attach_panel(HWND hwnd, UIWindow& ctx);
+void ui_theme_attach_panel(HWND hwnd, PyUIWindow& ctx);
 void ui_theme_apply_font(HWND hwnd);
 void ui_theme_layout_metrics(
-    const UIWindow& ctx,
+    const PyUIWindow& ctx,
     int* pad_x,
     int* label_w,
     int* row_h,
-    int* row_spacing,
+    int* rowSpacing,
     int* slider_h,
     int* edit_w,
     int* edit_h,
     int* slider_w,
-    int* form_spacing);
-int ui_theme_scale_ctx(const UIWindow& ctx, int px);
+    int* formSpacing);
+int ui_theme_scale_ctx(const PyUIWindow& ctx, int px);
 HBRUSH ui_theme_panel_brush();
 HBRUSH ui_theme_on_ctl_color(HDC hdc);
 } // namespace window
 namespace layout {
 void ui_form_session_reset();
-void ui_form_on_window_end(window::UIWindow& win);
-PyBool ui_form_on_bn_clicked(window::UIWindow& win, UINT_PTR ctrl_id);
-PyBool ui_form_on_en_change(window::UIWindow& win, UINT_PTR ctrl_id);
-PyBool ui_form_on_hscroll(window::UIWindow& win, HWND ctrl);
+void ui_form_on_window_end(window::PyUIWindow& win);
+PyBool ui_form_on_bn_clicked(window::PyUIWindow& win, UINT_PTR ctrl_id);
+PyBool ui_form_on_en_change(window::PyUIWindow& win, UINT_PTR ctrl_id);
+PyBool ui_form_on_hscroll(window::PyUIWindow& win, HWND ctrl);
 } // namespace layout
 } // namespace ui
 } // namespace py2cpp
@@ -68,18 +68,18 @@ struct UIRowEntry
   PyFloat64 fval;
   PyInt lo;
   PyInt hi;
-  py2cpp::ui::widget::UICheckBox checkbox;
-  py2cpp::ui::widget::UILineEdit line_edit;
-  py2cpp::ui::widget::UIIntEdit int_edit;
-  py2cpp::ui::widget::UIFloatEdit float_edit;
-  py2cpp::ui::widget::UISlider slider;
+  py2cpp::ui::widget::PyUICheckBox checkbox;
+  py2cpp::ui::widget::PyUILineEdit line_edit;
+  py2cpp::ui::widget::PyUIIntEdit int_edit;
+  py2cpp::ui::widget::PyUIFloatEdit float_edit;
+  py2cpp::ui::widget::PyUISlider slider;
 };
 
 struct UIButtonEntry
 {
   PyStr text;
   HWND ctrl;
-  py2cpp::ui::widget::UIPushButton widget;
+  py2cpp::ui::widget::PyUIPushButton widget;
 };
 
 typedef PY2CPP_TYPE(PyList)<UIRowEntry> UIFormRowList;
@@ -96,7 +96,7 @@ struct UIFormState
 static PY2CPP_TYPE(PyList)<UIFormState> _ui_form_state_data;
 static PY2CPP_TYPE(PyDict)<PyInt, PyInt> _ui_form_state_index;
 
-static UIFormState& _ui_form_state(UIFormLayout& form)
+static UIFormState& _ui_form_state(PyUIFormLayout& form)
 {
   PyInt key = (PyInt)(intptr_t)&form;
   if (_ui_form_state_index.__contains__(key))
@@ -115,7 +115,7 @@ static UIFormState& _ui_form_state(UIFormLayout& form)
 
 static PyInt _ui_form_ctrl_serial = 1;
 
-static HWND _ui_form_ctx_hwnd(const py2cpp::ui::window::UIWindow& self)
+static HWND _ui_form_ctx_hwnd(const py2cpp::ui::window::PyUIWindow& self)
 {
   return (HWND)(INT_PTR)self.handle;
 }
@@ -156,7 +156,7 @@ static PyInt _ui_clamp_int(PyInt v, PyInt lo, PyInt hi)
   return v;
 }
 
-static void _ui_layout_row(py2cpp::ui::window::UIWindow& self, PyStr label, HWND ctrl, int ctrl_w, int ctrl_h)
+static void _ui_layout_row(py2cpp::ui::window::PyUIWindow& self, PyStr label, HWND ctrl, int ctrl_w, int ctrl_h)
 {
   HWND parent = _ui_form_ctx_hwnd(self);
   if (!parent)
@@ -167,23 +167,23 @@ static void _ui_layout_row(py2cpp::ui::window::UIWindow& self, PyStr label, HWND
   PyInt pad_x = 0;
   PyInt label_w = 0;
   PyInt row_h = 0;
-  PyInt row_spacing = 0;
+  PyInt rowSpacing = 0;
   PyInt slider_h = 0;
   PyInt edit_w = 0;
   PyInt edit_h = 0;
   PyInt slider_w = 0;
-  PyInt form_spacing = 0;
+  PyInt formSpacing = 0;
   py2cpp::ui::window::ui_theme_layout_metrics(
       self,
       &pad_x,
       &label_w,
       &row_h,
-      &row_spacing,
+      &rowSpacing,
       &slider_h,
       &edit_w,
       &edit_h,
       &slider_w,
-      &form_spacing);
+      &formSpacing);
   (void)edit_w;
   (void)edit_h;
   (void)slider_w;
@@ -197,9 +197,9 @@ static void _ui_layout_row(py2cpp::ui::window::UIWindow& self, PyStr label, HWND
     slot_h = ctrl_h;
   }
   char lbuf[256];
-  label.copy_to_span(PySpan<PyByte>((PyByte*)lbuf, (PyInt)sizeof(lbuf), 1));
-  int y = self.next_y;
-  int ctrl_x = pad_x + label_w + form_spacing;
+  label.copyToSpan(PySpan<PyByte>((PyByte*)lbuf, (PyInt)sizeof(lbuf), 1));
+  int y = self.nextY;
+  int ctrl_x = pad_x + label_w + formSpacing;
   HWND lbl = CreateWindowExA(
       0,
       "STATIC",
@@ -226,7 +226,7 @@ static void _ui_layout_row(py2cpp::ui::window::UIWindow& self, PyStr label, HWND
         SWP_NOZORDER | SWP_SHOWWINDOW);
     py2cpp::ui::window::ui_theme_apply_font(ctrl);
   }
-  self.next_y = (PyInt)(y + slot_h + row_spacing);
+  self.nextY = (PyInt)(y + slot_h + rowSpacing);
 }
 
 static HWND _ui_create_push_button(HWND parent, const char* text, PyInt width, PyInt height)
@@ -372,7 +372,7 @@ static void _ui_row_sync_to_native(UIRowEntry& row)
     }
     case UI_ROW_LINE_EDIT: {
       char vbuf[512];
-      row.sval.copy_to_span(PySpan<PyByte>((PyByte*)vbuf, (PyInt)sizeof(vbuf), 1));
+      row.sval.copyToSpan(PySpan<PyByte>((PyByte*)vbuf, (PyInt)sizeof(vbuf), 1));
       SetWindowTextA(row.ctrl, vbuf);
       break;
     }
@@ -412,23 +412,23 @@ static void _ui_row_mount_widget_handle(UIRowEntry& row)
   {
     return;
   }
-  py2cpp::ui::widget::UIWidget* widget = NULL;
+  py2cpp::ui::widget::PyUIWidget* widget = NULL;
   switch (row.kind)
   {
     case UI_ROW_CHECKBOX:
-      widget = reinterpret_cast<py2cpp::ui::widget::UIWidget*>(&row.checkbox);
+      widget = reinterpret_cast<py2cpp::ui::widget::PyUIWidget*>(&row.checkbox);
       break;
     case UI_ROW_LINE_EDIT:
-      widget = reinterpret_cast<py2cpp::ui::widget::UIWidget*>(&row.line_edit);
+      widget = reinterpret_cast<py2cpp::ui::widget::PyUIWidget*>(&row.line_edit);
       break;
     case UI_ROW_INT_EDIT:
-      widget = reinterpret_cast<py2cpp::ui::widget::UIWidget*>(&row.int_edit);
+      widget = reinterpret_cast<py2cpp::ui::widget::PyUIWidget*>(&row.int_edit);
       break;
     case UI_ROW_FLOAT_EDIT:
-      widget = reinterpret_cast<py2cpp::ui::widget::UIWidget*>(&row.float_edit);
+      widget = reinterpret_cast<py2cpp::ui::widget::PyUIWidget*>(&row.float_edit);
       break;
     case UI_ROW_SLIDER:
-      widget = reinterpret_cast<py2cpp::ui::widget::UIWidget*>(&row.slider);
+      widget = reinterpret_cast<py2cpp::ui::widget::PyUIWidget*>(&row.slider);
       break;
     default:
       break;
@@ -440,7 +440,7 @@ static void _ui_row_mount_widget_handle(UIRowEntry& row)
   widget->handle = (PyInt64)((INT_PTR)row.ctrl);
 }
 
-static void _ui_mount_row(py2cpp::ui::window::UIWindow& win, UIRowEntry& row)
+static void _ui_mount_row(py2cpp::ui::window::PyUIWindow& win, UIRowEntry& row)
 {
   HWND parent = _ui_form_ctx_hwnd(win);
   if (!parent)
@@ -450,8 +450,8 @@ static void _ui_mount_row(py2cpp::ui::window::UIWindow& win, UIRowEntry& row)
   switch (row.kind)
   {
     case UI_ROW_CHECKBOX: {
-      PyInt box_w = py2cpp::ui::window::ui_theme_scale_ctx(win, win.style.checkbox_size.template get<0>());
-      PyInt box_h = py2cpp::ui::window::ui_theme_scale_ctx(win, win.style.checkbox_size.template get<1>());
+      PyInt box_w = py2cpp::ui::window::ui_theme_scale_ctx(win, win.style.checkboxSize.template get<0>());
+      PyInt box_h = py2cpp::ui::window::ui_theme_scale_ctx(win, win.style.checkboxSize.template get<1>());
       row.ctrl = _ui_create_checkbox(parent, box_w, box_h, row.bval);
       _ui_layout_row(win, row.label, row.ctrl, box_w, box_h);
       _ui_row_mount_widget_handle(row);
@@ -463,7 +463,7 @@ static void _ui_mount_row(py2cpp::ui::window::UIWindow& win, UIRowEntry& row)
       py2cpp::ui::window::ui_theme_layout_metrics(
           win, NULL, NULL, NULL, NULL, NULL, &edit_w, &edit_h, NULL, NULL);
       char vbuf[512];
-      row.sval.copy_to_span(PySpan<PyByte>((PyByte*)vbuf, (PyInt)sizeof(vbuf), 1));
+      row.sval.copyToSpan(PySpan<PyByte>((PyByte*)vbuf, (PyInt)sizeof(vbuf), 1));
       row.ctrl = _ui_create_edit(parent, vbuf, edit_w, edit_h);
       _ui_layout_row(win, row.label, row.ctrl, edit_w, edit_h);
       _ui_row_mount_widget_handle(row);
@@ -508,7 +508,7 @@ static void _ui_mount_row(py2cpp::ui::window::UIWindow& win, UIRowEntry& row)
   }
 }
 
-static void _ui_mount_button(py2cpp::ui::window::UIWindow& win, UIButtonEntry& btn)
+static void _ui_mount_button(py2cpp::ui::window::PyUIWindow& win, UIButtonEntry& btn)
 {
   HWND parent = _ui_form_ctx_hwnd(win);
   if (!parent)
@@ -519,13 +519,13 @@ static void _ui_mount_button(py2cpp::ui::window::UIWindow& win, UIButtonEntry& b
   PyInt btn_h = 0;
   py2cpp::ui::window::ui_theme_layout_metrics(
       win, NULL, NULL, NULL, NULL, NULL, NULL, &btn_h, NULL, NULL);
-  btn_w = py2cpp::ui::window::ui_theme_scale_ctx(win, win.style.button_size.template get<0>());
+  btn_w = py2cpp::ui::window::ui_theme_scale_ctx(win, win.style.buttonSize.template get<0>());
   if (btn_h <= 0)
   {
-    btn_h = py2cpp::ui::window::ui_theme_scale_ctx(win, win.style.button_size.template get<1>());
+    btn_h = py2cpp::ui::window::ui_theme_scale_ctx(win, win.style.buttonSize.template get<1>());
   }
   char lbuf[256];
-  btn.text.copy_to_span(PySpan<PyByte>((PyByte*)lbuf, (PyInt)sizeof(lbuf), 1));
+  btn.text.copyToSpan(PySpan<PyByte>((PyByte*)lbuf, (PyInt)sizeof(lbuf), 1));
   btn.ctrl = _ui_create_push_button(parent, lbuf, btn_w, btn_h);
   btn.widget.handle = (PyInt64)((INT_PTR)btn.ctrl);
   _ui_layout_row(win, PyStr(""), btn.ctrl, btn_w, btn_h);
@@ -592,13 +592,13 @@ static void _ui_row_fire_value_changed(UIRowEntry& row)
 
 PY2CPP_BEGIN_SCOPE
 
-PyBool ui_form_on_bn_clicked(py2cpp::ui::window::UIWindow& win, UINT_PTR ctrl_id)
+PyBool ui_form_on_bn_clicked(py2cpp::ui::window::PyUIWindow& win, UINT_PTR ctrl_id)
 {
-  if (!win.active_form)
+  if (!win.activeForm)
   {
     return false;
   }
-UIFormLayout* form = reinterpret_cast<UIFormLayout*>((void*)(INT_PTR)win.active_form);
+PyUIFormLayout* form = reinterpret_cast<PyUIFormLayout*>((void*)(INT_PTR)win.activeForm);
   if (!form)
   {
     return false;
@@ -623,18 +623,18 @@ UIFormLayout* form = reinterpret_cast<UIFormLayout*>((void*)(INT_PTR)win.active_
   {
     return false;
   }
-  form->sync_from_native(win);
+  form->syncFromNative(win);
   _ui_row_fire_value_changed(*row);
   return true;
 }
 
-PyBool ui_form_on_en_change(py2cpp::ui::window::UIWindow& win, UINT_PTR ctrl_id)
+PyBool ui_form_on_en_change(py2cpp::ui::window::PyUIWindow& win, UINT_PTR ctrl_id)
 {
-  if (!win.active_form)
+  if (!win.activeForm)
   {
     return false;
   }
-UIFormLayout* form = reinterpret_cast<UIFormLayout*>((void*)(INT_PTR)win.active_form);
+PyUIFormLayout* form = reinterpret_cast<PyUIFormLayout*>((void*)(INT_PTR)win.activeForm);
   if (!form)
   {
     return false;
@@ -648,18 +648,18 @@ UIFormLayout* form = reinterpret_cast<UIFormLayout*>((void*)(INT_PTR)win.active_
       {
     return false;
   }
-  form->sync_from_native(win);
+  form->syncFromNative(win);
   _ui_row_fire_value_changed(*row);
   return true;
 }
 
-PyBool ui_form_on_hscroll(py2cpp::ui::window::UIWindow& win, HWND ctrl)
+PyBool ui_form_on_hscroll(py2cpp::ui::window::PyUIWindow& win, HWND ctrl)
 {
-  if ((!win.active_form) || (!ctrl))
+  if ((!win.activeForm) || (!ctrl))
   {
     return false;
   }
-UIFormLayout* form = reinterpret_cast<UIFormLayout*>((void*)(INT_PTR)win.active_form);
+PyUIFormLayout* form = reinterpret_cast<PyUIFormLayout*>((void*)(INT_PTR)win.activeForm);
   if (!form)
   {
     return false;
@@ -680,13 +680,13 @@ void ui_form_session_reset()
   _ui_form_ctrl_serial = 1;
 }
 
-void ui_form_on_window_end(py2cpp::ui::window::UIWindow& win)
+void ui_form_on_window_end(py2cpp::ui::window::PyUIWindow& win)
 {
-  if (!win.active_form)
+  if (!win.activeForm)
   {
     return;
   }
-UIFormLayout* form = reinterpret_cast<UIFormLayout*>((void*)(INT_PTR)win.active_form);
+PyUIFormLayout* form = reinterpret_cast<PyUIFormLayout*>((void*)(INT_PTR)win.activeForm);
   if (!form)
   {
     return;
@@ -694,10 +694,10 @@ UIFormLayout* form = reinterpret_cast<UIFormLayout*>((void*)(INT_PTR)win.active_
   UIFormState& st = _ui_form_state(*form);
   st.applied = false;
   st.mounted_handle = (PyInt64)0;
-  win.active_form = (PyInt64)0;
+  win.activeForm = (PyInt64)0;
 }
 
-void UIFormLayout::clear()
+void PyUIFormLayout::clear()
 {
   UIFormState& st = _ui_form_state(*this);
   st.rows.clear();
@@ -707,7 +707,7 @@ void UIFormLayout::clear()
   _applied = false;
 }
 
-void UIFormLayout::add_checkbox(PyStr label, py2cpp::ui::widget::UICheckBox& widget)
+void PyUIFormLayout::addCheckbox(PyStr label, py2cpp::ui::widget::PyUICheckBox& widget)
 {
   UIFormState& st = _ui_form_state(*this);
   UIRowEntry row;
@@ -724,7 +724,7 @@ void UIFormLayout::add_checkbox(PyStr label, py2cpp::ui::widget::UICheckBox& wid
   st.rows.append(row);
 }
 
-void UIFormLayout::add_line_edit(PyStr label, py2cpp::ui::widget::UILineEdit& widget)
+void PyUIFormLayout::addLineEdit(PyStr label, py2cpp::ui::widget::PyUILineEdit& widget)
 {
   UIFormState& st = _ui_form_state(*this);
   UIRowEntry row;
@@ -741,7 +741,7 @@ void UIFormLayout::add_line_edit(PyStr label, py2cpp::ui::widget::UILineEdit& wi
   st.rows.append(row);
 }
 
-void UIFormLayout::add_int_edit(PyStr label, py2cpp::ui::widget::UIIntEdit& widget)
+void PyUIFormLayout::addIntEdit(PyStr label, py2cpp::ui::widget::PyUIIntEdit& widget)
 {
   UIFormState& st = _ui_form_state(*this);
   UIRowEntry row;
@@ -758,7 +758,7 @@ void UIFormLayout::add_int_edit(PyStr label, py2cpp::ui::widget::UIIntEdit& widg
   st.rows.append(row);
 }
 
-void UIFormLayout::add_float_edit(PyStr label, py2cpp::ui::widget::UIFloatEdit& widget)
+void PyUIFormLayout::addFloatEdit(PyStr label, py2cpp::ui::widget::PyUIFloatEdit& widget)
 {
   UIFormState& st = _ui_form_state(*this);
   UIRowEntry row;
@@ -775,7 +775,7 @@ void UIFormLayout::add_float_edit(PyStr label, py2cpp::ui::widget::UIFloatEdit& 
   st.rows.append(row);
 }
 
-void UIFormLayout::add_slider(PyStr label, py2cpp::ui::widget::UISlider& widget)
+void PyUIFormLayout::addSlider(PyStr label, py2cpp::ui::widget::PyUISlider& widget)
 {
   UIFormState& st = _ui_form_state(*this);
   UIRowEntry row;
@@ -792,7 +792,7 @@ void UIFormLayout::add_slider(PyStr label, py2cpp::ui::widget::UISlider& widget)
   st.rows.append(row);
 }
 
-void UIFormLayout::add_button(py2cpp::ui::widget::UIPushButton& widget)
+void PyUIFormLayout::addButton(py2cpp::ui::widget::PyUIPushButton& widget)
 {
   UIFormState& st = _ui_form_state(*this);
   UIButtonEntry btn;
@@ -802,7 +802,7 @@ void UIFormLayout::add_button(py2cpp::ui::widget::UIPushButton& widget)
   st.buttons.append(btn);
 }
 
-void UIFormLayout::apply(py2cpp::ui::window::UIWindow& win)
+void PyUIFormLayout::apply(py2cpp::ui::window::PyUIWindow& win)
 {
   HWND parent = _ui_form_ctx_hwnd(win);
   if (!parent)
@@ -816,7 +816,7 @@ void UIFormLayout::apply(py2cpp::ui::window::UIWindow& win)
   }
   st.applied = true;
   st.mounted_handle = win.handle;
-  win.active_form = (PyInt64)((INT_PTR)this);
+  win.activeForm = (PyInt64)((INT_PTR)this);
   size_t i = 0;
   while (i < (size_t)st.rows.__len__())
   {
@@ -832,7 +832,7 @@ void UIFormLayout::apply(py2cpp::ui::window::UIWindow& win)
   _applied = true;
 }
 
-void UIFormLayout::sync_from_native(py2cpp::ui::window::UIWindow& win)
+void PyUIFormLayout::syncFromNative(py2cpp::ui::window::PyUIWindow& win)
 {
   (void)win;
   UIFormState& st = _ui_form_state(*this);
@@ -844,7 +844,7 @@ void UIFormLayout::sync_from_native(py2cpp::ui::window::UIWindow& win)
   }
 }
 
-void UIFormLayout::sync_to_native(py2cpp::ui::window::UIWindow& win)
+void PyUIFormLayout::syncToNative(py2cpp::ui::window::PyUIWindow& win)
 {
   (void)win;
   UIFormState& st = _ui_form_state(*this);
@@ -856,13 +856,13 @@ void UIFormLayout::sync_to_native(py2cpp::ui::window::UIWindow& win)
   }
 }
 
-PyInt UIFormLayout::row_count()
+PyInt PyUIFormLayout::rowCount()
 {
   UIFormState& st = _ui_form_state(*this);
   return st.rows.__len__();
 }
 
-PyBool UIFormLayout::row_bool(PyInt index)
+PyBool PyUIFormLayout::rowBool(PyInt index)
 {
   UIFormState& st = _ui_form_state(*this);
   if ((index < 0) || (index >= st.rows.__len__()))
@@ -877,7 +877,7 @@ PyBool UIFormLayout::row_bool(PyInt index)
   return row.bval;
 }
 
-PyStr UIFormLayout::row_str(PyInt index)
+PyStr PyUIFormLayout::rowStr(PyInt index)
 {
   UIFormState& st = _ui_form_state(*this);
   if ((index < 0) || (index >= st.rows.__len__()))
@@ -892,7 +892,7 @@ PyStr UIFormLayout::row_str(PyInt index)
   return row.sval;
 }
 
-PyInt UIFormLayout::row_int(PyInt index)
+PyInt PyUIFormLayout::rowInt(PyInt index)
 {
   UIFormState& st = _ui_form_state(*this);
   if ((index < 0) || (index >= st.rows.__len__()))
@@ -907,7 +907,7 @@ PyInt UIFormLayout::row_int(PyInt index)
   return (PyInt)0;
 }
 
-PyFloat64 UIFormLayout::row_float(PyInt index)
+PyFloat64 PyUIFormLayout::rowFloat(PyInt index)
 {
   UIFormState& st = _ui_form_state(*this);
   if ((index < 0) || (index >= st.rows.__len__()))
@@ -922,7 +922,7 @@ PyFloat64 UIFormLayout::row_float(PyInt index)
   return row.fval;
 }
 
-void UIFormLayout::set_row_bool(PyInt index, PyBool value)
+void PyUIFormLayout::setRowBool(PyInt index, PyBool value)
 {
   UIFormState& st = _ui_form_state(*this);
   if ((index < 0) || (index >= st.rows.__len__()))
@@ -937,7 +937,7 @@ void UIFormLayout::set_row_bool(PyInt index, PyBool value)
   row.bval = value;
 }
 
-void UIFormLayout::set_row_str(PyInt index, PyStr value)
+void PyUIFormLayout::setRowStr(PyInt index, PyStr value)
 {
   UIFormState& st = _ui_form_state(*this);
   if ((index < 0) || (index >= st.rows.__len__()))
@@ -952,7 +952,7 @@ void UIFormLayout::set_row_str(PyInt index, PyStr value)
   row.sval = value;
 }
 
-void UIFormLayout::set_row_int(PyInt index, PyInt value)
+void PyUIFormLayout::setRowInt(PyInt index, PyInt value)
 {
   UIFormState& st = _ui_form_state(*this);
   if ((index < 0) || (index >= st.rows.__len__()))
@@ -966,7 +966,7 @@ void UIFormLayout::set_row_int(PyInt index, PyInt value)
   }
 }
 
-void UIFormLayout::set_row_float(PyInt index, PyFloat64 value)
+void PyUIFormLayout::setRowFloat(PyInt index, PyFloat64 value)
 {
   UIFormState& st = _ui_form_state(*this);
   if ((index < 0) || (index >= st.rows.__len__()))
@@ -981,7 +981,7 @@ void UIFormLayout::set_row_float(PyInt index, PyFloat64 value)
   row.fval = value;
 }
 
-void UIFormLayout::push_row_bool(PyInt index, PyBool value)
+void PyUIFormLayout::pushRowBool(PyInt index, PyBool value)
 {
   UIFormState& st = _ui_form_state(*this);
   if ((index < 0) || (index >= st.rows.__len__()))
@@ -997,7 +997,7 @@ void UIFormLayout::push_row_bool(PyInt index, PyBool value)
   row.checkbox.PY2CPP_SETTER(checked)(value);
 }
 
-void UIFormLayout::push_row_str(PyInt index, PyStr value)
+void PyUIFormLayout::pushRowStr(PyInt index, PyStr value)
 {
   UIFormState& st = _ui_form_state(*this);
   if ((index < 0) || (index >= st.rows.__len__()))
@@ -1013,7 +1013,7 @@ void UIFormLayout::push_row_str(PyInt index, PyStr value)
   row.line_edit.PY2CPP_SETTER(text)(value);
 }
 
-void UIFormLayout::push_row_int(PyInt index, PyInt value)
+void PyUIFormLayout::pushRowInt(PyInt index, PyInt value)
 {
   UIFormState& st = _ui_form_state(*this);
   if ((index < 0) || (index >= st.rows.__len__()))
@@ -1034,7 +1034,7 @@ void UIFormLayout::push_row_int(PyInt index, PyInt value)
   }
 }
 
-void UIFormLayout::push_row_float(PyInt index, PyFloat64 value)
+void PyUIFormLayout::pushRowFloat(PyInt index, PyFloat64 value)
 {
   UIFormState& st = _ui_form_state(*this);
   if ((index < 0) || (index >= st.rows.__len__()))
@@ -1060,160 +1060,160 @@ void ui_form_session_reset()
 {
 }
 
-void ui_form_on_window_end(py2cpp::ui::window::UIWindow& win)
+void ui_form_on_window_end(py2cpp::ui::window::PyUIWindow& win)
 {
   (void)win;
 }
 
-PyBool ui_form_on_bn_clicked(py2cpp::ui::window::UIWindow& win, UINT_PTR ctrl_id)
-{
-  (void)win;
-  (void)ctrl_id;
-  return false;
-}
-
-PyBool ui_form_on_en_change(py2cpp::ui::window::UIWindow& win, UINT_PTR ctrl_id)
+PyBool ui_form_on_bn_clicked(py2cpp::ui::window::PyUIWindow& win, UINT_PTR ctrl_id)
 {
   (void)win;
   (void)ctrl_id;
   return false;
 }
 
-PyBool ui_form_on_hscroll(py2cpp::ui::window::UIWindow& win, HWND ctrl)
+PyBool ui_form_on_en_change(py2cpp::ui::window::PyUIWindow& win, UINT_PTR ctrl_id)
+{
+  (void)win;
+  (void)ctrl_id;
+  return false;
+}
+
+PyBool ui_form_on_hscroll(py2cpp::ui::window::PyUIWindow& win, HWND ctrl)
 {
   (void)win;
   (void)ctrl;
   return false;
 }
 
-void UIFormLayout::clear()
+void PyUIFormLayout::clear()
 {
   _applied = false;
 }
 
-void UIFormLayout::add_checkbox(PyStr label, py2cpp::ui::widget::UICheckBox& widget)
+void PyUIFormLayout::addCheckbox(PyStr label, py2cpp::ui::widget::PyUICheckBox& widget)
 {
   (void)label;
   (void)widget;
 }
 
-void UIFormLayout::add_line_edit(PyStr label, py2cpp::ui::widget::UILineEdit& widget)
+void PyUIFormLayout::addLineEdit(PyStr label, py2cpp::ui::widget::PyUILineEdit& widget)
 {
   (void)label;
   (void)widget;
 }
 
-void UIFormLayout::add_int_edit(PyStr label, py2cpp::ui::widget::UIIntEdit& widget)
+void PyUIFormLayout::addIntEdit(PyStr label, py2cpp::ui::widget::PyUIIntEdit& widget)
 {
   (void)label;
   (void)widget;
 }
 
-void UIFormLayout::add_float_edit(PyStr label, py2cpp::ui::widget::UIFloatEdit& widget)
+void PyUIFormLayout::addFloatEdit(PyStr label, py2cpp::ui::widget::PyUIFloatEdit& widget)
 {
   (void)label;
   (void)widget;
 }
 
-void UIFormLayout::add_slider(PyStr label, py2cpp::ui::widget::UISlider& widget)
+void PyUIFormLayout::addSlider(PyStr label, py2cpp::ui::widget::PyUISlider& widget)
 {
   (void)label;
   (void)widget;
 }
 
-void UIFormLayout::add_button(py2cpp::ui::widget::UIPushButton& widget)
+void PyUIFormLayout::addButton(py2cpp::ui::widget::PyUIPushButton& widget)
 {
   (void)widget;
 }
 
-void UIFormLayout::apply(py2cpp::ui::window::UIWindow& win)
+void PyUIFormLayout::apply(py2cpp::ui::window::PyUIWindow& win)
 {
   (void)win;
   _applied = true;
 }
 
-void UIFormLayout::sync_from_native(py2cpp::ui::window::UIWindow& win)
+void PyUIFormLayout::syncFromNative(py2cpp::ui::window::PyUIWindow& win)
 {
   (void)win;
 }
 
-void UIFormLayout::sync_to_native(py2cpp::ui::window::UIWindow& win)
+void PyUIFormLayout::syncToNative(py2cpp::ui::window::PyUIWindow& win)
 {
   (void)win;
 }
 
-PyInt UIFormLayout::row_count()
+PyInt PyUIFormLayout::rowCount()
 {
   return (PyInt)0;
 }
 
-PyBool UIFormLayout::row_bool(PyInt index)
+PyBool PyUIFormLayout::rowBool(PyInt index)
 {
   (void)index;
   return false;
 }
 
-PyStr UIFormLayout::row_str(PyInt index)
+PyStr PyUIFormLayout::rowStr(PyInt index)
 {
   (void)index;
   return PyStr("");
 }
 
-PyInt UIFormLayout::row_int(PyInt index)
+PyInt PyUIFormLayout::rowInt(PyInt index)
 {
   (void)index;
   return (PyInt)0;
 }
 
-PyFloat64 UIFormLayout::row_float(PyInt index)
+PyFloat64 PyUIFormLayout::rowFloat(PyInt index)
 {
   (void)index;
   return (PyFloat64)0.0;
 }
 
-void UIFormLayout::set_row_bool(PyInt index, PyBool value)
+void PyUIFormLayout::setRowBool(PyInt index, PyBool value)
 {
   (void)index;
   (void)value;
 }
 
-void UIFormLayout::set_row_str(PyInt index, PyStr value)
+void PyUIFormLayout::setRowStr(PyInt index, PyStr value)
 {
   (void)index;
   (void)value;
 }
 
-void UIFormLayout::set_row_int(PyInt index, PyInt value)
+void PyUIFormLayout::setRowInt(PyInt index, PyInt value)
 {
   (void)index;
   (void)value;
 }
 
-void UIFormLayout::set_row_float(PyInt index, PyFloat64 value)
+void PyUIFormLayout::setRowFloat(PyInt index, PyFloat64 value)
 {
   (void)index;
   (void)value;
 }
 
-void UIFormLayout::push_row_bool(PyInt index, PyBool value)
+void PyUIFormLayout::pushRowBool(PyInt index, PyBool value)
 {
   (void)index;
   (void)value;
 }
 
-void UIFormLayout::push_row_str(PyInt index, PyStr value)
+void PyUIFormLayout::pushRowStr(PyInt index, PyStr value)
 {
   (void)index;
   (void)value;
 }
 
-void UIFormLayout::push_row_int(PyInt index, PyInt value)
+void PyUIFormLayout::pushRowInt(PyInt index, PyInt value)
 {
   (void)index;
   (void)value;
 }
 
-void UIFormLayout::push_row_float(PyInt index, PyFloat64 value)
+void PyUIFormLayout::pushRowFloat(PyInt index, PyFloat64 value)
 {
   (void)index;
   (void)value;

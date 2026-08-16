@@ -40,7 +40,7 @@ class _PathTr:
             (),
             {
               "returns": ast.Subscript(
-                value=ast.Name(id="Generator"),
+                value=ast.Name(id="GeneratorType"),
                 slice=ast.Tuple(
                   elts=[
                     ast.Name(id="str"),
@@ -56,7 +56,7 @@ class _PathTr:
             (),
             {
               "returns": ast.Subscript(
-                value=ast.Name(id="Generator"),
+                value=ast.Name(id="GeneratorType"),
                 slice=ast.Tuple(
                   elts=[
                     ast.Name(id="str"),
@@ -262,7 +262,7 @@ class GeneratorHostClassTests(unittest.TestCase):
     )
     self.assertIsNotNone(pair)
     it_ann, seq_ann = pair
-    self.assertEqual(it_ann.value.id, "list_iterator")
+    self.assertEqual(it_ann.value.id, "ListIterator")
     self.assertEqual(seq_ann.value.id, "list")
 
   def test_for_suspend_materializes_nested_generator(self):
@@ -294,7 +294,7 @@ class GeneratorHostClassTests(unittest.TestCase):
     self.assertEqual(len(fields), 1)
     it_field, it_ann, seq_ann = fields[0]
     self.assertEqual(it_field, "_for0_it")
-    self.assertEqual(it_ann.value.id, "list_iterator")
+    self.assertEqual(it_ann.value.id, "ListIterator")
     self.assertEqual(seq_ann.value.id, "list")
 
   def test_desugar_static_yield_from_sub_generator(self):

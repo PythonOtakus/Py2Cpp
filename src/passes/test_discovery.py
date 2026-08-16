@@ -1,4 +1,4 @@
-"""翻译期展开 ``Mixin.iter_subclasses()`` / ``addTestsFromMixin``。"""
+"""翻译期展开 ``Mixin.iterSubclasses()`` / ``addTestsFromMixin``。"""
 from __future__ import annotations
 
 import ast
@@ -52,7 +52,7 @@ def _host_static_field_int(info: ClassInfo, field: str) -> int:
 
 
 def _parse_sort_const_keyword(node: ast.Call) -> str | None | object:
-  """解析 ``sort_const=…``；无该关键字返回 ``None``；非法则 ``_SENTINEL``。"""
+  """解析 ``sortConst=…``；无该关键字返回 ``None``；非法则 ``_SENTINEL``。"""
   sort_key: str | None = None
   for kw in node.keywords:
     if kw.arg != ITER_SUBCLASSES_SORT_CONST:
@@ -73,7 +73,7 @@ _SENTINEL = object()
 def _parse_iter_register_call(
   node: ast.expr,
 ) -> tuple[str, str | None] | None:
-  """``Mixin.iter_subclasses()`` / ``iter_subclasses(sort_const=\"_test_tag\")`` → (mixin, sort_key|None)。"""
+  """``Mixin.iterSubclasses()`` / ``iterSubclasses(sortConst=\"_testTag\")`` → (mixin, sort_key|None)。"""
   if not isinstance(node, ast.Call):
     return None
   func = node.func

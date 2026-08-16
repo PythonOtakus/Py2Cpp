@@ -19,9 +19,9 @@ static PyBool _ui_flow_ctrl_down()
   return (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
 }
 
-PyBool ui_flow_on_key(window::UIWindow& win, PyInt vk)
+PyBool ui_flow_on_key(window::PyUIWindow& win, PyInt vk)
 {
-  if (win.flow_shell_ptr == 0 || !_ui_flow_ctrl_down())
+  if (win.flowShellPtr == 0 || !_ui_flow_ctrl_down())
   {
     return false;
   }
@@ -49,32 +49,32 @@ PyBool ui_flow_on_key(window::UIWindow& win, PyInt vk)
     default:
       return false;
   }
-  flow::shell::UIFlowShell* sh =
-      (flow::shell::UIFlowShell*)(INT_PTR)win.flow_shell_ptr;
-  sh->run_canvas_menu(cmd);
+  flow::shell::PyUIFlowShell* sh =
+      (flow::shell::PyUIFlowShell*)(INT_PTR)win.flowShellPtr;
+  sh->runCanvasMenu(cmd);
   return true;
 }
 
-PyBool ui_menu_on_command(window::UIWindow& win, UINT_PTR cmd_id)
+PyBool ui_menu_on_command(window::PyUIWindow& win, UINT_PTR cmd_id)
 {
-  if (win.flow_shell_ptr == 0)
+  if (win.flowShellPtr == 0)
   {
     return false;
   }
-  py2cpp::ui::flow::shell::UIFlowShell* sh =
-      (py2cpp::ui::flow::shell::UIFlowShell*)(INT_PTR)win.flow_shell_ptr;
-  sh->on_menu_command((PyInt)cmd_id);
+  py2cpp::ui::flow::shell::PyUIFlowShell* sh =
+      (py2cpp::ui::flow::shell::PyUIFlowShell*)(INT_PTR)win.flowShellPtr;
+  sh->onMenuCommand((PyInt)cmd_id);
   return true;
 }
 
-void ui_flow_shell_on_resize(window::UIWindow& win)
+void ui_flow_shell_on_resize(window::PyUIWindow& win)
 {
-  if (win.flow_shell_ptr == 0)
+  if (win.flowShellPtr == 0)
   {
     return;
   }
-  flow::shell::UIFlowShell* sh = (flow::shell::UIFlowShell*)(INT_PTR)win.flow_shell_ptr;
-  sh->layout_shell();
+  flow::shell::PyUIFlowShell* sh = (flow::shell::PyUIFlowShell*)(INT_PTR)win.flowShellPtr;
+  sh->layoutShell();
 }
 
 }  // namespace ui
@@ -82,39 +82,39 @@ void ui_flow_shell_on_resize(window::UIWindow& win)
 
 PY2CPP_BEGIN_SCOPE
 
-static flow::canvas::UIFlowCanvas* _shell_bound_canvas(UIFlowShell& sh)
+static flow::canvas::PyUIFlowCanvas* _shell_bound_canvas(PyUIFlowShell& sh)
 {
-  if (sh.bound_canvas_ptr == 0)
+  if (sh.boundCanvasPtr == 0)
   {
     return NULL;
   }
-  return (flow::canvas::UIFlowCanvas*)(INT_PTR)sh.bound_canvas_ptr;
+  return (flow::canvas::PyUIFlowCanvas*)(INT_PTR)sh.boundCanvasPtr;
 }
 
-void UIFlowShell::register_shell(window::UIWindow& win)
+void PyUIFlowShell::registerShell(window::PyUIWindow& win)
 {
-  win.flow_shell_ptr = (PyInt64)((INT_PTR)this);
+  win.flowShellPtr = (PyInt64)((INT_PTR)this);
 }
 
-void UIFlowShell::bind_canvas(window::UIWindow& win, flow::canvas::UIFlowCanvas& canvas)
+void PyUIFlowShell::bindCanvas(window::PyUIWindow& win, flow::canvas::PyUIFlowCanvas& canvas)
 {
-  this->bound_canvas_ptr = (PyInt64)((INT_PTR)&canvas);
-  win.flow_canvas_ptr = (PyInt64)((INT_PTR)&canvas);
+  this->boundCanvasPtr = (PyInt64)((INT_PTR)&canvas);
+  win.flowCanvasPtr = (PyInt64)((INT_PTR)&canvas);
 }
 
-void UIFlowShell::invalidate_all()
+void PyUIFlowShell::invalidateAll()
 {
   this->palette.invalidate();
-  flow::canvas::UIFlowCanvas* cv = _shell_bound_canvas(*this);
+  flow::canvas::PyUIFlowCanvas* cv = _shell_bound_canvas(*this);
   if (cv)
   {
     cv->invalidate();
   }
 }
 
-void UIFlowShell::layout_shell()
+void PyUIFlowShell::layoutShell()
 {
-  flow::canvas::UIFlowCanvas* cv = _shell_bound_canvas(*this);
+  flow::canvas::PyUIFlowCanvas* cv = _shell_bound_canvas(*this);
   HWND parent = (HWND)(INT_PTR)this->win.handle;
   if (!parent || !cv)
   {
@@ -129,20 +129,20 @@ void UIFlowShell::layout_shell()
   {
     palette_w = cw;
   }
-  this->palette.set_bounds(0, 0, palette_w, ch);
+  this->palette.setBounds(0, 0, palette_w, ch);
   PyInt canvas_w = cw - palette_w;
   if (canvas_w < 1)
   {
     canvas_w = 1;
   }
-  cv->set_bounds(palette_w, 0, canvas_w, ch);
+  cv->setBounds(palette_w, 0, canvas_w, ch);
   this->palette.invalidate();
   cv->invalidate();
 }
 
-void UIFlowShell::run_canvas_menu(PyInt cmd_id)
+void PyUIFlowShell::runCanvasMenu(PyInt cmd_id)
 {
-  flow::canvas::UIFlowCanvas* cv = _shell_bound_canvas(*this);
+  flow::canvas::PyUIFlowCanvas* cv = _shell_bound_canvas(*this);
   if (!cv)
   {
     return;
@@ -150,33 +150,33 @@ void UIFlowShell::run_canvas_menu(PyInt cmd_id)
   switch (cmd_id)
   {
     case 201:
-      cv->delete_selected();
+      cv->deleteSelected();
       break;
     case 202:
-      cv->cancel_interaction();
+      cv->cancelInteraction();
       break;
     case 203:
-      cv->undo_graph();
+      cv->undoGraph();
       break;
     case 204:
-      cv->redo_graph();
+      cv->redoGraph();
       break;
     case 205:
-      cv->clipboard_json = cv->cut_selection();
+      cv->clipboardJson = cv->cutSelection();
       break;
     case 206:
-      cv->copy_to_clipboard();
+      cv->copyToClipboard();
       break;
     case 207:
-      cv->paste_from_clipboard();
+      cv->pasteFromClipboard();
       break;
     case 208:
-      cv->select_all_nodes();
+      cv->selectAllNodes();
       break;
     case 301:
       cv->zoom = 1.0f;
-      cv->pan_x = 0.0f;
-      cv->pan_y = 0.0f;
+      cv->panX = 0.0f;
+      cv->panY = 0.0f;
       cv->invalidate();
       break;
     default:
@@ -184,42 +184,42 @@ void UIFlowShell::run_canvas_menu(PyInt cmd_id)
   }
 }
 
-void UIFlowShell::bound_file_new()
+void PyUIFlowShell::boundFileNew()
 {
-  flow::canvas::UIFlowCanvas* cv = _shell_bound_canvas(*this);
+  flow::canvas::PyUIFlowCanvas* cv = _shell_bound_canvas(*this);
   if (!cv)
   {
     return;
   }
   cv->history.push(cv->graph);
   cv->graph.clear();
-  cv->clear_selection();
-  cv->graph_changed();
+  cv->clearSelection();
+  cv->graphChanged();
   cv->invalidate();
 }
 
-void UIFlowShell::bound_file_open(PyStr text)
+void PyUIFlowShell::boundFileOpen(PyStr text)
 {
-  flow::canvas::UIFlowCanvas* cv = _shell_bound_canvas(*this);
+  flow::canvas::PyUIFlowCanvas* cv = _shell_bound_canvas(*this);
   if (!cv || !text)
   {
     return;
   }
-  flow::serialize::graph_from_json(cv->graph, text);
-  cv->clear_selection();
+  flow::serialize::graphFromJson(cv->graph, text);
+  cv->clearSelection();
   cv->history.clear();
-  cv->graph_changed();
+  cv->graphChanged();
   cv->invalidate();
 }
 
-PyStr UIFlowShell::bound_file_save()
+PyStr PyUIFlowShell::boundFileSave()
 {
-  flow::canvas::UIFlowCanvas* cv = _shell_bound_canvas(*this);
+  flow::canvas::PyUIFlowCanvas* cv = _shell_bound_canvas(*this);
   if (!cv)
   {
     return PyStr();
   }
-  return flow::serialize::graph_to_json(cv->graph);
+  return flow::serialize::graphToJson(cv->graph);
 }
 
 PY2CPP_END_SCOPE
@@ -229,21 +229,21 @@ PY2CPP_END_SCOPE
 namespace py2cpp {
 namespace ui {
 
-PyBool ui_flow_on_key(window::UIWindow& win, PyInt vk)
+PyBool ui_flow_on_key(window::PyUIWindow& win, PyInt vk)
 {
   (void)win;
   (void)vk;
   return false;
 }
 
-PyBool ui_menu_on_command(window::UIWindow& win, UINT_PTR cmd_id)
+PyBool ui_menu_on_command(window::PyUIWindow& win, UINT_PTR cmd_id)
 {
   (void)win;
   (void)cmd_id;
   return false;
 }
 
-void ui_flow_shell_on_resize(window::UIWindow& win)
+void ui_flow_shell_on_resize(window::PyUIWindow& win)
 {
   (void)win;
 }
@@ -253,41 +253,41 @@ void ui_flow_shell_on_resize(window::UIWindow& win)
 
 PY2CPP_BEGIN_SCOPE
 
-void UIFlowShell::register_shell(window::UIWindow& win)
+void PyUIFlowShell::registerShell(window::PyUIWindow& win)
 {
   (void)win;
 }
 
-void UIFlowShell::bind_canvas(window::UIWindow& win, flow::canvas::UIFlowCanvas& canvas)
+void PyUIFlowShell::bindCanvas(window::PyUIWindow& win, flow::canvas::PyUIFlowCanvas& canvas)
 {
   (void)win;
   (void)canvas;
-  this->bound_canvas_ptr = 0;
+  this->boundCanvasPtr = 0;
 }
 
-void UIFlowShell::invalidate_all()
+void PyUIFlowShell::invalidateAll()
 {
 }
 
-void UIFlowShell::layout_shell()
+void PyUIFlowShell::layoutShell()
 {
 }
 
-void UIFlowShell::run_canvas_menu(PyInt cmd_id)
+void PyUIFlowShell::runCanvasMenu(PyInt cmd_id)
 {
   (void)cmd_id;
 }
 
-void UIFlowShell::bound_file_new()
+void PyUIFlowShell::boundFileNew()
 {
 }
 
-void UIFlowShell::bound_file_open(PyStr text)
+void PyUIFlowShell::boundFileOpen(PyStr text)
 {
   (void)text;
 }
 
-PyStr UIFlowShell::bound_file_save()
+PyStr PyUIFlowShell::boundFileSave()
 {
   return PyStr();
 }

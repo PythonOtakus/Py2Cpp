@@ -1,10 +1,9 @@
-"""``range`` / ``range_iterator``：对齐 CPython 3.13 不可变整数序列。"""
+"""``range`` / ``RangeIterator``：对齐 CPython 3.13 不可变整数序列。"""
 from ..builtins import *
 from ..core.exceptions import IndexError, StopIteration, ValueError
 
 
-@native_name("PyRangeIterator")
-class range_iterator:
+class RangeIterator:
   def __init__(self, start: int, stop: int, step: int):
     self._current: int = start
     self._stop: int = stop
@@ -37,9 +36,8 @@ class range_iterator:
     return (n - self._step - 1) // (-self._step)
 
 
-@native_name("PyRange")
 class range(
-  friends=(range_iterator,),
+  friends=(RangeIterator,),
 ):
   @overload
   def __init__(self, stop: int):
@@ -130,7 +128,7 @@ class range(
     return self._start == other.start and self._step == other.step
 
   @immutable
-  def __reversed__(self) -> range_iterator:
+  def __reversed__(self) -> RangeIterator:
     n: int = len(self)
     if n == 0:
       return new(self._start, self._start, self._step)
@@ -153,5 +151,5 @@ class range(
     out += ")"
     return out
 
-  def __iter__(self) -> range_iterator:
+  def __iter__(self) -> RangeIterator:
     return new(self._start, self._stop, self._step)

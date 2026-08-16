@@ -1,9 +1,9 @@
-"""``Iterable[int]`` 形参 + genexp 实参：调用点内联集成测。"""
+"""``IterableType[int]`` 形参 + genexp 实参：调用点内联集成测。"""
 from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 
-def total(xs: Iterable[int], start: int = 0) -> int:
+def total(xs: IterableType[int], start: int = 0) -> int:
   acc: int = start
   for x in xs:
     acc += x
@@ -11,7 +11,7 @@ def total(xs: Iterable[int], start: int = 0) -> int:
 
 
 class GenexpInlineTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
@@ -26,6 +26,6 @@ class GenexpInlineTests(TestCaseMixin):
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)

@@ -48,12 +48,12 @@ namespace py2cpp_concur_task_detail
     fd_set* wptr = NULL;
     FD_ZERO(&rfds);
     FD_ZERO(&wfds);
-    if ((events & IO_READ) != 0)
+    if ((events & IoRead) != 0)
     {
       FD_SET(s, &rfds);
       rptr = &rfds;
     }
-    if ((events & IO_WRITE) != 0)
+    if ((events & IoWrite) != 0)
     {
       FD_SET(s, &wfds);
       wptr = &wfds;
@@ -86,7 +86,7 @@ namespace py2cpp_concur_task_detail
   };
 
   template<typename ReturnType>
-  struct task_coro_drive_policy<py2cpp::concur::task::LoopHandle, ReturnType>
+  struct task_coro_drive_policy<py2cpp::concur::task::PyLoopHandle, ReturnType>
   {
     static const bool kPassYieldToScheduler = true;
   };
@@ -94,15 +94,15 @@ namespace py2cpp_concur_task_detail
   template<typename G, bool kPassYieldToScheduler>
   struct task_coro_drive_impl;
 
-  /// 将任意 ``*_coroutine`` 适配为 ``Coroutine[LoopHandle, None, R]``：
-  /// 仅 ``Element == LoopHandle`` 的 yield 交给调度器；其余在桥内继续 ``send``。
+  /// 将任意 ``*_coroutine`` 适配为 ``Coroutine[PyLoopHandle, None, R]``：
+  /// 仅 ``Element == PyLoopHandle`` 的 yield 交给调度器；其余在桥内继续 ``send``。
   template<typename G>
   struct task_coro_bridge
   {
     G gen;
     bool use_send;
 
-    typedef py2cpp::concur::task::LoopHandle Element;
+    typedef py2cpp::concur::task::PyLoopHandle Element;
     typedef PY2CPP_TYPE(PyNone) SendType;
     typedef typename G::ReturnType ReturnType;
 
@@ -166,7 +166,7 @@ namespace py2cpp_concur_task_detail
         step = self.gen.send(
           py2cpp_coroutine_detail::default_send_value<typename G::SendType>());
       }
-      return OuterResult::Return(step.PY2CPP_GETTER(return_value)());
+      return OuterResult::Return(step.PY2CPP_GETTER(returnValue)());
     }
   };
 
@@ -182,17 +182,17 @@ namespace py2cpp_concur_task_detail
       {
         return OuterResult::Yield(step.PY2CPP_GETTER(value)());
       }
-      return OuterResult::Return(step.PY2CPP_GETTER(return_value)());
+      return OuterResult::Return(step.PY2CPP_GETTER(returnValue)());
     }
   };
 
   template<typename G>
-  PyRefCount<py2cpp::concur::task::_SlotBase> make_coro_slot_from_gen(G gen)
+  PyRefCount<py2cpp::concur::task::_PySlotBase> make_coro_slot_from_gen(G gen)
   {
     using RT = typename G::ReturnType;
-    using LH = py2cpp::concur::task::LoopHandle;
+    using LH = py2cpp::concur::task::PyLoopHandle;
     task_coro_bridge<G> bridge(gen);
-    PyRefCount<py2cpp::concur::task::_SlotBase> slot =
+    PyRefCount<py2cpp::concur::task::_PySlotBase> slot =
       makeRefCount<py2cpp::concur::task::_CoroSlot<RT>>(
         makeCoroutine<LH, PY2CPP_TYPE(PyNone), RT>(bridge));
     (*slot).kind = TASK_CORO;
@@ -221,7 +221,7 @@ namespace py2cpp_concur_task_detail
 
   template<typename G>
   typename G::ReturnType slot_result_for_coro(
-    const PyRefCount<py2cpp::concur::task::_SlotBase>& slot)
+    const PyRefCount<py2cpp::concur::task::_PySlotBase>& slot)
   {
     using RT = typename G::ReturnType;
     const py2cpp::concur::task::_CoroSlot<RT>& coro_slot =
@@ -230,21 +230,21 @@ namespace py2cpp_concur_task_detail
   }
 }
 
-template<typename _T>
+template<typename _Value>
 template<typename Coro>
-py2cpp::concur::task::Task<typename Coro::ReturnType>
-py2cpp::concur::task::Task<_T>::create(Coro coro)
+py2cpp::concur::task::PyTask<typename Coro::ReturnType>
+py2cpp::concur::task::PyTask<_Value>::create(Coro coro)
 {
   using R = typename Coro::ReturnType;
   py2cpp::concur::task::Scheduler& sched =
-    py2cpp::concur::task::_require_scheduler();
-  PyRefCount<py2cpp::concur::task::_SlotBase> slot =
+    py2cpp::concur::task::_requireScheduler();
+  PyRefCount<py2cpp::concur::task::_PySlotBase> slot =
     py2cpp_concur_task_detail::make_coro_slot_from_gen(coro);
-  PyInt64 tid = py2cpp::concur::task::_alloc_task_id();
-  slot->slot_id = tid;
-  sched._register_slot(slot);
+  PyInt64 tid = py2cpp::concur::task::_allocTaskId();
+  slot->slotId = tid;
+  sched._registerSlot(slot);
   sched._enqueue(tid);
-  py2cpp::concur::task::Task<R> t;
-  t.task_id = tid;
+  py2cpp::concur::task::PyTask<R> t;
+  t.taskId = tid;
   return t;
 }

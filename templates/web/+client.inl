@@ -21,7 +21,7 @@ PY2CPP_END
 
 static void _web_client_throw_oserror()
 {
-  throw PY2CPP_TYPE(OSError)();
+  throw PY2CPP_TYPE(PyOSError)();
 }
 
 static std::string _web_client_pybytes_to_string(const PyBytes& b)
@@ -59,7 +59,7 @@ static std::string _web_client_pystr_to_utf8(const PyStr& s)
   }
   std::string buf;
   buf.resize((size_t)n + 1u, '\0');
-  s.copy_to_span(PySpan<PyByte>((PyByte*)buf.data(), (PyInt)buf.size(), 1));
+  s.copyToSpan(PySpan<PyByte>((PyByte*)buf.data(), (PyInt)buf.size(), 1));
   return std::string(buf.c_str());
 }
 
@@ -162,7 +162,7 @@ static std::string _web_client_body_from_payload(const std::string& payload)
   return payload.substr(head_end + 4);
 }
 
-static void _web_client_parse_raw_headers(ClientResponse& resp, const std::wstring& raw)
+static void _web_client_parse_raw_headers(PyClientResponse& resp, const std::wstring& raw)
 {
   size_t start = 0;
   while (start < raw.size())
@@ -194,7 +194,7 @@ static void _web_client_parse_raw_headers(ClientResponse& resp, const std::wstri
   }
 }
 
-static ClientResponse _web_client_https_request_winhttp(const PyStr& method, UrlData url, PyBytes payload, PyFloat timeout)
+static PyClientResponse _web_client_https_request_winhttp(const PyStr& method, PyUrlData url, PyBytes payload, PyFloat timeout)
 {
   std::string host_u8 = _web_client_pystr_to_utf8(url.host);
   std::string path_u8 = _web_client_pystr_to_utf8(url.path);
@@ -265,7 +265,7 @@ static ClientResponse _web_client_https_request_winhttp(const PyStr& method, Url
     _web_client_throw_oserror();
   }
 
-  ClientResponse resp = ClientResponse();
+  PyClientResponse resp = PyClientResponse();
   DWORD status = 0;
   DWORD status_len = sizeof(status);
   if (WinHttpQueryHeaders(request,
@@ -336,19 +336,19 @@ static ClientResponse _web_client_https_request_winhttp(const PyStr& method, Url
 }
 #endif
 
-ClientResponse py2cpp::web::client::_https_request(const PyStr& method, UrlData url, PyBytes payload, PyFloat timeout)
+PyClientResponse py2cpp::web::client::_httpsRequest(const PyStr& method, PyUrlData url, PyBytes payload, PyFloat timeout)
 {
 #ifdef _WIN32
   return _web_client_https_request_winhttp(method, url, payload, timeout);
 #else
   _web_client_throw_oserror();
-  return ClientResponse();
+  return PyClientResponse();
 #endif
 }
 
-ClientStreamResponse py2cpp::web::client::_https_stream(const PyStr& method, UrlData url, PyBytes payload, PyFloat timeout)
+PyClientStreamResponse py2cpp::web::client::_httpsStream(const PyStr& method, PyUrlData url, PyBytes payload, PyFloat timeout)
 {
-  ClientResponse head = ::py2cpp::web::client::_https_request(method, url, payload, timeout);
+  PyClientResponse head = ::py2cpp::web::client::_httpsRequest(method, url, payload, timeout);
   if (head.headers.__contains__(PyStr("Transfer-Encoding")))
   {
     head.headers.__delitem__(PyStr("Transfer-Encoding"));
@@ -357,8 +357,8 @@ ClientStreamResponse py2cpp::web::client::_https_stream(const PyStr& method, Url
   {
     head.headers.__delitem__(PyStr("transfer-encoding"));
   }
-  StreamReader reader = StreamReader();
-  reader.load_bytes(head.body);
-  StreamWriter writer = StreamWriter::from_buffer();
-  return ClientStreamResponse::from_head(reader, writer, head);
+  PyStreamReader reader = PyStreamReader();
+  reader.loadBytes(head.body);
+  PyStreamWriter writer = PyStreamWriter::fromBuffer();
+  return PyClientStreamResponse::fromHead(reader, writer, head);
 }

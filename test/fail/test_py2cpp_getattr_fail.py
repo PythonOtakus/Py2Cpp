@@ -8,10 +8,10 @@ class Box:
   x: int = 0
 
 
-def read_missing(box) -> int:
+def readMissing(box) -> int:
   return box.missing
 
 
 def main() -> int:
   b: Box = new()
-  return read_missing(b)
+  return readMissing(b)

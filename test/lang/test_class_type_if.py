@@ -3,15 +3,15 @@ from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 
-class Cell[T]:
-  if T is int:
+class Cell[Element]:
+  if Element is int:
     type V = int
     seed: V = 0
     band: int = 10
     @staticmethod
     def tag() -> int:
       return 1
-  elif T is str:
+  elif Element is str:
     type V = str
     seed: V = new()
     band: int = 20
@@ -33,7 +33,7 @@ class Cell[T]:
   def read(self) -> V:
     return self.slot
 
-  def read_label(self) -> str:
+  def readLabel(self) -> str:
     return self.label
 
   def write(self, x: V) -> None:
@@ -43,29 +43,29 @@ class Cell[T]:
     self.slot = self.seed
 
   @staticmethod
-  def arity_hint() -> int:
+  def arityHint() -> int:
     return 1
 
 
 class CellIntTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
     self.assertEqual(Cell[int].tag(), 1)
-    self.assertEqual(Cell[int].arity_hint(), 1)
+    self.assertEqual(Cell[int].arityHint(), 1)
     c: Cell[int] = new()
     self.assertEqual(c.serial, 0)
     self.assertEqual(c.read(), 0)
     c.write(7)
     self.assertEqual(c.read(), 7)
-    self.assertEqual(c.read_label(), "")
+    self.assertEqual(c.readLabel(), "")
     c.reset()
     self.assertEqual(c.read(), 0)
 
 
 class CellStrTests(TestCaseMixin):
-  _test_tag = 2
+  _testTag = 2
 
   @override
   def test(self):
@@ -74,13 +74,13 @@ class CellStrTests(TestCaseMixin):
     self.assertEqual(c.read(), "")
     c.write("hi")
     self.assertEqual(c.read(), "hi")
-    self.assertEqual(c.read_label(), "")
+    self.assertEqual(c.readLabel(), "")
     c.reset()
     self.assertEqual(c.read(), "")
 
 
 class CellFloatTests(TestCaseMixin):
-  _test_tag = 3
+  _testTag = 3
 
   @override
   def test(self):
@@ -95,6 +95,6 @@ class CellFloatTests(TestCaseMixin):
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)

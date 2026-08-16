@@ -131,7 +131,7 @@ def parse_self_iter_call_options(
       continue
     if not isinstance(kw.value, ast.Constant) or not isinstance(kw.value.value, bool):
       raise NotImplementedError(f"{label}({kw.arg}=…) 须为编译期 bool 常量")
-    if kw.arg == "public_only":
+    if kw.arg in ("public_only", "publicOnly"):
       public_only = kw.value.value
     elif kw.arg == "mro":
       mro = kw.value.value

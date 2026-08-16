@@ -3,109 +3,109 @@ from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 
-def sum_vararg(*nums: int[:]) -> int:
+def sumVararg(*nums: int[:]) -> int:
   total: int = 0
   for x in nums:
     total += x
   return total
 
 
-def head_plus_count(first: int, *rest: int[:]) -> int:
+def headPlusCount(first: int, *rest: int[:]) -> int:
   return first + len(rest)
 
 
-def pack_len(*nums: int[:]) -> int:
+def packLen(*nums: int[:]) -> int:
   return len(nums)
 
 
-def forward_all(*nums: int[:]) -> int:
-  return pack_len(*nums)
+def forwardAll(*nums: int[:]) -> int:
+  return packLen(*nums)
 
 
-def forward_with_head(first: int, *rest: int[:]) -> int:
-  return first + pack_len(*rest)
+def forwardWithHead(first: int, *rest: int[:]) -> int:
+  return first + packLen(*rest)
 
 
-def pack_sum(*nums: int[:]) -> int:
+def packSum(*nums: int[:]) -> int:
   total: int = 0
   for x in nums:
     total += x
   return total
 
 
-def as_pack(*nums: int[:]) -> int[:]:
+def asPack(*nums: int[:]) -> int[:]:
   return nums
 
 
-def interleave_packs(a: int[:], b: int[:]) -> int:
-  return pack_sum(3, *a, 4, *b, 5)
+def interleavePacks(a: int[:], b: int[:]) -> int:
+  return packSum(3, *a, 4, *b, 5)
 
 
-def interleave_with_head(first: int, *rest: int[:]) -> int:
-  return pack_sum(first, *rest)
+def interleaveWithHead(first: int, *rest: int[:]) -> int:
+  return packSum(first, *rest)
 
 
 class VarargEmptyPackTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
-    self.assertEqual(sum_vararg(), 0)
+    self.assertEqual(sumVararg(), 0)
 
 
 class VarargThreeValuesTests(TestCaseMixin):
-  _test_tag = 2
+  _testTag = 2
 
   @override
   def test(self):
-    self.assertEqual(sum_vararg(1, 2, 3), 6)
+    self.assertEqual(sumVararg(1, 2, 3), 6)
 
 
 class VarargHeadAndRestTests(TestCaseMixin):
-  _test_tag = 3
+  _testTag = 3
 
   @override
   def test(self):
-    self.assertEqual(head_plus_count(5, 1, 2), 7)
+    self.assertEqual(headPlusCount(5, 1, 2), 7)
 
 
 class VarargForwardWholePackTests(TestCaseMixin):
-  _test_tag = 4
+  _testTag = 4
 
   @override
   def test(self):
-    self.assertEqual(forward_all(1, 2, 3), 3)
+    self.assertEqual(forwardAll(1, 2, 3), 3)
 
 
 class VarargForwardWithHeadTests(TestCaseMixin):
-  _test_tag = 5
+  _testTag = 5
 
   @override
   def test(self):
-    self.assertEqual(forward_with_head(10, 1, 2), 12)
+    self.assertEqual(forwardWithHead(10, 1, 2), 12)
 
 
 class VarargInterleaveStarredPacksTests(TestCaseMixin):
-  _test_tag = 6
+  _testTag = 6
 
   @override
   def test(self):
-    left: int[:] = as_pack(1, 2)
-    right: int[:] = as_pack(7)
-    self.assertEqual(interleave_packs(left, right), 22)
+    left: int[:] = asPack(1, 2)
+    right: int[:] = asPack(7)
+    self.assertEqual(interleavePacks(left, right), 22)
 
 
 class VarargInterleaveScalarAndStarTests(TestCaseMixin):
-  _test_tag = 7
+  _testTag = 7
 
   @override
   def test(self):
-    mid: int[:] = as_pack(2, 3)
-    self.assertEqual(interleave_with_head(10, *mid, 4), 19)
+    mid: int[:] = asPack(2, 3)
+    self.assertEqual(interleaveWithHead(10, *mid, 4), 19)
 
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)

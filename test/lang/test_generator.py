@@ -1,36 +1,36 @@
-"""``yield`` / ``yield from`` / ``send`` / ``return``（``Generator[Y,S,R]``）；``for`` / ``else`` / ``continue``。"""
+"""``yield`` / ``yield from`` / ``send`` / ``return``（``GeneratorType[Y,S,R]``）；``for`` / ``else`` / ``continue``。"""
 from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 
-def gen_three() -> Generator[int, None, None]:
+def genThree() -> GeneratorType[int, None, None]:
   yield 1
   yield 2
   yield 3
 
 
-def gen_range(n: int) -> Generator[int, None, None]:
+def genRange(n: int) -> GeneratorType[int, None, None]:
   counter: int = 0
   while counter < n:
     yield counter
     counter += 1
 
 
-def gen_from_list(xs: list[int]) -> Generator[int, None, None]:
+def genFromList(xs: list[int]) -> GeneratorType[int, None, None]:
   yield from xs
 
 
-def gen_inner_return() -> Generator[int, None, int]:
+def genInnerReturn() -> GeneratorType[int, None, int]:
   yield 10
   return 42
 
 
-def gen_yield_from_return() -> Generator[int, None, None]:
-  ret: int = yield from gen_inner_return()
+def genYieldFromReturn() -> GeneratorType[int, None, None]:
+  ret: int = yield from genInnerReturn()
   yield ret
 
 
-def gen_echo() -> Generator[int, int, None]:
+def genEcho() -> GeneratorType[int, int, None]:
   while True:
     received = yield 0
     if received < 0:
@@ -38,13 +38,13 @@ def gen_echo() -> Generator[int, int, None]:
     yield received * 2
 
 
-def gen_with_return() -> Generator[int, None, int]:
+def genWithReturn() -> GeneratorType[int, None, int]:
   yield 1
   yield 2
   return 99
 
 
-def gen_for_else_tail() -> Generator[int, None, None]:
+def genForElseTail() -> GeneratorType[int, None, None]:
   """``for`` 正常结束 → ``else``；循环内 ``yield``。"""
   for i in range(3):
     yield i
@@ -52,7 +52,7 @@ def gen_for_else_tail() -> Generator[int, None, None]:
     yield 100
 
 
-def gen_for_else_skip_on_break() -> Generator[int, None, None]:
+def genForElseSkipOnBreak() -> GeneratorType[int, None, None]:
   """``break`` 时 ``else`` 不执行；循环内 ``yield`` + ``break`` 前收尾 ``yield``。"""
   for i in range(10):
     yield i
@@ -63,7 +63,7 @@ def gen_for_else_skip_on_break() -> Generator[int, None, None]:
     yield 100
 
 
-def gen_for_else_skip_on_break_yf() -> Generator[int, None, None]:
+def genForElseSkipOnBreakYf() -> GeneratorType[int, None, None]:
   """``break`` + 循环内 ``yield from``（``else`` 仍不执行）。"""
   extras: list[int] = []
   extras.append(70)
@@ -78,7 +78,7 @@ def gen_for_else_skip_on_break_yf() -> Generator[int, None, None]:
     yield 100
 
 
-def gen_for_continue_acc() -> Generator[int, None, None]:
+def genForContinueAcc() -> GeneratorType[int, None, None]:
   """``for`` + ``continue`` + 循环内 ``yield``；末 ``yield`` 汇总 ``acc``。"""
   acc: int = 0
   for i in range(6):
@@ -89,7 +89,7 @@ def gen_for_continue_acc() -> Generator[int, None, None]:
   yield acc
 
 
-def gen_for_continue_acc_yf() -> Generator[int, None, None]:
+def genForContinueAccYf() -> GeneratorType[int, None, None]:
   """``continue`` + ``i==4`` 时 ``yield from`` 列表，末 ``yield acc``。"""
   acc: int = 0
   pair: list[int] = []
@@ -108,7 +108,7 @@ def gen_for_continue_acc_yf() -> Generator[int, None, None]:
   yield acc
 
 
-def gen_while_else() -> Generator[int, None, None]:
+def genWhileElse() -> GeneratorType[int, None, None]:
   """``while`` 正常结束 → ``else`` 执行（循环体内无 ``yield``）。"""
   n: int = 2
   while n > 0:
@@ -117,12 +117,12 @@ def gen_while_else() -> Generator[int, None, None]:
     yield 99
 
 
-def gen_for_yield_list(xs: list[int]) -> Generator[int, None, None]:
-  """``yield from`` 委托列表迭代（同 ``gen_from_list``）。"""
+def genForYieldList(xs: list[int]) -> GeneratorType[int, None, None]:
+  """``yield from`` 委托列表迭代（同 ``genFromList``）。"""
   yield from xs
 
 
-def gen_for_if_else_yield() -> Generator[int, None, None]:
+def genForIfElseYield() -> GeneratorType[int, None, None]:
   """``for``-``else`` + ``if``/``else`` 两分支均 ``yield``。"""
   for i in range(4):
     if i % 2 == 0:
@@ -133,7 +133,7 @@ def gen_for_if_else_yield() -> Generator[int, None, None]:
     yield 200
 
 
-def gen_for_else_if_break() -> Generator[int, None, None]:
+def genForElseIfBreak() -> GeneratorType[int, None, None]:
   """``for``-``else`` + 分段 ``if`` + ``break`` + 多段 ``yield``。"""
   for i in range(4):
     if i < 2:
@@ -146,7 +146,7 @@ def gen_for_else_if_break() -> Generator[int, None, None]:
     yield 900
 
 
-def gen_for_else_branch_mix() -> Generator[int, None, None]:
+def genForElseBranchMix() -> GeneratorType[int, None, None]:
   """``continue`` / ``yield from`` / ``break`` / ``else`` 分段 ``if`` 交错。"""
   subs: list[int] = []
   subs.append(40)
@@ -165,7 +165,7 @@ def gen_for_else_branch_mix() -> Generator[int, None, None]:
     yield 600
 
 
-def gen_nested_while_continue_yf() -> Generator[int, None, None]:
+def genNestedWhileContinueYf() -> GeneratorType[int, None, None]:
   """``while``-``else`` + ``continue`` + ``yield from`` + 普通 ``yield``。"""
   chunk: list[int] = []
   chunk.append(5)
@@ -184,7 +184,7 @@ def gen_nested_while_continue_yf() -> Generator[int, None, None]:
     yield 77
 
 
-def gen_nested_for_inner_break_yf() -> Generator[int, None, None]:
+def genNestedForInnerBreakYf() -> GeneratorType[int, None, None]:
   """外层 ``for``-``else`` + 内层 ``for`` + ``continue``/``yield from`` + 外层 ``break``。"""
   inner: list[int] = []
   inner.append(8)
@@ -204,7 +204,7 @@ def gen_nested_for_inner_break_yf() -> Generator[int, None, None]:
     yield 999
 
 
-def gen_while_else_if_break_yield() -> Generator[int, None, None]:
+def genWhileElseIfBreakYield() -> GeneratorType[int, None, None]:
   """``while``-``else`` + ``if`` + ``break`` + 条件 ``yield``。"""
   k: int = 0
   while k < 5:
@@ -219,7 +219,7 @@ def gen_while_else_if_break_yield() -> Generator[int, None, None]:
     yield 88
 
 
-def gen_while_continue_acc() -> Generator[int, None, None]:
+def genWhileContinueAcc() -> GeneratorType[int, None, None]:
   """``while`` 内 ``continue`` + 多段 ``yield``（跳过 ``i==2`` 时须推进 ``i``，避免死循环）。"""
   i: int = 0
   acc: int = 0
@@ -234,12 +234,12 @@ def gen_while_continue_acc() -> Generator[int, None, None]:
 
 
 class GenCollectTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
     out: list[int] = []
-    g = gen_three()
+    g = genThree()
     for x in g:
       out.append(x)
     self.assertEqual(len(out), 3)
@@ -248,12 +248,12 @@ class GenCollectTests(TestCaseMixin):
 
 
 class GenWhileTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
     out: list[int] = []
-    for x in gen_range(4):
+    for x in genRange(4):
       out.append(x)
     self.assertEqual(len(out), 4)
     self.assertEqual(out[0], 0)
@@ -261,13 +261,13 @@ class GenWhileTests(TestCaseMixin):
 
 
 class GenYieldFromTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
     src: list[int] = [10, 20]
     out: list[int] = []
-    for x in gen_from_list(src):
+    for x in genFromList(src):
       out.append(x)
     self.assertEqual(len(out), 2)
     self.assertEqual(out[0], 10)
@@ -275,12 +275,12 @@ class GenYieldFromTests(TestCaseMixin):
 
 
 class GenYieldFromReturnTests(TestCaseMixin):
-  _test_tag = 25
+  _testTag = 25
 
   @override
   def test(self):
     out: list[int] = []
-    for x in gen_yield_from_return():
+    for x in genYieldFromReturn():
       out.append(x)
     self.assertEqual(len(out), 2)
     self.assertEqual(out[0], 10)
@@ -288,11 +288,11 @@ class GenYieldFromReturnTests(TestCaseMixin):
 
 
 class GenSendTests(TestCaseMixin):
-  _test_tag = 30
+  _testTag = 30
 
   @override
   def test(self):
-    g = gen_echo()
+    g = genEcho()
     r0 = g.send(0)
     self.assertFalse(r0.done)
     self.assertEqual(r0.value, 0)
@@ -304,11 +304,11 @@ class GenSendTests(TestCaseMixin):
 
 
 class GenReturnValueTests(TestCaseMixin):
-  _test_tag = 40
+  _testTag = 40
 
   @override
   def test(self):
-    g = gen_with_return()
+    g = genWithReturn()
     r1 = next(g)
     self.assertFalse(r1.done)
     self.assertEqual(r1.value, 1)
@@ -317,16 +317,16 @@ class GenReturnValueTests(TestCaseMixin):
     self.assertEqual(r2.value, 2)
     r3 = next(g)
     self.assertTrue(r3.done)
-    self.assertEqual(r3.return_value, 99)
+    self.assertEqual(r3.returnValue, 99)
 
 
 class GenForElseTests(TestCaseMixin):
-  _test_tag = 50
+  _testTag = 50
 
   @override
   def test(self):
     out: list[int] = []
-    for x in gen_for_else_tail():
+    for x in genForElseTail():
       out.append(x)
     self.assertEqual(len(out), 4)
     self.assertEqual(out[0], 0)
@@ -335,12 +335,12 @@ class GenForElseTests(TestCaseMixin):
 
 
 class GenForElseBreakTests(TestCaseMixin):
-  _test_tag = 51
+  _testTag = 51
 
   @override
   def test(self):
     out: list[int] = []
-    for x in gen_for_else_skip_on_break():
+    for x in genForElseSkipOnBreak():
       out.append(x)
     self.assertEqual(len(out), 4)
     self.assertEqual(out[0], 0)
@@ -350,12 +350,12 @@ class GenForElseBreakTests(TestCaseMixin):
 
 
 class GenForElseBreakYfTests(TestCaseMixin):
-  _test_tag = 511
+  _testTag = 511
 
   @override
   def test(self):
     out: list[int] = []
-    for x in gen_for_else_skip_on_break_yf():
+    for x in genForElseSkipOnBreakYf():
       out.append(x)
     self.assertEqual(len(out), 6)
     self.assertEqual(out[0], 0)
@@ -365,12 +365,12 @@ class GenForElseBreakYfTests(TestCaseMixin):
 
 
 class GenForContinueTests(TestCaseMixin):
-  _test_tag = 52
+  _testTag = 52
 
   @override
   def test(self):
     out: list[int] = []
-    g = gen_for_continue_acc()
+    g = genForContinueAcc()
     for x in g:
       out.append(x)
     self.assertEqual(len(out), 6)
@@ -382,12 +382,12 @@ class GenForContinueTests(TestCaseMixin):
 
 
 class GenForContinueYfTests(TestCaseMixin):
-  _test_tag = 521
+  _testTag = 521
 
   @override
   def test(self):
     out: list[int] = []
-    for x in gen_for_continue_acc_yf():
+    for x in genForContinueAccYf():
       out.append(x)
     self.assertEqual(len(out), 6)
     self.assertEqual(out[0], 0)
@@ -399,25 +399,25 @@ class GenForContinueYfTests(TestCaseMixin):
 
 
 class GenWhileElseTests(TestCaseMixin):
-  _test_tag = 53
+  _testTag = 53
 
   @override
   def test(self):
     out: list[int] = []
-    for x in gen_while_else():
+    for x in genWhileElse():
       out.append(x)
     self.assertEqual(len(out), 1)
     self.assertEqual(out[0], 99)
 
 
 class GenForYieldListTests(TestCaseMixin):
-  _test_tag = 54
+  _testTag = 54
 
   @override
   def test(self):
     src: list[int] = [7, 8, 9]
     out: list[int] = []
-    for x in gen_for_yield_list(src):
+    for x in genForYieldList(src):
       out.append(x)
     self.assertEqual(len(out), 3)
     self.assertEqual(out[0], 7)
@@ -425,12 +425,12 @@ class GenForYieldListTests(TestCaseMixin):
 
 
 class GenWhileContinueYieldTests(TestCaseMixin):
-  _test_tag = 55
+  _testTag = 55
 
   @override
   def test(self):
     out: list[int] = []
-    for x in gen_while_continue_acc():
+    for x in genWhileContinueAcc():
       out.append(x)
     self.assertEqual(len(out), 6)
     self.assertEqual(out[0], 0)
@@ -442,12 +442,12 @@ class GenWhileContinueYieldTests(TestCaseMixin):
 
 
 class GenForIfElseYieldTests(TestCaseMixin):
-  _test_tag = 56
+  _testTag = 56
 
   @override
   def test(self):
     out: list[int] = []
-    for x in gen_for_if_else_yield():
+    for x in genForIfElseYield():
       out.append(x)
     self.assertEqual(len(out), 5)
     self.assertEqual(out[0], 0)
@@ -458,12 +458,12 @@ class GenForIfElseYieldTests(TestCaseMixin):
 
 
 class GenForElseIfBreakTests(TestCaseMixin):
-  _test_tag = 57
+  _testTag = 57
 
   @override
   def test(self):
     out: list[int] = []
-    for x in gen_for_else_if_break():
+    for x in genForElseIfBreak():
       out.append(x)
     self.assertEqual(len(out), 4)
     self.assertEqual(out[0], 0)
@@ -472,12 +472,12 @@ class GenForElseIfBreakTests(TestCaseMixin):
 
 
 class GenForElseBranchMixTests(TestCaseMixin):
-  _test_tag = 58
+  _testTag = 58
 
   @override
   def test(self):
     out: list[int] = []
-    for x in gen_for_else_branch_mix():
+    for x in genForElseBranchMix():
       out.append(x)
     self.assertEqual(len(out), 4)
     self.assertEqual(out[0], 0)
@@ -487,12 +487,12 @@ class GenForElseBranchMixTests(TestCaseMixin):
 
 
 class GenNestedWhileContinueYfTests(TestCaseMixin):
-  _test_tag = 59
+  _testTag = 59
 
   @override
   def test(self):
     out: list[int] = []
-    for x in gen_nested_while_continue_yf():
+    for x in genNestedWhileContinueYf():
       out.append(x)
     self.assertEqual(len(out), 5)
     self.assertEqual(out[0], 0)
@@ -503,12 +503,12 @@ class GenNestedWhileContinueYfTests(TestCaseMixin):
 
 
 class GenNestedForInnerBreakYfTests(TestCaseMixin):
-  _test_tag = 60
+  _testTag = 60
 
   @override
   def test(self):
     out: list[int] = []
-    for x in gen_nested_for_inner_break_yf():
+    for x in genNestedForInnerBreakYf():
       out.append(x)
     self.assertEqual(len(out), 5)
     self.assertEqual(out[0], 0)
@@ -519,12 +519,12 @@ class GenNestedForInnerBreakYfTests(TestCaseMixin):
 
 
 class GenWhileElseIfBreakYieldTests(TestCaseMixin):
-  _test_tag = 61
+  _testTag = 61
 
   @override
   def test(self):
     out: list[int] = []
-    for x in gen_while_else_if_break_yield():
+    for x in genWhileElseIfBreakYield():
       out.append(x)
     self.assertEqual(len(out), 3)
     self.assertEqual(out[0], 0)
@@ -534,6 +534,6 @@ class GenWhileElseIfBreakYieldTests(TestCaseMixin):
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)

@@ -5,18 +5,18 @@ from py2cpp.sql.sqlite import connect, SqliteConnection, SqliteCursor
 
 
 class SqliteMemoryTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
     conn: SqliteConnection = connect(":memory:")
-    no_params: list[int] = []
-    insert_rows: list[list[int]] = [[1], [2]]
-    conn.execute("CREATE TABLE t(x INTEGER)", no_params)
-    conn.executemany("INSERT INTO t VALUES(?)", insert_rows)
+    noParams: list[int] = []
+    insertRows: list[list[int]] = [[1], [2]]
+    conn.execute("CREATE TABLE t(x INTEGER)", noParams)
+    conn.executeMany("INSERT INTO t VALUES(?)", insertRows)
     conn.commit()
-    cur: SqliteCursor = conn.execute("SELECT x FROM t ORDER BY x", no_params)
-    rows: list[tuple[int]] = cur.fetchall()
+    cur: SqliteCursor = conn.execute("SELECT x FROM t ORDER BY x", noParams)
+    rows: list[tuple[int]] = cur.fetchAll()
     self.assertEqual(len(rows), 2)
     self.assertEqual(rows[0][0], 1)
     self.assertEqual(rows[1][0], 2)
@@ -24,19 +24,19 @@ class SqliteMemoryTests(TestCaseMixin):
 
 
 class SqliteRollbackTests(TestCaseMixin):
-  _test_tag = 2
+  _testTag = 2
 
   @override
   def test(self):
     conn: SqliteConnection = connect(":memory:")
-    no_params: list[int] = []
-    one_row: list[int] = [1]
-    conn.execute("CREATE TABLE t(x INTEGER)", no_params)
-    conn.execute("BEGIN", no_params)
-    conn.execute("INSERT INTO t VALUES(?)", one_row)
+    noParams: list[int] = []
+    oneRow: list[int] = [1]
+    conn.execute("CREATE TABLE t(x INTEGER)", noParams)
+    conn.execute("BEGIN", noParams)
+    conn.execute("INSERT INTO t VALUES(?)", oneRow)
     conn.rollback()
-    cur: SqliteCursor = conn.execute("SELECT count(*) FROM t", no_params)
-    row: tuple[int] | None = cur.fetchone()
+    cur: SqliteCursor = conn.execute("SELECT count(*) FROM t", noParams)
+    row: tuple[int] | None = cur.fetchOne()
     self.assertFalse(row is None)
     if row is not None:
       self.assertEqual(row.value[0], 0)
@@ -45,7 +45,7 @@ class SqliteRollbackTests(TestCaseMixin):
 
 def main() -> int:
   suite: TestSuite = new()
-  for Case in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Case in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Case())
   return TextTestRunner().run(suite)
 

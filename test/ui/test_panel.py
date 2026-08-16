@@ -6,59 +6,59 @@ from py2cpp.ui.panel import UIPanelMixin
 from py2cpp.ui.window import UIWindow
 
 class PanelInvisibleTests(TestCaseMixin):
-    _test_tag = 2
+    _testTag = 2
 
     @override
     def test(self):
         cfg: PlayerConfig = new()
-        cfg.draw_panel(UIWindow())
+        cfg.drawPanel(UIWindow())
         self.assertEqual(cfg._seed, 0)
 
 class PanelAutoExposeTests(TestCaseMixin):
-    _test_tag = 1
+    _testTag = 1
 
     @override
     def test(self):
         cfg: PlayerConfig = new()
-        cfg.draw_panel(UIWindow())
+        cfg.drawPanel(UIWindow())
         self.assertEqual(cfg.hp, 50)
         self.assertEqual(cfg.name, 'hero')
         self.assertTrue(cfg.enabled)
 
 class PanelSliderTests(TestCaseMixin):
-    _test_tag = 3
+    _testTag = 3
 
     @override
     def test(self):
         cfg: PlayerConfig = new()
         cfg.hp = 99
-        cfg.draw_panel(UIWindow())
+        cfg.drawPanel(UIWindow())
         self.assertEqual(cfg.hp, 99)
         cfg.hp = 200
         self.assertEqual(cfg.hp, 200)
 
 class PanelFloatTests(TestCaseMixin):
-    _test_tag = 5
+    _testTag = 5
 
     @override
     def test(self):
         cfg: PlayerConfig = new()
         cfg.speed = 2.5
-        cfg.draw_panel(UIWindow())
+        cfg.drawPanel(UIWindow())
         self.assertTrue(cfg.speed > 2.4)
         self.assertTrue(cfg.speed < 2.6)
 
 class PanelCreateTests(TestCaseMixin):
-    _test_tag = 4
+    _testTag = 4
 
     @override
     def test(self):
         cfg: PlayerConfig = new()
-        win: UIWindow = cfg.create_panel('My Panel', 480, 320)
+        win: UIWindow = cfg.createPanel('My Panel', 480, 320)
         self.assertTrue(win.handle != 0)
         self.assertEqual(win.title, 'My Panel')
         win.close()
-        win2: UIWindow = cfg.create_panel()
+        win2: UIWindow = cfg.createPanel()
         self.assertTrue(win2.handle != 0)
         self.assertEqual(win2.title, 'PlayerConfig')
         win2.close()
@@ -73,7 +73,7 @@ class PlayerConfig(UIPanelMixin, friends=(PanelInvisibleTests, PanelFloatTests,)
 
 def main() -> int:
     suite: TestSuite = TestSuite()
-    for Class in TestCaseMixin.iter_subclasses(sort_const='_test_tag'):
+    for Class in TestCaseMixin.iterSubclasses(sortConst='_testTag'):
         suite.addTest(Class())
     return TextTestRunner().run(suite)
 if __name__ == '__main__':

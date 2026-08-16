@@ -5,28 +5,28 @@ from py2cpp.concur.task import Task, LoopHandle
 from py2cpp.io import AsyncCloseMixin
 
 
-async def async_return() -> int:
+async def asyncReturn() -> int:
   return 42
 
 
-async def async_chain() -> int:
-  x: int = await async_return()
+async def asyncChain() -> int:
+  x: int = await asyncReturn()
   return x + 1
 
 
-async def async_await_gen() -> int:
+async def asyncAwaitGen() -> int:
   """``await`` 另一协程。"""
-  return await async_return()
+  return await asyncReturn()
 
 
-async def async_gen_two() -> AsyncGenerator[int, None]:
+async def asyncGenTwo() -> AsyncGeneratorType[int, None]:
   yield 1
   yield 2
 
 
-async def sum_async_for() -> int:
+async def sumAsyncFor() -> int:
   total: int = 0
-  async for x in async_gen_two():
+  async for x in asyncGenTwo():
     total += x
   return total
 
@@ -46,81 +46,81 @@ class SimpleAsyncCM:
     return None
 
 
-async def use_async_with() -> int:
+async def useAsyncWith() -> int:
   async with SimpleAsyncCM() as v:
     return v
 
 
-async def first_via_aiter() -> int:
-  r = anext(aiter(async_gen_two()))
+async def firstViaAiter() -> int:
+  r = anext(aiter(asyncGenTwo()))
   return r.value
 
 
-async def async_val(n: int) -> int:
+async def asyncVal(n: int) -> int:
   """可 ``await`` 的叶子协程（供控制流嵌套用例复用）。"""
   return n
 
 
-async def async_for_if_else_await() -> list[int]:
+async def asyncForIfElseAwait() -> list[int]:
   """``for``-``else`` + ``if``/``else`` 两分支均 ``await``。"""
   out: list[int] = []
   for i in range(4):
     if i % 2 == 0:
-      v: int = await async_val(i)
+      v: int = await asyncVal(i)
       out.append(v)
     else:
-      v: int = await async_val(i + 100)
+      v: int = await asyncVal(i + 100)
       out.append(v)
   else:
-    v: int = await async_val(200)
+    v: int = await asyncVal(200)
     out.append(v)
   return out
 
 
-async def async_for_else_if_break() -> int:
+async def asyncForElseIfBreak() -> int:
   """``for``-``else`` + ``if``/``elif`` + ``break`` + 多段 ``await``（返回累加和）。"""
   acc: int = 0
   for i in range(4):
     if i < 2:
-      v: int = await async_val(i)
+      v: int = await asyncVal(i)
       acc += v
     elif i == 2:
-      a: int = await async_val(20)
+      a: int = await asyncVal(20)
       acc += a
-      b: int = await async_val(21)
+      b: int = await asyncVal(21)
       acc += b
       break
   else:
-    v: int = await async_val(900)
+    v: int = await asyncVal(900)
     acc += v
   return acc
 
 
-async def async_for_else_branch_mix() -> int:
+async def asyncForElseBranchMix() -> int:
   """``continue`` / ``await`` / ``break`` / ``else`` 与 ``if``/``elif`` 交错（返回累加和）。"""
   acc: int = 0
   for i in range(5):
     if i == 0:
-      v: int = await async_val(i)
+      v: int = await asyncVal(i)
       acc += v
     elif i == 1:
       continue
     elif i == 2:
-      a: int = await async_val(40)
+      a: int = await asyncVal(40)
       acc += a
-      b: int = await async_val(41)
+      b: int = await asyncVal(41)
       acc += b
     elif i == 3:
-      v: int = await async_val(300)
+      v: int = await asyncVal(300)
       acc += v
       break
   else:
-    v: int = await async_val(600)
+    v: int = await asyncVal(600)
     acc += v
   return acc
 
 
-async def async_nested_while_continue_await() -> list[int]:
+async def asyncNestedWhileContinueAwait() -> list[int]:
   """``while``-``else`` + ``continue`` + 分支内多段 ``await``。"""
   out: list[int] = []
   n: int = 0
@@ -129,46 +129,46 @@ async def async_nested_while_continue_await() -> list[int]:
       n += 1
       continue
     if n == 2:
-      a: int = await async_val(5)
+      a: int = await asyncVal(5)
       out.append(a)
-      b: int = await async_val(6)
+      b: int = await asyncVal(6)
       out.append(b)
     else:
-      v: int = await async_val(n)
+      v: int = await asyncVal(n)
       out.append(v)
     n += 1
   else:
-    v: int = await async_val(77)
+    v: int = await asyncVal(77)
     out.append(v)
   return out
 
 
-async def async_nested_for_inner_break_await() -> int:
+async def asyncNestedForInnerBreakAwait() -> int:
   """外层 ``for``-``else`` + 内层 ``for`` + ``continue``/``await`` + 外层 ``break``（返回累加和）。"""
   acc: int = 0
   for i in range(6):
-    v: int = await async_val(i)
+    v: int = await asyncVal(i)
     acc += v
     if i == 1:
       for j in range(3):
         if j == 0:
           continue
         elif j == 1:
-          a: int = await async_val(8)
+          a: int = await asyncVal(8)
           acc += a
-          b: int = await async_val(9)
+          b: int = await asyncVal(9)
           acc += b
         else:
-          x: int = await async_val(100 + j)
+          x: int = await asyncVal(100 + j)
           acc += x
       break
   else:
-    v: int = await async_val(999)
+    v: int = await asyncVal(999)
     acc += v
   return acc
 
 
-async def async_while_else_if_break_await() -> int:
+async def asyncWhileElseIfBreakAwait() -> int:
   """``while``-``else`` + ``if``/``elif`` + ``break`` + 条件 ``await``（返回累加和）。"""
   acc: int = 0
   k: int = 0
@@ -176,27 +176,27 @@ async def async_while_else_if_break_await() -> int:
     if k == 3:
       break
     elif k == 2:
-      v: int = await async_val(k * 100)
+      v: int = await asyncVal(k * 100)
       acc += v
     else:
-      v: int = await async_val(k)
+      v: int = await asyncVal(k)
       acc += v
     k += 1
   else:
-    v: int = await async_val(88)
+    v: int = await asyncVal(88)
     acc += v
   return acc
 
 
-async def async_gen_yield_await_steps() -> AsyncGenerator[int, None]:
+async def asyncGenYieldAwaitSteps() -> AsyncGeneratorType[int, None]:
   """异步可迭代：显式 ``yield`` 与 ``await`` 交错。"""
   yield 1
-  v: int = await async_val(2)
+  v: int = await asyncVal(2)
   yield v
   yield 3
 
 
-async def async_gen_indices() -> AsyncGenerator[int, None]:
+async def asyncGenIndices() -> AsyncGeneratorType[int, None]:
   """``async for`` 驱动用的下标序列（体内 ``yield``）。"""
   i: int = 0
   while i < 5:
@@ -204,73 +204,73 @@ async def async_gen_indices() -> AsyncGenerator[int, None]:
     i += 1
 
 
-async def async_for_else_collect() -> list[int]:
+async def asyncForElseCollect() -> list[int]:
   """``async for``-``else``：循环体与 ``else`` 均 ``await``。"""
   out: list[int] = []
-  async for x in async_gen_yield_await_steps():
-    v: int = await async_val(x * 10)
+  async for x in asyncGenYieldAwaitSteps():
+    v: int = await asyncVal(x * 10)
     out.append(v)
   else:
-    v: int = await async_val(500)
+    v: int = await asyncVal(500)
     out.append(v)
   return out
 
 
-async def async_for_else_break_skip() -> int:
+async def asyncForElseBreakSkip() -> int:
   """``async for``-``else`` + ``break``：``else`` 不得执行。"""
   acc: int = 0
-  async for x in async_gen_yield_await_steps():
+  async for x in asyncGenYieldAwaitSteps():
     acc += x
     if x == 2:
       break
   else:
-    v: int = await async_val(900)
+    v: int = await asyncVal(900)
     acc += v
   return acc
 
 
-async def async_for_else_branch_mix_async() -> int:
+async def asyncForElseBranchMixAsync() -> int:
   """``async for``-``else`` + ``continue``/``break``/``if``/``elif`` + 多段 ``await``。"""
   acc: int = 0
-  async for i in async_gen_indices():
+  async for i in asyncGenIndices():
     if i == 0:
-      v: int = await async_val(i)
+      v: int = await asyncVal(i)
       acc += v
     elif i == 1:
       continue
     elif i == 2:
-      a: int = await async_val(40)
+      a: int = await asyncVal(40)
       acc += a
-      b: int = await async_val(41)
+      b: int = await asyncVal(41)
       acc += b
     elif i == 3:
-      v: int = await async_val(300)
+      v: int = await asyncVal(300)
       acc += v
       break
   else:
-    v: int = await async_val(600)
+    v: int = await asyncVal(600)
     acc += v
   return acc
 
 
-async def async_mega_nested_control() -> list[int]:
+async def asyncMegaNestedControl() -> list[int]:
   """``for``-``else`` 套 ``async for``-``else`` + ``if``/``continue``/``break`` + ``await``/``yield`` 源。"""
   out: list[int] = []
   for outer in range(3):
-    v: int = await async_val(outer * 10)
+    v: int = await asyncVal(outer * 10)
     out.append(v)
     if outer == 1:
-      async for inner in async_gen_yield_await_steps():
+      async for inner in asyncGenYieldAwaitSteps():
         if inner == 1:
           continue
-        x: int = await async_val(inner + 1000)
+        x: int = await asyncVal(inner + 1000)
         out.append(x)
       else:
-        y: int = await async_val(7777)
+        y: int = await asyncVal(7777)
         out.append(y)
       break
   else:
-    z: int = await async_val(9999)
+    z: int = await asyncVal(9999)
     out.append(z)
   return out
 
@@ -282,63 +282,63 @@ class ClosableAsyncResource(AsyncCloseMixin):
     self.closed = False
 
   async def close(self) -> None:
-    await async_val(0)
+    await asyncVal(0)
     self.closed = True
 
 
-async def async_close_mixin_ctx() -> bool:
+async def asyncCloseMixinCtx() -> bool:
   async with ClosableAsyncResource():
     pass
   return True
 
 
 class AsyncRunTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
-    self.assertEqual(Task.run(async_return()), 42)
-    self.assertEqual(Task.run(async_chain()), 43)
+    self.assertEqual(Task.run(asyncReturn()), 42)
+    self.assertEqual(Task.run(asyncChain()), 43)
 
 
 class AsyncAwaitTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
-    self.assertEqual(Task.run(async_await_gen()), 42)
+    self.assertEqual(Task.run(asyncAwaitGen()), 42)
 
 
 class AsyncForTests(TestCaseMixin):
-  _test_tag = 20
+  _testTag = 20
 
   @override
   def test(self):
-    self.assertEqual(Task.run(sum_async_for()), 3)
+    self.assertEqual(Task.run(sumAsyncFor()), 3)
 
 
 class AsyncWithTests(TestCaseMixin):
-  _test_tag = 30
+  _testTag = 30
 
   @override
   def test(self):
-    self.assertEqual(Task.run(use_async_with()), 9)
+    self.assertEqual(Task.run(useAsyncWith()), 9)
 
 
 class BuiltinAiterTests(TestCaseMixin):
-  _test_tag = 40
+  _testTag = 40
 
   @override
   def test(self):
-    self.assertEqual(Task.run(first_via_aiter()), 1)
+    self.assertEqual(Task.run(firstViaAiter()), 1)
 
 
 class AsyncForIfElseAwaitTests(TestCaseMixin):
-  _test_tag = 50
+  _testTag = 50
 
   @override
   def test(self):
-    out: list[int] = Task.run(async_for_if_else_await())
+    out: list[int] = Task.run(asyncForIfElseAwait())
     self.assertEqual(len(out), 5)
     self.assertEqual(out[0], 0)
     self.assertEqual(out[1], 101)
@@ -348,27 +348,27 @@ class AsyncForIfElseAwaitTests(TestCaseMixin):
 
 
 class AsyncForElseIfBreakTests(TestCaseMixin):
-  _test_tag = 51
+  _testTag = 51
 
   @override
   def test(self):
-    self.assertEqual(Task.run(async_for_else_if_break()), 42)
+    self.assertEqual(Task.run(asyncForElseIfBreak()), 42)
 
 
 class AsyncForElseBranchMixTests(TestCaseMixin):
-  _test_tag = 52
+  _testTag = 52
 
   @override
   def test(self):
-    self.assertEqual(Task.run(async_for_else_branch_mix()), 381)
+    self.assertEqual(Task.run(asyncForElseBranchMix()), 381)
 
 
 class AsyncNestedWhileContinueAwaitTests(TestCaseMixin):
-  _test_tag = 53
+  _testTag = 53
 
   @override
   def test(self):
-    out: list[int] = Task.run(async_nested_while_continue_await())
+    out: list[int] = Task.run(asyncNestedWhileContinueAwait())
     self.assertEqual(len(out), 5)
     self.assertEqual(out[0], 0)
     self.assertEqual(out[1], 5)
@@ -378,27 +378,27 @@ class AsyncNestedWhileContinueAwaitTests(TestCaseMixin):
 
 
 class AsyncNestedForInnerBreakAwaitTests(TestCaseMixin):
-  _test_tag = 54
+  _testTag = 54
 
   @override
   def test(self):
-    self.assertEqual(Task.run(async_nested_for_inner_break_await()), 120)
+    self.assertEqual(Task.run(asyncNestedForInnerBreakAwait()), 120)
 
 
 class AsyncWhileElseIfBreakAwaitTests(TestCaseMixin):
-  _test_tag = 55
+  _testTag = 55
 
   @override
   def test(self):
-    self.assertEqual(Task.run(async_while_else_if_break_await()), 201)
+    self.assertEqual(Task.run(asyncWhileElseIfBreakAwait()), 201)
 
 
 class AsyncForElseCollectTests(TestCaseMixin):
-  _test_tag = 56
+  _testTag = 56
 
   @override
   def test(self):
-    out: list[int] = Task.run(async_for_else_collect())
+    out: list[int] = Task.run(asyncForElseCollect())
     self.assertEqual(len(out), 4)
     self.assertEqual(out[0], 10)
     self.assertEqual(out[1], 20)
@@ -407,27 +407,27 @@ class AsyncForElseCollectTests(TestCaseMixin):
 
 
 class AsyncForElseBreakSkipTests(TestCaseMixin):
-  _test_tag = 57
+  _testTag = 57
 
   @override
   def test(self):
-    self.assertEqual(Task.run(async_for_else_break_skip()), 3)
+    self.assertEqual(Task.run(asyncForElseBreakSkip()), 3)
 
 
 class AsyncForElseBranchMixAsyncTests(TestCaseMixin):
-  _test_tag = 58
+  _testTag = 58
 
   @override
   def test(self):
-    self.assertEqual(Task.run(async_for_else_branch_mix_async()), 381)
+    self.assertEqual(Task.run(asyncForElseBranchMixAsync()), 381)
 
 
 class AsyncMegaNestedControlTests(TestCaseMixin):
-  _test_tag = 59
+  _testTag = 59
 
   @override
   def test(self):
-    out: list[int] = Task.run(async_mega_nested_control())
+    out: list[int] = Task.run(asyncMegaNestedControl())
     self.assertEqual(len(out), 5)
     self.assertEqual(out[0], 0)
     self.assertEqual(out[1], 10)
@@ -437,15 +437,15 @@ class AsyncMegaNestedControlTests(TestCaseMixin):
 
 
 class AsyncCloseMixinTests(TestCaseMixin):
-  _test_tag = 60
+  _testTag = 60
 
   @override
   def test(self):
-    self.assertTrue(Task.run(async_close_mixin_ctx()))
+    self.assertTrue(Task.run(asyncCloseMixinCtx()))
 
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)

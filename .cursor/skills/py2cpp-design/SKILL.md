@@ -20,7 +20,7 @@ description: >-
 
 ## 冲突须根治，勿绕行（重要的事情说三遍）
 
-1. **写法出现冲突时应解决冲突**（译器、`minimal.h`、MSVC 宏、`#undef`、属性派发等），**不要**换一种不符合 [编码规范.md](../../../docs/编码规范.md) / CPython 对外 API 的绕行写法（例如用 `dirname` 代替 `self.parent`、手改 `generated/`）。
+1. **写法出现冲突时应解决冲突**（译器、`minimal.h`、MSVC 宏、`#undef`、属性派发等），**不要**换一种不符合 [编码规范.md](../../../docs/编码规范.md) / CPython 对外 API 的绕行写法（例如用 `dirName` 代替 `self.parent`、手改 `generated/`）。
 2. **写法出现冲突时应解决冲突**，在根因处修（如 `parent`/`suffix` Win 宏 → `minimal.h` `#undef` + `this->parent()`；`@property` 未生成 `()` → `_class_info_for_receiver`），**禁止**用“能编译就行”的替代 API 糊弄过去。
 3. **写法出现冲突时应解决冲突**：标准库与用户代码仍写规范 Python（`self.parent`、`Path.suffix`、链式比较、`Self._…` 静态调用等），冲突由基础设施层一次性消掉，**不得**把妥协扩散到业务代码。
 
@@ -28,8 +28,8 @@ description: >-
 
 ## 勿重复造轮子，严格按编码规范（重要的事情说三遍）
 
-1. **不要重复造轮子，严格按照 [编码规范.md](../../../docs/编码规范.md) 写代码**：实现前先查 `py2cpp/` 已有模块（如 `text.str` 的 `rfind`/`replace`/`split`、`io.file.path` 的 `dirname`/`basename`/`splitext`），能复用则复用，**禁止**手写 `while` 扫字符、私有 `_slice_str` 等与现有 API 等价的逻辑。
-2. **不要重复造轮子，严格按照编码规范写代码**：标准库层用规范 Python（`Self` 静态调用、链式比较、`new`、勿手写 dunder、无 STL）；**切片起始为 0 时省略**（`path[:2]` 勿写 `path[0:2]`，与编码规范 §栈子区间一致）；与 CPython 3.13 语义对齐见编码规范 §8；`Path` 与 `os.path` 分工明确（pathlib 规则 vs `splitext` 等），勿混用语义。
+1. **不要重复造轮子，严格按照 [编码规范.md](../../../docs/编码规范.md) 写代码**：实现前先查 `py2cpp/` 已有模块（如 `text.str` 的 `rfind`/`replace`/`split`、`io.file.path` 的 `dirName`/`baseName`/`splitExt`），能复用则复用，**禁止**手写 `while` 扫字符、私有 `_slice_str` 等与现有 API 等价的逻辑。
+2. **不要重复造轮子，严格按照编码规范写代码**：标准库层用规范 Python（`Self` 静态调用、链式比较、`new`、勿手写 dunder、无 STL）；**切片起始为 0 时省略**（`path[:2]` 勿写 `path[0:2]`，与编码规范 §栈子区间一致）；与 CPython 3.13 语义对齐见编码规范 §8；`Path` 与 `os.path` 分工明确（pathlib 规则 vs `splitExt` 等），勿混用语义。
 3. **不要重复造轮子，严格按照编码规范写代码**：缺能力时优先补全/修正**已有**抽象（译器、`str`、`util`、C 层 `os_cpp`），**不要**在业务模块堆一次性 helper；写完后须走下文「实现后须自行对照规范自检」。
 
 ---
@@ -37,8 +37,8 @@ description: >-
 ## Native 原子化（业务零 `@native`，C++ 只加速叶子）
 
 1. **判据**：若某函数可无损写成「纯 Python + 更小的 `@native`」，则**不得**对该函数标 `@native`；语义落在 Python 组合层。
-2. **`util/memory`**：``copy_buf`` / ``buf_to_str`` / ``load_u64_le`` / ``load_u64_le_bytes`` 为 ``@native``（各带 ``*_ref``）；缓冲扩容见 ``array.reserve``。
-3. **`serde/json`**：``JsonEncoder`` 静态 ``append_*`` / ``fast_encode`` 纯 Python + ``JsonDecoder`` 实例 decode 组合（``load_u64_le`` 来自 ``util/memory``，``span``→``str`` 用 ``str.from_codes_span``）；``@serializable`` codegen 直调 ``dec.parse_int_at_ascii()`` / ``dec.str_assign_from_seg(seg)``。**无** ``json_scan_cpp``。
+2. **`util/memory`**：``copyBuf`` / ``buf_to_str`` / ``loadU64Le`` / ``loadU64LeBytes`` 为 ``@native``（各带 ``*_ref``）；缓冲扩容见 ``array.reserve``。
+3. **`serde/json`**：``JsonEncoder`` 静态 ``append_*`` / ``fastEncode`` 纯 Python + ``JsonDecoder`` 实例 decode 组合（``loadU64Le`` 来自 ``util/memory``，``span``→``str`` 用 ``str.from_codes_span``）；``@serializable`` codegen 直调 ``dec.parseIntAtAscii()`` / ``dec.strAssignFromSeg(seg)``。**无** ``json_scan_cpp``。
 4. **C++ 可无损删除**：关掉 ``templates/util/+memory.inl`` 注入后仍靠 Python 组合 + 叶子 ``*_ref`` 全绿（性能可降）。
 5. **第三方 C FFI**：仓库根 ``ffi/**/*.pyi``（生成器产出）→ 译器按需写 ``generated/runtime/ffi/…``，C++ ``ffi::…``（**不**挂 ``py2cpp::``、**不**进 ``minimal.h``）。模块级符号一律 ``Pyi_``；结构体 ``@native`` 类 + ``Pointer[T]``（C++ ``using Pyi_X = ::X``，``.pyi`` 只声明）；glue ``#include <c_header>``。详规 [c-ffi-pyi.md](../../../docs/c-ffi-pyi.md) / 编码规范 §9.4；查阅表 [reference §5.3](./reference.md#53-第三方-c-ffiffipyi)。**禁止** star-import、批量删 UI ``templates/**``。
 
@@ -48,7 +48,7 @@ description: >-
 
 每次**新特性落地**或**修改** `src/`、`py2cpp/`、`test/` 之后，在 bootstrap / MSVC 之前或与之并行，Agent **必须**主动对照 [编码规范.md](../../../docs/编码规范.md) 与相邻模块**自行审阅** diff，**不得**只跑编译、不查写法。
 
-1. **实现后须自行对照规范自检**：标准库与用户测试仍写规范 Python——`new` / `Self` 静态调用、链式比较、**勿手写 dunder**、辅助数据结构用 **`@dataclass`**（勿手写 `__init__` 拼字段）、`@copyable` 等与域内范本一致；**无 STL**；能复用 `str` / `path` / `util` 现有 API 的**禁止**手写 `while` 扫串、重复 `splitext` 语义。
+1. **实现后须自行对照规范自检**：标准库与用户测试仍写规范 Python——`new` / `Self` 静态调用、链式比较、**勿手写 dunder**、辅助数据结构用 **`@dataclass`**（勿手写 `__init__` 拼字段）、`@copyable` 等与域内范本一致；**无 STL**；能复用 `str` / `path` / `util` 现有 API 的**禁止**手写 `while` 扫串、重复 `splitExt` 语义。
 2. **实现后须自行对照规范自检**：对照编码规范 §2–§3、§8、§10 做清单核对——`s[:k]`（起始 0 省略 `s[0:k]`）、`not s` / `if s`（勿 `len(s)==0`）、`int64` 大常量勿用 32 位乘法溢出、测试用 `TestCaseMixin` + `override def test`；**同名符号**（如 `time` 函数 vs `datetime.time`）import 绑定与 C++ 名无歧义；依赖内建（`int(str)` 等）时确认译器已支持，否则在基础设施层补，勿在业务模块假造轮子。
 3. **实现后须自行对照规范自检**：与上文「冲突须根治」联动——Win 宏、`parent`/`suffix`/`date`/`time` 等须在 `minimal.h` / 译器根因处理，**禁止**为通过编译改业务 API；对外可见行为变化须同步 `docs/参考手册.md` / `docs/编码规范.md` §8.1（动 FFI 时含 `c-ffi-pyi.md`）；自检未通过则继续改源树，**禁止**声称完成或只改 `generated/`。
 
@@ -326,14 +326,14 @@ generated\test\misc\test_containers.exe
 | `DictKey_check` / traits 未定义 | `dict`/`str` 依赖 `protocol_traits.h`，勿只 include 被拆空的 `protocols.h` |
 | `PyRange` 找不到 | 确认已 include `minimal.h`；用 `(::py2cpp::util::range::PyRange)(n)`；勿依赖未验证的 namespace 尾 shim |
 | FFI C API「找不到」/ 自包含 | glue 须 `#include <sqlite3.h>`（尖括号）；类型为 `using Pyi_X = ::X` / `Pointer[Pyi_X]`，见 c-ffi-pyi.md |
-| MSVC `C2059` 在 `.add` / `isdisjoint()` | 变量名勿用 `far`/`near`（Win 宏）；`isascii` 调用前需 `#undef`（见 `minimal.h` 尾部） |
+| MSVC `C2059` 在 `.add` / `isDisjoint()` | 变量名勿用 `far`/`near`（Win 宏）；`isAscii` 调用前需 `#undef`（见 `minimal.h` 尾部） |
 | `PyTuple` / `Args` 编译错 | `protocol_traits` 中 `__mod__` 前须有 `template<typename... Args>`；`PyTuple` 在全局，勿误写 `py2cpp::PyTuple` |
 | 头文件循环 include | `str.h`↔`list.h`：按参考手册 §8.5 拆 `protocol_traits`、调整 include |
 | 测试写 `Cls(1)` / `Cls(src)` | 用 `new(...)` / `dst: Cls = src`（编码规范 §2） |
 | `assertTrue(f)` 文件对象 | 勿 `f.__bool__()`；用 `assertTrue`/`assertFalse` |
 | MSVC **C4716** ``T0 fn(…): 必须返回一个值`` | 旧版误推返回 ``T0``（已删 fallback）。无 ``return expr`` → ``void``；有 ``return expr`` → ``decltype``。见 [参考手册 §5.3.1 **4）**](../../../docs/参考手册.md#531-缺少注解时的-c-类型策略) |
 | 规范写法与 MSVC/译器冲突（如 `self.parent`、`.suffix`） | **解决冲突**，勿改业务为绕行 API；见上文「冲突须根治，勿绕行」 |
-| 手写 `while` 扫路径/扩展名、重复实现 `splitext` 等 | 复用 `str` / `io.file.path`；见上文「勿重复造轮子，严格按编码规范」 |
+| 手写 `while` 扫路径/扩展名、重复实现 `splitExt` 等 | 复用 `str` / `io.file.path`；见上文「勿重复造轮子，严格按编码规范」 |
 | `s[0:k]`、`len(s)==0` / `len(s)>0` | 优先 `s[:k]`、`not s` / `if s`（编码规范 §布尔、§栈子区间） |
 | 未对齐就开写译器/标准库/大范围测试 | **先问清再实现**：提交「理解 + 疑问」并等用户确认；见上文三节强调 |
 | 只编译通过、写法不合规范 | **实现后须自行对照规范自检**：过最小自检表后再声称完成 |
@@ -343,7 +343,7 @@ generated\test\misc\test_containers.exe
 | `"abc".find/index/rfind/rindex(sub)` | ✅ 字面量接收者内联（``_h[]`` 循环）；见 reference §8.3.2 |
 | MSVC **C4805** ``PyChar`` vs ``PyStr`` 单字符比较 | ``s[i] == '"'` → ``PyChar`` 对 ``PyChar``（``_try_emit_char_scalar_compare``）；``s[i] in '"'` 已用 ``PyChar`` |
 | ``__set_*_param_*`` 找不到标识符 | 模块级描述符 helper 须先于调用方生成（``_module_functions_emit_order``）；见 ``test_descriptor_func`` |
-| `for i, x in enumerate(seq)` | 可索引容器 → 索引 ``for``；否则 ``enumerate_iterator``；见 reference §8.2 |
+| `for i, x in enumerate(seq)` | 可索引容器 → 索引 ``for``；否则 ``EnumerateIterator``；见 reference §8.2 |
 | bootstrap 报 ``new() 需类型上下文``（指向 ``py2cpp/__init__.py``） | 类体/静态字段 ``= new()`` 须左侧字段注解；译器用 ``_emit_field_default_initializer``；``@dataclass`` 的 ``= []`` 勿留在 ``field_defaults`` |
 | 未注解模板形参 ``node.parent`` | 生成 ``PY2CPP_GETATTR``；注解 ``node: Node`` → ``node.get_parent()``；见参考手册 §7.8 |
 

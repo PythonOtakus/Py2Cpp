@@ -104,12 +104,23 @@ EXCEPTIONS_NS = f"{stdlib_cpp_namespace('core/exceptions')}"
 STR_PYSTR = f"{stdlib_cpp_namespace('text/str')}::PyStr"
 
 
+def cpp_exception_type(name: str = "Exception") -> str:
+  """``Exception`` → ``…::PyException``。"""
+  from .language import default_py_class_cpp_name
+
+  return f"{EXCEPTIONS_NS}::{default_py_class_cpp_name(name)}"
+
+
 def cpp_stdlib_class(mod_path: str, class_name: str) -> str:
-  return f"{stdlib_cpp_namespace(mod_path)}::{class_name}"
+  from .language import default_py_class_cpp_name
+
+  # 异常等类名走默认 Py 前缀
+  cpp = default_py_class_cpp_name(class_name)
+  return f"{stdlib_cpp_namespace(mod_path)}::{cpp}"
 
 
 def cpp_exception_ctor(name: str) -> str:
-  return f"{EXCEPTIONS_NS}::{name}()"
+  return f"{cpp_exception_type(name)}()"
 
 
 def stdlib_rel_from_import_segment(name: str) -> str | None:

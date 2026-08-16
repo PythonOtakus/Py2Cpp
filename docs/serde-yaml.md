@@ -8,15 +8,15 @@
 from py2cpp.serde.yaml import Yaml
 
 config: dict[str, int] = Yaml.loads[dict[str, int]]("a: 1\nb: 2\n")
-documents: list[dict[str, int]] = Yaml.loads_all[dict[str, int]](source)
+documents: list[dict[str, int]] = Yaml.loadsAll[dict[str, int]](source)
 text: str = Yaml.dumps(config)
 
 item: dict[str, int] = Yaml.load[dict[str, int]](file)
-items: list[dict[str, int]] = Yaml.load_all[dict[str, int]](file)
+items: list[dict[str, int]] = Yaml.loadAll[dict[str, int]](file)
 Yaml.dump(config, file)
 ```
 
-没有模块级 `load` / `dump` 函数；所有入口均属于 `Yaml`。`load` / `load_all` / `dump` 接受 `TextIOWrapper`，`load_string` / `load_all_string` / `dump_string` 接受 `StringIO`。
+没有模块级 `load` / `dump` 函数；所有入口均属于 `Yaml`。`load` / `loadAll` / `dump` 接受 `TextIOWrapper`，`loadString` / `loadAllString` / `dumpString` 接受 `StringIO`。
 
 ## 已支持的 YAML 输入
 

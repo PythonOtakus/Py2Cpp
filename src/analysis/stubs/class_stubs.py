@@ -104,10 +104,22 @@ def _is_host_bound_iterator_view_py_name(py_name: str) -> bool:
 
 
 @lru_cache(maxsize=1)
+def load_stdlib_class_names() -> frozenset[str]:
+  """标准库全部类名（含无 ``@native_name`` 的默认 ``Py`` 前缀类）。"""
+  names: set[str] = set()
+  for path in stdlib_module_paths():
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    for node in tree.body:
+      if isinstance(node, ast.ClassDef):
+        names.add(node.name)
+  return frozenset(names)
+
+
+@lru_cache(maxsize=1)
 def load_host_bound_iterator_view_cpp_bases() -> frozenset[str]:
-  """``new(host)`` / ``list_iterator[T](lst)`` 走 ``_emit_list_iterator_ctor_inner`` 的 C++ 基名。"""
+  """``new(host)`` / ``ListIterator[T](lst)`` 走 ``_emit_list_iterator_ctor_inner`` 的 C++ 基名。"""
   names: set[str] = set(HOST_BOUND_ITERATOR_VIEW_EXTRA_CPP)
-  for py_name in load_stdlib_native_names():
+  for py_name in load_stdlib_class_names():
     if _is_host_bound_iterator_view_py_name(py_name):
       names.add(cpp_ident(py_name))
   return frozenset(names)

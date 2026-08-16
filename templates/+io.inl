@@ -7,6 +7,11 @@ PY2CPP_END
 
 #include <stdio.h>
 #include <string.h>
+#if defined(_WIN32)
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
 
 static FILE* _io_fp(PyUPtr fp)
 {
@@ -17,9 +22,10 @@ PyTextIOWrapper::PyTextIOWrapper(PyStr path, PyStr mode)
 {
   _fp = 0;
   _closed = false;
+  _owns = true;
   char pbuf[4096];
   char mbuf[16];
-  path.copy_to_span(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
+  path.copyToSpan(PySpan<PyByte>((PyByte*)pbuf, (PyInt)sizeof(pbuf), 1));
   if (mode.__len__() <= 0)
   {
     mbuf[0] = 'r';
@@ -27,7 +33,7 @@ PyTextIOWrapper::PyTextIOWrapper(PyStr path, PyStr mode)
   }
   else
   {
-    mode.copy_to_span(PySpan<PyByte>((PyByte*)mbuf, (PyInt)sizeof(mbuf), 1));
+    mode.copyToSpan(PySpan<PyByte>((PyByte*)mbuf, (PyInt)sizeof(mbuf), 1));
   }
 #if defined(_MSC_VER)
 #pragma warning(push)
@@ -43,12 +49,21 @@ PyTextIOWrapper::PyTextIOWrapper(PyStr path, PyStr mode)
   }
 }
 
+PyTextIOWrapper::PyTextIOWrapper(PyUPtr fp, PyBool owns)
+{
+  _fp = fp;
+  _closed = (fp == 0);
+  _owns = owns;
+}
+
 PyTextIOWrapper::PyTextIOWrapper(PyTextIOWrapper&& other)
 {
   _fp = other._fp;
   _closed = other._closed;
+  _owns = other._owns;
   other._fp = 0;
   other._closed = true;
+  other._owns = false;
 }
 
 PyTextIOWrapper& PyTextIOWrapper::operator=(PyTextIOWrapper&& other)
@@ -58,15 +73,17 @@ PyTextIOWrapper& PyTextIOWrapper::operator=(PyTextIOWrapper&& other)
     this->close();
     _fp = other._fp;
     _closed = other._closed;
+    _owns = other._owns;
     other._fp = 0;
     other._closed = true;
+    other._owns = false;
   }
   return *this;
 }
 
 PyTextIOWrapper::~PyTextIOWrapper()
 {
-  if ((_fp) && (!_closed))
+  if ((_fp) && (!_closed) && _owns)
   {
     fclose(_io_fp(_fp));
     _fp = 0;
@@ -79,10 +96,34 @@ void PyTextIOWrapper::close()
   if ((_fp) && (!_closed))
   {
     fflush(_io_fp(_fp));
-    fclose(_io_fp(_fp));
-    _fp = 0;
+    if (_owns)
+    {
+      fclose(_io_fp(_fp));
+      _fp = 0;
+    }
   }
   _closed = true;
+}
+
+void PyTextIOWrapper::flush()
+{
+  if ((_fp) && (!_closed))
+  {
+    fflush(_io_fp(_fp));
+  }
+}
+
+PyBool PyTextIOWrapper::isAtty__get() const
+{
+  if ((!_fp) || _closed)
+  {
+    return false;
+  }
+#if defined(_WIN32)
+  return (_isatty(_fileno(_io_fp(_fp))) != 0);
+#else
+  return (isatty(fileno(_io_fp(_fp))) != 0);
+#endif
 }
 
 PyBool PyTextIOWrapper::__bool__() const
@@ -177,7 +218,7 @@ PyStr PyTextIOWrapper::read(PyInt size)
   return PyStr(codes);
 }
 
-PyStr PyTextIOWrapper::readline(PyInt size)
+PyStr PyTextIOWrapper::readLine(PyInt size)
 {
   if ((!_fp) || (_closed))
   {
@@ -268,12 +309,12 @@ PyInt PyTextIOWrapper::write(PyArray<PyChar>& src, PyInt end)
   return end;
 }
 
-PyList<PyStr> PyTextIOWrapper::readlines(PyInt hint)
+PyList<PyStr> PyTextIOWrapper::readLines(PyInt hint)
 {
   PyList<PyStr> lines;
   while (true)
   {
-    PyStr line = readline(-1);
+    PyStr line = readLine(-1);
     if (line.__len__() == 0)
     {
       break;
@@ -291,7 +332,7 @@ PyList<PyStr> PyTextIOWrapper::readlines(PyInt hint)
   return lines;
 }
 
-void PyTextIOWrapper::writelines(const PyList<PyStr>& lines)
+void PyTextIOWrapper::writeLines(const PyList<PyStr>& lines)
 {
   int n = lines.__len__();
   for (int i = 0; i < n; i++)
@@ -307,7 +348,7 @@ PyTextIOWrapper& PyTextIOWrapper::__iter__()
 
 PyIterResult<PyStr, PyStr> PyTextIOWrapper::__next__()
 {
-  PyStr line = readline(-1);
+  PyStr line = readLine(-1);
   if (line.__len__() == 0)
   {
     return (PyIterResult<PyStr, PyStr>::Return)(PyStr(""));
@@ -338,5 +379,43 @@ PyTextIOWrapper py_open(
 {
   (void)encoding;
   return PyTextIOWrapper(path, mode);
+}
+
+PyTextIOWrapper py_wrapFp(PyUPtr fp, PyBool owns)
+{
+  return PyTextIOWrapper(fp, owns);
+}
+
+PyTextIOWrapper py_wrapStd(PyInt fd)
+{
+  FILE* f = nullptr;
+#if defined(_MSC_VER)
+  if (fd == 0)
+  {
+    f = __acrt_iob_func(0);
+  }
+  else if (fd == 1)
+  {
+    f = __acrt_iob_func(1);
+  }
+  else if (fd == 2)
+  {
+    f = __acrt_iob_func(2);
+  }
+#else
+  if (fd == 0)
+  {
+    f = ::stdin;
+  }
+  else if (fd == 1)
+  {
+    f = ::stdout;
+  }
+  else if (fd == 2)
+  {
+    f = ::stderr;
+  }
+#endif
+  return PyTextIOWrapper((PyUPtr)(uintptr_t)f, false);
 }
 PY2CPP_END_SCOPE

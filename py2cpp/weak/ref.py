@@ -3,11 +3,10 @@ from ..builtins import *
 
 
 @native
-@native_name("Py*")
-class WeakRef[T: refcount]:
+class WeakRef[Element: refcount]:
   """``alive`` / ``value`` 对应 ``ref() is not None`` 与解引用强引用。"""
 
-  def __init__(self, obj: T):
+  def __init__(self, obj: Element):
     ...
 
   @property
@@ -15,5 +14,5 @@ class WeakRef[T: refcount]:
     ...
 
   @property
-  def value(self) -> T:
+  def value(self) -> Element:
     ...

@@ -35,13 +35,13 @@ class IteratorReturnStubsTests(unittest.TestCase):
 
   def test_dict_keys_view_reversed(self):
     rt, _ = reversed_method_return_type(
-      _info("dict_keys_view", type_params=["int", "str"]),
+      _info("DictKeysView", type_params=["int", "str"]),
     ) or ("", "")
     self.assertIn("PyDictKeyReverseIterator", rt)
 
   def test_seq_iterator_name(self):
-    info = _info("stack_array", type_params=["byte"])
-    info.seq_iterator_name = "stack_array_iterator"
+    info = _info("StackArray", type_params=["byte"])
+    info.seq_iterator_name = "StackArrayIterator"
     rt, _ = iter_method_return_type(info) or ("", "")
     self.assertIn("PyStackArrayIterator", rt)
 

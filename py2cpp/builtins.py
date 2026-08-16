@@ -18,8 +18,9 @@ class byte:
   pass
 
 
-class c_str:
-  """C 字符串指针（C++ ``typedef const char* c_str``），非 py2cpp ``str`` 类。"""
+@native_name("CStr")
+class CStr:
+  """C 字符串指针（C++ ``typedef const char* CStr``），非 py2cpp ``str`` 类。"""
 
   pass
 
@@ -36,7 +37,7 @@ type uintptr = int
 type float64 = float
 
 
-class Pointer[T]:
+class Pointer[Element]:
   """可空指针类型标记 → C++ ``T*``。"""
 
   pass
@@ -57,13 +58,13 @@ class Callable:
 class Self:
   """``@staticproperty`` / 混入展开时表示当前类（翻译期替换为具体类名）。
 
-  ``Self.get_field_type(field)`` 仅可用于会被 ``Self.iter_fields`` 展开的混入方法；
+  ``Self.getFieldType(field)`` 仅可用于会被 ``Self.iterFields`` 展开的混入方法；
   ``field`` 须在翻译期解析为当前宿主的字段名，调用会替换为该字段去除 ``@``
   标记后的基础类型注解。
   """
 
   @staticmethod
-  def get_field_type(field):
+  def getFieldType(field):
     pass
 
   pass
@@ -79,7 +80,7 @@ class VarStack:
   """翻译期 mixin 参数栈（``s.push`` / ``s.pop`` / ``s.top()`` + ``new(*s)`` / ``fn(*s)`` 由译器展开）。
 
   在 ``@mixin`` 方法内 ``vs: VarStack = new()`` 声明栈；``push``/``pop``/``*vs`` 须与声明同块作用域
-  （``Self.iter_fields`` / ``enum_fields`` 循环体除外）；``top()`` 可读栈顶且可跨内层作用域；``pop`` 不回收编号。
+  （``Self.iterFields`` / ``enumFields`` 循环体除外）；``top()`` 可读栈顶且可跨内层作用域；``pop`` 不回收编号。
   """
 
   def push(self, value) -> None:
@@ -100,47 +101,47 @@ class VarStack:
 # ---------------------------------------------------------------------------
 
 
-def alloc[T]() -> Pointer[T]:
+def alloc[Element]() -> Pointer[Element]:
   """``alloc<T>()`` 分配单个对象。"""
   return None
 
 
-def free[T](buf: Pointer[T]) -> None:
+def free[Element](buf: Pointer[Element]) -> None:
   """``free<T>(buf)`` 释放单个对象。"""
   pass
 
 
-def allocArray[T](count: int) -> Pointer[T]:
+def allocArray[Element](count: int) -> Pointer[Element]:
   """``allocArray<T>(count)`` 分配数组。"""
   return None
 
 
-def allocRawArray[T](count: int) -> Pointer[T]:
+def allocRawArray[Element](count: int) -> Pointer[Element]:
   """``allocRawArray<T>(count)``：仅分配存储，不默认构造元素。"""
   return None
 
 
-def freeArray[T](buf: Pointer[T]) -> None:
+def freeArray[Element](buf: Pointer[Element]) -> None:
   """``freeArray<T>(buf)`` 释放 ``allocArray`` 的原始存储（须已对元素 ``destroy``）。"""
   pass
 
 
-def init[T](ptr: Pointer[T], *args) -> None:
+def init[Element](ptr: Pointer[Element], *args) -> None:
   """``init<T>(ptr)`` 或 ``init<T>(ptr, args...)``：placement new。"""
   pass
 
 
-def destroy[T](ptr: Pointer[T]) -> None:
+def destroy[Element](ptr: Pointer[Element]) -> None:
   """``destroy<T>(ptr)`` 显式析构（不释放存储）。"""
   pass
 
 
-def id[T](x: T) -> Pointer[T]:
+def id[Element](x: Element) -> Pointer[Element]:
   """``id(x)``：取 ``x`` 的对象地址（C++ ``&x``；``@refcount`` 为 ``&(*x)``）。"""
   return None
 
 
-def cast[T](obj) -> T:
+def cast[Element](obj) -> Element:
   """``cast[T](obj)`` / ``cast(obj)``（类型由左侧/返回注解推断）→ ``static_cast``。"""
   return obj
 
@@ -155,9 +156,9 @@ def copyable(cls):
   return cls
 
 
-def final(cls_or_method):
+def final(clsOrMethod):
   """``@final class`` 不可继承；``@final def`` 不可覆盖；``name: T @final`` 为实例只读字段（译期识别 ``final`` 标记名）。"""
-  return cls_or_method
+  return clsOrMethod
 
 
 def uncopyable(cls):
@@ -210,7 +211,7 @@ def variant(cls):
 
 
 def serializable(cls):
-  """编译期为 ``@dataclass`` / ``@union`` 生成 ``serialize[T: Encoder]`` / ``deserialize[T: Decoder]``。"""
+  """编译期为 ``@dataclass`` / ``@union`` 生成 ``serialize[T: EncoderType]`` / ``deserialize[T: DecoderType]``。"""
   return cls
 
 
@@ -251,7 +252,7 @@ def dataclass(
   eq: bool = True,
   order: bool = False,
   frozen: bool = False,
-  kw_only: bool = False,
+  kwOnly: bool = False,
   slots: bool = False,
 ):
   """数据类（翻译期展开 ``__init__`` / ``__eq__`` / ``__repr__`` / ``__cmp__``，见 ``passes/dataclass_expand.py``）。
@@ -290,7 +291,7 @@ def annotation(
 
 
 def mixin(cls):
-  """混入类，不生成 C++。``iter_subclasses`` 等见 ``mixin.py``（译器展开，勿拉入翻译闭包）。"""
+  """混入类，不生成 C++。``iterSubclasses`` 等见 ``mixin.py``（译器展开，勿拉入翻译闭包）。"""
   return cls
 
 
@@ -336,22 +337,22 @@ def native(func):
   return func
 
 
-def native_name(cpp_name: str):
+def native_name(cppName: str):
   """Python 名 → C++ 名：类（``@native_name(\"PyFoo\")`` / ``@native_name(\"Py*\")``）或模块函数（``@native_name(\"math_*\")``）。"""
   def deco(cls):
     return cls
   return deco
 
 
-def global_call(cpp_name_or_func=None):
-  """包根内建：调用点生成 ``::cpp_name(...)``。
+def global_call(cppNameOrFunc=None):
+  """包根内建：调用点生成 ``::cppName(...)``。
 
   与 Python 函数同名时用 ``@global_call`` / ``@global_call(\"py_*\")``；C++ 名与符号名不同时写完整名（如 ``@global_call(\"py_time\")``）。
   """
   def deco(func):
     return func
-  if callable(cpp_name_or_func):
-    return deco(cpp_name_or_func)
+  if callable(cppNameOrFunc):
+    return deco(cppNameOrFunc)
   return deco
 
 
@@ -423,10 +424,10 @@ class staticproperty:
 
 
 # ---------------------------------------------------------------------------
-# 迭代与内置函数（``IteratorElement`` / ``Iterable`` 见 ``util.protocols``）
+# 迭代与内置函数（``IteratorElementType`` / ``IterableType`` 见 ``util.protocols``）
 # ---------------------------------------------------------------------------
 
-from .util.protocols import Iterable, IteratorElement
+from .util.protocols import IterableType, IteratorElementType
 
 
 def len(obj) -> int:
@@ -547,13 +548,12 @@ def new(*args):
   ``@union`` 变体：``x: Message = new.Quit()`` / ``new.Move(1, 2)`` 等价于 ``Message.Quit()`` / ``Message.Move(1, 2)``（须左侧注解或 ``return`` 返回类型）。
   ``match`` 主体为 ``@union`` 时优先 ``case new.Variant(...):`` 勿 ``case Union.Variant(...):``（S06b）。
 
-  字符串用 ``\"...\"`` 字面量，容器空表用 ``[]``/``{}``（``deque``/``frozendict``/``dict``/``frozenlist`` 等勿无参 ``new()``；``deque`` 有界用 ``new(maxlen)``）；元组用 ``(a, b)``；拷贝/迭代器/view 等字面量无法表达时用 ``new(...)``（勿 ``Cls(...)``，S06b）；注解 ``Self`` 见 S06。
+  字符串用 ``\"...\"`` 字面量，容器空表用 ``[]``/``{}``（``deque``/``frozendict``/``dict``/``frozenlist`` 等勿无参 ``new()``；``deque`` 有界用 ``new(maxLen)``）；元组用 ``(a, b)``；拷贝/迭代器/view 等字面量无法表达时用 ``new(...)``（勿 ``Cls(...)``，S06b）；注解 ``Self`` 见 S06。
   """
   pass
 
 
-@native_name("PyZipIterator")
-class zip_iterator[ItL: IteratorElement, ItR: IteratorElement]:
+class ZipIterator[ItL: IteratorElementType, ItR: IteratorElementType]:
   def __init__(self, left: ItL, right: ItR):
     self._left: ItL = iter(left)
     self._right: ItR = iter(right)
@@ -567,63 +567,62 @@ class zip_iterator[ItL: IteratorElement, ItR: IteratorElement]:
     return (a, b)
 
 
-def zip[ItL: IteratorElement, ItR: IteratorElement](left: ItL, right: ItR):
-  """与 Python ``zip(left, right)`` 一致：接受可 Iterable 对象，在内部 ``iter()``。"""
-  return zip_iterator(left, right)
+def zip[ItL: IteratorElementType, ItR: IteratorElementType](left: ItL, right: ItR):
+  """与 Python ``zip(left, right)`` 一致：接受可 IterableType 对象，在内部 ``iter()``。"""
+  return ZipIterator(left, right)
 
 
-@native_name("PyEnumerateIterator")
-class enumerate_iterator[T]:
-  def __init__(self, iterable: T, start: int = 0):
+class EnumerateIterator[Element]:
+  def __init__(self, iterable: Element, start: int = 0):
     self._iter = iter(iterable)
     self._index: int = start
 
   def __iter__(self):
     return self
 
-  def __next__(self) -> (int, T):
-    value: T = next(self._iter)
-    out: (int, T) = (self._index, value)
+  def __next__(self) -> (int, Element):
+    value: Element = next(self._iter)
+    out: (int, Element) = (self._index, value)
     self._index += 1
     return out
 
 
-def enumerate[T](xs: Iterable[T], start: int = 0):
-  return enumerate_iterator(xs, start)
+def enumerate[Element](xs: IterableType[Element], start: int = 0):
+  return EnumerateIterator(xs, start)
 
 
 @overload
-def inline_range(stop: int):
+def inlineRange(stop: int):
   """编译期定界 ``for``；参数顺序同 ``range``，由译器完全展开循环体。
 
-  边界须为外层 ``inline_range`` 循环变量、``Self._dim`` 等 ``@const``、字面量
-  及其一元/二元嵌套（``inline_range(k + 1, Self._dim)`` 等）。
+  边界须为外层 ``inlineRange`` 循环变量、``Self._dim`` 等 ``@const``、字面量
+  及其一元/二元嵌套（``inlineRange(k + 1, Self._dim)`` 等）。
   循环体内不支持 ``break`` / ``continue``；主要用于 ``@mixin``（``expand_inline_range``）。
   """
   ...
 
 
 @overload
-def inline_range(start: int, stop: int, step: int = 1):
+def inlineRange(start: int, stop: int, step: int = 1):
   ...
 
 
-def format(value, format_spec: str = "") -> str:
-  """``format(value, format_spec)`` → ``value.__format__(format_spec)``（对齐 CPython）。"""
+def format(value, formatSpec: str = "") -> str:
+  """``format(value, formatSpec)`` → ``value.__format__(formatSpec)``（对齐 CPython）。"""
   pass
 
 
 @global_call("py_*")
-def input[T = str](prompt: str = "") -> T:
+def input[Element = str](prompt: str = "") -> Element:
   """内置 input。
 
   ``input()`` / ``input[str]()`` 读取 stdin 一行并去掉行尾换行；``input[int]()``
   等标量特化走 C 层扫描（如 ``scanf("%d", &x)``）；未读到任何字符即 EOF 时抛 ``EOFError``。
   """
-  return cast[T](prompt)
+  return cast[Element](prompt)
 
 
-def print(*args, sep: c_str = " ", end: c_str = "\n", flush: bool = False):
+def print(*args, sep: CStr = " ", end: CStr = "\n", flush: bool = False):
   """内置 print：普通实参 ``str(...)`` 后 ``fprintf``；f-string 实参 ``PyStr::format``（见 ``_emit_print``）。"""
   pass
 

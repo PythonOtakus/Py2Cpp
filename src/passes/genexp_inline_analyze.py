@@ -1,4 +1,4 @@
-"""分析 ``Iterable`` 形参 + ``for param in …`` 循环体，供 genexp 调用点内联。"""
+"""分析 ``IterableType`` 形参 + ``for param in …`` 循环体，供 genexp 调用点内联。"""
 from __future__ import annotations
 
 import ast
@@ -21,7 +21,7 @@ class GenexpInlinePlan:
 
 
 def literal_iterable_param_names(func: ast.FunctionDef) -> dict[str, str | None]:
-  """形参注解字面 ``Iterable`` / ``Iterable[T]`` → ``{名: 元素形参名或 None}``。"""
+  """形参注解字面 ``IterableType`` / ``IterableType[T]`` → ``{名: 元素形参名或 None}``。"""
   out: dict[str, str | None] = {}
   for arg in func.args.args:
     if arg.arg in ("self", "cls"):
@@ -29,7 +29,7 @@ def literal_iterable_param_names(func: ast.FunctionDef) -> dict[str, str | None]
     if arg.annotation is None:
       continue
     parsed = protocol_param_template_from_annotation(arg.annotation)
-    if parsed is not None and parsed[0] == "Iterable":
+    if parsed is not None and parsed[0] == "IterableType":
       out[arg.arg] = parsed[1]
   return out
 

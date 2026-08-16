@@ -5,39 +5,39 @@
 | 写法 | 说明 |
 |------|------|
 | ``st[i]`` | 下标 ``i`` 处当前值（点查，``__getitem__``） |
-| ``st[l:r]`` | 半开区间 ``[l, r)`` 聚合（``__getitem__`` 切片；``mode`` 为 ``AggMode``） |
+| ``st[l:r]`` | 半开区间 ``[l, r)`` 聚合（``__getitem__`` 切片；``mode`` 为 ``AggModeEnum``） |
 | ``st[i] = v`` | 单点赋值（``__setitem__``） |
 | ``len(st)`` / ``i in st`` | 长度 ``n``、下标是否合法 |
 """
 from ..builtins import *
 from ..core.exceptions import IndexError, ValueError
-from .agg_mode import AggMode
+from .agg_mode import AggModeEnum
 from ..util.mixins import ContainerMixin
 
 
 class SegTree(ContainerMixin):
   """迭代线段树；下标 0-based。"""
 
-  def __init__(self, n: int, mode: AggMode):
+  def __init__(self, n: int, mode: AggModeEnum):
     if n < 0:
       raise ValueError("n must be non-negative")
     self._n: int = n
-    self._mode: AggMode = mode
+    self._mode: AggModeEnum = mode
     self._size: int = 1
     while self._size < n:
       self._size *= 2
     cap: int = self._size * 2
     self._tree: int[:] = new(cap)
     sentinel: int = 0
-    if mode == AggMode.Min:
-      sentinel = Self._max_int()
-    elif mode == AggMode.Max:
-      sentinel = Self._min_int()
+    if mode == AggModeEnum.Min:
+      sentinel = Self._maxInt()
+    elif mode == AggModeEnum.Max:
+      sentinel = Self._minInt()
     for i in range(cap):
       self._tree[i] = sentinel
 
   def __copy__(self, other: Self):
-    self._ensure_active()
+    self._ensureActive()
     if other.__moved__:
       raise ValueError("move from moved container")
     self._n = other._n
@@ -49,10 +49,10 @@ class SegTree(ContainerMixin):
       self._tree[i] = other._tree[i]
 
   def __move__(self, other: Self):
-    self._ensure_active()
+    self._ensureActive()
     if other.__moved__:
       raise ValueError("move from moved container")
-    mode: AggMode = other._mode
+    mode: AggModeEnum = other._mode
     self._n = other._n
     self._mode = other._mode
     self._size = other._size
@@ -62,28 +62,28 @@ class SegTree(ContainerMixin):
     other._size = 1
     other._tree = new(2)
     sentinel: int = 0
-    if mode == AggMode.Min:
-      sentinel = Self._max_int()
-    elif mode == AggMode.Max:
-      sentinel = Self._min_int()
+    if mode == AggModeEnum.Min:
+      sentinel = Self._maxInt()
+    elif mode == AggModeEnum.Max:
+      sentinel = Self._minInt()
     for i in range(2):
       other._tree[i] = sentinel
 
   @immutable
   def copy(self) -> Self:
-    self._ensure_active()
+    self._ensureActive()
     out: Self = new(0, self._mode)
     out.__copy__(self)
     return out
 
   @immutable
   @staticmethod
-  def _min_int() -> int:
+  def _minInt() -> int:
     return -2147483647
 
   @immutable
   @staticmethod
-  def _max_int() -> int:
+  def _maxInt() -> int:
     return 2147483647
 
   @immutable
@@ -104,25 +104,25 @@ class SegTree(ContainerMixin):
       raise IndexError("segtree index out of range")
 
   @immutable
-  def _check_range(self, left: int, right: int) -> None:
+  def _checkRange(self, left: int, right: int) -> None:
     if left < 0 or right < left or right >= self._n:
       raise IndexError("segtree range out of range")
 
   @immutable
   def _combine(self, a: int, b: int) -> int:
-    if self._mode == AggMode.Sum:
+    if self._mode == AggModeEnum.Sum:
       return a + b
-    if self._mode == AggMode.Min:
+    if self._mode == AggModeEnum.Min:
       return a if a < b else b
     return a if a > b else b
 
   @immutable
   def _identity(self) -> int:
-    if self._mode == AggMode.Sum:
+    if self._mode == AggModeEnum.Sum:
       return 0
-    if self._mode == AggMode.Min:
-      return Self._max_int()
-    return Self._min_int()
+    if self._mode == AggModeEnum.Min:
+      return Self._maxInt()
+    return Self._minInt()
 
   @immutable
   @overload
@@ -141,7 +141,7 @@ class SegTree(ContainerMixin):
       raise ValueError("segtree slice step must be 1")
     if start >= stop:
       return self._identity()
-    return self._range_query(start, stop - 1)
+    return self._rangeQuery(start, stop - 1)
 
   def __setitem__(self, i: int, value: int) -> None:
     self._check(i)
@@ -155,8 +155,8 @@ class SegTree(ContainerMixin):
       pos //= 2
 
   @immutable
-  def _range_query(self, left: int, right: int) -> int:
-    self._check_range(left, right)
+  def _rangeQuery(self, left: int, right: int) -> int:
+    self._checkRange(left, right)
     l: int = self._size + left
     r: int = self._size + right
     res: int = self._identity()

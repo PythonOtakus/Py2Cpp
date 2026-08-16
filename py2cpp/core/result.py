@@ -4,7 +4,6 @@ from py2cpp import native_name, property, union, variant
 
 
 @union
-@native_name("Py*")
 class Result[OkValue, ErrValue]:
   @variant
   class Ok:

@@ -9,28 +9,28 @@ namespace core
 namespace exceptions
 {
 
-class Exception
+class PyException
 {
 PY2CPP_END
 
-PY2CPP_INJECT_CLASS(Exception)
-  const Exception* __cause__;
+PY2CPP_INJECT_CLASS(PyException)
+  const PyException* __cause__;
 
-  explicit Exception() : __cause__(nullptr) {}
-  explicit Exception(const PY2CPP_TYPE(PyStr)& /*msg*/) : __cause__(nullptr) {}
-  Exception(const Exception& o) : __cause__(o.__cause__) {}
+  explicit PyException() : __cause__(nullptr) {}
+  explicit PyException(const PY2CPP_TYPE(PyStr)& /*msg*/) : __cause__(nullptr) {}
+  PyException(const PyException& o) : __cause__(o.__cause__) {}
   PY2CPP_INCLUDE("~exception_convert_ctor_decls.inl")
 PY2CPP_END
 
 PY2CPP_IGNORE
 };
 
-class BaseExceptionGroup : public Exception
+class PyBaseExceptionGroup : public PyException
 {
 PY2CPP_END
 
-PY2CPP_INJECT_CLASS(BaseExceptionGroup)
-  explicit BaseExceptionGroup() = default;
+PY2CPP_INJECT_CLASS(PyBaseExceptionGroup)
+  explicit PyBaseExceptionGroup() = default;
 PY2CPP_END
 
 PY2CPP_IGNORE

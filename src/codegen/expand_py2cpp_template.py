@@ -162,12 +162,16 @@ def collect_forbidden_stl_container_violations() -> list[str]:
 
 def _type_registry() -> dict[str, str]:
   from ..analysis.stubs.class_stubs import load_stdlib_exception_types
+  from ..constant.language import default_py_class_cpp_name
+  from ..constant.stdlib_layout import cpp_exception_type
 
   out = dict(_STD_TYPES)
   for name in _PY_TYPES:
     out.setdefault(name, name)
   for name in load_stdlib_exception_types():
-    out[name] = f"{EXCEPTIONS_NS}::{name}"
+    cpp = default_py_class_cpp_name(name)
+    out[name] = cpp_exception_type(name)
+    out[cpp] = cpp_exception_type(name)
   return out
 
 
@@ -457,32 +461,45 @@ def _parse_range_bounds(iter_node: ast.expr, ctx: dict[str, Any]) -> tuple[Any, 
 
 def _builtin_template_ctx() -> dict[str, Any]:
   from ..analysis.stubs.class_stubs import load_stdlib_exception_types
+  from ..constant.language import default_py_class_cpp_name
 
-  skip = frozenset({"Exception", "ExcSlot"})
-  fwd_skip = frozenset({"Exception", "ExcSlot"})
+  skip = frozenset({"Exception", "ExcTypeUnion"})
+  fwd_skip = frozenset({"Exception", "ExcTypeUnion"})
   return {
     "exception_type_names": sorted(
-      n for n in load_stdlib_exception_types() if n not in skip
+      default_py_class_cpp_name(n)
+      for n in load_stdlib_exception_types()
+      if n not in skip
     ),
     "exception_forward_decl_names": sorted(
-      n for n in load_stdlib_exception_types() if n not in fwd_skip
+      default_py_class_cpp_name(n)
+      for n in load_stdlib_exception_types()
+      if n not in fwd_skip
     ),
   }
 
 
 def exception_pystr_ctor_base(name: str) -> str:
-  if name in ("StatisticsError", "LinAlgError"):
-    return "ValueError"
-  if name in ("FileNotFoundError", "FileExistsError"):
-    return "OSError"
-  return "Exception"
+  """``name`` 为 Python 或已加 ``Py`` 的 C++ 异常类名。"""
+  from ..constant.language import default_py_class_cpp_name
+
+  py = name[2:] if name.startswith("Py") and len(name) > 2 and name[2].isupper() else name
+  if py in ("StatisticsError", "LinAlgError"):
+    return default_py_class_cpp_name("ValueError")
+  if py in ("FileNotFoundError", "FileExistsError"):
+    return default_py_class_cpp_name("OSError")
+  return default_py_class_cpp_name("Exception")
 
 
 _EXCEPTION_PYSTR_CTOR_SKIP = frozenset({
   "Exception",
+  "PyException",
   "BaseExceptionGroup",
+  "PyBaseExceptionGroup",
   "ExceptionGroup",
-  "ExcSlot",
+  "PyExceptionGroup",
+  "ExcTypeUnion",
+  "PyExcTypeUnion",
 })
 
 
@@ -1169,21 +1186,26 @@ def expand_mirror_to_generated(
 
 
 def expand_exception_pystr_ctor(name: str, *, apply_allman: bool = False) -> str | None:
-  if name in _EXCEPTION_PYSTR_CTOR_SKIP:
+  from ..constant.language import default_py_class_cpp_name
+
+  cpp = default_py_class_cpp_name(name) if not (
+    name.startswith("Py") and len(name) > 2 and name[2].isupper()
+  ) else name
+  if name in _EXCEPTION_PYSTR_CTOR_SKIP or cpp in _EXCEPTION_PYSTR_CTOR_SKIP:
     return None
   return expand_template(
     "core/~exception_pystr_ctor.inl",
-    {"ctx_Cls": name, "ctx_Base": exception_pystr_ctor_base(name)},
+    {"ctx_Cls": cpp, "ctx_Base": exception_pystr_ctor_base(cpp)},
     apply_allman=apply_allman,
   )
 
 
 def expand_exception_repr_inl(*, apply_allman: bool = False) -> str:
-  """``Exception`` 与各子类 ``__repr__`` 实现（``ExcSlot`` 等 ``::repr`` 依赖）。"""
+  """``Exception`` 与各子类 ``__repr__`` 实现（``ExcTypeUnion`` 等 ``::repr`` 依赖）。"""
   _ = apply_allman
   ctx = _builtin_template_ctx()
   chunks: list[str] = [
-    "PyStr py2cpp::core::exceptions::Exception::__repr__() const",
+    "PyStr py2cpp::core::exceptions::PyException::__repr__() const",
     "{",
     '  return PyStr("Exception()");',
     "}",

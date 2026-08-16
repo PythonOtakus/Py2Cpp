@@ -1,4 +1,4 @@
-"""``MutableMapping`` / ``Appendable`` / ``add`` 字面量初始化（非仅 ``PyDict`` / ``PyList``）。"""
+"""``MutableMappingType`` / ``AppendableType`` / ``add`` 字面量初始化（非仅 ``PyDict`` / ``PyList``）。"""
 from __future__ import annotations
 
 import tempfile
@@ -53,7 +53,7 @@ def f():
       """
 from py2cpp import *
 
-class Bag[T: DictKey]:
+class Bag[T: DictKeyType]:
   def __init__(self):
     pass
 

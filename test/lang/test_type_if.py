@@ -6,7 +6,7 @@ from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 type InnerListElem[T] = ListElemOf[ListElemOf[T]]
 
 
-def type_tag[T](x: T) -> int:
+def typeTag[T](x: T) -> int:
   if T is int:
     return 1
   elif T in [str, bool]:
@@ -17,7 +17,7 @@ def type_tag[T](x: T) -> int:
     return 0
 
 
-def type_not_int[T](x: T) -> int:
+def typeNotInt[T](x: T) -> int:
   if T is not int:
     return 0
   else:
@@ -36,14 +36,14 @@ def tally[T]() -> int:
   return n
 
 
-def type_not_in_num[T](x: T) -> int:
+def typeNotInNum[T](x: T) -> int:
   if T not in {int, float}:
     return 0
   else:
     return 1
 
 
-def type_list_wildcard[T](x: T) -> int:
+def typeListWildcard[T](x: T) -> int:
   if T is list[int]:
     return 1
   elif T is list[...]:
@@ -52,7 +52,7 @@ def type_list_wildcard[T](x: T) -> int:
     return 0
 
 
-def elem_code[T]() -> int:
+def elemCode[T]() -> int:
   if T is int:
     return 1
   elif T is list[int]:
@@ -65,7 +65,7 @@ def elem_code[T]() -> int:
     return 0
 
 
-def inner_code[T]() -> int:
+def innerCode[T]() -> int:
   if T is int:
     return 10
   elif T is list[int]:
@@ -76,7 +76,7 @@ def inner_code[T]() -> int:
     return 0
 
 
-def pointee_code[T]() -> int:
+def pointeeCode[T]() -> int:
   if T is Pointer[int]:
     return 1
   elif T is int:
@@ -87,11 +87,11 @@ def pointee_code[T]() -> int:
     return 0
 
 
-def take_list_elem[T](x: ListElemOf[T]) -> T:
+def takeListElem[T](x: ListElemOf[T]) -> T:
   return cast(x)
 
 
-def val_code[T]() -> int:
+def valCode[T]() -> int:
   if T is list[int]:
     return 1
   elif T is dict[str, int]:
@@ -100,7 +100,7 @@ def val_code[T]() -> int:
     return 0
 
 
-def list_num_elem_code[T, _U = ...](x: T) -> int:
+def listNumElemCode[T, _U = ...](x: T) -> int:
   if T is list[_U] and _U in [int, float]:
     return 1
   elif T is list[_U]:
@@ -109,14 +109,14 @@ def list_num_elem_code[T, _U = ...](x: T) -> int:
     return 0
 
 
-def pair_int_code[T, _U = ...]() -> int:
+def pairIntCode[T, _U = ...]() -> int:
   if T is tuple[int, _U] and _U is int:
     return 10
   else:
     return 0
 
 
-def scalar_or_code[T]() -> int:
+def scalarOrCode[T]() -> int:
   if T is int or T is float:
     return 1
   else:
@@ -124,69 +124,69 @@ def scalar_or_code[T]() -> int:
 
 
 class TypeIfModuleTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
-    self.assertEqual(type_tag(42), 1)
-    self.assertEqual(type_tag("hi"), 2)
-    self.assertEqual(type_tag(True), 2)
+    self.assertEqual(typeTag(42), 1)
+    self.assertEqual(typeTag("hi"), 2)
+    self.assertEqual(typeTag(True), 2)
     xs: list[int] = []
-    self.assertEqual(type_tag(xs), 3)
-    self.assertEqual(type_not_int(1.0), 0)
-    self.assertEqual(type_not_int(7), 1)
+    self.assertEqual(typeTag(xs), 3)
+    self.assertEqual(typeNotInt(1.0), 0)
+    self.assertEqual(typeNotInt(7), 1)
     self.assertEqual(tally[int](), 3)
     self.assertEqual(tally[str](), 6)
-    self.assertEqual(type_not_in_num("x"), 0)
-    self.assertEqual(type_not_in_num(3.14), 1)
+    self.assertEqual(typeNotInNum("x"), 0)
+    self.assertEqual(typeNotInNum(3.14), 1)
     xs2: list[int] = []
-    self.assertEqual(type_list_wildcard(xs2), 1)
+    self.assertEqual(typeListWildcard(xs2), 1)
     ys: list[str] = []
-    self.assertEqual(type_list_wildcard(ys), 2)
+    self.assertEqual(typeListWildcard(ys), 2)
 
 
 class TypeIfCaptureTests(TestCaseMixin):
-  _test_tag = 3
+  _testTag = 3
 
   @override
   def test(self):
     xs: list[int] = [1, 2]
-    self.assertEqual(list_num_elem_code[list[int]](xs), 1)
+    self.assertEqual(listNumElemCode[list[int]](xs), 1)
     ys: list[float] = [1.0]
-    self.assertEqual(list_num_elem_code[list[float]](ys), 1)
+    self.assertEqual(listNumElemCode[list[float]](ys), 1)
     zs: list[str] = ["a"]
-    self.assertEqual(list_num_elem_code[list[str]](zs), 2)
-    self.assertEqual(pair_int_code[tuple[int, int]](), 10)
-    self.assertEqual(pair_int_code[tuple[int, str]](), 0)
-    self.assertEqual(scalar_or_code[int](), 1)
-    self.assertEqual(scalar_or_code[float](), 1)
-    self.assertEqual(scalar_or_code[str](), 0)
+    self.assertEqual(listNumElemCode[list[str]](zs), 2)
+    self.assertEqual(pairIntCode[tuple[int, int]](), 10)
+    self.assertEqual(pairIntCode[tuple[int, str]](), 0)
+    self.assertEqual(scalarOrCode[int](), 1)
+    self.assertEqual(scalarOrCode[float](), 1)
+    self.assertEqual(scalarOrCode[str](), 0)
 
 
 class TypeAliasTests(TestCaseMixin):
-  _test_tag = 2
+  _testTag = 2
 
   @override
   def test(self):
-    self.assertEqual(elem_code[int](), 1)
-    self.assertEqual(elem_code[list[int]](), 2)
-    self.assertEqual(elem_code[str](), 3)
-    self.assertEqual(elem_code[list[str]](), 4)
-    self.assertEqual(inner_code[list[list[int]]](), 12)
-    self.assertEqual(inner_code[list[int]](), 11)
-    self.assertEqual(pointee_code[Pointer[int]](), 1)
-    self.assertEqual(pointee_code[int](), 2)
-    self.assertEqual(pointee_code[Pointer[str]](), 3)
+    self.assertEqual(elemCode[int](), 1)
+    self.assertEqual(elemCode[list[int]](), 2)
+    self.assertEqual(elemCode[str](), 3)
+    self.assertEqual(elemCode[list[str]](), 4)
+    self.assertEqual(innerCode[list[list[int]]](), 12)
+    self.assertEqual(innerCode[list[int]](), 11)
+    self.assertEqual(pointeeCode[Pointer[int]](), 1)
+    self.assertEqual(pointeeCode[int](), 2)
+    self.assertEqual(pointeeCode[Pointer[str]](), 3)
     n: int = 7
-    self.assertEqual(take_list_elem[int](n), 7)
+    self.assertEqual(takeListElem[int](n), 7)
     xs: list[int] = [1, 2]
-    self.assertEqual(take_list_elem[int](xs[0]), 1)
-    self.assertEqual(val_code[list[int]](), 1)
-    self.assertEqual(val_code[dict[str, int]](), 2)
+    self.assertEqual(takeListElem[int](xs[0]), 1)
+    self.assertEqual(valCode[list[int]](), 1)
+    self.assertEqual(valCode[dict[str, int]](), 2)
 
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)

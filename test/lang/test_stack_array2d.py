@@ -5,7 +5,7 @@ from py2cpp.util.span import span2d
 
 
 class StackArray2dBasicTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
@@ -20,7 +20,7 @@ class StackArray2dBasicTests(TestCaseMixin):
 
 
 class StackArray2dViewTests(TestCaseMixin):
-  _test_tag = 2
+  _testTag = 2
 
   @override
   def test(self):
@@ -41,7 +41,7 @@ class StackArray2dViewTests(TestCaseMixin):
 
 
 class StackArray2dHeapSliceTests(TestCaseMixin):
-  _test_tag = 3
+  _testTag = 3
 
   @override
   def test(self):
@@ -54,7 +54,7 @@ class StackArray2dHeapSliceTests(TestCaseMixin):
 
 
 class Array2dViewTests(TestCaseMixin):
-  _test_tag = 4
+  _testTag = 4
 
   @override
   def test(self):
@@ -73,6 +73,6 @@ class Array2dViewTests(TestCaseMixin):
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)

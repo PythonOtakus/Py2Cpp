@@ -4,7 +4,7 @@ from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 from py2cpp.core.exceptions import ExceptionGroup, KeyError, TypeError, ValueError
 
 
-def try_except_value() -> int:
+def tryExceptValue() -> int:
   n: int = 0
   try:
     n = 1
@@ -15,7 +15,7 @@ def try_except_value() -> int:
   return n
 
 
-def try_else_value() -> int:
+def tryElseValue() -> int:
   n: int = 0
   try:
     n = 1
@@ -26,7 +26,7 @@ def try_else_value() -> int:
   return n
 
 
-def try_except_as_value() -> int:
+def tryExceptAsValue() -> int:
   n: int = 0
   try:
     raise ValueError()
@@ -35,7 +35,7 @@ def try_except_as_value() -> int:
   return n
 
 
-def try_except_star_as_value() -> int:
+def tryExceptStarAsValue() -> int:
   n: int = 0
   try:
     raise ValueError()
@@ -44,7 +44,7 @@ def try_except_star_as_value() -> int:
   return n
 
 
-def try_except_star_split() -> int:
+def tryExceptStarSplit() -> int:
   total: int = 0
   try:
     raise ExceptionGroup("", [ValueError(), TypeError()])
@@ -55,7 +55,7 @@ def try_except_star_split() -> int:
   return total
 
 
-def try_except_star_wrap_single() -> bool:
+def tryExceptStarWrapSingle() -> bool:
   wrapped: bool = False
   try:
     raise ValueError()
@@ -64,31 +64,31 @@ def try_except_star_wrap_single() -> bool:
   return wrapped
 
 
-def try_raise_from_has_cause() -> bool:
-  has_cause: bool = False
+def tryRaiseFromHasCause() -> bool:
+  hasCause: bool = False
   try:
     raise ValueError()
   except ValueError as e:
     try:
       raise TypeError() from e
     except TypeError as te:
-      has_cause = te.__cause__ is not None
-  return has_cause
+      hasCause = te.__cause__ is not None
+  return hasCause
 
 
-def try_raise_from_with_args() -> bool:
-  has_cause: bool = False
+def tryRaiseFromWithArgs() -> bool:
+  hasCause: bool = False
   try:
     raise ValueError()
   except ValueError as e:
     try:
       raise KeyError("inner") from e
     except KeyError as ke:
-      has_cause = ke.__cause__ is not None
-  return has_cause
+      hasCause = ke.__cause__ is not None
+  return hasCause
 
 
-def try_finally_value() -> int:
+def tryFinallyValue() -> int:
   n: int = 0
   try:
     n = 1
@@ -100,7 +100,7 @@ def try_finally_value() -> int:
   return n
 
 
-def try_else_finally_value() -> int:
+def tryElseFinallyValue() -> int:
   n: int = 0
   try:
     n = 1
@@ -113,7 +113,7 @@ def try_else_finally_value() -> int:
   return n
 
 
-def try_tuple_except() -> int:
+def tryTupleExcept() -> int:
   n: int = 0
   try:
     raise TypeError()
@@ -122,7 +122,7 @@ def try_tuple_except() -> int:
   return n
 
 
-def try_nested_finally() -> int:
+def tryNestedFinally() -> int:
   acc: int = 0
   try:
     try:
@@ -137,7 +137,7 @@ def try_nested_finally() -> int:
   return acc
 
 
-def try_bare_except_value() -> int:
+def tryBareExceptValue() -> int:
   n: int = 0
   try:
     n = 1
@@ -148,7 +148,7 @@ def try_bare_except_value() -> int:
   return n
 
 
-def try_bare_else_value() -> int:
+def tryBareElseValue() -> int:
   n: int = 0
   try:
     n = 1
@@ -159,7 +159,7 @@ def try_bare_else_value() -> int:
   return n
 
 
-def try_bare_except_else_on_error() -> int:
+def tryBareExceptElseOnError() -> int:
   n: int = 0
   try:
     n = 1
@@ -171,7 +171,7 @@ def try_bare_except_else_on_error() -> int:
   return n
 
 
-def try_return_finally_once() -> int:
+def tryReturnFinallyOnce() -> int:
   acc: int = 0
   try:
     acc = 1
@@ -182,30 +182,30 @@ def try_return_finally_once() -> int:
 
 
 class TryExceptTests(TestCaseMixin):
-  _test_tag = 1
+  _testTag = 1
 
   @override
   def test(self):
-    self.assertEqual(try_except_value(), 3)
-    self.assertEqual(try_except_as_value(), 1)
-    self.assertEqual(try_except_star_as_value(), 1)
-    self.assertEqual(try_except_star_split(), 2)
-    self.assertTrue(try_except_star_wrap_single())
-    self.assertTrue(try_raise_from_has_cause())
-    self.assertTrue(try_raise_from_with_args())
-    self.assertEqual(try_else_value(), 3)
-    self.assertEqual(try_finally_value(), 3)
-    self.assertEqual(try_else_finally_value(), 5)
-    self.assertEqual(try_tuple_except(), 1)
-    self.assertEqual(try_nested_finally(), 4)
-    self.assertEqual(try_bare_except_value(), 3)
-    self.assertEqual(try_bare_else_value(), 3)
-    self.assertEqual(try_bare_except_else_on_error(), 4)
-    self.assertEqual(try_return_finally_once(), 2)
+    self.assertEqual(tryExceptValue(), 3)
+    self.assertEqual(tryExceptAsValue(), 1)
+    self.assertEqual(tryExceptStarAsValue(), 1)
+    self.assertEqual(tryExceptStarSplit(), 2)
+    self.assertTrue(tryExceptStarWrapSingle())
+    self.assertTrue(tryRaiseFromHasCause())
+    self.assertTrue(tryRaiseFromWithArgs())
+    self.assertEqual(tryElseValue(), 3)
+    self.assertEqual(tryFinallyValue(), 3)
+    self.assertEqual(tryElseFinallyValue(), 5)
+    self.assertEqual(tryTupleExcept(), 1)
+    self.assertEqual(tryNestedFinally(), 4)
+    self.assertEqual(tryBareExceptValue(), 3)
+    self.assertEqual(tryBareElseValue(), 3)
+    self.assertEqual(tryBareExceptElseOnError(), 4)
+    self.assertEqual(tryReturnFinallyOnce(), 2)
 
 
 class TryComplexFloatTests(TestCaseMixin):
-  _test_tag = 10
+  _testTag = 10
 
   @override
   def test(self):
@@ -220,6 +220,6 @@ class TryComplexFloatTests(TestCaseMixin):
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)

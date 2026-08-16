@@ -1,7 +1,7 @@
 """蓝图画布控件（``UIFlowCanvas``）。"""
 from ...builtins import *
 from ..canvas import TextAlignLeft, TextAlignRight, UICanvas, UIPaintContext
-from ..events import UIEvent, UIValueChanged
+from ..events import UIEventDelegate, UIValueChangedDelegate
 from ..input import ctrlDown, shiftDown
 from .catalog import FlowNodeCatalog
 from .history import FlowGraphHistory
@@ -59,8 +59,8 @@ class UIFlowCanvas(UICanvas):
   _marqueeEx: int = 0
   _marqueeEy: int = 0
 
-  graphChanged: UIEvent = new()
-  selectionChanged: UIValueChanged[int] = new()
+  graphChanged: UIEventDelegate = new()
+  selectionChanged: UIValueChangedDelegate[int] = new()
 
   def _isNodeSelected(self, nodeId: int) -> bool:
     for nid in self.selectedNodes:

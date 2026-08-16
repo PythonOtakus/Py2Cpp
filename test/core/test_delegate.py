@@ -5,15 +5,15 @@ from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 
 @delegate
-def Func[T](x: T) -> T: ...
+def FuncDelegate[T](x: T) -> T: ...
 
 
 @delegate
-def Action(x: int) -> None: ...
+def ActionDelegate(x: int) -> None: ...
 
 
 @delegate
-def Compare(a, b) -> int: ...
+def CompareDelegate(a, b) -> int: ...
 
 
 def _double(x: int) -> int:
@@ -40,19 +40,19 @@ def _prefixText(s: str) -> str:
   return "fn:" + s
 
 
-def addInc(target: Func[int]) -> None:
+def addInc(target: FuncDelegate[int]) -> None:
   target += _inc
 
 
-def callTarget(target: Func[int], x: int) -> int:
+def callTarget(target: FuncDelegate[int], x: int) -> int:
   return target(x)
 
 
-def attachSlot(d: Func[int], slot: Callable[[int], int]) -> None:
+def attachSlot(d: FuncDelegate[int], slot: Callable[[int], int]) -> None:
   d += slot
 
 
-def detachSlot(d: Func[int], slot: Callable[[int], int]) -> None:
+def detachSlot(d: FuncDelegate[int], slot: Callable[[int], int]) -> None:
   d -= slot
 
 
@@ -61,7 +61,7 @@ def invokeSlot(slot: Callable[[int], int], x: int) -> int:
 
 
 class HandlerBox:
-  handler: Func[int] = new()
+  handler: FuncDelegate[int] = new()
 
   def fire(self, x: int) -> int:
     return self.handler(x)
@@ -109,7 +109,7 @@ class DelegateBasicTests(TestCaseMixin):
 
   @override
   def test(self):
-    d: Func[int] = new()
+    d: FuncDelegate[int] = new()
     self.assertFalse(d)
     d += _inc
     self.assertTrue(d)
@@ -120,19 +120,19 @@ class DelegateBasicTests(TestCaseMixin):
     self.assertEqual(d(5), 10)
     cb: Function[[int], int] = _double
     self.assertEqual(cb(3), 6)
-    act: Action = new()
+    act: ActionDelegate = new()
     act += _noop
     act(1)
-    cmp: Compare[int, int] = new()
+    cmp: CompareDelegate[int, int] = new()
     cmp += _add
     self.assertEqual(cmp(2, 3), 5)
-    lamD: Func[int] = new()
+    lamD: FuncDelegate[int] = new()
     lamD += lambda x: x + 1
     self.assertEqual(lamD(5), 6)
     lamD += _triple
     self.assertEqual(lamD(5), 15)
     incLam = lambda x: x + 1
-    cachedD: Func[int] = new()
+    cachedD: FuncDelegate[int] = new()
     cachedD += incLam
     self.assertEqual(cachedD(5), 6)
     cachedD -= incLam
@@ -150,7 +150,7 @@ class DelegateMemberTests(TestCaseMixin):
 
   @override
   def test(self):
-    d: Func[int] = new()
+    d: FuncDelegate[int] = new()
     d += self.apply
     self.assertEqual(d(7), 7)
     self.assertEqual(self.v, 7)
@@ -189,7 +189,7 @@ class CallableFieldTests(TestCaseMixin):
     holder: SlotHolder = new()
     inc = lambda x: x + 1
     holder.slot = inc
-    d: Func[int] = new()
+    d: FuncDelegate[int] = new()
     d += holder.slot
     self.assertEqual(d(5), 6)
     d -= holder.slot
@@ -226,7 +226,7 @@ class DelegateParamTests(TestCaseMixin):
 
   @override
   def test(self):
-    d: Func[int] = new()
+    d: FuncDelegate[int] = new()
     addInc(d)
     self.assertEqual(callTarget(d, 3), 4)
     d += _double
@@ -238,7 +238,7 @@ class CallableParamTests(TestCaseMixin):
 
   @override
   def test(self):
-    d: Func[int] = new()
+    d: FuncDelegate[int] = new()
     slot = lambda x: x + 2
     self.assertEqual(invokeSlot(slot, 4), 6)
     attachSlot(d, slot)

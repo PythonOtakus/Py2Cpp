@@ -242,10 +242,10 @@ class Readable:
 from py2cpp import *
 
 @delegate
-def UIEvent() -> None: ...
+def UIEventDelegate() -> None: ...
 """
     _out, _manifest, shard = _translate_snippet(src, name="nav_del.py")
-    dels = [s for s in shard["symbols"] if s["kind"] == "delegate" and s["name"] == "UIEvent"]
+    dels = [s for s in shard["symbols"] if s["kind"] == "delegate" and s["name"] == "UIEventDelegate"]
     self.assertTrue(dels, [s["kind"] for s in shard["symbols"]])
     self.assertIn("decl", dels[0]["cpp"])
     shard["_tmp"].cleanup()

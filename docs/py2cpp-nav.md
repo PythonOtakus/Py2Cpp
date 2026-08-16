@@ -144,7 +144,7 @@ generated/.cache/nav/
 | `type_alias` | ✅ | 类内 / 模块 `type`（含条件别名）→ `using` |
 | `enum_member` | ✅ | `@enum` 成员 → `Enum::Member` |
 | `variant` | ✅ | `@union` 内 `@variant`；优先工厂声明，附 `tag`/`payload` |
-| `delegate` | ✅ | `@delegate` → `class UIEvent` / `using` |
+| `delegate` | ✅ | `@delegate` → `class UIEventDelegate` / `using` |
 | `protocol` | ✅ | 仅 Python（无伪 C++ 类） |
 | `mixin` | ✅ | 类仅 Python；方法可附宿主 `.inl` |
 | `descriptor` | ✅ | 描述符源仅 Python（宿主展开见宿主 property） |
@@ -183,7 +183,7 @@ generated/.cache/nav/
 | `@descriptor` | 描述符源 | — | ✅ 仅 Python |
 | `@annotation` | 元数据 | — | ❌ 不索引 |
 | `@protocol` | `IteratorType` | — | ✅ 仅 Python |
-| `@delegate` | `def UIEvent` | `class UIEvent` | ✅ |
+| `@delegate` | `def UIEventDelegate` | `class UIEventDelegate` | ✅ |
 | `@overload` | 同名多签名 | 多重载 | ✅ 全部列出 |
 | `@native` + 模板 | FFI / paste | `.inl` | ⚠ impl 可能在模板 |
 | FFI `.pyi` | `sqlite3.pyi` | `ffi::…` | ⚠ 大库未全验 |
@@ -201,7 +201,7 @@ generated/.cache/nav/
 | BUG-4 | setter 用 `set_*` | `property_setter_method_for` → `name__set` |
 | BUG-5 | `@staticproperty` 缺失 | 索引 `static_properties` |
 | BUG-6 | protocol 伪 C++ | `kind=protocol`，无 cpp 锚点 |
-| BUG-7 | delegate 空 shard | `kind=delegate` 匹配 `class UIEvent` |
+| BUG-7 | delegate 空 shard | `kind=delegate` 匹配 `class UIEventDelegate` |
 
 ---
 
@@ -261,7 +261,7 @@ python main.py py2cpp\__init__.py -o generated --no-main
 | `type Item` / 自动 `Element` | `using …` |
 | `AggModeEnum.Min` | `AggModeEnum::Min` |
 | `Result.Ok` / `new.Ok` | 工厂 `static … Ok(` |
-| `ui/events.py` → `UIEvent` | `class UIEvent` |
+| `ui/events.py` → `UIEventDelegate` | `class UIEventDelegate` |
 | `@protocol` 类名 | 仅 Python 定义行 |
 
 ### 8.3 PR 检查单

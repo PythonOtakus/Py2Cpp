@@ -1,7 +1,7 @@
 """可挂载 Win32 控件的 ``UIWidget`` 子类。"""
 
 from ..builtins import *
-from .events import UIEvent, UIValueChanged
+from .events import UIEventDelegate, UIValueChangedDelegate
 
 
 @dataclass(eq=False, repr=False)
@@ -16,7 +16,7 @@ class UIWidget(UIObject):
 
 @dataclass(eq=False, repr=False)
 class UICheckBox(UIWidget):
-  stateChanged: UIValueChanged[bool] = new()
+  stateChanged: UIValueChangedDelegate[bool] = new()
 
   @native
   def _syncToNative(self) -> None:
@@ -28,7 +28,7 @@ class UICheckBox(UIWidget):
 
 @dataclass(eq=False, repr=False)
 class UILineEdit(UIWidget):
-  textChanged: UIValueChanged[str] = new()
+  textChanged: UIValueChangedDelegate[str] = new()
 
   @native
   def _syncToNative(self) -> None:
@@ -40,7 +40,7 @@ class UILineEdit(UIWidget):
 
 @dataclass(eq=False, repr=False)
 class UIIntEdit(UIWidget):
-  valueChanged: UIValueChanged[int] = new()
+  valueChanged: UIValueChangedDelegate[int] = new()
 
   @native
   def _syncToNative(self) -> None:
@@ -52,7 +52,7 @@ class UIIntEdit(UIWidget):
 
 @dataclass(eq=False, repr=False)
 class UIFloatEdit(UIWidget):
-  valueChanged: UIValueChanged[float64] = new()
+  valueChanged: UIValueChangedDelegate[float64] = new()
 
   @native
   def _syncToNative(self) -> None:
@@ -66,7 +66,7 @@ class UIFloatEdit(UIWidget):
 class UISlider(UIWidget):
   lo: int = 0
   hi: int = 100
-  valueChanged: UIValueChanged[int] = new()
+  valueChanged: UIValueChangedDelegate[int] = new()
 
   @native
   def _syncToNative(self) -> None:
@@ -79,4 +79,4 @@ class UISlider(UIWidget):
 @dataclass(eq=False, repr=False)
 class UIPushButton(UIWidget):
   text: str = ""
-  clicked: UIEvent = new()
+  clicked: UIEventDelegate = new()

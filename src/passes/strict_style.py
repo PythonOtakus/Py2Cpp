@@ -112,6 +112,7 @@ _S47_SUFFIX_RULES: tuple[tuple[str, str, str], ...] = (
     ('descriptor', 'Var', '@descriptor'),
     ('mixin', 'Mixin', '@mixin'),
 )
+# ``@delegate`` 为函数定义（非 ClassDef），见 ``_check_s47_naming_suffixes``
 _SLICE_ARRAY_ANN_ROOTS = frozenset({'array', 'array2d', 'array3d', 'StackArray', 'StackArray2d', 'StackArray3d'})
 _S20_MIN_DISPATCH_BRANCHES = 3
 _S21_MIN_COMPARE_CHAIN_ARMS = 2
@@ -297,9 +298,14 @@ def _s47_require_suffix(name: str, suffix: str) -> bool:
     return name.endswith(suffix)
 
 def _check_s47_naming_suffixes(tree: ast.Module, module_path: str, violations: list[_Violation]) -> None:
-    """S47：特殊类型 / Meta / Var / Mixin / 异常类名后缀（见编码规范 §1.0.2）。"""
+    """S47：特殊类型 / Meta / Var / Mixin / Delegate / 异常类名后缀（见编码规范 §1.0.2）。"""
     exc_names = _s47_collect_exception_names(tree)
     for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and has_named_decorator(node, 'delegate'):
+            name = node.name
+            if not _s47_require_suffix(name, 'Delegate'):
+                violations.append(_Violation(S47, _strict_msg(name, f'{name}…Delegate', f'def {name}', reason='``@delegate`` 名须以 ``Delegate`` 结尾', example='got: @delegate def UIEventDelegate(): …'), node, module_path))
+            continue
         if not isinstance(node, ast.ClassDef):
             continue
         name = node.name
@@ -2402,22 +2408,31 @@ def _s41_self_private_attr(node: ast.Attribute) -> str | None:
 def _s41_instance_params(method: ast.FunctionDef) -> list[str]:
     return [a.arg for a in method.args.args if a.arg not in ('self', 'cls')]
 
+def _s41_decapitalize(s: str) -> str:
+    if not s:
+        return s
+    return s[0].lower() + s[1:]
+
+def _s41_camel_prefix_stem(name: str, prefix: str) -> str | None:
+    """``getValue`` / ``isDone`` / ``setKind`` → ``value`` / ``done`` / ``kind``（前缀后首字母须大写）。"""
+    if not name.startswith(prefix):
+        return None
+    rest = name[len(prefix):]
+    if not rest or not rest[0].isupper():
+        return None
+    return _s41_decapitalize(rest)
+
 def _s41_getter_stem(name: str) -> str | None:
-    if name.startswith('get_'):
-        stem = name[4:]
-        return stem if stem else None
-    if name.startswith('is_'):
-        stem = name[3:]
-        return stem if stem else None
-    if name.startswith('set_'):
+    for prefix in ('get', 'is'):
+        stem = _s41_camel_prefix_stem(name, prefix)
+        if stem is not None:
+            return stem
+    if _s41_camel_prefix_stem(name, 'set') is not None:
         return None
     return name
 
 def _s41_setter_stem(name: str) -> str | None:
-    if name.startswith('set_'):
-        stem = name[4:]
-        return stem if stem else None
-    return None
+    return _s41_camel_prefix_stem(name, 'set')
 
 def _s41_try_pure_field_getter(method: ast.FunctionDef) -> str | None:
     if _is_dunder(method.name) or _is_property_accessor(method):
@@ -2461,7 +2476,7 @@ def _s41_try_pure_field_setter(method: ast.FunctionDef) -> str | None:
 
 def _s41_private_accessor_pair_msg(*, getter: str, setter: str, field: str) -> str:
     public = field[1:] if field.startswith('_') else field
-    return _strict_msg(f'`def {getter}(self): return self.{field}` 与 `def {setter}(self, …): self.{field} = …`', f'``@property def {public}(self)`` + ``@property.setter``，或改为公有字段 ``{public}: T``', '类内私有字段纯读写方法对（``abc``/``is_abc``/``get_abc`` 与 ``set_abc`` 同理）', reason='仅读写 ``self._field`` 的 getter/setter 须 ``@property`` 或公有字段；getter 除 ``self`` 外无参，setter 除 ``self`` 外仅一个赋值形参', example=f'``@property def {public}(self) -> T: return self.{field}``；``@property.setter def {public}(self, v: T): self.{field} = v``')
+    return _strict_msg(f'`def {getter}(self): return self.{field}` 与 `def {setter}(self, …): self.{field} = …`', f'``@property def {public}(self)`` + ``@property.setter``，或改为公有字段 ``{public}: T``', '类内私有字段纯读写方法对（``kind``/``isDone``/``getValue`` 与 ``setKind``/``setValue`` 同理）', reason='仅读写 ``self._field`` 的 getter/setter 须 ``@property`` 或公有字段；getter 除 ``self`` 外无参，setter 除 ``self`` 外仅一个赋值形参', example=f'``@property def {public}(self) -> T: return self.{field}``；``@property.setter def {public}(self, v: T): self.{field} = v``')
 
 def _check_s41_private_field_accessor_pairs(tr: Translator, violations: list[_Violation]) -> None:
     for info in tr.classes.values():

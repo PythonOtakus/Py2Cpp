@@ -471,5 +471,44 @@ class TestTypeExtractInvokable(unittest.TestCase):
         self.assertTrue(
             is_invokable_type('PyDelegate', delegate_names=frozenset({'PyDelegate'}))
         )
+
+    def test_resolve_delegate_by_cpp_name(self):
+        """``delegates`` 以 Python 名为键；存储类型为 ``Py*Delegate`` 时须能解析。"""
+        import ast
+        from src.analysis.delegates import DelegateInfo, DelegateParam
+        from src.emit.delegate_emit import resolve_delegate_for_type
+
+        node = ast.FunctionDef(
+            name='FuncDelegate',
+            args=ast.arguments(
+                posonlyargs=[],
+                args=[],
+                vararg=None,
+                kwonlyargs=[],
+                kw_defaults=[],
+                kwarg=None,
+                defaults=[],
+            ),
+            body=[],
+            decorator_list=[],
+        )
+        d = {
+            'FuncDelegate': DelegateInfo(
+                name='FuncDelegate',
+                module_path='t',
+                type_params=('T',),
+                func_template_names=(),
+                params=(DelegateParam('x', 'T'),),
+                ret_cpp='T',
+                node=node,
+            )
+        }
+        info = resolve_delegate_for_type('PyFuncDelegate<PyInt>', d)
+        self.assertIsNotNone(info)
+        assert info is not None
+        self.assertEqual(info.ret_cpp, 'PyInt')
+        self.assertEqual(info.params[0].cpp_type, 'PyInt')
+
+
 if __name__ == '__main__':
     unittest.main()

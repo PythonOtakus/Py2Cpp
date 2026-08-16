@@ -295,10 +295,10 @@ def main():
   def test_s06a_rejects_delegate_explicit_ctor(self):
     self._expect_strict_fail(
       """@delegate
-def Func[T](x: T) -> T: ...
+def FuncDelegate[T](x: T) -> T: ...
 
 def main():
-  d: Func[int] = Func[int]()
+  d: FuncDelegate[int] = FuncDelegate[int]()
   return 0
 """,
       "S06a",
@@ -773,12 +773,12 @@ class Box:
   def kind(self) -> int:
     return self._kind
 
-  def set_kind(self, kind: int) -> None:
+  def setKind(self, kind: int) -> None:
     self._kind = kind
 
 def main():
   b: Box = new()
-  b.set_kind(1)
+  b.setKind(1)
   return b.kind()
 """,
       "S41",
@@ -811,16 +811,16 @@ def main():
 class Box:
   _done: bool = False
 
-  def mark_done(self) -> None:
+  def markDone(self) -> None:
     self._done = True
 
-  def is_done(self) -> bool:
+  def isDone(self) -> bool:
     return self._done
 
 def main():
   b: Box = new()
-  b.mark_done()
-  return b.is_done()
+  b.markDone()
+  return b.isDone()
 """
     )
 
@@ -830,16 +830,36 @@ def main():
 class Box:
   _value: int = 0
 
-  def get_value(self) -> int:
+  def getValue(self) -> int:
     return self._value
 
-  def set_value(self, value: int) -> None:
+  def setValue(self, value: int) -> None:
     self._value = value
 
 def main():
   b: Box = new()
-  b.set_value(1)
-  return b.get_value()
+  b.setValue(1)
+  return b.getValue()
+""",
+      "S41",
+    )
+
+  def test_s41_rejects_is_set_named_pair(self):
+    self._expect_strict_fail(
+      """@copyable
+class Box:
+  _done: bool = False
+
+  def isDone(self) -> bool:
+    return self._done
+
+  def setDone(self, done: bool) -> None:
+    self._done = done
+
+def main():
+  b: Box = new()
+  b.setDone(True)
+  return b.isDone()
 """,
       "S41",
     )
@@ -850,16 +870,16 @@ def main():
 class Store:
   _data: dict[str, int] = {}
 
-  def get_value(self, name: str) -> int:
+  def getValue(self, name: str) -> int:
     return self._data[name]
 
-  def set_value(self, name: str, value: int) -> None:
+  def setValue(self, name: str, value: int) -> None:
     self._data[name] = value
 
 def main():
   s: Store = new()
-  s.set_value("x", 1)
-  return s.get_value("x")
+  s.setValue("x", 1)
+  return s.getValue("x")
 """
     )
 
@@ -3449,6 +3469,28 @@ class ModeEnum:
 
 def main():
   return int(ModeEnum.On)
+"""
+    )
+
+  def test_s47_rejects_delegate_without_delegate_suffix(self):
+    self._expect_strict_fail(
+      """@delegate
+def UIEvent() -> None: ...
+
+def main():
+  return 0
+""",
+      "S47",
+    )
+
+  def test_s47_allows_delegate_suffix(self):
+    self._translate(
+      """@delegate
+def UIEventDelegate() -> None: ...
+
+def main():
+  d: UIEventDelegate = new()
+  return 0
 """
     )
 

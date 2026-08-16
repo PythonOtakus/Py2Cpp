@@ -257,7 +257,7 @@ kindId = Self.__name__ + "." + methodName    # 如 "ShooterLogic.fire"
 ├─────────────────────────────────────────────────────────┤
 │  @native：UICanvas mount / invalidate + +canvas.inl     │
 ├─────────────────────────────────────────────────────────┤
-│  UIApp / UIWindow / UIEvent                             │
+│  UIApp / UIWindow / UIEventDelegate                             │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -510,6 +510,6 @@ build.bat ui/test_flow --seq
 ## 15. 编码规范自检（实现时）
 
 - 标准库写法：`new`、`Self`、``@dataclass`` / ``@copyable``、无 STL、无手写 dunder。
-- 复用 `UIApp` / `UIWindow` / `UIEvent` / `ui_theme_scale`；勿重复造 Panel 窗口逻辑。
+- 复用 `UIApp` / `UIWindow` / `UIEventDelegate` / `ui_theme_scale`；勿重复造 Panel 窗口逻辑。
 - `ui/flow/__init__.py` **勿** re-export 子模块（与 `ui/__init__.py` 一致）。
 - 文档：本文 + [参考手册 §10.10](./参考手册.md#1010-uiflow蓝图编辑器) + [编码规范 §8.1](./编码规范.md#81-模块--cpython-对照) 模块表。

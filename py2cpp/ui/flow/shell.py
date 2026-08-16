@@ -4,7 +4,7 @@ from ...io.path import Path
 from ..menu import UIMenuBar
 from ..file_dialog import pickOpenFile, pickSaveFile
 from ..tooltip import UITooltipHost
-from ..events import UIEvent
+from ..events import UIEventDelegate
 from ..window import UIWindow
 from .canvas import UIFlowCanvas
 from .catalog import FlowNodeCatalog
@@ -46,9 +46,9 @@ class UIFlowShell:
   tooltip: UITooltipHost = new()
   docPath: str = ""
   boundCanvasPtr: int64 @optional = 0
-  runPlay: UIEvent = new()
-  runPlaySelected: UIEvent = new()
-  runStop: UIEvent = new()
+  runPlay: UIEventDelegate = new()
+  runPlaySelected: UIEventDelegate = new()
+  runStop: UIEventDelegate = new()
 
   @native
   def registerShell(self, win: UIWindow @ref) -> None:

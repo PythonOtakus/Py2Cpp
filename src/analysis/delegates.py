@@ -15,7 +15,7 @@ class DelegateParam:
 
 @dataclass(frozen=True)
 class DelegateInfo:
-  """``@delegate def Func[T](x: T) -> T: ...`` 的编译期描述。"""
+  """``@delegate def FuncDelegate[T](x: T) -> T: ...`` 的编译期描述。"""
 
   name: str
   module_path: str

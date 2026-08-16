@@ -56,8 +56,19 @@ def py_callable_free_invoke_ref(ret: str, params: tuple[DelegateParam, ...]) -> 
     return f'py_callable_free_invoke<{ret}>::call'
 
 def resolve_delegate_for_type(vtype: str, delegates: dict[str, DelegateInfo]) -> DelegateInfo | None:
-    base = vtype.split('<', 1)[0].strip()
+    """``vtype`` 可能是 ``PyFuncDelegate<PyInt>`` / ``FuncDelegate<…>`` / 带 ``::`` 限定名。
+
+    ``delegates`` 以 Python 名（``FuncDelegate``）为键，须同时匹配 ``info.cpp_name()``。
+    """
+    base = strip_cpp_type_qualifiers(vtype).split('<', 1)[0].strip()
+    if '::' in base:
+        base = base.rsplit('::', 1)[-1]
     info = delegates.get(base)
+    if info is None:
+        for cand in delegates.values():
+            if cand.cpp_name() == base or cand.name == base:
+                info = cand
+                break
     if info is None:
         return None
     return specialize_delegate_info(vtype, info)

@@ -844,7 +844,7 @@ def _collect_delegate_symbols(
       py_span=_py_span(dinfo.node),
       cpp_qual=qualify_symbol_in_module(module_path, cpp_name),
     )
-    # ``class UIEvent : public PyDelegate<...>`` 或 ``using UIEvent = ...``
+    # ``class UIEventDelegate : public PyDelegate<...>`` 或 ``using UIEventDelegate = ...``
     decl_line = _first_line_match(h_lines, [
       re.compile(rf"\b(class|struct)\s+{re.escape(cpp_name)}\b"),
       re.compile(rf"\busing\s+{re.escape(cpp_name)}\s*="),

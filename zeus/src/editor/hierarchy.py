@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from py2cpp import *
 from py2cpp.ui.canvas import UICanvas, UIPaintContext
-from py2cpp.ui.events import UIValueChanged
+from py2cpp.ui.events import UIValueChangedDelegate
 
 from .session import HierarchyRow
 from ..command import CommandBus, ZeusCommand
@@ -19,7 +19,7 @@ class HierarchyView(UICanvas):
 
   bus: CommandBus = new()
   rows: list[HierarchyRow, 0] @optional = []
-  selection_changed: UIValueChanged[str] = new()
+  selection_changed: UIValueChangedDelegate[str] = new()
   scroll_y: int = 0
 
   def refresh_from(self, rows: list[HierarchyRow, 0], bus: CommandBus) -> None:

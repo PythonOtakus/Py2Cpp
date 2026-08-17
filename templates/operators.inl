@@ -1,8 +1,8 @@
 
-#include <stdio.h>
-#include <math.h>
-#include <string.h>
-#include <stdint.h>
+#include "ffi/crt/stdio.h"
+#include <cmath>
+#include "ffi/crt/string.h"
+#include <cstdint>
 #ifdef _WIN32
 typedef void* PY2CPP_WIN_HANDLE;
 typedef unsigned long PY2CPP_WIN_DWORD;
@@ -330,11 +330,6 @@ inline PyInt pow(PyInt base, PyInt exp)
 inline PyInt pow(PyInt base, PyInt exp, PyInt mod)
 {
   return _py_int_pow_mod(base, exp, mod);
-}
-
-inline PyFloat pow(PyFloat base, PyFloat exp)
-{
-  return _py_pow_float(base, exp);
 }
 
 inline PY2CPP_TYPE(PyStr) repr(PyInt v)

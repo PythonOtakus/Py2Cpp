@@ -299,6 +299,10 @@ def _s47_require_suffix(name: str, suffix: str) -> bool:
 
 def _check_s47_naming_suffixes(tree: ast.Module, module_path: str, violations: list[_Violation]) -> None:
     """S47：特殊类型 / Meta / Var / Mixin / Delegate / 异常类名后缀（见编码规范 §1.0.2）。"""
+    from ..constant.ffi_layout import is_ffi_module_path
+    # C 结构体名可能含 Exception（如 ``_exception`` → ``PyiException``），非 Python 异常类
+    if is_ffi_module_path(module_path.replace("\\", "/")):
+        return
     exc_names = _s47_collect_exception_names(tree)
     for node in ast.walk(tree):
         if isinstance(node, ast.FunctionDef) and has_named_decorator(node, 'delegate'):

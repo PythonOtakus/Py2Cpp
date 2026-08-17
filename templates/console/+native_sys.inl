@@ -5,20 +5,20 @@ PY2CPP_IGNORE
 #include "py2cpp/util/tuple.h"
 PY2CPP_END
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "ffi/crt/stdio.h"
+#include "ffi/crt/stdlib.h"
+#include "ffi/crt/string.h"
 #if defined(_WIN32)
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
-#include <shellapi.h>
+#include "ffi/windows/windows.h"
+#include "ffi/windows/shellapi.h"
 #pragma comment(lib, "shell32.lib")
 #else
-#include <fcntl.h>
-#include <sys/ioctl.h>
-#include <unistd.h>
+#include "ffi/crt/fcntl.h"
+#include "ffi/posix/sys/ioctl.h"
+#include "ffi/posix/unistd.h"
 #endif
 
 static PyStr _console_chars_to_pystr(const PyChar* p, int n)

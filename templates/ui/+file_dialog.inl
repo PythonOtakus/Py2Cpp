@@ -6,8 +6,8 @@ PY2CPP_END
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
-#include <commdlg.h>
+#include "ffi/windows/windows.h"
+#include "ffi/windows/commdlg.h"
 #pragma comment(lib, "comdlg32.lib")
 
 static PyStr _ui_pick_file(PyBool save, PyStr title, PyStr default_name)

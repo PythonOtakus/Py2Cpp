@@ -1,18 +1,18 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "ffi/crt/stdio.h"
+#include "ffi/crt/stdlib.h"
+#include "ffi/crt/string.h"
 #if defined(_WIN32)
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
+#include "ffi/windows/windows.h"
 #else
-#include <errno.h>
-#include <fcntl.h>
-#include <signal.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
+#include "ffi/crt/errno.h"
+#include "ffi/crt/fcntl.h"
+#include "ffi/crt/signal.h"
+#include "ffi/posix/sys/types.h"
+#include "ffi/posix/sys/wait.h"
+#include "ffi/posix/unistd.h"
 #endif
 
 PY2CPP_IGNORE

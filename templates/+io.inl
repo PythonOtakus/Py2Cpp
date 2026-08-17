@@ -5,12 +5,12 @@ PY2CPP_IGNORE
 #include "py2cpp/core/iter_result.h"
 PY2CPP_END
 
-#include <stdio.h>
-#include <string.h>
+#include "ffi/crt/stdio.h"
+#include "ffi/crt/string.h"
 #if defined(_WIN32)
-#include <io.h>
+#include "ffi/crt/io.h"
 #else
-#include <unistd.h>
+#include "ffi/posix/unistd.h"
 #endif
 
 static FILE* _io_fp(PyUPtr fp)

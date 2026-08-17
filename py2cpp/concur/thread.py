@@ -41,13 +41,13 @@ def _barrierNoAction() -> None:
 
 
 class EmptyError(Exception):
-  """``Queue.getNowait()`` 或非阻塞/超时 ``get`` 在无元素时抛出。"""
+  """``Queue.getNoWait()`` 或非阻塞/超时 ``get`` 在无元素时抛出。"""
 
   pass
 
 
 class FullError(Exception):
-  """``Queue.putNowait()`` 或非阻塞/超时 ``put`` 在队列满时抛出。"""
+  """``Queue.putNoWait()`` 或非阻塞/超时 ``put`` 在队列满时抛出。"""
 
   pass
 
@@ -740,8 +740,8 @@ class Queue[Element]:
   def __copy__(self, other: Self): ...
 
   @immutable
-  def qsize(self) -> int:
-    """返回近似队列长度。"""
+  def __len__(self) -> int:
+    """返回近似队列长度（对应 CPython ``qsize``）。"""
     ...
 
   @immutable
@@ -758,7 +758,7 @@ class Queue[Element]:
     """入队；满队列按 ``block`` / ``timeout`` 等待，失败抛 ``FullError``。"""
     ...
 
-  def putNowait(self, item: Element) -> None:
+  def putNoWait(self, item: Element) -> None:
     """等价于 ``put(item, block=False)``。"""
     ...
 
@@ -766,7 +766,7 @@ class Queue[Element]:
     """出队；空队列按 ``block`` / ``timeout`` 等待，失败抛 ``EmptyError``。"""
     ...
 
-  def getNowait(self) -> Element:
+  def getNoWait(self) -> Element:
     """等价于 ``get(block=False)``。"""
     ...
 
@@ -1024,7 +1024,7 @@ class ThreadPool[Value]:
       if cancelFutures:
         while True:
           try:
-            item: _WorkItem[Value] = self.workQueue.getNowait()
+            item: _WorkItem[Value] = self.workQueue.getNoWait()
             item.future.cancel()
             self.workQueue.taskDone()
           except EmptyError:

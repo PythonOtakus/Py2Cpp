@@ -40,7 +40,7 @@ description: >-
 2. **`util/memory`**：``copyBuf`` / ``buf_to_str`` / ``loadU64Le`` / ``loadU64LeBytes`` 为 ``@native``（各带 ``*_ref``）；缓冲扩容见 ``array.reserve``。
 3. **`serde/json`**：``JsonEncoder`` 静态 ``append_*`` / ``fastEncode`` 纯 Python + ``JsonDecoder`` 实例 decode 组合（``loadU64Le`` 来自 ``util/memory``，``span``→``str`` 用 ``str.from_codes_span``）；``@serializable`` codegen 直调 ``dec.parseIntAtAscii()`` / ``dec.strAssignFromSeg(seg)``。**无** ``json_scan_cpp``。
 4. **C++ 可无损删除**：关掉 ``templates/util/+memory.inl`` 注入后仍靠 Python 组合 + 叶子 ``*_ref`` 全绿（性能可降）。
-5. **第三方 C FFI**：仓库根 ``ffi/**/*.pyi``（生成器产出）→ 译器按需写 ``generated/runtime/ffi/…``，C++ ``ffi::…``（**不**挂 ``py2cpp::``、**不**进 ``minimal.h``）。模块级符号一律 ``Pyi_``；结构体 ``@native`` 类 + ``Pointer[T]``（C++ ``using Pyi_X = ::X``，``.pyi`` 只声明）；glue ``#include <c_header>``。详规 [c-ffi-pyi.md](../../../docs/c-ffi-pyi.md) / 编码规范 §9.4；查阅表 [reference §5.3](./reference.md#53-第三方-c-ffiffipyi)。**禁止** star-import、批量删 UI ``templates/**``。
+5. **C / CRT / 平台 FFI**：仓库根 ``ffi/**/*.pyi``（**生成器产出，禁止手写**）→ 译器按需写 ``generated/runtime/ffi/…``，C++ ``ffi::…``（**不**挂 ``py2cpp::``、**不**进 ``minimal.h``）。范围 A+B（第三方 + ``ffi/windows/`` + ``ffi/crt/``）；不含 C++ STL。结构体 ``@native`` 类 + ``Pointer[T]``；glue ``#include <c_header>``。详规 [c-ffi-pyi.md](../../../docs/c-ffi-pyi.md) / 编码规范 §9.4；查阅表 [reference §5.3](./reference.md#53-c--crt--平台-ffiffipyi)。**禁止** star-import、模板直导 A/B 头、批量删 UI 组合 ``templates/**``。
 
 ---
 

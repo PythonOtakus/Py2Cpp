@@ -27,6 +27,10 @@ from ..constant.template_module_bindings import (
   module_rel_from_template_rel,
 )
 from ..constant.stdlib_discovery import STDLIB_REL_PATH_SET
+from ..constant.template_ffi_includes import (
+  is_forbidden_template_ab_include,
+  iter_include_headers_in_text,
+)
 from ..translation_error import TranslationError
 from .expand_py2cpp_template import (
   _find_forbidden_stl_container_lines,
@@ -363,6 +367,14 @@ def _scan_file_content(rel: str, text: str, base_dir: Path) -> list[TemplateViol
       violations.append(TemplateViolation(
         "T8", rel, lineno,
         f'PY2CPP_INCLUDE 目标不存在: "{inc}"',
+      ))
+
+  for lineno, _q, header in iter_include_headers_in_text(text):
+    if is_forbidden_template_ab_include(header):
+      violations.append(TemplateViolation(
+        "T26", rel, lineno,
+        f"禁止模板直导 A/B 系统头 <{header}>；改 #include \"ffi/…\" "
+        f"或 C++ 包装头（cstdint/cstdarg/cfloat）；见 docs/c-ffi-pyi.md §11",
       ))
 
   ignore_regions = partition_ignore_regions(lines)

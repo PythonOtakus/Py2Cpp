@@ -11,14 +11,14 @@ PY2CPP_END
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <winsock2.h>
-#include <ws2tcpip.h>
+#include "ffi/windows/winsock2.h"
+#include "ffi/windows/ws2tcpip.h"
 #pragma comment(lib, "ws2_32.lib")
 #else
-#include <sys/types.h>
-#include <sys/select.h>
-#include <sys/socket.h>
-#include <unistd.h>
+#include "ffi/posix/sys/types.h"
+#include "ffi/posix/sys/select.h"
+#include "ffi/posix/sys/socket.h"
+#include "ffi/posix/unistd.h"
 #endif
 
 namespace py2cpp_concur_task_detail

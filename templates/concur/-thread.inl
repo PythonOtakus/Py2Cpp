@@ -7,12 +7,12 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
+#include "ffi/windows/windows.h"
 #else
-#include <pthread.h>
+#include "ffi/posix/pthread.h"
 #if defined(__linux__)
-#include <sys/syscall.h>
-#include <unistd.h>
+#include "ffi/posix/sys/syscall.h"
+#include "ffi/posix/unistd.h"
 #endif
 #endif
 
@@ -1357,7 +1357,7 @@ void PyQueue<_Element>::__copy__(const PyQueue<_Element>& other)
 }
 
 template<typename _Element>
-PyInt PyQueue<_Element>::qsize() const
+PyInt PyQueue<_Element>::__len__() const
 {
   py2cpp_concur_thread_detail::QueueState<_Element>* st =
     py2cpp_concur_thread_detail::queue_from_handle<_Element>(_state);
@@ -1372,7 +1372,7 @@ PyInt PyQueue<_Element>::qsize() const
 template<typename _Element>
 PyBool PyQueue<_Element>::__bool__() const
 {
-  return qsize() > 0;
+  return __len__() > 0;
 }
 
 template<typename _Element>
@@ -1451,7 +1451,7 @@ void PyQueue<_Element>::put(_Element item, PyBool block, PyFloat64 timeout)
 }
 
 template<typename _Element>
-void PyQueue<_Element>::putNowait(_Element item)
+void PyQueue<_Element>::putNoWait(_Element item)
 {
   put(item, false, -1.0);
 }
@@ -1515,7 +1515,7 @@ _Element PyQueue<_Element>::get(PyBool block, PyFloat64 timeout)
 }
 
 template<typename _Element>
-_Element PyQueue<_Element>::getNowait()
+_Element PyQueue<_Element>::getNoWait()
 {
   return get(false, -1.0);
 }

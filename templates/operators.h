@@ -10,7 +10,7 @@ PY2CPP_END
 #include "py_types.h"
 #include <type_traits>
 #include <utility>
-#include <stdio.h>
+#include "ffi/crt/stdio.h"
 
 #include "py2cpp/util/tuple.h"
 #include "py2cpp/text/str.h"
@@ -188,10 +188,9 @@ inline R __mod__(T&& a, U&& b)
   return _py2cpp_binop_mod_rev<T, U>::call(std::forward<T>(a), std::forward<U>(b));
 }
 
-/* --- 算术 ``pow``（``PyInt``/``PyFloat`` 标量；其它走 ``__pow__`` / ``__rpow__``）--- */
+/* --- 算术 ``pow``（``PyInt`` 标量；``PyFloat`` 用 ``<cmath>`` 的 ``::pow``；其它走 ``__pow__`` / ``__rpow__``）--- */
 PyInt pow(PyInt base, PyInt exp);
 PyInt pow(PyInt base, PyInt exp, PyInt mod);
-PyFloat pow(PyFloat base, PyFloat exp);
 
 template<typename T, typename U>
 auto pow(T&& base, U&& exp) -> decltype(std::forward<T>(base).__pow__(std::forward<U>(exp)))

@@ -5,24 +5,24 @@ PY2CPP_IGNORE
 #include "py2cpp/text/str.h"
 PY2CPP_END
 
-#include <stdio.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <stdlib.h>
+#include "ffi/crt/stdio.h"
+#include "ffi/crt/string.h"
+#include "ffi/crt/stat.h"
+#include "ffi/crt/stdlib.h"
 #ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
-#include <direct.h>
-#include <io.h>
-#include <sys/utime.h>
+#include "ffi/windows/windows.h"
+#include "ffi/crt/direct.h"
+#include "ffi/crt/io.h"
+#include "ffi/crt/utime.h"
 #else
-#include <unistd.h>
-#include <dirent.h>
-#include <utime.h>
-#include <fcntl.h>
-#include <stdlib.h>
+#include "ffi/posix/unistd.h"
+#include "ffi/posix/dirent.h"
+#include "ffi/crt/utime.h"
+#include "ffi/crt/fcntl.h"
+#include "ffi/crt/stdlib.h"
 #endif
 
 static PyStr _os_cbuf_to_pystr(const char* buf)

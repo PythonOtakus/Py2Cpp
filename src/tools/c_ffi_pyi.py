@@ -5,6 +5,7 @@ CLI 入口：``scripts/gen_c_ffi.py``。规格见 ``docs/c-ffi-pyi.md``。
 from __future__ import annotations
 
 import keyword
+import os
 import re
 import sys
 from dataclasses import dataclass, field
@@ -13,6 +14,7 @@ from pathlib import Path
 
 try:
   from clang.cindex import (
+    Config,
     CursorKind,
     Index,
     LinkageKind,
@@ -20,8 +22,42 @@ try:
     TranslationUnit,
   )
 except ImportError as e:  # pragma: no cover
-  print("ERROR: need `pip install clang` (libclang Python bindings).", file=sys.stderr)
+  print(
+    "ERROR: need `pip install clang libclang` (Python bindings + bundled libclang.dll).",
+    file=sys.stderr,
+  )
   raise SystemExit(2) from e
+
+
+def _ensure_libclang() -> None:
+  """定位 ``libclang.dll``（``pip install libclang`` 的 ``clang/native`` 或 LLVM 安装）。"""
+  if Config.loaded:
+    return
+  candidates: list[Path] = []
+  try:
+    import clang as _clang_pkg
+
+    native = Path(_clang_pkg.__file__).resolve().parent / "native" / "libclang.dll"
+    candidates.append(native)
+  except Exception:
+    pass
+  for base in (
+    Path(r"C:\Program Files\LLVM\bin"),
+    Path(r"C:\Program Files (x86)\LLVM\bin"),
+  ):
+    candidates.append(base / "libclang.dll")
+  env = os.environ.get("LIBCLANG_PATH") or os.environ.get("LLVM_PATH")
+  if env:
+    p = Path(env)
+    candidates.append(p if p.suffix.lower() == ".dll" else p / "libclang.dll")
+    candidates.append(p / "bin" / "libclang.dll")
+  for cand in candidates:
+    if cand.is_file():
+      Config.set_library_file(str(cand))
+      return
+
+
+_ensure_libclang()
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FFI_ROOT = REPO_ROOT / "ffi"
@@ -130,6 +166,11 @@ def _split_c_ident_words(c_name: str) -> list[str]:
     parts = [p for p in s.split("_") if p]
   else:
     parts = _split_camel_words(s)
+  # 全大写词以这些结尾时勿剥尾 ``A``/``W``（``OVERFLOW``≠``OVERFLO``+``W``）。
+  _no_aw_peel_endings = (
+    "FLOW", "WINDOW", "SHADOW", "FOLLOW", "YELLOW", "NARROW", "BORROW",
+    "DRAW", "VIEW", "AREA", "DATA", "MEDIA", "INFO",
+  )
   out: list[str] = []
   n = len(parts)
   for i, p in enumerate(parts):
@@ -142,6 +183,7 @@ def _split_c_ident_words(c_name: str) -> list[str]:
       and p[-1] in "AW"
       and stem.isupper()
       and stem.isalpha()
+      and not any(p.endswith(suf) for suf in _no_aw_peel_endings)
     ):
       out.append(stem)
       out.append(p[-1])
@@ -193,6 +235,9 @@ def pyi_type_export_name(c_name: str, *, is_enum: bool = False) -> str:
     base = PYI_PREFIX + c_ident_to_pascal(c_name[len(PYI_PREFIX_LEGACY):])
   else:
     base = PYI_PREFIX + c_ident_to_pascal(c_name)
+  # 避免 ``_exception`` → ``PyiException`` 被 S47 误判为 Python 异常类
+  if base.endswith("Exception") and not base.endswith("ExceptionRec"):
+    base = f"{base}Rec"
   if is_enum and not base.endswith("Enum"):
     base += "Enum"
   return base
@@ -550,6 +595,7 @@ class FuncDef:
   params: list[ParamDef] = field(default_factory=list)
   comment: str = ""  # 类型映射旁注（少用）
   doc: str = ""  # Python docstring 正文（无三引号）
+  variadic: bool = False  # C ``...`` → ``*_``（TypeVarTuple 形参包）
 
 
 @dataclass
@@ -561,12 +607,79 @@ class FfiModel:
   funcs: list[FuncDef] = field(default_factory=list)
 
 
+# UCRT / CRT 裸名（``ffi stdio`` → ucrt/stdio.h → ``ffi/crt/stdio.pyi``）
+_CRT_BARE_NAMES = frozenset({
+  "stdio",
+  "stdio.h",
+  "string",
+  "string.h",
+  "math",
+  "math.h",
+  "time",
+  "time.h",
+  "stdlib",
+  "stdlib.h",
+  "errno",
+  "errno.h",
+  "stdint",
+  "stdint.h",
+  "float",
+  "float.h",
+  "stdarg",
+  "stdarg.h",
+  "stddef",
+  "stddef.h",
+  "ctype",
+  "ctype.h",
+  "wchar",
+  "wchar.h",
+  "assert",
+  "assert.h",
+  "locale",
+  "locale.h",
+  "signal",
+  "signal.h",
+  "setjmp",
+  "setjmp.h",
+  "fenv",
+  "fenv.h",
+  "inttypes",
+  "inttypes.h",
+  "uchar",
+  "uchar.h",
+  "wctype",
+  "wctype.h",
+  "corecrt",
+  "corecrt.h",
+})
+
+
+def windows_sdk_include_bucket(header: Path) -> str | None:
+  """若头位于 Windows Kits ``Include/<ver>/<bucket>/…``，返回 ``um``/``shared``/``ucrt``/``winrt``。"""
+  header = header.resolve()
+  ver = windows_sdk_version_root(header)
+  if ver is None:
+    return None
+  try:
+    rel = header.relative_to(ver.resolve())
+  except ValueError:
+    return None
+  if not rel.parts:
+    return None
+  top = rel.parts[0].lower()
+  if top in {"um", "shared", "ucrt", "winrt"}:
+    return top
+  return None
+
+
 def default_pyi_path(header: Path, *, repo_root: Path | None = None) -> Path:
   """由 C/C++ 头路径推导默认 ``.pyi`` 输出路径。
 
   - 仓库内 ``third_party/.../foo.h`` → ``ffi/.../foo.pyi``（去掉 ``third_party/`` 前缀）
   - 仓库内其它相对路径 ``a/b.h`` → ``ffi/a/b.pyi``
-  - 仓库外系统头（如 SDK ``windows.h``）→ ``ffi/<stem>.pyi``（如 ``ffi/windows.pyi``）
+  - Windows Kits ``um``/``shared``/``winrt`` → ``ffi/windows/<stem>.pyi``（如 ``windows.h`` → ``ffi/windows/windows.pyi``）
+  - Windows Kits ``ucrt`` → ``ffi/crt/<stem>.pyi``（如 ``stdio.h`` → ``ffi/crt/stdio.pyi``）
+  - 其它系统头 → ``ffi/<stem>.pyi``
   """
   root = (repo_root or REPO_ROOT).resolve()
   header = header.resolve()
@@ -580,8 +693,13 @@ def default_pyi_path(header: Path, *, repo_root: Path | None = None) -> Path:
     return FFI_ROOT / rel.with_suffix(".pyi")
   except ValueError:
     pass
-  # 系统头：统一小写 stem，避免 Windows.h → ffi/Windows.pyi
-  return FFI_ROOT / f"{header.stem.lower()}.pyi"
+  stem = header.stem.lower()
+  bucket = windows_sdk_include_bucket(header)
+  if bucket == "ucrt":
+    return FFI_ROOT / "crt" / f"{stem}.pyi"
+  if bucket in {"um", "shared", "winrt"}:
+    return FFI_ROOT / "windows" / f"{stem}.pyi"
+  return FFI_ROOT / f"{stem}.pyi"
 
 
 def find_windows_sdk_um_windows_h() -> Path | None:
@@ -597,6 +715,55 @@ def find_windows_sdk_um_windows_h() -> Path | None:
   if not hits:
     return None
   return sorted(hits)[-1]
+
+
+def find_ucrt_header(name: str) -> Path | None:
+  """返回最新 Windows Kits ``ucrt/<name>``（如 ``stdio.h`` / ``sys/stat.h``）。"""
+  rel = name.replace("\\", "/")
+  if not rel.lower().endswith(".h"):
+    rel = f"{rel}.h"
+  rel_l = rel.lower()
+  bases = [
+    Path(r"C:\Program Files (x86)\Windows Kits\10\Include"),
+    Path(r"C:\Program Files\Windows Kits\10\Include"),
+  ]
+  hits: list[Path] = []
+  for base in bases:
+    if not base.is_dir():
+      continue
+    for ver in base.iterdir():
+      if not ver.is_dir():
+        continue
+      cand = ver / "ucrt" / rel_l
+      if cand.is_file():
+        hits.append(cand)
+  if not hits:
+    return None
+  return sorted(set(hits))[-1]
+
+
+def find_windows_sdk_um_header(name: str) -> Path | None:
+  """最新 Kits ``um/<name>``（如 ``WinSock2.h``）。"""
+  rel = name.replace("\\", "/")
+  if not rel.lower().endswith(".h"):
+    rel = f"{rel}.h"
+  wh = find_windows_sdk_um_windows_h()
+  if wh is None:
+    return None
+  ver = windows_sdk_version_root(wh)
+  if ver is None:
+    return None
+  for cand in (ver / "um" / rel, ver / "um" / rel.lower(), ver / "shared" / rel):
+    if cand.is_file():
+      return cand.resolve()
+  # 大小写不敏感扫描
+  um = ver / "um"
+  if um.is_dir():
+    target = Path(rel).name.lower()
+    for p in um.rglob("*"):
+      if p.is_file() and p.name.lower() == target:
+        return p.resolve()
+  return None
 
 
 def find_windows_sdk_um_gl_h() -> Path | None:
@@ -616,7 +783,7 @@ def find_windows_sdk_um_gl_h() -> Path | None:
 
 
 def resolve_header_path(header: Path | str) -> Path:
-  """解析 ``--header``：存在则用之；``windows`` / ``gl`` 等裸名则查找 SDK。"""
+  """解析 ``--header``：存在则用之；``windows`` / ``gl`` / CRT 裸名则查找 SDK。"""
   p = Path(header)
   if p.is_file():
     return p.resolve()
@@ -634,6 +801,35 @@ def resolve_header_path(header: Path | str) -> Path:
     if found is None:
       raise FileNotFoundError(
         "GL/gl.h not found under Windows Kits; pass a full path with --header"
+      )
+    return found.resolve()
+  # ``ffi stdio`` / ``crt/stdio`` / ``stdio.h`` / ``sys/stat`` → UCRT
+  crt_key = key
+  if crt_key.startswith("crt/"):
+    crt_key = crt_key[4:]
+  _CRT_EXTRA = {
+    "signal", "signal.h", "fcntl", "fcntl.h", "direct", "direct.h", "io", "io.h",
+    "sys/stat", "sys/stat.h", "sys/utime", "sys/utime.h", "utime", "utime.h",
+  }
+  if crt_key in _CRT_BARE_NAMES or crt_key in _CRT_EXTRA or name in _CRT_BARE_NAMES or name in _CRT_EXTRA:
+    found = find_ucrt_header(crt_key if (crt_key in _CRT_BARE_NAMES or crt_key in _CRT_EXTRA) else name)
+    if found is None:
+      raise FileNotFoundError(
+        f"UCRT header not found for {header!r}; pass a full path with --header"
+      )
+    return found.resolve()
+  # Windows um 子系统头裸名：``winsock2`` / ``commctrl`` …
+  _UM_BARE = {
+    "winsock2", "winsock2.h", "ws2tcpip", "ws2tcpip.h",
+    "commctrl", "commctrl.h", "commdlg", "commdlg.h",
+    "shellapi", "shellapi.h", "gdiplus", "gdiplus.h",
+    "objidl", "objidl.h", "winhttp", "winhttp.h",
+  }
+  if key in _UM_BARE or name in _UM_BARE:
+    found = find_windows_sdk_um_header(key if key in _UM_BARE else name)
+    if found is None:
+      raise FileNotFoundError(
+        f"Windows um header not found for {header!r}; pass a full path with --header"
       )
     return found.resolve()
   raise FileNotFoundError(f"header not found: {header}")
@@ -702,9 +898,23 @@ def _collect_roots(header: Path) -> list[Path]:
   """传递 include 收集时允许的文件根目录列表。"""
   header = header.resolve()
   roots: list[Path] = []
+  bucket = windows_sdk_include_bucket(header)
   ver = windows_sdk_version_root(header)
-  if ver is not None:
-    roots.append(ver.resolve())
+  if bucket == "ucrt" and ver is not None:
+    # CRT：仅收集 ucrt 树，避免把 um/shared 一并扫进来
+    ucrt = ver / "ucrt"
+    if ucrt.is_dir():
+      roots.append(ucrt.resolve())
+  elif ver is not None:
+    # Win32 um/shared/winrt：勿把 ucrt 一并扫入（否则 windows.pyi 吸走 CRT 类型名，
+    # 与 ``ffi/crt/*`` 在 ``tr.classes`` 里撞名，stdio 头会误 ``#include`` windows）
+    if bucket in {"um", "shared", "winrt"}:
+      for sub in ("um", "shared", "winrt"):
+        d = ver / sub
+        if d.is_dir():
+          roots.append(d.resolve())
+    else:
+      roots.append(ver.resolve())
   try:
     roots.append((REPO_ROOT / "third_party").resolve())
   except Exception:
@@ -1400,6 +1610,7 @@ def collect_model(
   header = header.resolve()
   sqlite_mode = "sqlite" in header.name.lower()
   if include_deps is None:
+    # sqlite amalgamation：不传递；Win32 / UCRT：传递（UCRT 根已限 ucrt/，见 _collect_roots）
     include_deps = not sqlite_mode
 
   args = list(default_clang_args(header))
@@ -1546,6 +1757,12 @@ def collect_model(
           pann, pc = mapper.map(at, is_return=False)
           pann, _ = _sanitize_pyi_ann(pann, pc)
           params.append(ParamDef(py_name=f"arg{i}", ann=pann))
+    is_variadic = False
+    try:
+      if c.type.kind == TypeKind.FUNCTIONPROTO and c.type.is_function_variadic():
+        is_variadic = True
+    except Exception:
+      is_variadic = False
     model.funcs.append(
       FuncDef(
         c_name=c_name,
@@ -1554,6 +1771,7 @@ def collect_model(
         params=params,
         comment=ret_cmt,
         doc=_cursor_doc(c),
+        variadic=is_variadic,
       )
     )
 
@@ -1581,7 +1799,14 @@ def collect_model(
     for a, tgt in sorted(mapper.aliases.items())
     if tgt in mapper.structs or tgt in mapper.enums or _is_c_ident(tgt)
   ]
-  model.consts = sorted(resolved_consts.values(), key=lambda x: x.name)
+  # 同 py 导出名（``OVERFLOW``/``_OVERFLOW`` → ``PyiOverflow``）保留首次（优先无前导 ``_``）
+  by_py_const: dict[str, ConstDef] = {}
+  for const in sorted(
+    resolved_consts.values(),
+    key=lambda c: (c.py_name, 0 if not c.name.startswith("_") else 1, c.name),
+  ):
+    by_py_const.setdefault(const.py_name, const)
+  model.consts = sorted(by_py_const.values(), key=lambda x: x.name)
   model.funcs.sort(key=lambda x: x.c_name)
   return model
 
@@ -1702,10 +1927,18 @@ def render_pyi(header: Path, model: FfiModel) -> str:
     "# ---------------------------------------------------------------------------",
     "",
   ])
+  # 同 py 导出名（如 ``_chdir``/``chdir`` → ``pyiChdir``）须全部 ``@overload``（S17）
+  py_name_counts: dict[str, int] = {}
   for fn in model.funcs:
+    py_name_counts[fn.py_name] = py_name_counts.get(fn.py_name, 0) + 1
+  for fn in model.funcs:
+    if py_name_counts.get(fn.py_name, 0) > 1:
+      lines.append("@overload")
     lines.append("@native")
     lines.append(f'@native_name("{fn.c_name}")')
     args = ", ".join(f"{p.py_name}: {p.ann}" for p in fn.params)
+    if fn.variadic:
+      args = f"{args}, *_" if args else "*_"
     comment = f"  # {fn.comment}" if fn.comment else ""
     lines.append(f"def {fn.py_name}({args}) -> {fn.ret}:{comment}")
     if fn.doc:
@@ -1757,6 +1990,7 @@ def run_checks(model: FfiModel, text: str, *, header: Path) -> list[str]:
   else:
     names = {f.c_name for f in model.funcs}
     hname = header.name.lower()
+    bucket = windows_sdk_include_bucket(header)
     if hname in {"glfw3.h"}:
       if len(model.funcs) < 50:
         errs.append(f"too few funcs for glfw3.h: {len(model.funcs)}")
@@ -1780,6 +2014,30 @@ def run_checks(model: FfiModel, text: str, *, header: Path) -> list[str]:
           errs.append(f"missing function {need}")
       if "GL_TRIANGLES" not in {c.name for c in model.consts}:
         errs.append("missing GL_TRIANGLES")
+    elif bucket == "ucrt" or "third_party/posix" in str(header).replace("\\", "/").lower() or (
+      "posix" in str(header).replace("\\", "/").lower() and "third_party" in str(header).replace("\\", "/").lower()
+    ):
+      # CRT / POSIX stub：函数量远小于 Win32 伞头
+      if len(model.funcs) < 1 and len(model.aliases) < 1 and len(model.structs) < 1:
+        errs.append(f"too few symbols for CRT/POSIX header {hname}: funcs={len(model.funcs)}")
+      crt_any: dict[str, tuple[str, ...]] = {
+        "stdio.h": ("printf", "fopen", "fread", "sprintf", "fwrite"),
+        "string.h": ("memcpy", "strlen", "memcmp", "strcpy", "memmove", "strcmp"),
+        "math.h": ("sin", "cos", "sqrt", "fabs", "pow", "floor"),
+        "time.h": ("time", "difftime", "_time64", "clock", "mktime"),
+        "stdlib.h": ("malloc", "free", "abort", "_malloc_base", "exit", "atoi"),
+      }
+      need = crt_any.get(hname, ())
+      if need and not (names & set(need)):
+        errs.append(f"CRT header {hname} missing any of {need}")
+    elif "gdiplus_pyi_seed" in hname or "third_party/windows" in str(header).replace("\\", "/").lower():
+      # C++ API seed：仅保证 glue 能挂 ``#include <gdiplus.h>``
+      if "GdiplusStartup" not in names and len(model.funcs) < 1:
+        errs.append(f"seed header {hname} missing GdiplusStartup / funcs")
+    elif bucket in {"um", "shared"} and hname != "windows.h":
+      # Win32 子系统头（winsock2 / commctrl …）：可远小于伞头
+      if len(model.funcs) < 1 and len(model.structs) < 1 and len(model.consts) < 1:
+        errs.append(f"too few symbols for Win32 header {hname}")
     else:
       # Win32 / 通用：至少要有一批函数
       if len(model.funcs) < 100:

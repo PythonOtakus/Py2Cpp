@@ -1,7 +1,7 @@
 
-#include <stdint.h>
-#include <float.h>
-#include <math.h>
+#include <cstdint>
+#include <cfloat>
+#include <cmath>
 
 /// Python ``int`` / ``float`` / ``bool`` 注解对应的 C++ 标量别名（与 ``PyStr`` 等命名一致）
 typedef int PyInt;

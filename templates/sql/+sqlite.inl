@@ -6,10 +6,10 @@ PY2CPP_IGNORE
 #include "ffi/sqlite/sqlite3.h"
 PY2CPP_END
 
-#include <stdint.h>
-#include <string.h>
-// 尖括号：勿用引号，否则 MSVC 会经已打开的 ``ffi/sqlite/sqlite3.h`` 目录命中生成头（guard 已定义 → C API 被跳过）
-#include <sqlite3.h>
+// 第三方 C 头仅由 ffi glue（``generated/runtime/ffi/sqlite/sqlite3.*``）``#include <sqlite3.h>``；
+// 业务模板禁止直导。``stdint``/``string`` 暂仍直导，待 ``ffi/crt/*`` 叶子迁移后去掉。
+#include <cstdint>
+#include "ffi/crt/string.h"
 // C 宏与 FFI 命名空间内 ``static PyInt SQLITE_*`` 同名；统一走 ``ffi_sql::``，避免宏被其它头清掉后裸名未声明
 #ifdef SQLITE_OK
 #undef SQLITE_OK

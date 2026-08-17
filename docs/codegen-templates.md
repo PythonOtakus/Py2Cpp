@@ -772,6 +772,7 @@ buf[1] = 2;
 | **T25** | 命名 | `ctx_*` 键须 `ctx_` + PascalCase；IGNORE `#define ctx_*` 与 `PY2CPP_ECHO(ctx_*)` 键集合**双向一致**（`BEGIN(if ctx_*)` 除外）；`*_gen.py` 传入的 `ctx` 字典键同名 |
 | **T23** | 包壳 | **禁止**模板内 `#pragma once` 与手写 include guard（`#ifndef`/`#define …_H`/`#endif // …`）；整文件 guard 由 `finalize_codegen_file_text` / `expand_whole_file_template` 在 Python 侧包壳 |
 | **T24** | 类型 | **禁止**手写 `py2cpp::core|util|text::…::TypeName` 全限定类型；须 `PY2CPP_TYPE(短名)`（`using namespace py2cpp::core::exceptions` 等 **namespace** 行除外；`concur`/`io` 等其它域仍可用全限定名） |
+| **T26** | FFI | **禁止**模板直导 A/B 系统头（`<stdio.h>` / `<windows.h>` / `<sqlite3.h>` 等）；须 `#include "ffi/…"`；`stdint.h`/`stdarg.h`/`float.h`/`math.h` 改 `<cstdint>`/`<cstdarg>`/`<cfloat>`/`<cmath>`；C++ STL（`type_traits`/`atomic`/…）仍可直导。见 [c-ffi-pyi.md §11](c-ffi-pyi.md#11-模板迁移策略组合可留禁止直导-ab) |
 
 **`_type_registry` 扩展**（`expand_py2cpp_template._STD_TYPES`）：除 `PyStr`/`PyList`/异常等外，模板常用类型含 `PyArray`/`PyArray2D`/`PyArray3D`、`PyIterResult`、`PyNone`、`PyCoroutine`、`PyOptional` 等；未注册短名在展开期仍会报错。
 

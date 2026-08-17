@@ -396,6 +396,11 @@ def discover_translation_modules(
       enqueue(stdlib_module_path(n))
     for rel in list_on_demand_stdlib_rels():
       enqueue(stdlib_module_path(rel))
+    # 模板经 ``#include "ffi/…"`` 间接依赖；bootstrap 须始终写出对应生成头
+    from ..constant.template_ffi_includes import ffi_modules_required_by_templates
+
+    for ffi_mp in ffi_modules_required_by_templates():
+      enqueue(ffi_mp)
   idx = 0
   while idx < len(order):
     mp = order[idx]

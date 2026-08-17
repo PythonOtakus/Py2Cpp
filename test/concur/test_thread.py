@@ -288,23 +288,23 @@ class QueueTests(TestCaseMixin):
     def test(self):
         q: Queue[int] = new(1)
         self.assertFalse(q)
-        q.putNowait(10)
-        self.assertEqual(q.qsize(), 1)
+        q.putNoWait(10)
+        self.assertEqual(len(q), 1)
         self.assertTrue(q)
         self.assertTrue(q.full())
         raised: bool = False
         try:
-            q.putNowait(20)
+            q.putNoWait(20)
         except FullError:
             raised = True
         self.assertTrue(raised)
-        self.assertEqual(q.getNowait(), 10)
+        self.assertEqual(q.getNoWait(), 10)
         q.taskDone()
         q.join()
         self.assertFalse(q)
         raised = False
         try:
-            q.getNowait()
+            q.getNoWait()
         except EmptyError:
             raised = True
         self.assertTrue(raised)
@@ -316,19 +316,19 @@ class QueueTests(TestCaseMixin):
         q.join()
         t.join()
         self.assertEqual(box.value, 33)
-        q.putNowait(44)
+        q.putNoWait(44)
         q.shutdown()
-        self.assertEqual(q.getNowait(), 44)
+        self.assertEqual(q.getNoWait(), 44)
         q.taskDone()
         raised = False
         try:
-            q.getNowait()
+            q.getNoWait()
         except ShutDownError:
             raised = True
         self.assertTrue(raised)
         raised = False
         try:
-            q.putNowait(55)
+            q.putNoWait(55)
         except ShutDownError:
             raised = True
         self.assertTrue(raised)

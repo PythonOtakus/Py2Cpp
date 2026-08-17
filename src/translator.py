@@ -2956,7 +2956,7 @@ class Translator(ast.NodeVisitor):
         return self.runtime_output_dir / f'{module_path}{suffix}'
 
     def _ffi_artifact_path(self, module_path: str, suffix: str) -> Path:
-        """``ffi/windows`` + ``.h`` → ``<runtime>/ffi/windows.h``（与 ``py2cpp/`` 并列）。"""
+        """``ffi/windows/windows`` + ``.h`` → ``<runtime>/ffi/windows/windows.h``（与 ``py2cpp/`` 并列）。"""
         return self.runtime_output_dir / f'{ffi_runtime_module_path(module_path)}{suffix}'
 
     def _can_write_ffi_artifact(self, module_path: str) -> bool:
@@ -6226,6 +6226,10 @@ class Translator(ast.NodeVisitor):
                 self._emit_module_docstring(module_path)
         for module_path in self.module_order:
             if self._skip_module_classes(module_path):
+                continue
+            from .constant.ffi_layout import ffi_include_only_surface
+            if self._is_ffi_module(module_path) and ffi_include_only_surface(module_path):
+                # 空 allowlist：``.h`` 仅 ``#include <c_header>``（见 layout_emit）
                 continue
             with self._use_module_decl(module_path), self._use_module_namespace(module_path):
                 self._emit_module_import_usings(module_path)

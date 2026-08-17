@@ -1,4 +1,4 @@
-#include <stdio.h>
+#include "ffi/crt/stdio.h"
 #include <type_traits>
 
 inline void _py2cpp_debug_call(const char* site) {

@@ -278,7 +278,7 @@ Thread.actives
 - `Event`：Python 组合层基于 `Condition + atomic[bool]`，支持 `isSet`、`set`、`clear`、`wait`；
 - `Semaphore` / `BoundedSemaphore`：Python 组合层基于 `Condition + atomic[int]`，支持 `acquire`、`release(n)` 与上下文管理器；
 - `atomic[T]`：共享 native 原子状态，支持 `load/store/exchange/compareExchange/fetchAdd/fetchSub`；
-- `Queue[T]`：对齐 Python 3.13 `queue.Queue` 的 FIFO、`put/get`、`putNowait/getNowait`、`qsize/__bool__/full`、`taskDone/join`、`shutdown(immediate=False)` 主线语义；
+- `Queue[T]`：对齐 Python 3.13 `queue.Queue` 的 FIFO、`put/get`、`putNoWait/getNoWait`、`len`/`__bool__`/`full`、`taskDone/join`、`shutdown(immediate=False)` 主线语义；
 - `Barrier`：基于 `Condition + atomic[int]` 的 Python 组合层实现，支持 `wait/reset/abort/parties/nWaiting/broken` 与 action 主线；
 - `Future[R]`：`@refcount` 共享状态，支持 `cancel/cancelled/running/done/result/exception/setRunningOrNotifyCancel/setResult/setException`；
 - `ThreadPool[R]`：`@refcount` 共享线程池状态，使用 `Queue[_WorkItem[R]] + Thread` worker，支持 `submit/shutdown(wait, cancelFutures)`；
@@ -476,7 +476,7 @@ closed flag
 
 - `put` 在锁下入队并 notify_one；
 - `get` 阻塞直到有 work item 或 sentinel；
-- `getNowait` 供 shutdown(cancelFutures=True) 和 initializer failed drain 使用；
+- `getNoWait` 供 shutdown(cancelFutures=True) 和 initializer failed drain 使用；
 - 队列不承诺公平性；
 - sentinel 使用明确的 variant/union，不能用裸 `None` 与合法任务混淆；
 - 队列元素持有 work item 生命周期，worker 取走后负责释放。

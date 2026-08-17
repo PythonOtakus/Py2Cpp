@@ -56,24 +56,33 @@ class TestFfiOpaqueNames(unittest.TestCase):
 
 class TestFfiLayout(unittest.TestCase):
   def test_paths(self) -> None:
-    self.assertTrue(is_ffi_module_path("ffi/windows"))
+    self.assertTrue(is_ffi_module_path("ffi/windows/windows"))
+    self.assertTrue(is_ffi_module_path("ffi/crt/stdio"))
     self.assertTrue(is_ffi_module_path("ffi/sqlite/sqlite3"))
     self.assertFalse(is_ffi_module_path("py2cpp/ffi/windows"))
     self.assertEqual(
-      absolute_dotted_to_module_path("ffi.windows"),
-      "ffi/windows",
+      absolute_dotted_to_module_path("ffi.windows.windows"),
+      "ffi/windows/windows",
+    )
+    self.assertEqual(
+      absolute_dotted_to_module_path("ffi.crt.stdio"),
+      "ffi/crt/stdio",
     )
     self.assertEqual(
       absolute_dotted_to_module_path("ffi.sqlite.sqlite3"),
       "ffi/sqlite/sqlite3",
     )
     self.assertEqual(
-      ffi_header_include("ffi/windows"),
-      "ffi/windows.h",
+      ffi_header_include("ffi/windows/windows"),
+      "ffi/windows/windows.h",
     )
     self.assertEqual(
-      namespace_qualifier_for_module("ffi/windows"),
-      "ffi::windows",
+      namespace_qualifier_for_module("ffi/windows/windows"),
+      "ffi::windows::windows",
+    )
+    self.assertEqual(
+      namespace_qualifier_for_module("ffi/crt/stdio"),
+      "ffi::crt::stdio",
     )
     self.assertEqual(
       namespace_qualifier_for_module("ffi/sqlite/sqlite3"),
@@ -86,6 +95,16 @@ class TestFfiLayout(unittest.TestCase):
     assert p is not None
     self.assertEqual(p, FFI_ROOT / "sqlite" / "sqlite3.pyi")
     self.assertTrue(p.is_file())
+    win = find_ffi_source_file("ffi/windows/windows", project_root=_REPO_ROOT)
+    self.assertIsNotNone(win)
+    assert win is not None
+    self.assertEqual(win, FFI_ROOT / "windows" / "windows.pyi")
+    self.assertTrue(win.is_file())
+    crt = find_ffi_source_file("ffi/crt/stdio", project_root=_REPO_ROOT)
+    self.assertIsNotNone(crt)
+    assert crt is not None
+    self.assertEqual(crt, FFI_ROOT / "crt" / "stdio.pyi")
+    self.assertTrue(crt.is_file())
 
   def test_resolve_import(self) -> None:
     runtime = _REPO_ROOT / RUNTIME_PKG

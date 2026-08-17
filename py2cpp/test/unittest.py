@@ -18,8 +18,13 @@ from ..system.time import formatDuration, perfCounter
 _BannerWidth: int = 70
 
 
+@refcount
 class TestResult:
-  """聚合一次运行的统计（类似 ``unittest.TestResult``）。"""
+  """聚合一次运行的统计（类似 ``unittest.TestResult``）。
+
+  须 ``@refcount``：经 ``run`` / ``beginTest`` / ``endTest`` 传递时共享同一实例；
+  若按值传递，``beginTest`` 的计数与用例名会丢失（进度恒为 ``[0/N]``、名为 ``.``、耗时异常）。
+  """
 
   def __init__(self):
     self.testsRun: int = 0

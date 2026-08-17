@@ -3,8 +3,8 @@ PY2CPP_IGNORE
 #include "py2cpp/text/str.h"
 PY2CPP_END
 
-#include <stdint.h>
-#include <string.h>
+#include <cstdint>
+#include "ffi/crt/string.h"
 
 PY2CPP_BEGIN_SCOPE
 

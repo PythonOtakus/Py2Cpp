@@ -252,18 +252,17 @@ Py2Cpp/
 
 **勿**在 `namespace py2cpp { #include <utility> }` 内 include `protocol_traits.h`（会产生 `py2cpp::std::…`）。
 
-### 5.3 第三方 C FFI（`ffi/**/*.pyi`）
+### 5.3 C / CRT / 平台 FFI（`ffi/**/*.pyi`）
 
 详规 [docs/c-ffi-pyi.md](../../../docs/c-ffi-pyi.md)；编码规范 §9.4。
 
 | 项 | 约定 |
 |----|------|
-| 源 | 仓库根 `ffi/`（`ffi.bat`）；Zeus 旁路 `zeus/ffi/`（`zeus\ffi.bat` → 同 `ffi/…` module_path） |
-| 结构体 / 枚举 | 模块级 `Pyi_*`；`@nativeName`=C 标签；`using Pyi_X = ::X`；枚举成员作常量；未知字段 `None # C: …` |
-| docstring | C Doxygen → PEP 257（`def`/`class` 下 `"""…"""`）；不进 C++ glue；见 [c-ffi-pyi §7.1](../../../docs/c-ffi-pyi.md#71-c-注释--python-docstring) |
-| C++ | `ffi::…`（**不**挂 `py2cpp::`）；`#include <c_header>` 尖括号防同目录自包含 |
-| 业务 | `py2cpp/sql/sqlite.py` / Zeus `platform`·`render` import 拉闭包；glue allowlist 见 `ffi_layout` |
-| 禁止 | `from ffi… import *`；把全量 `windows.pyi` 塞进 `minimal.h`；手改 `AUTO-GENERATED` `.pyi` |
+| 源 | 仓库根 `ffi/`（`ffi.bat` **自动生成**，禁止手写）；Zeus 旁路 `zeus/ffi/` |
+| 布局 | Win32 → `ffi/windows/<stem>.pyi`；UCRT → `ffi/crt/<stem>.pyi`；第三方 → `ffi/<path>.pyi` |
+| 范围 | **A+B**（第三方 + SDK + CRT）；**不含** C++ STL |
+| 模板 | 可保留组合；**禁止**直导 A/B 头（译期 **T26**）；须 `#include "ffi/…"`；`#include <c_header>` 仅 glue |
+| 禁止 | `from ffi… import *`；全量 Win32 进 `minimal.h`；手改 `AUTO-GENERATED` `.pyi`；批量删 UI 组合模板 |
 
 回归：`python -m unittest src.tests.test_ffi_import`；`build.bat sql/test_sqlite`。
 

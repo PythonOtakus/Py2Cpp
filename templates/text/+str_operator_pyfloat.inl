@@ -1,6 +1,6 @@
 PY2CPP_IGNORE
 #include "py2cpp/text/str.h"
-#include <stdio.h>
+#include "ffi/crt/stdio.h"
 class PyStr {
 PY2CPP_END
 

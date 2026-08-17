@@ -2,13 +2,13 @@ PY2CPP_IGNORE
 #include "py2cpp/ui/app.h"
 PY2CPP_END
 
-#include <stdio.h>
+#include "ffi/crt/stdio.h"
 
 #ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
+#include "ffi/windows/windows.h"
 #pragma comment(lib, "user32.lib")
 
 PY2CPP_BEGIN_SCOPE

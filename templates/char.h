@@ -1,5 +1,5 @@
 
-#include <stdint.h>
+#include <cstdint>
 
 /// Unicode 码点（与 Python ``char`` 注解对应；非 C++ 单字节 ``char``）。
 /// 使用独立 struct，避免 MSVC 上 ``PyInt``（``int``）与 ``int32_t`` 别名导致 ``PyStr(PyInt)`` / ``repr`` / ``format`` 重载冲突。

@@ -3,7 +3,7 @@ PY2CPP_IGNORE
 #include "py2cpp/py_types.h"
 PY2CPP_END
 
-#include <math.h>
+#include <cmath>
 
 PY2CPP_BEGIN_SCOPE
 

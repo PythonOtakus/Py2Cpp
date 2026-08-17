@@ -3,17 +3,17 @@ PY2CPP_IGNORE
 #include "py2cpp/ui/window.h"
 PY2CPP_END
 
-#include <math.h>
-#include <stdio.h>
-#include <string.h>
+#include <cmath>
+#include "ffi/crt/stdio.h"
+#include "ffi/crt/string.h"
 
 #ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
-#include <objidl.h>
-#include <gdiplus.h>
+#include "ffi/windows/windows.h"
+#include "ffi/windows/objidl.h"
+#include "ffi/windows/gdiplus.h"
 #pragma comment(lib, "gdiplus.lib")
 
 static const char* _ui_canvas_class = "Py2CppUICanvas";

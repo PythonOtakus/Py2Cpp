@@ -395,6 +395,7 @@ def write_per_module_headers(tr: Translator) -> None:
       c_inc = ffi_c_header_include(module_path)
       if c_inc:
         norm = module_path.replace("\\", "/").strip("/")
+        c_l = c_inc.replace("\\", "/").lower()
         if norm == "ffi/gl/gl":
           content.append("#ifdef _WIN32")
           content.append("#ifndef WIN32_LEAN_AND_MEAN")
@@ -402,8 +403,32 @@ def write_per_module_headers(tr: Translator) -> None:
           content.append("#endif")
           content.append("#include <windows.h>")
           content.append("#endif")
+        # Win32：生成头自带 LEAN_AND_MEAN / winsock2 序，避免与模板其它 ``ffi/windows/*`` 冲突
+        if c_l in {"windows.h", "commctrl.h", "commdlg.h", "shellapi.h", "objidl.h", "winhttp.h", "gdiplus.h"}:
+          content.append("#ifndef WIN32_LEAN_AND_MEAN")
+          content.append("#define WIN32_LEAN_AND_MEAN")
+          content.append("#endif")
+          content.append("#ifndef NOMINMAX")
+          content.append("#define NOMINMAX")
+          content.append("#endif")
+        if c_l == "ws2tcpip.h":
+          content.append("#ifndef WIN32_LEAN_AND_MEAN")
+          content.append("#define WIN32_LEAN_AND_MEAN")
+          content.append("#endif")
+          content.append("#include <winsock2.h>")
+        elif c_l == "winsock2.h":
+          content.append("#ifndef WIN32_LEAN_AND_MEAN")
+          content.append("#define WIN32_LEAN_AND_MEAN")
+          content.append("#endif")
         content.append(f"#include <{c_inc}>")
         content.append("")
+      from ..constant.ffi_layout import ffi_include_only_surface
+      if ffi_include_only_surface(module_path):
+        # 空 allowlist：只中转 C 头，不拉 py_types / 其它 ffi 依赖、不写 ``.inl``
+        content.append(f"#endif // {guard}")
+        content.append("")
+        hpath.write_text("\n".join(content), encoding="utf-8")
+        continue
     for inc in list(extra_includes) + list(ma.includes):
       content.append(format_include_line(inc))
     if module_path in PROTOCOL_TRAITS_SOURCE_MODULE_PATHS:

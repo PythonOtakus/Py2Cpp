@@ -3,8 +3,8 @@ PY2CPP_IGNORE
 #include "py2cpp/util/tuple.h"
 PY2CPP_END
 
-#include <stdarg.h>
-#include <stdio.h>
+#include <cstdarg>
+#include "ffi/crt/stdio.h"
 
 PyStr PyStr::_str_unescape_braces(CStr fmt)
 {

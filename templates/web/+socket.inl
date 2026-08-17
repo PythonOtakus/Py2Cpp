@@ -2,20 +2,20 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <winsock2.h>
-#include <ws2tcpip.h>
+#include "ffi/windows/winsock2.h"
+#include "ffi/windows/ws2tcpip.h"
 #pragma comment(lib, "ws2_32.lib")
 #else
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <errno.h>
+#include "ffi/posix/sys/types.h"
+#include "ffi/posix/sys/socket.h"
+#include "ffi/posix/netinet/in.h"
+#include "ffi/posix/arpa/inet.h"
+#include "ffi/posix/unistd.h"
+#include "ffi/crt/fcntl.h"
+#include "ffi/crt/errno.h"
 #endif
 #include <atomic>
-#include <string.h>
+#include "ffi/crt/string.h"
 
 PY2CPP_IGNORE
 #include "py2cpp/web/socket.h"

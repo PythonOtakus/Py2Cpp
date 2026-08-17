@@ -1,13 +1,13 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
+#include "ffi/crt/stdio.h"
+#include "ffi/crt/string.h"
+#include "ffi/crt/stdlib.h"
 #ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
+#include "ffi/windows/windows.h"
 #else
-#include <unistd.h>
+#include "ffi/posix/unistd.h"
 extern char** environ;
 #endif
 

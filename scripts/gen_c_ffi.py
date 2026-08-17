@@ -37,7 +37,7 @@ def main(argv: list[str] | None = None) -> int:
     "--out",
     type=Path,
     default=None,
-    help="Output .pyi (default: ffi/… mirroring header; system headers → ffi/<stem>.pyi)",
+    help="Output .pyi (default: ffi/…; Win32 um→ffi/windows/<stem>.pyi; UCRT→ffi/crt/<stem>.pyi)",
   )
   ap.add_argument(
     "--check",

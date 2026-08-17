@@ -7,16 +7,16 @@ PY2CPP_IGNORE
 #include "py2cpp/util/dict.h"
 PY2CPP_END
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "ffi/crt/stdio.h"
+#include "ffi/crt/stdlib.h"
+#include "ffi/crt/string.h"
 
 #ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
-#include <commctrl.h>
+#include "ffi/windows/windows.h"
+#include "ffi/windows/commctrl.h"
 
 namespace py2cpp {
 namespace ui {

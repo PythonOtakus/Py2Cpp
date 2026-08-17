@@ -1,10 +1,11 @@
-"""仓库根 ``ffi/**/*.pyi`` 与 Zeus 旁路 ``zeus/ffi/**/*.pyi`` 布局（第三方 C FFI 声明面）。
+"""仓库根 ``ffi/**/*.pyi`` 与 Zeus 旁路 ``zeus/ffi/**/*.pyi`` 布局（C / CRT / 平台 SDK FFI 声明面）。
 
-Python：``import ffi.windows`` / ``from ffi.sqlite.sqlite3 import …`` / ``from ffi.glfw.glfw3 import …``
-内部 module_path：``ffi/windows``、``ffi/sqlite/sqlite3``、``ffi/glfw/glfw3``
+Python：``import ffi.windows.windows`` / ``from ffi.crt.stdio import …`` / ``from ffi.sqlite.sqlite3 import …``
+内部 module_path：``ffi/windows/windows``、``ffi/crt/stdio``、``ffi/sqlite/sqlite3``、``ffi/glfw/glfw3``
 生成物：``generated/runtime/ffi/…``（``#include "ffi/…"``；与 ``py2cpp/`` 并列）
 C++ 命名空间：``ffi::…``（见 ``module_namespace``；不挂 ``py2cpp::``）
 
+``.pyi`` **一律**由 ``ffi.bat`` / ``src.tools.c_ffi_pyi`` 生成，禁止手写。
 不进 ``STDLIB_REL_PATHS`` / ``minimal.h`` 默认 bulk；仅被 import 时参与翻译。
 Zeus：``zeus\\ffi.bat`` 重生成 ``zeus/ffi/glfw``、``zeus/ffi/gl``（勿手改 AUTO-GENERATED）。
 """
@@ -19,14 +20,47 @@ FFI_ROOT = _REPO_ROOT / FFI_PKG
 # Zeus 旁路：``zeus/ffi/**/*.pyi`` 与仓库根 ``ffi/`` 同 module_path（``ffi/glfw/glfw3``）
 _ZEUS_FFI_ROOT = _REPO_ROOT / "zeus" / "ffi"
 
-# module_path → 第三方 C 头（供 glue ``#include``；``None`` 表示暂不自动 glue）
+# module_path → 第三方 / CRT C 头（供 glue ``#include``；缺省表示暂不自动 glue）
 _FFI_C_HEADER_BY_MODULE: dict[str, str] = {
   "ffi/sqlite/sqlite3": "sqlite3.h",
+  "ffi/windows/windows": "windows.h",
+  "ffi/windows/winsock2": "winsock2.h",
+  "ffi/windows/ws2tcpip": "ws2tcpip.h",
+  "ffi/windows/commctrl": "commctrl.h",
+  "ffi/windows/commdlg": "commdlg.h",
+  "ffi/windows/shellapi": "shellapi.h",
+  "ffi/windows/gdiplus": "gdiplus.h",
+  "ffi/windows/objidl": "objidl.h",
+  "ffi/windows/winhttp": "winhttp.h",
+  "ffi/crt/stdio": "stdio.h",
+  "ffi/crt/string": "string.h",
+  "ffi/crt/math": "math.h",
+  "ffi/crt/time": "time.h",
+  "ffi/crt/stdlib": "stdlib.h",
+  "ffi/crt/errno": "errno.h",
+  "ffi/crt/signal": "signal.h",
+  "ffi/crt/fcntl": "fcntl.h",
+  "ffi/crt/direct": "direct.h",
+  "ffi/crt/io": "io.h",
+  "ffi/crt/stat": "sys/stat.h",
+  "ffi/crt/utime": "sys/utime.h",
+  "ffi/posix/unistd": "unistd.h",
+  "ffi/posix/pthread": "pthread.h",
+  "ffi/posix/dirent": "dirent.h",
+  "ffi/posix/sys/types": "sys/types.h",
+  "ffi/posix/sys/socket": "sys/socket.h",
+  "ffi/posix/sys/select": "sys/select.h",
+  "ffi/posix/sys/wait": "sys/wait.h",
+  "ffi/posix/sys/ioctl": "sys/ioctl.h",
+  "ffi/posix/sys/syscall": "sys/syscall.h",
+  "ffi/posix/netinet/in": "netinet/in.h",
+  "ffi/posix/arpa/inet": "arpa/inet.h",
   "ffi/glfw/glfw3": "GLFW/glfw3.h",
   "ffi/gl/gl": "GL/gl.h",
 }
 
 # 生成 ``.inl`` 体的 C 符号白名单；缺省/``None`` = 该模块全部 ``@native``（慎用：回调签名易 C2664）
+# 空 frozenset = 仅声明面 + ``#include <c_header>``（模板经 ffi 头间接拿到 C API）
 _FFI_GLUE_ALLOWLIST: dict[str, frozenset[str] | None] = {
   "ffi/sqlite/sqlite3": frozenset({
     "sqlite3_open",
@@ -41,7 +75,38 @@ _FFI_GLUE_ALLOWLIST: dict[str, frozenset[str] | None] = {
     "sqlite3_exec",
     "sqlite3_free",
   }),
-  # Zeus：.pyi 全量生成，glue 仅业务实际调用（回调/Pointer 签名勿全量转发）
+  "ffi/windows/windows": frozenset(),
+  "ffi/windows/winsock2": frozenset(),
+  "ffi/windows/ws2tcpip": frozenset(),
+  "ffi/windows/commctrl": frozenset(),
+  "ffi/windows/commdlg": frozenset(),
+  "ffi/windows/shellapi": frozenset(),
+  "ffi/windows/gdiplus": frozenset(),
+  "ffi/windows/objidl": frozenset(),
+  "ffi/windows/winhttp": frozenset(),
+  "ffi/crt/stdio": frozenset(),
+  "ffi/crt/string": frozenset(),
+  "ffi/crt/math": frozenset(),
+  "ffi/crt/time": frozenset(),
+  "ffi/crt/stdlib": frozenset(),
+  "ffi/crt/errno": frozenset(),
+  "ffi/crt/signal": frozenset(),
+  "ffi/crt/fcntl": frozenset(),
+  "ffi/crt/direct": frozenset(),
+  "ffi/crt/io": frozenset(),
+  "ffi/crt/stat": frozenset(),
+  "ffi/crt/utime": frozenset(),
+  "ffi/posix/unistd": frozenset(),
+  "ffi/posix/pthread": frozenset(),
+  "ffi/posix/dirent": frozenset(),
+  "ffi/posix/sys/types": frozenset(),
+  "ffi/posix/sys/socket": frozenset(),
+  "ffi/posix/sys/select": frozenset(),
+  "ffi/posix/sys/wait": frozenset(),
+  "ffi/posix/sys/ioctl": frozenset(),
+  "ffi/posix/sys/syscall": frozenset(),
+  "ffi/posix/netinet/in": frozenset(),
+  "ffi/posix/arpa/inet": frozenset(),
   "ffi/glfw/glfw3": frozenset({
     "glfwInit",
     "glfwTerminate",
@@ -93,7 +158,7 @@ def ffi_import_parts_to_module_path(parts: list[str]) -> str | None:
 
 
 def find_ffi_source_file(module_path: str, *, project_root: Path | None = None) -> Path | None:
-  """``ffi/windows`` → 仓库根 ``ffi/windows.pyi``；其次 ``zeus/ffi/…``。
+  """``ffi/windows/windows`` → ``ffi/windows/windows.pyi``；其次 ``zeus/ffi/…``。
 
   ``project_root`` 参数保留兼容调用方，忽略。
   """
@@ -130,7 +195,7 @@ def _find_ffi_under_root(root: Path, rel: str) -> Path | None:
 
 
 def ffi_runtime_module_path(module_path: str) -> str:
-  """``ffi/windows`` → ``ffi/windows``（生成物相对 ``generated/runtime``，与 ``py2cpp/`` 并列）。"""
+  """``ffi/windows/windows`` → ``ffi/windows/windows``（相对 ``generated/runtime``）。"""
   return module_path.replace("\\", "/").strip("/")
 
 
@@ -150,11 +215,21 @@ def ffi_c_header_include(module_path: str) -> str | None:
 
 
 def ffi_glue_allowlist(module_path: str) -> frozenset[str] | None:
-  """``None`` = 全部 ``@native``；否则仅集合内 C 名生成 ``.inl`` 体。"""
+  """``None`` = 全部 ``@native``；否则仅集合内 C 名生成 ``.inl`` 体。
+
+  空 ``frozenset`` = **仅声明面**：生成头只 ``#include <c_header>``，不发射
+  ``using``/常量/函数（模板经该头间接拿到 C API）。
+  """
   norm = module_path.replace("\\", "/").strip("/")
   if norm not in _FFI_GLUE_ALLOWLIST:
     return frozenset()
   return _FFI_GLUE_ALLOWLIST[norm]
+
+
+def ffi_include_only_surface(module_path: str) -> bool:
+  """空 allowlist：生成头仅为 C 头中转，不 dump ``.pyi`` 符号。"""
+  allow = ffi_glue_allowlist(module_path)
+  return allow is not None and len(allow) == 0
 
 
 def ffi_cpp_namespace_segment(segment: str) -> str:

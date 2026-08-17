@@ -127,6 +127,28 @@ class TemplateConventionsTests(unittest.TestCase):
     )
     self.assertEqual(hits, [])
 
+  def test_t26_rejects_ab_system_include(self):
+    from src.codegen.template_conventions import _scan_file_content
+
+    text = '#include <stdio.h>\n#include <cstdint>\n#include <cmath>\n#include "ffi/crt/stdio.h"\n'
+    hits = [
+      v for v in _scan_file_content("probe.inl", text, template_root())
+      if v.rule == "T26"
+    ]
+    self.assertEqual(len(hits), 1)
+    self.assertIn("stdio.h", hits[0].message)
+
+  def test_t26_rejects_c_stdint_not_cstdint(self):
+    from src.codegen.template_conventions import _scan_file_content
+
+    text = "#include <stdint.h>\n"
+    hits = [
+      v for v in _scan_file_content("probe.inl", text, template_root())
+      if v.rule == "T26"
+    ]
+    self.assertEqual(len(hits), 1)
+    self.assertIn("stdint.h", hits[0].message)
+
   def test_orphan_tilde_is_warning_not_error(self):
     clear_template_violations_cache()
     warnings = [

@@ -224,6 +224,9 @@ def emit_ffi_module_glue(tr: Translator, module_path: str) -> None:
       pre.extend(pref)
       call_args.append(expr)
       post.extend(_emit_out_writes(pname, ann))
+    # C ``printf(fmt, ...)`` ← ``def pyiPrintf(_Format: CStr, *_)``
+    if func.args.vararg is not None:
+      call_args.append(f"{cpp_param(func.args.vararg.arg)}...")
     c_call = f"::{cnm}({', '.join(call_args)})"
     lines.append(f"{sig}")
     lines.append("{")

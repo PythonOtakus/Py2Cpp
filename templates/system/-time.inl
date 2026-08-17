@@ -3,17 +3,17 @@ PY2CPP_IGNORE
 #include "py2cpp/py_types.h"
 PY2CPP_END
 
-#include <math.h>
-#include <stdio.h>
-#include <string.h>
-#include <time.h>
+#include <cmath>
+#include "ffi/crt/stdio.h"
+#include "ffi/crt/string.h"
+#include "ffi/crt/time.h"
 #ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
+#include "ffi/windows/windows.h"
 #else
-#include <unistd.h>
+#include "ffi/posix/unistd.h"
 #endif
 
 static double _py_time_seconds_nonneg(double s)

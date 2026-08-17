@@ -19,6 +19,19 @@ if errorlevel 1 (
   exit /b 1
 )
 call "%~dp0_build_timing.bat" end translate "bootstrap py2cpp runtime"
+
+REM 胖库：设 PY2CPP_RUNTIME_LIB=1 时编 py2cpp_runtime.lib（默认仍 header-only）
+if /I "%PY2CPP_RUNTIME_LIB%"=="1" (
+  echo === bootstrap: py2cpp_runtime.lib ===
+  call "%~dp0_build_timing.bat" start
+  %PY% -c "from pathlib import Path; from src.compile import ensure_runtime_fat_lib; r=ensure_runtime_fat_lib(Path('generated/runtime')); print(r.stderr or r.stdout or ('ok: '+str(r.artifact))); raise SystemExit(0 if r.ok else 1)"
+  if errorlevel 1 (
+    echo ERROR: failed to build py2cpp_runtime.lib
+    exit /b 1
+  )
+  call "%~dp0_build_timing.bat" end compile "bootstrap py2cpp_runtime.lib"
+)
+
 call "%~dp0_clean_obj.bat" "%CD%\generated\runtime" "py2cpp" --global-py2cpp
 echo.
 set "PY2CPP_RUNTIME_BOOTSTRAPPED=1"

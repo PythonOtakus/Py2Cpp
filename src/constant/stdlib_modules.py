@@ -46,6 +46,12 @@ UMBRELLA_PRIORITY_MODULES: tuple[str, ...] = (
   "serde/json",
   "serde/yaml",
   "alg/protocols",
+  # ``console`` 包根再导出子模块类型；须先于 ``console`` 打开嵌套 namespace
+  "console/exceptions",
+  "console/native_sys",
+  "console/parse",
+  "console/render",
+  "console/task",
   "ui/meta",
   "ui/style",
   "ui/events",

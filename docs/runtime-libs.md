@@ -1,8 +1,31 @@
 # 标准库链接模型：域库（`.lib` / 可选 `.dll`）与增量编译
 
-> **状态**：方案定案文档（**尚未落地**）。目标：**编译效率优先**。  
+> **状态**：P0 已落地；P1 代码已就位但默认关闭（``PY2CPP_RUNTIME_LIB=1`` 开启）。目标：**编译效率优先**。  
 > **受众**：改 `layout_emit` / `compile.py` / `build*.bat` / umbrella 的维护者。  
-> **相关**：[参考手册 §链接模型](./参考手册.md)（现行 header-only）、[编码规范](./编码规范.md)、[codegen-templates.md](./codegen-templates.md)、[c-ffi-pyi.md](./c-ffi-pyi.md)。
+> **相关**：[参考手册 §链接模型](./参考手册.md)（现行默认 header-only）、[编码规范](./编码规范.md)、[codegen-templates.md](./codegen-templates.md)、[c-ffi-pyi.md](./c-ffi-pyi.md)。
+
+---
+
+## 落地进度
+
+| 阶段 | 状态 | 说明 |
+|------|------|------|
+| **P0** mtime 跳过 | ✅ | `scripts/parallel_build.py`：exe 新于源/`minimal.h`/胖库则 skip |
+| **P1** 胖库 | 🔶 可选 | `src/constant/runtime_libs.py` + `layout_emit` / `compile.ensure_runtime_fat_lib`；默认关闭 |
+| **P2** 域库 | 未做 | |
+| **P3** DLL | 未做 | |
+
+**开启 P1**（实验）：
+
+```bat
+set PY2CPP_RUNTIME_LIB=1
+scripts\_bootstrap_runtime.bat
+build.bat PATTERN --seq
+```
+
+强制回滚 header-only：`set PY2CPP_HEADER_ONLY=1`（或不要设 `PY2CPP_RUNTIME_LIB`）。
+
+P1 仍须验证：库 TU 下 `PY2CPP_LIBRARY_TU` 跳过 header-only `.inl` 时，`protocol_erase` 等对裸 `PyList`/`PyNone` 的可见性；当前默认关闭以免挡日常开发。
 
 ---
 

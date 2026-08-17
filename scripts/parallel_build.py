@@ -65,12 +65,59 @@ def _clean_msvc_obj(gen_dir: Path, rel: str) -> None:
       pass
 
 
+def _job_deps_mtime(job: Job) -> list[Path]:
+  """exe 增量跳过所依赖的路径。"""
+  src = ROOT / job.src_root / job.rel.replace("/", os.sep)
+  deps: list[Path] = [src]
+  gen_cpp = ROOT / "generated" / job.src_root / Path(job.rel).with_suffix(".cpp")
+  deps.append(gen_cpp)
+  rt = ROOT / "generated" / "runtime"
+  deps.append(rt / "py2cpp" / "minimal.h")
+  fat = rt / "lib" / "py2cpp_runtime.lib"
+  if fat.is_file():
+    deps.append(fat)
+  return deps
+
+
+def _job_up_to_date(job: Job, exe: Path, extra: list[str]) -> bool:
+  """源 / 生成 cpp / runtime 未变且已有 exe → 跳过翻译+编译。"""
+  if job.expect_fail:
+    return False
+  if any(a == "--debug" or a.startswith("--debug") for a in extra):
+    return False
+  if os.environ.get("PY2CPP_FORCE_BUILD", "").strip() in ("1", "true", "yes"):
+    return False
+  if not exe.is_file():
+    return False
+  exe_m = exe.stat().st_mtime
+  for dep in _job_deps_mtime(job):
+    if not dep.is_file():
+      return False
+    if exe_m < dep.stat().st_mtime:
+      return False
+  return True
+
+
 def _run_job(job: Job, extra: list[str]) -> JobResult:
   t0 = time.perf_counter()
   src = ROOT / job.src_root / job.rel.replace("/", os.sep)
   gen_dir = ROOT / "generated" / job.src_root
   exe = gen_dir / Path(job.rel).with_suffix(".exe")
   log_path = _log_file_for(f"{job.src_root}__{job.rel}")
+  if _job_up_to_date(job, exe, extra):
+    seconds = time.perf_counter() - t0
+    msg = "skip (up-to-date)"
+    log_path.write_text(msg + "\n", encoding="utf-8")
+    return JobResult(
+      rel=f"{job.src_root}/{job.rel}",
+      ok=True,
+      seconds=seconds,
+      exit_code=0,
+      exe=str(exe),
+      log_path=str(log_path),
+      message=msg,
+      log_text=msg,
+    )
   cmd = [
     sys.executable,
     str(ROOT / "main.py"),

@@ -3,6 +3,7 @@
 from collections.abc import Sequence
 
 from ..constant.stdlib_layout import stdlib_header_include
+from ..constant.runtime_libs import LIBRARY_TU_MACRO
 from ..constant.stdlib_modules import (
   UMBRELLA_IO_LATE_IF_PRESENT,
   UMBRELLA_MSVC_COMPAT_BEFORE_MODULE,
@@ -23,7 +24,17 @@ def build_py2cpp_umbrella_header(
   debug: bool = False,
 ) -> str:
   paths = expand_umbrella_include_paths(runtime_prefix, stdlib_modules)
-  includes = [f'#include "{p}"' for p in paths]
+  includes: list[str] = []
+  for p in paths:
+    if p.startswith("__py2cpp_guard_inl__:"):
+      inl = p.split(":", 1)[1]
+      includes.append(f"#ifndef {LIBRARY_TU_MACRO}")
+      includes.append(f'#include "{inl}"')
+      includes.append("#endif")
+    elif p == "__py2cpp_using_pynone__":
+      includes.append("using ::py2cpp::core::none::PyNone;")
+    else:
+      includes.append(f'#include "{p}"')
   datetime_hdr = f'#include "{stdlib_header_include(UMBRELLA_MSVC_COMPAT_BEFORE_MODULE)}"'
   io_late_hdrs = {
     f'#include "{stdlib_header_include(m)}"' for m in UMBRELLA_IO_LATE_IF_PRESENT

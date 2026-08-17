@@ -6,7 +6,9 @@ from typing import Literal
 
 from .stdlib_discovery import STDLIB_REL_PATH_SET
 from .stdlib_modules import UMBRELLA_IO_LATE_IF_PRESENT, UMBRELLA_MSVC_COMPAT_BEFORE_MODULE
+from .stdlib_discovery import STDLIB_REL_PATH_SET
 from .stdlib_layout import CORE_PKG, RUNTIME_PKG, stdlib_header_include
+from .runtime_libs import header_only_mode
 
 UmbrellaSpecKind = Literal["primitive", "module", "special"]
 UmbrellaEarlyKind = Literal[
@@ -107,6 +109,8 @@ def expand_umbrella_include_paths(
     if kind == "if_any_protocols":
       paths.append(f"{runtime_prefix}/operators.h")
       paths.append(f"{CORE_PKG}/protocol_traits.h")
+      # ``protocol_erase`` 使用裸 ``PyNone``；库 TU 跳过中段 inl 后须显式 using。
+      paths.append("__py2cpp_using_pynone__")
       paths.append(f"{CORE_PKG}/protocol_erase.h")
       paths.append(stdlib_header_include("core/protocols"))
     elif kind == "if_all_members":
@@ -121,10 +125,17 @@ def expand_umbrella_include_paths(
     else:
       paths.append(stdlib_header_include(str(payload)))
     # ``ExcType`` / ``PyIterResult`` 的 ``str`` 实现须在 ``PyStr`` 完整定义之后
+    # 库 TU（``PY2CPP_LIBRARY_TU``）跳过，避免与胖库 / 测例重复定义
     if payload == "text/str" and "core/exceptions" in stdlib_set:
-      paths.append(f"{runtime_prefix}/core/exceptions.inl")
+      if header_only_mode():
+        paths.append(f"{runtime_prefix}/core/exceptions.inl")
+      else:
+        paths.append(f"__py2cpp_guard_inl__:{runtime_prefix}/core/exceptions.inl")
     if payload == "text/str" and "core/iter_result" in stdlib_set:
-      paths.append(f"{runtime_prefix}/core/iter_result.inl")
+      if header_only_mode():
+        paths.append(f"{runtime_prefix}/core/iter_result.inl")
+      else:
+        paths.append(f"__py2cpp_guard_inl__:{runtime_prefix}/core/iter_result.inl")
 
   for name in stdlib_modules:
     if name in UMBRELLA_BULK_SKIP or name not in STDLIB_REL_PATH_SET:

@@ -3,15 +3,24 @@
 支持 g++、clang++、MSVC（``cl``）；Windows 上 ``auto`` 可优先调用输出目录下的 ``build.bat``。
 用户入口在 ``generated/<源路径>/``；标准库在 ``generated/runtime/``（含 ``py2cpp.cpp``）。
 编译时会自动添加 ``-I`` 入口目录与 ``runtime`` 目录。
+非模板标准库默认编入 ``py2cpp_runtime.lib``（见 ``docs/runtime-libs.md``）；``PY2CPP_HEADER_ONLY=1`` 回滚。
 """
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 
+from .constant.runtime_libs import (
+  FAT_LIB_NAME,
+  FAT_LIB_SUBDIR,
+  header_only_mode,
+  library_module_paths,
+)
 from .emit.layout_config_emit import UMBRELLA_HEADER
 from .translator import RUNTIME_CPP, RUNTIME_OUTPUT_SUBDIR, RUNTIME_PREFIX
 
@@ -155,6 +164,20 @@ def discover_include_dirs(source: Path, explicit: Path | None = None) -> list[Pa
   return dirs
 
 
+def find_runtime_dir(anchor: Path) -> Path | None:
+  """自 ``anchor`` 向上查找 ``generated/runtime``。"""
+  umbrella = Path(UMBRELLA_HEADER)
+  for parent in anchor.resolve().parents:
+    runtime_dir = parent / RUNTIME_OUTPUT_SUBDIR
+    if (runtime_dir / umbrella).is_file() or (runtime_dir / RUNTIME_CPP).is_file():
+      return runtime_dir
+  return None
+
+
+def fat_lib_path(runtime_dir: Path) -> Path:
+  return runtime_dir / FAT_LIB_SUBDIR / FAT_LIB_NAME
+
+
 def _run(cmd: list[str], *, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
   # ``cl /utf-8`` 的诊断为 UTF-8；Windows 默认用系统 ANSI 解码会得到 ``?``
   encoding: str | None = None
@@ -172,6 +195,186 @@ def _run(cmd: list[str], *, cwd: Path | None = None) -> subprocess.CompletedProc
 
 def _which(name: str) -> str | None:
   return shutil.which(name)
+
+
+def discover_library_cpp_sources(runtime_dir: Path) -> list[Path]:
+  """已生成的 library 模块 ``.cpp``（须存在对应 ``.inl``）。"""
+  out: list[Path] = []
+  for module_path in library_module_paths():
+    # module_path = py2cpp/system/time
+    rel = module_path.replace("\\", "/").strip("/")
+    cpp = runtime_dir / f"{rel}.cpp"
+    inl = runtime_dir / f"{rel}.inl"
+    if cpp.is_file() and inl.is_file():
+      out.append(cpp)
+  return out
+
+
+def _should_link_fat_lib(source: Path) -> bool:
+  if header_only_mode():
+    return False
+  if source.name == RUNTIME_CPP:
+    return False
+  parts = source.resolve().parts
+  return "test" in parts or "examples" in parts
+
+
+def _library_obj_path(cpp: Path, obj_dir: Path) -> Path:
+  # py2cpp/system/time.cpp → system__time.obj
+  rel = cpp
+  try:
+    # …/runtime/py2cpp/system/time.cpp → system/time
+    parts = cpp.resolve().parts
+    if "py2cpp" in parts:
+      i = parts.index("py2cpp")
+      stem = "__".join(parts[i + 1 : -1] + (parts[-1].removesuffix(".cpp"),))
+    else:
+      stem = cpp.stem
+  except Exception:
+    stem = cpp.stem
+  return obj_dir / f"{stem}.obj"
+
+
+def ensure_runtime_fat_lib(
+  runtime_dir: Path,
+  *,
+  compiler: str = "cl",
+  std: str = "c++14",
+  jobs: int | None = None,
+) -> CompileResult:
+  """编译全部 library ``.cpp`` 并打包 ``py2cpp_runtime.lib``（mtime 增量）。"""
+  if header_only_mode():
+    return CompileResult(ok=True, compiler=compiler, artifact=None, stdout="", stderr="")
+  sources = discover_library_cpp_sources(runtime_dir)
+  if not sources:
+    return CompileResult(
+      ok=True,
+      compiler=compiler,
+      artifact=None,
+      stdout="",
+      stderr="no library .cpp sources",
+    )
+  lib_dir = runtime_dir / FAT_LIB_SUBDIR
+  obj_dir = lib_dir / "obj"
+  lib_dir.mkdir(parents=True, exist_ok=True)
+  obj_dir.mkdir(parents=True, exist_ok=True)
+  out_lib = fat_lib_path(runtime_dir)
+  inc_dirs = [str(runtime_dir.resolve())]
+
+  newest_src = max(s.stat().st_mtime for s in sources)
+  if out_lib.is_file() and out_lib.stat().st_mtime >= newest_src:
+    # 仍检查各 obj 是否齐全
+    objs = [_library_obj_path(s, obj_dir) for s in sources]
+    if all(o.is_file() for o in objs):
+      return CompileResult(
+        ok=True,
+        compiler=compiler,
+        artifact=out_lib,
+        stdout="",
+        stderr="fat lib up-to-date",
+      )
+
+  if compiler in ("auto", "msvc", "cl") and _which("cl"):
+    tool = "cl"
+  elif compiler in ("auto", "g++") and _which("g++"):
+    tool = "g++"
+  elif compiler in ("auto", "clang++") and _which("clang++"):
+    tool = "clang++"
+  elif _which("cl"):
+    tool = "cl"
+  else:
+    return CompileResult(
+      ok=False,
+      compiler=compiler,
+      artifact=None,
+      stdout="",
+      stderr="未找到编译器以构建 py2cpp_runtime.lib",
+    )
+
+  workers = jobs
+  if workers is None:
+    env = os.environ.get("PY2CPP_BUILD_JOBS")
+    try:
+      workers = max(1, int(env)) if env else min(8, (os.cpu_count() or 4))
+    except ValueError:
+      workers = 8
+
+  def compile_one(cpp: Path) -> tuple[Path, subprocess.CompletedProcess[str]]:
+    obj = _library_obj_path(cpp, obj_dir)
+    if obj.is_file() and obj.stat().st_mtime >= cpp.stat().st_mtime:
+      return obj, subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
+    if tool == "cl":
+      std_flag = _msvc_std_flag(std)
+      cmd = [
+        "cl",
+        "/nologo",
+        "/EHsc",
+        "/utf-8",
+        std_flag,
+        "/c",
+        f"/I{inc_dirs[0]}",
+        f"/Fo{obj}",
+        str(cpp),
+      ]
+    else:
+      cmd = [
+        tool,
+        f"-std={std if std != 'c++11' else 'c++14'}",
+        "-Wall",
+        "-c",
+        f"-I{inc_dirs[0]}",
+        "-o",
+        str(obj),
+        str(cpp),
+      ]
+    return obj, _run(cmd)
+
+  objs: list[Path] = []
+  logs: list[str] = []
+  failed = False
+  with ThreadPoolExecutor(max_workers=workers) as pool:
+    futs = {pool.submit(compile_one, s): s for s in sources}
+    for fut in as_completed(futs):
+      cpp = futs[fut]
+      obj, proc = fut.result()
+      if proc.returncode != 0:
+        failed = True
+        logs.append(f"FAIL {cpp}:\n{proc.stdout}\n{proc.stderr}")
+      else:
+        objs.append(obj)
+
+  if failed:
+    return CompileResult(
+      ok=False,
+      compiler=tool,
+      artifact=None,
+      stdout="\n".join(logs),
+      stderr="py2cpp_runtime.lib: object compile failed",
+    )
+
+  objs = [_library_obj_path(s, obj_dir) for s in sources]
+  if tool == "cl":
+    if not _which("lib"):
+      return CompileResult(
+        ok=False,
+        compiler=tool,
+        artifact=None,
+        stdout="",
+        stderr="未找到 lib.exe（MSVC 库管理器）",
+      )
+    cmd = ["lib", "/nologo", f"/OUT:{out_lib}", *[str(o) for o in objs]]
+    r = _run(cmd)
+  else:
+    cmd = ["ar", "rcs", str(out_lib), *[str(o) for o in objs]]
+    r = _run(cmd)
+
+  return CompileResult(
+    ok=r.returncode == 0 and out_lib.is_file(),
+    compiler=tool,
+    artifact=out_lib if out_lib.is_file() else None,
+    stdout=r.stdout or "",
+    stderr=r.stderr or "",
+  )
 
 
 def _links_runtime_cpp(source: Path) -> bool:
@@ -232,6 +435,13 @@ def compile_command(
   if use_openmp is None:
     use_openmp = any(source_uses_openmp(s) for s in all_sources)
   sqlite_obj = sqlite3_obj_path(source) if sqlite_srcs else None
+  link_libs: list[Path] = []
+  if not obj_only and _should_link_fat_lib(source):
+    rt = find_runtime_dir(source)
+    if rt is not None:
+      libp = fat_lib_path(rt)
+      if libp.is_file():
+        link_libs.append(libp)
 
   def gpp_sqlite_compile_cmd(tool: str) -> list[str]:
     omp = ["-fopenmp"] if use_openmp else []
@@ -250,6 +460,7 @@ def compile_command(
 
   def gpp_like(tool: str) -> list[str] | list[list[str]]:
     omp = ["-fopenmp"] if use_openmp else []
+    lib_flags = [str(p) for p in link_libs]
     if obj_only:
       cmds = [ [*([tool, f"-std={std}", "-Wall", "-Wextra", "-c", *omp, *inc_flags]), str(s)] for s in core ]
       if sqlite_obj is not None:
@@ -269,6 +480,7 @@ def compile_command(
           *inc_flags,
           *[str(s) for s in core],
           str(sqlite_obj),
+          *lib_flags,
         ],
       ]
     return [
@@ -281,6 +493,7 @@ def compile_command(
       str(out_exe),
       *inc_flags,
       *[str(s) for s in core],
+      *lib_flags,
     ]
 
   cl_link_objs = [sqlite_obj] if sqlite_obj is not None and not obj_only else None
@@ -293,7 +506,7 @@ def compile_command(
     return (
       _cmd_msvc_cl(
         core, inc_dirs, out_exe, obj_only, std,
-        use_openmp=use_openmp, link_objs=cl_link_objs,
+        use_openmp=use_openmp, link_objs=cl_link_objs, link_libs=link_libs or None,
       )
       if _which("cl")
       else None
@@ -302,7 +515,7 @@ def compile_command(
   if compiler == "msvc" or (compiler == "auto" and sys.platform == "win32"):
     cmd = _cmd_msvc_cl(
       core, inc_dirs, out_exe, obj_only, std,
-      use_openmp=use_openmp, link_objs=cl_link_objs,
+      use_openmp=use_openmp, link_objs=cl_link_objs, link_libs=link_libs or None,
     )
     if cmd and _which("cl"):
       return cmd
@@ -317,7 +530,7 @@ def compile_command(
   if compiler == "auto":
     cmd = _cmd_msvc_cl(
       core, inc_dirs, out_exe, obj_only, std,
-      use_openmp=use_openmp, link_objs=cl_link_objs,
+      use_openmp=use_openmp, link_objs=cl_link_objs, link_libs=link_libs or None,
     )
     if cmd and _which("cl"):
       return cmd
@@ -426,6 +639,7 @@ def _cmd_msvc_cl(
   *,
   use_openmp: bool = False,
   link_objs: list[Path] | None = None,
+  link_libs: list[Path] | None = None,
 ) -> list[str]:
   std_flag = _msvc_std_flag(std)
   # ``/utf-8``：源文件与执行字符集均为 UTF-8（编译期中文 static_assert 等）
@@ -447,6 +661,8 @@ def _cmd_msvc_cl(
   cmd.append(f"/Fe:{exe}")
   cmd.append("/link")
   cmd.append("/STACK:8388608")
+  if link_libs:
+    cmd.extend(str(p) for p in link_libs)
   return cmd
 
 
@@ -485,6 +701,13 @@ def compile_cpp(
     bat_result = try_build_bat(source)
     if bat_result is not None:
       return bat_result
+
+  if not obj_only and _should_link_fat_lib(source) and not header_only_mode():
+    rt = find_runtime_dir(source)
+    if rt is not None and discover_library_cpp_sources(rt):
+      lib_res = ensure_runtime_fat_lib(rt, compiler=compiler, std="c++14")
+      if not lib_res.ok:
+        return lib_res
 
   tried: list[str] = []
   order = [compiler] if compiler != "auto" else ["g++", "clang++", "cl"]

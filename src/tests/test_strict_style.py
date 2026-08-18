@@ -1142,6 +1142,23 @@ def main():
 """
     )
 
+  def test_s06b_allows_self_staticproperty_when_ann_is_not_host(self):
+    self._translate(
+      """class Mat:
+  @staticproperty
+  def helpText() -> str:
+    return "usage"
+
+  def make(self) -> str:
+    usage: str = Self.helpText
+    return usage
+
+def main():
+  x: Mat = new()
+  return x.make()
+"""
+    )
+
   def test_s03_self_annotation_empty_str_literal_rejected(self):
     self._expect_strict_fail(
       """class Holder:

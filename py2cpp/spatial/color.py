@@ -3,21 +3,22 @@ from __future__ import annotations
 
 from ..builtins import *
 from ..core.exceptions import IndexError
+from ..numeric.protocols import RealType
 from ..math import almost, clamp01, fabs, floor, lerp, pow, safeSqrt
 
 
 @copyable
-class Color:
+class Color[Scalar: RealType = float]:
   """浮点 RGBA 颜色（分量钳制到 [0,1]；供材质、清屏、顶点色）。"""
 
   def __init__(
     self,
-    r: float64 = 0.0,
-    g: float64 = 0.0,
-    b: float64 = 0.0,
-    a: float64 = 1.0,
+    r: Scalar = 0.0,
+    g: Scalar = 0.0,
+    b: Scalar = 0.0,
+    a: Scalar = 1.0,
   ):
-    self._data: float64[:4] = new()
+    self._data: Scalar[:4] = new()
     self._data.unsafeSet(0, clamp01(r))
     self._data.unsafeSet(1, clamp01(g))
     self._data.unsafeSet(2, clamp01(b))
@@ -29,38 +30,38 @@ class Color:
 
   @property
   @immutable
-  def r(self) -> float64:
+  def r(self) -> Scalar:
     return self._data.unsafeGet(0)
 
   @property.setter
-  def r(self, value: float64) -> None:
+  def r(self, value: Scalar) -> None:
     self._data.unsafeSet(0, clamp01(value))
 
   @property
   @immutable
-  def g(self) -> float64:
+  def g(self) -> Scalar:
     return self._data.unsafeGet(1)
 
   @property.setter
-  def g(self, value: float64) -> None:
+  def g(self, value: Scalar) -> None:
     self._data.unsafeSet(1, clamp01(value))
 
   @property
   @immutable
-  def b(self) -> float64:
+  def b(self) -> Scalar:
     return self._data.unsafeGet(2)
 
   @property.setter
-  def b(self, value: float64) -> None:
+  def b(self, value: Scalar) -> None:
     self._data.unsafeSet(2, clamp01(value))
 
   @property
   @immutable
-  def a(self) -> float64:
+  def a(self) -> Scalar:
     return self._data.unsafeGet(3)
 
   @property.setter
-  def a(self, value: float64) -> None:
+  def a(self, value: Scalar) -> None:
     self._data.unsafeSet(3, clamp01(value))
 
   @staticproperty
@@ -98,12 +99,12 @@ class Color:
     return 4
 
   @immutable
-  def __getitem__(self, index: int) -> float64:
+  def __getitem__(self, index: int) -> Scalar:
     if index < 0 or index >= 4:
       raise IndexError("color index out of range")
     return self._data.unsafeGet(index)
 
-  def __setitem__(self, index: int, value: float64) -> None:
+  def __setitem__(self, index: int, value: Scalar) -> None:
     if index < 0 or index >= 4:
       raise IndexError("color index out of range")
     self._data.unsafeSet(index, clamp01(value))
@@ -136,8 +137,8 @@ class Color:
   def __and__(self, other: Self) -> Self:
     out: Self = new(0.0, 0.0, 0.0, 0.0)
     for i in inlineRange(4):
-      a: float64 = self._data.unsafeGet(i)
-      b: float64 = other._data.unsafeGet(i)
+      a: Scalar = self._data.unsafeGet(i)
+      b: Scalar = other._data.unsafeGet(i)
       out._data.unsafeSet(i, a if a < b else b)
     return out
 
@@ -149,8 +150,8 @@ class Color:
   def __or__(self, other: Self) -> Self:
     out: Self = new(0.0, 0.0, 0.0, 0.0)
     for i in inlineRange(4):
-      a: float64 = self._data.unsafeGet(i)
-      b: float64 = other._data.unsafeGet(i)
+      a: Scalar = self._data.unsafeGet(i)
+      b: Scalar = other._data.unsafeGet(i)
       out._data.unsafeSet(i, a if a > b else b)
     return out
 
@@ -207,7 +208,7 @@ class Color:
 
   @overload
   @immutable
-  def __mul__(self, other: float64) -> Self:
+  def __mul__(self, other: Scalar) -> Self:
     out: Self = new(0.0, 0.0, 0.0, 0.0)
     for i in inlineRange(4):
       out._data.unsafeSet(i, clamp01(self._data.unsafeGet(i) * other))
@@ -215,7 +216,7 @@ class Color:
 
   @overload
   @immutable
-  def __rmul__(self, other: float64) -> Self:
+  def __rmul__(self, other: Scalar) -> Self:
     return self * other
 
   @overload
@@ -228,7 +229,7 @@ class Color:
     return self
 
   @overload
-  def __imul__(self, other: float64) -> Self:
+  def __imul__(self, other: Scalar) -> Self:
     for i in inlineRange(4):
       self._data.unsafeSet(i, clamp01(self._data.unsafeGet(i) * other))
     return self
@@ -260,23 +261,23 @@ class Color:
     return self
 
   @immutable
-  def __pow__(self, exponent: float64) -> Self:
+  def __pow__(self, exponent: Scalar) -> Self:
     out: Self = new(0.0, 0.0, 0.0, 0.0)
     for i in inlineRange(4):
       out._data.unsafeSet(i, clamp01(pow(self._data.unsafeGet(i), exponent)))
     return out
 
-  def __ipow__(self, exponent: float64) -> Self:
+  def __ipow__(self, exponent: Scalar) -> Self:
     self._copyFrom(self ** exponent)
     return self
 
   @immutable
-  def withAlpha(self, alpha: float64) -> Self:
+  def withAlpha(self, alpha: Scalar) -> Self:
     return new(self.r, self.g, self.b, alpha)
 
   @immutable
-  def lerp(self, other: Self, t: float64) -> Self:
-    k: float64 = clamp01(t)
+  def lerp(self, other: Self, t: Scalar) -> Self:
+    k: Scalar = clamp01(t)
     return new(
       lerp(self.r, other.r, k),
       lerp(self.g, other.g, k),
@@ -285,7 +286,7 @@ class Color:
     )
 
   @immutable
-  def scaled(self, factor: float64) -> Self:
+  def scaled(self, factor: Scalar) -> Self:
     return self * factor
 
   @immutable
@@ -332,13 +333,13 @@ class Color:
 
 
 @copyable
-class ColorMatrix:
+class ColorMatrix[Scalar: RealType = float]:
   """5×5 颜色仿射矩阵（齐次 RGBA + 平移列）；``apply`` 作用于 ``Color``。"""
 
   _dim: int @const = 5
 
   def __init__(self, identity: bool = True):
-    self._data: float64[:5, :5] = new()
+    self._data: Scalar[:5, :5] = new()
     if identity:
       for i in inlineRange(5):
         for j in inlineRange(5):
@@ -360,14 +361,14 @@ class ColorMatrix:
     return new(False)
 
   @immutable
-  def __getitem__(self, index: (int, int)) -> float64:
+  def __getitem__(self, index: (int, int)) -> Scalar:
     i: int = index[0]
     j: int = index[1]
     if i < 0 or i >= 5 or j < 0 or j >= 5:
       raise IndexError("color matrix index out of range")
     return self._data.unsafeGet(i, j)
 
-  def __setitem__(self, index: (int, int), value: float64) -> None:
+  def __setitem__(self, index: (int, int), value: Scalar) -> None:
     i: int = index[0]
     j: int = index[1]
     if i < 0 or i >= 5 or j < 0 or j >= 5:
@@ -375,10 +376,10 @@ class ColorMatrix:
     self._data.unsafeSet(i, j, value)
 
   @immutable
-  def unsafeGet(self, i: int, j: int) -> float64:
+  def unsafeGet(self, i: int, j: int) -> Scalar:
     return self._data.unsafeGet(i, j)
 
-  def unsafeSet(self, i: int, j: int, value: float64) -> None:
+  def unsafeSet(self, i: int, j: int, value: Scalar) -> None:
     self._data.unsafeSet(i, j, value)
 
   @immutable
@@ -399,31 +400,31 @@ class ColorMatrix:
 
   @property
   @immutable
-  def det(self) -> float64:
-    tmp: float64[:5, :5] = new()
+  def det(self) -> Scalar:
+    tmp: Scalar[:5, :5] = new()
     for i in inlineRange(5):
       for j in inlineRange(5):
         tmp[i, j] = self.unsafeGet(i, j)
-    sign: float64 = 1.0
-    prod: float64 = 1.0
+    sign: Scalar = 1.0
+    prod: Scalar = 1.0
     for k in inlineRange(5):
       pivRow: int = k
-      pivVal: float64 = fabs(tmp[k, k])
+      pivVal: Scalar = fabs(tmp[k, k])
       for r in inlineRange(k + 1, 5):
-        v: float64 = fabs(tmp[r, k])
+        v: Scalar = fabs(tmp[r, k])
         if v > pivVal:
           pivVal = v
           pivRow = r
       if pivRow != k:
         sign = -sign
         for c in inlineRange(5):
-          swapVal: float64 = tmp[k, c]
+          swapVal: Scalar = tmp[k, c]
           tmp[k, c] = tmp[pivRow, c]
           tmp[pivRow, c] = swapVal
-      pivot: float64 = tmp[k, k]
+      pivot: Scalar = tmp[k, k]
       prod *= pivot
       for r in inlineRange(k + 1, 5):
-        factor: float64 = tmp[r, k] / pivot
+        factor: Scalar = tmp[r, k] / pivot
         tmp[r, k] = 0.0
         for c in inlineRange(k + 1, 5):
           tmp[r, c] -= factor * tmp[k, c]
@@ -431,7 +432,7 @@ class ColorMatrix:
 
   @immutable
   def _invGauss(self) -> Self:
-    tmp: float64[:5, :10] = new()
+    tmp: Scalar[:5, :10] = new()
     for i in inlineRange(5):
       for j in inlineRange(5):
         tmp[i, j] = self.unsafeGet(i, j)
@@ -439,23 +440,23 @@ class ColorMatrix:
       tmp[i, i + 5] = 1.0
     for k in inlineRange(5):
       pivRow: int = k
-      pivVal: float64 = fabs(tmp[k, k])
+      pivVal: Scalar = fabs(tmp[k, k])
       for r in inlineRange(k + 1, 5):
-        v: float64 = fabs(tmp[r, k])
+        v: Scalar = fabs(tmp[r, k])
         if v > pivVal:
           pivVal = v
           pivRow = r
       if pivRow != k:
         for c in inlineRange(10):
-          swapVal: float64 = tmp[k, c]
+          swapVal: Scalar = tmp[k, c]
           tmp[k, c] = tmp[pivRow, c]
           tmp[pivRow, c] = swapVal
-      pivot: float64 = tmp[k, k]
+      pivot: Scalar = tmp[k, k]
       for c in inlineRange(10):
         tmp[k, c] /= pivot
       for r in inlineRange(5):
         if r != k:
-          factor: float64 = tmp[r, k]
+          factor: Scalar = tmp[r, k]
           for c in inlineRange(10):
             tmp[r, c] -= factor * tmp[k, c]
     result: Self = new(False)
@@ -470,33 +471,33 @@ class ColorMatrix:
     return self._invGauss()
 
   @immutable
-  def apply(self, color: Color) -> Color:
+  def apply(self, color: Color[Scalar]) -> Color[Scalar]:
     """``outI = sum_j M[i,j]*c_j + M[i,4]``（``c_4=1``），结果分量再钳制。"""
-    out: float64[:4] = new()
+    out: Scalar[:4] = new()
     for i in inlineRange(4):
-      acc: float64 = self.unsafeGet(i, 4)
+      acc: Scalar = self.unsafeGet(i, 4)
       for j in inlineRange(4):
         acc += self.unsafeGet(i, j) * color[j]
       out[i] = acc
     return new(out[0], out[1], out[2], out[3])
 
   @immutable
-  def dot(self, other: Self) -> float64:
-    acc: float64 = 0.0
+  def dot(self, other: Self) -> Scalar:
+    acc: Scalar = 0.0
     for i in inlineRange(5):
       for j in inlineRange(5):
         acc += self.unsafeGet(i, j) * other.unsafeGet(i, j)
     return acc
 
   @immutable
-  def _froNorm(self) -> float64:
+  def _froNorm(self) -> Scalar:
     return safeSqrt(self.dot(self))
 
   @immutable
   def _expTaylor(self, terms: int) -> Self:
     result: Self = new.identity
     term: Self = new.identity
-    k: float64 = 1.0
+    k: Scalar = 1.0
     for _ in range(terms):
       term @= self
       term /= k
@@ -512,7 +513,7 @@ class ColorMatrix:
     power: Self = x
     k: int = 1
     for _ in range(terms):
-      invK: float64 = 1.0 / k
+      invK: Scalar = 1.0 / k
       if k % 2 == 1:
         result += power * invK
       else:
@@ -539,7 +540,7 @@ class ColorMatrix:
   @immutable
   def sqrt(self) -> Self:
     m: Self = new.identity
-    half: float64 = 0.5
+    half: Scalar = 0.5
     for _ in inlineRange(16):
       invM: Self = m.inv
       avg: Self = m + self @ invM
@@ -551,7 +552,7 @@ class ColorMatrix:
 
   @immutable
   def exp(self) -> Self:
-    thresh: float64 = 0.5
+    thresh: Scalar = 0.5
     taylorTerms: int = 12
     maxScale: int = 32
     a: Self = self
@@ -568,7 +569,7 @@ class ColorMatrix:
 
   @immutable
   def log(self) -> Self:
-    thresh: float64 = 0.25
+    thresh: Scalar = 0.25
     taylorTerms: int = 12
     maxScale: int = 32
     a: Self = self
@@ -581,7 +582,7 @@ class ColorMatrix:
       a = a.sqrt()
       s += 1
     logA: Self = a._logTaylor(taylorTerms)
-    scale: float64 = 1.0
+    scale: Scalar = 1.0
     for _ in range(s):
       scale += scale
     return logA * scale
@@ -630,7 +631,7 @@ class ColorMatrix:
 
   @overload
   @immutable
-  def __mul__(self, other: float64) -> Self:
+  def __mul__(self, other: Scalar) -> Self:
     out: Self = new(False)
     for i in inlineRange(5):
       for j in inlineRange(5):
@@ -644,11 +645,11 @@ class ColorMatrix:
 
   @overload
   @immutable
-  def __rmul__(self, other: float64) -> Self:
+  def __rmul__(self, other: Scalar) -> Self:
     return self * other
 
   @overload
-  def __imul__(self, other: float64) -> Self:
+  def __imul__(self, other: Scalar) -> Self:
     for i in inlineRange(5):
       for j in inlineRange(5):
         self.unsafeSet(i, j, self.unsafeGet(i, j) * other)
@@ -665,7 +666,7 @@ class ColorMatrix:
     out: Self = new(False)
     for i in inlineRange(5):
       for j in inlineRange(5):
-        acc: float64 = 0.0
+        acc: Scalar = 0.0
         for k in inlineRange(5):
           acc += self.unsafeGet(i, k) * other.unsafeGet(k, j)
         out.unsafeSet(i, j, acc)
@@ -678,8 +679,8 @@ class ColorMatrix:
 
   @overload
   @immutable
-  def __truediv__(self, other: float64) -> Self:
-    s: float64 = 1.0 / other
+  def __truediv__(self, other: Scalar) -> Self:
+    s: Scalar = 1.0 / other
     return self * s
 
   @overload
@@ -688,8 +689,8 @@ class ColorMatrix:
     return self @ other.inv
 
   @overload
-  def __itruediv__(self, other: float64) -> Self:
-    s: float64 = 1.0 / other
+  def __itruediv__(self, other: Scalar) -> Self:
+    s: Scalar = 1.0 / other
     self *= s
     return self
 
@@ -704,11 +705,11 @@ class ColorMatrix:
     return self.inv
 
   @immutable
-  def __abs__(self) -> float64:
+  def __abs__(self) -> Scalar:
     return self.det
 
   @immutable
-  def __pow__(self, exponent: float64) -> Self:
+  def __pow__(self, exponent: Scalar) -> Self:
     if almost(exponent, 0.0):
       return new.identity
     if almost(exponent, 1.0):
@@ -717,12 +718,12 @@ class ColorMatrix:
       return self.inv
     if almost(exponent, 0.5):
       return self.sqrt()
-    n: float64 = floor(exponent)
+    n: Scalar = floor(exponent)
     if almost(exponent, n):
       return self.ipow(int(n))
     return (self.log() * exponent).exp()
 
-  def __ipow__(self, exponent: float64) -> Self:
+  def __ipow__(self, exponent: Scalar) -> Self:
     m: Self = self ** exponent
     self._copyFrom(m)
     return self
@@ -732,9 +733,9 @@ class ColorMatrix:
   def grayscale() -> Self:
     """亮度灰度（ITU-R BT.601 近似）。"""
     m: Self = new(False)
-    wr: float64 = 0.299
-    wg: float64 = 0.587
-    wb: float64 = 0.114
+    wr: Scalar = 0.299
+    wg: Scalar = 0.587
+    wb: Scalar = 0.114
     for i in inlineRange(3):
       m.unsafeSet(i, 0, wr)
       m.unsafeSet(i, 1, wg)

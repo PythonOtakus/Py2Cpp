@@ -421,7 +421,10 @@ class _MixinTypeParamSubstituter(ast.NodeTransformer):
   def visit_Name(self, node: ast.Name) -> ast.expr:
     repl = self._subst.get(node.id)
     if repl is not None:
-      return ast.Name(id=repl, ctx=node.ctx)
+      if repl.isidentifier():
+        return ast.copy_location(ast.Name(id=repl, ctx=node.ctx), node)
+      parsed = ast.parse(repl, mode="eval").body
+      return ast.copy_location(parsed, node)
     return self.generic_visit(node)
 
 

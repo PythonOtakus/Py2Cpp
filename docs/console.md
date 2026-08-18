@@ -144,7 +144,7 @@ args: BuildArgs = new.parse()
 
 同一字段至多出现一个参数类别 Meta。`OptArgMeta.short` 必须形如 `-x` 且在同一 parser 内唯一；派生长选项也必须唯一。`choices` 是固定 tuple 元数据，而非可变 list。
 
-`parse()` 与 `@staticproperty helpText` 写在 mixin 内，用 `Self.iterFields`、`Self.getFieldAnnotation[*ArgMeta](field)`、`Self.getFieldType(field)` 与 `Self.getFieldDefault(field)` 译期展开；不由 pass 按字段生成方法体。读取帮助写 `BuildArgs.helpText`（勿 `helpText()`）；同类赋值处写 `new.helpText`。`FlagArgMeta` 标在非 `bool`、`OptArgMeta` 标在 `bool`、位置参数带默认值、选项冲突、或未继承 mixin 等情形均应为严格翻译错误，而非运行时错误。
+`parse()` 与 `@staticproperty helpText` 写在 mixin 内，用 `Self.iterFields`、`Self.getFieldAnnotation[*ArgMeta](field)`、`Self.getFieldType(field)` 与 `Self.getFieldDefault(field)` 译期展开；不由 pass 按字段生成方法体。读取帮助写 `BuildArgs.helpText`（勿 `helpText()`）；类内赋值类型为 `str` 时写 `Self.helpText`（`new` 指赋值左侧类型，勿 `new.helpText`）。`FlagArgMeta` 标在非 `bool`、`OptArgMeta` 标在 `bool`、位置参数带默认值、选项冲突、或未继承 mixin 等情形均应为严格翻译错误，而非运行时错误。
 
 ### 4.2 首版行为与限制
 

@@ -1,6 +1,7 @@
 """函数调用表达式 emit（自 ``translator.py`` 拆出）。"""
 from __future__ import annotations
 import ast
+import copy
 from typing import TYPE_CHECKING
 from ..analysis.imports import binding_cpp_name, resolve_class_ref_cpp, resolve_ctor_cpp_type, resolve_import_attribute_chain
 from ..analysis.type_pred import is_array_type, is_concrete_coroutine_type, is_invokable_type, is_iter_result_type, is_py_coroutine_type, is_py_generator_type, is_refcount_type, is_stack_array_type, is_bytes_type, is_char_type, is_delegate_type, is_str_type
@@ -720,7 +721,7 @@ def try_emit_new_staticproperty_ref(tr: 'Translator', node: ast.Attribute, *, fi
             info_ctx = tr._active_class_info()
             if info_ctx is None:
                 return None
-            cpp_type = info_ctx.storage_cpp_type()
+            cpp_type = info_ctx.template_cpp_type() if info_ctx.type_params else info_ctx.storage_cpp_type()
         else:
             cpp_type = tr._parse_storage_type(ann, tr._active_type_params())
     if not cpp_type:
@@ -728,6 +729,14 @@ def try_emit_new_staticproperty_ref(tr: 'Translator', node: ast.Attribute, *, fi
     info = tr._class_info_for_type(cpp_type)
     if info is None or attr not in info.static_properties:
         return None
+    if info.type_params:
+        from ..analysis.ir import cpp_template_base_and_args
+        parsed = cpp_template_base_and_args(ClassInfo.unwrap_refcount_type(strip_cpp_ref(cpp_type)))
+        if parsed is not None:
+            _base, args = parsed
+            getter = tr._property_getter_cpp_name(info, attr)
+            qbase = qualify_symbol_in_module(info.module_path, info.cpp_name())
+            return f'{qbase}<{", ".join(args)}>::{getter}()'
     return tr._static_property_read(info.name, attr)
 
 def _coroutine_class_name_for_call(tr: 'Translator', func_name: str) -> str | None:
@@ -854,7 +863,11 @@ def emit_class_static_method_call(tr: 'Translator', info: ClassInfo, method: str
     type_arg = ''
     if info.type_params:
         if slice_node is None:
-            return None
+            defaults = info.type_param_defaults
+            if not defaults or len(defaults) != len(info.type_params):
+                return None
+            args = [copy.deepcopy(defaults[p]) for p in info.type_params]
+            slice_node = args[0] if len(args) == 1 else ast.Tuple(elts=args, ctx=ast.Load())
         type_arg = tr._parse_type_args(slice_node, tr._active_type_params())
         if not type_arg:
             return None
@@ -901,7 +914,14 @@ def try_emit_new_receiver_static_call(tr: Translator, node: ast.Call) -> str | N
         case _:
             raise NotImplementedError('new.方法(...) 的类型上下文须为具体类或 ``Cls[T]`` 注解')
     context_cpp = tr._parse_storage_type(ann, tr._active_type_params())
-    if cls_name == 'Self':
+    self_context = cls_name == 'Self'
+    if cls_name in tr._active_type_params():
+        mcpp = tr._attr_cpp_name(ast.Name(id=cls_name, ctx=ast.Load()), method)
+        arg_str = emit_call_args(tr, node, param_cpp_types=call_param_cpp_types(tr, node.func, call=node))
+        if arg_str:
+            return f'{cls_name}::{mcpp}({arg_str})'
+        return f'{cls_name}::{mcpp}()'
+    if self_context:
         info = tr._active_class_info()
         if info is None:
             raise NotImplementedError(f'new.{method}(...) 的 ``Self`` 须处于类方法体内')
@@ -920,6 +940,9 @@ def try_emit_new_receiver_static_call(tr: Translator, node: ast.Call) -> str | N
         if out is not None:
             return out
         raise NotImplementedError(f'new.{method}(...) 须对应 {cls_name} 的 ``@union`` 变体')
+    if self_context and slice_node is None and info.type_params:
+        args = [ast.Name(id=p, ctx=ast.Load()) for p in info.type_params]
+        slice_node = args[0] if len(args) == 1 else ast.Tuple(elts=args, ctx=ast.Load())
     out = emit_class_static_method_call(tr, info, method, slice_node, node)
     if out is None:
         raise NotImplementedError(f'new.{method}(...) 须对应 {cls_name} 的 ``@staticmethod`` 方法或 ``@union`` 变体')

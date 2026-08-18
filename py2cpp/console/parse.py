@@ -225,7 +225,7 @@ class ArgumentParserMixin:
   def parse(argv: list[str] | None = None) -> Self:
     result: Self = new._initResult()
     args: list[str] = ArgParserIO.resolveArgv(argv)
-    usage: str = new.helpText
+    usage: str = Self.helpText
     n: int = len(args)
     posN: int = Self._countPos()
     posI: int = 0

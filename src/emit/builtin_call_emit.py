@@ -14,6 +14,19 @@ from ..analysis.runtime_symbols import runtime_make_range_expr
 if TYPE_CHECKING:
     from ..translator import Translator
 
+def _default_type_args_cpp(info) -> str | None:
+    defaults = info.type_param_defaults
+    if not defaults or len(defaults) != len(info.type_params):
+        return None
+    args: list[str] = []
+    for p in info.type_params:
+        dv = defaults.get(p)
+        if isinstance(dv, ast.Name):
+            args.append(cpp_ident(dv.id))
+        else:
+            return None
+    return ', '.join(args)
+
 def emit_user_ctor(tr: Translator, name: str, args: str) -> str:
     if name == 'range':
         return runtime_make_range_expr(args)
@@ -26,7 +39,11 @@ def emit_user_ctor(tr: Translator, name: str, args: str) -> str:
     if rc is not None:
         return f'makeRefCount<{info.cpp_name()}>({args})'
     if info.is_template() and info.type_params:
-        cpp = tr.class_info.cpp_specialization() if tr.class_info and info.name == tr.class_info.name else info.cpp_specialization()
+        if tr.class_info and info.name == tr.class_info.name:
+            cpp = tr.class_info.cpp_specialization()
+        else:
+            default_args = _default_type_args_cpp(info)
+            cpp = f'{info.cpp_name()}<{default_args}>' if default_args is not None else info.cpp_specialization()
         if info.module_path != RUNTIME_PKG and tr._is_stdlib_module(info.module_path):
             base, _, tail = cpp.partition('<')
             q = qualify_symbol_in_module(info.module_path, base)

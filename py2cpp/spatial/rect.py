@@ -2,26 +2,27 @@
 from __future__ import annotations
 
 from ..builtins import *
+from ..numeric.protocols import RealType
 from ..math import almost
 from .matrix import Matrix3
 from .vector import Vector2
 
 
 @copyable
-class Rect:
+class Rect[Scalar: RealType = float]:
   """2D 轴对齐矩形 ``(x, y, width, height)``。"""
 
   def __init__(
     self,
-    x: float64 = 0.0,
-    y: float64 = 0.0,
-    width: float64 = 0.0,
-    height: float64 = 0.0,
+    x: Scalar = 0.0,
+    y: Scalar = 0.0,
+    width: Scalar = 0.0,
+    height: Scalar = 0.0,
   ):
-    self._x: float64 = x
-    self._y: float64 = y
-    self._width: float64 = width
-    self._height: float64 = height
+    self._x: Scalar = x
+    self._y: Scalar = y
+    self._width: Scalar = width
+    self._height: Scalar = height
 
   def _copyFrom(self, src: Self) -> None:
     self._x = src._x
@@ -31,118 +32,118 @@ class Rect:
 
   @staticmethod
   @immutable
-  def fromPosSize(pos: Vector2, size: Vector2) -> Self:
+  def fromPosSize(pos: Vector2[Scalar], size: Vector2[Scalar]) -> Self:
     return new(pos.x, pos.y, size.x, size.y)
 
   @staticmethod
   @immutable
-  def fromMinMax(posMin: Vector2, posMax: Vector2) -> Self:
+  def fromMinMax(posMin: Vector2[Scalar], posMax: Vector2[Scalar]) -> Self:
     return new(posMin.x, posMin.y, posMax.x - posMin.x, posMax.y - posMin.y)
 
   @property
   @immutable
-  def x(self) -> float64:
+  def x(self) -> Scalar:
     return self._x
 
   @property.setter
-  def x(self, value: float64) -> None:
+  def x(self, value: Scalar) -> None:
     self._x = value
 
   @property
   @immutable
-  def y(self) -> float64:
+  def y(self) -> Scalar:
     return self._y
 
   @property.setter
-  def y(self, value: float64) -> None:
+  def y(self, value: Scalar) -> None:
     self._y = value
 
   @property
   @immutable
-  def width(self) -> float64:
+  def width(self) -> Scalar:
     return self._width
 
   @property.setter
-  def width(self, value: float64) -> None:
+  def width(self, value: Scalar) -> None:
     self._width = value
 
   @property
   @immutable
-  def height(self) -> float64:
+  def height(self) -> Scalar:
     return self._height
 
   @property.setter
-  def height(self, value: float64) -> None:
+  def height(self, value: Scalar) -> None:
     self._height = value
 
   @property
   @immutable
-  def pos(self) -> Vector2:
+  def pos(self) -> Vector2[Scalar]:
     return new(self._x, self._y)
 
   @property.setter
-  def pos(self, value: Vector2) -> None:
+  def pos(self, value: Vector2[Scalar]) -> None:
     self._x = value.x
     self._y = value.y
 
   @property
   @immutable
-  def size(self) -> Vector2:
+  def size(self) -> Vector2[Scalar]:
     return new(self._width, self._height)
 
   @property.setter
-  def size(self, value: Vector2) -> None:
+  def size(self, value: Vector2[Scalar]) -> None:
     self._width = value.x
     self._height = value.y
 
   @property
   @immutable
-  def xMin(self) -> float64:
+  def xMin(self) -> Scalar:
     if self._width < 0.0:
       return self._x + self._width
     return self._x
 
   @property
   @immutable
-  def yMin(self) -> float64:
+  def yMin(self) -> Scalar:
     if self._height < 0.0:
       return self._y + self._height
     return self._y
 
   @property
   @immutable
-  def xMax(self) -> float64:
+  def xMax(self) -> Scalar:
     if self._width < 0.0:
       return self._x
     return self._x + self._width
 
   @property
   @immutable
-  def yMax(self) -> float64:
+  def yMax(self) -> Scalar:
     if self._height < 0.0:
       return self._y
     return self._y + self._height
 
   @property
   @immutable
-  def posMin(self) -> Vector2:
+  def posMin(self) -> Vector2[Scalar]:
     return new(self.xMin, self.yMin)
 
   @property
   @immutable
-  def posMax(self) -> Vector2:
+  def posMax(self) -> Vector2[Scalar]:
     return new(self.xMax, self.yMax)
 
   @property
   @immutable
-  def center(self) -> Vector2:
+  def center(self) -> Vector2[Scalar]:
     return new(
       (self.xMin + self.xMax) * 0.5,
       (self.yMin + self.yMax) * 0.5,
     )
 
   @property.setter
-  def center(self, value: Vector2) -> None:
+  def center(self, value: Vector2[Scalar]) -> None:
     self.correct()
     self._x = value.x - self._width * 0.5
     self._y = value.y - self._height * 0.5
@@ -174,22 +175,22 @@ class Rect:
     out.correct()
     return out
 
-  def move(self, delta: Vector2) -> None:
+  def move(self, delta: Vector2[Scalar]) -> None:
     self._x += delta.x
     self._y += delta.y
 
   @immutable
-  def moved(self, delta: Vector2) -> Self:
+  def moved(self, delta: Vector2[Scalar]) -> Self:
     return new(self._x + delta.x, self._y + delta.y, self._width, self._height)
 
-  def expand(self, delta: Vector2) -> None:
+  def expand(self, delta: Vector2[Scalar]) -> None:
     self._x -= delta.x
     self._y -= delta.y
     self._width += delta.x * 2.0
     self._height += delta.y * 2.0
 
   @immutable
-  def expanded(self, delta: Vector2) -> Self:
+  def expanded(self, delta: Vector2[Scalar]) -> Self:
     return new(
       self._x - delta.x,
       self._y - delta.y,
@@ -198,7 +199,7 @@ class Rect:
     )
 
   @immutable
-  def contains(self, point: Vector2) -> bool:
+  def contains(self, point: Vector2[Scalar]) -> bool:
     return (
       self.xMin <= point.x
       and point.x <= self.xMax
@@ -207,7 +208,7 @@ class Rect:
     )
 
   @immutable
-  def __contains__(self, point: Vector2) -> bool:
+  def __contains__(self, point: Vector2[Scalar]) -> bool:
     return self.contains(point)
 
   @immutable
@@ -232,16 +233,16 @@ class Rect:
   def intersect(self, other: Self) -> Self:
     if not self.overlaps(other):
       return new()
-    x0: float64 = self.xMin
+    x0: Scalar = self.xMin
     if other.xMin > x0:
       x0 = other.xMin
-    y0: float64 = self.yMin
+    y0: Scalar = self.yMin
     if other.yMin > y0:
       y0 = other.yMin
-    x1: float64 = self.xMax
+    x1: Scalar = self.xMax
     if other.xMax < x1:
       x1 = other.xMax
-    y1: float64 = self.yMax
+    y1: Scalar = self.yMax
     if other.yMax < y1:
       y1 = other.yMax
     return new(x0, y0, x1 - x0, y1 - y0)
@@ -254,16 +255,16 @@ class Rect:
       return new(b._x, b._y, b._width, b._height)
     if not b:
       return new(a._x, a._y, a._width, a._height)
-    x0: float64 = a.xMin
+    x0: Scalar = a.xMin
     if b.xMin < x0:
       x0 = b.xMin
-    y0: float64 = a.yMin
+    y0: Scalar = a.yMin
     if b.yMin < y0:
       y0 = b.yMin
-    x1: float64 = a.xMax
+    x1: Scalar = a.xMax
     if b.xMax > x1:
       x1 = b.xMax
-    y1: float64 = a.yMax
+    y1: Scalar = a.yMax
     if b.yMax > y1:
       y1 = b.yMax
     return new(x0, y0, x1 - x0, y1 - y0)
@@ -285,20 +286,20 @@ class Rect:
     return self
 
   @immutable
-  def applyMatrix(self, matrix: Matrix3) -> Self:
+  def applyMatrix(self, matrix: Matrix3[Scalar]) -> Self:
     """变换四角后取 AABB 外包。"""
-    p0: Vector2 = new(self.xMin, self.yMin)
-    p1: Vector2 = new(self.xMax, self.yMin)
-    p2: Vector2 = new(self.xMin, self.yMax)
-    p3: Vector2 = new(self.xMax, self.yMax)
-    c0: Vector2 = matrix.applyToPoint(p0)
-    c1: Vector2 = matrix.applyToPoint(p1)
-    c2: Vector2 = matrix.applyToPoint(p2)
-    c3: Vector2 = matrix.applyToPoint(p3)
-    minX: float64 = c0.x
-    maxX: float64 = c0.x
-    minY: float64 = c0.y
-    maxY: float64 = c0.y
+    p0: Vector2[Scalar] = new(self.xMin, self.yMin)
+    p1: Vector2[Scalar] = new(self.xMax, self.yMin)
+    p2: Vector2[Scalar] = new(self.xMin, self.yMax)
+    p3: Vector2[Scalar] = new(self.xMax, self.yMax)
+    c0: Vector2[Scalar] = matrix.applyToPoint(p0)
+    c1: Vector2[Scalar] = matrix.applyToPoint(p1)
+    c2: Vector2[Scalar] = matrix.applyToPoint(p2)
+    c3: Vector2[Scalar] = matrix.applyToPoint(p3)
+    minX: Scalar = c0.x
+    maxX: Scalar = c0.x
+    minY: Scalar = c0.y
+    maxY: Scalar = c0.y
     if c1.x < minX:
       minX = c1.x
     if c1.x > maxX:

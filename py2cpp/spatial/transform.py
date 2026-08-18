@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from ..builtins import *
 from ..core.exceptions import ValueError
+from ..numeric.protocols import RealType
 from ..weak.ref import WeakRef
 from .matrix import Matrix3, Matrix4
 from .rotator import Quaternion, Rotator
@@ -197,7 +198,9 @@ class TransformMixin[Vec, Rot, Mat]:
 
 
 @refcount
-class Transform2D(TransformMixin[Vector2, Rotator, Matrix3]):
+class Transform2D[Scalar: RealType = float](
+  TransformMixin[Vector2[Scalar], Rotator[Scalar], Matrix3[Scalar]],
+):
   """2D 变换节点：局部 TRS + 父子层级（父引用 ``WeakRef``，子列表强引用）。"""
 
   def __repr__(self) -> str:
@@ -205,80 +208,82 @@ class Transform2D(TransformMixin[Vector2, Rotator, Matrix3]):
 
   @property
   @immutable
-  def localPosition(self) -> Vector2:
+  def localPosition(self) -> Vector2[Scalar]:
     return new(self._localPosition.x, self._localPosition.y)
 
   @property.setter
-  def localPosition(self, value: Vector2) -> None:
+  def localPosition(self, value: Vector2[Scalar]) -> None:
     self._localPosition.x = value.x
     self._localPosition.y = value.y
 
   @property
   @immutable
-  def localRotation(self) -> Rotator:
+  def localRotation(self) -> Rotator[Scalar]:
     return new(self._localRotation.w, self._localRotation.z)
 
   @property.setter
-  def localRotation(self, value: Rotator) -> None:
+  def localRotation(self, value: Rotator[Scalar]) -> None:
     self._localRotation.w = value.w
     self._localRotation.z = value.z
   @property
   @immutable
-  def localAngle(self) -> float64:
+  def localAngle(self) -> Scalar:
     return self._localRotation.toAngle()
 
   @property.setter
-  def localAngle(self, value: float64) -> None:
-    r: Rotator = new.fromAngle(value)
+  def localAngle(self, value: Scalar) -> None:
+    r: Rotator[Scalar] = new.fromAngle(value)
     self._localRotation.w = r.w
     self._localRotation.z = r.z
 
   @property
   @immutable
-  def localScale(self) -> Vector2:
+  def localScale(self) -> Vector2[Scalar]:
     return new(self._localScale.x, self._localScale.y)
 
   @property.setter
-  def localScale(self, value: Vector2) -> None:
+  def localScale(self, value: Vector2[Scalar]) -> None:
     self._localScale.x = value.x
     self._localScale.y = value.y
 
   @property
   @immutable
-  def angle(self) -> float64:
-    rot: Rotator = self.rotation
+  def angle(self) -> Scalar:
+    rot: Rotator[Scalar] = self.rotation
     return rot.toAngle()
 
   @property.setter
-  def angle(self, value: float64) -> None:
+  def angle(self, value: Scalar) -> None:
     self.rotation = new.fromAngle(value)
 
   @property
   @immutable
-  def right(self) -> Vector2:
-    return self.localToWorldVector(Vector2.right)
+  def right(self) -> Vector2[Scalar]:
+    return self.localToWorldVector(Vector2[Scalar].right)
 
   @property
   @immutable
-  def down(self) -> Vector2:
-    return self.localToWorldVector(Vector2.down)
+  def down(self) -> Vector2[Scalar]:
+    return self.localToWorldVector(Vector2[Scalar].down)
 
-  def rotate(self, angle: float64) -> None:
-    delta: Rotator = new.fromAngle(angle)
+  def rotate(self, angle: Scalar) -> None:
+    delta: Rotator[Scalar] = new.fromAngle(angle)
     self.rotation = delta @ self.rotation
 
-  def rotateAround(self, center: Vector2, angle: float64) -> None:
-    pos: Vector2 = self.position
+  def rotateAround(self, center: Vector2[Scalar], angle: Scalar) -> None:
+    pos: Vector2[Scalar] = self.position
     self.position = pos.rotatedAround(center, angle)
-    delta: Rotator = new.fromAngle(angle)
+    delta: Rotator[Scalar] = new.fromAngle(angle)
     self.rotation = delta @ self.rotation
 
-  def lookAt(self, target: Vector2) -> None:
+  def lookAt(self, target: Vector2[Scalar]) -> None:
     self.rotation = new.lookAt(target - self.position)
 
 
 @refcount
-class Transform3D(TransformMixin[Vector3, Quaternion, Matrix4]):
+class Transform3D[Scalar: RealType = float](
+  TransformMixin[Vector3[Scalar], Quaternion[Scalar], Matrix4[Scalar]],
+):
   """3D 变换节点：局部 TRS + 父子层级（父引用 ``WeakRef``，子列表强引用）。"""
 
   def __repr__(self) -> str:
@@ -286,18 +291,18 @@ class Transform3D(TransformMixin[Vector3, Quaternion, Matrix4]):
 
   @property
   @immutable
-  def localPosition(self) -> Vector3:
+  def localPosition(self) -> Vector3[Scalar]:
     return new(self._localPosition.x, self._localPosition.y, self._localPosition.z)
 
   @property.setter
-  def localPosition(self, value: Vector3) -> None:
+  def localPosition(self, value: Vector3[Scalar]) -> None:
     self._localPosition.x = value.x
     self._localPosition.y = value.y
     self._localPosition.z = value.z
 
   @property
   @immutable
-  def localRotation(self) -> Quaternion:
+  def localRotation(self) -> Quaternion[Scalar]:
     return new(
       self._localRotation.w,
       self._localRotation.x,
@@ -306,19 +311,19 @@ class Transform3D(TransformMixin[Vector3, Quaternion, Matrix4]):
     )
 
   @property.setter
-  def localRotation(self, value: Quaternion) -> None:
+  def localRotation(self, value: Quaternion[Scalar]) -> None:
     self._localRotation.w = value.w
     self._localRotation.x = value.x
     self._localRotation.y = value.y
     self._localRotation.z = value.z
   @property
   @immutable
-  def localEulerAngles(self) -> Vector3:
+  def localEulerAngles(self) -> Vector3[Scalar]:
     return self._localRotation.toEulerAngles()
 
   @property.setter
-  def localEulerAngles(self, value: Vector3) -> None:
-    q: Quaternion = new.fromEulerAngles(value)
+  def localEulerAngles(self, value: Vector3[Scalar]) -> None:
+    q: Quaternion[Scalar] = new.fromEulerAngles(value)
     self._localRotation.w = q.w
     self._localRotation.x = q.x
     self._localRotation.y = q.y
@@ -326,49 +331,49 @@ class Transform3D(TransformMixin[Vector3, Quaternion, Matrix4]):
 
   @property
   @immutable
-  def localScale(self) -> Vector3:
+  def localScale(self) -> Vector3[Scalar]:
     return new(self._localScale.x, self._localScale.y, self._localScale.z)
 
   @property.setter
-  def localScale(self, value: Vector3) -> None:
+  def localScale(self, value: Vector3[Scalar]) -> None:
     self._localScale.x = value.x
     self._localScale.y = value.y
     self._localScale.z = value.z
 
   @property
   @immutable
-  def eulerAngles(self) -> Vector3:
-    rot: Quaternion = self.rotation
+  def eulerAngles(self) -> Vector3[Scalar]:
+    rot: Quaternion[Scalar] = self.rotation
     return rot.toEulerAngles()
 
   @property.setter
-  def eulerAngles(self, value: Vector3) -> None:
+  def eulerAngles(self, value: Vector3[Scalar]) -> None:
     self.rotation = new.fromEulerAngles(value)
 
   @property
   @immutable
-  def right(self) -> Vector3:
-    return self.localToWorldVector(Vector3.right)
+  def right(self) -> Vector3[Scalar]:
+    return self.localToWorldVector(Vector3[Scalar].right)
 
   @property
   @immutable
-  def down(self) -> Vector3:
-    return self.localToWorldVector(Vector3.down)
+  def down(self) -> Vector3[Scalar]:
+    return self.localToWorldVector(Vector3[Scalar].down)
 
   @property
   @immutable
-  def forward(self) -> Vector3:
-    return self.localToWorldVector(Vector3.forward)
+  def forward(self) -> Vector3[Scalar]:
+    return self.localToWorldVector(Vector3[Scalar].forward)
 
-  def rotate(self, axis: Vector3, angle: float64) -> None:
-    delta: Quaternion = new.fromAxisAngle(axis, angle)
+  def rotate(self, axis: Vector3[Scalar], angle: Scalar) -> None:
+    delta: Quaternion[Scalar] = new.fromAxisAngle(axis, angle)
     self.rotation = delta @ self.rotation
 
-  def rotateAround(self, center: Vector3, axis: Vector3, angle: float64) -> None:
-    pos: Vector3 = self.position
+  def rotateAround(self, center: Vector3[Scalar], axis: Vector3[Scalar], angle: Scalar) -> None:
+    pos: Vector3[Scalar] = self.position
     self.position = pos.rotatedAround(center, axis, angle)
-    delta: Quaternion = new.fromAxisAngle(axis, angle)
+    delta: Quaternion[Scalar] = new.fromAxisAngle(axis, angle)
     self.rotation = delta @ self.rotation
 
-  def lookAt(self, target: Vector3) -> None:
+  def lookAt(self, target: Vector3[Scalar]) -> None:
     self.rotation = new.lookAt(target - self.position)

@@ -25,6 +25,7 @@
 """
 from __future__ import annotations
 import ast
+import copy
 from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
 from datetime import datetime
@@ -1644,7 +1645,7 @@ class Translator(ast.NodeVisitor):
                 from .analysis.type_extract import refcount_inner_type
                 inner = refcount_inner_type(tgt)
                 cn = self.class_info.cpp_name()
-                if inner and (inner == cn or inner.endswith(f'::{cn}')):
+                if inner and (inner == cn or inner.endswith(f'::{cn}') or inner.startswith(f'{cn}<') or f'::{cn}<' in inner):
                     return f'{strip_cpp_ref(tgt)}::from_object(this)'
         if rhs_node is not None:
             rhs_t = strip_cpp_ref(self._infer_expr_cpp_type(rhs_node) or '')
@@ -2393,6 +2394,80 @@ class Translator(ast.NodeVisitor):
         for line in reversed(insert):
             target.insert(i, line)
 
+    def _cpp_type_arg_annotation(self, cpp_type: str) -> ast.expr:
+        from .analysis.ir import cpp_template_base_and_args
+        t = strip_cpp_type_qualifiers(strip_cpp_ref(cpp_type)).strip()
+        prim = {
+            cpp_ident('int'): 'int',
+            cpp_ident('int64'): 'int64',
+            cpp_ident('uint'): 'uint',
+            cpp_ident('uint64'): 'uint64',
+            cpp_ident('uintptr'): 'uintptr',
+            cpp_ident('float'): 'float',
+            cpp_ident('float64'): 'float64',
+            cpp_ident('bool'): 'bool',
+            cpp_ident('str'): 'str',
+            cpp_ident('bytes'): 'bytes',
+            cpp_ident('char'): 'char',
+            cpp_ident('byte'): 'byte',
+        }
+        if t in prim:
+            return ast.Name(id=prim[t], ctx=ast.Load())
+        parsed = cpp_template_base_and_args(t)
+        if parsed is not None:
+            base, args = parsed
+            base_name = base.rsplit('::', 1)[-1]
+            info = self._lookup_class_by_cpp_or_py_name(base_name)
+            name = info.name if info is not None else base_name
+            arg_nodes = [self._cpp_type_arg_annotation(a) for a in args]
+            sl: ast.expr = arg_nodes[0] if len(arg_nodes) == 1 else ast.Tuple(elts=arg_nodes, ctx=ast.Load())
+            return ast.Subscript(value=ast.Name(id=name, ctx=ast.Load()), slice=sl, ctx=ast.Load())
+        base_name = t.rsplit('::', 1)[-1]
+        info = self._lookup_class_by_cpp_or_py_name(base_name)
+        return ast.Name(id=info.name if info is not None else base_name, ctx=ast.Load())
+
+    def _self_annotation_for_receiver(self, info: ClassInfo, receiver: ast.expr) -> ast.expr:
+        recv_t = self._infer_expr_cpp_type(receiver)
+        if recv_t:
+            recv_t = ClassInfo.unwrap_refcount_type(strip_cpp_ref(recv_t))
+            return self._cpp_type_arg_annotation(recv_t)
+        if info.type_params and info.type_param_defaults:
+            args: list[ast.expr] = []
+            for p in info.type_params:
+                dv = info.type_param_defaults.get(p)
+                if dv is None:
+                    return ast.Name(id=info.name, ctx=ast.Load())
+                args.append(copy.deepcopy(dv))
+            sl: ast.expr = args[0] if len(args) == 1 else ast.Tuple(elts=args, ctx=ast.Load())
+            return ast.Subscript(value=ast.Name(id=info.name, ctx=ast.Load()), slice=sl, ctx=ast.Load())
+        return ast.Name(id=info.name, ctx=ast.Load())
+
+    def _specialize_member_annotation(self, ann: ast.expr, info: ClassInfo, receiver: ast.expr) -> ast.expr:
+        from .analysis.ir import cpp_template_base_and_args
+        recv_t = self._infer_expr_cpp_type(receiver)
+        if not recv_t:
+            return copy.deepcopy(ann)
+        recv_t = ClassInfo.unwrap_refcount_type(strip_cpp_ref(recv_t))
+        parsed = cpp_template_base_and_args(recv_t)
+        subst: dict[str, ast.expr] = {}
+        if parsed is not None:
+            base, args = parsed
+            if base == info.cpp_name() or base.endswith(f'::{info.cpp_name()}'):
+                for name, cpp_arg in zip(info.type_params, args):
+                    subst[name] = self._cpp_type_arg_annotation(cpp_arg)
+        self_ann = self._self_annotation_for_receiver(info, receiver)
+
+        class _Subst(ast.NodeTransformer):
+            def visit_Name(self, node: ast.Name) -> ast.expr:
+                if node.id == 'Self':
+                    return copy.deepcopy(self_ann)
+                repl = subst.get(node.id)
+                if repl is not None:
+                    return copy.deepcopy(repl)
+                return node
+
+        return ast.fix_missing_locations(_Subst().visit(copy.deepcopy(ann)))
+
     def _annotation_expr_for_assign_target(self, target: ast.expr) -> ast.expr | None:
         """赋值目标的类型注解 AST（字段/``@property``/静态属性），供 ``new.方法`` 推断。"""
         match target:
@@ -2414,15 +2489,15 @@ class Translator(ast.NodeVisitor):
                     seen.add(cur.name)
                     prop = cur.properties.get(attr)
                     if prop is not None and prop.getter is not None and prop.getter.returns is not None:
-                        ret = prop.getter.returns
+                        ret = self._specialize_member_annotation(prop.getter.returns, cur, val)
                         if isinstance(ret, ast.Name) and ret.id == 'Self':
-                            return ast.Name(id=cur.name, ctx=ast.Load())
+                            return self._self_annotation_for_receiver(cur, val)
                         return ret
                     sp = cur.static_properties.get(attr)
                     if sp is not None and sp.getter is not None and sp.getter.returns is not None:
-                        ret = sp.getter.returns
+                        ret = self._specialize_member_annotation(sp.getter.returns, cur, val)
                         if isinstance(ret, ast.Name) and ret.id == 'Self':
-                            return ast.Name(id=cur.name, ctx=ast.Load())
+                            return self._self_annotation_for_receiver(cur, val)
                         return ret
                     if attr in cur.field_properties or attr in cur.postsetter_properties:
                         storage = storage_field_for(attr)
@@ -2674,7 +2749,7 @@ class Translator(ast.NodeVisitor):
             return self._cpp_getattr_expr(receiver, attr)
         return None
 
-    def _coerce_property_setter_value(self, info: ClassInfo, prop_name: str, value: str, rhs_node: ast.expr | None) -> str:
+    def _coerce_property_setter_value(self, info: ClassInfo, prop_name: str, value: str, rhs_node: ast.expr | None, *, receiver: ast.expr | None=None) -> str:
         prop = info.properties.get(prop_name)
         if prop is None:
             resolved = info.resolve_instance_property(prop_name, self.classes, need_setter=True)
@@ -2685,6 +2760,11 @@ class Translator(ast.NodeVisitor):
         pt = self._msig_param_storage(prop.setter_sig, 'value', fallback='')
         if not pt:
             return value
+        if receiver is not None and info.type_params:
+            from .emit.call_emit import specialize_param_cpp_types_from_context
+            recv_t = self._infer_expr_cpp_type(receiver)
+            if recv_t:
+                pt = specialize_param_cpp_types_from_context(info, [pt], recv_t)[0]
         return self._coerce_expr_to_cpp_type(value, pt, rhs_node=rhs_node)
 
     def _emit_property_set(self, receiver: ast.expr, attr: str, value: str, *, rhs_node: ast.expr | None=None) -> bool:
@@ -2697,7 +2777,7 @@ class Translator(ast.NodeVisitor):
                 owner, prop = resolved
                 recv, sep = self._receiver_access(receiver)
                 setter = self._property_setter_cpp_name(owner, attr)
-                val = self._coerce_property_setter_value(owner, attr, value, rhs_node)
+                val = self._coerce_property_setter_value(owner, attr, value, rhs_node, receiver=receiver)
                 self.write_line(f'{recv}{sep}{setter}({val});')
                 return True
             sp = info.static_properties.get(attr)
@@ -4990,7 +5070,7 @@ class Translator(ast.NodeVisitor):
                     cpp = self.class_info.cpp_member_name(attr)
                     self.write_line(f'{self.class_info.cpp_name()}::{cpp} = {value};')
                 elif self.class_info and attr in self.class_info.properties and (self.class_info.properties[attr].setter or self.class_info.properties[attr].postsetter):
-                    val = self._coerce_property_setter_value(self.class_info, attr, value, rhs_node)
+                    val = self._coerce_property_setter_value(self.class_info, attr, value, rhs_node, receiver=ast.Name(id='self', ctx=ast.Load()))
                     self.write_line(f'this->{self._property_setter_cpp_name(self.class_info, attr)}({val});')
                 else:
                     storage_attr = attr
@@ -5542,7 +5622,7 @@ class Translator(ast.NodeVisitor):
                 if scalar_attr is not None:
                     return scalar_attr
                 if node.value.id == 'new':
-                    from .emit.call_emit import try_emit_new_staticproperty_ref
+                    from .emit.call_emit import try_emit_new_staticproperty_ref, type_context_ann_from_stack
                     for stack_node in reversed(self._ast_node_stack):
                         if isinstance(stack_node, ast.Assign) and len(stack_node.targets) == 1:
                             tgt = stack_node.targets[0]
@@ -5561,10 +5641,22 @@ class Translator(ast.NodeVisitor):
                     if sp_read is not None:
                         return sp_read
                     info = self._active_class_info()
-                    if info is not None and node.attr in info.static_properties:
+                    ann = type_context_ann_from_stack(self)
+                    ann_root = None
+                    if isinstance(ann, ast.Name):
+                        ann_root = ann.id
+                    host_ok = info is not None and (
+                        ann is None or ann_root in ('Self', info.name)
+                    )
+                    if host_ok and node.attr in info.static_properties:
                         sp_read = self._static_property_read(info.name, node.attr)
                         if sp_read is not None:
                             return sp_read
+                    if ann is not None:
+                        raise NotImplementedError(
+                            f'new.{node.attr} 按赋值/返回注解的类型解析（当前为 {ast.unparse(ann)}），'
+                            f'该类型没有此 @staticproperty；当前类的静态属性请写 Self.{node.attr}'
+                        )
         if isinstance(node.value, ast.Attribute) and node.value.attr == 'Enum':
             from .emit.union_emit import try_emit_union_enum_member
             from .emit.union_mro_emit import try_emit_union_mro_enum_member
@@ -5591,6 +5683,14 @@ class Translator(ast.NodeVisitor):
                 sp_read = self._static_property_read(node.value.id, node.attr)
                 if sp_read is not None:
                     return sp_read
+        if isinstance(node.value, ast.Subscript) and isinstance(node.value.value, ast.Name) and node.value.value.id in self.classes:
+            cls = self.classes[node.value.value.id]
+            if node.attr in cls.static_properties:
+                from .analysis.module_namespace import qualify_symbol_in_module
+                type_arg = self._parse_type_args(node.value.slice, self._active_type_params())
+                getter = self._property_getter_cpp_name(cls, node.attr)
+                base = qualify_symbol_in_module(cls.module_path, cls.cpp_name())
+                return f'{base}<{type_arg}>::{getter}()'
         import_ref = self._import_attr_chain_cpp(node)
         if import_ref is not None:
             return import_ref

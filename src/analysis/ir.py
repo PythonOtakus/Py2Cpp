@@ -1290,6 +1290,20 @@ def _static_method_uses_class_type_param(info: ClassInfo, member: str) -> bool:
   return any(f"{n}" in text.split() or f"<{n}>" in text or f", {n}" in text for n in needles)
 
 
+def _class_default_type_args_cpp(info: ClassInfo) -> str | None:
+  defaults = info.type_param_defaults
+  if not defaults or len(defaults) != len(info.type_params):
+    return None
+  args: list[str] = []
+  for p in info.type_params:
+    dv = defaults.get(p)
+    if isinstance(dv, ast.Name):
+      args.append(cpp_ident(dv.id))
+    else:
+      return None
+  return ", ".join(args)
+
+
 def qualified_class_static_callee(
   info: ClassInfo,
   member: str,
@@ -1317,6 +1331,9 @@ def qualified_class_static_callee(
         args = tpl[len(b) + 1 : -1].strip()
         return f"{qbase}<{args}>::{member}"
       return f"{qualify_symbol_in_module(info.module_path, tpl)}::{member}"
+    default_args = _class_default_type_args_cpp(info)
+    if default_args is not None:
+      return f"{base}<{default_args}>::{member}"
     return f"{base}<{cpp_ident('int')}>::{member}"
   if info.cpp_name() == _cpp_complex_base_name():
     tpl = complex_template_cpp_type(effective_arg)
@@ -1326,6 +1343,9 @@ def qualified_class_static_callee(
       args = tpl[len(b) + 1 : -1].strip()
       return f"{qbase}<{args}>::{member}"
     return f"{qualify_symbol_in_module(info.module_path, tpl)}::{member}"
+  default_args = _class_default_type_args_cpp(info)
+  if default_args is not None:
+    return f"{base}<{default_args}>::{member}"
   spec = info.cpp_specialization()
   name = info.cpp_name()
   if "<" in spec:

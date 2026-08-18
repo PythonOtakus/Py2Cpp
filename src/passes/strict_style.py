@@ -3533,13 +3533,18 @@ class _StrictStyleChecker(ast.NodeVisitor):
     def _check_s06_prefer_new_staticproperty(self, node: ast.Attribute) -> None:
         if not isinstance(node.value, ast.Name) or node.value.id != 'Self':
             return
+        if not self._in_new_preferred_context() or self._type_context_ann is None:
+            return
         info = self._current_class_info()
         if info is None or node.attr not in info.static_properties:
             return
         if _s06_exempt_new_receiver_class(info):
             return
+        if not _ann_is_self(self._type_context_ann):
+            if _ann_root_name(self._type_context_ann) != info.name:
+                return
         bad = f'Self.{node.attr}'
-        self._add(S06B, node, _s06_msg_prefer(bad, f'new.{node.attr}', self._s06_scene(), example=f'`return new.{node.attr}` 勿 `{bad}`', reason='``@staticproperty`` 与静态工厂一致，同类内须 ``new.属性`` 勿 ``Self.属性``'))
+        self._add(S06B, node, _s06_msg_prefer(bad, f'new.{node.attr}', self._s06_scene(), example=f'`x: Self = new.{node.attr}` 勿 `{bad}`', reason='``new`` 指赋值/返回注解的类型；注解为本类时 ``@staticproperty`` 须 ``new.属性`` 勿 ``Self.属性``'))
 
     def visit_Attribute(self, node: ast.Attribute):
         self._check_s15_same_class_expr(node)

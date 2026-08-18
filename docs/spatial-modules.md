@@ -2,7 +2,7 @@
 
 > 状态：**部分已落地**。`spatial.color`（`Color` / `ColorMatrix`）与 `spatial.rect`（`Rect`）已实现并有 `test/spatial/test_color.py`、`test_rect.py`；其余（`image` / `random` / `noise` / `animate`）仍为计划草案，实现前仍须短确认。
 
-与现有 `py2cpp.spatial`（`Vector*` / `Matrix*` / `Rotator` / `Quaternion` / `Transform2D`·`Transform3D`）配套，补齐游戏/UI 常用的矩形、颜色、**CPU 像素图**、空间随机与噪声、以及基于注解的异步属性动画。风格参考仓库外 `tggame`（`rect` / `color` / `texture.Texture` / `random`·`Noise` / `action.LerpAssign`），写法遵守 [编码规范.md](./编码规范.md) 与 Py2Cpp 语法能力。
+与现有 `py2cpp.spatial`（`Vector*` / `Matrix*` / `Rotator` / `Quaternion` / `Transform2D`·`Transform3D`）配套，补齐游戏/UI 常用的矩形、颜色、**CPU 像素图**、空间随机与噪声、以及基于注解的异步属性动画。已落地的几何、矩形与颜色类型均为 `Scalar: RealType = float` 泛型类；省略类型参数时使用 `float`，需要旧双精度语义时显式写 `Vector2[float64]`、`Matrix3[float64]`、`Color[float64]` 等。风格参考仓库外 `tggame`（`rect` / `color` / `texture.Texture` / `random`·`Noise` / `action.LerpAssign`），写法遵守 [编码规范.md](./编码规范.md) 与 Py2Cpp 语法能力。
 
 相关文档：[zeus-engine.md](../zeus/docs/zeus-engine.md)（引擎将复用本扩展，不在 `zeus` 内重写；**GPU 纹理 / OpenGL upload** 仍属 Zeus/`render`，本模块只管 CPU 侧 `Image`）。
 
@@ -10,8 +10,8 @@
 
 | 模块 | 源码 | 测试 | 说明 |
 |------|------|------|------|
-| `spatial.color` | `py2cpp/spatial/color.py` | `test/spatial/test_color.py` | `[0,1]` 钳制；`lerp`/`withAlpha`/`toArgb`/`fromArgb`；矩阵用 `ColorMatrix.apply(color)`（**无** `Color.applyMatrix`，避免同类前向声明） |
-| `spatial.rect` | `py2cpp/spatial/rect.py` | `test/spatial/test_rect.py` | 轴对齐；尺寸属性 **`size`**（``Vector2``；S02 对 ``Rect`` 豁免）；谓词 `contains`/`overlaps`/`embraces`；`&`/`|`；`in`；`applyMatrix(Matrix3)`；**无** `Rect @ Rect` |
+| `spatial.color` | `py2cpp/spatial/color.py` | `test/spatial/test_color.py` | `Color[Scalar: RealType = float]` / `ColorMatrix[Scalar: RealType = float]`；`[0,1]` 钳制；`lerp`/`withAlpha`/`toArgb`/`fromArgb`；矩阵用 `ColorMatrix.apply(color)`（**无** `Color.applyMatrix`，避免同类前向声明） |
+| `spatial.rect` | `py2cpp/spatial/rect.py` | `test/spatial/test_rect.py` | `Rect[Scalar: RealType = float]`；轴对齐；尺寸属性 **`size`**（``Vector2[Scalar]``；S02 对 ``Rect`` 豁免）；谓词 `contains`/`overlaps`/`embraces`；`&`/`|`；`in`；`applyMatrix(Matrix3[Scalar])`；**无** `Rect @ Rect` |
 | 其余 | — | — | 未实现 |
 
 ---

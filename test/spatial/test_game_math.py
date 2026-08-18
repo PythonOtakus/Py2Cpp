@@ -262,6 +262,23 @@ class MatrixPowerTests(TestCaseMixin):
     self.assertTrue(id3 == mid)
 
 
+class SpatialGenericScalarTests(TestCaseMixin):
+  _testTag = 70
+
+  @override
+  def test(self):
+    v: Vector2[float64] = new(2.0, 3.0)
+    unit: Vector2[float64] = Vector2[float64].right
+    m: Matrix3[float64] = new.fromPosition(v)
+    out: Vector2[float64] = m.applyToPoint(unit)
+    self.assertTrue(almost(out.x, 3.0))
+    self.assertTrue(almost(out.y, 3.0))
+    q: Quaternion[float64] = new.fromAxisAngle(Vector3[float64].forward, 90.0)
+    rotated: Vector3[float64] = q * Vector3[float64].right
+    self.assertTrue(almost(rotated.x, 0.0))
+    self.assertTrue(almost(rotated.y, 1.0))
+
+
 def main() -> int:
   suite: TestSuite = new()
   for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):

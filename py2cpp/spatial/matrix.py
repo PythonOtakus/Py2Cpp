@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from ..builtins import *
+from ..numeric.protocols import RealType
 from ..math import cos, degrees, fabs, almost, floor, lerp, radians, sin, safeSqrt
 from .rotator import Quaternion, Rotator
 from .vector import Vector2, Vector3
@@ -9,12 +10,12 @@ from .vector import Vector2, Vector3
 
 @copyable
 @mixin
-class MatrixMixin[Vec, Rot]:
+class MatrixMixin[Scalar: RealType, Vec, Rot]:
   """``Matrix3`` / ``Matrix4`` 公共矩阵 API（``Vec``/``Rot`` 由宿主绑定；经 ``__getitem__`` / ``__setitem__`` 访问元素）。"""
 
   _dim: int @const = 0
   _vecDim: int @const = 0
-  _data: float64[:Self._dim, :Self._dim]
+  _data: Scalar[:Self._dim, :Self._dim]
 
   def __init__(self, identity: bool = True) -> None:
     if identity:
@@ -23,23 +24,23 @@ class MatrixMixin[Vec, Rot]:
           self[i, j] = 1.0 if i == j else 0.0
 
   @immutable
-  def __getitem__(self, index: (int, int)) -> float64:
+  def __getitem__(self, index: (int, int)) -> Scalar:
     return self._data.unsafeGet(index[0], index[1])
 
-  def __setitem__(self, index: (int, int), value: float64) -> None:
+  def __setitem__(self, index: (int, int), value: Scalar) -> None:
     self._data.unsafeSet(index[0], index[1], value)
 
   @immutable
-  def unsafeGet(self, row: int, col: int) -> float64:
+  def unsafeGet(self, row: int, col: int) -> Scalar:
     return self._data.unsafeGet(row, col)
 
-  def unsafeSet(self, row: int, col: int, value: float64) -> None:
+  def unsafeSet(self, row: int, col: int, value: Scalar) -> None:
     self._data.unsafeSet(row, col, value)
 
   @immutable
   def isAffine(self) -> bool:
-    z: float64 = 0.0
-    one: float64 = 1.0
+    z: Scalar = 0.0
+    one: Scalar = 1.0
     for j in inlineRange(Self._dim - 1):
       if not almost(self.unsafeGet(Self._dim - 1, j), z):
         return False
@@ -49,7 +50,7 @@ class MatrixMixin[Vec, Rot]:
 
   @immutable
   def _invGauss(self) -> Self:
-    tmp: float64[:Self._dim, :Self._dim * 2] = new()
+    tmp: Scalar[:Self._dim, :Self._dim * 2] = new()
     for i in inlineRange(Self._dim):
       for j in inlineRange(Self._dim):
         tmp[i, j] = self[i, j]
@@ -57,23 +58,23 @@ class MatrixMixin[Vec, Rot]:
       tmp[i, i + Self._dim] = 1.0
     for k in inlineRange(Self._dim):
       pivRow: int = k
-      pivVal: float64 = fabs(tmp[k, k])
+      pivVal: Scalar = fabs(tmp[k, k])
       for r in inlineRange(k + 1, Self._dim):
-        v: float64 = fabs(tmp[r, k])
+        v: Scalar = fabs(tmp[r, k])
         if v > pivVal:
           pivVal = v
           pivRow = r
       if pivRow != k:
         for c in inlineRange(Self._dim * 2):
-          swapVal: float64 = tmp[k, c]
+          swapVal: Scalar = tmp[k, c]
           tmp[k, c] = tmp[pivRow, c]
           tmp[pivRow, c] = swapVal
-      pivot: float64 = tmp[k, k]
+      pivot: Scalar = tmp[k, k]
       for c in inlineRange(Self._dim * 2):
         tmp[k, c] /= pivot
       for r in inlineRange(Self._dim):
         if r != k:
-          factor: float64 = tmp[r, k]
+          factor: Scalar = tmp[r, k]
           for c in inlineRange(Self._dim * 2):
             tmp[r, c] -= factor * tmp[k, c]
     result: Self = new(False)
@@ -93,7 +94,7 @@ class MatrixMixin[Vec, Rot]:
     linInv: Self = lin._invGauss()
     result: Self = linInv
     for i in inlineRange(Self._dim - 1):
-      acc: float64 = 0.0
+      acc: Scalar = 0.0
       for j in inlineRange(Self._dim - 1):
         acc += linInv[i, j] * self[j, hom]
       result[i, hom] = -acc
@@ -120,31 +121,31 @@ class MatrixMixin[Vec, Rot]:
 
   @property
   @immutable
-  def det(self) -> float64:
-    tmp: float64[:Self._dim, :Self._dim] = new()
+  def det(self) -> Scalar:
+    tmp: Scalar[:Self._dim, :Self._dim] = new()
     for i in inlineRange(Self._dim):
       for j in inlineRange(Self._dim):
         tmp[i, j] = self[i, j]
-    sign: float64 = 1.0
-    prod: float64 = 1.0
+    sign: Scalar = 1.0
+    prod: Scalar = 1.0
     for k in inlineRange(Self._dim):
       pivRow: int = k
-      pivVal: float64 = fabs(tmp[k, k])
+      pivVal: Scalar = fabs(tmp[k, k])
       for r in inlineRange(k + 1, Self._dim):
-        v: float64 = fabs(tmp[r, k])
+        v: Scalar = fabs(tmp[r, k])
         if v > pivVal:
           pivVal = v
           pivRow = r
       if pivRow != k:
         sign = -sign
         for c in inlineRange(Self._dim):
-          swapVal: float64 = tmp[k, c]
+          swapVal: Scalar = tmp[k, c]
           tmp[k, c] = tmp[pivRow, c]
           tmp[pivRow, c] = swapVal
-      pivot: float64 = tmp[k, k]
+      pivot: Scalar = tmp[k, k]
       prod *= pivot
       for r in inlineRange(k + 1, Self._dim):
-        factor: float64 = tmp[r, k] / pivot
+        factor: Scalar = tmp[r, k] / pivot
         tmp[r, k] = 0.0
         for c in inlineRange(k + 1, Self._dim):
           tmp[r, c] -= factor * tmp[k, c]
@@ -171,22 +172,22 @@ class MatrixMixin[Vec, Rot]:
     return self.transpose()
 
   @immutable
-  def dot(self, other: Self) -> float64:
-    acc: float64 = 0.0
+  def dot(self, other: Self) -> Scalar:
+    acc: Scalar = 0.0
     for i in inlineRange(Self._dim):
       for j in inlineRange(Self._dim):
         acc += self[i, j] * other[i, j]
     return acc
 
   @immutable
-  def _froNorm(self) -> float64:
+  def _froNorm(self) -> Scalar:
     return safeSqrt(self.dot(self))
 
   @immutable
   def _expTaylor(self, terms: int) -> Self:
     result: Self = new.identity
     term: Self = new.identity
-    k: float64 = 1.0
+    k: Scalar = 1.0
     for _ in range(terms):
       term @= self
       term /= k
@@ -202,7 +203,7 @@ class MatrixMixin[Vec, Rot]:
     power: Self = x
     k: int = 1
     for _ in range(terms):
-      invK: float64 = 1.0 / k
+      invK: Scalar = 1.0 / k
       if k % 2 == 1:
         result += power * invK
       else:
@@ -229,7 +230,7 @@ class MatrixMixin[Vec, Rot]:
   @immutable
   def sqrt(self) -> Self:
     m: Self = new.identity
-    half: float64 = 0.5
+    half: Scalar = 0.5
     for _ in inlineRange(16):
       invM: Self = m.inv
       avg: Self = m + self @ invM
@@ -241,7 +242,7 @@ class MatrixMixin[Vec, Rot]:
 
   @immutable
   def exp(self) -> Self:
-    thresh: float64 = 0.5
+    thresh: Scalar = 0.5
     taylorTerms: int = 12
     maxScale: int = 32
     a: Self = self
@@ -258,7 +259,7 @@ class MatrixMixin[Vec, Rot]:
 
   @immutable
   def log(self) -> Self:
-    thresh: float64 = 0.25
+    thresh: Scalar = 0.25
     taylorTerms: int = 12
     maxScale: int = 32
     a: Self = self
@@ -271,13 +272,13 @@ class MatrixMixin[Vec, Rot]:
       a = a.sqrt()
       s += 1
     logA: Self = a._logTaylor(taylorTerms)
-    scale: float64 = 1.0
+    scale: Scalar = 1.0
     for _ in range(s):
       scale += scale
     return logA * scale
 
   @immutable
-  def lerp(self, other: Self, t: float64) -> Self:
+  def lerp(self, other: Self, t: Scalar) -> Self:
     result: Self = new(False)
     for i in inlineRange(Self._dim):
       for j in inlineRange(Self._dim):
@@ -285,7 +286,7 @@ class MatrixMixin[Vec, Rot]:
     return result
 
   @immutable
-  def xlerp(self, other: Self, t: float64) -> Self:
+  def xlerp(self, other: Self, t: Scalar) -> Self:
     return (other @ self.inv) ** t @ self
 
   @immutable
@@ -338,7 +339,7 @@ class MatrixMixin[Vec, Rot]:
 
   @overload
   @immutable
-  def __mul__(self, other: float64) -> Self:
+  def __mul__(self, other: Scalar) -> Self:
     result: Self = new(False)
     for i in inlineRange(Self._dim):
       for j in inlineRange(Self._dim):
@@ -357,11 +358,11 @@ class MatrixMixin[Vec, Rot]:
 
   @overload
   @immutable
-  def __rmul__(self, other: float64) -> Self:
+  def __rmul__(self, other: Scalar) -> Self:
     return self * other
 
   @overload
-  def __imul__(self, other: float64) -> Self:
+  def __imul__(self, other: Scalar) -> Self:
     for i in inlineRange(Self._dim):
       for j in inlineRange(Self._dim):
         self[i, j] *= other
@@ -378,7 +379,7 @@ class MatrixMixin[Vec, Rot]:
     result: Self = new(False)
     for i in inlineRange(Self._dim):
       for j in inlineRange(Self._dim):
-        s: float64 = 0.0
+        s: Scalar = 0.0
         for k in inlineRange(Self._dim):
           s += self.unsafeGet(i, k) * other.unsafeGet(k, j)
         result.unsafeSet(i, j, s)
@@ -391,8 +392,8 @@ class MatrixMixin[Vec, Rot]:
 
   @overload
   @immutable
-  def __truediv__(self, other: float64) -> Self:
-    s: float64 = 1.0 / other
+  def __truediv__(self, other: Scalar) -> Self:
+    s: Scalar = 1.0 / other
     return self * s
 
   @overload
@@ -401,8 +402,8 @@ class MatrixMixin[Vec, Rot]:
     return self @ other.inv
 
   @overload
-  def __itruediv__(self, other: float64) -> Self:
-    s: float64 = 1.0 / other
+  def __itruediv__(self, other: Scalar) -> Self:
+    s: Scalar = 1.0 / other
     for i in inlineRange(Self._dim):
       for j in inlineRange(Self._dim):
         self[i, j] *= s
@@ -419,11 +420,11 @@ class MatrixMixin[Vec, Rot]:
     return self.inv
 
   @immutable
-  def __abs__(self) -> float64:
+  def __abs__(self) -> Scalar:
     return self.det
 
   @immutable
-  def __pow__(self, exponent: float64) -> Self:
+  def __pow__(self, exponent: Scalar) -> Self:
     if almost(exponent, 0.0):
       return new.identity
     if almost(exponent, 1.0):
@@ -432,19 +433,19 @@ class MatrixMixin[Vec, Rot]:
       return self.inv
     if almost(exponent, 0.5):
       return self.sqrt()
-    n: float64 = floor(exponent)
+    n: Scalar = floor(exponent)
     if almost(exponent, n):
       return self.ipow(int(n))
     return (self.log() * exponent).exp()
 
-  def __ipow__(self, exponent: float64) -> Self:
+  def __ipow__(self, exponent: Scalar) -> Self:
     m: Self = self ** exponent
     self._copyFrom(m)
     return self
 
   @immutable
   def __bool__(self) -> bool:
-    return self != new.zero
+    return self != Self.zero
 
   @immutable
   def __eq__(self, other: Self) -> bool:
@@ -514,7 +515,7 @@ class MatrixMixin[Vec, Rot]:
   def scale(self, value: Vec) -> None:
     m: Self = new()
     for col in inlineRange(Self._dim - 1):
-      mag: float64 = value.unsafeGet(col)
+      mag: Scalar = value.unsafeGet(col)
       ax: Vec = self.getAxis(col).withMag(mag)
       for j in inlineRange(Self._vecDim):
         m.unsafeSet(j, col, ax.unsafeGet(j))
@@ -529,7 +530,7 @@ class MatrixMixin[Vec, Rot]:
   def applyToVector(self, other: Vec) -> Vec:
     out: Vec = new()
     for i in inlineRange(Self._dim - 1):
-      s: float64 = 0.0
+      s: Scalar = 0.0
       for j in inlineRange(Self._vecDim):
         s += self.unsafeGet(i, j) * other.unsafeGet(j)
       out.unsafeSet(i, s)
@@ -541,10 +542,10 @@ class MatrixMixin[Vec, Rot]:
     posCol: int = Self._dim - 1
     homRow: int = Self._dim - 1
     for i in inlineRange(Self._dim - 1):
-      s: float64 = self.unsafeGet(i, posCol)
+      s: Scalar = self.unsafeGet(i, posCol)
       for j in inlineRange(Self._vecDim):
         s += self.unsafeGet(i, j) * other.unsafeGet(j)
-      w: float64 = self.unsafeGet(homRow, posCol)
+      w: Scalar = self.unsafeGet(homRow, posCol)
       for j2 in inlineRange(Self._vecDim):
         w += self.unsafeGet(homRow, j2) * other.unsafeGet(j2)
       out.unsafeSet(i, s / w)
@@ -552,7 +553,7 @@ class MatrixMixin[Vec, Rot]:
 
   @staticmethod
   @immutable
-  def fromAxesOrigin(*axis: Vec[:Self._dim - 1], origin: Vec = new.zero) -> Self:
+  def fromAxesOrigin(*axis: Vec[:Self._dim - 1], origin: Vec = new()) -> Self:
     m: Self = new()
     for col in inlineRange(Self._dim - 1):
       ax: Vec = axis[col]
@@ -586,9 +587,9 @@ class MatrixMixin[Vec, Rot]:
   @staticmethod
   @immutable
   def transform(
-    position: Vec = new.zero,
-    rotation: Rot = new.identity,
-    scale: Vec = new.one,
+    position: Vec,
+    rotation: Rot,
+    scale: Vec,
   ) -> Self:
     m: Self = new()
     for col in inlineRange(Self._vecDim):
@@ -603,7 +604,9 @@ class MatrixMixin[Vec, Rot]:
     return m
 
 
-class Matrix3(MatrixMixin[Vector2, Rotator]):
+class Matrix3[Scalar: RealType = float](
+  MatrixMixin[Scalar, Vector2[Scalar], Rotator[Scalar]],
+):
   """3×3 矩阵（2D 仿射变换，列主序对齐 tggame ``mat3``）。"""
 
   _dim: int @const = 3
@@ -611,22 +614,22 @@ class Matrix3(MatrixMixin[Vector2, Rotator]):
 
   @property
   @immutable
-  def rotation(self) -> Rotator:
-    r: Rotator = new(self[0, 0], self[1, 0])
+  def rotation(self) -> Rotator[Scalar]:
+    r: Rotator[Scalar] = new(self[0, 0], self[1, 0])
     return r.norm
 
   @property
   @immutable
-  def angle(self) -> float64:
+  def angle(self) -> Scalar:
     return self.rotation.toAngle()
 
   @property.setter
-  def angle(self, value: float64) -> None:
-    self._copyFrom(Self.transform(self.position, Rotator.fromAngle(value), self.scale))
+  def angle(self, value: Scalar) -> None:
+    self._copyFrom(Self.transform(self.position, Rotator[Scalar].fromAngle(value), self.scale))
 
   @staticmethod
   @immutable
-  def fromRotation(rotation: Rotator) -> Self:
+  def fromRotation(rotation: Rotator[Scalar]) -> Self:
     m: Self = new()
     m[0, 0] = rotation.w
     m[1, 0] = rotation.z
@@ -637,20 +640,22 @@ class Matrix3(MatrixMixin[Vector2, Rotator]):
 
   @staticmethod
   @immutable
-  def fromAngle(angle: float64) -> Self:
-    return new.fromRotation(Rotator.fromAngle(angle))
+  def fromAngle(angle: Scalar) -> Self:
+    return new.fromRotation(Rotator[Scalar].fromAngle(angle))
 
   @staticmethod
   @immutable
   def lookAt(
-    position: Vector2 = new.zero,
-    target: Vector2 = new.right,
-    scale: Vector2 = new.one,
+    position: Vector2[Scalar] = new(),
+    target: Vector2[Scalar] = new(1.0, 0.0),
+    scale: Vector2[Scalar] = new(1.0, 1.0),
   ) -> Self:
     return new._lookAtImpl(position, target, scale)
 
 
-class Matrix4(MatrixMixin[Vector3, Quaternion]):
+class Matrix4[Scalar: RealType = float](
+  MatrixMixin[Scalar, Vector3[Scalar], Quaternion[Scalar]],
+):
   """4×4 矩阵（3D TRS 变换，列主序对齐 tggame ``mat4``）。"""
 
   _dim: int @const = 4
@@ -658,20 +663,20 @@ class Matrix4(MatrixMixin[Vector3, Quaternion]):
 
   @property
   @immutable
-  def zAxis(self) -> Vector3:
+  def zAxis(self) -> Vector3[Scalar]:
     return self.getAxis(2)
 
   @property.setter
-  def zAxis(self, value: Vector3) -> None:
+  def zAxis(self, value: Vector3[Scalar]) -> None:
     self.setAxis(2, value)
 
   @property
   @immutable
-  def rotation(self) -> Quaternion:
-    sc: Vector3 = self.scale
-    rx: float64 = self[0, 0] / sc.x
-    ry: float64 = self[1, 1] / sc.y
-    rz: float64 = self[2, 2] / sc.z
+  def rotation(self) -> Quaternion[Scalar]:
+    sc: Vector3[Scalar] = self.scale
+    rx: Scalar = self[0, 0] / sc.x
+    ry: Scalar = self[1, 1] / sc.y
+    rz: Scalar = self[2, 2] / sc.z
     return new(
       safeSqrt(1.0 + rx + ry + rz) * 0.5,
       safeSqrt(1.0 + rx - ry - rz) * 0.5,
@@ -681,19 +686,19 @@ class Matrix4(MatrixMixin[Vector3, Quaternion]):
 
   @property
   @immutable
-  def eulerAngles(self) -> Vector3:
+  def eulerAngles(self) -> Vector3[Scalar]:
     return self.rotation.toEulerAngles()
 
   @property.setter
-  def eulerAngles(self, value: Vector3) -> None:
-    self._copyFrom(Self.transform(self.position, Quaternion.fromEulerAngles(value), self.scale))
+  def eulerAngles(self, value: Vector3[Scalar]) -> None:
+    self._copyFrom(Self.transform(self.position, Quaternion[Scalar].fromEulerAngles(value), self.scale))
 
   @staticmethod
   @immutable
-  def fromAngleX(angle: float64) -> Self:
-    radA: float64 = radians(angle)
-    cosA: float64 = cos(radA)
-    sinA: float64 = sin(radA)
+  def fromAngleX(angle: Scalar) -> Self:
+    radA: Scalar = radians(angle)
+    cosA: Scalar = cos(radA)
+    sinA: Scalar = sin(radA)
     m: Self = new()
     m[1, 1] = cosA
     m[1, 2] = -sinA
@@ -703,10 +708,10 @@ class Matrix4(MatrixMixin[Vector3, Quaternion]):
 
   @staticmethod
   @immutable
-  def fromAngleY(angle: float64) -> Self:
-    radA: float64 = radians(angle)
-    cosA: float64 = cos(radA)
-    sinA: float64 = sin(radA)
+  def fromAngleY(angle: Scalar) -> Self:
+    radA: Scalar = radians(angle)
+    cosA: Scalar = cos(radA)
+    sinA: Scalar = sin(radA)
     m: Self = new()
     m[0, 0] = cosA
     m[0, 2] = sinA
@@ -716,10 +721,10 @@ class Matrix4(MatrixMixin[Vector3, Quaternion]):
 
   @staticmethod
   @immutable
-  def fromAngleZ(angle: float64) -> Self:
-    radA: float64 = radians(angle)
-    cosA: float64 = cos(radA)
-    sinA: float64 = sin(radA)
+  def fromAngleZ(angle: Scalar) -> Self:
+    radA: Scalar = radians(angle)
+    cosA: Scalar = cos(radA)
+    sinA: Scalar = sin(radA)
     m: Self = new()
     m[0, 0] = cosA
     m[0, 1] = -sinA
@@ -729,27 +734,27 @@ class Matrix4(MatrixMixin[Vector3, Quaternion]):
 
   @staticmethod
   @immutable
-  def fromRotation(rotation: Quaternion) -> Self:
-    xAxis: Vector3 = rotation * Vector3.right
-    yAxis: Vector3 = rotation * Vector3.down
-    zAxis: Vector3 = rotation * Vector3.forward
+  def fromRotation(rotation: Quaternion[Scalar]) -> Self:
+    xAxis: Vector3[Scalar] = rotation * Vector3[Scalar].right
+    yAxis: Vector3[Scalar] = rotation * Vector3[Scalar].down
+    zAxis: Vector3[Scalar] = rotation * Vector3[Scalar].forward
     return new.fromAxesOrigin(xAxis, yAxis, zAxis)
 
   @staticmethod
   @immutable
-  def fromAxisAngle(axis: Vector3, angle: float64) -> Self:
-    return new.fromRotation(Quaternion.fromAxisAngle(axis, angle))
+  def fromAxisAngle(axis: Vector3[Scalar], angle: Scalar) -> Self:
+    return new.fromRotation(Quaternion[Scalar].fromAxisAngle(axis, angle))
 
   @staticmethod
   @immutable
-  def fromEulerAngles(eulerAngles: Vector3) -> Self:
-    return new.fromRotation(Quaternion.fromEulerAngles(eulerAngles))
+  def fromEulerAngles(eulerAngles: Vector3[Scalar]) -> Self:
+    return new.fromRotation(Quaternion[Scalar].fromEulerAngles(eulerAngles))
 
   @staticmethod
   @immutable
   def lookAt(
-    position: Vector3 = new.zero,
-    target: Vector3 = new.forward,
-    scale: Vector3 = new.one,
+    position: Vector3[Scalar] = new(),
+    target: Vector3[Scalar] = new(0.0, 0.0, 1.0),
+    scale: Vector3[Scalar] = new(1.0, 1.0, 1.0),
   ) -> Self:
     return new._lookAtImpl(position, target, scale)

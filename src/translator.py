@@ -114,6 +114,7 @@ from .constant.ffi_layout import (
   ffi_c_struct_using_target,
   is_ffi_c_struct_class,
   is_ffi_module_path,
+  ffi_header_symbol_allowlist,
 )
 from .constant.stdlib_layout import CORE_PKG, RUNTIME_PKG, is_on_demand_stdlib_rel, stdlib_header_include, stdlib_module_path
 from .constant.stdlib_layout import STR_PYSTR, cpp_exception_ctor
@@ -3198,12 +3199,17 @@ class Translator(ast.NodeVisitor):
 
     def _emit_module_import_usings(self, module_path: str) -> None:
         """模块内 ``from … import`` → ``using`` / ``using namespace``（写在 namespace 块内首部）。"""
-        for u in self.module_import_usings.get(module_path, []):
-            if u.kind == 'namespace':
-                self.write_line(using_namespace_line(u.qualifier))
-            elif u.symbol:
-                self.write_line(using_symbol_line(u.qualifier, u.symbol))
-        self._emit_runtime_header_usings(module_path)
+        ffi_symbols = ffi_header_symbol_allowlist(module_path) if self._is_ffi_module(module_path) else None
+        # A restricted FFI surface declares every usable symbol locally.  Its
+        # generated `.pyi` may re-export thousands of dependency symbols, none
+        # of which may leak into this header or require their own FFI surface.
+        if ffi_symbols is None:
+            for u in self.module_import_usings.get(module_path, []):
+                if u.kind == 'namespace':
+                    self.write_line(using_namespace_line(u.qualifier))
+                elif u.symbol:
+                    self.write_line(using_symbol_line(u.qualifier, u.symbol))
+            self._emit_runtime_header_usings(module_path)
         if not self._is_stdlib_module(module_path) and module_path == self.entry_module_path and any((self._is_stdlib_module(mp) for mp in self.module_order)):
             seen_umbrella: set[str] = set()
             idx = self.header_usings_index
@@ -3236,7 +3242,14 @@ class Translator(ast.NodeVisitor):
         out: list[str] = []
         if ma:
             headers = list(ma.includes) + list(ma.post_class_includes)
+            ffi_symbol_filters = [
+                ffi_header_symbol_allowlist(inc.rsplit('.', 1)[0])
+                for inc in headers
+                if inc.startswith('ffi/')
+            ]
             for ns, sym in usings_for_headers(headers, self.header_usings_index):
+                if any((symbols is not None and sym not in symbols for symbols in ffi_symbol_filters)):
+                    continue
                 if module_path == _ITER_RESULT_MODULE and ns == 'py2cpp::text::str' and sym != 'PyStr':
                     continue
                 line = using_symbol_line(ns, sym)
@@ -3279,7 +3292,14 @@ class Translator(ast.NodeVisitor):
             if h not in headers:
                 headers.append(h)
         from .analysis.header_usings import usings_for_headers
+        ffi_symbol_filters = [
+            ffi_header_symbol_allowlist(inc.rsplit('.', 1)[0])
+            for inc in headers
+            if inc.startswith('ffi/')
+        ]
         for ns, sym in usings_for_headers(headers, self.header_usings_index):
+            if any((symbols is not None and sym not in symbols for symbols in ffi_symbol_filters)):
+                continue
             line = using_symbol_line(ns, sym)
             if line not in seen:
                 seen.add(line)
@@ -3579,12 +3599,15 @@ class Translator(ast.NodeVisitor):
         if not ma or not ma.type_aliases:
             return
         assert self.type_parser is not None
+        ffi_symbols = ffi_header_symbol_allowlist(module_path) if self._is_ffi_module(module_path) else None
         from .passes.type_conditional import emit_conditional_type_alias, plan_conditional_alias
         prev_deferred = self.deferred_header_target
         if not use_deferred:
             self.deferred_header_target = None
         try:
             for alias in ma.type_aliases:
+                if ffi_symbols is not None and alias.name not in ffi_symbols:
+                    continue
                 if conditional_only is True and (not alias.is_conditional):
                     continue
                 if conditional_only is False and alias.is_conditional:
@@ -3598,6 +3621,11 @@ class Translator(ast.NodeVisitor):
                 others = {a.name: a for a in ma.type_aliases if a.name != alias.name}
                 self.type_parser.set_type_aliases(others, use_as_cpp_name=False)
                 rhs = self.type_parser.parse_type(alias.value, set(alias.type_params))
+                # Some generated SDK declarations preserve redundant typedefs
+                # such as ``type PyiFoo = PyiFoo``.  They must not become a
+                # self-referential C++ ``using`` declaration.
+                if rhs == alias.name:
+                    continue
                 rhs = self._qualify_module_type_alias_rhs(module_path, rhs)
                 self._emit_type_alias_using(alias, rhs)
             self.write_line()
@@ -6474,6 +6502,9 @@ class Translator(ast.NodeVisitor):
                 self._ensure_class_indexes()
                 assert self._classes_by_module is not None
                 module_classes = [info for info in self._classes_by_module.get(module_path, ()) if info.outer_class is None and (not info.is_descriptor) and (not info.is_mixin) and (not info.is_annotation) and (not info.is_protocol) and (not info.is_variant_mixin) and (not self._is_type_marker(info))]
+                ffi_symbols = ffi_header_symbol_allowlist(module_path) if self._is_ffi_module(module_path) else None
+                if ffi_symbols is not None:
+                    module_classes = [info for info in module_classes if info.name in ffi_symbols]
                 from .emit.class_decl_emit import sort_module_classes_for_declaration
                 module_classes = sort_module_classes_for_declaration(module_classes)
                 if self._is_stdlib_module(module_path):
@@ -6673,6 +6704,9 @@ class Translator(ast.NodeVisitor):
         from .analysis.ir import is_const_type_annotation
         from .emit.literal_ctor_emit import _emit_new_ctor_expr
         items = [n for mp, n in self.module_constants if mp == module_path]
+        ffi_symbols = ffi_header_symbol_allowlist(module_path) if self._is_ffi_module(module_path) else None
+        if ffi_symbols is not None:
+            items = [n for n in items if n.target.id in ffi_symbols]
         if not items:
             return
         with self._use_module_header(module_path), self._use_header(), self._use_import_bindings(module_path):
@@ -6692,7 +6726,7 @@ class Translator(ast.NodeVisitor):
                 is_const = is_const_type_annotation(node.annotation)
                 if node.value is not None and self._is_new_call(node.value) and (not is_const):
                     val = _emit_new_ctor_expr(self, t, node.value)
-                    if self._is_ffi_module(module_path):
+                    if self._is_ffi_module(module_path) and undef_name == name:
                         self.write_line(f'#ifdef {undef_name}')
                         self.write_line(f'#undef {undef_name}')
                         self.write_line('#endif')
@@ -6718,8 +6752,9 @@ class Translator(ast.NodeVisitor):
                 else:
                     val = '0'
                 const_kw = 'const ' if is_const else ''
-                # C 头宏（如 GL_COLOR_BUFFER_BIT / GLFW_TRUE）会污染同名声明；FFI 模块先 #undef
-                if self._is_ffi_module(module_path):
+                # C 头宏只会污染同名的 FFI 常量。``PyiCpUtf8`` 这样的
+                # Python 侧名称与 ``CP_UTF8`` 不同，必须保留原宏给尚未迁移的模板。
+                if self._is_ffi_module(module_path) and undef_name == name:
                     self.write_line(f'#ifdef {undef_name}')
                     self.write_line(f'#undef {undef_name}')
                     self.write_line('#endif')
@@ -6735,6 +6770,9 @@ class Translator(ast.NodeVisitor):
 
     def _emit_module_function_decls(self, module_path: str, *, skip_main: bool=False) -> None:
         funcs = self._module_emit_functions_for(module_path)
+        ffi_symbols = ffi_header_symbol_allowlist(module_path) if self._is_ffi_module(module_path) else None
+        if ffi_symbols is not None:
+            funcs = [f for f in funcs if f.name in ffi_symbols]
         if skip_main:
             funcs = [f for f in funcs if f.name != 'main']
         if not funcs:

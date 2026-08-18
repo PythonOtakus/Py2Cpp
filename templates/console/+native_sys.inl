@@ -6,14 +6,9 @@ PY2CPP_IGNORE
 PY2CPP_END
 
 #include "ffi/crt/stdio.h"
-#include "ffi/crt/stdlib.h"
+
 #include "ffi/crt/string.h"
 #if defined(_WIN32)
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include "ffi/windows/windows.h"
-#include "ffi/windows/shellapi.h"
 #pragma comment(lib, "shell32.lib")
 #else
 #include "ffi/crt/fcntl.h"
@@ -44,14 +39,14 @@ PyList<PyStr> py_nativeArgv()
   PyList<PyStr> out;
 #if defined(_WIN32)
   int argc = 0;
-  LPWSTR* wargv = CommandLineToArgvW(GetCommandLineW(), &argc);
+  PyUInt** wargv = reinterpret_cast<PyUInt**>(::ffi::windows::shellapi::pyiCommandLineToArgvW(::ffi::windows::windows::pyiGetCommandLineW(), &argc));
   if (!wargv)
   {
     return out;
   }
   for (int i = 0; i < argc; i++)
   {
-    int n = WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1, nullptr, 0, nullptr, nullptr);
+    int n = ::ffi::windows::windows::pyiWideCharToMultiByte(::ffi::windows::windows::PyiCpUtf8, 0, wargv[i], -1, nullptr, 0, nullptr, nullptr);
     if (n <= 1)
     {
       out.append(PyStr(""));
@@ -63,11 +58,11 @@ PyList<PyStr> py_nativeArgv()
       out.append(PyStr(""));
       continue;
     }
-    WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1, buf, n, nullptr, nullptr);
+    ::ffi::windows::windows::pyiWideCharToMultiByte(::ffi::windows::windows::PyiCpUtf8, 0, wargv[i], -1, buf, n, nullptr, nullptr);
     out.append(PyStr(buf));
     free(buf);
   }
-  LocalFree(wargv);
+  ::ffi::windows::windows::pyiLocalFree((PyUPtr)(uintptr_t)wargv);
 #else
   int fd = open("/proc/self/cmdline", O_RDONLY);
   if (fd >= 0)
@@ -95,17 +90,14 @@ PyList<PyStr> py_nativeArgv()
   return out;
 }
 
-void py_nativeExit(PyInt code)
-{
-  ::exit((int)code);
-}
+
 
 PyTuple<PyInt, PyInt> py_nativeTerminalSize()
 {
 #if defined(_WIN32)
-  CONSOLE_SCREEN_BUFFER_INFO info;
-  HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
-  if ((h != INVALID_HANDLE_VALUE) && GetConsoleScreenBufferInfo(h, &info))
+  ::ffi::windows::windows::PyiConsoleScreenBufferInfo info;
+  PyUPtr h = ::ffi::windows::windows::pyiGetStdHandle((PyUInt)-11);
+  if ((h != (PyUPtr)-1) && ::ffi::windows::windows::pyiGetConsoleScreenBufferInfo(h, &info))
   {
     int cols = (int)(info.srWindow.Right - info.srWindow.Left + 1);
     int rows = (int)(info.srWindow.Bottom - info.srWindow.Top + 1);

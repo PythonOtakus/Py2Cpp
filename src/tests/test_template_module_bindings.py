@@ -30,7 +30,7 @@ class TemplateModuleBindingsTests(unittest.TestCase):
   def test_module_rel_from_template_rel(self):
     self.assertEqual(module_rel_from_template_rel("text/+bytes.inl"), "text/bytes")
     self.assertEqual(module_rel_from_template_rel("system/-time.inl"), "system/time")
-    self.assertEqual(module_rel_from_template_rel("-math.inl"), "math")
+
     self.assertEqual(module_rel_from_template_rel("sql/sqlite.inl"), "sql/sqlite")
     self.assertEqual(module_rel_from_template_rel("+io.inl"), "io")
     self.assertEqual(module_rel_from_template_rel("web/+socket.inl"), "web/socket")

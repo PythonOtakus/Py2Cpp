@@ -1,7 +1,17 @@
 """进程 argv / exit / 终端尺寸（native 叶子；供 ``console`` 包根与 ``parse`` 使用）。"""
 from ..builtins import *
 from ..util.list import list
-
+from ffi.crt.stdlib import pyiExit
+from ffi.windows.shellapi import pyiCommandLineToArgvW
+from ffi.windows.windows import (
+  PyiConsoleScreenBufferInfo,
+  PyiCpUtf8,
+  pyiGetCommandLineW,
+  pyiGetConsoleScreenBufferInfo,
+  pyiGetStdHandle,
+  pyiLocalFree,
+  pyiWideCharToMultiByte,
+)
 
 @copyable
 class ColorOverride:
@@ -30,11 +40,9 @@ def nativeArgv() -> list[str]:
   ...
 
 
-@native
-@global_call("py_*")
 def nativeExit(code: int = 0) -> None:
   """结束进程。"""
-  ...
+  pyiExit(code)
 
 
 @native

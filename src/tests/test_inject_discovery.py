@@ -23,7 +23,7 @@ class InjectDiscoveryTests(unittest.TestCase):
   def test_module_rel_from_paste_before_template(self):
     self.assertEqual(module_rel_from_paste_before_template("system/-time.inl"), "system/time")
     self.assertEqual(module_rel_from_paste_before_template("system/-environ.inl"), "system/environ")
-    self.assertEqual(module_rel_from_paste_before_template("-math.inl"), "math")
+
     self.assertEqual(module_rel_from_paste_before_template("io/-file.inl"), "io/file")
 
   def test_module_rel_from_inject_template_h(self):
@@ -51,7 +51,7 @@ class InjectDiscoveryTests(unittest.TestCase):
     found = discover_module_paste_before_templates()
     self.assertIn(("system/time", "system/-time.inl"), found)
     self.assertIn(("system/environ", "system/-environ.inl"), found)
-    self.assertIn(("math", "-math.inl"), found)
+
     self.assertIn(("io/file", "io/-file.inl"), found)
 
 

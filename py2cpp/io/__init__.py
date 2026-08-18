@@ -8,6 +8,19 @@ from ..builtins import *
 from ..text import str
 from ..util.list import list
 from ..util.memory import appendChars
+from ffi.crt.stdio import (
+  PyiIobuf,
+  pyiFclose,
+  pyiFflush,
+  pyiFgets,
+  pyiFileno,
+  pyiFopen,
+  pyiFread,
+  pyiFseek,
+  pyiFtell,
+  pyiFwrite,
+)
+from ffi.crt.io import pyiIsatty
 
 
 @mixin

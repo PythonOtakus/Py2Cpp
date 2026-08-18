@@ -244,9 +244,11 @@ _SCALAR_TYPE_STATIC_ATTR_CPP: dict[tuple[str, str], str] = {
 
 _SCALAR_TYPE_STATIC_METHOD_CPP: dict[tuple[str, str], str] = {
   ("float", "isfinite"): "PY2CPP_ISFINITE_F({})",
+  ("float", "isFinite"): "PY2CPP_ISFINITE_F({})",
   ("float", "isInf"): "PY2CPP_ISINF_F({})",
   ("float", "isNaN"): "PY2CPP_ISNAN_F({})",
   ("float64", "isfinite"): "PY2CPP_ISFINITE_F64({})",
+  ("float64", "isFinite"): "PY2CPP_ISFINITE_F64({})",
   ("float64", "isInf"): "PY2CPP_ISINF_F64({})",
   ("float64", "isNaN"): "PY2CPP_ISNAN_F64({})",
 }

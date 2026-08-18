@@ -1071,8 +1071,13 @@ def _module_function_template_angle(tr: 'Translator', func_def: ast.FunctionDef,
         if coro_t:
             return f'<{coro_t}>'
         arg_t = strip_cpp_ref(tr._infer_expr_cpp_type(arg) or '')
-        if arg_t:
+        if arg_t and arg_t not in func_ft.template_names:
             return f'<{arg_t}>'
+    for tp in getattr(func_def, 'type_params', None) or ():
+        if isinstance(tp, ast.TypeVar) and tp.name in func_ft.template_names:
+            default = getattr(tp, 'default_value', None)
+            if default is not None:
+                return f'<{tr._parse_type(default, tr._active_type_params())}>'
     return ''
 
 def _emit_module_function_call(tr: 'Translator', mp: str, func_def: ast.FunctionDef, node: ast.Call, *, explicit_type_arg: str | None=None) -> str:
@@ -1086,8 +1091,14 @@ def _emit_module_function_call(tr: 'Translator', mp: str, func_def: ast.Function
             cpp = f'::{ns}::{cpp}'
     callee = tr._qualify_import_call(cpp, func_def.name, module_path=mp)
     angle = _module_function_template_angle(tr, func_def, func_ft, node, explicit_type_arg=explicit_type_arg)
-    if deduction and (has_named_decorator(func_def, 'native') or is_native_function_body(func_def.body)):
-        kept = [a for i, a in enumerate(node.args) if i not in deduction]
+    native_deduction_only: set[int] = set()
+    if has_named_decorator(func_def, 'native') or is_native_function_body(func_def.body):
+        native_deduction_only = {
+            i for i in deduction
+            if i < len(func_def.args.args) and func_def.args.args[i].arg.startswith('_')
+        }
+    if native_deduction_only:
+        kept = [a for i, a in enumerate(node.args) if i not in native_deduction_only]
     else:
         kept = list(node.args)
     fsig = tr.function_sigs.get((mp, func_def.name))
@@ -1096,8 +1107,8 @@ def _emit_module_function_call(tr: 'Translator', mp: str, func_def: ast.Function
         from ..analysis.type_emit import function_param_cpp_types
         param_types = function_param_cpp_types(fsig, func_def)
         param_types = _specialize_func_param_cpp_types(tr, func_def, param_types, node)
-        if deduction:
-            param_types = [t for i, t in enumerate(param_types) if i not in deduction]
+        if native_deduction_only:
+            param_types = [t for i, t in enumerate(param_types) if i not in native_deduction_only]
     if param_types:
         parts: list[str] = []
         for i, arg in enumerate(kept):
@@ -1112,6 +1123,25 @@ def _emit_module_function_call(tr: 'Translator', mp: str, func_def: ast.Function
     if arg_str:
         return f'{callee}{angle}({arg_str})'
     return f'{callee}{angle}()'
+
+def _try_emit_imported_templated_function_subscript_call(tr: 'Translator', name: str, sl: ast.expr, node: ast.Call) -> str | None:
+    """``from module import f`` 后的 ``f[T](...)`` 按模块函数模板调用。"""
+    binding = tr._effective_import_bindings().get(name)
+    if binding is None or binding.kind != 'function':
+        return None
+    func_def = tr._module_function_def_for_call(binding.module_path, binding.symbol, call=node)
+    if func_def is None:
+        return None
+    from ..analysis.ir import FuncTypeParams
+    func_ft = FuncTypeParams.collect(func_def)
+    if not func_ft.template_names:
+        return None
+    from ..passes.type_if import validate_function_type_args
+    validate_function_type_args(func_def, sl)
+    type_arg = tr._parse_type_args(sl, tr._active_type_params())
+    if not type_arg:
+        return None
+    return _emit_module_function_call(tr, binding.module_path, func_def, node, explicit_type_arg=type_arg)
 
 def _try_emit_module_templated_function_subscript_call(tr: 'Translator', name: str, sl: ast.expr, node: ast.Call) -> str | None:
     """``_slot_result[T](slot)`` 等同模块模板 ``@native`` 函数，勿走构造路径。"""
@@ -1242,6 +1272,9 @@ def emit_call_expr(tr: Translator, node: ast.Call):
             return cpp_iter_result_return_expr(rt, f'{t}()')
         case ast.Subscript(value=ast.Name(id=name), slice=sl):
             tparams = tr._active_type_params()
+            imported_tpl = _try_emit_imported_templated_function_subscript_call(tr, name, sl, node)
+            if imported_tpl is not None:
+                return imported_tpl
             mod_tpl = _try_emit_module_templated_function_subscript_call(tr, name, sl, node)
             if mod_tpl is not None:
                 return mod_tpl

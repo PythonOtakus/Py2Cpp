@@ -5,17 +5,11 @@ PY2CPP_IGNORE
 #include "py2cpp/core/iter_result.h"
 PY2CPP_END
 
-#include "ffi/crt/stdio.h"
 #include "ffi/crt/string.h"
-#if defined(_WIN32)
-#include "ffi/crt/io.h"
-#else
-#include "ffi/posix/unistd.h"
-#endif
 
-static FILE* _io_fp(PyUPtr fp)
+static ::ffi::crt::stdio::PyiIobuf* _io_fp(PyUPtr fp)
 {
-  return (FILE*)(uintptr_t)fp;
+  return (::ffi::crt::stdio::PyiIobuf*)(uintptr_t)fp;
 }
 
 PyTextIOWrapper::PyTextIOWrapper(PyStr path, PyStr mode)
@@ -39,7 +33,7 @@ PyTextIOWrapper::PyTextIOWrapper(PyStr path, PyStr mode)
 #pragma warning(push)
 #pragma warning(disable: 4996)
 #endif
-  _fp = (PyUPtr)(uintptr_t)fopen(pbuf, mbuf);
+  _fp = (PyUPtr)(uintptr_t)::ffi::crt::stdio::pyiFopen(pbuf, mbuf);
 #if defined(_MSC_VER)
 #pragma warning(pop)
 #endif
@@ -85,7 +79,7 @@ PyTextIOWrapper::~PyTextIOWrapper()
 {
   if ((_fp) && (!_closed) && _owns)
   {
-    fclose(_io_fp(_fp));
+    ::ffi::crt::stdio::pyiFclose(_io_fp(_fp));
     _fp = 0;
     _closed = true;
   }
@@ -95,10 +89,10 @@ void PyTextIOWrapper::close()
 {
   if ((_fp) && (!_closed))
   {
-    fflush(_io_fp(_fp));
+    ::ffi::crt::stdio::pyiFflush(_io_fp(_fp));
     if (_owns)
     {
-      fclose(_io_fp(_fp));
+      ::ffi::crt::stdio::pyiFclose(_io_fp(_fp));
       _fp = 0;
     }
   }
@@ -109,7 +103,7 @@ void PyTextIOWrapper::flush()
 {
   if ((_fp) && (!_closed))
   {
-    fflush(_io_fp(_fp));
+    ::ffi::crt::stdio::pyiFflush(_io_fp(_fp));
   }
 }
 
@@ -119,11 +113,8 @@ PyBool PyTextIOWrapper::isAtty__get() const
   {
     return false;
   }
-#if defined(_WIN32)
-  return (_isatty(_fileno(_io_fp(_fp))) != 0);
-#else
-  return (isatty(fileno(_io_fp(_fp))) != 0);
-#endif
+  return (::ffi::crt::io::pyiIsatty(
+    ::ffi::crt::stdio::pyiFileno(_io_fp(_fp))) != 0);
 }
 
 PyBool PyTextIOWrapper::__bool__() const
@@ -142,7 +133,7 @@ PyInt PyTextIOWrapper::tell()
   {
     return -1;
   }
-  return (int)ftell(_io_fp(_fp));
+  return (int)::ffi::crt::stdio::pyiFtell(_io_fp(_fp));
 }
 
 PyInt PyTextIOWrapper::seek(PyInt pos, PyInt whence)
@@ -159,7 +150,7 @@ PyInt PyTextIOWrapper::seek(PyInt pos, PyInt whence)
   {
     origin = SEEK_END;
   }
-  return (fseek(_io_fp(_fp), (long)pos, origin) == 0) ? 0 : -1;
+  return (::ffi::crt::stdio::pyiFseek(_io_fp(_fp), (int)pos, origin) == 0) ? 0 : -1;
 }
 
 PyStr PyTextIOWrapper::read(PyInt size)
@@ -175,7 +166,7 @@ PyStr PyTextIOWrapper::read(PyInt size)
     int total = 0;
     while (true)
     {
-      int n = (int)fread(stack, 1, (size_t)sizeof(stack), _io_fp(_fp));
+      int n = (int)::ffi::crt::stdio::pyiFread((uintptr_t)stack, 1, (uint64)sizeof(stack), _io_fp(_fp));
       if (n <= 0)
       {
         break;
@@ -204,7 +195,7 @@ PyStr PyTextIOWrapper::read(PyInt size)
   {
     return PyStr("");
   }
-  int n = (int)fread(stack, 1, (size_t)cap, _io_fp(_fp));
+  int n = (int)::ffi::crt::stdio::pyiFread((uintptr_t)stack, 1, (uint64)cap, _io_fp(_fp));
   if (n <= 0)
   {
     return PyStr("");
@@ -230,7 +221,7 @@ PyStr PyTextIOWrapper::readLine(PyInt size)
   {
     cap = size;
   }
-  if (fgets(stack, cap, _io_fp(_fp)) == nullptr)
+  if (::ffi::crt::stdio::pyiFgets(stack, cap, _io_fp(_fp)) == nullptr)
   {
     return PyStr("");
   }
@@ -261,7 +252,7 @@ PyInt PyTextIOWrapper::write(PyStr data)
   {
     if (at >= (int)sizeof(stack))
     {
-      if (fwrite(stack, 1, (size_t)at, _io_fp(_fp)) != (size_t)at)
+      if (::ffi::crt::stdio::pyiFwrite((uintptr_t)stack, 1, (uint64)at, _io_fp(_fp)) != (size_t)at)
       {
         return -1;
       }
@@ -270,7 +261,7 @@ PyInt PyTextIOWrapper::write(PyStr data)
     stack[at] = (char)data.__getitem__(i);
     at = (at + 1);
   }
-  if ((at > 0) && (fwrite(stack, 1, (size_t)at, _io_fp(_fp)) != (size_t)at))
+  if ((at > 0) && (::ffi::crt::stdio::pyiFwrite((uintptr_t)stack, 1, (uint64)at, _io_fp(_fp)) != (size_t)at))
   {
     return -1;
   }
@@ -293,7 +284,7 @@ PyInt PyTextIOWrapper::write(PyArray<PyChar>& src, PyInt end)
   {
     if (at >= (int)sizeof(stack))
     {
-      if (fwrite(stack, 1, (size_t)at, _io_fp(_fp)) != (size_t)at)
+      if (::ffi::crt::stdio::pyiFwrite((uintptr_t)stack, 1, (uint64)at, _io_fp(_fp)) != (size_t)at)
       {
         return -1;
       }
@@ -302,7 +293,7 @@ PyInt PyTextIOWrapper::write(PyArray<PyChar>& src, PyInt end)
     stack[at] = (char)src.__getitem__(i);
     at = (at + 1);
   }
-  if ((at > 0) && (fwrite(stack, 1, (size_t)at, _io_fp(_fp)) != (size_t)at))
+  if ((at > 0) && (::ffi::crt::stdio::pyiFwrite((uintptr_t)stack, 1, (uint64)at, _io_fp(_fp)) != (size_t)at))
   {
     return -1;
   }
@@ -365,7 +356,7 @@ void PyTextIOWrapper::__exit__()
 {
   if (this->_fp)
   {
-    fflush(_io_fp(this->_fp));
+    ::ffi::crt::stdio::pyiFflush(_io_fp(this->_fp));
   }
   this->close();
 }

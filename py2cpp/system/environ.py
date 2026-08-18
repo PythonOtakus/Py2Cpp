@@ -8,6 +8,15 @@ from ..io.file.path import baseName, dirName, join
 from ..util.list import list
 from ..text import str
 
+from ffi.windows.windows import (
+  PyiErrorEnvvarNotFound,
+  pyiFreeEnvironmentStringsA,
+  pyiGetEnvironmentStrings,
+  pyiGetEnvironmentVariableA,
+  pyiGetLastError,
+  pyiSetEnvironmentVariableA,
+)
+
 _Varchars: str = (
   "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"
 )

@@ -386,7 +386,7 @@ Py2Cpp/                              # 仓库根
     ~macro/                           # 生成：``<rel>.h``（桩宏 + 可选 BEGIN_SCOPE）
     ~test/                           # 译器单测：~syntax_showcase.inl（七宏对照）+ ~snippet.inl
     ~helpers.inl                     # 跨模块共享；仅 INCLUDE（如 sql 内 ../~helpers.inl）
-    -math.inl                      # paste_before → math.inl（根级 -stem）
+
     operators.h                  # codegen 完整实现：operators.h 主体
     operators.inl                 # codegen 完整实现：operators.inl + 标量 format
     +io.inl                         # paste_after → io.inl（TextIOWrapper 等）

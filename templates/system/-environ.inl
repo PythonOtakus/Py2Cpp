@@ -2,10 +2,6 @@
 #include "ffi/crt/string.h"
 #include "ffi/crt/stdlib.h"
 #ifdef _WIN32
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include "ffi/windows/windows.h"
 #else
 #include "ffi/posix/unistd.h"
 extern char** environ;
@@ -44,11 +40,11 @@ static PyBool _env_key_has(const PyStr& key)
   key.copyToSpan(PySpan<PyByte>((PyByte*)kbuf, (PyInt)sizeof(kbuf), 1));
 #ifdef _WIN32
   char vbuf[1];
-  DWORD n = GetEnvironmentVariableA(kbuf, vbuf, 1);
+  DWORD n = ::ffi::windows::windows::pyiGetEnvironmentVariableA(kbuf, vbuf, 1);
   if (n == 0)
   {
-    DWORD err = GetLastError();
-    if (err == ERROR_ENVVAR_NOT_FOUND)
+    DWORD err = ::ffi::windows::windows::pyiGetLastError();
+    if (err == ::ffi::windows::windows::PyiErrorEnvvarNotFound)
     {
       return false;
     }
@@ -65,11 +61,11 @@ static PyStr _env_get_value(const PyStr& key)
   key.copyToSpan(PySpan<PyByte>((PyByte*)kbuf, (PyInt)sizeof(kbuf), 1));
 #ifdef _WIN32
   char vbuf[32767];
-  DWORD n = GetEnvironmentVariableA(kbuf, vbuf, (DWORD)sizeof(vbuf));
+  DWORD n = ::ffi::windows::windows::pyiGetEnvironmentVariableA(kbuf, vbuf, (uint)sizeof(vbuf));
   if (n == 0)
   {
-    DWORD err = GetLastError();
-    if (err == ERROR_ENVVAR_NOT_FOUND)
+    DWORD err = ::ffi::windows::windows::pyiGetLastError();
+    if (err == ::ffi::windows::windows::PyiErrorEnvvarNotFound)
     {
       return PyStr("");
     }
@@ -101,7 +97,7 @@ void PyEnviron::__setitem__(PyStr key, PyStr value)
   key.copyToSpan(PySpan<PyByte>((PyByte*)kbuf, (PyInt)sizeof(kbuf), 1));
   value.copyToSpan(PySpan<PyByte>((PyByte*)vbuf, (PyInt)sizeof(vbuf), 1));
 #ifdef _WIN32
-  if (SetEnvironmentVariableA(kbuf, vbuf) == 0)
+  if (::ffi::windows::windows::pyiSetEnvironmentVariableA(kbuf, vbuf) == 0)
   {
     _env_throw_oserror();
   }
@@ -122,10 +118,10 @@ void PyEnviron::__delitem__(PyStr key)
   char kbuf[4096];
   key.copyToSpan(PySpan<PyByte>((PyByte*)kbuf, (PyInt)sizeof(kbuf), 1));
 #ifdef _WIN32
-  if (SetEnvironmentVariableA(kbuf, NULL) == 0)
+  if (::ffi::windows::windows::pyiSetEnvironmentVariableA(kbuf, NULL) == 0)
   {
-    DWORD err = GetLastError();
-    if (err != ERROR_ENVVAR_NOT_FOUND)
+    DWORD err = ::ffi::windows::windows::pyiGetLastError();
+    if (err != ::ffi::windows::windows::PyiErrorEnvvarNotFound)
     {
       _env_throw_oserror();
     }
@@ -153,7 +149,7 @@ PY2CPP_TYPE(PyList)<PY2CPP_TYPE(PyStr)> PyEnviron::keys() const
 {
   PY2CPP_TYPE(PyList)<PY2CPP_TYPE(PyStr)> out;
 #ifdef _WIN32
-  char* block = GetEnvironmentStringsA();
+  char* block = const_cast<char*>(::ffi::windows::windows::pyiGetEnvironmentStrings());
   if ((!block))
   {
     return out;
@@ -168,7 +164,7 @@ PY2CPP_TYPE(PyList)<PY2CPP_TYPE(PyStr)> PyEnviron::keys() const
     }
     p += (strlen(p) + 1);
   }
-  FreeEnvironmentStringsA(block);
+  ::ffi::windows::windows::pyiFreeEnvironmentStringsA(block);
 #else
   if (environ)
   {

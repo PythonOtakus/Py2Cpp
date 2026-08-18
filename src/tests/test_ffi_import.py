@@ -183,5 +183,66 @@ class TestFfiTranslateGlue(unittest.TestCase):
       self.assertNotIn("sqlite3_auto_extension", inl_text)
 
 
+  def test_crt_stdio_and_io_glue_use_allowlisted_symbols(self) -> None:
+    import tempfile
+
+    from src.translator import Translator
+
+    with tempfile.TemporaryDirectory() as tmp:
+      out = Path(tmp)
+      entry = out / "entry.py"
+      entry.write_text(
+        "from py2cpp import *\n"
+        "from ffi.crt.io import pyiIsatty\n"
+        "from ffi.crt.stdio import PyiIobuf, pyiFileno, pyiFflush\n"
+        "\n"
+        "def check_terminal(stream: Pointer[PyiIobuf]) -> bool:\n"
+        "  pyiFflush(stream)\n"
+        "  return pyiIsatty(pyiFileno(stream)) != 0\n",
+        encoding="utf-8",
+      )
+      Translator.translate_file(
+        str(entry),
+        output_dir=str(out),
+        include_stdlib=True,
+        emit_main=False,
+      )
+      stdio_header = out / "runtime" / "ffi" / "crt" / "stdio.h"
+      self.assertTrue(stdio_header.is_file(), msg=f"missing {stdio_header}")
+      stdio_text = stdio_header.read_text(encoding="utf-8")
+      self.assertIn("using PyiIobuf = ::_iobuf;", stdio_text)
+      self.assertIn("pyiFileno", stdio_text)
+      stdio_inl = stdio_header.with_suffix(".inl")
+      self.assertIn("::fflush(_Stream)", stdio_inl.read_text(encoding="utf-8"))
+      io_inl = out / "runtime" / "ffi" / "crt" / "io.inl"
+      self.assertTrue(io_inl.is_file(), msg=f"missing {io_inl}")
+      self.assertIn("::_isatty(_FileHandle)", io_inl.read_text(encoding="utf-8"))
+  def test_crt_overload_glue_uses_allowlisted_exit(self) -> None:
+    import tempfile
+
+    from src.translator import Translator
+
+    with tempfile.TemporaryDirectory() as tmp:
+      out = Path(tmp)
+      entry = out / "entry.py"
+      entry.write_text(
+        "from py2cpp import *\n"
+        "from ffi.crt.stdlib import pyiExit\n"
+        "\n"
+        "def exit_now(code: int) -> None:\n"
+        "  pyiExit(code)\n",
+        encoding="utf-8",
+      )
+      Translator.translate_file(
+        str(entry),
+        output_dir=str(out),
+        include_stdlib=True,
+        emit_main=False,
+      )
+      inl = out / "runtime" / "ffi" / "crt" / "stdlib.inl"
+      self.assertTrue(inl.is_file(), msg=f"missing {inl}")
+      text = inl.read_text(encoding="utf-8")
+      self.assertIn("inline void ffi::crt::stdlib::pyiExit", text)
+      self.assertIn("::exit(_Code)", text)
 if __name__ == "__main__":
   unittest.main()

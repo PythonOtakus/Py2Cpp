@@ -75,25 +75,35 @@ _FFI_GLUE_ALLOWLIST: dict[str, frozenset[str] | None] = {
     "sqlite3_exec",
     "sqlite3_free",
   }),
-  "ffi/windows/windows": frozenset(),
+  "ffi/windows/windows": frozenset({"FreeEnvironmentStringsA", "GetCommandLineW", "GetConsoleScreenBufferInfo", "GetEnvironmentStrings", "GetEnvironmentVariableA", "GetLastError", "GetStdHandle", "LocalFree", "SetEnvironmentVariableA", "WideCharToMultiByte"}),
   "ffi/windows/winsock2": frozenset(),
   "ffi/windows/ws2tcpip": frozenset(),
   "ffi/windows/commctrl": frozenset(),
   "ffi/windows/commdlg": frozenset(),
-  "ffi/windows/shellapi": frozenset(),
+  "ffi/windows/shellapi": frozenset({"CommandLineToArgvW"}),
   "ffi/windows/gdiplus": frozenset(),
   "ffi/windows/objidl": frozenset(),
   "ffi/windows/winhttp": frozenset(),
-  "ffi/crt/stdio": frozenset(),
+  "ffi/crt/stdio": frozenset({"fclose", "fflush", "fgets", "fileno", "fopen", "fread", "fseek", "ftell", "fwrite"}),
   "ffi/crt/string": frozenset(),
-  "ffi/crt/math": frozenset(),
+  "ffi/crt/math": frozenset({
+    "acos", "acosf", "acosh", "acoshf", "asin", "asinf", "asinh", "asinhf",
+    "atan", "atanf", "atan2", "atan2f", "atanh", "atanhf", "cbrt", "cbrtf",
+    "ceil", "ceilf", "copysign", "copysignf", "cos", "cosf", "cosh", "coshf",
+    "erf", "erff", "erfc", "erfcf", "exp", "expf", "exp2", "exp2f",
+    "expm1", "expm1f", "fabs", "fabsf", "floor", "floorf", "fmod", "fmodf",
+    "hypot", "hypotf", "lgamma", "lgammaf", "log", "logf", "log1p", "log1pf",
+    "log2", "log2f", "log10", "log10f", "pow", "powf", "remainder", "remainderf",
+    "sin", "sinf", "sinh", "sinhf", "sqrt", "sqrtf", "tan", "tanf", "tanh",
+    "tanhf", "tgamma", "tgammaf", "trunc", "truncf",
+  }),
   "ffi/crt/time": frozenset(),
-  "ffi/crt/stdlib": frozenset(),
+  "ffi/crt/stdlib": frozenset({"exit"}),
   "ffi/crt/errno": frozenset(),
   "ffi/crt/signal": frozenset(),
   "ffi/crt/fcntl": frozenset(),
   "ffi/crt/direct": frozenset(),
-  "ffi/crt/io": frozenset(),
+  "ffi/crt/io": frozenset({"_isatty"}),
   "ffi/crt/stat": frozenset(),
   "ffi/crt/utime": frozenset(),
   "ffi/posix/unistd": frozenset(),
@@ -225,6 +235,33 @@ def ffi_glue_allowlist(module_path: str) -> frozenset[str] | None:
     return frozenset()
   return _FFI_GLUE_ALLOWLIST[norm]
 
+
+_FFI_HEADER_SYMBOL_ALLOWLIST: dict[str, frozenset[str]] = {
+  "ffi/windows/windows": frozenset({"PyiConsoleScreenBufferInfo", "PyiCpUtf8", "PyiErrorEnvvarNotFound", "pyiFreeEnvironmentStringsA", "pyiGetCommandLineW", "pyiGetConsoleScreenBufferInfo", "pyiGetEnvironmentStrings", "pyiGetEnvironmentVariableA", "pyiGetLastError", "pyiGetStdHandle", "pyiLocalFree", "pyiSetEnvironmentVariableA", "pyiWideCharToMultiByte"}),
+  "ffi/windows/shellapi": frozenset({"pyiCommandLineToArgvW"}),
+  "ffi/crt/stdlib": frozenset({"pyiExit"}),
+  "ffi/crt/stdio": frozenset({"PyiIobuf", "PyiFile", "pyiFclose", "pyiFflush", "pyiFgets", "pyiFileno", "pyiFopen", "pyiFread", "pyiFseek", "pyiFtell", "pyiFwrite"}),
+  "ffi/crt/io": frozenset({"pyiIsatty"}),
+  # ``math.pyi`` includes UCRT private types that are not portable C++ declarations.
+  # The standard-library facade needs only these scalar CRT entry points.
+  "ffi/crt/math": frozenset({
+    "pyiAcos", "pyiAcosf", "pyiAcosh", "pyiAcoshf", "pyiAsin", "pyiAsinf", "pyiAsinh", "pyiAsinhf",
+    "pyiAtan", "pyiAtanf", "pyiAtan2", "pyiAtan2F", "pyiAtanh", "pyiAtanhf", "pyiCbrt", "pyiCbrtf",
+    "pyiCeil", "pyiCeilf", "pyiCopysign", "pyiCopysignf", "pyiCos", "pyiCosf", "pyiCosh", "pyiCoshf",
+    "pyiErf", "pyiErff", "pyiErfc", "pyiErfcf", "pyiExp", "pyiExpf", "pyiExp2", "pyiExp2F",
+    "pyiExpm1", "pyiExpm1F", "pyiFabs", "pyiFabsf", "pyiFloor", "pyiFloorf", "pyiFmod", "pyiFmodf",
+    "pyiHypot", "pyiHypotf", "pyiLgamma", "pyiLgammaf", "pyiLog", "pyiLogf", "pyiLog1P", "pyiLog1Pf",
+    "pyiLog2", "pyiLog2F", "pyiLog10", "pyiLog10F", "pyiPow", "pyiPowf", "pyiRemainder", "pyiRemainderf",
+    "pyiSin", "pyiSinf", "pyiSinh", "pyiSinhf", "pyiSqrt", "pyiSqrtf", "pyiTan", "pyiTanf", "pyiTanh",
+    "pyiTanhf", "pyiTgamma", "pyiTgammaf", "pyiTrunc", "pyiTruncf",
+  }),
+}
+
+
+def ffi_header_symbol_allowlist(module_path: str) -> frozenset[str] | None:
+  """可移植性受限的 FFI 模块可限制生成声明面。"""
+  norm = module_path.replace("\\", "/").strip("/")
+  return _FFI_HEADER_SYMBOL_ALLOWLIST.get(norm)
 
 def ffi_include_only_surface(module_path: str) -> bool:
   """空 allowlist：生成头仅为 C 头中转，不 dump ``.pyi`` 符号。"""

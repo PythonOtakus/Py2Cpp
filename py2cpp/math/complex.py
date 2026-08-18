@@ -3,7 +3,7 @@
 路径：``py2cpp.math.complex``（``import cmath`` 的 CPython 同名模块在 Py2Cpp 中请显式导入本模块）。
 
 参考 https://docs.python.org/3.13/library/cmath.html 与 ``Modules/cmathmodule.c``。
-组合逻辑为纯 Python，实部/虚部经 ``float64`` 与 ``py2cpp.math`` libm；返回值均为 ``complex``。
+组合逻辑为纯 Python，实部/虚部经标量类型与 ``py2cpp.math`` libm；返回值均为 ``complex[Scalar]``。
 ``Inf``/``NaN``/``Infj``/``NaNj`` 与 ``isFinite``/``isInf``/``isNaN`` 见 ``complex`` 类型静态成员（同 ``float`` 标量策略）。
 """
 from __future__ import annotations
@@ -20,8 +20,6 @@ from . import (
   tau,
 )
 
-_i: complex @const = 1j
-
 
 # ---------------------------------------------------------------------------
 # 坐标变换
@@ -29,20 +27,20 @@ _i: complex @const = 1j
 
 
 @immutable
-def phase(z: complex) -> float64:
+def phase[Scalar: oneof[float, float64] = float](z: complex[Scalar]) -> Scalar:
   return atan2(z.imag, z.real)
 
 
 @immutable
-def polar(z: complex) -> (float64, float64):
-  r: float64 = hypot(z.real, z.imag)
-  p: float64 = phase(z)
+def polar[Scalar: oneof[float, float64] = float](z: complex[Scalar]) -> (Scalar, Scalar):
+  r: Scalar = hypot(z.real, z.imag)
+  p: Scalar = phase(z)
   return (r, p)
 
 
 @immutable
-def rect(r: float64, phi: float64) -> complex:
-  unit: complex = new(_rm.cos(phi), _rm.sin(phi))
+def rect[Scalar: oneof[float, float64] = float](r: Scalar, phi: Scalar) -> complex[Scalar]:
+  unit: complex[Scalar] = new(_rm.cos(phi), _rm.sin(phi))
   return unit * r
 
 
@@ -52,54 +50,49 @@ def rect(r: float64, phi: float64) -> complex:
 
 
 @immutable
-def _logCore(z: complex) -> complex:
-  xr: float64 = z.real
-  xi: float64 = z.imag
-  mod: float64 = hypot(xr, xi)
+def _logCore[Scalar: oneof[float, float64] = float](z: complex[Scalar]) -> complex[Scalar]:
+  xr: Scalar = z.real
+  xi: Scalar = z.imag
+  mod: Scalar = hypot(xr, xi)
   if mod == 0.0:
     raise ValueError("math domain error")
-  re: float64 = _rm.log(mod)
-  im: float64 = atan2(xi, xr)
+  re: Scalar = _rm.log(mod)
+  im: Scalar = atan2(xi, xr)
   return new(re, im)
 
 
-@native_name("cmath_*")
 @immutable
-def exp(z: complex) -> complex:
-  xr: float64 = z.real
-  xi: float64 = z.imag
-  er: float64 = _rm.exp(xr)
-  unit: complex = new(_rm.cos(xi), _rm.sin(xi))
+def exp[Scalar: oneof[float, float64] = float](z: complex[Scalar]) -> complex[Scalar]:
+  xr: Scalar = z.real
+  xi: Scalar = z.imag
+  er: Scalar = _rm.exp(xr)
+  unit: complex[Scalar] = new(_rm.cos(xi), _rm.sin(xi))
   return unit * er
 
 
 @overload
-@native_name("cmath_*")
 @immutable
-def log(z: complex) -> complex:
+def log[Scalar: oneof[float, float64] = float](z: complex[Scalar]) -> complex[Scalar]:
   return _logCore(z)
 
 
 @overload
-@native_name("cmath_*")
 @immutable
-def log(z: complex, base: float64) -> complex:
-  core: complex = _logCore(z)
-  denom: complex = _logCore(complex(base, 0.0))
+def log[Scalar: oneof[float, float64] = float](z: complex[Scalar], base: Scalar) -> complex[Scalar]:
+  core: complex[Scalar] = _logCore(z)
+  denom: complex[Scalar] = _logCore(complex[Scalar](base, 0.0))
   return core / denom
 
 
-@native_name("cmath_*")
 @immutable
-def log10(z: complex) -> complex:
-  ln10: complex = new(_rm.log(10.0), 0.0)
+def log10[Scalar: oneof[float, float64] = float](z: complex[Scalar]) -> complex[Scalar]:
+  ln10: complex[Scalar] = new(_rm.log(10.0), 0.0)
   return _logCore(z) / ln10
 
 
-@native_name("cmath_*")
 @immutable
-def sqrt(z: complex) -> complex:
-  half: complex = new(0.5, 0)
+def sqrt[Scalar: oneof[float, float64] = float](z: complex[Scalar]) -> complex[Scalar]:
+  half: complex[Scalar] = new(0.5, 0)
   return exp(half * _logCore(z))
 
 
@@ -108,69 +101,65 @@ def sqrt(z: complex) -> complex:
 # ---------------------------------------------------------------------------
 
 
-@native_name("cmath_*")
 @immutable
-def sin(z: complex) -> complex:
-  x: float64 = z.real
-  y: float64 = z.imag
-  sh: float64 = _rm.sinh(y)
-  ch: float64 = _rm.cosh(y)
-  sx: float64 = _rm.sin(x)
-  cx: float64 = _rm.cos(x)
-  re: float64 = sx * ch
-  im: float64 = cx * sh
+def sin[Scalar: oneof[float, float64] = float](z: complex[Scalar]) -> complex[Scalar]:
+  x: Scalar = z.real
+  y: Scalar = z.imag
+  sh: Scalar = _rm.sinh(y)
+  ch: Scalar = _rm.cosh(y)
+  sx: Scalar = _rm.sin(x)
+  cx: Scalar = _rm.cos(x)
+  re: Scalar = sx * ch
+  im: Scalar = cx * sh
   return new(re, im)
 
 
-@native_name("cmath_*")
 @immutable
-def cos(z: complex) -> complex:
-  x: float64 = z.real
-  y: float64 = z.imag
-  sh: float64 = _rm.sinh(y)
-  ch: float64 = _rm.cosh(y)
-  sx: float64 = _rm.sin(x)
-  cx: float64 = _rm.cos(x)
-  re: float64 = cx * ch
-  im: float64 = -sx * sh
+def cos[Scalar: oneof[float, float64] = float](z: complex[Scalar]) -> complex[Scalar]:
+  x: Scalar = z.real
+  y: Scalar = z.imag
+  sh: Scalar = _rm.sinh(y)
+  ch: Scalar = _rm.cosh(y)
+  sx: Scalar = _rm.sin(x)
+  cx: Scalar = _rm.cos(x)
+  re: Scalar = cx * ch
+  im: Scalar = -sx * sh
   return new(re, im)
 
 
-@native_name("cmath_*")
 @immutable
-def tan(z: complex) -> complex:
-  s: complex = sin(z)
-  c: complex = cos(z)
+def tan[Scalar: oneof[float, float64] = float](z: complex[Scalar]) -> complex[Scalar]:
+  s: complex[Scalar] = sin(z)
+  c: complex[Scalar] = cos(z)
   return s / c
 
 
-@native_name("cmath_*")
 @immutable
-def asin(z: complex) -> complex:
-  one: complex = new(1, 0)
-  zz: complex = z * z
-  inner: complex = _i * z + sqrt(one - zz)
-  w: complex = log(inner)
-  negI: complex = -_i
+def asin[Scalar: oneof[float, float64] = float](z: complex[Scalar]) -> complex[Scalar]:
+  i: complex[Scalar] = new(0, 1)
+  one: complex[Scalar] = new(1, 0)
+  zz: complex[Scalar] = z * z
+  inner: complex[Scalar] = i * z + sqrt(one - zz)
+  w: complex[Scalar] = log(inner)
+  negI: complex[Scalar] = -i
   return negI * w
 
 
-@native_name("cmath_*")
 @immutable
-def acos(z: complex) -> complex:
-  half: float64 = 0.5 * pi
-  halfPi: complex = new(half, 0.0)
+def acos[Scalar: oneof[float, float64] = float](z: complex[Scalar]) -> complex[Scalar]:
+  half: Scalar = 0.5 * pi
+  halfPi: complex[Scalar] = new(half, 0.0)
   return halfPi - asin(z)
 
 
-@native_name("cmath_*")
 @immutable
-def atan(z: complex) -> complex:
-  one: complex = new(1, 0)
-  halfI: complex = new(0, 0.5)
-  num: complex = one - _i * z
-  denom: complex = one + _i * z
-  ratio: complex = num / denom
+def atan[Scalar: oneof[float, float64] = float](z: complex[Scalar]) -> complex[Scalar]:
+  i: complex[Scalar] = new(0, 1)
+  one: complex[Scalar] = new(1, 0)
+  halfI: complex[Scalar] = new(0, 0.5)
+  num: complex[Scalar] = one - i * z
+  denom: complex[Scalar] = one + i * z
+  ratio: complex[Scalar] = num / denom
   return halfI * log(ratio)
 
 
@@ -179,76 +168,70 @@ def atan(z: complex) -> complex:
 # ---------------------------------------------------------------------------
 
 
-@native_name("cmath_*")
 @immutable
-def sinh(z: complex) -> complex:
-  ez: complex = exp(z)
-  en: complex = exp(-z)
-  diff: complex = ez - en
-  half: complex = new(0.5, 0.0)
+def sinh[Scalar: oneof[float, float64] = float](z: complex[Scalar]) -> complex[Scalar]:
+  ez: complex[Scalar] = exp(z)
+  en: complex[Scalar] = exp(-z)
+  diff: complex[Scalar] = ez - en
+  half: complex[Scalar] = new(0.5, 0.0)
   return diff * half
 
 
-@native_name("cmath_*")
 @immutable
-def cosh(z: complex) -> complex:
-  ez: complex = exp(z)
-  en: complex = exp(-z)
-  total: complex = ez + en
-  half: complex = new(0.5, 0.0)
+def cosh[Scalar: oneof[float, float64] = float](z: complex[Scalar]) -> complex[Scalar]:
+  ez: complex[Scalar] = exp(z)
+  en: complex[Scalar] = exp(-z)
+  total: complex[Scalar] = ez + en
+  half: complex[Scalar] = new(0.5, 0.0)
   return total * half
 
 
-@native_name("cmath_*")
 @immutable
-def tanh(z: complex) -> complex:
-  sh: complex = sinh(z)
-  ch: complex = cosh(z)
+def tanh[Scalar: oneof[float, float64] = float](z: complex[Scalar]) -> complex[Scalar]:
+  sh: complex[Scalar] = sinh(z)
+  ch: complex[Scalar] = cosh(z)
   return sh / ch
 
 
-@native_name("cmath_*")
 @immutable
-def asinh(z: complex) -> complex:
-  one: complex = new(1, 0)
+def asinh[Scalar: oneof[float, float64] = float](z: complex[Scalar]) -> complex[Scalar]:
+  one: complex[Scalar] = new(1, 0)
   return log(z + sqrt(z * z + one))
 
 
-@native_name("cmath_*")
 @immutable
-def acosh(z: complex) -> complex:
-  one: complex = new(1, 0)
+def acosh[Scalar: oneof[float, float64] = float](z: complex[Scalar]) -> complex[Scalar]:
+  one: complex[Scalar] = new(1, 0)
   return log(z + sqrt(z * z - one))
 
 
-@native_name("cmath_*")
 @immutable
-def atanh(z: complex) -> complex:
-  one: complex = new(1, 0)
-  half: complex = new(0.5, 0)
+def atanh[Scalar: oneof[float, float64] = float](z: complex[Scalar]) -> complex[Scalar]:
+  one: complex[Scalar] = new(1, 0)
+  half: complex[Scalar] = new(0.5, 0)
   return half * log((one + z) / (one - z))
 
 
 @immutable
-def isClose(
-  a: complex,
-  b: complex,
-  relTol: float64 = 1e-09,
-  absTol: float64 = 0.0,
+def isClose[Scalar: oneof[float, float64] = float](
+  a: complex[Scalar],
+  b: complex[Scalar],
+  relTol: Scalar = 1e-09,
+  absTol: Scalar = 0.0,
 ) -> bool:
   if a == b:
     return True
-  if complex.isInf(a) or complex.isInf(b):
+  if complex[Scalar].isInf(a) or complex[Scalar].isInf(b):
     return a == b
-  if complex.isNaN(a) or complex.isNaN(b):
+  if complex[Scalar].isNaN(a) or complex[Scalar].isNaN(b):
     return False
-  diff: float64 = abs(a - b)
-  scaleA: float64 = abs(a)
-  scaleB: float64 = abs(b)
-  scale: float64 = scaleA
+  diff: Scalar = abs(a - b)
+  scaleA: Scalar = abs(a)
+  scaleB: Scalar = abs(b)
+  scale: Scalar = scaleA
   if scaleB > scale:
     scale = scaleB
-  tol: float64 = relTol * scale
+  tol: Scalar = relTol * scale
   if absTol > tol:
     tol = absTol
   return diff <= tol

@@ -21,6 +21,7 @@ from ..analysis.module_namespace import namespace_qualifier_for_module
 from ..constant.ffi_layout import (
   ffi_c_header_include,
   ffi_glue_allowlist,
+  ffi_header_symbol_allowlist,
   is_ffi_module_path,
 )
 
@@ -40,6 +41,21 @@ _SCALAR_CAST: dict[str, str] = {
   "CStr": "CStr",
 }
 
+
+# ``CStr`` is represented as ``const char*`` in generated C++.  A small
+# set of C APIs uses a ``char*`` output buffer but is emitted as ``CStr`` by
+# the header generator, so glue performs the only required mutable cast.
+_MUTABLE_CSTR_PARAMS: frozenset[tuple[str, str]] = frozenset({
+  ("fgets", "_Buffer"),
+  ("GetEnvironmentVariableA", "lpBuffer"),
+  ("FreeEnvironmentStringsA", "penv"),
+  ("WideCharToMultiByte", "lpMultiByteStr"),
+})
+
+_WIDE_CHAR_POINTER_PARAMS: frozenset[tuple[str, str]] = frozenset({
+  ("CommandLineToArgvW", "lpCmdLine"),
+  ("WideCharToMultiByte", "lpWideCharStr"),
+})
 
 @dataclass(frozen=True)
 class _Ann:
@@ -86,6 +102,8 @@ def _c_name(func: ast.FunctionDef) -> str:
 
 def _emit_arg_expr(pname: str, ann: _Ann, *, c_name: str) -> tuple[list[str], str]:
   if ann.kind == "cstr":
+    if (c_name, pname) in _MUTABLE_CSTR_PARAMS:
+      return [], f"const_cast<char*>({pname})"
     return [], pname
   if ann.kind == "fn":
     # C 回调签名与 Py Function 指针布局一致但类型名不同，按需收窄
@@ -113,6 +131,8 @@ def _emit_arg_expr(pname: str, ann: _Ann, *, c_name: str) -> tuple[list[str], st
       return [], f"reinterpret_cast<float*>({pname})"
     if ann.name == "float64":
       return [], f"reinterpret_cast<double*>({pname})"
+    if ann.name == "uint" and (c_name, pname) in _WIDE_CHAR_POINTER_PARAMS:
+      return [], f"reinterpret_cast<const wchar_t*>({pname})"
     return [], pname
   if ann.kind == "ptr_cstr":
     # ``CStr*`` ≈ ``const char**``；个别 API（如 ``sqlite3_exec`` errmsg）要 ``char**``
@@ -177,13 +197,22 @@ def emit_ffi_module_glue(tr: Translator, module_path: str) -> None:
   if c_inc is None:
     return
   allow = ffi_glue_allowlist(module_path)
-  funcs = [
+  native_funcs = [
     f
     for f in tr._module_emit_functions_for(module_path)
-    if has_named_decorator(f, "native") and not has_named_decorator(f, "overload")
+    if has_named_decorator(f, "native")
   ]
+  funcs = [f for f in native_funcs if not has_named_decorator(f, "overload")]
   if allow is not None:
     funcs = [f for f in funcs if _c_name(f) in allow]
+    emitted = {(f.name, _c_name(f)) for f in funcs}
+    funcs.extend(
+      f
+      for f in native_funcs
+      if has_named_decorator(f, "overload")
+      and _c_name(f) in allow
+      and (f.name, _c_name(f)) not in emitted
+    )
   if not funcs:
     return
   lines = tr.per_module_inl_lines.setdefault(module_path, [])
@@ -256,6 +285,9 @@ def emit_ffi_module_glue(tr: Translator, module_path: str) -> None:
     and isinstance(node.target, ast.Name)
     and node.target.id != "__all__"
   ]
+  header_symbols = ffi_header_symbol_allowlist(module_path)
+  if header_symbols is not None:
+    const_names = [name for name in const_names if name in header_symbols]
   if const_names:
     lines.append("// 撤销 C 头对 FFI 常量对应宏的再定义（PyiX → X）")
     seen_c: set[str] = set()
@@ -279,7 +311,9 @@ def emit_ffi_module_glue(tr: Translator, module_path: str) -> None:
           c_macro = name[4:]
         else:
           c_macro = name
-      if c_macro in seen_c:
+      # FFI constants retain their ``Pyi…`` C++ name.  A C macro only needs
+      # removal when the emitted declaration itself has that exact name.
+      if c_macro != name or c_macro in seen_c:
         continue
       seen_c.add(c_macro)
       lines.append(f"#ifdef {c_macro}")

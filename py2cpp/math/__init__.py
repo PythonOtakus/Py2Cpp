@@ -5,13 +5,24 @@
 ``Inf`` / ``NaN`` 请用标量静态属性 ``float.Inf``、``float64.NaN`` 等（见 ``py_types.h``）；``isFinite`` / ``isInf`` / ``isNaN`` 为 ``float`` / ``float64`` 静态方法。**无** ``math.inf`` / ``math.nan`` / ``math.isinf`` 等。
 
 参考 https://docs.python.org/3.13/library/math.html 与 ``Modules/mathmodule.c`` / ``Lib/math.py``。
-超越函数与分类谓词为 ``@native``（``templates/-math.inl`` paste_before → ``math.inl``）；组合逻辑为纯 Python。
+超越函数直接分派到 ``ffi.crt.math`` 的 CRT 绑定；组合逻辑为纯 Python。
 
 **暂未实现**：``frexp`` / ``modf`` / ``ldexp``、``nextafter`` / ``ulp``、``sumprod`` 等。
 """
 from __future__ import annotations
 
 from ..builtins import *
+from ffi.crt.math import (
+  pyiAcos, pyiAcosf, pyiAcosh, pyiAcoshf, pyiAsin, pyiAsinf, pyiAsinh, pyiAsinhf,
+  pyiAtan, pyiAtanf, pyiAtan2, pyiAtan2F, pyiAtanh, pyiAtanhf, pyiCbrt, pyiCbrtf,
+  pyiCeil, pyiCeilf, pyiCopysign, pyiCopysignf, pyiCos, pyiCosf, pyiCosh, pyiCoshf,
+  pyiErf, pyiErff, pyiErfc, pyiErfcf, pyiExp, pyiExpf, pyiExp2, pyiExp2F,
+  pyiExpm1, pyiExpm1F, pyiFabs, pyiFabsf, pyiFloor, pyiFloorf, pyiFmod, pyiFmodf,
+  pyiHypot, pyiHypotf, pyiLgamma, pyiLgammaf, pyiLog, pyiLogf, pyiLog1P, pyiLog1Pf,
+  pyiLog2, pyiLog2F, pyiLog10, pyiLog10F, pyiPow, pyiPowf, pyiRemainder,
+  pyiRemainderf, pyiSin, pyiSinf, pyiSinh, pyiSinhf, pyiSqrt, pyiSqrtf, pyiTan,
+  pyiTanf, pyiTanh, pyiTanhf, pyiTgamma, pyiTgammaf, pyiTrunc, pyiTruncf,
+)
 from ..core.exceptions import ValueError
 from ..util.list import list
 
@@ -27,254 +38,253 @@ tau: float64 @const = 6.28318530717958647692
 
 
 # ---------------------------------------------------------------------------
-# libm 一元 / 二元（``@native``）
+# CRT `math.h` FFI
 # ---------------------------------------------------------------------------
 
-
-@native
-@native_name("math_*")
 @immutable
-def sqrt(x: float64) -> float64:
-  ...
+def sqrt[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiSqrtf(x)
+  elif Scalar is float64:
+    return pyiSqrt(x)
 
-
-@native
-@native_name("math_*")
 @immutable
-def fabs(x: float64) -> float64:
-  ...
+def fabs[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiFabsf(x)
+  elif Scalar is float64:
+    return pyiFabs(x)
 
-
-@native
-@native_name("math_*")
 @immutable
-def floor(x: float64) -> float64:
-  ...
+def floor[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiFloorf(x)
+  elif Scalar is float64:
+    return pyiFloor(x)
 
-
-@native
-@native_name("math_*")
 @immutable
-def ceil(x: float64) -> float64:
-  ...
+def ceil[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiCeilf(x)
+  elif Scalar is float64:
+    return pyiCeil(x)
 
-
-@native
-@native_name("math_*")
 @immutable
-def trunc(x: float64) -> float64:
-  ...
+def trunc[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiTruncf(x)
+  elif Scalar is float64:
+    return pyiTrunc(x)
 
-
-@native
-@native_name("math_*")
 @immutable
-def sin(x: float64) -> float64:
-  ...
+def sin[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiSinf(x)
+  elif Scalar is float64:
+    return pyiSin(x)
 
-
-@native
-@native_name("math_*")
 @immutable
-def cos(x: float64) -> float64:
-  ...
+def cos[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiCosf(x)
+  elif Scalar is float64:
+    return pyiCos(x)
 
-
-@native
-@native_name("math_*")
 @immutable
-def tan(x: float64) -> float64:
-  ...
+def tan[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiTanf(x)
+  elif Scalar is float64:
+    return pyiTan(x)
 
-
-@native
-@native_name("math_*")
 @immutable
-def asin(x: float64) -> float64:
-  ...
+def asin[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiAsinf(x)
+  elif Scalar is float64:
+    return pyiAsin(x)
 
-
-@native
-@native_name("math_*")
 @immutable
-def acos(x: float64) -> float64:
-  ...
+def acos[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiAcosf(x)
+  elif Scalar is float64:
+    return pyiAcos(x)
 
-
-@native
-@native_name("math_*")
 @immutable
-def atan(x: float64) -> float64:
-  ...
+def atan[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiAtanf(x)
+  elif Scalar is float64:
+    return pyiAtan(x)
 
-
-@native
-@native_name("math_*")
 @immutable
-def sinh(x: float64) -> float64:
-  ...
+def sinh[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiSinhf(x)
+  elif Scalar is float64:
+    return pyiSinh(x)
 
-
-@native
-@native_name("math_*")
 @immutable
-def cosh(x: float64) -> float64:
-  ...
+def cosh[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiCoshf(x)
+  elif Scalar is float64:
+    return pyiCosh(x)
 
-
-@native
-@native_name("math_*")
 @immutable
-def tanh(x: float64) -> float64:
-  ...
+def tanh[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiTanhf(x)
+  elif Scalar is float64:
+    return pyiTanh(x)
 
-
-@native
-@native_name("math_*")
 @immutable
-def asinh(x: float64) -> float64:
-  ...
+def asinh[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiAsinhf(x)
+  elif Scalar is float64:
+    return pyiAsinh(x)
 
-
-@native
-@native_name("math_*")
 @immutable
-def acosh(x: float64) -> float64:
-  ...
+def acosh[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiAcoshf(x)
+  elif Scalar is float64:
+    return pyiAcosh(x)
 
-
-@native
-@native_name("math_*")
 @immutable
-def atanh(x: float64) -> float64:
-  ...
+def atanh[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiAtanhf(x)
+  elif Scalar is float64:
+    return pyiAtanh(x)
 
-
-@native
-@native_name("math_*")
 @immutable
-def exp(x: float64) -> float64:
-  ...
+def exp[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiExpf(x)
+  elif Scalar is float64:
+    return pyiExp(x)
 
-
-@native
-@native_name("math_*")
 @immutable
-def exp2(x: float64) -> float64:
-  ...
+def exp2[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiExp2F(x)
+  elif Scalar is float64:
+    return pyiExp2(x)
 
-
-@native
-@native_name("math_*")
 @immutable
-def expm1(x: float64) -> float64:
-  ...
+def expm1[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiExpm1F(x)
+  elif Scalar is float64:
+    return pyiExpm1(x)
 
-
-@native
-@native_name("math_*")
 @immutable
-def log(x: float64) -> float64:
-  ...
+def log[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiLogf(x)
+  elif Scalar is float64:
+    return pyiLog(x)
 
-
-@native
-@native_name("math_*")
 @immutable
-def log2(x: float64) -> float64:
-  ...
+def log2[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiLog2F(x)
+  elif Scalar is float64:
+    return pyiLog2(x)
 
-
-@native
-@native_name("math_*")
 @immutable
-def log10(x: float64) -> float64:
-  ...
+def log10[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiLog10F(x)
+  elif Scalar is float64:
+    return pyiLog10(x)
 
-
-@native
-@native_name("math_*")
 @immutable
-def log1p(x: float64) -> float64:
-  ...
+def log1p[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiLog1Pf(x)
+  elif Scalar is float64:
+    return pyiLog1P(x)
 
-
-@native
-@native_name("math_*")
 @immutable
-def erf(x: float64) -> float64:
-  ...
+def erf[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiErff(x)
+  elif Scalar is float64:
+    return pyiErf(x)
 
-
-@native
-@native_name("math_*")
 @immutable
-def erfc(x: float64) -> float64:
-  ...
+def erfc[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiErfcf(x)
+  elif Scalar is float64:
+    return pyiErfc(x)
 
-
-@native
-@native_name("math_*")
 @immutable
-def gamma(x: float64) -> float64:
-  ...
+def gamma[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiTgammaf(x)
+  elif Scalar is float64:
+    return pyiTgamma(x)
 
-
-@native
-@native_name("math_*")
 @immutable
-def lgamma(x: float64) -> float64:
-  ...
+def lgamma[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiLgammaf(x)
+  elif Scalar is float64:
+    return pyiLgamma(x)
 
-
-@native
-@native_name("math_*")
 @immutable
-def cbrt(x: float64) -> float64:
-  ...
+def cbrt[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiCbrtf(x)
+  elif Scalar is float64:
+    return pyiCbrt(x)
 
-
-@native
-@native_name("math_*")
 @immutable
-def atan2(y: float64, x: float64) -> float64:
-  ...
+def atan2[Scalar: oneof[float, float64] = float](y: Scalar, x: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiAtan2F(y, x)
+  elif Scalar is float64:
+    return pyiAtan2(y, x)
 
-
-@native
-@native_name("math_*")
 @immutable
-def hypot(x: float64, y: float64) -> float64:
-  ...
+def hypot[Scalar: oneof[float, float64] = float](x: Scalar, y: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiHypotf(x, y)
+  elif Scalar is float64:
+    return pyiHypot(x, y)
 
-
-@native
-@native_name("math_*")
 @immutable
-def pow(x: float64, y: float64) -> float64:
-  ...
+def pow[Scalar: oneof[float, float64] = float](x: Scalar, y: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiPowf(x, y)
+  elif Scalar is float64:
+    return pyiPow(x, y)
 
-
-@native
-@native_name("math_*")
 @immutable
-def fmod(x: float64, y: float64) -> float64:
-  ...
+def fmod[Scalar: oneof[float, float64] = float](x: Scalar, y: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiFmodf(x, y)
+  elif Scalar is float64:
+    return pyiFmod(x, y)
 
-
-@native
-@native_name("math_*")
 @immutable
-def copySign(x: float64, y: float64) -> float64:
-  ...
+def copySign[Scalar: oneof[float, float64] = float](x: Scalar, y: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiCopysignf(x, y)
+  elif Scalar is float64:
+    return pyiCopysign(x, y)
 
-
-@native
-@native_name("math_*")
 @immutable
-def remainder(x: float64, y: float64) -> float64:
-  ...
-
+def remainder[Scalar: oneof[float, float64] = float](x: Scalar, y: Scalar) -> Scalar:
+  if Scalar is float:
+    return pyiRemainderf(x, y)
+  elif Scalar is float64:
+    return pyiRemainder(x, y)
 
 # ---------------------------------------------------------------------------
 # 纯 Python 组合
@@ -282,31 +292,31 @@ def remainder(x: float64, y: float64) -> float64:
 
 
 @immutable
-def degrees(x: float64) -> float64:
+def degrees[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
   return x * (180.0 / pi)
 
 
 @immutable
-def radians(x: float64) -> float64:
+def radians[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
   return x * (pi / 180.0)
 
 
 @immutable
-def almost(x: float64, y: float64) -> bool:
+def almost[Scalar: oneof[float, float64] = float](x: Scalar, y: Scalar) -> bool:
   """游戏数学常用绝对容差（``1e-5``）。"""
   return abs(x - y) <= 1e-5
 
 
 @immutable
-def safeSqrt(x: float64) -> float64:
+def safeSqrt[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
   """``sqrt`` 的非负实域版本（``x<=0`` 时返回 ``0``）。"""
   if x <= 0.0:
     return 0.0
-  return sqrt(x)
+  return sqrt[Scalar](x)
 
 
 @immutable
-def sign(x: float64) -> float64:
+def sign[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
   if x < 0.0:
     return -1.0
   if x > 0.0:
@@ -315,7 +325,7 @@ def sign(x: float64) -> float64:
 
 
 @immutable
-def clamp(x: float64, minValue: float64, maxValue: float64) -> float64:
+def clamp[Scalar: oneof[float, float64] = float](x: Scalar, minValue: Scalar, maxValue: Scalar) -> Scalar:
   if x < minValue:
     return minValue
   if x > maxValue:
@@ -324,25 +334,25 @@ def clamp(x: float64, minValue: float64, maxValue: float64) -> float64:
 
 
 @immutable
-def clamp01(x: float64) -> float64:
+def clamp01[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
   return clamp(x, 0.0, 1.0)
 
 
 @immutable
-def reflect(x: float64) -> float64:
-  v: float64 = x - floor(x * 0.5) * 2.0
+def reflect[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
+  v: Scalar = x - floor[Scalar](x * 0.5) * 2.0
   if v > 1.0:
     return 2.0 - v
   return v
 
 
 @immutable
-def repeat(x: float64) -> float64:
-  return x - floor(x)
+def repeat[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
+  return x - floor[Scalar](x)
 
 
 @immutable
-def moveTowards(a: float64, b: float64, delta: float64) -> float64:
+def moveTowards[Scalar: oneof[float, float64] = float](a: Scalar, b: Scalar, delta: Scalar) -> Scalar:
   if a < b:
     return a + delta
   if a > b:
@@ -351,12 +361,12 @@ def moveTowards(a: float64, b: float64, delta: float64) -> float64:
 
 
 @immutable
-def lerp(a: float64, b: float64, t: float64) -> float64:
+def lerp[Scalar: oneof[float, float64] = float](a: Scalar, b: Scalar, t: Scalar) -> Scalar:
   return a + (b - a) * t
 
 
 @immutable
-def ease(x: float64) -> float64:
+def ease[Scalar: oneof[float, float64] = float](x: Scalar) -> Scalar:
   if x < 0.0:
     return 0.0
   if x > 1.0:
@@ -365,21 +375,21 @@ def ease(x: float64) -> float64:
 
 
 @immutable
-def smoothStep(edge0: float64, edge1: float64, x: float64) -> float64:
+def smoothStep[Scalar: oneof[float, float64] = float](edge0: Scalar, edge1: Scalar, x: Scalar) -> Scalar:
   if x < edge0:
     return 0.0
   if x > edge1:
     return 1.0
-  t: float64 = (x - edge0) / (edge1 - edge0)
+  t: Scalar = (x - edge0) / (edge1 - edge0)
   return t * t * (3.0 - 2.0 * t)
 
 
 @immutable
-def isClose(
-  a: float64,
-  b: float64,
-  relTol: float64 = 1e-09,
-  absTol: float64 = 0.0,
+def isClose[Scalar: oneof[float, float64] = float](
+  a: Scalar,
+  b: Scalar,
+  relTol: Scalar = 1e-09,
+  absTol: Scalar = 0.0,
 ) -> bool:
   """对齐 ``math.isClose``（``relTol`` / ``absTol`` 关键字在调用处传入）。"""
   if a == b:
@@ -388,13 +398,13 @@ def isClose(
     return a == b
   if float64.isNaN(a) or float64.isNaN(b):
     return False
-  diff: float64 = fabs(a - b)
-  scaleA: float64 = fabs(a)
-  scaleB: float64 = fabs(b)
-  scale: float64 = scaleA
+  diff: Scalar = fabs[Scalar](a - b)
+  scaleA: Scalar = fabs[Scalar](a)
+  scaleB: Scalar = fabs[Scalar](b)
+  scale: Scalar = scaleA
   if scaleB > scale:
     scale = scaleB
-  tol: float64 = relTol * scale
+  tol: Scalar = relTol * scale
   if absTol > tol:
     tol = absTol
   return diff <= tol
@@ -474,33 +484,33 @@ def perm(n: int, k: int) -> int:
 
 
 @immutable
-def prod(iterable: list[float64]) -> float64:
-  r: float64 = 1.0
+def prod[Scalar: oneof[float, float64] = float](iterable: list[Scalar]) -> Scalar:
+  r: Scalar = 1.0
   for i in range(len(iterable)):
     r *= iterable[i]
   return r
 
 
 @immutable
-def dist(p: list[float64], q: list[float64]) -> float64:
+def dist[Scalar: oneof[float, float64] = float](p: list[Scalar], q: list[Scalar]) -> Scalar:
   if len(p) != len(q):
     raise ValueError("both points must have the same number of dimensions")
-  s: float64 = 0.0
+  s: Scalar = 0.0
   for i in range(len(p)):
-    d: float64 = p[i] - q[i]
+    d: Scalar = p[i] - q[i]
     s += d * d
-  return sqrt(s)
+  return sqrt[Scalar](s)
 
 
 @immutable
-def fsum(iterable: list[float64]) -> float64:
+def fsum[Scalar: oneof[float, float64] = float](iterable: list[Scalar]) -> Scalar:
   """Kahan 补偿求和（对齐 ``Lib/math.py`` ``fsum`` 核心路径）。"""
-  total: float64 = 0.0
-  comp: float64 = 0.0
+  total: Scalar = 0.0
+  comp: Scalar = 0.0
   for i in range(len(iterable)):
-    x: float64 = iterable[i]
-    y: float64 = x - comp
-    t: float64 = total + y
+    x: Scalar = iterable[i]
+    y: Scalar = x - comp
+    t: Scalar = total + y
     comp = (t - total) - y
     total = t
   return total

@@ -24,7 +24,7 @@ _LowerMask: int @const = 0x7FFFFFFF
 
 
 @copyable
-class Random:
+class Random[Scalar: oneof[float, float64] = float]:
   """可播种的伪随机数生成器（MT19937）。"""
 
   Version: int @const = 3
@@ -43,7 +43,7 @@ class Random:
 
   @overload
   def seed(self) -> None:
-    t: float64 = time()
+    t: Scalar = time()
     keys: list[int] = []
     keys.append(int(t * 256.0) & 0xFFFFFFFF)
     self._initByArray(keys)
@@ -152,15 +152,15 @@ class Random:
       r = self.getRandBits(k)
     return r
 
-  def random(self) -> float64:
+  def random(self) -> Scalar:
     a: int = self._genrandInt32() >> 5
     b: int = self._genrandInt32() >> 6
-    num: float64 = a
+    num: Scalar = a
     num = num * 67108864.0 + b
-    den: float64 = 9007199254740992.0
+    den: Scalar = 9007199254740992.0
     return num / den
 
-  def uniform(self, a: float64, b: float64) -> float64:
+  def uniform(self, a: Scalar, b: Scalar) -> Scalar:
     return a + (b - a) * self.random()
 
   @overload
@@ -207,7 +207,7 @@ class Random:
       j: int = self._randbelow(i + 1)
       x[i], x[j] = x[j], x[i]
 
-  def shuffleWith[T](self, x: list[T] @ref, randomFn: Function[[], float64]) -> None:
+  def shuffleWith[T](self, x: list[T] @ref, randomFn: Function[[], Scalar]) -> None:
     n: int = len(x)
     if n < 2:
       return
@@ -237,15 +237,15 @@ class Random:
       out.append(self.choice(population))
     return out
 
-  def choicesWeighted[T](self, population: list[T], weights: list[float64], k: int = 1) -> list[T]:
+  def choicesWeighted[T](self, population: list[T], weights: list[Scalar], k: int = 1) -> list[T]:
     n: int = len(population)
     if n == 0:
       raise IndexError("cannot choose from an empty population")
     if len(weights) != n:
       raise ValueError("the number of weights does not match the population")
-    total: float64 = 0.0
+    total: Scalar = 0.0
     for i in range(n):
-      w: float64 = weights[i]
+      w: Scalar = weights[i]
       if w < 0.0:
         raise ValueError("negative weight")
       total += w
@@ -253,8 +253,8 @@ class Random:
       raise ValueError("total of weights must be positive")
     out2: list[T] = []
     for _ in range(k):
-      pick: float64 = self.random() * total
-      acc: float64 = 0.0
+      pick: Scalar = self.random() * total
+      acc: Scalar = 0.0
       for i in range(n):
         acc += weights[i]
         if pick < acc:

@@ -1,8 +1,8 @@
 # 标准库链接模型：域库（`.lib` / 可选 `.dll`）与增量编译
 
-> **状态**：P0 已落地；P1 代码已就位但默认关闭（``PY2CPP_RUNTIME_LIB=1`` 开启）。目标：**编译效率优先**。  
+> **状态**：P0 已落地；**P1 默认开启**（``PY2CPP_HEADER_ONLY=1`` 回滚纯头文件）。目标：**编译效率优先**。  
 > **受众**：改 `layout_emit` / `compile.py` / `build*.bat` / umbrella 的维护者。  
-> **相关**：[参考手册 §链接模型](./参考手册.md)（现行默认 header-only）、[编码规范](./编码规范.md)、[codegen-templates.md](./codegen-templates.md)、[c-ffi-pyi.md](./c-ffi-pyi.md)。
+> **相关**：[参考手册 §链接模型](./参考手册.md)（现行默认链胖库 + 模板仍 header-only）、[编码规范](./编码规范.md)、[codegen-templates.md](./codegen-templates.md)、[c-ffi-pyi.md](./c-ffi-pyi.md)。
 
 ---
 
@@ -10,22 +10,20 @@
 
 | 阶段 | 状态 | 说明 |
 |------|------|------|
-| **P0** mtime 跳过 | ✅ | `scripts/parallel_build.py`：exe 新于源/`minimal.h`/胖库则 skip |
-| **P1** 胖库 | 🔶 可选 | `src/constant/runtime_libs.py` + `layout_emit` / `compile.ensure_runtime_fat_lib`；默认关闭 |
+| **P0** mtime 跳过 | ✅ | `scripts/parallel_build.py`：exe 新于源/`minimal.h`/胖库则 skip；**翻译**：`generated/runtime/.bootstrap.stamp`，输入未变则跳过 `main.py py2cpp/__init__.py` |
+| **P0.5** 写盘去重 | ✅ | 生成 `.h`/`.inl`/`.cpp` 时忽略 `// 生成时间:` 再比正文，相同则不刷新 mtime |
+| **P1** 胖库 | ✅ | 白名单非模板模块进 `py2cpp_runtime.lib`；模板/`Queue[T]` 仍 header-only；库增量看 `py2cpp/**/*.{h,inl,cpp}` mtime |
+| **P1.5** bootstrap 加速 | ✅ | `ClassInfo`/`type_node` 查表；nav shard 按 `.h`/`.inl` mtime 跳过；叶子 `.py` 脏则只重分析/生成该模块，清洁模块跳过 import/expand/checks（mixin/`__init__.py`/译器/`templates/` 仍全量）。改一文件目标 **&lt;30s**；译器自身变更仍全量 |
 | **P2** 域库 | 未做 | |
 | **P3** DLL | 未做 | |
 
-**开启 P1**（实验）：
+**回滚 header-only**：
 
 ```bat
-set PY2CPP_RUNTIME_LIB=1
+set PY2CPP_HEADER_ONLY=1
 scripts\_bootstrap_runtime.bat
 build.bat PATTERN --seq
 ```
-
-强制回滚 header-only：`set PY2CPP_HEADER_ONLY=1`（或不要设 `PY2CPP_RUNTIME_LIB`）。
-
-P1 仍须验证：库 TU 下 `PY2CPP_LIBRARY_TU` 跳过 header-only `.inl` 时，`protocol_erase` 等对裸 `PyList`/`PyNone` 的可见性；当前默认关闭以免挡日常开发。
 
 ---
 
@@ -102,6 +100,12 @@ test_foo.cpp
 
 **LNK2005 铁律**：某一非模板 `.inl` 的实现体，只能出现在 **恰好一个** 库 TU 中；测例 **不得** 再 `#include` 该实现 `.inl`。
 
+库 TU（``#define PY2CPP_LIBRARY_TU``）额外约束：
+
+- 各模块 ``.h`` 在 namespace 闭合后写 ``using namespace py2cpp::…;``，短名（``PyDict`` / ``PyList``）不依赖被跳过的 ``.inl``。
+- **纯模板**模块 ``.inl`` 仍由 ``.h`` 拉入（可多 TU 实例化）。启发式只看**顶层**类：嵌套 ``@variant``（如 ``Optional.None_``）不算混模块。含非模板顶层类的模块（如 ``Queue[T]`` 与 ``Thread`` 同文件）整份 ``.inl`` 在库 TU 中跳过。
+- **非模板** header-only ``.inl`` 在库 TU 中跳过；其它头里用到的 inline 叶子（如 ``bytes_from_literal``）须写在 ``.h``。
+
 ---
 
 ## 4. 模块分类
@@ -145,7 +149,7 @@ P1 可先落 **单一胖库** `py2cpp_runtime.lib`（上述 library 模块全进
 |------|------|
 | `generated/runtime/py2cpp/<path>.h` | 类/函数声明；**不**在头尾 include 实现 `.inl` |
 | `generated/runtime/py2cpp/<path>.inl` | 实现体（与现相同，可含 templates 注入） |
-| `generated/runtime/py2cpp/<path>.cpp` | **新建**：`#include "py2cpp/<path>.inl"`（或相对路径约定），作为库 TU |
+| `generated/runtime/py2cpp/<path>.cpp` | **新建**：`#define PY2CPP_LIBRARY_TU` + `#include "py2cpp/minimal.h"` + `#include "<path>.inl"` |
 
 ### 5.2 `header_only` 模块
 
@@ -154,8 +158,7 @@ P1 可先落 **单一胖库** `py2cpp_runtime.lib`（上述 library 模块全进
 ### 5.3 `minimal.h` / umbrella
 
 - 继续 `#include` 各模块 **`.h`**。  
-- 对 `library` 模块：**禁止** 再把实现 `.inl` 拉进 umbrella 路径（否则测例又内联一份 → LNK2005 或失去增量收益）。  
-- 模板模块行为不变。
+- 库 TU 先定义 ``PY2CPP_LIBRARY_TU`` 再 include 万能头：header-only 非模板 ``.inl`` 被跳过；模板 ``.inl`` 仍可见。非模板 ``__py2cpp_class_id__`` 出类定义带 ``__declspec(selectany)``，避免与测例 TU 重复。
 
 ### 5.4 关键代码路径（落地时改）
 
@@ -208,6 +211,8 @@ cl /EHsc /std:c++14 /utf-8 /I generated\runtime ^
 | 项 | 说明 |
 |----|------|
 | mtime 跳过 | `build.bat`：源 `.py`、已生成 `.cpp`、依赖的 runtime 头/库未变 → 跳过该 exe |
+| bootstrap stamp | `_bootstrap_runtime.bat`：`py2cpp/`、`templates/`（**不含** clangd 生成的 `~macro/`）、`ffi/`、`src/translator.py` 与 `src/{analysis,passes,codegen,emit,constant}/**/*.py`（不含 `bootstrap_stamp.py` / `compile.py` / `src/tests`）、`main.py` 均不新于 `generated/runtime/.bootstrap.stamp` → **跳过全量翻译**。`PY2CPP_FORCE_BOOTSTRAP=1` 强制重译；`--debug` / `PY2CPP_HEADER_ONLY` 与 stamp 不一致也会重译 |
+| 写盘去重 | 生成文件正文不变（忽略 `// 生成时间:`）则不写盘，避免打穿 P0 编译 skip |
 | 可选 PCH | MSVC `/Yc`/`/Yu` 对 `minimal.h`（或瘦声明伞头） |
 
 **验收**：连续两次同 pattern `build.bat`，第二次明显更快或跳过。
@@ -219,7 +224,7 @@ cl /EHsc /std:c++14 /utf-8 /I generated\runtime ^
 | 标注 `library` 模块 | 显式表 |
 | 生成模块 `.cpp` | `#include` 对应 `.inl` |
 | `.h` 不再拉实现 inl | 仅 `library` |
-| bootstrap 后编胖库 | 测例默认链接 |
+| bootstrap 后编胖库 | 测例默认链接。增量：库 `.cpp` **以及** `generated/runtime/py2cpp/**/*.{h,inl,cpp}` 任一新于 obj/lib → 重编对应 obj（避免只改 `optional.h` 等 header-only 头时 `sqlite.cpp` 正文未变而漏编，导致 **LNK2019**） |
 | 开关 | 如 `PY2CPP_HEADER_ONLY=1` 恢复旧路径（过渡） |
 
 **验收**：
@@ -244,7 +249,9 @@ cl /EHsc /std:c++14 /utf-8 /I generated\runtime ^
 
 | 场景 | 预期 |
 |------|------|
-| 改用户测例 | 主要编测例 TU + 链接（秒级～十余秒，视机器） |
+| 改用户测例 | 主要编测例 TU + 链接（秒级～十余秒，视机器）；bootstrap 翻译应 skip |
+| 改叶子标准库 `.py` | 增量：只重分析/生成该模块（签名+import 缓存 `generated/runtime/.cache/analyze_sigs.pkl`）；清洁模块跳过 import/expand/checks；nav 只重建脏 shard。mixin / `@protocol` / `__init__.py` / 译器 / `templates/` / `ffi/` 仍全量 |
+| 全量翻译 | 改译器或 templates 时仍较慢；`PY2CPP_PROFILE=1` 打印 parse/expand/analyze/emit/write/nav_index。`ClassInfo` cpp 名与 `type_node_from_cpp_string` 已建索引/缓存 |
 | 改 `library` 标准库模块 | 重编对应 `.lib` + 重链，而非 N×全量 inl |
 | 改 `header_only` 模板（`list`/`str`…） | 仍可能大面积重编（头依赖未变） |
 | `build_all` 冷启动 | 仍要编齐库 + 各 exe；热路径与增量改测例受益最大 |
@@ -267,7 +274,7 @@ cl /EHsc /std:c++14 /utf-8 /I generated\runtime ^
 
 | 文档 | 关系 |
 |------|------|
-| [参考手册](./参考手册.md)「链接模型（测试）」 | **现行**为 header-only；落地后该节改为「默认链域库 + 模板仍 header」，并链到本文 |
+| [参考手册](./参考手册.md)「链接模型（测试）」 | **现行默认**链 `py2cpp_runtime.lib` + 模板仍 header-only；细节与回滚见本文 |
 | [codegen-templates.md](./codegen-templates.md) | `@native` / `+*.inl` 注入目标仍是模块 `.inl`；库 TU 只是「谁 include 这份 inl」 |
 | [c-ffi-pyi.md](./c-ffi-pyi.md) | FFI 空 allowlist 仍为 `#include <c_header>` 中转；sqlite glue 可进 `py2cpp_sql.lib` |
 
@@ -276,15 +283,15 @@ cl /EHsc /std:c++14 /utf-8 /I generated\runtime ^
 ## 11. 验收清单（落地 PR 用）
 
 ```text
-[ ] 模块分类表已入库（header_only / library + 域）
-[ ] library 模块：.h 无实现 inl；存在 .cpp 单次 include .inl
-[ ] minimal.h / umbrella 不把 library 实现 inl 拉进测例
-[ ] bootstrap 产出 .lib（P1 胖库或 P2 域库）
-[ ] compile.py / build.bat 测例默认链接；HEADER_ONLY 可回滚
-[ ] P0 mtime 跳过可用
-[ ] 代表测例（containers / path / thread / sqlite）MSVC 全绿
-[ ] 参考手册链接模型节已更新并指向本文
-[ ] 未手改 generated/ 作为提交真相源
+[x] 模块分类表已入库（header_only / library + 域）
+[x] library 模块：.h 无实现 inl；存在 .cpp 单次 include .inl
+[x] minimal.h / umbrella 不把 library 实现 inl 拉进测例
+[x] bootstrap 产出 .lib（P1 胖库或 P2 域库）
+[x] compile.py / build.bat 测例默认链接；HEADER_ONLY 可回滚
+[x] P0 mtime 跳过可用
+[x] 代表测例（list_literal_lookup / path / thread / sqlite）MSVC 全绿
+[x] 参考手册链接模型节已更新并指向本文
+[x] 未手改 generated/ 作为提交真相源
 ```
 
 ---

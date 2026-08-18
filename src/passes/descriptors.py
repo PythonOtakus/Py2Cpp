@@ -374,6 +374,9 @@ def expand_descriptors(tr: Translator) -> None:
   desc_names = {name for name, info in tr.classes.items() if info.is_descriptor}
 
   for host in tr.classes.values():
+    skip = getattr(tr, "skip_cached_analysis_module", None)
+    if skip is not None and skip(host.module_path):
+      continue
     if host.is_descriptor:
       continue
     for stmt in list(host.node.body):

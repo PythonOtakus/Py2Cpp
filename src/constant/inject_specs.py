@@ -21,6 +21,9 @@ CLASS_PASTE_MODULE_REL: dict[str, str] = {
 # ``paste_after`` 写入模块 ``.inl`` 且套 namespace（非 ``inl_target`` 尾追加）。
 PASTE_AFTER_IN_MODULE_MODULES = frozenset({"util/memory"})
 
+# 这些 ``+*.inl`` 改注入模块 ``.h``（库 TU 跳过非模板 ``.inl`` 时仍须可见）。
+PASTE_AFTER_TO_HEADER_MODULE_RELS = frozenset({"text/bytes"})
+
 # codegen 完整实现模板：由 ``layout_emit`` 等直接 ``expand_template`` 写盘，无 ``py2cpp/`` 模块、不参与 paste/inject 发现。
 CODEGEN_STANDALONE_TEMPLATE_RELS: frozenset[str] = frozenset({
   "operators.h",

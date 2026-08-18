@@ -1006,13 +1006,18 @@ def apply_mixin_methods(
 
 def expand_static_reflect(tr: Translator) -> None:
   """宿主类与模块函数内折叠 ``getattr``/``setattr``。"""
+  skip = getattr(tr, "skip_cached_analysis_module", None)
   for info in tr.classes.values():
+    if skip is not None and skip(info.module_path):
+      continue
     if info.is_mixin or info.is_annotation:
       continue
     fields = frozenset(info.fields)
     for method in list(info.iter_methods()) + list(info.inits):
       fold_static_reflect(method, known_fields=fields)
   for _mp, func in tr.module_functions:
+    if skip is not None and skip(_mp):
+      continue
     fold_static_reflect(func, known_fields=None)
 
 
@@ -1051,6 +1056,9 @@ def expand_mixins(tr: Translator) -> None:
 
   for host in tr.classes.values():
     if host.is_annotation or host.is_mixin:
+      continue
+    skip = getattr(tr, "skip_cached_analysis_module", None)
+    if skip is not None and skip(host.module_path):
       continue
     for base_name in host.bases:
       mixin = tr.classes.get(base_name)

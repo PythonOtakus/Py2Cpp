@@ -109,8 +109,6 @@ def expand_umbrella_include_paths(
     if kind == "if_any_protocols":
       paths.append(f"{runtime_prefix}/operators.h")
       paths.append(f"{CORE_PKG}/protocol_traits.h")
-      # ``protocol_erase`` 使用裸 ``PyNone``；库 TU 跳过中段 inl 后须显式 using。
-      paths.append("__py2cpp_using_pynone__")
       paths.append(f"{CORE_PKG}/protocol_erase.h")
       paths.append(stdlib_header_include("core/protocols"))
     elif kind == "if_all_members":
@@ -155,6 +153,10 @@ def expand_umbrella_include_paths(
   paths.append(stdlib_header_include(RUNTIME_PKG))
 
   for name in UMBRELLA_SUFFIX_PRIMITIVE_SPECS:
-    paths.append(f"{runtime_prefix}/{name}")
+    path = f"{runtime_prefix}/{name}"
+    if name.endswith(".inl") and not header_only_mode():
+      paths.append(f"__py2cpp_guard_inl__:{path}")
+    else:
+      paths.append(path)
 
   return paths

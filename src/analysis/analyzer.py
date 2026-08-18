@@ -3233,7 +3233,23 @@ class SemanticAnalyzer:
       info.fields = kept
 
   def analyze(self, tr):
+    import os
+    import sys
+    import time
+    _prof = os.environ.get("PY2CPP_PROFILE", "").strip().lower() in ("1", "true", "yes", "on")
+    _t0 = time.perf_counter()
+    _last = _t0
+
+    def _amark(name: str) -> None:
+      nonlocal _last
+      if not _prof:
+        return
+      now = time.perf_counter()
+      print(f"    analyze {now - _last:6.2f}s  {name}", file=sys.stderr)
+      _last = now
+
     collect_entry_imports(tr)
+    _amark("imports")
     tr.type_parser = self.types
     self.types.set_translator(tr)
     tr.sigs = self.sigs
@@ -3253,6 +3269,7 @@ class SemanticAnalyzer:
       (mp, f) for mp, f in tr.module_functions if f.name not in tr.delegates
     ]
     self.types.set_delegate_names(frozenset(tr.delegates.keys()))
+    _amark("delegates")
     from .ir import parse_type_alias_stmt
     from .imports import collect_all_imports, effective_module_type_aliases
 
@@ -3266,11 +3283,28 @@ class SemanticAnalyzer:
             ma.type_aliases.append(parse_type_alias_stmt(stmt))
       tr.module_analysis[module_path] = ma
 
-    collect_all_imports(tr)
     self.types.set_import_bindings(tr.import_bindings)
+    _amark("imports2")
     tr.function_sigs: dict[tuple[str, str], FunctionSig] = {}
     tr.function_node_sigs: dict[int, FunctionSig] = {}
     tr.module_function_overload_sigs: dict[tuple[str, str], list[FunctionSig]] = {}
+    cached_fn = getattr(tr, "_cached_function_sigs", None) or {}
+    tr.function_sigs.update(cached_fn)
+    cached_ov = getattr(tr, "_cached_overload_sigs", None) or {}
+    tr.module_function_overload_sigs.update(cached_ov)
+    _dirty = {
+      m.replace("\\", "/")
+      for m in (getattr(tr, "emit_module_filter", None) or set())
+    }
+    if _dirty:
+      tr.function_sigs = {
+        k: v for k, v in tr.function_sigs.items()
+        if k[0].replace("\\", "/") not in _dirty
+      }
+      tr.module_function_overload_sigs = {
+        k: v for k, v in tr.module_function_overload_sigs.items()
+        if k[0].replace("\\", "/") not in _dirty
+      }
 
     for module_path in tr.module_order:
       tree = tr.module_asts.get(module_path)
@@ -3289,6 +3323,7 @@ class SemanticAnalyzer:
 
             plan_conditional_alias(tr, alias)
 
+    _amark("type_aliases")
     self.sigs.set_classes(tr.classes)
     self.types.set_classes(tr.classes)
     self.types.set_user_class_names(frozenset(tr.classes.keys()))
@@ -3299,7 +3334,27 @@ class SemanticAnalyzer:
       plan = plan_class_type_if(tr, info)
       if plan is not None:
         info.class_type_if_plan = plan
+    from ..codegen.bootstrap_incremental import apply_class_payload
+
+    cached_payloads = getattr(tr, "_cached_class_payloads", {})
+    cached_mods = {
+      m.replace("\\", "/")
+      for m in (getattr(tr, "cached_analysis_modules", None) or set())
+    }
+    _n_hit = 0
+    _n_miss = 0
     for info in tr.classes.values():
+      mp = info.module_path.replace("\\", "/")
+      payload = None
+      if mp in cached_mods:
+        payload = cached_payloads.get((mp, info.class_registry_key()))
+        if payload is None:
+          payload = cached_payloads.get((mp, info.name))
+      if payload is not None:
+        apply_class_payload(info, payload)
+        _n_hit += 1
+        continue
+      _n_miss += 1
       self.types.set_type_aliases(
         info.type_aliases,
         use_as_cpp_name=not info.is_protocol,
@@ -3393,7 +3448,14 @@ class SemanticAnalyzer:
           self.sigs._set_field_cpp_type(info, storage, storage_t)
       ensure_move_state_field(info)
 
+    if _prof:
+      print(f"    analyze class_cache hit={_n_hit} miss={_n_miss} payloads={len(cached_payloads)}", file=sys.stderr)
+    _amark("class_sigs")
     self._drop_inherited_init_shadow_fields(tr)
+    _amark("drop_fields")
+
+    tr._ensure_class_indexes()
+    classes_by_module = tr._classes_by_module or {}
 
     from .module_functions import partition_module_functions_from_asts
 
@@ -3407,7 +3469,17 @@ class SemanticAnalyzer:
       (mp, f) for mp, f in tr.module_functions if f.name not in tr.delegates
     ]
 
+    cached_mods = {
+      m.replace("\\", "/")
+      for m in (getattr(tr, "cached_analysis_modules", None) or set())
+    }
+
     for (module_path, name), overloads in tr.module_function_overloads.items():
+      if module_path.replace("\\", "/") in cached_mods:
+        sigs = tr.module_function_overload_sigs.get((module_path, name), [])
+        for ov, sig in zip(overloads, sigs):
+          tr.function_node_sigs[id(ov)] = sig
+        continue
       if any(
         mp == module_path and f.name == name
         for mp, f in tr.module_functions
@@ -3425,17 +3497,46 @@ class SemanticAnalyzer:
     for module_path, func in tr.module_functions:
       if func.name in tr.delegates:
         continue
+      mp = module_path.replace("\\", "/")
+      cached_sig = tr.function_sigs.get((mp, func.name)) or tr.function_sigs.get(
+        (module_path, func.name),
+      )
+      if cached_sig is not None and mp not in _dirty:
+        tr.function_node_sigs[id(func)] = cached_sig
+        continue
       sig = self.sigs.build_function_sig(func, module_path)
       tr.function_sigs[(module_path, func.name)] = sig
       tr.function_node_sigs[id(func)] = sig
 
+    _amark("func_sigs")
+    function_sigs_by_module: dict[str, list[FunctionSig]] = {}
+    for (mp, _name), fsig in tr.function_sigs.items():
+      function_sigs_by_module.setdefault(mp, []).append(fsig)
+    overload_sigs_by_module: dict[str, list[FunctionSig]] = {}
+    for (mp, _name), sigs in tr.module_function_overload_sigs.items():
+      overload_sigs_by_module.setdefault(mp, []).extend(sigs)
+    delegates_by_module = {d.module_path for d in tr.delegates.values()}
+
+    cached_ma = getattr(tr, "_cached_module_analysis", None) or {}
+    cached_mods = {
+      m.replace("\\", "/")
+      for m in (getattr(tr, "cached_analysis_modules", None) or set())
+    }
+
     for module_path in tr.module_order:
+      if module_path.replace("\\", "/") in cached_mods:
+        prev = cached_ma.get(module_path) or cached_ma.get(module_path.replace("\\", "/"))
+        if prev is not None:
+          ma = tr.module_analysis[module_path]
+          ma.includes = list(prev.get("includes") or [])
+          ma.forward_decls = list(prev.get("forward_decls") or [])
+          ma.post_class_includes = list(prev.get("post_class_includes") or [])
+        continue
       own_header = f"{module_path}.h"
       includes: list[str] = []
-      for info in tr.classes.values():
+      for info in classes_by_module.get(module_path, ()):
         if (
-          info.module_path != module_path
-          or info.is_descriptor
+          info.is_descriptor
           or info.is_mixin
           or info.is_annotation
           or info.is_protocol
@@ -3448,32 +3549,27 @@ class SemanticAnalyzer:
               includes.append(h)
       from .type_emit import collect_sig_type_texts
 
-      for (mp, name), fsig in tr.function_sigs.items():
-        if mp != module_path:
-          continue
+      for fsig in function_sigs_by_module.get(module_path, ()):
         for text in collect_sig_type_texts(fsig):
           for h in _headers_from_type_text(text, own_header, tr.classes):
             if h not in includes:
               includes.append(h)
-      for (mp, _name), sigs in tr.module_function_overload_sigs.items():
-        if mp != module_path:
-          continue
-        for fsig in sigs:
-          for text in collect_sig_type_texts(fsig):
-            for h in _headers_from_type_text(text, own_header, tr.classes):
-              if h not in includes:
-                includes.append(h)
+      for fsig in overload_sigs_by_module.get(module_path, ()):
+        for text in collect_sig_type_texts(fsig):
+          for h in _headers_from_type_text(text, own_header, tr.classes):
+            if h not in includes:
+              includes.append(h)
       _protocol_traits_h = f"{CORE_PKG}/protocol_traits.h"
       if module_path != stdlib_module_path("core/protocols"):
-        for info in tr.classes.values():
-          if info.module_path != module_path or info.is_protocol:
+        for info in classes_by_module.get(module_path, ()):
+          if info.is_protocol:
             continue
           if info.type_param_constraints or info.type_param_oneof_constraints or info.concrete_oneof_constraints:
             if _protocol_traits_h not in includes:
               includes.insert(0, _protocol_traits_h)
             break
       _delegate_h = stdlib_header_include("core/delegate")
-      if any(d.module_path == module_path for d in tr.delegates.values()):
+      if module_path in delegates_by_module:
         if _delegate_h not in includes:
           includes.insert(0, _delegate_h)
       from .type_deps import header_for_module
@@ -3508,3 +3604,4 @@ class SemanticAnalyzer:
     from .header_usings import build_header_usings_index
 
     tr.header_usings_index = build_header_usings_index(tr.classes)
+    _amark("includes")

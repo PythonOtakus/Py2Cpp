@@ -36,14 +36,11 @@ LIBRARY_TU_MACRO = "PY2CPP_LIBRARY_TU"
 def header_only_mode() -> bool:
   """纯 header-only（不生成库 TU / 不链胖库）。
 
-  - ``PY2CPP_HEADER_ONLY=1``：强制 header-only
-  - 默认 header-only；``PY2CPP_RUNTIME_LIB=1`` 开启 P1 胖库（见 ``docs/runtime-libs.md``）
+  - ``PY2CPP_HEADER_ONLY=1``：强制回滚 header-only
+  - 默认开启 P1 胖库（见 ``docs/runtime-libs.md``）
   """
   v = os.environ.get("PY2CPP_HEADER_ONLY", "").strip().lower()
-  if v in ("1", "true", "yes", "on"):
-    return True
-  lib = os.environ.get("PY2CPP_RUNTIME_LIB", "").strip().lower()
-  return lib not in ("1", "true", "yes", "on")
+  return v in ("1", "true", "yes", "on")
 
 
 def _rel_from_module_path(module_path: str) -> str:

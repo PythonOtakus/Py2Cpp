@@ -273,6 +273,9 @@ def _iter_async_defs(tree: ast.AST) -> list[ast.AsyncFunctionDef]:
 def check_yield_from_in_async_def(tr: Translator) -> None:
   """Python 3.13：``async def`` 体内禁止用户手写 ``yield from``（``await`` 脱糖除外）。"""
   for module_path, tree in tr.module_asts.items():
+    skip = getattr(tr, "skip_cached_analysis_module", None)
+    if skip is not None and skip(module_path):
+      continue
     for async_fn in _iter_async_defs(tree):
       hit = _yield_from_in_async_scope(async_fn.body)
       if hit is not None:

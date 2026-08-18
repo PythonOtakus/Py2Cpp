@@ -7,7 +7,8 @@ import time
 
 _KIND_SUFFIX = {
   "translate": "（仅翻译）",
-  "compile": "（翻译+编译）",
+  "compile": "（仅编译）",
+  "build": "（翻译+编译）",
 }
 
 
@@ -30,8 +31,8 @@ def main() -> int:
       t0 = 0.0
     elapsed = time.perf_counter() - t0
     label = sys.argv[2] if len(sys.argv) > 2 else ""
-    kind = sys.argv[3].lower() if len(sys.argv) > 3 else "compile"
-    suffix = _KIND_SUFFIX.get(kind, _KIND_SUFFIX["compile"])
+    kind = sys.argv[3].lower() if len(sys.argv) > 3 else "build"
+    suffix = _KIND_SUFFIX.get(kind, _KIND_SUFFIX["build"])
     if label:
       print(f"耗时: {label} {elapsed:.2f}s{suffix}")
     else:

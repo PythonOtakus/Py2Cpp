@@ -16,6 +16,7 @@ from .ir import (
   CPP_STACK_ARRAY2D_PREFIX,
   CPP_STACK_ARRAY3D_PREFIX,
   CPP_STACK_ARRAY_PREFIX,
+  class_cpp_index,
   cpp_ident,
   cpp_template_base_and_args,
   cpp_template_inner_args,
@@ -62,16 +63,23 @@ def _array_kind_for_prefix(prefix: str) -> str:
   }[prefix]
 
 
+_TYPE_NODE_CACHE: dict[tuple[int, int, str], TypeNode] = {}
+_TYPE_NODE_CACHE_MAX = 100_000
+
+
+def clear_type_node_cache() -> None:
+  """跨 ``translate_file`` 清除解析缓存。"""
+  _TYPE_NODE_CACHE.clear()
+
+
 def _py_name_for_cpp_template_base(
   cpp_base: str,
   classes: dict[str, ClassInfo] | None,
 ) -> str:
   if not classes:
     return ""
-  for info in classes.values():
-    if info.cpp_name() == cpp_base:
-      return info.name
-  return ""
+  info = class_cpp_index(classes).get(cpp_base)
+  return info.name if info is not None else ""
 
 
 def type_node_from_cpp_string(
@@ -80,6 +88,24 @@ def type_node_from_cpp_string(
   classes: dict[str, ClassInfo] | None = None,
 ) -> TypeNode:
   """自 C++ 类型文本解析为 TypeNode（Phase 0/1 过渡 API）。"""
+  ident = id(classes) if classes is not None else 0
+  n = len(classes) if classes else 0
+  key = (ident, n, cpp_type)
+  hit = _TYPE_NODE_CACHE.get(key)
+  if hit is not None:
+    return hit
+  node = _type_node_from_cpp_string_uncached(cpp_type, classes=classes)
+  if len(_TYPE_NODE_CACHE) >= _TYPE_NODE_CACHE_MAX:
+    _TYPE_NODE_CACHE.clear()
+  _TYPE_NODE_CACHE[key] = node
+  return node
+
+
+def _type_node_from_cpp_string_uncached(
+  cpp_type: str,
+  *,
+  classes: dict[str, ClassInfo] | None = None,
+) -> TypeNode:
   raw = cpp_type.strip()
   if not raw:
     return TypeNode.void()
@@ -152,20 +178,11 @@ def type_node_from_cpp_string(
     return TypeNode.scalar(t)
 
   if classes:
-    parsed = cpp_template_base_and_args(t)
-    if parsed is not None:
-      base, arg_strs = parsed
-      for info in classes.values():
-        if info.cpp_name() == base:
-          args = tuple(
-            type_node_from_cpp_string(a, classes=classes) for a in arg_strs
-          )
-          return TypeNode.template(info.name, base, *args)
-    for info in classes.values():
-      if info.cpp_name() == t:
-        if info.type_params and not info.typevar_tuple:
-          return TypeNode.template(info.name, info.cpp_name())
-        return TypeNode.scalar(info.cpp_name())
+    info = class_cpp_index(classes).get(t)
+    if info is not None:
+      if info.type_params and not info.typevar_tuple:
+        return TypeNode.template(info.name, info.cpp_name())
+      return TypeNode.scalar(info.cpp_name())
 
   return TypeNode.type_param(t)
 

@@ -14,6 +14,7 @@ from ..constant.inject_specs import (
   CLASS_PASTE_MODULE_REL,
   CLASS_PASTE_TEMPLATE_SPECS,
   PASTE_AFTER_SPECS,
+  PASTE_AFTER_TO_HEADER_MODULE_RELS,
 )
 from ..constant.stdlib_layout import stdlib_module_path
 
@@ -132,6 +133,8 @@ def _build_paste_after_hooks() -> dict[str, PasteHook]:
     hooks[mp] = _emit_exceptions_group_runtime
 
   for module_rel, template_rel, in_module in discover_module_paste_after_templates():
+    if module_rel in PASTE_AFTER_TO_HEADER_MODULE_RELS:
+      continue
     mp = stdlib_module_path(module_rel)
     th = _paste_after_template_hook(module_rel, template_rel, in_module=in_module)
     if mp in hooks:

@@ -23,6 +23,7 @@ from src.constant.inject_discovery import (
 from src.constant.inject_specs import (
   CLASS_PASTE_TEMPLATE_SPECS,
   PASTE_AFTER_SPECS,
+  PASTE_AFTER_TO_HEADER_MODULE_RELS,
   PASTE_BEFORE_SPECS,
 )
 from src.emit.stdlib_inject_emit import (
@@ -107,8 +108,10 @@ class RegistryLayoutTests(unittest.TestCase):
 
   def test_paste_after_specs_covered(self):
     discovered = {stdlib_module_path(m) for m, _, _ in discover_module_paste_after_templates()}
+    header_paste = {stdlib_module_path(m) for m in PASTE_AFTER_TO_HEADER_MODULE_RELS}
     expected = {stdlib_module_path(rel) for rel, _ in PASTE_AFTER_SPECS}
     expected |= discovered
+    expected -= header_paste
     self.assertEqual(set(PASTE_AFTER_HOOKS.keys()), expected)
     special_keys = frozenset({"exceptions_group"})
     for rel, key in PASTE_AFTER_SPECS:
@@ -117,7 +120,11 @@ class RegistryLayoutTests(unittest.TestCase):
       self.assertIn(stdlib_module_path(rel), PASTE_AFTER_HOOKS)
     for module_rel, _, _ in discover_module_paste_after_templates():
       self.assertIn(module_rel, STDLIB_REL_PATH_SET, msg=module_rel)
-      self.assertIn(stdlib_module_path(module_rel), PASTE_AFTER_HOOKS)
+      mp = stdlib_module_path(module_rel)
+      if module_rel in PASTE_AFTER_TO_HEADER_MODULE_RELS:
+        self.assertNotIn(mp, PASTE_AFTER_HOOKS)
+        continue
+      self.assertIn(mp, PASTE_AFTER_HOOKS)
 
   def test_class_header_inject_specs_covered(self):
     for class_name, keys in CLASS_HEADER_INJECT_SPECS.items():

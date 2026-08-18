@@ -19,6 +19,12 @@ def _include_lines(header: str) -> list[str]:
   return [ln.strip() for ln in header.splitlines() if ln.strip().startswith("#include")]
 
 
+def _unwrap_umbrella_path(p: str) -> str:
+  if p.startswith("__py2cpp_guard_inl__:"):
+    return p.split(":", 1)[1]
+  return p
+
+
 class UmbrellaIncludesTests(unittest.TestCase):
   def setUp(self):
     self.runtime_prefix = "py2cpp"
@@ -54,20 +60,29 @@ class UmbrellaIncludesTests(unittest.TestCase):
       self.runtime_prefix,
       self.modules,
     )
-    expected = [f'#include "{p}"' for p in expand_umbrella_include_paths(self.runtime_prefix, self.modules)]
+    expected = [
+      f'#include "{_unwrap_umbrella_path(p)}"'
+      for p in expand_umbrella_include_paths(self.runtime_prefix, self.modules)
+    ]
     self.assertEqual(_include_lines(header), expected)
 
   def test_io_late_literals_after_bulk(self):
     paths = expand_umbrella_include_paths(self.runtime_prefix, self.modules)
     bulk_io_proto = stdlib_header_include("io/protocols")
-    late_file = stdlib_header_include(UMBRELLA_IO_LATE_IF_PRESENT[0])
     self.assertIn(bulk_io_proto, paths)
+    if not UMBRELLA_IO_LATE_IF_PRESENT:
+      self.assertNotIn(stdlib_header_include("io"), paths)
+      return
+    late_file = stdlib_header_include(UMBRELLA_IO_LATE_IF_PRESENT[0])
     self.assertIn(late_file, paths)
     self.assertLess(paths.index(bulk_io_proto), paths.index(late_file))
     self.assertNotIn(stdlib_header_include("io"), paths)
 
   def test_operators_suffix(self):
-    paths = expand_umbrella_include_paths(self.runtime_prefix, self.modules)
+    paths = [
+      _unwrap_umbrella_path(p)
+      for p in expand_umbrella_include_paths(self.runtime_prefix, self.modules)
+    ]
     self.assertEqual(paths[-2:], [f"{self.runtime_prefix}/operators.h", f"{self.runtime_prefix}/operators.inl"])
 
 

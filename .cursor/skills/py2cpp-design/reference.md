@@ -560,6 +560,8 @@ python main.py <input.py> [-o DIR] [--no-stdlib] [--no-main] [--debug]
 | `--no-stdlib` | 不翻译标准库 |
 | `--no-main` | 不包装 main；runtime bootstrap 用 |
 | `--debug` | 插入 `fprintf` 调用跟踪；``__debug__`` → ``true`` |
+| `PY2CPP_FORCE_BOOTSTRAP=1` | `_bootstrap_runtime.bat` 忽略 `.bootstrap.stamp`，强制全量翻译 |
+| `PY2CPP_PROFILE=1` | `translate_file` 向 stderr 打印 discover/parse/expand/analyze/emit/write/nav_index 分段 |
 | `--openmp` / `--no-openmp` | ``prange`` 是否发射 OpenMP（默认开；``--no-openmp`` 降级为 ``range``） |
 | `-c` | 翻译后编译 |
 | `--compiler cl` | Windows 推荐 MSVC |

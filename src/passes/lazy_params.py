@@ -13,9 +13,14 @@ if TYPE_CHECKING:
 
 def expand_lazy_params(tr: "Translator") -> None:
   """惰性形参默认值改为 ``None``；非 ``None`` 表达式存入 ``lazy_param_default_exprs``。"""
+  skip = getattr(tr, "skip_cached_analysis_module", None)
   for _mp, func in list(tr.module_functions):
+    if skip is not None and skip(_mp):
+      continue
     _expand_lazy_defaults_on_function(func, tr)
   for info in tr.classes.values():
+    if skip is not None and skip(info.module_path):
+      continue
     for method in info.methods.values():
       _expand_lazy_defaults_on_function(method, tr)
 

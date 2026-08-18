@@ -597,12 +597,17 @@ def _check_native_body(qual: str, body: list[ast.stmt]) -> None:
 
 def check_native_function_bodies(tr: Translator) -> None:
   """``@native`` 函数体须为 ``...``（实现由 ``codegen/*_cpp.py`` 注入）。"""
+  skip = getattr(tr, "skip_cached_analysis_module", None)
   for module_path, func in tr.module_functions:
+    if skip is not None and skip(module_path):
+      continue
     if not has_named_decorator(func, "native"):
       continue
     _check_native_body(f"{module_path}.{func.name}", func.body)
 
   for info in tr.classes.values():
+    if skip is not None and skip(info.module_path):
+      continue
     if info.is_native:
       if is_stdlib_codegen_module(info.module_path):
         continue
@@ -621,7 +626,10 @@ def check_native_function_bodies(tr: Translator) -> None:
 
 
 def expand_dataclass(tr: Translator) -> None:
+  skip = getattr(tr, "skip_cached_analysis_module", None)
   for info in tr.classes.values():
+    if skip is not None and skip(info.module_path):
+      continue
     if info.is_descriptor or info.is_protocol:
       continue
     opts = _parse_dataclass_options(info.node)

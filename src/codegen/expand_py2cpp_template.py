@@ -1167,7 +1167,8 @@ def expand_mirror_to_generated(
     module_rel = module_rel_from_mirror_template(rel)
     expanded = expand_template(rel, apply_allman=apply_allman)
     text = finalize_mirror_codegen_text(rel, module_rel, expanded, generated_at)
-    out.write_text(text, encoding="utf-8")
+    from .write_if_changed import write_text_if_changed
+    write_text_if_changed(out, text)
     written.append(out)
 
   for path in sorted(root.rglob("*.inl")):

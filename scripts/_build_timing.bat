@@ -8,14 +8,14 @@ if /i "%~1"=="start" (
 )
 if /i "%~1"=="end" (
   if /i "%~2"=="translate" (
-    %PY% "%~dp0_build_timing.py" end %~3 translate
+    %PY% "%~dp0_build_timing.py" end "%~3" translate
     exit /b 0
   )
   if /i "%~2"=="compile" (
-    %PY% "%~dp0_build_timing.py" end %~3 compile
+    %PY% "%~dp0_build_timing.py" end "%~3" compile
     exit /b 0
   )
-  %PY% "%~dp0_build_timing.py" end %~2 compile
+  %PY% "%~dp0_build_timing.py" end "%~2" build
   exit /b 0
 )
 echo ERROR: _build_timing.bat: use start or end [translate^|compile] label

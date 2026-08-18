@@ -2293,6 +2293,9 @@ def _expand_classinfo_generators(tr: Translator) -> None:
   for info in list(tr.classes.values()):
     if info.is_mixin or info.is_annotation or info.is_protocol:
       continue
+    skip = getattr(tr, "skip_cached_analysis_module", None)
+    if skip is not None and skip(info.module_path):
+      continue
     if info.name.endswith(GENERATOR_SUFFIX) or info.name.endswith(COROUTINE_SUFFIX):
       continue
     for name in list(info.methods.keys()):
@@ -2389,7 +2392,10 @@ def _auto_register_member_generator_friends(tr: Translator) -> None:
 
 def expand_generators(tr: Translator) -> None:
   """``yield`` / ``yield from`` / ``async def`` → ``*_generator`` / ``*_coroutine``（在 ``@context`` 之前）。"""
+  skip = getattr(tr, "skip_cached_analysis_module", None)
   for module_path, tree in list(tr.module_asts.items()):
+    if skip is not None and skip(module_path):
+      continue
     new_body: list[ast.stmt] = []
     inserts: list[ast.ClassDef] = []
     for stmt in tree.body:

@@ -12,6 +12,9 @@ if TYPE_CHECKING:
 
 def check_parallel_loops(tr: Translator) -> None:
   for module_path, tree in tr.module_asts.items():
+    skip = getattr(tr, "skip_cached_analysis_module", None)
+    if skip is not None and skip(module_path):
+      continue
     bindings = tr.module_import_bindings.get(module_path, {})
     for node in ast.walk(tree):
       if not isinstance(node, ast.For):

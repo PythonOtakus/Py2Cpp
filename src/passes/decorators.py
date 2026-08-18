@@ -570,7 +570,10 @@ def expand_decorators(tr: Translator) -> None:
     tr.module_functions.remove(item)
 
   impls: list[tuple[str, ast.FunctionDef]] = []
+  skip = getattr(tr, "skip_cached_analysis_module", None)
   for mp, func in list(tr.module_functions):
+    if skip is not None and skip(mp):
+      continue
     current, new_impls = _apply_decorator_chain(func, decorator_defs, context_defs)
     if current is func and not new_impls:
       continue
@@ -584,8 +587,12 @@ def expand_decorators(tr: Translator) -> None:
   tr.module_functions[:0] = impls
 
   for _mp, func in tr.module_functions:
+    if skip is not None and skip(_mp):
+      continue
     expand_with_in_function(func, context_defs)
   for info in tr.classes.values():
+    if skip is not None and skip(info.module_path):
+      continue
     if info.is_descriptor or info.is_mixin or info.is_annotation:
       continue
     _expand_with_in_class(info, context_defs)

@@ -22,6 +22,7 @@ MSVC / 翻译构建与仓库维护脚本；在仓库根目录执行（脚本内�
 | 脚本 | 说明 |
 |------|------|
 | `_init_msvc.bat` | 探测并 `call vcvars64.bat` |
+| `_bootstrap_runtime.bat` | 翻译 `py2cpp/__init__.py`；输入未变则 skip（`.bootstrap.stamp`）；`PY2CPP_FORCE_BOOTSTRAP=1` 强制 |
 | `_clean_obj.bat` | 删除链接残留的 `.obj`（默认仅 STEM；bootstrap 用 `--global-py2cpp`） |
 | `_build_timing.bat` / `_build_timing.py` | 耗时统计 |
 

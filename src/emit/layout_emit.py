@@ -15,6 +15,7 @@ from ..analysis.module_namespace import (
 from ..codegen.expand_py2cpp_template import expand_template
 from ..codegen.stdlib_mirror_codegen import expand_whole_file_template
 from ..codegen.umbrella_gen import build_py2cpp_umbrella_header
+from ..codegen.write_if_changed import write_text_if_changed
 from ..constant.ffi_layout import ffi_runtime_module_path, ffi_source_note
 from ..constant.stdlib_layout import RUNTIME_PKG, RUNTIME_BUILTINS_MODULE, stdlib_header_include, stdlib_module_path
 from ..codegen.stdlib_mirror_codegen import write_stdlib_codegen_header, write_stdlib_codegen_inl
@@ -22,6 +23,7 @@ from ..constant.runtime_libs import (
   LIBRARY_TU_MACRO,
   header_only_mode,
   is_library_module,
+  library_module_paths,
   wrap_inl_include_for_header,
 )
 from ..constant.stdlib_discovery import STDLIB_REL_PATHS
@@ -139,6 +141,62 @@ def runtime_cpp_using_lines(tr: Translator) -> list[str]:
   return out
 
 
+def stdlib_header_global_using_line(module_path: str) -> str | None:
+  """``.h`` 在 namespace 闭合后导出模块短名。
+
+  库 TU 定义 ``PY2CPP_LIBRARY_TU`` 时跳过 header-only ``.inl``，而短名
+  ``using namespace py2cpp::util::dict`` 原先只写在 ``.inl``，会导致
+  ``PyDict`` / ``PyList`` 在 ``types.h``、``protocol_erase_domain.h`` 中不可见。
+  """
+  if module_path.replace("\\", "/").strip("/") == RUNTIME_PKG:
+    return None
+  q = namespace_qualifier_for_module(module_path)
+  if not q:
+    return None
+  return using_namespace_line(q)
+
+
+def _module_template_inl_ok_in_library_tu(tr: Translator, module_path: str) -> bool:
+  """仅当模块内**顶层**类全是模板时，库 TU 才拉 ``.inl``（可多 TU）。
+
+  含非模板顶层类的模块（如 ``Queue[T]`` + ``Thread``）整份 ``.inl`` 仍须跳过。
+  嵌套 ``@variant``（``Optional.None_``）不算顶层，以免把纯模板 ADT 误标为混模块。
+  """
+  seen = False
+  for info in tr.classes.values():
+    if info.module_path != module_path:
+      continue
+    if info.outer_class is not None:
+      continue
+    if info.is_protocol or info.is_mixin or info.is_annotation or info.is_descriptor:
+      continue
+    seen = True
+    if not info.is_template():
+      return False
+  return seen
+
+
+_BYTES_MODULE = stdlib_module_path("text/bytes")
+# ``bytes_from_literal`` 被其它模块 ``.h`` 的静态初始化调用；库 TU 跳过 ``bytes.inl``，须在头内可见。
+_BYTES_FROM_LITERAL_LINES = [
+  "      inline PyBytes bytes_from_literal(const unsigned char* data, PyInt n)",
+  "      {",
+  "        if (n <= 0)",
+  "        {",
+  "          PyArray<PyByte> empty(0);",
+  "          return PyBytes(empty);",
+  "        }",
+  "        PyArray<PyByte> buf(n);",
+  "        for (PyInt i = 0; i < n; ++i)",
+  "        {",
+  "          buf.__setitem__(i, PyByte(data[i]));",
+  "        }",
+  "        return PyBytes(buf);",
+  "      }",
+  "",
+]
+
+
 def write_primitive_type_headers(tr: Translator) -> None:
   note = f"{RUNTIME_PREFIX}/__init__.py"
   for rel, template_rel in (
@@ -149,37 +207,35 @@ def write_primitive_type_headers(tr: Translator) -> None:
     (f"{RUNTIME_PREFIX}/member_access", "member_access.h"),
   ):
     hpath = tr._stdlib_artifact_path(rel, ".h")
-    hpath.parent.mkdir(parents=True, exist_ok=True)
-    hpath.write_text(
+    write_text_if_changed(
+      hpath,
       expand_whole_file_template(
         template_rel,
         tr.generated_at,
         {"source_note": note},
         apply_allman=template_rel != "member_access.h",
       ).strip(),
-      encoding="utf-8",
     )
   ops_rel = f"{RUNTIME_PREFIX}/operators"
   ops_h = tr._stdlib_artifact_path(ops_rel, ".h")
-  ops_h.parent.mkdir(parents=True, exist_ok=True)
-  ops_h.write_text(
+  write_text_if_changed(
+    ops_h,
     expand_whole_file_template(
       "operators.h",
       tr.generated_at,
       {"source_note": note},
       apply_allman=True,
     ).strip(),
-    encoding="utf-8",
   )
   op_inl = tr._stdlib_artifact_path(ops_rel, ".inl")
-  op_inl.write_text(
+  write_text_if_changed(
+    op_inl,
     expand_whole_file_template(
       "operators.inl",
       tr.generated_at,
       {},
       apply_allman=True,
     ).strip(),
-    encoding="utf-8",
   )
 
 
@@ -239,8 +295,8 @@ def write_protocol_traits_header(tr: Translator) -> None:
   guard = PROTOCOL_TRAITS_GUARD
   hpath = tr._stdlib_artifact_path(_PROTOCOL_TRAITS_MODULE, ".h")
   traits_path = hpath.parent / "protocol_traits.h"
-  traits_path.parent.mkdir(parents=True, exist_ok=True)
-  traits_path.write_text(
+  write_text_if_changed(
+    traits_path,
     "\n".join([
       *codegen_file_header_lines(
         ", ".join(f"{RUNTIME_PREFIX}/{m}.py" for m in PROTOCOL_TRAITS_SOURCE_MODULES),
@@ -253,7 +309,6 @@ def write_protocol_traits_header(tr: Translator) -> None:
       f"#endif // {guard}",
       "",
     ]),
-    encoding="utf-8",
   )
 
 
@@ -265,15 +320,14 @@ def write_protocol_erase_header(tr: Translator) -> None:
   from ..constant.stdlib_layout import CORE_PKG
 
   hpath = tr.runtime_output_dir / CORE_PKG / "protocol_erase.h"
-  hpath.parent.mkdir(parents=True, exist_ok=True)
-  hpath.write_text(
+  write_text_if_changed(
+    hpath,
     "\n".join(protocol_erase_header_lines(generated_at=tr.generated_at)),
-    encoding="utf-8",
   )
   domain_lines = protocol_erase_domain_header_lines(generated_at=tr.generated_at)
   if domain_lines:
     dpath = tr.runtime_output_dir / CORE_PKG / "protocol_erase_domain.h"
-    dpath.write_text("\n".join(domain_lines), encoding="utf-8")
+    write_text_if_changed(dpath, "\n".join(domain_lines))
 
 
 def write_umbrella_header(tr: Translator) -> None:
@@ -286,7 +340,6 @@ def write_umbrella_header(tr: Translator) -> None:
   rel = f"{RUNTIME_PREFIX}/minimal"
   guard = module_path_to_guard(rel)
   hpath = tr.runtime_output_dir / UMBRELLA_HEADER
-  hpath.parent.mkdir(parents=True, exist_ok=True)
   new_text = build_py2cpp_umbrella_header(
     guard,
     tr.generated_at,
@@ -294,17 +347,7 @@ def write_umbrella_header(tr: Translator) -> None:
     tr.stdlib_modules_for_umbrella or STDLIB_REL_PATHS,
     debug=tr.debug,
   )
-  # 内容不变则保留 mtime，便于 parallel_build 增量跳过
-  if hpath.is_file():
-    old = hpath.read_text(encoding="utf-8")
-    def _strip_gen_time(s: str) -> str:
-      return "\n".join(
-        ln for ln in s.splitlines() if not ln.startswith("// 生成时间:")
-      )
-    if _strip_gen_time(old) == _strip_gen_time(new_text):
-      sync_runtime_cpp_usings(tr)
-      return
-  hpath.write_text(new_text, encoding="utf-8")
+  write_text_if_changed(hpath, new_text)
   sync_runtime_cpp_usings(tr)
 
 
@@ -334,12 +377,15 @@ def sync_runtime_cpp_usings(tr: Translator) -> None:
     lines[insert_at:insert_at] = [""] + new_usings + [""]
   else:
     lines[start:end] = runtime_cpp_using_lines(tr)
-  path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+  write_text_if_changed(path, "\n".join(lines) + "\n")
 
 
 def write_per_module_headers(tr: Translator) -> None:
-  write_protocol_traits_header(tr)
+  if tr.emit_module_filter is None:
+    write_protocol_traits_header(tr)
   for module_path in tr.module_order:
+    if not tr._should_emit_module(module_path):
+      continue
     if module_path == tr.entry_module_path and not (
       tr._is_runtime_bootstrap() and module_path == RUNTIME_PKG
     ):
@@ -360,6 +406,8 @@ def write_per_module_headers(tr: Translator) -> None:
     deferred = tr.per_module_deferred_header_lines.get(module_path, [])
     if deferred:
       lines = splice_before_innermost_namespace_close(lines, deferred)
+    if module_path == _BYTES_MODULE:
+      lines = splice_before_innermost_namespace_close(lines, _BYTES_FROM_LITERAL_LINES)
     guard = module_path_to_guard(module_path)
     if tr._is_ffi_module(module_path):
       hpath = tr._ffi_artifact_path(module_path, ".h")
@@ -441,7 +489,7 @@ def write_per_module_headers(tr: Translator) -> None:
         # 空 allowlist：只中转 C 头，不拉 py_types / 其它 ffi 依赖、不写 ``.inl``
         content.append(f"#endif // {guard}")
         content.append("")
-        hpath.write_text("\n".join(content), encoding="utf-8")
+        write_text_if_changed(hpath, "\n".join(content))
         continue
     for inc in list(extra_includes) + list(ma.includes):
       content.append(format_include_line(inc))
@@ -498,8 +546,13 @@ def write_per_module_headers(tr: Translator) -> None:
           inl_tail.extend(["", *thunk_decls, ""])
         if not library:
           inl_line = f'#include "{inl_rel}"'
-          # 库 TU 定义 ``PY2CPP_LIBRARY_TU`` 时跳过，避免与胖库目标重复定义
-          if tr._is_stdlib_module(module_path) and not header_only_mode():
+          # 非模板 header-only：库 TU 跳过，避免与测例重复定义。
+          # 模板 ``.inl`` 必须在库 TU 可见，否则无法实例化。
+          if (
+            tr._is_stdlib_module(module_path)
+            and not header_only_mode()
+            and not _module_template_inl_ok_in_library_tu(tr, module_path)
+          ):
             inl_tail.extend(["", *wrap_inl_include_for_header(inl_line), ""])
           else:
             inl_tail.extend(["", inl_line, ""])
@@ -508,9 +561,13 @@ def write_per_module_headers(tr: Translator) -> None:
             content = insert_inl_before_namespace_close(content, module_path, inl_tail)
           else:
             content.extend(inl_tail)
+    if tr._is_stdlib_module(module_path):
+      global_using = stdlib_header_global_using_line(module_path)
+      if global_using:
+        content.append(global_using)
     content.append(f"#endif // {guard}")
     content.append("")
-    hpath.write_text("\n".join(content), encoding="utf-8")
+    write_text_if_changed(hpath, "\n".join(content))
 
 
 def _sanitize_core_iter_result_inl(
@@ -571,6 +628,8 @@ def _sanitize_core_iter_result_inl(
 
 def write_per_module_inl(tr: Translator) -> None:
   for module_path in tr.module_order:
+    if not tr._should_emit_module(module_path):
+      continue
     if tr._is_stdlib_module(module_path) and not tr._can_write_stdlib_artifact(module_path):
       continue
     if tr._is_ffi_module(module_path) and not tr._can_write_ffi_artifact(module_path):
@@ -590,15 +649,23 @@ def write_per_module_inl(tr: Translator) -> None:
     ipath.parent.mkdir(parents=True, exist_ok=True)
     inl_includes: list[str] = []
     ma = tr.module_analysis.get(module_path)
-    if (
+    library_tu = (
       tr._is_stdlib_module(module_path)
+      and is_library_module(module_path)
+      and not header_only_mode()
+    )
+    # 库 ``.cpp`` 已先 include ``minimal.h``；``.inl`` 勿再拉 umbrella（只留本模块体）。
+    if (
+      not library_tu
+      and tr._is_stdlib_module(module_path)
       and module_path != RUNTIME_PKG
       and module_path not in _INL_SKIP_UMBRELLA
     ):
       inl_includes.append(f'#include "{UMBRELLA_HEADER}"')
     inl_includes.extend(module_inl_extra_include_lines(module_path))
     if (
-      tr._is_stdlib_module(module_path)
+      not library_tu
+      and tr._is_stdlib_module(module_path)
       and module_path != RUNTIME_PKG
       and module_path not in _INL_SKIP_OPERATORS_H
     ):
@@ -670,14 +737,38 @@ def write_per_module_inl(tr: Translator) -> None:
         str_inc=f'#include "{stdlib_header_include("text/str")}"',
         umbrella_inc=umbrella_inc,
       )
-    ipath.write_text("\n".join(content), encoding="utf-8")
-  write_mirror_codegen_artifacts(tr)
+    write_text_if_changed(ipath, "\n".join(content))
+  if tr.emit_module_filter is None:
+    write_mirror_codegen_artifacts(tr)
   write_library_module_cpps(tr)
 
 
+def _remove_stale_library_cpps(tr: Translator) -> None:
+  """删除不再属于 ``library`` 白名单的模块 ``.cpp``（旧 bootstrap 残留）。"""
+  root = tr.runtime_output_dir / RUNTIME_PREFIX
+  if not root.is_dir():
+    return
+  keep: set[Path] = set()
+  if not header_only_mode():
+    keep = {
+      tr._stdlib_artifact_path(mp, ".cpp").resolve()
+      for mp in library_module_paths()
+    }
+  for cpp in root.rglob("*.cpp"):
+    if cpp.resolve() in keep:
+      continue
+    try:
+      cpp.unlink()
+    except OSError:
+      pass
+
+
 def write_library_module_cpps(tr: Translator) -> None:
-  """为 ``library`` 模块写 ``.cpp``：``#define PY2CPP_LIBRARY_TU`` + ``#include ".inl"``。"""
-  if header_only_mode() or not tr._is_runtime_bootstrap():
+  """为 ``library`` 模块写 ``.cpp``：``PY2CPP_LIBRARY_TU`` + ``minimal.h`` + ``.inl``。"""
+  if not tr._is_runtime_bootstrap():
+    return
+  if header_only_mode():
+    _remove_stale_library_cpps(tr)
     return
   for module_path in tr.module_order:
     if not tr._is_stdlib_module(module_path) or not is_library_module(module_path):
@@ -692,17 +783,18 @@ def write_library_module_cpps(tr: Translator) -> None:
     if not inl_path.is_file():
       continue
     cpp_path = tr._stdlib_artifact_path(module_path, ".cpp")
-    cpp_path.parent.mkdir(parents=True, exist_ok=True)
     note = f"{tr._stdlib_source_note(module_path)}（库 TU）"
     inl_rel = f"{module_path}.inl"
     content = [
       *codegen_file_header_lines(note, tr.generated_at),
       "",
       f"#define {LIBRARY_TU_MACRO}",
+      f'#include "{UMBRELLA_HEADER}"',
       f'#include "{inl_rel}"',
       "",
     ]
-    cpp_path.write_text("\n".join(content), encoding="utf-8")
+    write_text_if_changed(cpp_path, "\n".join(content))
+  _remove_stale_library_cpps(tr)
 
 
 def write_mirror_codegen_artifacts(tr: Translator) -> None:

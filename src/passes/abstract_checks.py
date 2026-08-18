@@ -179,6 +179,9 @@ def _check_abstract_class_instantiation(
 def check_abstract_rules(tr: Translator) -> None:
   violations: list[_Violation] = []
   for module_path in tr.module_asts:
+    skip = getattr(tr, "skip_cached_analysis_module", None)
+    if skip is not None and skip(module_path):
+      continue
     _check_abstract_method_bodies(tr, module_path, violations)
     _check_abstract_override_base(tr, module_path, violations)
     _check_abstract_class_instantiation(tr, module_path, violations)

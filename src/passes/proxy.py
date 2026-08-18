@@ -61,6 +61,9 @@ def expand_proxy(tr: Translator) -> None:
 def check_proxy_nested_type_args(tr: Translator) -> None:
   """``Proxy[Proxy[T]]`` 在类型注解中亦禁止。"""
   for module_path, tree in tr.module_asts.items():
+    skip = getattr(tr, "skip_cached_analysis_module", None)
+    if skip is not None and skip(module_path):
+      continue
     for node in ast.walk(tree):
       if not isinstance(node, ast.Subscript):
         continue

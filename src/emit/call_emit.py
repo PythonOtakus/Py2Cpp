@@ -124,13 +124,7 @@ def class_info_from_receiver(tr: Translator, receiver: ast.expr) -> ClassInfo | 
         if 'bytes_from_literal' in recv_cpp:
             return tr.classes.get('bytes')
     if t:
-        for info in tr.classes.values():
-            if info.cpp_name() == t:
-                return info
-            qn = namespace_qualifier_for_module(info.module_path)
-            full = f'{qn}::{info.cpp_name()}' if qn else info.cpp_name()
-            if t == full:
-                return info
+        return tr._lookup_class_by_cpp_or_py_name(t)
     return None
 
 def specialize_param_cpp_types_from_context(info: ClassInfo, param_cpp_types: list[str], context_cpp: str) -> list[str]:

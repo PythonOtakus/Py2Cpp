@@ -235,6 +235,22 @@ def _library_obj_path(cpp: Path, obj_dir: Path) -> Path:
   return obj_dir / f"{stem}.obj"
 
 
+def _newest_runtime_codegen_mtime(runtime_dir: Path, sources: list[Path]) -> float:
+  """library ``.cpp`` 与 ``py2cpp/**/*.h|.inl|.cpp`` 的最新 mtime。"""
+  newest = max((s.stat().st_mtime for s in sources), default=0.0)
+  py2cpp = runtime_dir / "py2cpp"
+  if not py2cpp.is_dir():
+    return newest
+  for p in py2cpp.rglob("*"):
+    if not p.is_file() or p.suffix.lower() not in {".h", ".inl", ".cpp"}:
+      continue
+    try:
+      newest = max(newest, p.stat().st_mtime)
+    except OSError:
+      continue
+  return newest
+
+
 def ensure_runtime_fat_lib(
   runtime_dir: Path,
   *,
@@ -260,12 +276,13 @@ def ensure_runtime_fat_lib(
   obj_dir.mkdir(parents=True, exist_ok=True)
   out_lib = fat_lib_path(runtime_dir)
   inc_dirs = [str(runtime_dir.resolve())]
+  if SQLITE_INCLUDE_DIR.is_dir():
+    inc_dirs.append(str(SQLITE_INCLUDE_DIR.resolve()))
 
-  newest_src = max(s.stat().st_mtime for s in sources)
+  newest_src = _newest_runtime_codegen_mtime(runtime_dir, sources)
   if out_lib.is_file() and out_lib.stat().st_mtime >= newest_src:
-    # 仍检查各 obj 是否齐全
     objs = [_library_obj_path(s, obj_dir) for s in sources]
-    if all(o.is_file() for o in objs):
+    if all(o.is_file() and o.stat().st_mtime >= newest_src for o in objs):
       return CompileResult(
         ok=True,
         compiler=compiler,
@@ -301,7 +318,7 @@ def ensure_runtime_fat_lib(
 
   def compile_one(cpp: Path) -> tuple[Path, subprocess.CompletedProcess[str]]:
     obj = _library_obj_path(cpp, obj_dir)
-    if obj.is_file() and obj.stat().st_mtime >= cpp.stat().st_mtime:
+    if obj.is_file() and obj.stat().st_mtime >= max(cpp.stat().st_mtime, newest_src):
       return obj, subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
     if tool == "cl":
       std_flag = _msvc_std_flag(std)
@@ -312,21 +329,22 @@ def ensure_runtime_fat_lib(
         "/utf-8",
         std_flag,
         "/c",
-        f"/I{inc_dirs[0]}",
-        f"/Fo{obj}",
-        str(cpp),
+        "/DSQLITE_THREADSAFE=1",
+        "/DSQLITE_OMIT_LOAD_EXTENSION=1",
       ]
+      for inc in inc_dirs:
+        cmd.append(f"/I{inc}")
+      cmd.extend([f"/Fo{obj}", str(cpp)])
     else:
       cmd = [
         tool,
         f"-std={std if std != 'c++11' else 'c++14'}",
         "-Wall",
         "-c",
-        f"-I{inc_dirs[0]}",
-        "-o",
-        str(obj),
-        str(cpp),
       ]
+      for inc in inc_dirs:
+        cmd.append(f"-I{inc}")
+      cmd.extend(["-o", str(obj), str(cpp)])
     return obj, _run(cmd)
 
   objs: list[Path] = []
@@ -344,12 +362,13 @@ def ensure_runtime_fat_lib(
         objs.append(obj)
 
   if failed:
+    joined = "\n".join(logs)
     return CompileResult(
       ok=False,
       compiler=tool,
       artifact=None,
-      stdout="\n".join(logs),
-      stderr="py2cpp_runtime.lib: object compile failed",
+      stdout=joined,
+      stderr="py2cpp_runtime.lib: object compile failed\n" + joined,
     )
 
   objs = [_library_obj_path(s, obj_dir) for s in sources]

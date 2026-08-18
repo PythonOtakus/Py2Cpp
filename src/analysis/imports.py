@@ -109,7 +109,19 @@ def collect_all_imports(tr: Translator) -> dict[str, dict[str, ImportBinding]]:
   per_usings: dict[str, list[ImportUsing]] = {}
   project_root = tr._import_project_root_cache
   runtime_root = tr._runtime_root()
+  cached_b = getattr(tr, "_cached_import_bindings", None) or {}
+  cached_u = getattr(tr, "_cached_import_usings", None) or {}
+  skip = getattr(tr, "skip_cached_analysis_module", None)
   for module_path in tr.module_order:
+    mp = module_path.replace("\\", "/")
+    if skip is not None and skip(module_path):
+      binds = cached_b.get(mp) or cached_b.get(module_path)
+      if binds is not None:
+        per_module[module_path] = binds
+        per_usings[module_path] = list(
+          cached_u.get(mp) or cached_u.get(module_path) or []
+        )
+        continue
     bindings, usings = collect_module_imports(
       tr,
       module_path,

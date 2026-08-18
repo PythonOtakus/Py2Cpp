@@ -31,8 +31,6 @@ def build_py2cpp_umbrella_header(
       includes.append(f"#ifndef {LIBRARY_TU_MACRO}")
       includes.append(f'#include "{inl}"')
       includes.append("#endif")
-    elif p == "__py2cpp_using_pynone__":
-      includes.append("using ::py2cpp::core::none::PyNone;")
     else:
       includes.append(f'#include "{p}"')
   datetime_hdr = f'#include "{stdlib_header_include(UMBRELLA_MSVC_COMPAT_BEFORE_MODULE)}"'

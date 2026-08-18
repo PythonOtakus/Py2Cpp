@@ -1397,16 +1397,43 @@ def cpp_pointer_type_for_object(cpp_type: str) -> str:
   return f"{t}*"
 
 
+_CLASS_CPP_INDEX: tuple[int, int, dict[str, "ClassInfo"]] | None = None
+
+
+def clear_class_cpp_index() -> None:
+  """跨 ``translate_file`` 清除 ``cpp_name`` 索引（同进程多次翻译）。"""
+  global _CLASS_CPP_INDEX
+  _CLASS_CPP_INDEX = None
+
+
+def class_cpp_index(classes: dict[str, ClassInfo]) -> dict[str, ClassInfo]:
+  """``cpp_name()`` → 首次 ``ClassInfo``（与 ``classes.values()`` 顺序一致）。"""
+  global _CLASS_CPP_INDEX
+  ident, n = id(classes), len(classes)
+  cached = _CLASS_CPP_INDEX
+  if cached is not None and cached[0] == ident and cached[1] == n:
+    return cached[2]
+  by_cpp: dict[str, ClassInfo] = {}
+  for info in classes.values():
+    cn = info.cpp_name()
+    if cn not in by_cpp:
+      by_cpp[cn] = info
+  _CLASS_CPP_INDEX = (ident, n, by_cpp)
+  return by_cpp
+
+
 def class_info_for_cpp_type(
   cpp_type: str, classes: dict[str, ClassInfo],
 ) -> ClassInfo | None:
   """按生成类型名（含模板实参）匹配 ``ClassInfo``。"""
+  if not classes:
+    return None
   bare = strip_cpp_type_qualifiers(cpp_type)
-  for info in classes.values():
-    cn = info.cpp_name()
-    if bare == cn or bare.startswith(f"{cn}<"):
-      return info
-  return None
+  idx = class_cpp_index(classes)
+  if "<" in bare:
+    generic = bare.split("<", 1)[0].strip()
+    return idx.get(generic)
+  return idx.get(bare)
 
 
 def _init_allows_zero_args(init: ast.FunctionDef) -> bool:
@@ -1602,7 +1629,7 @@ def str_cpp_from_literal(text: str) -> str:
 
 
 def bytes_cpp_from_literal(data: bytes) -> str:
-  """Python ``bytes`` 常量 → ``bytes_from_literal``（见 ``text/+bytes.inl`` inject）。"""
+  """Python ``bytes`` 常量 → ``bytes_from_literal``（见 ``text/+bytes.inl``；生成写入 ``bytes.h``）。"""
   fn = "::py2cpp::text::bytes::bytes_from_literal"
   if not data:
     return f"{fn}(nullptr, 0)"

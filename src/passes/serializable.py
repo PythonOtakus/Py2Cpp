@@ -1426,6 +1426,9 @@ def expand_serializable(tr: Translator) -> None:
   """``@serializable`` → ``serialize`` / ``deserialize``。"""
   targets: list[ClassInfo] = []
   for info in tr.classes.values():
+    skip = getattr(tr, "skip_cached_analysis_module", None)
+    if skip is not None and skip(info.module_path):
+      continue
     if not has_named_decorator(info.node, SERIALIZABLE_DECORATOR):
       continue
     if info.is_descriptor or info.is_mixin or info.is_protocol:

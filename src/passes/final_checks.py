@@ -112,6 +112,9 @@ def _check_final_field_assignments(
 def check_final_rules(tr: Translator) -> None:
   violations: list[_Violation] = []
   for module_path in tr.module_asts:
+    skip = getattr(tr, "skip_cached_analysis_module", None)
+    if skip is not None and skip(module_path):
+      continue
     _check_final_class_inheritance(tr, module_path, violations)
     _check_final_method_override(tr, module_path, violations)
     _check_final_field_assignments(tr, module_path, violations)

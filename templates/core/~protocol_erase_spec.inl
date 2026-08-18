@@ -68,13 +68,13 @@ PY2CPP_ECHO(ctx_ModelThunks)
 };
 
 PY2CPP_ECHO(ctx_TplDecl)
-PY2CPP_ECHO(ctx_Base)PY2CPP_ECHO(ctx_TplArgs)::~PY2CPP_ECHO(ctx_Base)()
+inline PY2CPP_ECHO(ctx_Base)PY2CPP_ECHO(ctx_TplArgs)::~PY2CPP_ECHO(ctx_Base)()
 {
   reset();
 }
 
 PY2CPP_ECHO(ctx_TplDecl)
-void PY2CPP_ECHO(ctx_Base)PY2CPP_ECHO(ctx_TplArgs)::reset()
+inline void PY2CPP_ECHO(ctx_Base)PY2CPP_ECHO(ctx_TplArgs)::reset()
 {
   if (_ctx != 0 && _destroy_fn != 0) { _destroy_fn(_ctx); }
   _ctx = 0;
@@ -83,14 +83,14 @@ PY2CPP_ECHO(ctx_ResetClears)
 }
 
 PY2CPP_ECHO(ctx_TplDecl)
-PY2CPP_ECHO(ctx_Base)PY2CPP_ECHO(ctx_TplArgs)::PY2CPP_ECHO(ctx_Base)(const PY2CPP_ECHO(ctx_Base)PY2CPP_ECHO(ctx_TplArgs)& other)
+inline PY2CPP_ECHO(ctx_Base)PY2CPP_ECHO(ctx_TplArgs)::PY2CPP_ECHO(ctx_Base)(const PY2CPP_ECHO(ctx_Base)PY2CPP_ECHO(ctx_TplArgs)& other)
   : _ctx(other._ctx), _destroy_fn(other._destroy_fn)PY2CPP_ECHO(ctx_CopyCtorInits)
 {
   if (_ctx != 0) { static_cast<py2cpp_protocol_erase_detail::model_hdr*>(_ctx)->add_ref(); }
 }
 
 PY2CPP_ECHO(ctx_TplDecl)
-PY2CPP_ECHO(ctx_Base)PY2CPP_ECHO(ctx_TplArgs)& PY2CPP_ECHO(ctx_Base)PY2CPP_ECHO(ctx_TplArgs)::operator=(const PY2CPP_ECHO(ctx_Base)PY2CPP_ECHO(ctx_TplArgs)& other)
+inline PY2CPP_ECHO(ctx_Base)PY2CPP_ECHO(ctx_TplArgs)& PY2CPP_ECHO(ctx_Base)PY2CPP_ECHO(ctx_TplArgs)::operator=(const PY2CPP_ECHO(ctx_Base)PY2CPP_ECHO(ctx_TplArgs)& other)
 {
   if (this != &other)
   {
@@ -104,7 +104,7 @@ PY2CPP_ECHO(ctx_CopyAssignStmts)
 }
 
 PY2CPP_ECHO(ctx_TplDecl)
-PY2CPP_ECHO(ctx_Base)PY2CPP_ECHO(ctx_TplArgs)::PY2CPP_ECHO(ctx_Base)(PY2CPP_ECHO(ctx_Base)PY2CPP_ECHO(ctx_TplArgs)&& other)
+inline PY2CPP_ECHO(ctx_Base)PY2CPP_ECHO(ctx_TplArgs)::PY2CPP_ECHO(ctx_Base)(PY2CPP_ECHO(ctx_Base)PY2CPP_ECHO(ctx_TplArgs)&& other)
   : _ctx(other._ctx), _destroy_fn(other._destroy_fn)PY2CPP_ECHO(ctx_MoveCtorInits)
 {
   other._ctx = 0;
@@ -113,7 +113,7 @@ PY2CPP_ECHO(ctx_MoveCtorOtherClears)
 }
 
 PY2CPP_ECHO(ctx_TplDecl)
-PY2CPP_ECHO(ctx_Base)PY2CPP_ECHO(ctx_TplArgs)& PY2CPP_ECHO(ctx_Base)PY2CPP_ECHO(ctx_TplArgs)::operator=(PY2CPP_ECHO(ctx_Base)PY2CPP_ECHO(ctx_TplArgs)&& other)
+inline PY2CPP_ECHO(ctx_Base)PY2CPP_ECHO(ctx_TplArgs)& PY2CPP_ECHO(ctx_Base)PY2CPP_ECHO(ctx_TplArgs)::operator=(PY2CPP_ECHO(ctx_Base)PY2CPP_ECHO(ctx_TplArgs)&& other)
 {
   if (this != &other)
   {

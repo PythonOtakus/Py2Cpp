@@ -53,12 +53,16 @@ def _parse_handler_types(handler: ast.ExceptHandler) -> list[str | None]:
 def _class_info_for_exception_name(tr: Translator, name: str):
   binding = tr._effective_import_bindings().get(name)
   if binding is not None and binding.kind == "class":
-    for info in tr.classes.values():
-      if info.name == binding.symbol and info.module_path == binding.module_path:
+    tr._ensure_class_indexes()
+    assert tr._classes_by_module is not None
+    for info in tr._classes_by_module.get(binding.module_path, ()):
+      if info.name == binding.symbol:
         return info
   mp = tr._active_module_path()
-  for info in tr.classes.values():
-    if info.name == name and info.module_path == mp:
+  tr._ensure_class_indexes()
+  assert tr._classes_by_module is not None
+  for info in tr._classes_by_module.get(mp, ()):
+    if info.name == name:
       return info
   return None
 

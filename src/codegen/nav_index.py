@@ -97,6 +97,8 @@ def _impl_definition_line(
     return None
   candidates: list[tuple[int, bool]] = []
   for i, text in enumerate(lines):
+    if cpp_member not in text:
+      continue
     if not any(pat.search(text) for pat in patterns):
       continue
     if _looks_like_method_call(text, cpp_member):
@@ -937,6 +939,35 @@ def build_module_shard(tr: Translator, module_path: str) -> dict[str, Any] | Non
   }
 
 
+def _module_shard_stale(tr: Translator, module_path: str, shard_path: Path) -> bool:
+  """shard 不存在，或任一 ``.h``/``.inl``/``.cpp``/``.py`` 新于 shard 时须重建。"""
+  if not shard_path.is_file():
+    return True
+  try:
+    shard_m = shard_path.stat().st_mtime
+  except OSError:
+    return True
+  repo = tr._repo_root()
+  artifacts = _resolve_module_artifacts(tr, module_path)
+  for rel in artifacts.values():
+    if not rel:
+      continue
+    p = repo / rel
+    try:
+      if p.is_file() and p.stat().st_mtime > shard_m:
+        return True
+    except OSError:
+      return True
+  py_rel = _py_file(tr, module_path)
+  py_path = repo / py_rel
+  try:
+    if py_path.is_file() and py_path.stat().st_mtime > shard_m:
+      return True
+  except OSError:
+    pass
+  return False
+
+
 def write_nav_index(tr: Translator) -> Path:
   """写入/合并 ``<output>/.cache/nav/`` 索引；返回 manifest 路径。"""
   cache = nav_cache_dir(tr.base_output_dir)
@@ -961,11 +992,13 @@ def write_nav_index(tr: Translator) -> Path:
   for module_path in tr.module_order:
     if not _should_update_module_shard(tr, module_path):
       continue
+    shard_rel = module_shard_rel(module_path)
+    shard_path = cache / shard_rel
+    if not _module_shard_stale(tr, module_path, shard_path):
+      continue
     shard = build_module_shard(tr, module_path)
     if shard is None:
       continue
-    shard_rel = module_shard_rel(module_path)
-    shard_path = cache / shard_rel
     shard_path.parent.mkdir(parents=True, exist_ok=True)
     legacy_path = modules_dir / _legacy_module_shard_name(module_path)
     if legacy_path.is_file() and legacy_path != shard_path:

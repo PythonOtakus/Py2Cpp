@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import re
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -82,6 +83,30 @@ class ChrOrdTests(TestCaseMixin):
       self.assertIn("decl", cls["cpp"])
       method = next(s for s in shard["symbols"] if s["kind"] == "method" and s["name"] == "test")
       self.assertIn("impl", method["cpp"])
+
+  def test_second_write_skips_unchanged_shard(self):
+    src = """
+from py2cpp import *
+from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
+
+@copyable
+class ChrOrdTests(TestCaseMixin):
+  @override
+  def test(self) -> None:
+    x: int = 1
+    self.assertEqual(x, 1)
+"""
+    with tempfile.TemporaryDirectory() as tmp:
+      out = Path(tmp)
+      py = out / "test_chr_ord.py"
+      py.write_text(src, encoding="utf-8")
+      Translator.translate_file(str(py), output_dir=str(out), include_stdlib=False)
+      shard_path = nav_cache_dir(out) / "modules" / "test_chr_ord.json"
+      self.assertTrue(shard_path.is_file())
+      m0 = shard_path.stat().st_mtime
+      time.sleep(0.05)
+      Translator.translate_file(str(py), output_dir=str(out), include_stdlib=False)
+      self.assertEqual(shard_path.stat().st_mtime, m0)
 
   def test_property_setter_uses_dunder_set(self):
     src = """

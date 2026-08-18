@@ -52,7 +52,7 @@ class HeaderUsingsTests(unittest.TestCase):
     self.assertIn("PyList", syms)
     self.assertIn("PyListIterator", syms)
     unittest_h = stdlib_header_include("test/unittest")
-    self.assertIn("TestCase", {sym for _ns, sym in index[unittest_h]})
+    self.assertIn("PyTestCase", {sym for _ns, sym in index[unittest_h]})
 
   def test_util_range_header(self):
     from src.constant.stdlib_layout import stdlib_header_include
@@ -81,6 +81,30 @@ class HeaderUsingsTests(unittest.TestCase):
     }
     out = usings_for_headers(["a.h", "b.h", "a.h"], index)
     self.assertEqual(out, [("ns", "Foo"), ("ns", "Bar")])
+
+
+class StdlibHeaderGlobalUsingTests(unittest.TestCase):
+  def test_dict_and_list_emit_namespace_using(self):
+    from src.emit.layout_emit import stdlib_header_global_using_line
+
+    self.assertEqual(
+      stdlib_header_global_using_line("py2cpp/util/dict"),
+      "using namespace py2cpp::util::dict;",
+    )
+    self.assertEqual(
+      stdlib_header_global_using_line("py2cpp/util/list"),
+      "using namespace py2cpp::util::list;",
+    )
+    self.assertEqual(
+      stdlib_header_global_using_line("py2cpp/text/str"),
+      "using namespace py2cpp::text::str;",
+    )
+
+  def test_global_namespace_modules_skip(self):
+    from src.emit.layout_emit import stdlib_header_global_using_line
+
+    self.assertIsNone(stdlib_header_global_using_line("py2cpp/util/tuple"))
+    self.assertIsNone(stdlib_header_global_using_line("py2cpp"))
 
 
 if __name__ == "__main__":

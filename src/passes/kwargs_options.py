@@ -1025,12 +1025,18 @@ def _expand_all_call_sites(
   init_sigs: dict[tuple[str, ...], KwargsOptionsSig | None],
 ) -> None:
   for module_path, tree in tr.module_asts.items():
+    skip = getattr(tr, "skip_cached_analysis_module", None)
+    if skip is not None and skip(module_path):
+      continue
     exp = _CallExpander(
       tr, func_sigs=func_sigs, init_sigs=init_sigs, module_path=module_path,
     )
     tree.body = exp._flatten_body(tree.body)
     ast.fix_missing_locations(tree)
   for module_path, func in tr.module_functions:
+    skip = getattr(tr, "skip_cached_analysis_module", None)
+    if skip is not None and skip(module_path):
+      continue
     exp = _CallExpander(
       tr,
       func_sigs=func_sigs,
@@ -1041,6 +1047,9 @@ def _expand_all_call_sites(
     func.body = exp._flatten_body(func.body)
     ast.fix_missing_locations(func)
   for info in tr.classes.values():
+    skip = getattr(tr, "skip_cached_analysis_module", None)
+    if skip is not None and skip(info.module_path):
+      continue
     exp = _CallExpander(
       tr,
       func_sigs=func_sigs,

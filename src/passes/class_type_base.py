@@ -58,6 +58,9 @@ def check_class_inheritance_bases(tr: Translator) -> None:
 
   violations: list[_Violation] = []
   for module_path in tr.module_asts:
+    skip = getattr(tr, "skip_cached_analysis_module", None)
+    if skip is not None and skip(module_path):
+      continue
     _check_s30_inheritance_bases(tr, module_path, violations)
   if not violations:
     return

@@ -195,6 +195,9 @@ def check_refcount_source_style(tr: TranslatorState) -> None:
         return
     violations: list[_Violation] = []
     for module_path, tree in tr.module_asts.items():
+        skip = getattr(tr, 'skip_cached_analysis_module', None)
+        if skip is not None and skip(module_path):
+            continue
         norm = module_path.replace('\\', '/')
         if _s31_module_exempt(module_path):
             continue
@@ -226,6 +229,9 @@ def check_pynone_source_style(tr: TranslatorState) -> None:
         return
     violations: list[_Violation] = []
     for module_path in tr.module_asts:
+        skip = getattr(tr, 'skip_cached_analysis_module', None)
+        if skip is not None and skip(module_path):
+            continue
         if _s37_module_exempt(module_path):
             continue
         source = _module_source(tr, module_path)
@@ -344,6 +350,9 @@ def _check_s47_naming_suffixes(tree: ast.Module, module_path: str, violations: l
                 violations.append(_Violation(S47, _strict_msg(name, f'{name}…Error', f'class {name}', reason='异常类除 CPython 同名外须以 ``Error`` 结尾', example='got: class EmptyError(Exception):'), node, module_path))
 
 def _should_check_module(tr: Translator, module_path: str) -> bool:
+    skip = getattr(tr, 'skip_cached_analysis_module', None)
+    if skip is not None and skip(module_path):
+        return False
     norm = module_path.replace('\\', '/')
     if '/test/fail/' in f'/{norm}/' or norm.startswith('test/fail/'):
         return False
@@ -2483,7 +2492,10 @@ def _s41_private_accessor_pair_msg(*, getter: str, setter: str, field: str) -> s
     return _strict_msg(f'`def {getter}(self): return self.{field}` 与 `def {setter}(self, …): self.{field} = …`', f'``@property def {public}(self)`` + ``@property.setter``，或改为公有字段 ``{public}: T``', '类内私有字段纯读写方法对（``kind``/``isDone``/``getValue`` 与 ``setKind``/``setValue`` 同理）', reason='仅读写 ``self._field`` 的 getter/setter 须 ``@property`` 或公有字段；getter 除 ``self`` 外无参，setter 除 ``self`` 外仅一个赋值形参', example=f'``@property def {public}(self) -> T: return self.{field}``；``@property.setter def {public}(self, v: T): self.{field} = v``')
 
 def _check_s41_private_field_accessor_pairs(tr: Translator, violations: list[_Violation]) -> None:
+    skip = getattr(tr, 'skip_cached_analysis_module', None)
     for info in tr.classes.values():
+        if skip is not None and skip(info.module_path):
+            continue
         if info.is_protocol or info.is_descriptor or info.is_annotation:
             continue
         getters_by_field: dict[str, ast.FunctionDef] = {}
@@ -3273,6 +3285,9 @@ def check_static_virtual_override_s18(tr: Translator) -> None:
     """静态虚 ``@override``（**S18**）：全模块含 ``test/fail/``。"""
     violations: list[_Violation] = []
     for module_path in tr.module_asts:
+        skip = getattr(tr, 'skip_cached_analysis_module', None)
+        if skip is not None and skip(module_path):
+            continue
         protocol_static = _module_protocol_static_virtual_methods(tr, module_path)
         class_bindings = _collect_class_protocol_bindings(tr, module_path)
         for info in tr.classes.values():

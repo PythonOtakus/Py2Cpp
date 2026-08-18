@@ -63,7 +63,7 @@ plugins/py2cpp-nav
 
 | 组件 | 路径 | 职责 |
 |------|------|------|
-| 索引写入 | `src/codegen/nav_index.py` | `ClassInfo` / 别名 / 枚举 / 变体 / delegate / 模块函数 → `.h`/`.inl` 行号 |
+| 索引写入 | `src/codegen/nav_index.py` | `ClassInfo` / 别名 / 枚举 / 变体 / delegate / 模块函数 → `.h`/`.inl` 行号；`.h`/`.inl` 未新于 shard 则跳过该模块 |
 | 挂钩 | `src/translator.py`（`translate_file` 末尾） | 调用 `write_nav_index` |
 | 译器单测 | `src/tests/test_nav_index.py` | A–E 关键路径 + 前向声明 / impl 调用点 |
 | 扩展 | `plugins/py2cpp-nav/out/*.js` | DefinitionProvider、限定名、setter 优先 |

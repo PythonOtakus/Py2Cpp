@@ -36,6 +36,20 @@ class ClassInfoForTypeTests(unittest.TestCase):
     assert info is not None
     self.assertEqual(info.name, "list")
 
+  def test_template_args_match_cpp_name(self):
+    import ast
+
+    from src.analysis.ir import ClassInfo, class_info_for_cpp_type, clear_class_cpp_index
+
+    node = ast.parse("class list: pass").body[0]
+    info = ClassInfo(node, "py2cpp/util/list")
+    info.cpp_rename = "PyList"
+    classes = {"list": info}
+    clear_class_cpp_index()
+    self.assertIs(class_info_for_cpp_type("PyList<PyInt>", classes), info)
+    self.assertIs(class_info_for_cpp_type("PyList", classes), info)
+    self.assertIsNone(class_info_for_cpp_type("PySet<PyInt>", classes))
+
   def test_pyset_still_resolves(self):
     tr = self._translator_with_list()
     info = tr._class_info_for_type("PySet<PyInt>")

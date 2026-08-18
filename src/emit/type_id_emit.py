@@ -66,6 +66,10 @@ def emit_type_id_impls(tr: Translator, info: ClassInfo) -> None:
   cid = format_cpp_int(info.class_id)
   if info.is_template():
     tr._emit_template_prefix(info)
+  # 库 TU 经 umbrella 也会实例化模板 ``.inl``；无 selectany 时 MSVC LNK2005。
+  tr.write_line("#ifdef _MSC_VER")
+  tr.write_line("__declspec(selectany)")
+  tr.write_line("#endif")
   tr.write_line(f"const PyInt {qual}::__py2cpp_class_id__ = {cid};")
   tr.write_line()
   if info.is_template():

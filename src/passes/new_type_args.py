@@ -113,6 +113,9 @@ def validate_new_call_args(
 
 def check_new_type_arguments(tr: "Translator") -> None:
   for module_path, tree in tr.module_asts.items():
+    skip = getattr(tr, "skip_cached_analysis_module", None)
+    if skip is not None and skip(module_path):
+      continue
     for node in ast.walk(tree):
       if isinstance(node, ast.Call):
         validate_new_call_args(tr, node, module_path=module_path)

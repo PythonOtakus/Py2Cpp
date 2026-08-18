@@ -244,6 +244,20 @@ class Translator(ast.NodeVisitor):
         # helper 内以显式指针接收者访问，而非错误地引用外围 ``this``。
         self._type_if_self_cpp: str | None = None
         self._literal_target_ann: ast.expr | None = None
+        self._class_lookup: dict[str, ClassInfo] | None = None
+        self._classes_by_module: dict[str, list[ClassInfo]] | None = None
+        self._proxy_class_info: ClassInfo | None = None
+        self._boxing_by_cpp_name: dict[str, ClassInfo] | None = None
+        self._class_index_n: int = -1
+        self.emit_module_filter: set[str] | None = None
+        self.cached_analysis_modules: set[str] = set()
+        self._cached_class_payloads: dict[tuple[str, str], dict] = {}
+        self._cached_function_sigs: dict[tuple[str, str], FunctionSig] = {}
+        self._cached_overload_sigs: dict[tuple[str, str], list[FunctionSig]] = {}
+        self._cached_module_analysis: dict[str, dict] = {}
+        self._cached_import_bindings: dict[str, dict] = {}
+        self._cached_import_usings: dict[str, list] = {}
+        self._bootstrap_plan_full: bool = True
 
     @staticmethod
     def _runtime_root() -> Path:
@@ -342,6 +356,36 @@ class Translator(ast.NodeVisitor):
 
     @classmethod
     def translate_file(cls, input_path: str, output_dir: str | None=None, include_stdlib: bool=True, *, emit_main: bool=True, debug: bool=False, strict: bool=True, openmp_enabled: bool=True) -> tuple[Path, Path]:
+        import os
+        import sys
+        import time
+
+        class _Prof:
+            def __init__(self):
+                self.enabled = os.environ.get('PY2CPP_PROFILE', '').strip().lower() in ('1', 'true', 'yes', 'on')
+                self.t0 = time.perf_counter()
+                self.last = self.t0
+                self.rows: list[tuple[str, float]] = []
+
+            def mark(self, name: str) -> None:
+                now = time.perf_counter()
+                self.rows.append((name, now - self.last))
+                self.last = now
+
+            def report(self) -> None:
+                if not self.enabled:
+                    return
+                total = time.perf_counter() - self.t0
+                print('[py2cpp-profile]', file=sys.stderr)
+                for name, dt in self.rows:
+                    print(f'  {dt:7.2f}s  {name}', file=sys.stderr)
+                print(f'  {total:7.2f}s  TOTAL', file=sys.stderr)
+
+        prof = _Prof()
+        from .analysis.ir import clear_class_cpp_index
+        from .analysis.type_compat import clear_type_node_cache
+        clear_class_cpp_index()
+        clear_type_node_cache()
         path = Path(input_path).resolve()
         out_dir = cls._resolve_output_dir(path, output_dir)
         runtime_root = cls._runtime_root()
@@ -359,6 +403,7 @@ class Translator(ast.NodeVisitor):
             modules = discover_translation_modules(path, include_stdlib=include_stdlib, runtime_root=runtime_root, project_root=project_root)
         else:
             modules = discover_translation_modules(runtime_init, include_stdlib=True, runtime_root=runtime_root, project_root=runtime_root.parent)
+        prof.mark('discover')
         out_stem = cls._entry_output_stem(path)
         entry_rel = cls._entry_output_reldir(path)
         runtime_out = cls.runtime_dir(out_dir)
@@ -375,9 +420,26 @@ class Translator(ast.NodeVisitor):
         translator.emit_main = emit_main
         translator._import_project_root_cache = project_root
         translator._parse_modules(modules)
+        prof.mark('parse')
+        if translator._is_runtime_bootstrap():
+            from .codegen.bootstrap_incremental import (
+              attach_incremental_to_translator,
+              plan_bootstrap_incremental,
+            )
+            plan = plan_bootstrap_incremental()
+            attach_incremental_to_translator(translator, plan)
+            translator._bootstrap_plan_full = plan.full
+            if prof.enabled:
+                n_dirty = 'all' if plan.full else str(len(plan.dirty_modules))
+                print(
+                  f'  incremental: full={plan.full} reason={plan.reason} dirty={n_dirty}',
+                  file=sys.stderr,
+                )
+        prof.mark('incremental_plan')
         if include_stdlib and entry_is_runtime_init:
             from .codegen.template_conventions import check_template_conventions
             check_template_conventions(strict=strict)
+            prof.mark('template_conventions')
         stdlib_names: list[str] = []
         for mp in translator.module_order:
             if not translator._is_stdlib_module(mp):
@@ -430,7 +492,15 @@ class Translator(ast.NodeVisitor):
             expand_lazy_params(translator)
             from .passes.final_expand import expand_final_ctor_inits
             expand_final_ctor_inits(translator)
+            prof.mark('expand_passes')
             SemanticAnalyzer().analyze(translator)
+            prof.mark('analyze')
+            from .codegen.bootstrap_incremental import store_analysis_cache
+            store_analysis_cache(
+              translator,
+              full=getattr(translator, '_bootstrap_plan_full', True),
+            )
+            prof.mark('analyze_cache')
             check_proxy_nested_type_args(translator)
             resolve_union_field_cpp_types(translator)
             check_new_type_arguments(translator)
@@ -443,10 +513,13 @@ class Translator(ast.NodeVisitor):
             check_static_virtual_override_s18(translator)
             check_parallel_loops(translator)
             check_moved_use(translator)
+            prof.mark('checks')
             translator.generated_at = datetime.now().strftime('生成时间: %Y-%m-%d %H:%M:%S')
             translator._emit_all()
+            prof.mark('emit')
         except Exception as exc:
             raise enhance_translation_exception(exc, translator, fallback_absolute=path) from exc
+        from .codegen.write_if_changed import write_text_if_changed
         translator._ensure_member_access_header()
         translator._write_per_module_headers()
         from .analysis.stdlib_module_order import reorder_stdlib_modules_for_umbrella
@@ -457,20 +530,23 @@ class Translator(ast.NodeVisitor):
         umbrella_header = runtime_out / UMBRELLA_HEADER
         has_stdlib_body = include_stdlib and translator._has_stdlib_source() and translator._is_runtime_bootstrap()
         if has_stdlib_body:
-            runtime_cpp.write_text('\n'.join(translator._build_stdlib_cpp_lines(merge_entry_runtime=entry_path == RUNTIME_PREFIX)) + '\n', encoding='utf-8')
+            write_text_if_changed(runtime_cpp, '\n'.join(translator._build_stdlib_cpp_lines(merge_entry_runtime=entry_path == RUNTIME_PREFIX)) + '\n')
         elif include_stdlib and translator._is_runtime_bootstrap():
-            runtime_cpp.write_text('\n'.join(codegen_file_header_lines('标准库实现均在各模块 *.inl（测试 TU 不链本文件）', translator.generated_at)) + '\n', encoding='utf-8')
+            write_text_if_changed(runtime_cpp, '\n'.join(codegen_file_header_lines('标准库实现均在各模块 *.inl（测试 TU 不链本文件）', translator.generated_at)) + '\n')
         if emit_user_entry:
             header_path = entry_out / f'{out_stem}.h'
             entry_cpp = entry_out / f'{out_stem}.cpp'
-            header_path.write_text('\n'.join(translator.header_lines) + '\n', encoding='utf-8')
-            entry_cpp.write_text('\n'.join(translator.source_lines) + '\n', encoding='utf-8')
+            write_text_if_changed(header_path, '\n'.join(translator.header_lines) + '\n')
+            write_text_if_changed(entry_cpp, '\n'.join(translator.source_lines) + '\n')
             source_path = entry_cpp
         else:
             header_path = umbrella_header
             source_path = runtime_cpp if has_stdlib_body else umbrella_header
+        prof.mark('write')
         from .codegen.nav_index import write_nav_index
         write_nav_index(translator)
+        prof.mark('nav_index')
+        prof.report()
         return (header_path, source_path)
 
     @contextmanager
@@ -953,6 +1029,57 @@ class Translator(ast.NodeVisitor):
         self.type_parser.set_type_aliases(others, use_as_cpp_name=False)
         return self.type_parser.parse_type(alias.value, set(alias.type_params))
 
+    def _ensure_class_indexes(self) -> None:
+        """``cpp_name`` / 短名 / 全限定名 → 首次出现的 ``ClassInfo``（与 ``classes.values()`` 顺序一致）。"""
+        n = len(self.classes)
+        if self._class_lookup is not None and n == self._class_index_n:
+            return
+        by_key: dict[str, ClassInfo] = {}
+        by_module: dict[str, list[ClassInfo]] = {}
+        proxy: ClassInfo | None = None
+        boxing: dict[str, ClassInfo] = {}
+        for info in self.classes.values():
+            cn = info.cpp_name()
+            if cn not in by_key:
+                by_key[cn] = info
+            if info.name not in by_key:
+                by_key[info.name] = info
+            ns = namespace_qualifier_for_module(info.module_path)
+            if ns:
+                full = f'{ns}::{cn}'
+                if full not in by_key:
+                    by_key[full] = info
+                rooted = f'::{full}'
+                if rooted not in by_key:
+                    by_key[rooted] = info
+            by_module.setdefault(info.module_path, []).append(info)
+            if proxy is None and getattr(info, 'is_proxy', False):
+                proxy = info
+            if info.is_boxing and cn not in boxing:
+                boxing[cn] = info
+        self._class_lookup = by_key
+        self._classes_by_module = by_module
+        self._proxy_class_info = proxy
+        self._boxing_by_cpp_name = boxing
+        self._class_index_n = n
+
+    def skip_cached_analysis_module(self, module_path: str) -> bool:
+        """增量 bootstrap：清洁模块可跳过 expand / checks / import 重算。"""
+        cached = self.cached_analysis_modules
+        if not cached:
+            return False
+        return module_path.replace('\\', '/') in cached
+
+    def _should_emit_module(self, module_path: str) -> bool:
+        """增量 bootstrap：仅重生成脏模块的 ``.h`` / ``.inl``。"""
+        filt = self.emit_module_filter
+        return filt is None or module_path in filt
+
+    def _lookup_class_by_cpp_or_py_name(self, key: str) -> ClassInfo | None:
+        self._ensure_class_indexes()
+        assert self._class_lookup is not None
+        return self._class_lookup.get(key)
+
     def _class_info_for_type(self, cpp_type: str) -> ClassInfo | None:
         if not cpp_type:
             return None
@@ -961,9 +1088,8 @@ class Translator(ast.NodeVisitor):
         base = ClassInfo.unwrap_refcount_type(base)
         from .analysis.proxy import is_cpp_proxy_type
         if is_cpp_proxy_type(base):
-            for info in self.classes.values():
-                if getattr(info, 'is_proxy', False):
-                    return info
+            self._ensure_class_indexes()
+            return self._proxy_class_info
         if base == 'Self':
             return self._active_class_info()
         expanded = self._expand_module_type_alias_cpp(base)
@@ -975,15 +1101,12 @@ class Translator(ast.NodeVisitor):
             generic = base.split('<', 1)[0].strip()
             if '::' in generic:
                 generic = generic.rsplit('::', 1)[-1]
-            for info in self.classes.values():
-                if info.cpp_name() == generic or info.name == generic:
-                    return info
-            return None
+            return self._lookup_class_by_cpp_or_py_name(generic)
+        hit = self._lookup_class_by_cpp_or_py_name(base)
+        if hit is not None:
+            return hit
         if '::' in base:
-            base = base.rsplit('::', 1)[-1]
-        for info in self.classes.values():
-            if info.cpp_name() == base or info.name == base:
-                return info
+            return self._lookup_class_by_cpp_or_py_name(base.rsplit('::', 1)[-1])
         return None
 
     def _uses_ptr_access(self, cpp_type: str) -> bool:
@@ -1228,9 +1351,10 @@ class Translator(ast.NodeVisitor):
         if not t.endswith('*'):
             return None
         base = t[:-1].strip()
-        for info in self.classes.values():
-            if info.is_boxing and info.cpp_name() == base:
-                return f'({cpp} != nullptr)'
+        self._ensure_class_indexes()
+        assert self._boxing_by_cpp_name is not None
+        if base in self._boxing_by_cpp_name:
+            return f'({cpp} != nullptr)'
         return None
 
     def _truthiness_condition(self, node: ast.expr) -> str:
@@ -2233,7 +2357,8 @@ class Translator(ast.NodeVisitor):
         guard = module_path_to_guard(rel)
         hpath.parent.mkdir(parents=True, exist_ok=True)
         note = f'{RUNTIME_PREFIX}/__init__.py'
-        hpath.write_text(expand_whole_file_template('member_access.h', self.generated_at, {'source_note': note}, apply_allman=False).strip(), encoding='utf-8')
+        from .codegen.write_if_changed import write_text_if_changed
+        write_text_if_changed(hpath, expand_whole_file_template('member_access.h', self.generated_at, {'source_note': note}, apply_allman=False).strip())
 
     def _inject_cpp_attr_dispatch_definitions(self) -> None:
         targets: list[list[str]] = [self.source_lines]
@@ -3358,7 +3483,9 @@ class Translator(ast.NodeVisitor):
         ns = namespace_qualifier_for_module(module_path)
         if not ns or '::' in rhs.split('<', 1)[0]:
             return rhs
-        names = sorted({info.cpp_name() for info in self.classes.values() if info.module_path == module_path}, key=len, reverse=True)
+        self._ensure_class_indexes()
+        assert self._classes_by_module is not None
+        names = sorted({info.cpp_name() for info in self._classes_by_module.get(module_path, ())}, key=len, reverse=True)
         for name in names:
             prefix = f'{name}<'
             if rhs.startswith(prefix):
@@ -3658,7 +3785,9 @@ class Translator(ast.NodeVisitor):
         if self._skip_module_classes(module_path):
             return []
         from .emit.class_decl_emit import sort_module_classes_for_declaration
-        classes = [info for info in self.classes.values() if info.module_path == module_path and info.outer_class is None and (not info.is_descriptor) and (not info.is_mixin) and (not info.is_annotation) and (not info.is_protocol) and (not info.is_variant_mixin) and (not self._is_type_marker(info))]
+        self._ensure_class_indexes()
+        assert self._classes_by_module is not None
+        classes = [info for info in self._classes_by_module.get(module_path, ()) if info.outer_class is None and (not info.is_descriptor) and (not info.is_mixin) and (not info.is_annotation) and (not info.is_protocol) and (not info.is_variant_mixin) and (not self._is_type_marker(info))]
         return sort_module_classes_for_declaration(classes)
 
     def _emit_stdlib_class_methods_body(self, info: ClassInfo) -> None:
@@ -3731,6 +3860,8 @@ class Translator(ast.NodeVisitor):
     def _emit_stdlib_module_implementations(self) -> None:
         """标准库实现：非模板自由函数与类方法/模板 → 各模块 ``.inl``（测试 TU 只含 ``py2cpp.h``，不链 ``py2cpp.cpp``）。"""
         for module_path in self.module_order:
+            if not self._should_emit_module(module_path):
+                continue
             if not self._is_stdlib_module(module_path):
                 continue
             if module_path == RUNTIME_PKG and self.entry_module_path == RUNTIME_PKG and self._is_runtime_bootstrap():
@@ -3984,8 +4115,10 @@ class Translator(ast.NodeVisitor):
         from .analysis.module_namespace import namespace_qualifier_for_module
         from .analysis.runtime_symbols import CPP_EXCEPTION_TYPES
         mp = self._active_module_path()
-        for info in self.classes.values():
-            if info.name == name and info.module_path == mp and (not self._is_type_marker(info)):
+        self._ensure_class_indexes()
+        assert self._classes_by_module is not None
+        for info in self._classes_by_module.get(mp, ()):
+            if info.name == name and (not self._is_type_marker(info)):
                 ns = namespace_qualifier_for_module(mp)
                 cls = info.cpp_name()
                 if ns:
@@ -6217,14 +6350,19 @@ class Translator(ast.NodeVisitor):
         return f'({self.visit(node.test)} ? {self.visit(node.body)} : {self.visit(node.orelse)})'
 
     def _emit_all(self):
+        self._ensure_class_indexes()
         self._start_header()
         for module_path in self.module_order:
+            if not self._should_emit_module(module_path):
+                continue
             with self._use_module_decl(module_path):
                 _emit_module_protocol_traits(self, module_path)
                 if self._skip_module_classes(module_path):
                     continue
                 self._emit_module_docstring(module_path)
         for module_path in self.module_order:
+            if not self._should_emit_module(module_path):
+                continue
             if self._skip_module_classes(module_path):
                 continue
             from .constant.ffi_layout import ffi_include_only_surface
@@ -6233,7 +6371,9 @@ class Translator(ast.NodeVisitor):
                 continue
             with self._use_module_decl(module_path), self._use_module_namespace(module_path):
                 self._emit_module_import_usings(module_path)
-                module_classes = [info for info in self.classes.values() if info.module_path == module_path and info.outer_class is None and (not info.is_descriptor) and (not info.is_mixin) and (not info.is_annotation) and (not info.is_protocol) and (not info.is_variant_mixin) and (not self._is_type_marker(info))]
+                self._ensure_class_indexes()
+                assert self._classes_by_module is not None
+                module_classes = [info for info in self._classes_by_module.get(module_path, ()) if info.outer_class is None and (not info.is_descriptor) and (not info.is_mixin) and (not info.is_annotation) and (not info.is_protocol) and (not info.is_variant_mixin) and (not self._is_type_marker(info))]
                 from .emit.class_decl_emit import sort_module_classes_for_declaration
                 module_classes = sort_module_classes_for_declaration(module_classes)
                 if self._is_stdlib_module(module_path):
@@ -6300,11 +6440,13 @@ class Translator(ast.NodeVisitor):
         self._finish_header()
         self._start_source()
         self._emit_stdlib_module_implementations()
-        from .emit.ffi_glue_emit import emit_all_ffi_glue
-        emit_all_ffi_glue(self)
+        if self.emit_module_filter is None:
+            from .emit.ffi_glue_emit import emit_all_ffi_glue
+            emit_all_ffi_glue(self)
         self._emit_user_module_functions()
         self._emit_user_module_class_methods()
-        self._emit_entry_module_implementations()
+        if self._should_emit_module(self.entry_module_path):
+            self._emit_entry_module_implementations()
         self._emit_module_functions()
         self._inject_cpp_attr_dispatch_definitions()
         self._inject_py_callable_thunks()

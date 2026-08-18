@@ -447,6 +447,8 @@ Inspector：对象字段 + 组件列表字段（含 root `Transform` TRS）。
 
 ### Phase 5 — 插件 + MCP
 
+**仍暂不做。** 进程内代码热更（宿主不退出、卸装业务 DLL）是 Py2Cpp 基础设施，方案见仓库根 [docs/hot-reload.md](../../docs/hot-reload.md)，**不是**本 Phase；若以后做插件，应复用该文的 DLL 寿命规则，勿另造卸装协议。
+
 | 项 | 内容 |
 |----|------|
 | **插件** | manifest（id/版本/入口）；生命周期 `on_load`/`on_unload`；注册菜单项与命令 |

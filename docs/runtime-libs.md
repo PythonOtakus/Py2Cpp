@@ -2,7 +2,7 @@
 
 > **状态**：P0 已落地；**P1 默认开启**（``PY2CPP_HEADER_ONLY=1`` 回滚纯头文件）。目标：**编译效率优先**。  
 > **受众**：改 `layout_emit` / `compile.py` / `build*.bat` / umbrella 的维护者。  
-> **相关**：[参考手册 §链接模型](./参考手册.md)（现行默认链胖库 + 模板仍 header-only）、[编码规范](./编码规范.md)、[codegen-templates.md](./codegen-templates.md)、[c-ffi-pyi.md](./c-ffi-pyi.md)。
+> **相关**：[参考手册 §链接模型](./参考手册.md)（现行默认链胖库 + 模板仍 header-only）、[编码规范](./编码规范.md)、[codegen-templates.md](./codegen-templates.md)、[c-ffi-pyi.md](./c-ffi-pyi.md)。**进程内代码热更**（运行时 `LoadLibrary`，不是本文件 P3）见 [hot-reload.md](./hot-reload.md)。
 
 ---
 
@@ -15,7 +15,7 @@
 | **P1** 胖库 | ✅ | 白名单非模板模块进 `py2cpp_runtime.lib`；模板/`Queue[T]` 仍 header-only；库增量看 `py2cpp/**/*.{h,inl,cpp}` mtime |
 | **P1.5** bootstrap 加速 | ✅ | `ClassInfo`/`type_node` 查表；nav shard 按 `.h`/`.inl` mtime 跳过；叶子 `.py` 脏则只重分析/生成该模块，清洁模块跳过 import/expand/checks（mixin/`__init__.py`/译器/`templates/` 仍全量）。改一文件目标 **&lt;30s**；译器自身变更仍全量 |
 | **P2** 域库 | 未做 | |
-| **P3** DLL | 未做 | |
+| **P3** 链接期 DLL | 未做 | 同 TU 出 `py2cpp_*.dll` + import lib，测例 **dllimport**；**不是**进程内热更（见 [hot-reload.md](./hot-reload.md)） |
 
 **回滚 header-only**：
 
@@ -196,11 +196,12 @@ cl /EHsc /std:c++14 /utf-8 /I generated\runtime ^
 
 依赖闭包：测例 import 闭包触及的域库都要链上（可由译器写 `*.link.json` 或粗粒度「测试默认链 core+io+concur+sql」起步）。
 
-### 6.3 可选 DLL（P3）
+### 6.3 可选 DLL（P3，链接期）
 
 - 同一批 `.obj`：`cl /LD … /Fe:py2cpp_concur.dll` + 生成 `.lib`（import）。  
 - 符号：`PY2CPP_API`（`dllexport` / `dllimport`）挂在 **非模板** 导出声明上；模板类 **不** 走导出。  
-- 开发迭代默认仍用 **静态 `.lib`**（无 DLL 搜索路径与 CRT 一致性负担）。
+- 开发迭代默认仍用 **静态 `.lib`**（无 DLL 搜索路径与 CRT 一致性负担）。  
+- **不是热更**：`dllimport` 把符号钉进 exe，进程启动后卸不掉。进程内卸装业务 DLL 见 [hot-reload.md](./hot-reload.md)（方案已文档化，未实现）。
 
 ---
 
@@ -239,9 +240,9 @@ cl /EHsc /std:c++14 /utf-8 /I generated\runtime ^
 
 **验收**：改 `concur/thread.py` 只触达 `py2cpp_concur.lib` + 依赖它的 exe。
 
-### P3 — 可选 DLL
+### P3 — 可选链接期 DLL
 
-同 TU 出 DLL；文档补充部署（旁路 DLL、`PATH`、`/MD` 一致）。**非编译效率主路径。**
+同 TU 出 DLL；文档补充部署（旁路 DLL、`PATH`、`/MD` 一致）。**非编译效率主路径。** 与 [代码热更](./hot-reload.md) 解耦。
 
 ---
 
@@ -277,6 +278,7 @@ cl /EHsc /std:c++14 /utf-8 /I generated\runtime ^
 | [参考手册](./参考手册.md)「链接模型（测试）」 | **现行默认**链 `py2cpp_runtime.lib` + 模板仍 header-only；细节与回滚见本文 |
 | [codegen-templates.md](./codegen-templates.md) | `@native` / `+*.inl` 注入目标仍是模块 `.inl`；库 TU 只是「谁 include 这份 inl」 |
 | [c-ffi-pyi.md](./c-ffi-pyi.md) | FFI 空 allowlist 仍为 `#include <c_header>` 中转；sqlite glue 可进 `py2cpp_sql.lib` |
+| [hot-reload.md](./hot-reload.md) | 进程内 `LoadLibrary` 热更（**B**）；P3 链接期 DLL 不能替代 |
 
 ---
 
@@ -300,7 +302,7 @@ cl /EHsc /std:c++14 /utf-8 /I generated\runtime ^
 
 | 项 | 决议 |
 |----|------|
-| 产物优先级 | **`.lib` 优先**；DLL 可选（P3） |
+| 产物优先级 | **`.lib` 优先**；链接期 DLL 可选（P3）；进程内热更见 [hot-reload.md](./hot-reload.md)，不挡 P1/P2 |
 | 切分粒度 | **按域**，禁止一文件一 DLL |
 | 模板 | **留 header-only** |
 | 实施顺序 | **P0 → P1 胖库 → P2 域库 → P3 DLL** |

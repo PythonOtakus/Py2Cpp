@@ -5,7 +5,7 @@
 
 翻译期辅助（由 ``passes/`` 展开，**非** CPython 运行时语义）：
 
-- ``Self.iterFields()`` / ``Self.iterFields[Ann]()`` / ``enumFields(publicOnly=…)`` / ``getFieldAnnotation(...)`` / ``getFieldAnnotations(...)``（``glob=`` 粗筛字段名）
+- ``Self.iterFields()`` / ``Self.iterFields[Ann]()`` / ``enumFields(publicOnly=…)`` / ``getFieldAnnotation(...)`` / ``getFieldAnnotations(...)`` / ``getFieldType(...)`` / ``getFieldDefault(...)``（``glob=`` 粗筛字段名）
 - ``VarStack`` + ``s: VarStack = new()`` + ``s.push(…)`` / ``s.pop()`` / ``s.top()`` + ``new(*s)`` / ``fn(*s)`` / ``(*s,)``（译期展开为 ``__vs_{name}N``；``pop`` 不回收编号，``*s`` 仅含逻辑栈剩余项；``top()`` 可读栈顶且可跨内层作用域；声明与 ``push``/``pop``/``*s`` 须同块作用域，``Self.iterFields`` / ``enumFields`` 循环体除外）
 - ``Self.iterMethods()`` / ``Self.iterMethods[Ann]()`` / ``getMethodAnnotation[AnnMeta](method)``（``glob=`` 粗筛方法名）
 - ``Self.getFieldAnnotation[AnnMeta](field)`` → 字段上该 ``@`` 标记（无则 ``None``）；``.text`` / ``.lo`` 等译期折叠
@@ -103,6 +103,11 @@ def mixin(cls):
       yield idx, field
 
   @classmethod
+  def getFieldDefault(cls, field: str):
+    """翻译期：字段默认值（无则 ``None``）；``Self.getFieldDefault(field)`` 由译器折叠。"""
+    return None
+
+  @classmethod
   def getFieldAnnotation(cls, field: str):
     try:
       src = inspect.getsource(cls.__init__)
@@ -179,6 +184,7 @@ def mixin(cls):
   cls.enumFields = enumFields
   cls.getFieldAnnotation = getFieldAnnotation
   cls.getFieldAnnotations = getFieldAnnotations
+  cls.getFieldDefault = getFieldDefault
   cls.iterMethods = iterMethods
   cls.getMethodAnnotation = getMethodAnnotation
   cls.iterMethodParams = iterMethodParams

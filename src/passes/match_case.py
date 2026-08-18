@@ -9,7 +9,7 @@ from ..analysis.type_pred import is_char_type, is_int_type, is_optional_type, is
 from ..analysis.ir import ClassInfo, class_info_for_cpp_type, cpp_ident, cpp_template_inner_args, format_cpp_int, is_const_type_annotation, is_optional_type_annotation, is_ref_type_annotation, primary_field_annotation_class, quote_cpp_string, split_cpp_template_args, str_cpp_from_literal, _TYPE_ANNOTATION_METADATA_MARKERS
 from ..analysis.patterns import property_getter_method_for
 from .kwargs_options import _matchable_member_names, _skip_class, _validate_match_field_names
-from .static_reflect import StaticReflectFolder, static_field_name
+from .static_reflect import StaticReflectFolder, static_field_name, _const_compare_result
 from .union_expand import parse_union_case_pattern, union_info_from_subject_cpp
 from .optional_match import check_optional_match_exhaustive, is_optional_union_info, optional_pattern_to_match
 from .union_match import UnionMatchArm, _pattern_for_union_case, check_union_match_exhaustive, partition_union_match_cases
@@ -52,35 +52,108 @@ def field_base_type_from_ann(ann: ast.expr | None) -> ast.expr | None:
         out = out.left
     return out
 
+_GET_FIELD_TYPE_ATTRS = frozenset({'get_field_type', 'getFieldType'})
+_GET_FIELD_DEFAULT_ATTRS = frozenset({'get_field_default', 'getFieldDefault'})
+_UI_META_POS_FIELDS: dict[str, tuple[str, ...]] = {
+    'UILabelMeta': ('text',),
+    'UISliderMeta': ('lo', 'hi'),
+    'UIButtonMeta': ('label',),
+}
+
+
+def _self_reflect_call_field(node: ast.expr, attrs: frozenset[str]) -> str | None:
+    if not (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and isinstance(node.func.value, ast.Name)
+        and node.func.value.id == 'Self'
+        and node.func.attr in attrs
+        and len(node.args) == 1
+        and not node.keywords
+    ):
+        return None
+    return static_field_name(node.args[0])
+
+
+def field_default_expr(
+    info: ClassInfo,
+    field: str,
+    *,
+    all_classes: dict[str, ClassInfo] | None = None,
+) -> ast.expr | None:
+    """``Self.getFieldDefault(field)``：dataclass 形参默认 / 体内初值，否则类体 ``field_defaults``。"""
+
+    def _on_class(ci: ClassInfo) -> ast.expr | None | bool:
+        specs = getattr(ci, 'dataclass_field_specs', None)
+        if specs:
+            for spec in specs:
+                if spec.name != field:
+                    continue
+                if spec.default is not None:
+                    return spec.default
+                if spec.body_init is not None:
+                    return spec.body_init
+                return None
+        if field in ci.field_defaults:
+            return ci.field_defaults[field]
+        if field in ci.fields:
+            return None
+        return False
+
+    found = _on_class(info)
+    if found is not False:
+        return found
+    if all_classes:
+        from .annotation_options import walk_entity_bases
+        for bi in walk_entity_bases(info, all_classes):
+            found = _on_class(bi)
+            if found is not False:
+                return found
+    return None
+
+
 def fold_self_get_field_type_calls(
     stmts: list[ast.stmt],
     ann_for_field,
     *,
     known_fields: frozenset[str],
+    default_for_field=None,
 ) -> list[ast.stmt]:
-    """折叠 ``Self.get_field_type('field')`` 为字段基础类型 AST。"""
+    """折叠 ``Self.getFieldType`` / ``Self.getFieldDefault``（亦认 snake_case）。"""
     class _GetTypeFolder(ast.NodeTransformer):
         def _query(self, node: ast.expr) -> ast.expr | None:
-            if not (
-                isinstance(node, ast.Call)
-                and isinstance(node.func, ast.Attribute)
-                and isinstance(node.func.value, ast.Name)
-                and node.func.value.id == 'Self'
-                and node.func.attr == 'get_field_type'
-                and len(node.args) == 1
-                and not node.keywords
-            ):
+            field = _self_reflect_call_field(node, _GET_FIELD_TYPE_ATTRS)
+            if field is None:
                 return None
-            field = static_field_name(node.args[0])
-            if field is None or field not in known_fields:
-                raise ValueError('Self.get_field_type 的字段须属于当前类且在翻译期可确定')
+            if field not in known_fields:
+                raise ValueError('Self.getFieldType 的字段须属于当前类且在翻译期可确定')
             base = field_base_type_from_ann(ann_for_field(field))
             if base is None:
-                raise ValueError(f'Self.get_field_type 无法取得字段类型: {field}')
+                raise ValueError(f'Self.getFieldType 无法取得字段类型: {field}')
             return base
+
+        def _default_expr(self, node: ast.expr) -> ast.expr | None:
+            field = _self_reflect_call_field(node, _GET_FIELD_DEFAULT_ATTRS)
+            if field is None:
+                return None
+            if field not in known_fields:
+                raise ValueError('Self.getFieldDefault 的字段须属于当前类且在翻译期可确定')
+            if default_for_field is None:
+                return ast.Constant(value=None)
+            expr = default_for_field(field)
+            if expr is None:
+                return ast.Constant(value=None)
+            return copy.deepcopy(expr)
 
         def visit_Compare(self, node: ast.Compare) -> ast.expr:
             if len(node.ops) == 1 and len(node.comparators) == 1:
+                dleft = self._default_expr(node.left)
+                if dleft is not None and isinstance(node.comparators[0], ast.Constant) and node.comparators[0].value is None:
+                    missing = isinstance(dleft, ast.Constant) and dleft.value is None
+                    if isinstance(node.ops[0], ast.Is):
+                        return ast.Constant(value=missing)
+                    if isinstance(node.ops[0], ast.IsNot):
+                        return ast.Constant(value=not missing)
                 left = self._query(node.left)
                 right = self._query(node.comparators[0])
                 if left is not None or right is not None:
@@ -97,6 +170,9 @@ def fold_self_get_field_type_calls(
             base = self._query(node)
             if base is not None:
                 return ast.copy_location(base, node)
+            default = self._default_expr(node)
+            if default is not None:
+                return ast.copy_location(default, node)
             return self.generic_visit(node)
 
     folder = _GetTypeFolder()
@@ -292,12 +368,16 @@ def _expand_iter_fields_in_stmts(stmts: list[ast.stmt], host: ClassInfo, type_ho
                     idx_var = idx_node.id
                     field_var = field_node.id
                     for field_idx, field_name in enumerate(field_names):
-                        renames: dict[str, ast.expr] = {field_var: ast.Constant(value=field_name), idx_var: ast.Constant(value=field_idx)}
-                        cloned = _clone_body_replace_names(stmt.body, renames, known_fields=known)
-                        cloned = fold_self_get_field_type_calls(
-                            cloned,
-                            lambda name: field_ann_ast(fields_ci, name),
+                        extra = {idx_var: ast.Constant(value=field_idx)}
+                        cloned = _fold_field_meta_body(
+                            stmt.body,
+                            field_var,
+                            field_name,
+                            field_ann_ast(fields_ci, field_name),
                             known_fields=known,
+                            extra_renames=extra,
+                            host=fields_ci,
+                            all_classes=all_classes,
                         )
                         out.extend(_expand_iter_fields_in_stmts(cloned, host, type_hosts, all_classes=all_classes))
                     continue
@@ -308,14 +388,16 @@ def _expand_iter_fields_in_stmts(stmts: list[ast.stmt], host: ClassInfo, type_ho
                 body_wo_inc = _strip_field_index_increment(stmt.body, idx_var)
                 body_wo_inc = _guard_continue_for_unroll(body_wo_inc)
                 for field_idx, field_name in enumerate(field_names):
-                    renames = {field_var: ast.Constant(value=field_name)}
-                    if idx_var is not None:
-                        renames[idx_var] = ast.Constant(value=field_idx)
-                    cloned = _clone_body_replace_names(body_wo_inc, renames, known_fields=known)
-                    cloned = fold_self_get_field_type_calls(
-                        cloned,
-                        lambda name: field_ann_ast(fields_ci, name),
+                    extra = {idx_var: ast.Constant(value=field_idx)} if idx_var is not None else None
+                    cloned = _fold_field_meta_body(
+                        body_wo_inc,
+                        field_var,
+                        field_name,
+                        field_ann_ast(fields_ci, field_name),
                         known_fields=known,
+                        extra_renames=extra,
+                        host=fields_ci,
+                        all_classes=all_classes,
                     )
                     out.extend(_expand_iter_fields_in_stmts(cloned, host, type_hosts, all_classes=all_classes))
                 continue
@@ -482,7 +564,45 @@ def _field_meta_call(ann_ast: ast.expr | None, meta_name: str) -> ast.Call | Non
 def _field_has_meta(ann_ast: ast.expr | None, meta_name: str) -> bool:
     return meta_name in field_annotation_markers_from_ann(ann_ast)
 
-def _meta_attr_constant(meta_name: str, call: ast.Call | None, attr: str) -> ast.expr:
+def _meta_field_names(meta_name: str, meta_info: ClassInfo | None) -> list[str]:
+    specs = getattr(meta_info, 'dataclass_field_specs', None) if meta_info is not None else None
+    if specs:
+        return [spec.name for spec in specs]
+    if meta_name in _UI_META_POS_FIELDS:
+        return list(_UI_META_POS_FIELDS[meta_name])
+    if meta_info is not None:
+        return [name for name in meta_info.fields if not name.startswith('_')]
+    return []
+
+
+def _meta_attr_constant(
+    meta_name: str,
+    call: ast.Call | None,
+    attr: str,
+    *,
+    meta_info: ClassInfo | None = None,
+) -> ast.expr:
+    names = _meta_field_names(meta_name, meta_info)
+    if call is not None:
+        for kw in call.keywords:
+            if kw.arg == attr:
+                return copy.deepcopy(kw.value)
+        if attr in names:
+            idx = names.index(attr)
+            if idx < len(call.args):
+                return copy.deepcopy(call.args[idx])
+    specs = getattr(meta_info, 'dataclass_field_specs', None) if meta_info is not None else None
+    if specs:
+        for spec in specs:
+            if spec.name != attr:
+                continue
+            if spec.default is not None:
+                return copy.deepcopy(spec.default)
+            if spec.body_init is not None:
+                return copy.deepcopy(spec.body_init)
+            break
+    if meta_info is not None and attr in meta_info.field_defaults:
+        return copy.deepcopy(meta_info.field_defaults[attr])
     if meta_name == 'UILabelMeta' and attr == 'text':
         if call is not None and call.args:
             arg0 = call.args[0]
@@ -499,14 +619,34 @@ def _meta_attr_constant(meta_name: str, call: ast.Call | None, attr: str) -> ast
             hi = call.args[1]
             if isinstance(hi, ast.Constant) and isinstance(hi.value, int):
                 return ast.Constant(value=hi.value)
+    if attr in ('short', 'help'):
+        return ast.Constant(value='')
+    if attr == 'negated':
+        return ast.Constant(value=False)
+    if attr == 'choices':
+        return ast.List(elts=[], ctx=ast.Load())
     raise ValueError(f'字段注解 {meta_name}.{attr} 无法在编译期解析')
 
 def _const_bool(value: bool) -> ast.Constant:
     return ast.Constant(value=value)
 
 def _const_test_value(test: ast.expr) -> bool | None:
-    if isinstance(test, ast.Constant) and isinstance(test.value, bool):
-        return test.value
+    if isinstance(test, ast.Constant):
+        if isinstance(test.value, bool):
+            return test.value
+        if test.value is None:
+            return False
+        if isinstance(test.value, (str, int, float)):
+            return bool(test.value)
+        return None
+    if isinstance(test, ast.List):
+        return bool(test.elts)
+    if isinstance(test, ast.UnaryOp) and isinstance(test.op, ast.Not):
+        inner = _const_test_value(test.operand)
+        if inner is not None:
+            return not inner
+    if isinstance(test, ast.Compare) and len(test.ops) == 1 and len(test.comparators) == 1:
+        return _const_compare_result(test.left, test.ops[0], test.comparators[0])
     return None
 
 def _is_not_none_compare(node: ast.expr) -> ast.expr | None:
@@ -597,8 +737,20 @@ def _collect_meta_temp_assigns(body: list[ast.stmt], field_name: str, ann_ast: a
             temps[tgt.id] = ('', None)
     return temps
 
-def _fold_field_meta_body(body: list[ast.stmt], field_var: str, field_name: str, ann_ast: ast.expr | None, *, known_fields: frozenset[str]) -> list[ast.stmt]:
+def _fold_field_meta_body(
+    body: list[ast.stmt],
+    field_var: str,
+    field_name: str,
+    ann_ast: ast.expr | None,
+    *,
+    known_fields: frozenset[str],
+    extra_renames: dict[str, ast.expr] | None = None,
+    host: ClassInfo | None = None,
+    all_classes: dict[str, ClassInfo] | None = None,
+) -> list[ast.stmt]:
     renames: dict[str, ast.expr] = {field_var: ast.Constant(value=field_name)}
+    if extra_renames:
+        renames.update(extra_renames)
     body = _clone_body_replace_names(body, renames, known_fields=known_fields)
     meta_temps = _collect_meta_temp_assigns(body, field_name, ann_ast)
 
@@ -627,19 +779,28 @@ def _fold_field_meta_body(body: list[ast.stmt], field_var: str, field_name: str,
                 meta_name, call = meta_temps[node.value.id]
                 if not meta_name:
                     return node
-                return _meta_attr_constant(meta_name, call, node.attr)
+                meta_info = all_classes.get(meta_name) if all_classes else None
+                return _meta_attr_constant(meta_name, call, node.attr, meta_info=meta_info)
             return node
+
+    def _default_for(name: str) -> ast.expr | None:
+        if host is None:
+            return None
+        return field_default_expr(host, name, all_classes=all_classes)
+
     body = fold_self_get_field_type_calls(
         body,
         lambda name: ann_ast if name == field_name else None,
         known_fields=frozenset({field_name}),
+        default_for_field=_default_for,
     )
     body = [_MetaCompareFolder().visit(copy.deepcopy(s)) for s in body]
     body = _simplify_const_ifs(body)
     body = [_MetaAttrFolder().visit(s) for s in body]
     body = _remove_meta_temp_assigns(body, frozenset(meta_temps))
     folder = StaticReflectFolder(known_fields)
-    return [folder.visit(s) for s in body]
+    body = [folder.visit(s) for s in body]
+    return _simplify_const_ifs(body)
 
 def expand_iter_fields_meta(method: ast.FunctionDef, host: ClassInfo, *, all_classes: dict[str, ClassInfo] | None=None) -> ast.FunctionDef | None:
     """``for field in Self.iter_fields([public_only=…, mro=…]):`` + ``Self.get_field_annotation[Meta](field)`` 译期展开。"""
@@ -681,7 +842,17 @@ def expand_iter_fields_meta(method: ast.FunctionDef, host: ClassInfo, *, all_cla
         return None
     unrolled: list[ast.stmt] = []
     for field_name in field_names:
-        unrolled.extend(_fold_field_meta_body(for_node.body, field_var, field_name, _ann_ast(field_name), known_fields=fields))
+        unrolled.extend(
+            _fold_field_meta_body(
+                for_node.body,
+                field_var,
+                field_name,
+                _ann_ast(field_name),
+                known_fields=fields,
+                host=host,
+                all_classes=classes,
+            )
+        )
     out = copy.deepcopy(method)
     out.body = method.body[:for_idx] + unrolled + method.body[for_idx + 1:]
     return out

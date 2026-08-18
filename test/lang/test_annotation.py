@@ -230,6 +230,32 @@ class DerivedMethods(MethodInheritMixin, MethodBase):
     return 2
 
 
+@mixin
+class FieldDefaultMixin:
+  def defaultIntSum(self) -> int:
+    total: int = 0
+    for field in Self.iterFields():
+      if Self.getFieldDefault(field) is not None:
+        if Self.getFieldType(field) is int:
+          total += Self.getFieldDefault(field)
+    return total
+
+
+class DefaultedRow(FieldDefaultMixin):
+  jobs: int = 4
+  extra: int = 3
+  name: str = "x"
+
+
+class AnnotationFieldDefaultTests(TestCaseMixin):
+  _testTag = 45
+
+  @override
+  def test(self):
+    row: DefaultedRow = new()
+    self.assertEqual(row.defaultIntSum(), 7)
+
+
 class AnnotationMroTests(TestCaseMixin):
   _testTag = 50
 

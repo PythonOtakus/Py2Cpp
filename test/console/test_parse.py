@@ -1,25 +1,25 @@
-"""``console.parse``：``ArgumentParserMixin.parse[T]`` 与 Meta 字段。"""
+"""``console.parse``：``ArgumentParserMixin`` 宿主 ``new.parse`` 与 Meta 字段。"""
 from py2cpp import *
 from py2cpp.console.parse import ArgumentParserMixin, FlagArgMeta, OptArgMeta, PosArgMeta
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 
 @dataclass
-class BuildArgs:
+class BuildArgs(ArgumentParserMixin):
   source: str @PosArgMeta(help="src")
   jobs: int @OptArgMeta(short="-j") = 1
   release: bool @FlagArgMeta() = False
 
 
 @dataclass
-class FlagArgs:
+class FlagArgs(ArgumentParserMixin):
   source: str @PosArgMeta()
   verbose: bool @FlagArgMeta(short="-v") = False
   quiet: bool @FlagArgMeta(short="-q") = False
 
 
 @dataclass
-class EqArgs:
+class EqArgs(ArgumentParserMixin):
   mode: str @OptArgMeta(short="-m") = "dev"
 
 
@@ -29,7 +29,7 @@ class ParseBasicTests(TestCaseMixin):
   @override
   def test(self):
     argv: list[str] = ["src", "-j", "4", "--release"]
-    args: BuildArgs = ArgumentParserMixin.parse[BuildArgs](argv)
+    args: BuildArgs = new.parse(argv)
     self.assertEqual(args.source, "src")
     self.assertEqual(args.jobs, 4)
     self.assertTrue(args.release)
@@ -41,7 +41,7 @@ class ParseDefaultsTests(TestCaseMixin):
   @override
   def test(self):
     argv: list[str] = ["only"]
-    args: BuildArgs = ArgumentParserMixin.parse[BuildArgs](argv)
+    args: BuildArgs = new.parse(argv)
     self.assertEqual(args.source, "only")
     self.assertEqual(args.jobs, 1)
     self.assertFalse(args.release)
@@ -53,7 +53,7 @@ class ParseLongOptTests(TestCaseMixin):
   @override
   def test(self):
     argv: list[str] = ["x", "--jobs", "8"]
-    args: BuildArgs = ArgumentParserMixin.parse[BuildArgs](argv)
+    args: BuildArgs = new.parse(argv)
     self.assertEqual(args.jobs, 8)
 
 
@@ -63,7 +63,7 @@ class ParseEqOptTests(TestCaseMixin):
   @override
   def test(self):
     argv: list[str] = ["--mode=release"]
-    args: EqArgs = ArgumentParserMixin.parse[EqArgs](argv)
+    args: EqArgs = new.parse(argv)
     self.assertEqual(args.mode, "release")
 
 
@@ -73,7 +73,7 @@ class ParseCombinedFlagsTests(TestCaseMixin):
   @override
   def test(self):
     argv: list[str] = ["-vq", "src"]
-    args: FlagArgs = ArgumentParserMixin.parse[FlagArgs](argv)
+    args: FlagArgs = new.parse(argv)
     self.assertEqual(args.source, "src")
     self.assertTrue(args.verbose)
     self.assertTrue(args.quiet)
@@ -85,9 +85,21 @@ class ParseDashDashTests(TestCaseMixin):
   @override
   def test(self):
     argv: list[str] = ["--", "--jobs"]
-    args: BuildArgs = ArgumentParserMixin.parse[BuildArgs](argv)
+    args: BuildArgs = new.parse(argv)
     self.assertEqual(args.source, "--jobs")
     self.assertEqual(args.jobs, 1)
+
+
+class ParseHelpTextTests(TestCaseMixin):
+  _testTag = 70
+
+  @override
+  def test(self):
+    usage: str = BuildArgs.helpText
+    self.assertTrue("usage: BuildArgs" in usage)
+    self.assertTrue("<source>" in usage)
+    self.assertTrue("[--jobs VALUE]" in usage)
+    self.assertTrue("[--release]" in usage)
 
 
 def main():

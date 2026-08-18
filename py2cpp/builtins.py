@@ -58,13 +58,18 @@ class Callable:
 class Self:
   """``@staticproperty`` / 混入展开时表示当前类（翻译期替换为具体类名）。
 
-  ``Self.getFieldType(field)`` 仅可用于会被 ``Self.iterFields`` 展开的混入方法；
-  ``field`` 须在翻译期解析为当前宿主的字段名，调用会替换为该字段去除 ``@``
-  标记后的基础类型注解。
+  ``Self.getFieldType(field)`` / ``Self.getFieldDefault(field)`` 仅可用于会被
+  ``Self.iterFields`` 展开的混入方法；``field`` 须在翻译期解析为当前宿主的字段名。
+  ``getFieldType`` 替换为去除全部 ``@`` 标记后的基础类型；``getFieldDefault``
+  替换为字段默认值表达式，无默认则为 ``None``。
   """
 
   @staticmethod
   def getFieldType(field):
+    pass
+
+  @staticmethod
+  def getFieldDefault(field):
     pass
 
   pass

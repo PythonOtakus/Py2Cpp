@@ -22,6 +22,7 @@ from .match_case import (
   expand_iter_fields_meta,
   expand_str_annotation_match,
   extract_field_annotation_meta,
+  field_default_expr,
   fold_self_get_field_type_calls,
   is_simple_match,
 )
@@ -244,6 +245,7 @@ def expand_iter_fields_subscript_loop(
       cloned,
       lambda name: field_ann_ast(host, name),
       known_fields=known,
+      default_for_field=lambda name: field_default_expr(host, name, all_classes=classes),
     )
     unrolled.extend(cloned)
   out = copy.deepcopy(method)
@@ -506,6 +508,10 @@ def _mixin_method_has_unsupported_after_expand(method: ast.FunctionDef) -> bool:
           "getMethodParamType",
           "get_method_return_type",
           "getMethodReturnType",
+          "get_field_type",
+          "getFieldType",
+          "get_field_default",
+          "getFieldDefault",
         ):
           return True
       recv = None

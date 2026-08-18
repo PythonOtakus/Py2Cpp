@@ -1,4 +1,4 @@
-"""``expand_argument_parser``：``ArgumentParserMixin.parse[T]`` 改写与负向校验。"""
+"""``expand_argument_parser``：``*ArgMeta`` 校验与 ``parse[T]`` 负向。"""
 from __future__ import annotations
 
 import tempfile
@@ -30,20 +30,57 @@ class ArgumentParserPassTests(unittest.TestCase):
       )
       return cpp_path.read_text(encoding="utf-8")
 
-  def test_rewrites_parse_subscript_to_new_parse(self):
+  def test_host_parse_from_mixin(self):
     cpp = self._translate(
       """
 @dataclass
-class BuildArgs:
+class BuildArgs(ArgumentParserMixin):
   source: str @PosArgMeta()
   jobs: int @OptArgMeta() = 1
 
 def probe(argv: list[str]) -> BuildArgs:
-  return ArgumentParserMixin.parse[BuildArgs](argv)
+  return new.parse(argv)
 """
     )
     self.assertIn("BuildArgs::parse", cpp)
     self.assertNotIn("ArgumentParserMixin::parse", cpp)
+
+  def test_mixin_parse_subscript_is_translation_error(self):
+    src = _PREAMBLE + """
+@dataclass
+class BuildArgs(ArgumentParserMixin):
+  source: str @PosArgMeta()
+
+def probe(argv: list[str]) -> BuildArgs:
+  return ArgumentParserMixin.parse[BuildArgs](argv)
+"""
+    with tempfile.TemporaryDirectory() as tmp:
+      py = Path(tmp) / "mod.py"
+      py.write_text(textwrap.dedent(src), encoding="utf-8")
+      with self.assertRaises(TranslationError) as ctx:
+        Translator.translate_file(
+          str(py),
+          output_dir=str(Path(tmp) / "gen"),
+          include_stdlib=True,
+        )
+      self.assertIn("勿 ArgumentParserMixin.parse[T]", str(ctx.exception))
+
+  def test_missing_mixin_is_translation_error(self):
+    src = _PREAMBLE + """
+@dataclass
+class Bad:
+  source: str @PosArgMeta()
+"""
+    with tempfile.TemporaryDirectory() as tmp:
+      py = Path(tmp) / "mod.py"
+      py.write_text(textwrap.dedent(src), encoding="utf-8")
+      with self.assertRaises(TranslationError) as ctx:
+        Translator.translate_file(
+          str(py),
+          output_dir=str(Path(tmp) / "gen"),
+          include_stdlib=True,
+        )
+      self.assertIn("须继承 ArgumentParserMixin", str(ctx.exception))
 
   def test_flag_on_non_bool_is_translation_error(self):
     src = _PREAMBLE + """

@@ -122,17 +122,17 @@ from py2cpp.console.parse import (
 )
 
 @dataclass
-class BuildArgs:
+class BuildArgs(ArgumentParserMixin):
   source: str @PosArgMeta(help="资源源目录")
 
   output: str @OptArgMeta(short="-o", help="输出目录") = "build"
   jobs: int @OptArgMeta(short="-j", choices=(1, 2, 4, 8), help="并行构建数") = 1
   release: bool @FlagArgMeta(help="启用发布构建") = False
 
-args: BuildArgs = ArgumentParserMixin.parse[BuildArgs]()
+args: BuildArgs = new.parse()
 ```
 
-`ArgumentParserMixin.parse[T]()` 默认读取进程参数；`ArgumentParserMixin.parse[T](argv)` 允许测试和嵌入式程序传入明确参数。参数来源需由最小 `py2cpp.system.sys.argv` 支持，该能力与本模块同时实施。
+宿主须显式继承 ``ArgumentParserMixin``。赋值处按 S06 写 ``new.parse()`` / ``new.parse(argv)``（语义即 ``BuildArgs.parse``）。默认读取进程参数；传入 ``argv`` 供测试和嵌入式程序使用。参数来源需由最小 `py2cpp.system.sys.argv` 支持，该能力与本模块同时实施。勿写 ``ArgumentParserMixin.parse[T]``。
 
 `PosArgMeta`、`OptArgMeta`、`FlagArgMeta` 都是 `@annotation` + `@dataclass` 元数据类，字段注解必须遵循项目既有的 `Type @Meta(...)` 写法。字段名始终是 Python `snake_case`；长选项由字段名自动转换为 kebab-case，例如 `asset_root` 对应 `--asset-root`。短选项只由 `short` 指定，避免再引入重复表达同一名称的 `dest` 或 `long`。
 
@@ -144,7 +144,7 @@ args: BuildArgs = ArgumentParserMixin.parse[BuildArgs]()
 
 同一字段至多出现一个参数类别 Meta。`OptArgMeta.short` 必须形如 `-x` 且在同一 parser 内唯一；派生长选项也必须唯一。`choices` 是固定 tuple 元数据，而非可变 list。
 
-`parse[T]()` 在翻译期读取 dataclass 字段、`Self.getFieldAnnotation[*ArgMeta](field)` 与 `Self.getFieldType(field)`，生成类型转换、默认值、usage/help 和最终 `T(...)` 构造。`FlagArgMeta` 标在非 `bool`、`OptArgMeta` 标在 `bool`、位置参数带默认值或选项冲突等情形均应为严格翻译错误，而非运行时错误。
+`parse()` 与 `@staticproperty helpText` 写在 mixin 内，用 `Self.iterFields`、`Self.getFieldAnnotation[*ArgMeta](field)`、`Self.getFieldType(field)` 与 `Self.getFieldDefault(field)` 译期展开；不由 pass 按字段生成方法体。读取帮助写 `BuildArgs.helpText`（勿 `helpText()`）；同类赋值处写 `new.helpText`。`FlagArgMeta` 标在非 `bool`、`OptArgMeta` 标在 `bool`、位置参数带默认值、选项冲突、或未继承 mixin 等情形均应为严格翻译错误，而非运行时错误。
 
 ### 4.2 首版行为与限制
 
@@ -344,14 +344,14 @@ from py2cpp.console.render import Logger
 from py2cpp.console.task import Console
 
 def main() -> int:
-  @dataclass
-  class BuildArgs:
-    source: str @PosArgMeta(help="资源源目录")
-    jobs: int @OptArgMeta(short="-j", choices=(1, 2, 4, 8)) = 1
-    release: bool @FlagArgMeta() = False
+    @dataclass
+    class BuildArgs(ArgumentParserMixin):
+      source: str @PosArgMeta(help="资源源目录")
+      jobs: int @OptArgMeta(short="-j", choices=(1, 2, 4, 8)) = 1
+      release: bool @FlagArgMeta() = False
 
-  args: BuildArgs = ArgumentParserMixin.parse[BuildArgs]()
-  log = Logger("asset-build")
+    args: BuildArgs = new.parse()
+    log = Logger("asset-build")
   log.info("开始构建", source=args.source, jobs=args.jobs, release=args.release)
 
   with Progress() as progress:

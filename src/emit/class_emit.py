@@ -14,7 +14,7 @@ from ..analysis.ir import (
   strip_cpp_ref,
 )
 from ..analysis.type_emit import bind_scope_param, bind_scope_var, bind_scope_vararg, field_storage_cpp, method_impl_return_cpp, method_param_storage_cpp, method_param_types_map, sig_return_storage_cpp
-from .copy_move_emit import emit_auto_copy_move, emit_copy_move_special_members, emit_frozen_dataclass_assign
+from .copy_move_emit import emit_auto_copy_move, emit_auto_move, emit_copy_move_special_members, emit_frozen_dataclass_assign
 from .object_repr_emit import (
   complex_operator_cpp_type,
   emit_default_object_repr_impls,
@@ -228,6 +228,8 @@ def _emit_class_methods_body_impl(tr: "Translator", info: ClassInfo):
       _emit_method(tr, info, m, info.method_sigs[name])
   if not info.is_uncopyable:
     emit_auto_copy_move(tr, info)
+  elif info.needs_auto_move():
+    emit_auto_move(tr, info)
   if (not info.is_uncopyable) or (info.has_move and not info.is_native):
     emit_copy_move_special_members(tr, info)
   emit_frozen_dataclass_assign(tr, info)
@@ -303,7 +305,7 @@ def _emit_operator_pystr_conversion(tr: "Translator", info: ClassInfo) -> None:
 
 def _emit_operator_pybool_conversion(tr: "Translator", info: ClassInfo) -> None:
   """``__bool__`` → ``explicit operator PyBool()``；调用侧经 ``static_cast<PyBool>``。"""
-  if not has_effective_bool(info) or info.name == "TextIOWrapper":
+  if not has_effective_bool(info):
     return
   pb = cpp_ident("bool")
   cpp = info.cpp_name()

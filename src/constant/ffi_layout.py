@@ -75,7 +75,35 @@ _FFI_GLUE_ALLOWLIST: dict[str, frozenset[str] | None] = {
     "sqlite3_exec",
     "sqlite3_free",
   }),
-  "ffi/windows/windows": frozenset({"FreeEnvironmentStringsA", "GetCommandLineW", "GetConsoleScreenBufferInfo", "GetEnvironmentStrings", "GetEnvironmentVariableA", "GetLastError", "GetStdHandle", "LocalFree", "SetEnvironmentVariableA", "WideCharToMultiByte"}),
+  "ffi/windows/windows": frozenset({
+    "FreeEnvironmentStringsA",
+    "GetCommandLineW",
+    "GetConsoleScreenBufferInfo",
+    "GetCurrentProcess",
+    "GetEnvironmentStrings",
+    "GetEnvironmentVariableA",
+    "GetLastError",
+    "GetProcessTimes",
+    "GetStdHandle",
+    "GetTickCount64",
+    "LocalFree",
+    "QueryPerformanceCounter",
+    "QueryPerformanceFrequency",
+    "SetEnvironmentVariableA",
+    "Sleep",
+    "WideCharToMultiByte",
+    "CloseHandle",
+    "CreateFileA",
+    "CreateHardLinkA",
+    "CreateSymbolicLinkA",
+    "FindClose",
+    "FindFirstFileA",
+    "FindNextFileA",
+    "GetFileAttributesA",
+    "GetFinalPathNameByHandleA",
+    "GetFullPathNameA",
+    "MoveFileExA",
+  }),
   "ffi/windows/winsock2": frozenset(),
   "ffi/windows/ws2tcpip": frozenset(),
   "ffi/windows/commctrl": frozenset(),
@@ -84,7 +112,19 @@ _FFI_GLUE_ALLOWLIST: dict[str, frozenset[str] | None] = {
   "ffi/windows/gdiplus": frozenset(),
   "ffi/windows/objidl": frozenset(),
   "ffi/windows/winhttp": frozenset(),
-  "ffi/crt/stdio": frozenset({"fclose", "fflush", "fgets", "fileno", "fopen", "fread", "fseek", "ftell", "fwrite"}),
+  "ffi/crt/stdio": frozenset({
+    "__acrt_iob_func",
+    "fclose",
+    "fflush",
+    "fgets",
+    "fileno",
+    "fopen",
+    "fread",
+    "fseek",
+    "ftell",
+    "fwrite",
+    "remove",
+  }),
   "ffi/crt/string": frozenset(),
   "ffi/crt/math": frozenset({
     "acos", "acosf", "acosh", "acoshf", "asin", "asinf", "asinh", "asinhf",
@@ -97,15 +137,21 @@ _FFI_GLUE_ALLOWLIST: dict[str, frozenset[str] | None] = {
     "sin", "sinf", "sinh", "sinhf", "sqrt", "sqrtf", "tan", "tanf", "tanh",
     "tanhf", "tgamma", "tgammaf", "trunc", "truncf",
   }),
-  "ffi/crt/time": frozenset(),
-  "ffi/crt/stdlib": frozenset({"exit"}),
+  "ffi/crt/time": frozenset({
+    "_gmtime64_s",
+    "_localtime64_s",
+    "_mktime64",
+    "_time64",
+    "strftime",
+  }),
+  "ffi/crt/stdlib": frozenset({"exit", "free", "malloc"}),
   "ffi/crt/errno": frozenset(),
   "ffi/crt/signal": frozenset(),
   "ffi/crt/fcntl": frozenset(),
-  "ffi/crt/direct": frozenset(),
-  "ffi/crt/io": frozenset({"_isatty"}),
-  "ffi/crt/stat": frozenset(),
-  "ffi/crt/utime": frozenset(),
+  "ffi/crt/direct": frozenset({"_chdir", "_getcwd", "_mkdir", "_rmdir"}),
+  "ffi/crt/io": frozenset({"_access", "_chmod", "_isatty"}),
+  "ffi/crt/stat": frozenset({"_stat64i32"}),
+  "ffi/crt/utime": frozenset({"_utime64"}),
   "ffi/posix/unistd": frozenset(),
   "ffi/posix/pthread": frozenset(),
   "ffi/posix/dirent": frozenset(),
@@ -214,6 +260,18 @@ def ffi_header_include(module_path: str) -> str:
   return f"{ffi_runtime_module_path(module_path)}.h"
 
 
+# glue ``.inl`` 发出 ``#pragma comment(lib, …)``（MSVC）；业务下沉 FFI 后勿再靠模板残留链接。
+_FFI_MSVC_COMMENT_LIBS: dict[str, tuple[str, ...]] = {
+  "ffi/windows/shellapi": ("shell32.lib",),
+}
+
+
+def ffi_msvc_comment_libs(module_path: str) -> tuple[str, ...]:
+  """该 FFI 模块 glue 须链的 MSVC 导入库（空 = 无）。"""
+  norm = module_path.replace("\\", "/").strip("/")
+  return _FFI_MSVC_COMMENT_LIBS.get(norm, ())
+
+
 def ffi_c_header_include(module_path: str) -> str | None:
   """自动 glue 时 ``#include`` 的 C 头名；无映射则不生成 glue。
 
@@ -237,11 +295,75 @@ def ffi_glue_allowlist(module_path: str) -> frozenset[str] | None:
 
 
 _FFI_HEADER_SYMBOL_ALLOWLIST: dict[str, frozenset[str]] = {
-  "ffi/windows/windows": frozenset({"PyiConsoleScreenBufferInfo", "PyiCpUtf8", "PyiErrorEnvvarNotFound", "pyiFreeEnvironmentStringsA", "pyiGetCommandLineW", "pyiGetConsoleScreenBufferInfo", "pyiGetEnvironmentStrings", "pyiGetEnvironmentVariableA", "pyiGetLastError", "pyiGetStdHandle", "pyiLocalFree", "pyiSetEnvironmentVariableA", "pyiWideCharToMultiByte"}),
+  "ffi/windows/windows": frozenset({
+    "PyiConsoleScreenBufferInfo",
+    "PyiCpUtf8",
+    "PyiErrorEnvvarNotFound",
+    "PyiFiletime",
+    "PyiLargeInteger",
+    "pyiFreeEnvironmentStringsA",
+    "pyiGetCommandLineW",
+    "pyiGetConsoleScreenBufferInfo",
+    "pyiGetCurrentProcess",
+    "pyiGetEnvironmentStrings",
+    "pyiGetEnvironmentVariableA",
+    "pyiGetLastError",
+    "pyiGetProcessTimes",
+    "pyiGetStdHandle",
+    "pyiGetTickCount64",
+    "pyiLocalFree",
+    "pyiQueryPerformanceCounter",
+    "pyiQueryPerformanceFrequency",
+    "pyiSetEnvironmentVariableA",
+    "pyiSleep",
+    "pyiWideCharToMultiByte",
+    "PyiWin32FindDataa",
+    "PyiSecurityAttributes",
+    "PyiFileAttributeReparsePoint",
+    "PyiFileFlagBackupSemantics",
+    "PyiFileFlagOpenReparsePoint",
+    "PyiFileNameNormalized",
+    "PyiFileShareDelete",
+    "PyiFileShareRead",
+    "PyiFileShareWrite",
+    "PyiMovefileReplaceExisting",
+    "PyiOpenExisting",
+    "pyiCloseHandle",
+    "pyiCreateFileA",
+    "pyiCreateHardLinkA",
+    "pyiCreateSymbolicLinkA",
+    "pyiFindClose",
+    "pyiFindFirstFileA",
+    "pyiFindNextFileA",
+    "pyiGetFileAttributesA",
+    "pyiGetFinalPathNameByHandleA",
+    "pyiGetFullPathNameA",
+    "pyiMoveFileExA",
+  }),
   "ffi/windows/shellapi": frozenset({"pyiCommandLineToArgvW"}),
-  "ffi/crt/stdlib": frozenset({"pyiExit"}),
-  "ffi/crt/stdio": frozenset({"PyiIobuf", "PyiFile", "pyiFclose", "pyiFflush", "pyiFgets", "pyiFileno", "pyiFopen", "pyiFread", "pyiFseek", "pyiFtell", "pyiFwrite"}),
-  "ffi/crt/io": frozenset({"pyiIsatty"}),
+  "ffi/crt/stdlib": frozenset({"pyiExit", "pyiFree", "pyiMalloc"}),
+  "ffi/crt/stdio": frozenset({
+    "PyiIobuf",
+    "PyiFile",
+    "PyiSeekCur",
+    "PyiSeekEnd",
+    "PyiSeekSet",
+    "pyiAcrtIobFunc",
+    "pyiFclose",
+    "pyiFflush",
+    "pyiFgets",
+    "pyiFileno",
+    "pyiFopen",
+    "pyiFread",
+    "pyiFseek",
+    "pyiFtell",
+    "pyiFwrite",
+    "pyiRemove",
+  }),
+  "ffi/crt/io": frozenset({"pyiAccess", "pyiChmod", "pyiIsatty"}),
+  "ffi/crt/direct": frozenset({"pyiChdir", "pyiGetcwd", "pyiMkdir", "pyiRmdir"}),
+  "ffi/crt/stat": frozenset({"PyiStat64I32", "PyiSIfdir", "PyiSIfreg", "pyiStat64I32"}),
+  "ffi/crt/utime": frozenset({"PyiUtimbuf64", "pyiUtime64"}),
   # ``math.pyi`` includes UCRT private types that are not portable C++ declarations.
   # The standard-library facade needs only these scalar CRT entry points.
   "ffi/crt/math": frozenset({
@@ -253,9 +375,38 @@ _FFI_HEADER_SYMBOL_ALLOWLIST: dict[str, frozenset[str]] = {
     "pyiHypot", "pyiHypotf", "pyiLgamma", "pyiLgammaf", "pyiLog", "pyiLogf", "pyiLog1P", "pyiLog1Pf",
     "pyiLog2", "pyiLog2F", "pyiLog10", "pyiLog10F", "pyiPow", "pyiPowf", "pyiRemainder", "pyiRemainderf",
     "pyiSin", "pyiSinf", "pyiSinh", "pyiSinhf", "pyiSqrt", "pyiSqrtf", "pyiTan", "pyiTanf", "pyiTanh",
-    "pyiTanhf", "pyiTgamma", "pyiTgammaf", "pyiTrunc", "pyiTruncf",
+    "pyiTanhf", "pyiTgamma", "pyiTgammaf",     "pyiTrunc", "pyiTruncf",
+  }),
+  "ffi/crt/time": frozenset({
+    "PyiTm",
+    "pyiGmtime64S",
+    "pyiLocaltime64S",
+    "pyiMktime64",
+    "pyiStrftime",
+    "pyiTime64",
   }),
 }
+
+
+# 受限 FFI 头：``ClassInfo`` 因全局同名符号未进入 ``module_classes`` 时的显式 ``using``（C 标签名）。
+_FFI_HEADER_EXTRA_STRUCT_USINGS: dict[str, dict[str, str]] = {
+  "ffi/windows/windows": {
+    "PyiFiletime": "FILETIME",
+    "PyiWin32FindDataa": "WIN32_FIND_DATAA",
+    "PyiSecurityAttributes": "_SECURITY_ATTRIBUTES",
+  },
+  "ffi/crt/stat": {
+    "PyiStat64I32": "_stat64i32",
+  },
+  "ffi/crt/utime": {
+    "PyiUtimbuf64": "__utimbuf64",
+  },
+}
+
+
+def ffi_header_extra_struct_usings(module_path: str) -> dict[str, str]:
+  norm = module_path.replace("\\", "/").strip("/")
+  return _FFI_HEADER_EXTRA_STRUCT_USINGS.get(norm, {})
 
 
 def ffi_header_symbol_allowlist(module_path: str) -> frozenset[str] | None:
@@ -278,6 +429,16 @@ def ffi_pyi_prefix() -> str:
   return "Pyi"
 
 
+def ffi_c_using_rhs(c_tag: str) -> str:
+  """``using PyiX = …`` 右侧。CRT ``_stat*`` 等与函数同名，须 elaborated ``struct``。"""
+  tag = c_tag.strip()
+  if tag.startswith("struct "):
+    tag = tag[7:].strip()
+  if tag.startswith("_stat") or tag.startswith("__utimbuf"):
+    return f"struct ::{tag}"
+  return f"::{tag}"
+
+
 def ffi_c_struct_using_target(info: object) -> str:
   """``using PyiSqlite3 = ::sqlite3`` 右侧：全局 C typedef/标签名。"""
   tag = getattr(info, "cpp_rename", None) or ""
@@ -292,31 +453,13 @@ def ffi_c_struct_using_target(info: object) -> str:
       tag = name[len(pref):]
     else:
       tag = name
-  return f"::{tag}"
+  return ffi_c_using_rhs(tag)
 
 
 def is_ffi_c_struct_class(info: object) -> bool:
   """``ClassInfo``：FFI 模块内 ``@native`` 类视为 C struct/enum 声明面（``using`` 别名，无新定义）。"""
   module_path = getattr(info, "module_path", "") or ""
   return bool(getattr(info, "is_native", False) and is_ffi_module_path(module_path))
-
-
-# 兼容旧名（已废弃 *_h 句柄模型）
-_OPAQUE_PY_SUFFIX = "_h"
-
-
-def ffi_opaque_py_name(c_tag: str) -> str:
-  """已废弃：历史 ``*_h`` 句柄名。新代码直接用结构体类名。"""
-  if c_tag.endswith(_OPAQUE_PY_SUFFIX):
-    return c_tag
-  return f"{c_tag}{_OPAQUE_PY_SUFFIX}"
-
-
-def ffi_opaque_c_tag(py_name: str) -> str:
-  """``ffi_opaque_py_name`` 的逆；亦接受无后缀的结构体类名。"""
-  if py_name.endswith(_OPAQUE_PY_SUFFIX) and len(py_name) > len(_OPAQUE_PY_SUFFIX):
-    return py_name[: -len(_OPAQUE_PY_SUFFIX)]
-  return py_name
 
 
 def ffi_source_note(module_path: str, source_path: Path | None = None) -> str:

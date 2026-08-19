@@ -75,11 +75,6 @@ class ExpandPy2CppTemplateTests(unittest.TestCase):
     self.assertNotIn("PY2CPP_NAMESPACE", impl)
     self.assertNotIn("py2cpp::sql::sqlite::connect", impl)
 
-  def test_paste_short_form_paste_before(self):
-    out = expand_template("system/-time.inl", apply_allman=False)
-    self.assertIn("PyFloat64 py_time()", out)
-    self.assertNotIn("PY2CPP_NAMESPACE", out)
-
   def test_paste_short_form_class_paste(self):
     out = expand_template("text/+str.inl", apply_allman=False)
     self.assertIn("PyStr PyStr::from_buf", out)

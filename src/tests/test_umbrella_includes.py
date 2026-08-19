@@ -78,6 +78,14 @@ class UmbrellaIncludesTests(unittest.TestCase):
     self.assertLess(paths.index(bulk_io_proto), paths.index(late_file))
     self.assertNotIn(stdlib_header_include("io"), paths)
 
+  def test_iter_result_inl_visible_in_library_tu(self):
+    paths = expand_umbrella_include_paths(self.runtime_prefix, self.modules)
+    self.assertIn(f"{self.runtime_prefix}/core/iter_result.inl", paths)
+    self.assertNotIn(
+      f"__py2cpp_guard_inl__:{self.runtime_prefix}/core/iter_result.inl",
+      paths,
+    )
+
   def test_operators_suffix(self):
     paths = [
       _unwrap_umbrella_path(p)

@@ -291,8 +291,10 @@ def _is_raw_ptr_cpp_type(cpp_type: str) -> bool:
     return t.endswith('*') and (not is_refcount_type(t))
 
 def _is_nullable_identity_cpp_type(cpp_type: str) -> bool:
-    """``is None`` / ``is not None`` 可与 ``nullptr`` 比较的 C++ 类型（裸指针、``Callable`` 函数指针）。"""
+    """``is None`` / ``is not None`` 可与 ``nullptr`` 比较的 C++ 类型（裸指针、``CStr``、``Callable`` 函数指针）。"""
     t = cpp_type.strip()
+    if t in ("CStr", "const char*"):
+        return True
     if _is_raw_ptr_cpp_type(t):
         return True
     return '(*)' in t

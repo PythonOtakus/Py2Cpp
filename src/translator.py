@@ -183,6 +183,7 @@ class Translator(ast.NodeVisitor):
         self._active_generator_emitter = None
         self.class_info: ClassInfo | None = None
         self.classes: dict[str, ClassInfo] = {}
+        self._all_class_infos: list[ClassInfo] = []
         self.delegates: dict = {}
         self.module_functions: list[tuple[str, ast.FunctionDef]] = []
         self.module_function_overloads: dict[tuple[str, str], list[ast.FunctionDef]] = {}
@@ -697,6 +698,7 @@ class Translator(ast.NodeVisitor):
             for node in tree.body:
                 if isinstance(node, ast.ClassDef):
                     info = ClassInfo(node, module_path)
+                    self._all_class_infos.append(info)
                     self.classes[info.name] = info
                     self._register_nested_classes(info)
                 elif isinstance(node, ast.AnnAssign):
@@ -2511,7 +2513,15 @@ class Translator(ast.NodeVisitor):
                     if ft:
                         owner = self._class_info_for_type(ft)
                         if owner is not None:
-                            return ast.Name(id=owner.name, ctx=ast.Load())
+                            name_ast = ast.Name(id=owner.name, ctx=ast.Load())
+                            bare = ft.strip()
+                            if bare.endswith('*'):
+                                return ast.Subscript(
+                                    value=ast.Name(id='Pointer', ctx=ast.Load()),
+                                    slice=name_ast,
+                                    ctx=ast.Load(),
+                                )
+                            return name_ast
                         # ``WeakRef[T]`` / 可选等：用字段注解字符串无法还原 AST 时，尝试 class_body
                         ann_cpp = cur.field_annotations.get(attr)
                         if ann_cpp:
@@ -6528,6 +6538,16 @@ class Translator(ast.NodeVisitor):
                             continue
                         self._emit_template_prefix(info)
                         self.write_line(f'class {info.cpp_name()};')
+                    from .constant.ffi_layout import ffi_c_using_rhs, ffi_header_extra_struct_usings
+                    emitted_structs = {
+                      info.name
+                      for info in module_classes
+                      if is_ffi_c_struct_class(info)
+                    }
+                    if ffi_symbols is not None:
+                      for py_name, c_tag in ffi_header_extra_struct_usings(module_path).items():
+                        if py_name in ffi_symbols and py_name not in emitted_structs:
+                          self.write_line(f'using {py_name} = {ffi_c_using_rhs(c_tag)};')
                     self.write_line()
                 if self._is_stdlib_module(module_path) or module_path != self.entry_module_path:
                     self._emit_module_constants(module_path)
@@ -6707,6 +6727,17 @@ class Translator(ast.NodeVisitor):
         ffi_symbols = ffi_header_symbol_allowlist(module_path) if self._is_ffi_module(module_path) else None
         if ffi_symbols is not None:
             items = [n for n in items if n.target.id in ffi_symbols]
+        if self._is_ffi_module(module_path):
+            # CRT .pyi 常重复 ``PyiSIfdir``（``S_IFDIR`` / ``_S_IFDIR``）；C++ 头只留首次
+            seen_const: set[str] = set()
+            uniq_const: list = []
+            for n in items:
+                cid = n.target.id
+                if cid in seen_const:
+                    continue
+                seen_const.add(cid)
+                uniq_const.append(n)
+            items = uniq_const
         if not items:
             return
         with self._use_module_header(module_path), self._use_header(), self._use_import_bindings(module_path):
@@ -6778,6 +6809,16 @@ class Translator(ast.NodeVisitor):
         if not funcs:
             return
         funcs = self._module_functions_emit_order(funcs)
+        if self._is_ffi_module(module_path):
+            # ``_chdir``/``chdir`` 等同名 Python 包装；声明面只保留首次（glue 按 C 名筛选）
+            seen_fn: set[str] = set()
+            uniq_fn: list = []
+            for f in funcs:
+                if f.name in seen_fn:
+                    continue
+                seen_fn.add(f.name)
+                uniq_fn.append(f)
+            funcs = uniq_fn
         with self._use_module_header(module_path), self._use_header():
             for func in funcs:
                 if has_named_decorator(func, 'native'):

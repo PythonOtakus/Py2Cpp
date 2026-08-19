@@ -156,12 +156,23 @@ def stdlib_header_global_using_line(module_path: str) -> str | None:
   return using_namespace_line(q)
 
 
+def _module_has_non_template_inl_entities(tr: Translator, module_path: str) -> bool:
+  """模块级函数会进 ``.inl`` 且非 ``inline``，多 TU 包含即 LNK2005（如 ``math.random.seed``）。"""
+  for mp, _func in getattr(tr, "module_functions", ()):
+    if mp == module_path:
+      return True
+  return False
+
+
 def _module_template_inl_ok_in_library_tu(tr: Translator, module_path: str) -> bool:
-  """仅当模块内**顶层**类全是模板时，库 TU 才拉 ``.inl``（可多 TU）。
+  """仅当模块内**顶层**类全是模板、且无模块级函数时，库 TU 才拉 ``.inl``。
 
   含非模板顶层类的模块（如 ``Queue[T]`` + ``Thread``）整份 ``.inl`` 仍须跳过。
   嵌套 ``@variant``（``Optional.None_``）不算顶层，以免把纯模板 ADT 误标为混模块。
+  ``Random[T]`` + 模块级 ``seed`` 同理：模板方法可多 TU，自由函数不行。
   """
+  if _module_has_non_template_inl_entities(tr, module_path):
+    return False
   seen = False
   for info in tr.classes.values():
     if info.module_path != module_path:

@@ -1,14 +1,19 @@
 """``time``：时钟、``CTime`` 与格式化（对齐 Python 3.13 ``time`` 子集）。
 
 参考 [time — Time access and conversions](https://docs.python.org/3.13/library/time.html)
-与 ``Modules/timemodule.c``。C 层：``py_time`` / ``gmTime`` / ``localTime`` / ``mkTime`` /
-``strftime``（``templates/system/-time.inl`` → ``time.inl``）。**无** ``tzset`` / ``zoneinfo`` / ``*_ns``。
-
+与 ``Modules/timemodule.c``。超越函数与 OS 时钟经 ``ffi.crt.time`` / ``ffi.windows.windows``；
 ``strptime`` / ``ascTime`` / ``ctime`` 在 Python 侧（``strptime`` 为受支持格式码子集）。
+
+**无** ``tzset`` / ``zoneinfo`` / ``*_ns``。
 """
 from ..builtins import *
 from ..core.exceptions import ValueError
 from ..text import str
+from ..util.cbuf import cstrSlice, strCbuf
+from ..util.memory import loadU64LeAtAddress
+from ffi.crt.time import PyiTm, pyiGmtime64S, pyiLocaltime64S, pyiMktime64, pyiStrftime, pyiTime64
+from ffi.windows.windows import PyiFiletime, PyiLargeInteger
+import ffi.windows.windows as win32
 
 
 @immutable
@@ -63,6 +68,63 @@ class CTime:
     return ascTime(self)
 
 
+@immutable
+def _dayOfWeek(y: int, m: int, d: int) -> int:
+  t: list[int] = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4]
+  if m < 3:
+    y -= 1
+  return (y + y // 4 - y // 100 + y // 400 + t[m - 1] + d) % 7
+
+
+@immutable
+def _cstrSlice(p: CStr, start: int, n: int) -> str:
+  return cstrSlice(p, start, n)
+
+
+@immutable
+def _strCbuf(s: str, cap: int) -> byte[:]:
+  return strCbuf(s, cap)
+
+
+@immutable
+def _largeIntegerQuad(li: PyiLargeInteger) -> int64:
+  addr: uintptr = cast(id(li))
+  return int64(loadU64LeAtAddress(addr))
+
+
+@immutable
+def _filetimeQuad(ft: PyiFiletime) -> uint64:
+  return (uint64(ft.dwHighDateTime) << 32) | uint64(ft.dwLowDateTime)
+
+
+@immutable
+def _tmToCTime(tm: PyiTm, is_dst: int) -> CTime:
+  st: CTime = new(
+    tm.tmYear + 1900,
+    tm.tmMon + 1,
+    tm.tmMday,
+    tm.tmHour,
+    tm.tmMin,
+    tm.tmSec,
+  )
+  st.tmWday = tm.tmWday
+  st.tmYday = tm.tmYday + 1
+  st.tmIsdst = is_dst
+  return st
+
+
+@immutable
+def _ctimeToTm(st: CTime, tm: PyiTm) -> None:
+  tm.tmYear = st.tmYear - 1900
+  tm.tmMon = st.tmMon - 1
+  tm.tmMday = st.tmMday
+  tm.tmHour = st.tmHour
+  tm.tmMin = st.tmMin
+  tm.tmSec = st.tmSec
+  tm.tmWday = _dayOfWeek(st.tmYear, st.tmMon, st.tmMday)
+  tm.tmIsdst = st.tmIsdst
+
+
 def formatDuration(seconds: float64) -> str:
   """将秒数格式化为人类可读耗时（``>=1s`` 用秒，否则 ``ms``/``us``/``ns``）。"""
   if seconds >= 1.0:
@@ -89,72 +151,120 @@ def stopwatch(tag: str = None):
   print(f"stopwatch {label}: {dur}")
 
 
-@native
-@global_call("py_*")
+@immutable
 def time() -> float64:
   """自纪元起的秒数（``time.time()``）。"""
-  ...
+  return float64(pyiTime64(None))
 
-@native
-@global_call("py_*")
+
+@immutable
 def sleep(seconds: float64) -> None:
   """阻塞 ``seconds`` 秒（``seconds < 0`` 时无操作）。"""
-  ...
+  if seconds <= 0.0:
+    return
+  ms: float64 = seconds * 1000.0
+  if ms > 4294967294.0:
+    ms = 4294967294.0
+  dw: uint = uint(ms + 0.5)
+  if dw == 0:
+    dw = 1
+  win32.pyiSleep(dw)
 
 
-@native
+@immutable
 def monotonic() -> float64:
   """单调时钟秒数。"""
-  ...
+  return float64(win32.pyiGetTickCount64()) / 1000.0
 
 
-@native
+@immutable
 def perfCounter() -> float64:
   """高分辨率性能计数器秒数。"""
-  ...
+  freq: PyiLargeInteger = new()
+  ctr: PyiLargeInteger = new()
+  if win32.pyiQueryPerformanceFrequency(id(freq)) and win32.pyiQueryPerformanceCounter(id(ctr)):
+    f: int64 = _largeIntegerQuad(freq)
+    if f != 0:
+      c: int64 = _largeIntegerQuad(ctr)
+      return float64(c) / float64(f)
+  return monotonic()
 
 
-@native
+@immutable
 def processTime() -> float64:
   """当前进程 CPU 时间（秒）。"""
-  ...
+  create: PyiFiletime = new()
+  exit_ft: PyiFiletime = new()
+  kernel: PyiFiletime = new()
+  user: PyiFiletime = new()
+  if win32.pyiGetProcessTimes(
+    win32.pyiGetCurrentProcess(),
+    id(create),
+    id(exit_ft),
+    id(kernel),
+    id(user),
+  ):
+    k: uint64 = _filetimeQuad(kernel)
+    u: uint64 = _filetimeQuad(user)
+    return float64(k + u) / 10000000.0
+  return 0.0
 
 
-@native
+@immutable
 def gmTime(secs: float64) -> CTime:
   """UTC ``CTime``（纪元秒）。"""
-  ...
+  tm: PyiTm = new()
+  secs_i = int64(secs)
+  if pyiGmtime64S(id(tm), id(secs_i)) == 0:
+    return _tmToCTime(tm, -1)
+  return new(1970, 1, 1, 0, 0, 0)
 
 
-@native
+@immutable
 def gmTimeNow() -> CTime:
   """``gmTime(time())``。"""
-  ...
+  return gmTime(time())
 
 
-@native
+@immutable
 def localTime(secs: float64) -> CTime:
   """本地 ``CTime``（纪元秒）。"""
-  ...
+  tm: PyiTm = new()
+  secs_i = int64(secs)
+  if pyiLocaltime64S(id(tm), id(secs_i)) == 0:
+    is_dst: int = tm.tmIsdst
+    return _tmToCTime(tm, is_dst)
+  return new(1970, 1, 1, 0, 0, 0)
 
 
-@native
+@immutable
 def localTimeNow() -> CTime:
   """``localTime(time())``。"""
-  ...
+  return localTime(time())
 
 
-@native
-@global_call("py_*")
+@immutable
 def mkTime(st: CTime) -> float64:
   """本地日历 → 纪元秒（失败返回 ``-1.0``）。"""
-  ...
+  tm: PyiTm = new()
+  _ctimeToTm(st, tm)
+  out: int64 = pyiMktime64(id(tm))
+  if out == -1:
+    return -1.0
+  return float64(out)
 
 
-@native
+@immutable
 def pyStrftime(fmt: str, st: CTime) -> str:
-  """``strftime`` C 库实现（格式码以平台支持为准；C++ 同名）。"""
-  ...
+  """``strftime`` C 库实现（格式码以平台支持为准）。"""
+  tm: PyiTm = new()
+  _ctimeToTm(st, tm)
+  buf: byte[:] = new(256)
+  fmtBuf: byte[:] = _strCbuf(fmt, 256)
+  n: uint64 = pyiStrftime(buf.view.at(0), 256, fmtBuf.view.at(0), id(tm))
+  if n == 0:
+    return ""
+  return _cstrSlice(buf.view.at(0), 0, int(n))
 
 
 @immutable

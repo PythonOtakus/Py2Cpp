@@ -1,13 +1,40 @@
-"""``os.path``：纯路径与元数据检测（对齐 Python 3.13 ``ntpath`` / ``genericpath``）。
+"""``os.path``：纯路径与磁盘叶子（对齐 Python 3.13 ``ntpath`` / ``genericpath`` / ``os`` 子集）。
 
-C 层：``exists`` / ``isFile`` / ``isDir`` / ``lExists`` / ``isLink`` / ``isJunction`` /
-``isDevDrive`` / ``realPath``（``templates/io/-file.inl`` → ``io/file/path.inl`` 同批 paste_before）。
-其余在 Python 侧实现，复用 ``py2cpp.text.str``。
+纯路径复用 ``py2cpp.text.str``；磁盘经 ``ffi.crt`` / ``ffi.windows``。
 """
 from ...builtins import *
-from ...core.exceptions import OSError, ValueError
+from ...core.exceptions import FileNotFoundError, OSError, ValueError
+from ...util.cbuf import cstrLen, cstrSlice, strCbuf
 from ...util.list import list
 from ...text import str
+from ffi.crt.direct import pyiChdir, pyiGetcwd, pyiMkdir, pyiRmdir
+from ffi.crt.io import pyiAccess, pyiChmod
+from ffi.crt.stat import PyiSIfdir, PyiSIfreg, PyiStat64I32, pyiStat64I32
+from ffi.crt.stdio import pyiRemove
+from ffi.crt.utime import PyiUtimbuf64, pyiUtime64
+from ffi.windows.windows import (
+  PyiFileAttributeReparsePoint,
+  PyiFileFlagBackupSemantics,
+  PyiFileFlagOpenReparsePoint,
+  PyiFileNameNormalized,
+  PyiFileShareDelete,
+  PyiFileShareRead,
+  PyiFileShareWrite,
+  PyiMovefileReplaceExisting,
+  PyiOpenExisting,
+  PyiWin32FindDataa,
+  pyiCloseHandle,
+  pyiCreateFileA,
+  pyiCreateHardLinkA,
+  pyiCreateSymbolicLinkA,
+  pyiFindClose,
+  pyiFindFirstFileA,
+  pyiFindNextFileA,
+  pyiGetFileAttributesA,
+  pyiGetFinalPathNameByHandleA,
+  pyiGetFullPathNameA,
+  pyiMoveFileExA,
+)
 
 CurDir: str = "."
 ParDir: str = ".."
@@ -24,6 +51,12 @@ _Alt: str = AltSep
 _SepChars: str = "\\/"
 _Dot: str = CurDir
 _Pardir: str = ParDir
+_Cap: int = 4096
+InvalidHandle: uintptr = -1
+_InvalidFileAttr: uint = 4294967295
+_GenericRead: uint = 2147483648
+_IoReparseTagSymlink: uint = 2684354572
+_IoReparseTagMountPoint: uint = 2684354563
 
 
 @immutable
@@ -102,52 +135,329 @@ def _joinPaths(base: str, parts: list[str]) -> str:
   return out
 
 
-@native
+@copyable
+@dataclass
+@native_name("CStat")
+class CStat:
+  """``CStat``（``os.stat`` / ``os.lstat`` 结果）。"""
+
+  stMode: int = 0
+  stSize: int = 0
+  stMtime: float64 = 0.0
+  stAtime: float64 = 0.0
+  stCtime: float64 = 0.0
+  stDev: int = 0
+  stIno: int = 0
+
+
+@immutable
+def _pathCbuf(path: str) -> byte[:]:
+  return strCbuf(path, _Cap)
+
+
+@immutable
+def _throwOs() -> None:
+  raise OSError()
+
+
+@immutable
+def _throwNotFound() -> None:
+  raise FileNotFoundError()
+
+
+@immutable
+def _fromCstat(st: PyiStat64I32) -> CStat:
+  out: CStat = new()
+  out.stMode = int(st.stMode)
+  out.stSize = int(st.stSize)
+  out.stMtime = float64(st.stMtime)
+  out.stAtime = float64(st.stAtime)
+  out.stCtime = float64(st.stCtime)
+  out.stDev = int(st.stDev)
+  out.stIno = int(st.stIno)
+  return out
+
+
+@immutable
+def tryStat(path: str) -> CStat | None:
+  """``stat``；失败时 ``None``（不抛）。"""
+  pbuf: byte[:] = _pathCbuf(path)
+  st: PyiStat64I32 = new()
+  if pyiStat64I32(pbuf.view.at(0), id(st)) != 0:
+    return None
+  return _fromCstat(st)
+
+
+@immutable
+def stat(path: str) -> CStat:
+  """路径元数据；不存在时 ``FileNotFoundError``。"""
+  out: CStat | None = tryStat(path)
+  if out is None:
+    _throwNotFound()
+  return out
+
+
+@immutable
+def getCwd() -> str:
+  """当前工作目录。"""
+  buf: byte[:] = new(_Cap)
+  p: CStr = pyiGetcwd(buf.view.at(0), _Cap)
+  if p is None:
+    _throwOs()
+  return cstrSlice(p, 0, cstrLen(p))
+
+
+@immutable
+def mkdir(path: str, mode: int = 0o777) -> None:
+  """创建单级目录。"""
+  _ = mode
+  pbuf: byte[:] = _pathCbuf(path)
+  if pyiMkdir(pbuf.view.at(0)) != 0:
+    _throwOs()
+
+
+@immutable
+def remove(path: str) -> None:
+  """删除文件。"""
+  pbuf: byte[:] = _pathCbuf(path)
+  if pyiRemove(pbuf.view.at(0)) != 0:
+    _throwOs()
+
+
+@immutable
+def rmdir(path: str) -> None:
+  """删除空目录。"""
+  pbuf: byte[:] = _pathCbuf(path)
+  if pyiRmdir(pbuf.view.at(0)) != 0:
+    _throwOs()
+
+
+@immutable
+def replace(src: str, dst: str) -> None:
+  """原子替换（目标存在时覆盖）。"""
+  sbuf: byte[:] = _pathCbuf(src)
+  dbuf: byte[:] = _pathCbuf(dst)
+  if pyiMoveFileExA(sbuf.view.at(0), dbuf.view.at(0), PyiMovefileReplaceExisting) == 0:
+    _throwOs()
+
+
+@immutable
+def rename(src: str, dst: str) -> None:
+  """重命名（目标存在时失败）。"""
+  sbuf: byte[:] = _pathCbuf(src)
+  dbuf: byte[:] = _pathCbuf(dst)
+  if pyiMoveFileExA(sbuf.view.at(0), dbuf.view.at(0), 0) == 0:
+    _throwOs()
+
+
+@immutable
+def chdir(path: str) -> None:
+  """切换当前工作目录。"""
+  pbuf: byte[:] = _pathCbuf(path)
+  if pyiChdir(pbuf.view.at(0)) != 0:
+    _throwOs()
+
+
+@immutable
+def access(path: str, mode: int) -> bool:
+  """检测访问权限（``FOk`` / ``ROk`` / ``WOk`` / ``XOk``）。"""
+  pbuf: byte[:] = _pathCbuf(path)
+  return pyiAccess(pbuf.view.at(0), mode) == 0
+
+
+@immutable
+def chmod(path: str, mode: int) -> None:
+  """修改权限位。"""
+  pbuf: byte[:] = _pathCbuf(path)
+  if pyiChmod(pbuf.view.at(0), mode) != 0:
+    _throwOs()
+
+
+@immutable
+def applyUtime(path: str, atime: float64, mtime: float64) -> None:
+  pbuf: byte[:] = _pathCbuf(path)
+  tb: PyiUtimbuf64 = new()
+  tb.actime = int64(atime)
+  tb.modtime = int64(mtime)
+  if pyiUtime64(pbuf.view.at(0), id(tb)) != 0:
+    _throwOs()
+
+
+@immutable
+def link(src: str, dst: str) -> None:
+  """硬链接。"""
+  sbuf: byte[:] = _pathCbuf(src)
+  dbuf: byte[:] = _pathCbuf(dst)
+  if pyiCreateHardLinkA(dbuf.view.at(0), sbuf.view.at(0), None) == 0:
+    _throwOs()
+
+
+@immutable
+def symlink(src: str, dst: str) -> None:
+  """符号链接。"""
+  sbuf: byte[:] = _pathCbuf(src)
+  dbuf: byte[:] = _pathCbuf(dst)
+  if pyiCreateSymbolicLinkA(dbuf.view.at(0), sbuf.view.at(0), 0) == 0:
+    _throwOs()
+
+
+@immutable
+def readLink(path: str) -> str:
+  """读取符号链接目标。"""
+  pbuf: byte[:] = _pathCbuf(path)
+  flags: uint = PyiFileFlagOpenReparsePoint | PyiFileFlagBackupSemantics
+  share: uint = PyiFileShareRead | PyiFileShareWrite | PyiFileShareDelete
+  h: uintptr = pyiCreateFileA(
+    pbuf.view.at(0),
+    _GenericRead,
+    share,
+    None,
+    PyiOpenExisting,
+    flags,
+    0,
+  )
+  if h == InvalidHandle:
+    _throwOs()
+  target: byte[:] = new(_Cap)
+  n: uint = pyiGetFinalPathNameByHandleA(h, target.view.at(0), uint(_Cap), PyiFileNameNormalized)
+  pyiCloseHandle(h)
+  if n == 0:
+    _throwOs()
+  return cstrSlice(target.view.at(0), 0, int(n))
+
+
+@immutable
+def findDataName(fd: PyiWin32FindDataa) -> str:
+  p: CStr = cast(fd.cFileName)
+  return cstrSlice(p, 0, cstrLen(p))
+
+
+@immutable
+def isDotName(name: str) -> bool:
+  return name in {".", ".."}
+
+
+@immutable
+def listDir(path: str) -> list[str]:
+  """目录项名（不含 ``.`` / ``..``）。"""
+  pbuf: byte[:] = _pathCbuf(join(path, "*"))
+  fd: PyiWin32FindDataa = new()
+  h: uintptr = pyiFindFirstFileA(pbuf.view.at(0), id(fd))
+  if h == InvalidHandle:
+    _throwNotFound()
+  out: list[str] = []
+  pending: bool = True
+  while pending:
+    name: str = findDataName(fd)
+    if not isDotName(name):
+      out.append(name)
+    pending = pyiFindNextFileA(h, id(fd)) != 0
+  pyiFindClose(h)
+  return out
+
+
+@immutable
+def findFirst(path: str) -> (uintptr, PyiWin32FindDataa):
+  """``FindFirstFileA``；失败 ``(INVALID_HANDLE, 空)``。"""
+  pbuf: byte[:] = _pathCbuf(path)
+  fd: PyiWin32FindDataa = new()
+  h: uintptr = pyiFindFirstFileA(pbuf.view.at(0), id(fd))
+  return (h, fd)
+
+
+@immutable
+def findNext(handle: uintptr, fd: PyiWin32FindDataa) -> bool:
+  return pyiFindNextFileA(handle, id(fd)) != 0
+
+
+@immutable
+def findClose(handle: uintptr) -> None:
+  if handle != InvalidHandle:
+    pyiFindClose(handle)
+
+
+@immutable
 def exists(path: str) -> bool:
   """路径是否存在。"""
-  ...
+  return tryStat(path) is not None
 
 
-@native
+@immutable
 def isFile(path: str) -> bool:
   """是否为常规文件。"""
-  ...
+  st: CStat | None = tryStat(path)
+  if st is None:
+    return False
+  info: CStat = st
+  return (info.stMode & int(PyiSIfreg)) != 0
 
 
-@native
+@immutable
 def isDir(path: str) -> bool:
   """是否为目录。"""
-  ...
+  st: CStat | None = tryStat(path)
+  if st is None:
+    return False
+  info: CStat = st
+  return (info.stMode & int(PyiSIfdir)) != 0
 
 
-@native
+@immutable
 def lExists(path: str) -> bool:
   """是否存在（不跟随符号链接失败时仍检测）。"""
-  ...
+  return exists(path)
 
 
-@native
+@immutable
 def isLink(path: str) -> bool:
   """是否为符号链接。"""
-  ...
+  pbuf: byte[:] = _pathCbuf(path)
+  attr: uint = pyiGetFileAttributesA(pbuf.view.at(0))
+  if attr == _InvalidFileAttr:
+    return False
+  if (attr & PyiFileAttributeReparsePoint) == 0:
+    return False
+  fd: PyiWin32FindDataa = new()
+  h: uintptr = pyiFindFirstFileA(pbuf.view.at(0), id(fd))
+  if h == InvalidHandle:
+    return False
+  pyiFindClose(h)
+  return fd.dwReserved0 == _IoReparseTagSymlink
 
 
-@native
+@immutable
 def isJunction(path: str) -> bool:
   """是否为目录联结（Windows junction）。"""
-  ...
+  pbuf: byte[:] = _pathCbuf(path)
+  attr: uint = pyiGetFileAttributesA(pbuf.view.at(0))
+  if attr == _InvalidFileAttr:
+    return False
+  if (attr & PyiFileAttributeReparsePoint) == 0:
+    return False
+  fd: PyiWin32FindDataa = new()
+  h: uintptr = pyiFindFirstFileA(pbuf.view.at(0), id(fd))
+  if h == InvalidHandle:
+    return False
+  pyiFindClose(h)
+  return fd.dwReserved0 == _IoReparseTagMountPoint
 
 
-@native
+@immutable
 def isDevDrive(path: str) -> bool:
   """是否在 Dev Drive 卷上（暂恒 ``False``）。"""
-  ...
+  _ = path
+  return False
 
 
-@native
+@immutable
 def realPath(path: str) -> str:
-  """规范绝对路径（Win ``GetFullPathName`` / POSIX ``realPath``）。"""
-  ...
+  """规范绝对路径（Win ``GetFullPathName``）。"""
+  pbuf: byte[:] = _pathCbuf(path)
+  outbuf: byte[:] = new(_Cap)
+  n: uint = pyiGetFullPathNameA(pbuf.view.at(0), uint(_Cap), outbuf.view.at(0), None)
+  if n == 0 or int(n) >= _Cap:
+    _throwOs()
+  return cstrSlice(outbuf.view.at(0), 0, int(n))
 
 
 def baseName(path: str) -> str:
@@ -266,34 +576,28 @@ def isAbs(path: str) -> bool:
   return False
 
 
-@native
+@immutable
 def getSize(path: str) -> int:
   """文件字节大小。"""
-  ...
+  return stat(path).stSize
 
 
-@native
+@immutable
 def getMtime(path: str) -> float64:
   """修改时间。"""
-  ...
+  return stat(path).stMtime
 
 
-@native
+@immutable
 def getAtime(path: str) -> float64:
   """访问时间。"""
-  ...
+  return stat(path).stAtime
 
 
-@native
+@immutable
 def getCtime(path: str) -> float64:
   """创建/元数据变更时间。"""
-  ...
-
-
-@native
-def _pathGetcwd() -> str:
-  """当前工作目录（供 ``absPath``）。"""
-  ...
+  return stat(path).stCtime
 
 
 @immutable
@@ -321,7 +625,7 @@ def commonPrefix(m: list[str]) -> str:
 def absPath(path: str) -> str:
   p: str = normPath(path)
   if not isAbs(p):
-    p = normPath(join(_pathGetcwd(), p))
+    p = normPath(join(getCwd(), p))
   return realPath(p)
 
 
@@ -470,14 +774,14 @@ def isReserved(path: str) -> bool:
   return False
 
 
-@native
+@immutable
 def _pathStatDev(path: str) -> int:
-  ...
+  return stat(path).stDev
 
 
-@native
+@immutable
 def _pathStatIno(path: str) -> int:
-  ...
+  return stat(path).stIno
 
 
 @immutable

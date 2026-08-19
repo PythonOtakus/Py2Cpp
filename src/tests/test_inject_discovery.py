@@ -43,16 +43,15 @@ class InjectDiscoveryTests(unittest.TestCase):
     self.assertIn(("ui/app", "ui/+app.inl", False), found)
     self.assertIn(("ui/window", "ui/+window.inl", False), found)
     self.assertIn(("ui/widget", "ui/+widget.inl", False), found)
-    self.assertIn(("io", "+io.inl", False), found)
+    self.assertNotIn(("io", "+io.inl", False), found)
     self.assertIn(("web/socket", "web/+socket.inl", False), found)
     self.assertIn(("core/exceptions", "core/+exceptions.inl", False), found)
 
-  def test_discover_system_time_and_environ(self):
+  def test_discover_system_paste_before_io_file(self):
     found = discover_module_paste_before_templates()
-    self.assertIn(("system/time", "system/-time.inl"), found)
-    self.assertIn(("system/environ", "system/-environ.inl"), found)
-
-    self.assertIn(("io/file", "io/-file.inl"), found)
+    self.assertNotIn(("io/file", "io/-file.inl"), found)
+    self.assertNotIn(("system/time", "system/-time.inl"), found)
+    self.assertNotIn(("system/environ", "system/-environ.inl"), found)
 
 
 if __name__ == "__main__":

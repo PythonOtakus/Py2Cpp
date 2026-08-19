@@ -90,6 +90,31 @@ class RuntimeLibsTests(unittest.TestCase):
     tr = _Tr({"Queue": queue, "Thread": thread})
     self.assertFalse(_module_template_inl_ok_in_library_tu(tr, "py2cpp/concur/thread"))
 
+  def test_template_plus_free_functions_skips_inl_in_library_tu(self):
+    rng = _cls("Random", "py2cpp/math/random", template=True)
+    tr = _Tr({"Random": rng})
+    tr.module_functions = [
+      (
+        "py2cpp/math/random",
+        ast.FunctionDef(
+          name="seed",
+          args=ast.arguments(
+            posonlyargs=[],
+            args=[],
+            vararg=None,
+            kwonlyargs=[],
+            kw_defaults=[],
+            kwarg=None,
+            defaults=[],
+          ),
+          body=[ast.Pass()],
+          decorator_list=[],
+          lineno=1,
+        ),
+      )
+    ]
+    self.assertFalse(_module_template_inl_ok_in_library_tu(tr, "py2cpp/math/random"))
+
 
 if __name__ == "__main__":
   unittest.main()

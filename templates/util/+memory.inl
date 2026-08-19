@@ -38,4 +38,8 @@ PyUInt64 loadU64LeBytes(PyByte* p, PyInt off) {
   return chunk;
 }
 
+PyUInt64 loadU64LeAtAddress(PyUPtr addr) {
+  return loadU64LeBytes(reinterpret_cast<PyByte*>(addr), 0);
+}
+
 PY2CPP_END_SCOPE

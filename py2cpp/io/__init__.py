@@ -1,7 +1,7 @@
 """``io``：文本文件 I/O 与内存字符串流（对齐 Python 3.13 ``io`` 子集）。
 
 参考 CPython 3.13 ``Modules/_io``、``Objects/fileobject.c``（``FILE*``）与
-``Lib/_pyio.py`` 中 ``StringIO`` 语义；实现不用 STL，文件层用 C stdio，
+``Lib/_pyio.py`` 中 ``StringIO`` 语义；实现不用 STL，文件层经 ``ffi.crt.stdio``，
 ``StringIO`` 用 ``char[:]`` 码点缓冲 + ``str.copyTo``（见编码规范 §9）。
 """
 from ..builtins import *
@@ -10,6 +10,10 @@ from ..util.list import list
 from ..util.memory import appendChars
 from ffi.crt.stdio import (
   PyiIobuf,
+  PyiSeekCur,
+  PyiSeekEnd,
+  PyiSeekSet,
+  pyiAcrtIobFunc,
   pyiFclose,
   pyiFflush,
   pyiFgets,
@@ -21,6 +25,7 @@ from ffi.crt.stdio import (
   pyiFwrite,
 )
 from ffi.crt.io import pyiIsatty
+from ..util.cbuf import cstrLen, cstrSlice, strCbuf
 
 
 @mixin
@@ -233,80 +238,211 @@ class StringIO(CloseMixin):
     self._pos = 0
 
 
-@native
 @uncopyable
-class TextIOWrapper:
-  """基于 ``FILE*`` 的文本文件包装（实现见 ``io.inl``）。
+class TextIOWrapper(CloseMixin):
+  """基于 ``FILE*`` 的文本文件包装（``ffi.crt.stdio``）。
 
   ``wrapFp`` / ``wrapStd`` 可绑定已有句柄；``owns=False`` 时 ``close``/``with``/析构
   **不** ``fclose`` 真实标准流（见 ``docs/console.md``）。
   """
 
-  _fp: uintptr
-  _closed: bool
-  _owns: bool
+  _fp: Pointer[PyiIobuf]
+  _closed: bool = True
+  _owns: bool = False
 
   @overload
-  def __init__(self, path: str, mode: str = "r"): ...
+  def __init__(self, path: str, mode: str = "r"):
+    self._owns = True
+    self._closed = False
+    pbuf: byte[:] = strCbuf(path, 4096)
+    m: str = mode
+    if not m:
+      m = "r"
+    mbuf: byte[:] = strCbuf(m, 16)
+    self._fp = pyiFopen(pbuf.view.at(0), mbuf.view.at(0))
+    if self._fp is None:
+      self._closed = True
 
   @overload
-  def __init__(self, fp: uintptr, owns: bool): ...
+  def __init__(self, fp: uintptr, owns: bool):
+    self._fp = cast(fp)
+    self._owns = owns
+    self._closed = fp == 0
 
-  def __del__(self): ...
+  def __del__(self):
+    if self._owns:
+      self.close()
 
-  def __bool__(self) -> bool: ...
+  @immutable
+  def __bool__(self) -> bool:
+    return (self._fp is not None) and (not self._closed)
 
-  def __enter__(self) -> Self: ...
+  def read(self, size: int = -1) -> str:
+    if self._fp is None or self._closed:
+      return ""
+    if size < 0:
+      codes: char[:] = new(0)
+      total: int = 0
+      chunk: byte[:] = new(4096)
+      tmp: char[:] = new(4096)
+      addr: uintptr = cast(chunk.view.at(0))
+      while True:
+        n = int(pyiFread(addr, 1, 4096, self._fp))
+        if n <= 0:
+          break
+        for i in range(n):
+          tmp[i] = char(chunk[i])
+        total = appendChars(codes, total, tmp, n)
+      if total <= 0:
+        return ""
+      return str.fromBuf(codes, total)
+    cap: int = size
+    if cap <= 0:
+      return ""
+    if cap > 4096:
+      cap = 4096
+    buf: byte[:] = new(cap)
+    addr2: uintptr = cast(buf.view.at(0))
+    n2 = int(pyiFread(addr2, 1, uint64(cap), self._fp))
+    if n2 <= 0:
+      return ""
+    return cstrSlice(buf.view.at(0), 0, n2)
 
-  def __exit__(self): ...
+  def readLine(self, size: int = -1) -> str:
+    if self._fp is None or self._closed:
+      return ""
+    cap: int = 4096
+    if size > 0 and size < cap:
+      cap = size
+    buf: byte[:] = new(cap)
+    p: CStr = pyiFgets(buf.view.at(0), cap, self._fp)
+    if p is None:
+      return ""
+    return cstrSlice(p, 0, cstrLen(p))
 
-  def read(self, size: int = -1) -> str: ...
-
-  def readLine(self, size: int = -1) -> str: ...
-
-  def readLines(self, hint: int = -1) -> list[str]: ...
+  def readLines(self, hint: int = -1) -> list[str]:
+    lines: list[str] = []
+    rest: int = hint
+    while True:
+      line: str = self.readLine(-1)
+      if not line:
+        break
+      lines.append(line)
+      if rest >= 0:
+        rest -= len(line)
+        if rest <= 0:
+          break
+    return lines
 
   @overload
-  def write(self, data: str) -> int: ...
+  def write(self, data: str) -> int:
+    if self._fp is None or self._closed:
+      return -1
+    n: int = len(data)
+    if n <= 0:
+      return 0
+    stack: byte[:] = new(4096)
+    addr: uintptr = cast(stack.view.at(0))
+    at: int = 0
+    for i in range(n):
+      if at >= 4096:
+        if int(pyiFwrite(addr, 1, uint64(at), self._fp)) != at:
+          return -1
+        at = 0
+      stack[at] = byte(int(data[i]) & 0xFF)
+      at += 1
+    if at > 0:
+      if int(pyiFwrite(addr, 1, uint64(at), self._fp)) != at:
+        return -1
+    return n
 
   @overload
-  def write(self, src: char[:], end: int) -> int: ...
+  def write(self, src: char[:], end: int) -> int:
+    if self._fp is None or self._closed:
+      return -1
+    if end <= 0:
+      return 0
+    stack: byte[:] = new(4096)
+    addr: uintptr = cast(stack.view.at(0))
+    at: int = 0
+    for i in range(end):
+      if at >= 4096:
+        if int(pyiFwrite(addr, 1, uint64(at), self._fp)) != at:
+          return -1
+        at = 0
+      stack[at] = byte(int(src[i]) & 0xFF)
+      at += 1
+    if at > 0:
+      if int(pyiFwrite(addr, 1, uint64(at), self._fp)) != at:
+        return -1
+    return end
 
-  def writeLines(self, lines: list[str]) -> None: ...
+  def writeLines(self, lines: list[str]) -> None:
+    for line in lines:
+      self.write(line)
 
-  def flush(self) -> None: ...
+  def flush(self) -> None:
+    if self._fp is not None and not self._closed:
+      pyiFflush(self._fp)
 
-  def __iter__(self) -> Self: ...
+  def __iter__(self) -> Self:
+    return self
 
-  def __next__(self) -> str: ...
+  def __next__(self) -> str:
+    line: str = self.readLine(-1)
+    if not line:
+      raise StopIteration
+    return line
 
-  def close(self) -> None: ...
+  def close(self) -> None:
+    if self._fp is not None and not self._closed:
+      pyiFflush(self._fp)
+      if self._owns:
+        pyiFclose(self._fp)
+        self._fp = None
+    self._closed = True
 
-  def seek(self, pos: int, whence: int = 0) -> int: ...
+  def seek(self, pos: int, whence: int = 0) -> int:
+    if self._fp is None or self._closed:
+      return -1
+    origin: int = PyiSeekSet
+    if whence == 1:
+      origin = PyiSeekCur
+    elif whence == 2:
+      origin = PyiSeekEnd
+    if pyiFseek(self._fp, pos, origin) == 0:
+      return 0
+    return -1
 
-  def tell(self) -> int: ...
+  def tell(self) -> int:
+    if self._fp is None or self._closed:
+      return -1
+    return int(pyiFtell(self._fp))
 
   @property
   @immutable
-  def isAtty(self) -> bool: ...
+  def isAtty(self) -> bool:
+    if self._fp is None or self._closed:
+      return False
+    return pyiIsatty(pyiFileno(self._fp)) != 0
 
 
-@native
 @global_call("py_*")
 def open(path: str, mode: str = "r", encoding: str = "utf-8") -> TextIOWrapper:
   """``open(path, mode)`` → ``TextIOWrapper``（``encoding`` 暂仅支持类 UTF-8 码点路径）。"""
-  ...
+  _ = encoding
+  return new(path, mode)
 
 
-@native
 @global_call("py_*")
 def wrapFp(fp: uintptr, owns: bool = False) -> TextIOWrapper:
   """绑定已有 ``FILE*``（``fp`` 为指针位型）；``owns=False`` 时永不 ``fclose``。"""
-  ...
+  return new(fp, owns)
 
 
-@native
 @global_call("py_*")
 def wrapStd(fd: int) -> TextIOWrapper:
   """绑定标准流：``0``=stdin、``1``=stdout、``2``=stderr；始终 ``owns=False``。"""
-  ...
+  p: Pointer[PyiIobuf] = pyiAcrtIobFunc(uint(fd))
+  h: uintptr = cast(p)
+  return new(h, False)

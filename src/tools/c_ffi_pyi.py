@@ -62,8 +62,6 @@ _ensure_libclang()
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FFI_ROOT = REPO_ROOT / "ffi"
 
-# FFI 布局常量（本生成器不再使用 *_h 句柄别名）
-
 # 空/属性类宏：不发射为 Python 常量
 _SKIP_MACRO_NAMES = frozenset({
   "SQLITE_EXTERN",

@@ -389,10 +389,7 @@ Py2Cpp/                              # 仓库根
 
     operators.h                  # codegen 完整实现：operators.h 主体
     operators.inl                 # codegen 完整实现：operators.inl + 标量 format
-    +io.inl                         # paste_after → io.inl（TextIOWrapper 等）
-    system/
-      -time.inl                   # paste_before → system/time.inl 首部
-      -environ.inl
+    # ``+io.inl`` / ``system/-time.inl`` / ``-environ.inl`` 已下沉为 Python + ffi，已删
     util/
       +memory.inl                   # paste_after → util/memory.inl
       StackArray.h                        # mirror codegen
@@ -409,7 +406,7 @@ Py2Cpp/                              # 仓库根
       +window.inl                    # 含 Win32 主题
       +widget.inl
     io/
-      -file.inl                   # paste_before → io/file.inl（含 path 子模块 C 层）
+      # ``-file.inl`` 已下沉为 ``py2cpp/io/file/path.py`` + ffi，已删
       io.inl                         # 可 ../sql/~bind.inl
     web/
       +socket.inl                   # paste_after → web/socket.inl（TcpSocket）
@@ -1066,9 +1063,9 @@ throw PY2CPP_TYPE(IndexError)();
 
 ---
 
-### 15.7 `io/-file.inl`：`copyToSpan` 直接写 C++
+### 15.7 历史：`io/-file.inl` 曾用 `copyToSpan` 直接写 C++
 
-现行 `templates/io/-file.inl` 在模板内 **直接写 C++**（勿用已弃用草案 `PY2CPP_EMIT`）：
+``templates/io/-file.inl`` **已删除**（磁盘 / ``open`` 现为 Python + ``ffi``）。当时在模板内 **直接写 C++**（勿用已弃用草案 `PY2CPP_EMIT`）：
 
 ```cpp
 void py_open(const PY2CPP_TYPE(PyStr)& path, const PY2CPP_TYPE(PyStr)& mode) {

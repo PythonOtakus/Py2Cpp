@@ -250,7 +250,7 @@ ffi math
 |------|------|------------------|
 | 薄 C 转发 | `+sqlite.inl` 调 `::ffi::sqlite::sqlite3::…`；**已去掉**直导 `<sqlite3.h>` | 异常、`PyStr` 转换、bind 循环继续下沉 Python 组合 |
 | 平台 API + 大量胶水 | `+canvas.inl`、`+window.inl`… | include 已迁 `"ffi/windows/…"`；WndProc/双缓冲等组合层分批改调 `ffi::`，**勿一次整文件删模板** |
-| CRT 叶子 | `+io.inl`、`-time.inl`、`+str.inl`、`util/+memory` | include 已迁 `"ffi/crt/…"`；业务调用可继续分批改 `ffi::crt::…` |
+| CRT 叶子 | `+str.inl`、`util/+memory`；``system/time`` / ``system/environ`` / ``console/native_sys`` / ``io`` / ``io/file`` 已下沉为 Python + ``ffi::`` | include 已迁 `"ffi/crt/…"`；业务调用继续分批改 `ffi::crt::…` |
 | 译器基础设施 | `operators.*`、`protocol_traits`、`tuple`、异常 ctor；`<type_traits>` 等 **C++ STL** | **不在** A+B 迁移范围 |
 
 **迁移原则**：
@@ -274,7 +274,7 @@ ffi math
 | Umbrella | **不**进 `minimal.h` / bootstrap bulk；仅 import 闭包写入 |
 | Star-import | **禁止** `from ffi… import *`（strict / 解析期报错，§10） |
 | S27 | FFI 模块允许 `from py2cpp.builtins import *`（生成器风格） |
-| `@native` glue | `src/emit/ffi_glue_emit.py`：`inline` 转发；`#include <c_header>`；指针/按值直传；白名单 `ffi_glue_allowlist` |
+| `@native` glue | `src/emit/ffi_glue_emit.py`：`inline` 转发；`#include <c_header>`；指针/按值直传；白名单 `ffi_glue_allowlist`；Win32 导入库经 `ffi_msvc_comment_libs` 发 `#pragma comment(lib, …)`（如 `shellapi` → `shell32.lib`） |
 | sqlite 业务 | `py2cpp/sql/sqlite.py` 用 `Pointer[PyiSqlite3]`；`templates/sql/+sqlite.inl` 调 `::ffi::sqlite::sqlite3::…`（经 ffi 头间接拿到 C API） |
 
 回归：`python -m unittest src.tests.test_ffi_import`；`build.bat sql/test_sqlite`；夹具 `src/tests/_ffi_entry_sqlite.py`。

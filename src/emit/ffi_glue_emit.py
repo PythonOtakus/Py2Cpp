@@ -22,6 +22,7 @@ from ..constant.ffi_layout import (
   ffi_c_header_include,
   ffi_glue_allowlist,
   ffi_header_symbol_allowlist,
+  ffi_msvc_comment_libs,
   is_ffi_module_path,
 )
 
@@ -50,6 +51,10 @@ _MUTABLE_CSTR_PARAMS: frozenset[tuple[str, str]] = frozenset({
   ("GetEnvironmentVariableA", "lpBuffer"),
   ("FreeEnvironmentStringsA", "penv"),
   ("WideCharToMultiByte", "lpMultiByteStr"),
+  ("strftime", "_Buffer"),
+  ("_getcwd", "_DstBuf"),
+  ("GetFullPathNameA", "lpBuffer"),
+  ("GetFinalPathNameByHandleA", "lpszFilePath"),
 })
 
 _WIDE_CHAR_POINTER_PARAMS: frozenset[tuple[str, str]] = frozenset({
@@ -136,7 +141,7 @@ def _emit_arg_expr(pname: str, ann: _Ann, *, c_name: str) -> tuple[list[str], st
     return [], pname
   if ann.kind == "ptr_cstr":
     # ``CStr*`` ≈ ``const char**``；个别 API（如 ``sqlite3_exec`` errmsg）要 ``char**``
-    if c_name == "sqlite3_exec":
+    if c_name == "sqlite3_exec" or (c_name, pname) in {("GetFullPathNameA", "lpFilePart")}:
       return [], f"reinterpret_cast<char**>(static_cast<void*>({pname}))"
     return [], f"reinterpret_cast<const char**>(static_cast<void*>({pname}))"
   if ann.kind == "ptr_ptr":
@@ -230,6 +235,8 @@ def emit_ffi_module_glue(tr: Translator, module_path: str) -> None:
       lines.append("#endif")
   lines.append(f"#include <{c_inc}>")
   lines.append("#include <stdint.h>")
+  for lib in ffi_msvc_comment_libs(module_path):
+    lines.append(f'#pragma comment(lib, "{lib}")')
   lines.append("")
   ns = namespace_qualifier_for_module(module_path)
   for func in funcs:

@@ -49,6 +49,13 @@ class TestTypeNodeRoundtrip(unittest.TestCase):
         from src.analysis.ir import CPP_ARRAY_PREFIX
         self.assertEqual(arr.render(CLASS_BODY), f'{CPP_ARRAY_PREFIX}PyDictEntryUnsafe<Key, Value>*>')
 
+    def test_nested_pointer_keeps_two_stars(self):
+        inner = TypeNode.scalar(cpp_ident('uint'))
+        nested = TypeNode.pointer(TypeNode.pointer(inner))
+        self.assertEqual(nested.render(CLASS_BODY), f'{cpp_ident("uint")}**')
+        from_cpp = type_node_from_cpp_string(f'{cpp_ident("uint")}**')
+        self.assertEqual(from_cpp.render(CLASS_BODY), f'{cpp_ident("uint")}**')
+
 class TestTypeNodeStorage(unittest.TestCase):
 
     def test_boxing_generic_template(self):

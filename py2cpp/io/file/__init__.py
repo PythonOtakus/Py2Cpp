@@ -1,21 +1,44 @@
 """``os``：进程环境与文件系统（对齐 Python 3.13 ``os`` / ``nt`` 子集）。
 
-磁盘 API 由 ``templates/io/-file.inl`` paste_before 注入 ``io/file.inl``；``os.path`` 见 ``path.py``。
+磁盘与 ``os.path`` 均在 ``path.py``（纯 Python + ``ffi.crt`` / ``ffi.windows``）。
 """
 from ...builtins import *
 from ...core.exceptions import OSError, FileNotFoundError
 from ...util.list import list
 from ...text import str
 from .path import (
+  CStat,
+  InvalidHandle,
+  access,
+  applyUtime,
   baseName as pathBaseName,
+  chdir,
+  chmod,
   dirName as pathDirName,
   exists as pathExists,
+  findClose,
+  findDataName,
+  findFirst,
+  findNext,
+  getCwd,
   isDir as pathIsDir,
+  isDotName,
   isFile as pathIsFile,
   isLink as pathIsLink,
   join as pathJoin,
+  link,
+  listDir,
+  mkdir,
+  readLink,
+  remove,
+  rename,
+  replace,
+  rmdir,
   split as pathSplit,
+  stat,
+  symlink,
 )
+from ffi.windows.windows import PyiWin32FindDataa
 
 SIfdir: int = 0x4000
 SIfreg: int = 0x8000
@@ -38,21 +61,6 @@ CurDir: str = "."
 ParDir: str = ".."
 DefPath: str = ".;C:\\bin"
 DevNull: str = "nul"
-
-
-@copyable
-@native_name("CStat")
-class CStat:
-  """``CStat``（``os.stat`` / ``os.lstat`` 结果）。"""
-
-  def __init__(self):
-    self.stMode: int = 0
-    self.stSize: int = 0
-    self.stMtime: float64 = 0.0
-    self.stAtime: float64 = 0.0
-    self.stCtime: float64 = 0.0
-    self.stDev: int = 0
-    self.stIno: int = 0
 
 
 @dataclass
@@ -79,48 +87,17 @@ class DirEntry:
     return stat(self.fullPath)
 
 
-@native
-@native_name("fs_*")
-def getCwd() -> str:
-  """当前工作目录。"""
-  ...
-
-
 @immutable
-@native_name("fs_*")
 def getCwdb() -> bytes:
   return getCwd().encode()
 
 
-@native
-@native_name("fs_*")
-def stat(pathName: str) -> CStat:
-  """路径元数据；不存在时 ``FileNotFoundError``。"""
-  ...
-
-
-@native
-@native_name("fs_*")
+@immutable
 def lstat(pathName: str) -> CStat:
   """``stat`` 别名（Windows 上与 ``stat`` 相同）。"""
-  ...
+  return stat(pathName)
 
 
-@native
-@native_name("fs_*")
-def listDir(pathName: str = ".") -> list[str]:
-  """目录项名（不含 ``.`` / ``..``）。"""
-  ...
-
-
-@native
-@native_name("fs_*")
-def mkdir(pathName: str, mode: int = 0o777) -> None:
-  """创建单级目录。"""
-  ...
-
-
-@native_name("fs_*")
 def makeDirs(name: str, mode: int = 0o777, existOk: bool = False) -> None:
   """递归创建目录（对齐 ``os.makeDirs``）。"""
   parts: (str, str) = pathSplit(name)
@@ -135,28 +112,12 @@ def makeDirs(name: str, mode: int = 0o777, existOk: bool = False) -> None:
   mkdir(name, mode)
 
 
-@native
-@native_name("fs_*")
-def remove(pathName: str) -> None:
-  """删除文件。"""
-  ...
-
-
-@native
-@native_name("fs_*")
+@immutable
 def unlink(pathName: str) -> None:
   """删除文件（``remove`` 别名）。"""
-  ...
+  remove(pathName)
 
 
-@native
-@native_name("fs_*")
-def rmdir(pathName: str) -> None:
-  """删除空目录。"""
-  ...
-
-
-@native_name("fs_*")
 def removeDirs(name: str) -> None:
   rmdir(name)
   parent: str = pathDirName(name)
@@ -164,21 +125,6 @@ def removeDirs(name: str) -> None:
     removeDirs(parent)
 
 
-@native
-@native_name("fs_*")
-def replace(src: str, dst: str) -> None:
-  """原子替换（目标存在时覆盖）。"""
-  ...
-
-
-@native
-@native_name("fs_*")
-def rename(src: str, dst: str) -> None:
-  """重命名（目标存在时失败）。"""
-  ...
-
-
-@native_name("fs_*")
 def renames(old: str, new: str) -> None:
   head: str = pathDirName(new)
   if head and not pathExists(head):
@@ -186,34 +132,6 @@ def renames(old: str, new: str) -> None:
   rename(old, new)
 
 
-@native
-@native_name("fs_*")
-def chdir(pathName: str) -> None:
-  """切换当前工作目录。"""
-  ...
-
-
-@native
-@native_name("fs_*")
-def access(pathName: str, mode: int) -> bool:
-  """检测访问权限（``FOk`` / ``ROk`` / ``WOk`` / ``XOk``）。"""
-  ...
-
-
-@native
-@native_name("fs_*")
-def chmod(pathName: str, mode: int) -> None:
-  """修改权限位。"""
-  ...
-
-
-@native
-@native_name("fs_*")
-def applyUtime(pathName: str, atime: float64, mtime: float64) -> None:
-  ...
-
-
-@native_name("fs_*")
 def utime(pathName: str, times: (float64, float64)) -> None:
   """设置访问/修改时间（``(atime, mtime)``）。"""
   at: float64 = times[0]
@@ -221,28 +139,6 @@ def utime(pathName: str, times: (float64, float64)) -> None:
   applyUtime(pathName, at, mt)
 
 
-@native
-@native_name("fs_*")
-def link(src: str, dst: str) -> None:
-  """硬链接。"""
-  ...
-
-
-@native
-@native_name("fs_*")
-def symlink(src: str, dst: str) -> None:
-  """符号链接。"""
-  ...
-
-
-@native
-@native_name("fs_*")
-def readLink(pathName: str) -> str:
-  """读取符号链接目标。"""
-  ...
-
-
-@native_name("fs_*")
 def walk(
   top: str,
   topdown: bool = True,
@@ -273,28 +169,54 @@ def walk(
       yield current, dirs, nonDirs
 
 
-@native
 @uncopyable
 class ScandirIterator:
-  """惰性 ``os.scandir`` 迭代器（Win ``FindNextFile`` / POSIX ``readdir``）。"""
+  """惰性 ``os.scandir`` 迭代器（Win ``FindNextFile``）。"""
 
   _path: str = ""
-  _state: uintptr = 0
+  _handle: uintptr = 0
+  _data: PyiWin32FindDataa = new()
+  _pending: bool = False
+  _closed: bool = True
 
   def __init__(self, pathName: str = "."):
-    ...
+    self._path = pathName
+    self._closed = False
+    pair: (uintptr, PyiWin32FindDataa) = findFirst(pathName + "\\*")
+    self._handle = pair[0]
+    self._data = pair[1]
+    if self._handle == InvalidHandle:
+      self._closed = True
+      self._pending = False
+      raise FileNotFoundError()
+    self._pending = True
 
   def __del__(self):
-    ...
+    self.close()
 
   def close(self) -> None:
-    ...
+    if self._closed:
+      return
+    findClose(self._handle)
+    self._handle = InvalidHandle
+    self._pending = False
+    self._closed = True
 
   def __iter__(self) -> Self:
-    ...
+    return self
 
-  def __next__(self) -> IterResult[DirEntry, None]:
-    ...
+  def __next__(self) -> DirEntry:
+    while self._pending and not self._closed:
+      name: str = findDataName(self._data)
+      self._pending = findNext(self._handle, self._data)
+      if isDotName(name):
+        continue
+      ent: DirEntry = new()
+      ent.name = name
+      ent.fullPath = pathJoin(self._path, name)
+      return ent
+    self.close()
+    raise StopIteration
 
 
 def scandir(pathName: str = ".") -> ScandirIterator:

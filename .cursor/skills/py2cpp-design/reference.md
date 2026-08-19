@@ -262,6 +262,7 @@ Py2Cpp/
 | 布局 | Win32 → `ffi/windows/<stem>.pyi`；UCRT → `ffi/crt/<stem>.pyi`；第三方 → `ffi/<path>.pyi` |
 | 范围 | **A+B**（第三方 + SDK + CRT）；**不含** C++ STL |
 | 模板 | 可保留组合；**禁止**直导 A/B 头（译期 **T26**）；须 `#include "ffi/…"`；`#include <c_header>` 仅 glue |
+| MSVC 链库 | glue 可 `#pragma comment(lib, …)`（`ffi_msvc_comment_libs`；`shellapi` → `shell32.lib`）；勿把链接依赖留在已删除的业务模板 |
 | 禁止 | `from ffi… import *`；全量 Win32 进 `minimal.h`；手改 `AUTO-GENERATED` `.pyi`；批量删 UI 组合模板 |
 
 回归：`python -m unittest src.tests.test_ffi_import`；`build.bat sql/test_sqlite`。

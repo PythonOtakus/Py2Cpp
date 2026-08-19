@@ -77,7 +77,7 @@ class BuiltinStubTests(unittest.TestCase):
     )
     self.assertEqual(
       lookup_module_function_cpp_name(stdlib_module_path("system/time"), "time"),
-      "py_time",
+      "time",
     )
     self.assertEqual(
       lookup_module_function_cpp_name(RUNTIME_BUILTINS_MODULE, "abs"),

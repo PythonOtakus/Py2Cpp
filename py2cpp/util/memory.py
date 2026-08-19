@@ -75,3 +75,10 @@ def loadU64LeBytesRef(p: Pointer[byte], off: int) -> uint64:
 def loadU64LeBytes(p: Pointer[byte], off: int) -> uint64:
   """自裸 ``byte`` 缓冲 ``p+off`` 读 8 字节 little-endian（``memcpy``）。"""
   ...
+
+
+@native
+@immutable
+def loadU64LeAtAddress(addr: uintptr) -> uint64:
+  """自 ``uintptr`` 地址读 8 字节 little-endian（``LARGE_INTEGER`` 等栈/FFI 对象）。"""
+  ...

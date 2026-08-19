@@ -74,8 +74,6 @@ class TypeNode:
 
   @staticmethod
   def pointer(inner: TypeNode) -> TypeNode:
-    if inner.kind == TypeKind.POINTER:
-      return inner
     return TypeNode(TypeKind.POINTER, inner=inner)
 
   @staticmethod

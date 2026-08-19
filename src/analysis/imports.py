@@ -233,7 +233,16 @@ def _apply_import_request(
       bindings[local] = sub
       continue
     if asname and asname != name:
-      bindings[local] = binding
+      aliased = ImportBinding(
+        local_name=local,
+        symbol=binding.symbol,
+        module_path=binding.module_path,
+        kind=binding.kind,
+        cpp_name=binding.cpp_name.rsplit("::", 1)[-1],
+      )
+      bindings[local] = aliased
+      if binding.kind == "class":
+        _append_using_symbol(usings, binding.module_path, binding.cpp_name)
       continue
     info = tr.classes.get(name)
     if name in TYPE_MARKER_CLASSES:
@@ -340,13 +349,52 @@ def _stdlib_defining_module(tr: Translator, module_path: str, symbol: str) -> st
   return module_path
 
 
+def _package_reexport_source(
+  tr: Translator,
+  module_path: str,
+  symbol: str,
+) -> tuple[str, str] | None:
+  """包 ``__init__`` 的 ``from .path import mkdir`` / ``from .path import baseName as pathBaseName``。
+
+  返回 ``(定义模块, 源符号名)``；``asname`` 须映射回源名，不能只换模块路径。
+  """
+  tree = tr.module_asts.get(module_path)
+  if tree is None:
+    return None
+  for node in tree.body:
+    if not isinstance(node, ast.ImportFrom) or not node.level:
+      continue
+    for alias in node.names:
+      if alias.name == "*":
+        continue
+      exported = alias.asname or alias.name
+      if alias.name != symbol and exported != symbol:
+        continue
+      dest = resolve_relative_module_path(
+        module_path,
+        level=node.level,
+        module=node.module,
+        runtime_root=tr._runtime_root(),
+        project_root=getattr(tr, "_import_project_root_cache", None),
+      )
+      if dest and dest != module_path:
+        return dest, alias.name
+  return None
+
+
 def _resolve_symbol(
   tr: Translator,
   module_path: str,
   symbol: str,
   local_name: str,
+  *,
+  _seen: frozenset[tuple[str, str]] | None = None,
 ) -> ImportBinding | None:
   """在 ``module_path`` 内解析符号；同名跨模块（如 ``time`` 函数 vs ``datetime.time``）不得被全局 ``classes`` 抢先。"""
+  seen = _seen or frozenset()
+  key = (module_path, symbol)
+  if key in seen:
+    return None
   def_mp = _stdlib_defining_module(tr, module_path, symbol)
   if def_mp == CONCUR_PARALLEL_MODULE and symbol in PRANGE_TRANSLATION_ONLY_FUNCS:
     tree = tr.module_asts.get(def_mp)
@@ -399,7 +447,7 @@ def _resolve_symbol(
         cpp_name=info.cpp_name(),
       )
   info = tr.classes.get(symbol)
-  if info is not None:
+  if info is not None and info.module_path == def_mp:
     return ImportBinding(
       local_name=local_name,
       symbol=symbol,
@@ -407,6 +455,16 @@ def _resolve_symbol(
       kind="class",
       cpp_name=info.cpp_name(),
     )
+  tr._ensure_class_indexes()
+  for info in tr._all_class_infos:
+    if info.name == symbol and info.module_path == def_mp:
+      return ImportBinding(
+        local_name=local_name,
+        symbol=symbol,
+        module_path=def_mp,
+        kind="class",
+        cpp_name=info.cpp_name(),
+      )
   for mp, ma in tr.module_analysis.items():
     if mp != def_mp and not mp.startswith(f"{def_mp}/"):
       continue
@@ -441,6 +499,12 @@ def _resolve_symbol(
         kind="constant",
         cpp_name=qualify_symbol_in_module(def_mp, symbol),
       )
+  reexp = _package_reexport_source(tr, module_path, symbol)
+  if reexp is not None:
+    dest, src_name = reexp
+    return _resolve_symbol(
+      tr, dest, src_name, local_name, _seen=seen | {key},
+    )
   return None
 
 

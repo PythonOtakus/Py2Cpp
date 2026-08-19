@@ -77,8 +77,20 @@ def emit_auto_copy(tr: Translator, info: ClassInfo) -> None:
                         tr.write_line(f'this->{field} = other.{field};')
         tr.write_line()
 
+def _uncopyable_moved_from_reset(tr: Translator, info: ClassInfo, field: str, ft: str) -> str:
+    """``@uncopyable`` 源对象复位：用字段默认值，使 ``__del__`` 成为空操作。"""
+    from .class_decl_emit import _emit_field_default_initializer
+    default = info.field_defaults.get(field)
+    if default is not None:
+        return _emit_field_default_initializer(tr, ft, default)
+    t = ft.strip()
+    if t.endswith('*'):
+        return 'nullptr'
+    return f'{t}()'
+
+
 def emit_auto_move(tr: Translator, info: ClassInfo) -> None:
-    """生成默认 ``__move__``：``owned_fields`` 窃取指针，其余字段按值拷贝。"""
+    """生成默认 ``__move__``：``owned_fields`` 窃取指针；``@uncopyable`` 再复位源字段。"""
     cpp = info.cpp_name()
     qual = _qual_name(tr, info)
     with _emit_ctx(tr, info), tr._use_source():
@@ -97,6 +109,9 @@ def emit_auto_move(tr: Translator, info: ClassInfo) -> None:
                 tr.write_line(f'this->{field} = other.{field};')
                 if field in info.owned_fields:
                     tr.write_line(f'other.{field} = nullptr;')
+                elif info.is_uncopyable:
+                    reset = _uncopyable_moved_from_reset(tr, info, field, ft)
+                    tr.write_line(f'other.{field} = {reset};')
             if MOVE_STATE_FIELD in info.fields:
                 tr.write_line(f'other.{MOVE_STATE_FIELD} = true;')
         tr.write_line()

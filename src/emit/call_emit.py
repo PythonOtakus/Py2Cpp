@@ -40,6 +40,22 @@ def _emit_cast_call(tr: Translator, target_cpp: str, node: ast.Call) -> str:
     arg = node.args[0]
     inner = tr._visit_value_expr(arg)
     raw_t = tr._infer_expr_cpp_type(arg) or ''
+    bare_target = target_cpp.strip()
+    raw_stripped = raw_t.rstrip()
+    if bare_target.endswith('*') and bare_target != raw_stripped:
+        if raw_stripped in ('PyUPtr', 'uintptr') or raw_stripped.endswith('*') or (
+          isinstance(arg, ast.Call)
+          and isinstance(arg.func, ast.Name)
+          and arg.func.id == 'id'
+        ):
+            return f'reinterpret_cast<{target_cpp}>({inner})'
+    if bare_target in ('PyUPtr', 'uintptr'):
+        if raw_stripped.endswith('*') or (
+          isinstance(arg, ast.Call)
+          and isinstance(arg.func, ast.Name)
+          and arg.func.id == 'id'
+        ):
+            return f'reinterpret_cast<{bare_target}>({inner})'
     cast_t = target_cpp.rstrip()
     if not cast_t.endswith('&'):
         cast_t = f'{cast_t}&'
@@ -1373,7 +1389,7 @@ def emit_call_expr(tr: Translator, node: ast.Call):
                 ann = type_context_ann_from_stack(tr)
                 if ann is None:
                     raise NotImplementedError('cast(obj) 需类型上下文：使用 x: T = cast(obj) 或 return cast(obj)')
-                target_cpp = tr._parse_type(ann, tr._active_type_params())
+                target_cpp = tr._parse_storage_type(ann, tr._active_type_params())
                 return _emit_cast_call(tr, target_cpp, node)
             if name == 'new':
                 raise NotImplementedError(

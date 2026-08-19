@@ -122,18 +122,17 @@ def expand_umbrella_include_paths(
           paths.append(stdlib_header_include(mod))
     else:
       paths.append(stdlib_header_include(str(payload)))
-    # ``ExcType`` / ``PyIterResult`` 的 ``str`` 实现须在 ``PyStr`` 完整定义之后
-    # 库 TU（``PY2CPP_LIBRARY_TU``）跳过，避免与胖库 / 测例重复定义
+    # ``ExcType`` 的 ``str`` 实现须在 ``PyStr`` 完整定义之后。
+    # 库 TU 跳过非模板 ``exceptions.inl``，避免与胖库 / 测例重复定义。
+    # ``PyIterResult`` 全是模板：库 TU **必须**可见 ``.inl``，否则 ``walk`` / ``scandir``
+    # 等库内生成器无法实例化 ``Yield`` / ``Return``（LNK2019）。
     if payload == "text/str" and "core/exceptions" in stdlib_set:
       if header_only_mode():
         paths.append(f"{runtime_prefix}/core/exceptions.inl")
       else:
         paths.append(f"__py2cpp_guard_inl__:{runtime_prefix}/core/exceptions.inl")
     if payload == "text/str" and "core/iter_result" in stdlib_set:
-      if header_only_mode():
-        paths.append(f"{runtime_prefix}/core/iter_result.inl")
-      else:
-        paths.append(f"__py2cpp_guard_inl__:{runtime_prefix}/core/iter_result.inl")
+      paths.append(f"{runtime_prefix}/core/iter_result.inl")
 
   for name in stdlib_modules:
     if name in UMBRELLA_BULK_SKIP or name not in STDLIB_REL_PATH_SET:

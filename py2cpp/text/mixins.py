@@ -191,6 +191,7 @@ class StringMixin[Host: oneof[char, byte]]:
   def __contains__(self, sub: Self) -> bool:
     return self.find(sub) >= 0
 
+  @immutable
   def __add__(self, other: Self) -> Self:
     n: int = len(self._data)
     m: int = len(other._data)
@@ -201,6 +202,7 @@ class StringMixin[Host: oneof[char, byte]]:
       buf[n + j] = other._data[j]
     return new(buf)
 
+  @immutable
   def __mul__(self, n: int) -> Self:
     if n <= 0:
       return new()
@@ -214,6 +216,7 @@ class StringMixin[Host: oneof[char, byte]]:
         at += 1
     return new(buf)
 
+  @immutable
   def __rmul__(self, n: int) -> Self:
     return self * n
 

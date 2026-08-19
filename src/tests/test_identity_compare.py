@@ -71,6 +71,25 @@ def check(x: int) -> bool:
       compact = cpp.replace(" ", "")
       self.assertIn("returnfalse", compact)
 
+  def test_cstr_is_none_uses_nullptr(self):
+    src = """
+from py2cpp import *
+
+def check(p: CStr) -> bool:
+  return p is None
+"""
+    with tempfile.TemporaryDirectory() as tmp:
+      out = Path(tmp)
+      py = out / "mod.py"
+      py.write_text(src, encoding="utf-8")
+      _, cpp_path = Translator.translate_file(
+        str(py), output_dir=str(out), include_stdlib=False,
+      )
+      cpp = cpp_path.read_text(encoding="utf-8")
+      compact = cpp.replace(" ", "")
+      self.assertIn("p==nullptr", compact)
+      self.assertNotIn("returnfalse", compact)
+
   def test_raw_ptr_is_not_none_uses_nullptr(self):
     src = """
 from py2cpp import new, Self, boxing

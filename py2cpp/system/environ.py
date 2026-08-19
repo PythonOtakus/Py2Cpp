@@ -1,12 +1,13 @@
 """进程环境变量（对齐 Python 3.13 ``os.environ`` / ``ntpath.expandVars`` / ``expandUser``）。
 
-C 层：``PyEnviron`` 映射方法（``templates/system/-environ.inl`` → ``system/environ.inl``）。
-**不**暴露 ``putenv`` / ``getenv`` 模块函数。
+``Environ`` 映射经 ``ffi.windows.windows`` 读写 OS 环境块。**不**暴露 ``putenv`` / ``getenv`` 模块函数。
 """
 from ..builtins import *
+from ..core.exceptions import KeyError, OSError
 from ..io.file.path import baseName, dirName, join
 from ..util.list import list
 from ..text import str
+from ..util.cbuf import cstrSlice, strCbuf
 
 from ffi.windows.windows import (
   PyiErrorEnvvarNotFound,
@@ -29,6 +30,37 @@ _Tilde: str = "~"
 _SepChars: str = "\\/"
 
 
+@immutable
+def _strCbuf(s: str, cap: int) -> byte[:]:
+  return strCbuf(s, cap)
+
+
+@immutable
+def _cstrSlice(p: CStr, start: int, n: int) -> str:
+  return cstrSlice(p, start, n)
+
+
+@immutable
+def _envKeyHas(key: str) -> bool:
+  kbuf: byte[:] = _strCbuf(key, 4096)
+  n: uint = pyiGetEnvironmentVariableA(kbuf.view.at(0), "", 0)
+  if n == 0:
+    if pyiGetLastError() == PyiErrorEnvvarNotFound:
+      return False
+  return True
+
+
+@immutable
+def _envGetValue(key: str) -> str:
+  kbuf: byte[:] = _strCbuf(key, 4096)
+  vbuf: byte[:] = new(32767)
+  n: uint = pyiGetEnvironmentVariableA(kbuf.view.at(0), vbuf.view.at(0), 32767)
+  if n == 0:
+    if pyiGetLastError() == PyiErrorEnvvarNotFound:
+      return ""
+  return _cstrSlice(vbuf.view.at(0), 0, int(n))
+
+
 @copyable
 class Environ:
   """类字典进程环境映射（读写即时作用于 OS，对齐 ``os._Environ``）。"""
@@ -36,33 +68,58 @@ class Environ:
   def __init__(self):
     pass
 
-  @native
   @immutable
   def __getitem__(self, key: str) -> str:
-    ...
+    if not _envKeyHas(key):
+      raise KeyError(key)
+    return _envGetValue(key)
 
-  @native
   def __setitem__(self, key: str, value: str) -> None:
-    ...
+    kbuf: byte[:] = _strCbuf(key, 4096)
+    vbuf: byte[:] = _strCbuf(value, 32767)
+    if pyiSetEnvironmentVariableA(kbuf.view.at(0), vbuf.view.at(0)) == 0:
+      raise OSError()
 
-  @native
   def __delitem__(self, key: str) -> None:
-    ...
+    if not _envKeyHas(key):
+      raise KeyError(key)
+    kbuf: byte[:] = _strCbuf(key, 4096)
+    if pyiSetEnvironmentVariableA(kbuf.view.at(0), None) == 0:
+      err: uint = pyiGetLastError()
+      if err != PyiErrorEnvvarNotFound:
+        raise OSError()
 
-  @native
   @immutable
   def __contains__(self, key: str) -> bool:
-    ...
+    return _envKeyHas(key)
 
-  @native
   @immutable
   def get(self, key: str, default: str = "") -> str:
-    ...
+    if _envKeyHas(key):
+      return _envGetValue(key)
+    return default
 
-  @native
   @immutable
   def keys(self) -> list[str]:
-    ...
+    out: list[str] = []
+    block: CStr = pyiGetEnvironmentStrings()
+    if block is None:
+      return out
+    base: CStr = block
+    off: int = 0
+    while base[off] != 0:
+      i: int = 0
+      eq: int = -1
+      while base[off + i] != 0:
+        if base[off + i] == ord("="):
+          eq = i
+        i += 1
+      slen: int = i
+      if eq > 0:
+        out.append(_cstrSlice(base, off, eq))
+      off += slen + 1
+    pyiFreeEnvironmentStringsA(block)
+    return out
 
   @immutable
   def __iter__(self) -> list[str]:

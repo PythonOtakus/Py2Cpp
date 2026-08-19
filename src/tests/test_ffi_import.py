@@ -16,8 +16,7 @@ from src.constant.ffi_layout import (
   find_ffi_source_file,
   ffi_c_struct_using_target,
   ffi_header_include,
-  ffi_opaque_c_tag,
-  ffi_opaque_py_name,
+  ffi_msvc_comment_libs,
   is_ffi_module_path,
 )
 from src.constant.paths import _REPO_ROOT
@@ -26,14 +25,7 @@ from src.analysis.ir import ClassInfo
 import ast
 
 
-class TestFfiOpaqueNames(unittest.TestCase):
-  def test_legacy_h_suffix_roundtrip(self) -> None:
-    for c in ("sqlite3", "sqlite3_stmt", "Fts5Context", "sqlite3_api_routines"):
-      py = ffi_opaque_py_name(c)
-      self.assertNotEqual(py, c)
-      self.assertTrue(py.endswith("_h"))
-      self.assertEqual(ffi_opaque_c_tag(py), c)
-
+class TestFfiStructUsing(unittest.TestCase):
   def test_using_target(self) -> None:
     node = ast.ClassDef(
       name="PyiSqlite3",
@@ -52,6 +44,8 @@ class TestFfiOpaqueNames(unittest.TestCase):
     info = ClassInfo(node, module_path="ffi/sqlite/sqlite3")
     self.assertEqual(ffi_c_struct_using_target(info), "::sqlite3")
     self.assertEqual(info.cpp_name(), "PyiSqlite3")
+    info.cpp_rename = "_stat64i32"
+    self.assertEqual(ffi_c_struct_using_target(info), "struct ::_stat64i32")
 
 
 class TestFfiLayout(unittest.TestCase):
@@ -88,6 +82,10 @@ class TestFfiLayout(unittest.TestCase):
       namespace_qualifier_for_module("ffi/sqlite/sqlite3"),
       "ffi::sqlite::sqlite3",
     )
+
+  def test_msvc_comment_libs_for_shellapi(self) -> None:
+    self.assertEqual(ffi_msvc_comment_libs("ffi/windows/shellapi"), ("shell32.lib",))
+    self.assertEqual(ffi_msvc_comment_libs("ffi/crt/time"), ())
 
   def test_find_source(self) -> None:
     p = find_ffi_source_file("ffi/sqlite/sqlite3", project_root=_REPO_ROOT)
@@ -217,6 +215,39 @@ class TestFfiTranslateGlue(unittest.TestCase):
       io_inl = out / "runtime" / "ffi" / "crt" / "io.inl"
       self.assertTrue(io_inl.is_file(), msg=f"missing {io_inl}")
       self.assertIn("::_isatty(_FileHandle)", io_inl.read_text(encoding="utf-8"))
+
+  def test_crt_duplicate_pyi_names_emit_once(self) -> None:
+    import tempfile
+
+    from src.translator import Translator
+
+    with tempfile.TemporaryDirectory() as tmp:
+      out = Path(tmp)
+      entry = out / "entry.py"
+      entry.write_text(
+        "from py2cpp import *\n"
+        "from ffi.crt.direct import pyiChdir\n"
+        "from ffi.crt.stat import PyiSIfdir\n"
+        "from ffi.crt.stdio import pyiFileno\n"
+        "\n"
+        "def probe(p: CStr) -> int:\n"
+        "  _ = PyiSIfdir\n"
+        "  return pyiChdir(p)\n",
+        encoding="utf-8",
+      )
+      Translator.translate_file(
+        str(entry),
+        output_dir=str(out),
+        include_stdlib=True,
+        emit_main=False,
+      )
+      direct_h = (out / "runtime" / "ffi" / "crt" / "direct.h").read_text(encoding="utf-8")
+      self.assertEqual(direct_h.count("PyInt pyiChdir("), 1)
+      stat_h = (out / "runtime" / "ffi" / "crt" / "stat.h").read_text(encoding="utf-8")
+      self.assertEqual(stat_h.count("static PyInt PyiSIfdir"), 1)
+      stdio_h = (out / "runtime" / "ffi" / "crt" / "stdio.h").read_text(encoding="utf-8")
+      self.assertEqual(stdio_h.count("PyInt pyiFileno("), 1)
+
   def test_crt_overload_glue_uses_allowlisted_exit(self) -> None:
     import tempfile
 

@@ -15,12 +15,26 @@ class TestUncopyable(unittest.TestCase):
       header,
     )
     self.assertIn("PySqliteConnection(PySqliteConnection&& other)", header)
-    self.assertIn("PyUInt64 _db", header)
+    self.assertIn("PyiSqlite3* _db", header)
     self.assertIn("PySqliteCursor(const PySqliteCursor& other) = delete", header)
-    self.assertIn("PyUInt64 _stmt", header)
+    self.assertIn("PyiSqlite3Stmt* _stmt", header)
     self.assertNotIn("sqlite_connection_tail", header)
     self.assertNotIn("sqlite_cursor_tail", header)
     self.assertNotIn("__moved__", header)
+
+  def test_scandir_iterator_move_assign_defined(self):
+    root = Path(__file__).resolve().parents[2]
+    header = (root / "generated" / "runtime" / "py2cpp" / "io" / "file.h").read_text(
+      encoding="utf-8",
+    )
+    self.assertIn("PyScandirIterator(const PyScandirIterator& other) = delete", header)
+    self.assertIn("PyScandirIterator& operator=(PyScandirIterator&& other)", header)
+    inl = (root / "generated" / "runtime" / "py2cpp" / "io" / "file.inl").read_text(
+      encoding="utf-8",
+    )
+    compact = inl.replace(" ", "")
+    self.assertIn("PyScandirIterator::operator=(PyScandirIterator&&", compact)
+    self.assertIn("::__move__(", compact)
 
 
 if __name__ == "__main__":

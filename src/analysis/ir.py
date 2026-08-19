@@ -3303,8 +3303,12 @@ class ClassInfo:
     return any(kind == "free" for _, kind in self.owned_fields.values())
 
   def needs_auto_move(self) -> bool:
-    """未手写 ``__move__`` 且构造里分配了堆字段时生成默认移动（窃取指针）。"""
-    return "__move__" not in self.methods and bool(self.owned_fields)
+    """未手写 ``__move__`` 时：堆字段窃取，或 ``@uncopyable`` 资源包装（生成器局部需移动赋值）。"""
+    if "__move__" in self.methods or self.is_native:
+      return False
+    if self.is_uncopyable:
+      return True
+    return bool(self.owned_fields)
 
   def has_destructor(self) -> bool:
     return "__del__" in self.methods or self.needs_auto_dtor()

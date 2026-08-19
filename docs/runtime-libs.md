@@ -103,7 +103,7 @@ test_foo.cpp
 库 TU（``#define PY2CPP_LIBRARY_TU``）额外约束：
 
 - 各模块 ``.h`` 在 namespace 闭合后写 ``using namespace py2cpp::…;``，短名（``PyDict`` / ``PyList``）不依赖被跳过的 ``.inl``。
-- **纯模板**模块 ``.inl`` 仍由 ``.h`` 拉入（可多 TU 实例化）。启发式只看**顶层**类：嵌套 ``@variant``（如 ``Optional.None_``）不算混模块。含非模板顶层类的模块（如 ``Queue[T]`` 与 ``Thread`` 同文件）整份 ``.inl`` 在库 TU 中跳过。
+- **纯模板**模块 ``.inl`` 仍须对库 TU 可见（可多 TU 实例化）。``core/iter_result.inl`` 由万能头**无条件** include（勿 ``#ifndef PY2CPP_LIBRARY_TU``），否则库内 ``walk`` / ``scandir`` 无法实例化 ``PyIterResult::Yield``。启发式只看**顶层**类：嵌套 ``@variant``（如 ``Optional.None_``）不算混模块。含非模板顶层类的模块（如 ``Queue[T]`` 与 ``Thread`` 同文件）、或模板类 + 模块级自由函数（如 ``Random[T]`` + ``seed``）整份 ``.inl`` 在库 TU 中跳过，否则自由函数 LNK2005。
 - **非模板** header-only ``.inl`` 在库 TU 中跳过；其它头里用到的 inline 叶子（如 ``bytes_from_literal``）须写在 ``.h``。
 
 ---

@@ -1,6 +1,6 @@
 """``py2cpp.concur.process``：外部进程基础生命周期回归。"""
 from py2cpp import *
-from py2cpp.concur.process import CompletedProcess, Pipe, Process, ProcessPool, run as processRun
+from py2cpp.concur.process import CompletedProcess, Pipe, Process, ProcessEvent, ProcessMutex, ProcessPool, ProcessSemaphore, run as processRun
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 
@@ -60,6 +60,40 @@ class ProcessContextTests(TestCaseMixin):
       completed: CompletedProcess = pool.submit(args).result(timeout=2.0)
       self.assertEqual(completed.returnCode, 0)
 
+class ProcessSynchronizationTests(TestCaseMixin):
+  _testTag = 19
+
+  @override
+  def test(self):
+    eventOne: ProcessEvent = new("Local\\py2cpp-process-event")
+    eventTwo: ProcessEvent = new("Local\\py2cpp-process-event")
+    self.assertTrue(eventOne.created)
+    self.assertFalse(eventTwo.created)
+    self.assertFalse(eventTwo.wait(timeout=0.0))
+    eventOne.set()
+    self.assertTrue(eventTwo.wait(timeout=0.0))
+    eventTwo.clear()
+    self.assertFalse(eventOne.isSet())
+
+    semOne: ProcessSemaphore = new("Local\\py2cpp-process-semaphore", 1, 2)
+    semTwo: ProcessSemaphore = new("Local\\py2cpp-process-semaphore", 0, 2)
+    self.assertTrue(semOne.created)
+    self.assertFalse(semTwo.created)
+    self.assertTrue(semTwo.acquire(blocking=False))
+    self.assertFalse(semOne.acquire(blocking=False))
+    semOne.release()
+    self.assertTrue(semTwo.acquire(blocking=False))
+    semTwo.release()
+
+    mutexOne: ProcessMutex = new("Local\\py2cpp-process-mutex")
+    mutexTwo: ProcessMutex = new("Local\\py2cpp-process-mutex")
+    self.assertTrue(mutexOne.created)
+    self.assertFalse(mutexTwo.created)
+    with mutexOne:
+      self.assertTrue(mutexTwo.acquire(blocking=False))
+      mutexTwo.release()
+
+
 class ProcessPoolTests(TestCaseMixin):
   _testTag = 20
 
@@ -85,6 +119,7 @@ suite.addTests([
   ProcessPipeTests(),
   ProcessRunTests(),
   ProcessContextTests(),
+  ProcessSynchronizationTests(),
   ProcessPoolTests(),
 ])
 TextTestRunner().run(suite)

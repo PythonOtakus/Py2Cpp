@@ -143,6 +143,8 @@ def _emit_arg_expr(pname: str, ann: _Ann, *, c_name: str) -> tuple[list[str], st
       return [], f"reinterpret_cast<double*>({pname})"
     if ann.name == "uint" and (c_name, pname) in _WIDE_CHAR_POINTER_PARAMS:
       return [], f"reinterpret_cast<const wchar_t*>({pname})"
+    if c_name == "ReleaseSemaphore" and pname == "lpPreviousCount":
+      return [], f"reinterpret_cast<LONG*>({pname})"
     return [], pname
   if ann.kind == "ptr_cstr":
     # ``CStr*`` ≈ ``const char**``；个别 API（如 ``sqlite3_exec`` errmsg）要 ``char**``

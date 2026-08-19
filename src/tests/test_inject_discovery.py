@@ -33,16 +33,16 @@ class InjectDiscoveryTests(unittest.TestCase):
     found = discover_class_header_inject_templates()
     self.assertIn(("text/str", "text/+str.h"), found)
 
-  def test_discover_util_memory_and_text_bytes(self):
+  def test_discover_text_bytes_without_removed_memory_template(self):
     found = discover_module_paste_after_templates()
-    self.assertIn(("util/memory", "util/+memory.inl", True), found)
+    self.assertNotIn(("util/memory", "util/+memory.inl", False), found)
     self.assertIn(("text/bytes", "text/+bytes.inl", False), found)
     self.assertIn(("text/str", "text/+str.inl", False), found)
     self.assertIn(("sql/sqlite", "sql/+sqlite.inl", False), found)
     self.assertIn(("ui/layout", "ui/+layout.inl", False), found)
     self.assertIn(("ui/app", "ui/+app.inl", False), found)
     self.assertIn(("ui/window", "ui/+window.inl", False), found)
-    self.assertIn(("ui/widget", "ui/+widget.inl", False), found)
+    self.assertNotIn(("ui/widget", "ui/+widget.inl", False), found)
     self.assertNotIn(("io", "+io.inl", False), found)
     self.assertIn(("web/socket", "web/+socket.inl", False), found)
     self.assertIn(("core/exceptions", "core/+exceptions.inl", False), found)

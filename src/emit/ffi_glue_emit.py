@@ -48,7 +48,10 @@ _SCALAR_CAST: dict[str, str] = {
 # the header generator, so glue performs the only required mutable cast.
 _MUTABLE_CSTR_PARAMS: frozenset[tuple[str, str]] = frozenset({
   ("fgets", "_Buffer"),
+  ("snprintf", "_Buffer"),
+  ("vsnprintf", "_Buffer"),
   ("GetEnvironmentVariableA", "lpBuffer"),
+  ("GetWindowTextA", "lpString"),
   ("FreeEnvironmentStringsA", "penv"),
   ("WideCharToMultiByte", "lpMultiByteStr"),
   ("strftime", "_Buffer"),
@@ -107,6 +110,8 @@ def _c_name(func: ast.FunctionDef) -> str:
 
 def _emit_arg_expr(pname: str, ann: _Ann, *, c_name: str) -> tuple[list[str], str]:
   if ann.kind == "cstr":
+    if c_name == "vsnprintf" and pname == "_ArgList":
+      return [], f"reinterpret_cast<va_list>(const_cast<char*>({pname}))"
     if (c_name, pname) in _MUTABLE_CSTR_PARAMS:
       return [], f"const_cast<char*>({pname})"
     return [], pname
@@ -264,6 +269,8 @@ def emit_ffi_module_glue(tr: Translator, module_path: str) -> None:
     if func.args.vararg is not None:
       call_args.append(f"{cpp_param(func.args.vararg.arg)}...")
     c_call = f"::{cnm}({', '.join(call_args)})"
+    if func.args.vararg is not None:
+      lines.append("template<typename... __Ts>")
     lines.append(f"{sig}")
     lines.append("{")
     for ln in pre:

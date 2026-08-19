@@ -13,6 +13,7 @@ from ..util.array import array
 from ..util.slice import slice
 from ..util.span import span
 from ..util.tuple import tuple
+from ffi.crt.stdio import pyiSnprintf, pyiSscanf
 from .mixins import StringMixin
 
 class StrIterator:
@@ -425,30 +426,57 @@ class str(StringMixin[char]):
     self._hashOk = other._hashOk
 
   @overload
-  @native
   def __init__(self, value: int):
-    ...
+    buf: byte[:] = new(32)
+    ptr: CStr = cast(buf.view.at())
+    pyiSnprintf(ptr, len(buf), "%d", value)
+    self.copyFromSpan(buf.view)
 
   @overload
-  @native
   def __init__(self, value: int64):
-    ...
+    buf: byte[:] = new(32)
+    ptr: CStr = cast(buf.view.at())
+    pyiSnprintf(ptr, len(buf), "%lld", value)
+    self.copyFromSpan(buf.view)
 
   @overload
-  @native
   def __init__(self, value: float):
-    ...
+    buf: byte[:] = new(64)
+    ptr: CStr = cast(buf.view.at())
+    pyiSnprintf(ptr, len(buf), "%g", value)
+    self.copyFromSpan(buf.view)
 
   @overload
-  @native
   def __init__(self, value: float64):
-    ...
+    buf: byte[:] = new(64)
+    ptr: CStr = cast(buf.view.at())
+    pyiSnprintf(ptr, len(buf), "%g", value)
+    self.copyFromSpan(buf.view)
 
   @overload
   @native
   def __init__(self, value: bool):
     ...
 
+  @immutable
+  def __int__(self) -> int:
+    buf: byte[:] = new(len(self) + 1)
+    self.copyToSpan(buf.view)
+    ptr: CStr = cast(buf.view.at())
+    value: int = 0
+    if pyiSscanf(ptr, "%d", id(value)) != 1:
+      raise ValueError
+    return value
+
+  @immutable
+  def __float__(self) -> float:
+    buf: byte[:] = new(len(self) + 1)
+    self.copyToSpan(buf.view)
+    ptr: CStr = cast(buf.view.at())
+    value: float = 0.0
+    if pyiSscanf(ptr, "%lf", id(value)) != 1:
+      raise ValueError
+    return value
   @immutable
   def __str__(self) -> Self:
     return self

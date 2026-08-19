@@ -31,7 +31,7 @@
 third_party/foo/foo.h  |  …/um/windows.h  |  …/ucrt/stdio.h
         │  ffi.bat → scripts/gen_c_ffi.py → src.tools.c_ffi_pyi（libclang）
         ▼
-ffi/foo/foo.pyi  |  ffi/windows/windows.pyi  |  ffi/crt/stdio.pyi
+ffi/foo/foo.pyi  |  ffi/windows/__init__.pyi  |  ffi/crt/stdio.pyi
         │  译器 → generated/runtime/ffi/…（glue #include <c_header>）
         ▼
 py2cpp/.../*.py + templates（组合层；禁止直导 A/B 头）
@@ -165,7 +165,7 @@ pip install clang libclang
 |----|-------------|
 | `third_party/sqlite/sqlite3.h` | `ffi/sqlite/sqlite3.pyi`（剥掉 `third_party/`） |
 | 仓库内 `path/to/foo.h` | `ffi/path/to/foo.pyi` |
-| Windows Kits `…/um/windows.h` 等 `um`/`shared`/`winrt` | `ffi/windows/<stem>.pyi`（如 `ffi/windows/windows.pyi`） |
+| Windows Kits `…/um/windows.h` 等 `um`/`shared`/`winrt` | `ffi/windows/<stem>.pyi`（如 `ffi/windows/__init__.pyi`） |
 | Windows Kits `…/ucrt/stdio.h` 等 | `ffi/crt/<stem>.pyi`（如 `ffi/crt/stdio.pyi`） |
 | `zeus/.../GLFW/glfw3.h`（`--out`） | `zeus/ffi/glfw/glfw3.pyi` |
 | Windows Kits `um/gl/GL.h`（裸名 `gl` + `--out`） | `zeus/ffi/gl/gl.pyi` |
@@ -194,7 +194,7 @@ ffi third_party\sqlite\sqlite3.h --check
 | 收集范围 | `include_deps=True`（默认非 sqlite / 非 UCRT）：主文件 + 位于 SDK/`third_party`/头目录根下的传递 include |
 | 常量 | 字面量对象宏（见 §6），非 `SQLITE_` 限定 |
 | 校验 | 通用：`funcs≥100`；`windows.h` 另要求 `MessageBoxW` / `CreateWindowExW` / `GetMessageW` 至少命中其一 |
-| 默认输出 | `ffi/windows/windows.pyi`（module_path `ffi/windows/windows`） |
+| 默认输出 | `ffi/windows/__init__.pyi`（module_path `ffi/windows`） |
 
 ```bat
 ffi windows
@@ -220,7 +220,7 @@ ffi string
 ffi math
 ```
 
-## 10. 命名污染（`ffi/windows/windows.pyi` 等大面）
+## 10. 命名污染（`ffi/windows/__init__.pyi` 等大面）
 
 **结论**：全量伞头（如约 3k 函数 + 1 万常量）**会**造成命名污染，但**仅在**接入译器且被 star-import / 摊进默认命名空间之后才生效。当前业务代码须**显式 import**，不会自动看见这些符号。
 
@@ -232,13 +232,13 @@ ffi math
 
 **定案（接入译器时须遵守）**：
 
-1. **全量 `.pyi` 是目录，不是默认导入面**；业务与标准库 **禁止** `from ffi.windows.windows import *`（及对其它巨型 FFI 面的 star-import）。
-2. **显式 import**：`import ffi.windows.windows as win` 或 `from ffi.windows.windows import pyiCreateWindowExW, PyiWmPaint`（类型 `Pyi…`、函数 `pyi…`、常量 `Pyi…`）。
-3. **C++ 命名空间隔离**：落到独立空间（`ffi::windows::windows` / `ffi::crt::stdio` / `ffi::sqlite::sqlite3` 等，**不**挂 `py2cpp::`），**不**进 `minimal.h` 默认路径。
+1. **全量 `.pyi` 是目录，不是默认导入面**；业务与标准库 **禁止** `from ffi.windows import *`（及对其它巨型 FFI 面的 star-import）。
+2. **显式 import**：`import ffi.windows as win` 或 `from ffi.windows import pyiCreateWindowExW, PyiWmPaint`（类型 `Pyi…`、函数 `pyi…`、常量 `Pyi…`）。
+3. **C++ 命名空间隔离**：落到独立空间（`ffi::windows` / `ffi::crt::stdio` / `ffi::sqlite::sqlite3` 等，**不**挂 `py2cpp::`），**不**进 `minimal.h` 默认路径。
 4. **业务零 re-export 全量**：`py2cpp/ui/...` 只拉所需叶子；用户只碰业务 API。
 5. **模块级 `Pyi`/`pyi` 前缀**统一隔离；仍依赖命名空间 + 显式 import，勿 star-import。
 
-**一般不推荐**：把全量 `ffi/windows/windows.pyi` 塞进 runtime umbrella。
+**一般不推荐**：把全量 `ffi/windows/__init__.pyi` 塞进 runtime umbrella。
 
 可选后续（非阻断）：生成器 `--allowlist` 减体积；或对可独立解析的子系统头生成 `ffi/windows/commctrl.pyi` 等。
 
@@ -264,9 +264,9 @@ ffi math
 
 | 项 | 行为 |
 |----|------|
-| Import | `from ffi.sqlite.sqlite3 import …` / `from ffi.windows.windows import …` / `from ffi.crt.stdio import …` |
+| Import | `from ffi.sqlite.sqlite3 import …` / `from ffi.windows import …` / `from ffi.crt.stdio import …` |
 | 源文件 | 仓库根 `ffi/**/*.pyi`；其次 `zeus/ffi/**/*.pyi`（同 module_path，见 `find_ffi_source_file`） |
-| module_path | `ffi/windows/windows`、`ffi/crt/stdio`、`ffi/sqlite/sqlite3` |
+| module_path | `ffi/windows`、`ffi/crt/stdio`、`ffi/sqlite/sqlite3` |
 | 生成物 | `generated/runtime/ffi/….h` + 有 C 头映射时 `.inl`（`#include "ffi/…"`） |
 | C++ 命名空间 | `ffi::…`（**不**挂 `py2cpp::`；路径段 = 命名空间段） |
 | 结构体 / 枚举 | `using PyiX = ::X`；签名 `PyiX` / `Pointer[PyiX]`；枚举成员作常量；无 `struct ::Tag` |
@@ -299,7 +299,7 @@ ffi math
 | `scripts/gen_c_ffi.py` | CLI 封装 |
 | `third_party/sqlite/sqlite3.h` | 输入（C 源仍在 `third_party/`） |
 | `ffi/sqlite/sqlite3.pyi` | sqlite 声明面（生成） |
-| `ffi/windows/windows.pyi` | Win32 伞头声明面（生成） |
+| `ffi/windows/__init__.pyi` | Win32 伞头声明面（生成） |
 | `ffi/crt/*.pyi` | UCRT 声明面（生成） |
 | `zeus/ffi/glfw/glfw3.pyi` | GLFW 声明面（`zeus\ffi.bat` 生成） |
 | `zeus/ffi/gl/gl.pyi` | OpenGL 兼容配置声明面（`zeus\ffi.bat` 生成） |

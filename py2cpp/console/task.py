@@ -4,6 +4,9 @@ from ..io import StringIO
 from ..text import str
 from ..util.list import list
 from ..util.dict import dict
+from ..util.memory import strCbuf
+from ffi.crt.stdio import pyiFgets, pyiPclose, pyiPopen
+from ffi.crt.stdlib import pyiSystem
 
 from .exceptions import TaskExitError, TaskStartError
 
@@ -61,16 +64,26 @@ class ProcessTask:
   def pid(self) -> int: ...
 
 
-@native
-@global_call("py_*")
 def consoleSystem(command: str) -> int:
-  ...
+  commandBuf: byte[:] = strCbuf(command, len(command) + 1)
+  ccommand: CStr = cast(commandBuf.view.at())
+  return pyiSystem(ccommand)
 
 
-@native
-@global_call("py_*")
 def consolePopenRead(command: str) -> str:
-  ...
+  commandBuf: byte[:] = strCbuf(command, len(command) + 1)
+  ccommand: CStr = cast(commandBuf.view.at())
+  stream = pyiPopen(ccommand, "r")
+  if stream is None:
+    raise OSError()
+  out: str = ""
+  buf: byte[:] = new(4096)
+  raw: Pointer[byte] = buf.view.at()
+  cbuf: CStr = cast(raw)
+  while pyiFgets(cbuf, len(buf), stream) is not None:
+    out += str(raw)
+  pyiPclose(stream)
+  return out
 
 
 class Console:

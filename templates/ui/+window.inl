@@ -11,7 +11,7 @@ PY2CPP_END
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include "ffi/windows/windows.h"
+#include "ffi/windows.h"
 #include "ffi/windows/commctrl.h"
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "gdi32.lib")
@@ -65,25 +65,64 @@ static void _ui_theme_delete_gdi()
   }
 }
 
+static void _ui_copy_cstr(char* dst, PyInt cap, const char* src)
+{
+  if ((!dst) || cap <= 0)
+  {
+    return;
+  }
+  PyInt i = 0;
+  if (src)
+  {
+    while ((i + 1 < cap) && src[i])
+    {
+      dst[i] = src[i];
+      i += 1;
+    }
+  }
+  dst[i] = '\0';
+}
+
+static PyBool _ui_cstr_equal(const char* lhs, const char* rhs)
+{
+  if (lhs == rhs)
+  {
+    return true;
+  }
+  if ((!lhs) || (!rhs))
+  {
+    return false;
+  }
+  for (PyInt i = 0; ; i += 1)
+  {
+    if (lhs[i] != rhs[i])
+    {
+      return false;
+    }
+    if (!lhs[i])
+    {
+      return true;
+    }
+  }
+}
 static void _ui_theme_ensure_font(const py2cpp::ui::style::PyUIStyle& style)
 {
   if (_ui_theme_font)
   {
     return;
   }
-  char face[LF_FACESIZE];
+  char face[LF_FACESIZE] = {};
   style.fontName.copyToSpan(PySpan<PyByte>((PyByte*)face, (PyInt)sizeof(face), 1));
   if (!face[0])
   {
-    strncpy(face, "Segoe UI", (sizeof(face) - 1));
+    _ui_copy_cstr(face, (PyInt)sizeof(face), "Segoe UI");
   }
-  LOGFONTA lf;
-  memset(&lf, 0, sizeof(lf));
+  LOGFONTA lf = {};
   lf.lfHeight = -MulDiv(style.fontSize, _ui_theme_dpi, 96);
   lf.lfWeight = FW_NORMAL;
   lf.lfCharSet = DEFAULT_CHARSET;
   lf.lfQuality = CLEARTYPE_QUALITY;
-  strncpy(lf.lfFaceName, face, (sizeof(lf.lfFaceName) - 1));
+  _ui_copy_cstr(lf.lfFaceName, (PyInt)sizeof(lf.lfFaceName), face);
   _ui_theme_font = CreateFontIndirectA(&lf);
 }
 
@@ -269,7 +308,7 @@ HBRUSH ui_theme_on_ctl_color_static(HDC hdc, HWND ctrl)
   {
     char cls[64];
     if ((GetClassNameA(ctrl, cls, (int)sizeof(cls)) > 0)
-        && (strcmp(cls, "msctls_trackbar32") == 0))
+        && _ui_cstr_equal(cls, "msctls_trackbar32"))
         {
       return NULL;
     }
@@ -416,8 +455,7 @@ static void _ui_ensure_class()
     return;
   }
   ui_theme_ensure_process();
-  WNDCLASSA wc;
-  memset(&wc, 0, sizeof(wc));
+  WNDCLASSA wc = {};
   wc.lpfnWndProc = _ui_panel_wndproc;
   wc.hInstance = GetModuleHandleA(NULL);
   wc.lpszClassName = _ui_panel_class;

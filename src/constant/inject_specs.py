@@ -18,9 +18,6 @@ CLASS_PASTE_MODULE_REL: dict[str, str] = {
   "PyDelegate": "core/delegate",
 }
 
-# ``paste_after`` 写入模块 ``.inl`` 且套 namespace（非 ``inl_target`` 尾追加）。
-PASTE_AFTER_IN_MODULE_MODULES = frozenset({"util/memory"})
-
 # 这些 ``+*.inl`` 改注入模块 ``.h``（库 TU 跳过非模板 ``.inl`` 时仍须可见）。
 PASTE_AFTER_TO_HEADER_MODULE_RELS = frozenset({"text/bytes"})
 
@@ -36,8 +33,6 @@ CODEGEN_STANDALONE_TEMPLATE_RELS: frozenset[str] = frozenset({
   "debug.inl",
   "minimal.h",
   "core/exception_group_fallback.inl",
-  "text/+str_operator_pyint.inl",
-  "text/+str_operator_pyfloat.inl",
 })
 
 # 兼容旧名（paste 发现等仍 import 此符号）

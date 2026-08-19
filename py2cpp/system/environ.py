@@ -1,15 +1,15 @@
 """进程环境变量（对齐 Python 3.13 ``os.environ`` / ``ntpath.expandVars`` / ``expandUser``）。
 
-``Environ`` 映射经 ``ffi.windows.windows`` 读写 OS 环境块。**不**暴露 ``putenv`` / ``getenv`` 模块函数。
+``Environ`` 映射经 ``ffi.windows`` 读写 OS 环境块。**不**暴露 ``putenv`` / ``getenv`` 模块函数。
 """
 from ..builtins import *
 from ..core.exceptions import KeyError, OSError
 from ..io.file.path import baseName, dirName, join
 from ..util.list import list
 from ..text import str
-from ..util.cbuf import cstrSlice, strCbuf
+from ..util.memory import cstrSlice, strCbuf
 
-from ffi.windows.windows import (
+from ffi.windows import (
   PyiErrorEnvvarNotFound,
   pyiFreeEnvironmentStringsA,
   pyiGetEnvironmentStrings,

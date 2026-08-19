@@ -2,7 +2,10 @@
 #include <type_traits>
 
 inline void _py2cpp_debug_call(const char* site) {
-  fprintf(stderr, "[py2cpp] %s\n", site);
+  ::ffi::crt::stdio::PyiIobuf* err = ::ffi::crt::stdio::pyiAcrtIobFunc(2);
+  ::ffi::crt::stdio::pyiFputs("[py2cpp] ", err);
+  ::ffi::crt::stdio::pyiFputs(site, err);
+  ::ffi::crt::stdio::pyiFputs("\n", err);
 }
 
 template<typename T>

@@ -50,7 +50,7 @@ class TemplateModuleBindingsTests(unittest.TestCase):
 
   def test_rejects_orphan_mirror(self):
     rels = set(STDLIB_REL_PATH_SET)
-    rels.discard("util/memory")
+    rels.discard("text/bytes")
     with self.assertRaises(ValueError):
       validate_template_module_bindings(stdlib_rel_paths=frozenset(rels))
 

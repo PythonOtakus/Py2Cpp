@@ -11,7 +11,7 @@ PY2CPP_END
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include "ffi/windows/windows.h"
+#include "ffi/windows.h"
 #include "ffi/windows/objidl.h"
 #include "ffi/windows/gdiplus.h"
 #pragma comment(lib, "gdiplus.lib")
@@ -96,8 +96,7 @@ static COLORREF _ui_canvas_rgb(PyInt r, PyInt g, PyInt b)
 
 static HFONT _ui_canvas_make_font(const PyStr& name, PyInt size, PyBool bold)
 {
-  LOGFONTA lf;
-  memset(&lf, 0, sizeof(lf));
+  LOGFONTA lf = {};
   lf.lfHeight = -size;
   lf.lfWeight = bold ? FW_BOLD : FW_NORMAL;
   lf.lfCharSet = DEFAULT_CHARSET;
@@ -115,8 +114,7 @@ static void _ui_canvas_ensure_class()
   {
     return;
   }
-  WNDCLASSA wc;
-  memset(&wc, 0, sizeof(wc));
+  WNDCLASSA wc = {};
   wc.lpfnWndProc = _ui_canvas_wndproc;
   wc.hInstance = GetModuleHandleA(NULL);
   wc.lpszClassName = _ui_canvas_class;

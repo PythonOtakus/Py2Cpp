@@ -5,10 +5,13 @@ from py2cpp.util.memory import (
   appendChars,
   copyBuf,
   copyBufRef,
+  cstrLen,
+  cstrSlice,
   loadU64Le,
   loadU64LeBytes,
   loadU64LeBytesRef,
   loadU64LeRef,
+  strCbuf,
 )
 
 
@@ -26,6 +29,18 @@ class MemoryAppendCharsTests(TestCaseMixin):
     at: int = appendChars(dst, 1, src, 3)
     self.assertEqual(at, 4)
     self.assertEqual(str.fromBuf(dst, 4), "xabc")
+
+
+class MemoryCstrTests(TestCaseMixin):
+  _testTag = 7
+
+  @override
+  def test(self):
+    buf: byte[:] = strCbuf("abc", 8)
+    p: CStr = buf.view.at(0)
+    self.assertEqual(cstrLen(p), 3)
+    self.assertEqual(cstrSlice(p, 0, 3), "abc")
+    self.assertEqual(cstrSlice(p, 3, 0), "")
 
 
 class MemoryLeafCopySegTests(TestCaseMixin):

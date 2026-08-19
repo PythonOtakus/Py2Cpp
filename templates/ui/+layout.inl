@@ -15,7 +15,7 @@ PY2CPP_END
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include "ffi/windows/windows.h"
+#include "ffi/windows.h"
 #include "ffi/windows/commctrl.h"
 
 namespace py2cpp {
@@ -335,13 +335,13 @@ static void _ui_row_sync_from_native(UIRowEntry& row)
     case UI_ROW_INT_EDIT: {
       char buf[32];
       _ui_read_edit_text(row.ctrl, buf, (int)sizeof(buf));
-      row.ival = (PyInt)atoi(buf);
+      row.ival = (PyInt)::ffi::crt::stdlib::pyiAtoi(buf);
       break;
     }
     case UI_ROW_FLOAT_EDIT: {
       char buf[64];
       _ui_read_edit_text(row.ctrl, buf, (int)sizeof(buf));
-      row.fval = (PyFloat64)atof(buf);
+      row.fval = (PyFloat64)::ffi::crt::stdlib::pyiAtof(buf);
       break;
     }
     case UI_ROW_SLIDER: {
@@ -378,13 +378,13 @@ static void _ui_row_sync_to_native(UIRowEntry& row)
     }
     case UI_ROW_INT_EDIT: {
       char vbuf[32];
-      snprintf(vbuf, sizeof(vbuf), "%d", (int)row.ival);
+      ::ffi::crt::stdio::pyiSnprintf(vbuf, sizeof(vbuf), "%d", (int)row.ival);
       SetWindowTextA(row.ctrl, vbuf);
       break;
     }
     case UI_ROW_FLOAT_EDIT: {
       char vbuf[64];
-      snprintf(vbuf, sizeof(vbuf), "%.6g", (double)row.fval);
+      ::ffi::crt::stdio::pyiSnprintf(vbuf, sizeof(vbuf), "%.6g", (double)row.fval);
       SetWindowTextA(row.ctrl, vbuf);
       break;
     }
@@ -475,7 +475,7 @@ static void _ui_mount_row(py2cpp::ui::window::PyUIWindow& win, UIRowEntry& row)
       py2cpp::ui::window::ui_theme_layout_metrics(
           win, NULL, NULL, NULL, NULL, NULL, &edit_w, &edit_h, NULL, NULL);
       char vbuf[32];
-      snprintf(vbuf, sizeof(vbuf), "%d", (int)row.ival);
+      ::ffi::crt::stdio::pyiSnprintf(vbuf, sizeof(vbuf), "%d", (int)row.ival);
       row.ctrl = _ui_create_edit(parent, vbuf, edit_w, edit_h);
       _ui_layout_row(win, row.label, row.ctrl, edit_w, edit_h);
       _ui_row_mount_widget_handle(row);
@@ -487,7 +487,7 @@ static void _ui_mount_row(py2cpp::ui::window::PyUIWindow& win, UIRowEntry& row)
       py2cpp::ui::window::ui_theme_layout_metrics(
           win, NULL, NULL, NULL, NULL, NULL, &edit_w, &edit_h, NULL, NULL);
       char vbuf[64];
-      snprintf(vbuf, sizeof(vbuf), "%.6g", (double)row.fval);
+      ::ffi::crt::stdio::pyiSnprintf(vbuf, sizeof(vbuf), "%.6g", (double)row.fval);
       row.ctrl = _ui_create_edit(parent, vbuf, edit_w, edit_h);
       _ui_layout_row(win, row.label, row.ctrl, edit_w, edit_h);
       _ui_row_mount_widget_handle(row);

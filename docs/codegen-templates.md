@@ -365,7 +365,7 @@ else
 2. **`~` 前缀（仅 INCLUDE）**：文件名以 `~` 开头（如 `templates/~helpers.inl`、`templates/sql/~bind.inl`）**不**单独生成对应 `generated/` 文件，**仅供** `PY2CPP_INCLUDE` 在构建期展开并内联进父模板输出。
    - **codegen 完整实现**（``operators.h``、``char.h``、``member_access.h`` 等）：登记在 ``inject_specs.CODEGEN_STANDALONE_TEMPLATE_RELS``（**无** ``+`` 前缀、无 ``py2cpp/<rel>.py``、不参与 mirror/paste）；由 ``layout_emit`` 等 ``expand_template`` 直接写盘。
    - **`+` 前缀（inject 片段）**：文件名须为 **单扩展名** ``+<stem>.inl`` 或 ``+<stem>.h``（排除 ``+stem.inl.h`` 等）。**不**镜像落盘；推断规则：父目录 + ``+`` 后 stem → 模块 rel（``util/+memory.inl`` → ``util/memory``）。分两条路径（详见 [§8.3](#83-注入模板命名与路径定案)）：
-   - **`+<stem>.inl`（paste_after）**：``discover_module_paste_after_templates`` → 译期 paste 进对应模块 ``.inl`` 尾部（或 ``PASTE_AFTER_IN_MODULE_MODULES`` 内模块套 namespace 写入）。
+   - **`+<stem>.inl`（paste_after）**：``discover_module_paste_after_templates`` → 译期 paste 进对应模块 ``.inl`` 尾部。
    - **`+<stem>.h`（类头 inject）**：``discover_class_header_inject_templates`` → ``PY2CPP_INJECT_CLASS`` 块展开后注入 **同名** ``generated/.../<stem>.h`` 类体尾部。
    - **codegen 专用 ``+*.inl``**：登记在 ``inject_specs.CODEGEN_INJECT_TEMPLATE_RELS``（无 ``py2cpp/<rel>.py``、不参与 paste_after）；由 ``templates/**`` 直接 ``expand_template`` 拼进聚合产物（如 ``operators.inl``）。
    **须**在 ``py2cpp/`` 存在同名模块（codegen 专用条目除外）。paste 段 ``using namespace`` 与 ``BEGIN_SCOPE`` 规则见下。

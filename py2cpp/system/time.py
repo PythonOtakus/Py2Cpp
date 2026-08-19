@@ -1,7 +1,7 @@
 """``time``：时钟、``CTime`` 与格式化（对齐 Python 3.13 ``time`` 子集）。
 
 参考 [time — Time access and conversions](https://docs.python.org/3.13/library/time.html)
-与 ``Modules/timemodule.c``。超越函数与 OS 时钟经 ``ffi.crt.time`` / ``ffi.windows.windows``；
+与 ``Modules/timemodule.c``。超越函数与 OS 时钟经 ``ffi.crt.time`` / ``ffi.windows``；
 ``strptime`` / ``ascTime`` / ``ctime`` 在 Python 侧（``strptime`` 为受支持格式码子集）。
 
 **无** ``tzset`` / ``zoneinfo`` / ``*_ns``。
@@ -9,11 +9,10 @@
 from ..builtins import *
 from ..core.exceptions import ValueError
 from ..text import str
-from ..util.cbuf import cstrSlice, strCbuf
-from ..util.memory import loadU64LeAtAddress
+from ..util.memory import cstrSlice, loadU64LeAtAddress, strCbuf
 from ffi.crt.time import PyiTm, pyiGmtime64S, pyiLocaltime64S, pyiMktime64, pyiStrftime, pyiTime64
-from ffi.windows.windows import PyiFiletime, PyiLargeInteger
-import ffi.windows.windows as win32
+from ffi.windows import PyiFiletime, PyiLargeInteger
+import ffi.windows as win32
 
 
 @immutable

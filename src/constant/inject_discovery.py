@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .inject_specs import CODEGEN_INJECT_TEMPLATE_RELS, PASTE_AFTER_IN_MODULE_MODULES
+from .inject_specs import CODEGEN_INJECT_TEMPLATE_RELS
 from .template_module_bindings import (
   _inject_skip_template_rel,
   _is_class_header_inject_template_name,
@@ -32,7 +32,7 @@ def discover_module_paste_after_templates() -> tuple[tuple[str, str, bool], ...]
     ):
       continue
     module_rel = module_rel_from_inject_template(rel)
-    in_module = module_rel in PASTE_AFTER_IN_MODULE_MODULES
+    in_module = False
     out.append((module_rel, rel, in_module))
   return tuple(out)
 

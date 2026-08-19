@@ -1,6 +1,6 @@
 
 #include "ffi/crt/stdio.h"
-#include <cmath>
+#include "ffi/crt/math.h"
 #include "ffi/crt/string.h"
 #include <cstdint>
 #ifdef _WIN32
@@ -71,7 +71,7 @@ inline PyInt __mod__(PyInt a, PyInt b)
 
 inline PyFloat __mod__(PyFloat a, PyFloat b)
 {
-  double q = floor((double)a / (double)b);
+  double q = ::ffi::crt::math::pyiFloor((double)a / (double)b);
   return (PyFloat)((double)a - q * (double)b);
 }
 
@@ -112,7 +112,7 @@ inline PyInt __floordiv__(PyInt a, PyInt b)
 
 inline PyFloat __floordiv__(PyFloat a, PyFloat b)
 {
-  return (PyFloat)floor((double)a / (double)b);
+  return (PyFloat)::ffi::crt::math::pyiFloor((double)a / (double)b);
 }
 
 inline PyFloat __floordiv__(PyInt a, PyFloat b)
@@ -245,7 +245,7 @@ inline PyInt _py_pow_int(PyInt base, PyInt exp)
 
 inline PyFloat _py_pow_float(PyFloat base, PyFloat exp)
 {
-  return (PyFloat)::pow((double)base, (double)exp);
+  return (PyFloat)::ffi::crt::math::pyiPow((double)base, (double)exp);
 }
 
 namespace py2cpp {
@@ -334,16 +334,12 @@ inline PyInt pow(PyInt base, PyInt exp, PyInt mod)
 
 inline PY2CPP_TYPE(PyStr) repr(PyInt v)
 {
-  char buf[64];
-  snprintf(buf, sizeof(buf), "%d", v);
-  return PY2CPP_TYPE(PyStr)(buf);
+  return PY2CPP_TYPE(PyStr)(v);
 }
 
 inline PY2CPP_TYPE(PyStr) repr(PyFloat v)
 {
-  char buf[64];
-  snprintf(buf, sizeof(buf), "%g", v);
-  return PY2CPP_TYPE(PyStr)(buf);
+  return PY2CPP_TYPE(PyStr)(v);
 }
 
 inline PY2CPP_TYPE(PyStr) repr(PyBool v)
@@ -372,14 +368,18 @@ static void str_format_printf_spec(CStr spec, char* buf, size_t cap)
   {
     return;
   }
-  if (spec[0] == '%')
+  PyInt at = 0;
+  if (spec[0] != '%')
   {
-    snprintf(buf, cap, "%s", spec);
+    buf[at] = '%';
+    at += 1;
   }
-  else
+  for (PyInt i = 0; at + 1 < (PyInt)cap && spec[i]; i += 1)
   {
-    snprintf(buf, cap, "%%%s", spec);
+    buf[at] = spec[i];
+    at += 1;
   }
+  buf[at] = '\0';
 }
 
 inline PY2CPP_TYPE(PyStr) format(PyInt v, CStr format_spec)
@@ -445,7 +445,7 @@ static PyBool _py_input_write_prompt(const PY2CPP_TYPE(PyStr)& prompt)
   {
     if (at >= (int)sizeof(stack))
     {
-      if (fwrite(stack, 1, (size_t)at, stdout) != (size_t)at)
+      if (::ffi::crt::stdio::pyiFwrite((PyUPtr)(uintptr_t)stack, 1, (PyUInt64)at, stdout) != (size_t)at)
       {
         return false;
       }
@@ -454,7 +454,7 @@ static PyBool _py_input_write_prompt(const PY2CPP_TYPE(PyStr)& prompt)
     stack[at] = (char)prompt.__getitem__(i);
     at += 1;
   }
-  if (at > 0 && fwrite(stack, 1, (size_t)at, stdout) != (size_t)at)
+  if (at > 0 && ::ffi::crt::stdio::pyiFwrite((PyUPtr)(uintptr_t)stack, 1, (PyUInt64)at, stdout) != (size_t)at)
   {
     return false;
   }
@@ -540,7 +540,7 @@ static PyBool _py_input_try_console(PY2CPP_TYPE(PyStr)& out)
 inline PY2CPP_TYPE(PyStr) py_input(const PY2CPP_TYPE(PyStr)& prompt)
 {
   (void)_py_input_write_prompt(prompt);
-  fflush(stdout);
+  ::ffi::crt::stdio::pyiFflush(stdout);
 
 #ifdef _WIN32
   PY2CPP_TYPE(PyStr) console_out;
@@ -555,7 +555,7 @@ inline PY2CPP_TYPE(PyStr) py_input(const PY2CPP_TYPE(PyStr)& prompt)
   PyInt total = 0;
   while (true)
   {
-    if (fgets(stack, (int)sizeof(stack), stdin) == nullptr)
+    if (::ffi::crt::stdio::pyiFgets(stack, (PyInt)sizeof(stack), stdin) == nullptr)
     {
       if (total <= 0)
       {
@@ -563,7 +563,7 @@ inline PY2CPP_TYPE(PyStr) py_input(const PY2CPP_TYPE(PyStr)& prompt)
       }
       break;
     }
-    int n = (int)strlen(stack);
+    int n = (int)::ffi::crt::string::pyiStrlen(stack);
     PyBool done = false;
     if (n > 0 && stack[n - 1] == '\n')
     {
@@ -681,7 +681,7 @@ template<typename T>
 inline T py_input_typed(const PY2CPP_TYPE(PyStr)& prompt)
 {
   (void)_py_input_write_prompt(prompt);
-  fflush(stdout);
+  ::ffi::crt::stdio::pyiFflush(stdout);
   return _py_input_scan_value<T>();
 }
 
@@ -748,7 +748,7 @@ inline PyInt64 __mod__(PyInt64 a, PyInt b) {
 }
 
 inline PyFloat64 __mod__(PyFloat64 a, PyFloat64 b) {
-  double q = floor(a / b);
+  double q = ::ffi::crt::math::pyiFloor(a / b);
   return (PyFloat64)(a - q * b);
 }
 
@@ -797,15 +797,15 @@ inline PyInt64 __floordiv__(PyInt64 a, PyInt b) {
 }
 
 inline PyFloat64 __floordiv__(PyFloat64 a, PyFloat64 b) {
-  return (PyFloat64)floor(a / b);
+  return (PyFloat64)::ffi::crt::math::pyiFloor(a / b);
 }
 
 inline PyFloat64 __floordiv__(PyFloat a, PyFloat64 b) {
-  return (PyFloat64)floor((PyFloat64)a / b);
+  return (PyFloat64)::ffi::crt::math::pyiFloor((PyFloat64)a / b);
 }
 
 inline PyFloat64 __floordiv__(PyFloat64 a, PyFloat b) {
-  return (PyFloat64)floor(a / (PyFloat64)b);
+  return (PyFloat64)::ffi::crt::math::pyiFloor(a / (PyFloat64)b);
 }
 
 inline PyInt64 __pow__(PyInt64 base, PyInt64 exp) {
@@ -820,31 +820,29 @@ inline PyInt64 __pow__(PyInt64 base, PyInt64 exp) {
 }
 
 inline PyFloat64 __pow__(PyFloat64 base, PyFloat64 exp) {
-  return (PyFloat64)pow(base, exp);
+  return (PyFloat64)::ffi::crt::math::pyiPow(base, exp);
 }
 
 inline PyFloat64 __pow__(PyInt64 base, PyFloat64 exp) {
-  return (PyFloat64)pow((double)base, exp);
+  return (PyFloat64)::ffi::crt::math::pyiPow((double)base, exp);
 }
 
 inline PyFloat64 __pow__(PyFloat64 base, PyInt64 exp) {
-  return (PyFloat64)pow(base, (double)exp);
+  return (PyFloat64)::ffi::crt::math::pyiPow(base, (double)exp);
 }
 
 inline PyInt64 hash(PyInt64 v) {
   return v;
 }
 
-inline PY2CPP_TYPE(PyStr) repr(PyInt64 v) {
-  char buf[32];
-  snprintf(buf, sizeof(buf), "%lld", (long long)v);
-  return PY2CPP_TYPE(PyStr)(buf);
+inline PY2CPP_TYPE(PyStr) repr(PyInt64 v)
+{
+  return PY2CPP_TYPE(PyStr)(v);
 }
 
-inline PY2CPP_TYPE(PyStr) repr(PyFloat64 v) {
-  char buf[64];
-  snprintf(buf, sizeof(buf), "%g", v);
-  return PY2CPP_TYPE(PyStr)(buf);
+inline PY2CPP_TYPE(PyStr) repr(PyFloat64 v)
+{
+  return PY2CPP_TYPE(PyStr)(v);
 }
 
 inline PY2CPP_TYPE(PyStr) format(PyInt64 v, CStr format_spec) {

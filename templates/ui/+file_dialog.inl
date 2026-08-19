@@ -6,20 +6,18 @@ PY2CPP_END
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include "ffi/windows/windows.h"
+#include "ffi/windows.h"
 #include "ffi/windows/commdlg.h"
 #pragma comment(lib, "comdlg32.lib")
 
 static PyStr _ui_pick_file(PyBool save, PyStr title, PyStr default_name)
 {
-  char path[MAX_PATH];
-  memset(path, 0, sizeof(path));
+  char path[MAX_PATH] = {};
   if (save && default_name.__len__() > 0)
   {
     default_name.copyToSpan(PySpan<PyByte>((PyByte*)path, (PyInt)sizeof(path), 1));
   }
-  OPENFILENAMEA ofn;
-  memset(&ofn, 0, sizeof(ofn));
+  OPENFILENAMEA ofn = {};
   ofn.lStructSize = sizeof(ofn);
   ofn.hwndOwner = NULL;
   ofn.lpstrFilter = "Flow JSON (*.flow.json)\0*.flow.json\0All (*.*)\0*.*\0";

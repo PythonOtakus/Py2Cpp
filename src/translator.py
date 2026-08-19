@@ -3172,7 +3172,7 @@ class Translator(ast.NodeVisitor):
         return self.runtime_output_dir / f'{module_path}{suffix}'
 
     def _ffi_artifact_path(self, module_path: str, suffix: str) -> Path:
-        """``ffi/windows/windows`` + ``.h`` → ``<runtime>/ffi/windows/windows.h``（与 ``py2cpp/`` 并列）。"""
+        """``ffi/windows`` + ``.h`` → ``<runtime>/ffi/windows.h``（与 ``py2cpp/`` 并列）。"""
         return self.runtime_output_dir / f'{ffi_runtime_module_path(module_path)}{suffix}'
 
     def _can_write_ffi_artifact(self, module_path: str) -> bool:
@@ -3214,10 +3214,12 @@ class Translator(ast.NodeVisitor):
         # generated `.pyi` may re-export thousands of dependency symbols, none
         # of which may leak into this header or require their own FFI surface.
         if ffi_symbols is None:
+            seen_import_symbols: set[str] = set()
             for u in self.module_import_usings.get(module_path, []):
                 if u.kind == 'namespace':
                     self.write_line(using_namespace_line(u.qualifier))
-                elif u.symbol:
+                elif u.symbol and u.symbol not in seen_import_symbols:
+                    seen_import_symbols.add(u.symbol)
                     self.write_line(using_symbol_line(u.qualifier, u.symbol))
             self._emit_runtime_header_usings(module_path)
         if not self._is_stdlib_module(module_path) and module_path == self.entry_module_path and any((self._is_stdlib_module(mp) for mp in self.module_order)):
@@ -3249,7 +3251,15 @@ class Translator(ast.NodeVisitor):
         from .analysis.header_usings import usings_for_headers
         ma = self.module_analysis.get(module_path)
         seen: set[str] = set()
+        seen_symbols: set[str] = set()
         out: list[str] = []
+        for u in self.module_import_usings.get(module_path, []):
+            if not u.symbol or u.symbol in seen_symbols:
+                continue
+            line = using_symbol_line(u.qualifier, u.symbol)
+            seen.add(line)
+            seen_symbols.add(u.symbol)
+            out.append(f'  {line}')
         if ma:
             headers = list(ma.includes) + list(ma.post_class_includes)
             ffi_symbol_filters = [
@@ -3263,8 +3273,9 @@ class Translator(ast.NodeVisitor):
                 if module_path == _ITER_RESULT_MODULE and ns == 'py2cpp::text::str' and sym != 'PyStr':
                     continue
                 line = using_symbol_line(ns, sym)
-                if line not in seen:
+                if line not in seen and sym not in seen_symbols:
                     seen.add(line)
+                    seen_symbols.add(sym)
                     out.append(f'  {line}')
         if self._is_stdlib_module(module_path) and (not inl_namespace_segments(module_path)) and (module_path != RUNTIME_PKG):
             q = namespace_qualifier_for_module(module_path)
@@ -3288,10 +3299,16 @@ class Translator(ast.NodeVisitor):
         headers = list(ma.includes)
         pystr_forward_only = module_path in frozenset((_stdlib_mp(m) for m in PYSTR_FORWARD_ONLY_MODULES))
         seen: set[str] = set()
+        seen_symbols: set[str] = {
+            u.symbol
+            for u in self.module_import_usings.get(module_path, [])
+            if u.symbol
+        }
         if pystr_forward_only and any(('namespace str' in d for d in ma.forward_decls)):
             if module_path != _ITER_RESULT_MODULE:
                 line = using_symbol_line('py2cpp::text::str', 'PyStr')
                 seen.add(line)
+                seen_symbols.add("PyStr")
                 self.write_line(line)
         if not pystr_forward_only and any(('namespace str' in d for d in ma.forward_decls)):
             h = stdlib_header_include('text/str')
@@ -3311,8 +3328,9 @@ class Translator(ast.NodeVisitor):
             if any((symbols is not None and sym not in symbols for symbols in ffi_symbol_filters)):
                 continue
             line = using_symbol_line(ns, sym)
-            if line not in seen:
+            if line not in seen and sym not in seen_symbols:
                 seen.add(line)
+                seen_symbols.add(sym)
                 self.write_line(line)
 
     def _register_nested_classes(self, info: ClassInfo) -> None:

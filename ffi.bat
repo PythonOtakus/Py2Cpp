@@ -10,7 +10,7 @@ if "%~1"=="" (
   echo   ffi third_party\sqlite\sqlite3.h
   echo   ffi third_party\sqlite\sqlite3.h --check
   echo.
-  echo Defaults: windows -^> ffi\windows\windows.pyi ; CRT -^> ffi\crt\^<stem^>.pyi
+  echo Defaults: windows -^> ffi\windows\__init__.pyi ; CRT -^> ffi\crt\^<stem^>.pyi
   echo Options: --out PATH  --check  --include-deps / --no-include-deps  --clang-arg ARG
   echo See docs\c-ffi-pyi.md
   exit /b 1

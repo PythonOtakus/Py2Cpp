@@ -193,9 +193,9 @@ namespace py2cpp_concur_task_detail
     using LH = py2cpp::concur::task::PyLoopHandle;
     task_coro_bridge<G> bridge(gen);
     PyRefCount<py2cpp::concur::task::_PySlotBase> slot =
-      makeRefCount<py2cpp::concur::task::_CoroSlot<RT>>(
+      makeRefCount<py2cpp::concur::task::_PyCoroSlot<RT>>(
         makeCoroutine<LH, PY2CPP_TYPE(PyNone), RT>(bridge));
-    (*slot).kind = TASK_CORO;
+    (*slot).kind = py2cpp::concur::task::TaskCoro;
     return slot;
   }
 
@@ -224,8 +224,8 @@ namespace py2cpp_concur_task_detail
     const PyRefCount<py2cpp::concur::task::_PySlotBase>& slot)
   {
     using RT = typename G::ReturnType;
-    const py2cpp::concur::task::_CoroSlot<RT>& coro_slot =
-      static_cast<const py2cpp::concur::task::_CoroSlot<RT>&>(*slot);
+    const py2cpp::concur::task::_PyCoroSlot<RT>& coro_slot =
+      static_cast<const py2cpp::concur::task::_PyCoroSlot<RT>&>(*slot);
     return SlotResultCopy<RT>::apply(coro_slot.PY2CPP_GETTER(result)());
   }
 }
@@ -236,7 +236,7 @@ py2cpp::concur::task::PyTask<typename Coro::ReturnType>
 py2cpp::concur::task::PyTask<_Value>::create(Coro coro)
 {
   using R = typename Coro::ReturnType;
-  py2cpp::concur::task::Scheduler& sched =
+  py2cpp::concur::task::PyScheduler& sched =
     py2cpp::concur::task::_requireScheduler();
   PyRefCount<py2cpp::concur::task::_PySlotBase> slot =
     py2cpp_concur_task_detail::make_coro_slot_from_gen(coro);

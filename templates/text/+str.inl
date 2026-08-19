@@ -98,50 +98,11 @@ PyStr PyStr::percent_format(CStr fmt, ...)
   char buf[512];
   va_list ap;
   va_start(ap, fmt);
-  vsnprintf(buf, sizeof(buf), fmt, ap);
+  ::ffi::crt::stdio::pyiVsnprintf(buf, sizeof(buf), fmt, reinterpret_cast<CStr>(ap));
   va_end(ap);
   return PyStr(buf);
 }
 
-PyStr::PyStr(PyInt value)
-{
-  char buf[32];
-  snprintf(buf, sizeof(buf), "%d", (int)value);
-  PyStr tmp((CStr)buf);
-  (this->_data).__move__(tmp._data);
-  this->_hash = tmp._hash;
-  this->_hashOk = tmp._hashOk;
-}
-
-PyStr::PyStr(PyInt64 value)
-{
-  char buf[32];
-  snprintf(buf, sizeof(buf), "%lld", (long long)value);
-  PyStr tmp((CStr)buf);
-  (this->_data).__move__(tmp._data);
-  this->_hash = tmp._hash;
-  this->_hashOk = tmp._hashOk;
-}
-
-PyStr::PyStr(PyFloat value)
-{
-  char buf[64];
-  snprintf(buf, sizeof(buf), "%g", (double)value);
-  PyStr tmp((CStr)buf);
-  (this->_data).__move__(tmp._data);
-  this->_hash = tmp._hash;
-  this->_hashOk = tmp._hashOk;
-}
-
-PyStr::PyStr(PyFloat64 value)
-{
-  char buf[64];
-  snprintf(buf, sizeof(buf), "%g", (double)value);
-  PyStr tmp((CStr)buf);
-  (this->_data).__move__(tmp._data);
-  this->_hash = tmp._hash;
-  this->_hashOk = tmp._hashOk;
-}
 
 PyStr::PyStr(PyBool value)
 {

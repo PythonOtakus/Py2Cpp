@@ -50,13 +50,13 @@ class TestFfiStructUsing(unittest.TestCase):
 
 class TestFfiLayout(unittest.TestCase):
   def test_paths(self) -> None:
-    self.assertTrue(is_ffi_module_path("ffi/windows/windows"))
+    self.assertTrue(is_ffi_module_path("ffi/windows"))
     self.assertTrue(is_ffi_module_path("ffi/crt/stdio"))
     self.assertTrue(is_ffi_module_path("ffi/sqlite/sqlite3"))
     self.assertFalse(is_ffi_module_path("py2cpp/ffi/windows"))
     self.assertEqual(
-      absolute_dotted_to_module_path("ffi.windows.windows"),
-      "ffi/windows/windows",
+      absolute_dotted_to_module_path("ffi.windows"),
+      "ffi/windows",
     )
     self.assertEqual(
       absolute_dotted_to_module_path("ffi.crt.stdio"),
@@ -67,12 +67,12 @@ class TestFfiLayout(unittest.TestCase):
       "ffi/sqlite/sqlite3",
     )
     self.assertEqual(
-      ffi_header_include("ffi/windows/windows"),
-      "ffi/windows/windows.h",
+      ffi_header_include("ffi/windows"),
+      "ffi/windows.h",
     )
     self.assertEqual(
-      namespace_qualifier_for_module("ffi/windows/windows"),
-      "ffi::windows::windows",
+      namespace_qualifier_for_module("ffi/windows"),
+      "ffi::windows",
     )
     self.assertEqual(
       namespace_qualifier_for_module("ffi/crt/stdio"),
@@ -93,10 +93,10 @@ class TestFfiLayout(unittest.TestCase):
     assert p is not None
     self.assertEqual(p, FFI_ROOT / "sqlite" / "sqlite3.pyi")
     self.assertTrue(p.is_file())
-    win = find_ffi_source_file("ffi/windows/windows", project_root=_REPO_ROOT)
+    win = find_ffi_source_file("ffi/windows", project_root=_REPO_ROOT)
     self.assertIsNotNone(win)
     assert win is not None
-    self.assertEqual(win, FFI_ROOT / "windows" / "windows.pyi")
+    self.assertEqual(win, FFI_ROOT / "windows" / "__init__.pyi")
     self.assertTrue(win.is_file())
     crt = find_ffi_source_file("ffi/crt/stdio", project_root=_REPO_ROOT)
     self.assertIsNotNone(crt)
@@ -216,6 +216,35 @@ class TestFfiTranslateGlue(unittest.TestCase):
       self.assertTrue(io_inl.is_file(), msg=f"missing {io_inl}")
       self.assertIn("::_isatty(_FileHandle)", io_inl.read_text(encoding="utf-8"))
 
+  def test_crt_stdio_vararg_glue_handles_mutable_buffers_and_va_list(self) -> None:
+    import tempfile
+
+    from src.translator import Translator
+
+    with tempfile.TemporaryDirectory() as tmp:
+      out = Path(tmp)
+      entry = out / "entry.py"
+      entry.write_text(
+        "from py2cpp import *\n"
+        "from ffi.crt.stdio import pyiSnprintf, pyiVsnprintf\n"
+        "\n"
+        "def format_value(buf: CStr, value: int) -> int:\n"
+        "  return pyiSnprintf(buf, 32, \"%d\", value)\n",
+        encoding="utf-8",
+      )
+      Translator.translate_file(
+        str(entry),
+        output_dir=str(out),
+        include_stdlib=True,
+        emit_main=False,
+      )
+      inl = out / "runtime" / "ffi" / "crt" / "stdio.inl"
+      self.assertTrue(inl.is_file(), msg=f"missing {inl}")
+      text = inl.read_text(encoding="utf-8")
+      self.assertIn("template<typename... __Ts>", text)
+      self.assertIn("::snprintf(const_cast<char*>(_Buffer)", text)
+      self.assertIn("::vsnprintf(const_cast<char*>(_Buffer)", text)
+      self.assertIn("reinterpret_cast<va_list>(const_cast<char*>(_ArgList))", text)
   def test_crt_duplicate_pyi_names_emit_once(self) -> None:
     import tempfile
 

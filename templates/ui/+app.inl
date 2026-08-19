@@ -8,7 +8,7 @@ PY2CPP_END
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include "ffi/windows/windows.h"
+#include "ffi/windows.h"
 #pragma comment(lib, "user32.lib")
 
 PY2CPP_BEGIN_SCOPE

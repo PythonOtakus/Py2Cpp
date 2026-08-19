@@ -21,7 +21,6 @@ _LIBRARY_REL_PATHS: frozenset[str] = frozenset({
   "system/datetime",
   "system/environ",
   "util/memory",
-  "util/cbuf",
   "util/range",
   "util/arena",
   "util/types",

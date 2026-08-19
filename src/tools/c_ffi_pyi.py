@@ -675,7 +675,7 @@ def default_pyi_path(header: Path, *, repo_root: Path | None = None) -> Path:
 
   - 仓库内 ``third_party/.../foo.h`` → ``ffi/.../foo.pyi``（去掉 ``third_party/`` 前缀）
   - 仓库内其它相对路径 ``a/b.h`` → ``ffi/a/b.pyi``
-  - Windows Kits ``um``/``shared``/``winrt`` → ``ffi/windows/<stem>.pyi``（如 ``windows.h`` → ``ffi/windows/windows.pyi``）
+  - Windows Kits ``um``/``shared``/``winrt`` → ``ffi/windows/<stem>.pyi``（如 ``windows.h`` → ``ffi/windows/__init__.pyi``）
   - Windows Kits ``ucrt`` → ``ffi/crt/<stem>.pyi``（如 ``stdio.h`` → ``ffi/crt/stdio.pyi``）
   - 其它系统头 → ``ffi/<stem>.pyi``
   """
@@ -696,6 +696,8 @@ def default_pyi_path(header: Path, *, repo_root: Path | None = None) -> Path:
   if bucket == "ucrt":
     return FFI_ROOT / "crt" / f"{stem}.pyi"
   if bucket in {"um", "shared", "winrt"}:
+    if stem == "windows":
+      return FFI_ROOT / "windows" / "__init__.pyi"
     return FFI_ROOT / "windows" / f"{stem}.pyi"
   return FFI_ROOT / f"{stem}.pyi"
 

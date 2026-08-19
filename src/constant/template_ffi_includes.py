@@ -25,7 +25,7 @@ _TEMPLATE_SYSTEM_HEADER_TO_FFI: dict[str, str] = {
   "sys/utime.h": "ffi/crt/utime.h",
   "utime.h": "ffi/crt/utime.h",
   # Windows SDK
-  "windows.h": "ffi/windows/windows.h",
+  "windows.h": "ffi/windows.h",
   "winsock2.h": "ffi/windows/winsock2.h",
   "ws2tcpip.h": "ffi/windows/ws2tcpip.h",
   "commctrl.h": "ffi/windows/commctrl.h",

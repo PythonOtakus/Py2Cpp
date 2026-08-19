@@ -43,7 +43,7 @@ def _emit_cast_call(tr: Translator, target_cpp: str, node: ast.Call) -> str:
     bare_target = target_cpp.strip()
     raw_stripped = raw_t.rstrip()
     if bare_target.endswith('*') and bare_target != raw_stripped:
-        if raw_stripped in ('PyUPtr', 'uintptr') or raw_stripped.endswith('*') or (
+        if raw_stripped in ('PyInt', 'PyInt64', 'PyUInt', 'PyUInt64', 'PyUPtr', 'uintptr') or raw_stripped.endswith('*') or (
           isinstance(arg, ast.Call)
           and isinstance(arg.func, ast.Name)
           and arg.func.id == 'id'

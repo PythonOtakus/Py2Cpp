@@ -38,7 +38,7 @@ from .path import (
   stat,
   symlink,
 )
-from ffi.windows.windows import PyiWin32FindDataa
+from ffi.windows import PyiWin32FindDataa
 
 SIfdir: int = 0x4000
 SIfreg: int = 0x8000

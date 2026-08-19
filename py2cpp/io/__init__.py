@@ -7,7 +7,7 @@
 from ..builtins import *
 from ..text import str
 from ..util.list import list
-from ..util.memory import appendChars
+from ..util.memory import appendChars, cstrLen, cstrSlice, strCbuf
 from ffi.crt.stdio import (
   PyiIobuf,
   PyiSeekCur,
@@ -25,7 +25,6 @@ from ffi.crt.stdio import (
   pyiFwrite,
 )
 from ffi.crt.io import pyiIsatty
-from ..util.cbuf import cstrLen, cstrSlice, strCbuf
 
 
 @mixin

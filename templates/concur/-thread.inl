@@ -7,7 +7,7 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include "ffi/windows/windows.h"
+#include "ffi/windows.h"
 #else
 #include "ffi/posix/pthread.h"
 #if defined(__linux__)

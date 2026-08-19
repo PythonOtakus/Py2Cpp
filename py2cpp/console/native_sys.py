@@ -3,7 +3,7 @@ from ..builtins import *
 from ..util.list import list
 from ffi.crt.stdlib import pyiExit, pyiFree, pyiMalloc
 from ffi.windows.shellapi import pyiCommandLineToArgvW
-from ffi.windows.windows import (
+from ffi.windows import (
   PyiConsoleScreenBufferInfo,
   PyiCpUtf8,
   pyiGetCommandLineW,

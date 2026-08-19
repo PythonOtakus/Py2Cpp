@@ -34,7 +34,20 @@ class Base:
     tr.scope = Scope(ast.parse("pass").body[0])
     tr.scope.param_types = {"b": "Base&"}
     out = _emit_cast_call(tr, target, node)
-    self.assertEqual(out, "static_cast<Derived&>(b)")
+    self.assertEqual(out, "static_cast<PyDerived>(b)")
+
+  def test_cast_int64_to_pointer(self):
+    tr = Translator("test/mod", "test/mod.py")
+    from src.analysis.analyzer import TypeParser
+
+    tr.type_parser = TypeParser()
+    node = ast.parse("cast[Pointer[byte]](handle)", mode="eval").body
+    assert isinstance(node, ast.Call)
+    target = tr._parse_type(ast.Subscript(value=ast.Name(id="Pointer"), slice=ast.Name(id="byte")), set())
+    tr.scope = Scope(ast.parse("pass").body[0])
+    tr.scope.param_types = {"handle": "PyInt64"}
+    out = _emit_cast_call(tr, target, node)
+    self.assertEqual(out, "reinterpret_cast<PyByte*>(handle)")
 
   def test_cast_deduced_from_ann_assign(self):
     src = """
@@ -59,7 +72,7 @@ def narrow(slot: Base) -> None:
         str(py), output_dir=str(out), include_stdlib=False,
       )
       cpp = cpp_path.read_text(encoding="utf-8")
-      self.assertIn("static_cast<Derived&>(*slot)", cpp)
+      self.assertIn("static_cast<PyDerived&>(*slot)", cpp)
 
 
 if __name__ == "__main__":

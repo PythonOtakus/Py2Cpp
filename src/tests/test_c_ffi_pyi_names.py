@@ -71,7 +71,7 @@ class DefaultPyiPathTests(unittest.TestCase):
     )
     um = Path(r"C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\windows.h")
     with patch("src.tools.c_ffi_pyi.windows_sdk_include_bucket", return_value="um"):
-      self.assertEqual(default_pyi_path(um), FFI_ROOT / "windows" / "windows.pyi")
+      self.assertEqual(default_pyi_path(um), FFI_ROOT / "windows" / "__init__.pyi")
     ucrt = Path(r"C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\stdio.h")
     with patch("src.tools.c_ffi_pyi.windows_sdk_include_bucket", return_value="ucrt"):
       self.assertEqual(default_pyi_path(ucrt), FFI_ROOT / "crt" / "stdio.pyi")

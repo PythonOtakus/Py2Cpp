@@ -7,7 +7,7 @@ PY2CPP_END
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include "ffi/windows/windows.h"
+#include "ffi/windows.h"
 #include "ffi/windows/commctrl.h"
 
 PY2CPP_BEGIN_SCOPE
@@ -46,8 +46,7 @@ void PyUITooltipHost::showAtClient(window::PyUIWindow& win, PyStr text, PyInt cx
   }
   char tbuf[512];
   text.copyToSpan(PySpan<PyByte>((PyByte*)tbuf, (PyInt)sizeof(tbuf), 1));
-  TOOLINFOA ti;
-  memset(&ti, 0, sizeof(ti));
+  TOOLINFOA ti = {};
   ti.cbSize = sizeof(ti);
   ti.uFlags = TTF_TRACK | TTF_SUBCLASS;
   ti.hwnd = parent;
@@ -64,8 +63,7 @@ void PyUITooltipHost::hide()
   {
     return;
   }
-  TOOLINFOA ti;
-  memset(&ti, 0, sizeof(ti));
+  TOOLINFOA ti = {};
   ti.cbSize = sizeof(ti);
   SendMessageA(tip, TTM_TRACKACTIVATE, (WPARAM)FALSE, (LPARAM)&ti);
 }

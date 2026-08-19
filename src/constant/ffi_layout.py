@@ -1,7 +1,7 @@
 """仓库根 ``ffi/**/*.pyi`` 与 Zeus 旁路 ``zeus/ffi/**/*.pyi`` 布局（C / CRT / 平台 SDK FFI 声明面）。
 
-Python：``import ffi.windows.windows`` / ``from ffi.crt.stdio import …`` / ``from ffi.sqlite.sqlite3 import …``
-内部 module_path：``ffi/windows/windows``、``ffi/crt/stdio``、``ffi/sqlite/sqlite3``、``ffi/glfw/glfw3``
+Python：``import ffi.windows`` / ``from ffi.crt.stdio import …`` / ``from ffi.sqlite.sqlite3 import …``
+内部 module_path：``ffi/windows``、``ffi/crt/stdio``、``ffi/sqlite/sqlite3``、``ffi/glfw/glfw3``
 生成物：``generated/runtime/ffi/…``（``#include "ffi/…"``；与 ``py2cpp/`` 并列）
 C++ 命名空间：``ffi::…``（见 ``module_namespace``；不挂 ``py2cpp::``）
 
@@ -23,7 +23,7 @@ _ZEUS_FFI_ROOT = _REPO_ROOT / "zeus" / "ffi"
 # module_path → 第三方 / CRT C 头（供 glue ``#include``；缺省表示暂不自动 glue）
 _FFI_C_HEADER_BY_MODULE: dict[str, str] = {
   "ffi/sqlite/sqlite3": "sqlite3.h",
-  "ffi/windows/windows": "windows.h",
+  "ffi/windows": "windows.h",
   "ffi/windows/winsock2": "winsock2.h",
   "ffi/windows/ws2tcpip": "ws2tcpip.h",
   "ffi/windows/commctrl": "commctrl.h",
@@ -75,7 +75,7 @@ _FFI_GLUE_ALLOWLIST: dict[str, frozenset[str] | None] = {
     "sqlite3_exec",
     "sqlite3_free",
   }),
-  "ffi/windows/windows": frozenset({
+  "ffi/windows": frozenset({
     "FreeEnvironmentStringsA",
     "GetCommandLineW",
     "GetConsoleScreenBufferInfo",
@@ -102,7 +102,10 @@ _FFI_GLUE_ALLOWLIST: dict[str, frozenset[str] | None] = {
     "GetFileAttributesA",
     "GetFinalPathNameByHandleA",
     "GetFullPathNameA",
+    "GetWindowTextA",
     "MoveFileExA",
+    "SendMessageA",
+    "SetWindowTextA",
   }),
   "ffi/windows/winsock2": frozenset(),
   "ffi/windows/ws2tcpip": frozenset(),
@@ -119,13 +122,19 @@ _FFI_GLUE_ALLOWLIST: dict[str, frozenset[str] | None] = {
     "fgets",
     "fileno",
     "fopen",
+    "_pclose",
+    "_popen",
     "fread",
+    "fputs",
     "fseek",
     "ftell",
     "fwrite",
     "remove",
+    "snprintf",
+    "sscanf",
+    "vsnprintf",
   }),
-  "ffi/crt/string": frozenset(),
+  "ffi/crt/string": frozenset({"strlen"}),
   "ffi/crt/math": frozenset({
     "acos", "acosf", "acosh", "acoshf", "asin", "asinf", "asinh", "asinhf",
     "atan", "atanf", "atan2", "atan2f", "atanh", "atanhf", "cbrt", "cbrtf",
@@ -144,7 +153,7 @@ _FFI_GLUE_ALLOWLIST: dict[str, frozenset[str] | None] = {
     "_time64",
     "strftime",
   }),
-  "ffi/crt/stdlib": frozenset({"exit", "free", "malloc"}),
+  "ffi/crt/stdlib": frozenset({"atof", "atoi", "calloc", "exit", "free", "malloc", "system"}),
   "ffi/crt/errno": frozenset(),
   "ffi/crt/signal": frozenset(),
   "ffi/crt/fcntl": frozenset(),
@@ -152,7 +161,7 @@ _FFI_GLUE_ALLOWLIST: dict[str, frozenset[str] | None] = {
   "ffi/crt/io": frozenset({"_access", "_chmod", "_isatty"}),
   "ffi/crt/stat": frozenset({"_stat64i32"}),
   "ffi/crt/utime": frozenset({"_utime64"}),
-  "ffi/posix/unistd": frozenset(),
+  "ffi/posix/unistd": frozenset({"chdir"}),
   "ffi/posix/pthread": frozenset(),
   "ffi/posix/dirent": frozenset(),
   "ffi/posix/sys/types": frozenset(),
@@ -214,7 +223,7 @@ def ffi_import_parts_to_module_path(parts: list[str]) -> str | None:
 
 
 def find_ffi_source_file(module_path: str, *, project_root: Path | None = None) -> Path | None:
-  """``ffi/windows/windows`` → ``ffi/windows/windows.pyi``；其次 ``zeus/ffi/…``。
+  """``ffi/windows`` → ``ffi/windows/__init__.pyi``；其次 ``zeus/ffi/…``。
 
   ``project_root`` 参数保留兼容调用方，忽略。
   """
@@ -251,7 +260,7 @@ def _find_ffi_under_root(root: Path, rel: str) -> Path | None:
 
 
 def ffi_runtime_module_path(module_path: str) -> str:
-  """``ffi/windows/windows`` → ``ffi/windows/windows``（相对 ``generated/runtime``）。"""
+  """``ffi/windows`` → ``ffi/windows``（相对 ``generated/runtime``）。"""
   return module_path.replace("\\", "/").strip("/")
 
 
@@ -295,11 +304,15 @@ def ffi_glue_allowlist(module_path: str) -> frozenset[str] | None:
 
 
 _FFI_HEADER_SYMBOL_ALLOWLIST: dict[str, frozenset[str]] = {
-  "ffi/windows/windows": frozenset({
+  "ffi/windows": frozenset({
+    "PyiBmGetcheck",
+    "PyiBmSetcheck",
+    "PyiBstChecked",
     "PyiConsoleScreenBufferInfo",
     "PyiCpUtf8",
     "PyiErrorEnvvarNotFound",
     "PyiFiletime",
+    "PyiHwnd",
     "PyiLargeInteger",
     "pyiFreeEnvironmentStringsA",
     "pyiGetCommandLineW",
@@ -318,6 +331,7 @@ _FFI_HEADER_SYMBOL_ALLOWLIST: dict[str, frozenset[str]] = {
     "pyiSleep",
     "pyiWideCharToMultiByte",
     "PyiWin32FindDataa",
+    "PyiWmUser",
     "PyiSecurityAttributes",
     "PyiFileAttributeReparsePoint",
     "PyiFileFlagBackupSemantics",
@@ -338,10 +352,13 @@ _FFI_HEADER_SYMBOL_ALLOWLIST: dict[str, frozenset[str]] = {
     "pyiGetFileAttributesA",
     "pyiGetFinalPathNameByHandleA",
     "pyiGetFullPathNameA",
+    "pyiGetWindowTextA",
     "pyiMoveFileExA",
+    "pyiSendMessageA",
+    "pyiSetWindowTextA",
   }),
   "ffi/windows/shellapi": frozenset({"pyiCommandLineToArgvW"}),
-  "ffi/crt/stdlib": frozenset({"pyiExit", "pyiFree", "pyiMalloc"}),
+  "ffi/crt/stdlib": frozenset({"pyiAtof", "pyiAtoi", "pyiCalloc", "pyiExit", "pyiFree", "pyiMalloc", "pyiSystem"}),
   "ffi/crt/stdio": frozenset({
     "PyiIobuf",
     "PyiFile",
@@ -354,12 +371,19 @@ _FFI_HEADER_SYMBOL_ALLOWLIST: dict[str, frozenset[str]] = {
     "pyiFgets",
     "pyiFileno",
     "pyiFopen",
+    "pyiPclose",
+    "pyiPopen",
     "pyiFread",
+    "pyiFputs",
     "pyiFseek",
     "pyiFtell",
     "pyiFwrite",
     "pyiRemove",
+    "pyiSnprintf",
+    "pyiSscanf",
+    "pyiVsnprintf",
   }),
+  "ffi/crt/string": frozenset({"pyiStrlen"}),
   "ffi/crt/io": frozenset({"pyiAccess", "pyiChmod", "pyiIsatty"}),
   "ffi/crt/direct": frozenset({"pyiChdir", "pyiGetcwd", "pyiMkdir", "pyiRmdir"}),
   "ffi/crt/stat": frozenset({"PyiStat64I32", "PyiSIfdir", "PyiSIfreg", "pyiStat64I32"}),
@@ -390,7 +414,9 @@ _FFI_HEADER_SYMBOL_ALLOWLIST: dict[str, frozenset[str]] = {
 
 # 受限 FFI 头：``ClassInfo`` 因全局同名符号未进入 ``module_classes`` 时的显式 ``using``（C 标签名）。
 _FFI_HEADER_EXTRA_STRUCT_USINGS: dict[str, dict[str, str]] = {
-  "ffi/windows/windows": {
+  "ffi/windows": {
+    "PyiHwnd": "HWND__",
+    "PyiLargeInteger": "_LARGE_INTEGER",
     "PyiFiletime": "FILETIME",
     "PyiWin32FindDataa": "WIN32_FIND_DATAA",
     "PyiSecurityAttributes": "_SECURITY_ATTRIBUTES",

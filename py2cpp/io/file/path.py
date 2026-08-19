@@ -4,7 +4,7 @@
 """
 from ...builtins import *
 from ...core.exceptions import FileNotFoundError, OSError, ValueError
-from ...util.cbuf import cstrLen, cstrSlice, strCbuf
+from ...util.memory import cstrLen, cstrSlice, strCbuf
 from ...util.list import list
 from ...text import str
 from ffi.crt.direct import pyiChdir, pyiGetcwd, pyiMkdir, pyiRmdir
@@ -12,7 +12,7 @@ from ffi.crt.io import pyiAccess, pyiChmod
 from ffi.crt.stat import PyiSIfdir, PyiSIfreg, PyiStat64I32, pyiStat64I32
 from ffi.crt.stdio import pyiRemove
 from ffi.crt.utime import PyiUtimbuf64, pyiUtime64
-from ffi.windows.windows import (
+from ffi.windows import (
   PyiFileAttributeReparsePoint,
   PyiFileFlagBackupSemantics,
   PyiFileFlagOpenReparsePoint,

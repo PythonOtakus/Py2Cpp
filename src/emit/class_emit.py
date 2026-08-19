@@ -206,7 +206,6 @@ def _emit_class_methods_body_impl(tr: "Translator", info: ClassInfo):
     _emit_operator_pyint_conversion(tr, info)
     _emit_operator_pyfloat_conversion(tr, info)
     _emit_operator_pycomplex_conversion(tr, info)
-    _emit_pystr_scalar_operators(tr, info)
     tr._emit_virtual_dtor_definition(info)
     return
   _emit_static_property_storage_defs(tr, info)
@@ -264,7 +263,6 @@ def _emit_class_methods_body_impl(tr: "Translator", info: ClassInfo):
   _emit_operator_pyint_conversion(tr, info)
   _emit_operator_pyfloat_conversion(tr, info)
   _emit_operator_pycomplex_conversion(tr, info)
-  _emit_pystr_scalar_operators(tr, info)
   tr._emit_virtual_dtor_definition(info)
 
 def _emit_repr_alias_method(tr: "Translator", info: ClassInfo) -> None:
@@ -352,26 +350,6 @@ def _emit_operator_pycomplex_conversion(tr: "Translator", info: ClassInfo) -> No
     with tr._use_block(f"{qual}::operator {cpx}() const"):
       tr.write_line("return __complex__();")
 
-def _emit_pystr_scalar_operators(tr: "Translator", info: ClassInfo) -> None:
-  """``PyStr``：``int(s)`` / ``float(s)`` → ``static_cast``（无 ``__int__`` / ``__float__`` 成员）。"""
-  if info.name != "str" or not info.module_path.replace("\\", "/").endswith("text/str"):
-    return
-  from ..codegen.expand_py2cpp_template import expand_template
-
-  qual = tr._class_method_qualifier(info)
-  pi = cpp_ident("int")
-  pf = cpp_ident("float")
-  pyint_body = expand_template("text/+str_operator_pyint.inl", apply_allman=True).strip()
-  pyfloat_body = expand_template("text/+str_operator_pyfloat.inl", apply_allman=True).strip()
-  with tr._method_emit_context(info), tr._use_source():
-    with tr._use_block(f"{qual}::operator {pi}() const"):
-      for line in pyint_body.splitlines():
-        tr.write_line(line)
-    tr.write_line()
-    with tr._use_block(f"{qual}::operator {pf}() const"):
-      for line in pyfloat_body.splitlines():
-        tr.write_line(line)
-    tr.write_line()
 
 def _emit_auto_dtor(tr: "Translator", info: ClassInfo) -> None:
   cpp = info.cpp_name()

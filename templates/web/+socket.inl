@@ -288,8 +288,7 @@ void PyTcpSocket::connect(PyStr host, PyInt port)
   {
     _web_throw_oserror();
   }
-  struct sockaddr_in addr;
-  memset(&addr, 0, sizeof(addr));
+  struct sockaddr_in addr = {};
   addr.sin_family = AF_INET;
   addr.sin_port = htons((unsigned short)port);
   if (InetPtonA(AF_INET, hbuf, &addr.sin_addr) != 1)
@@ -309,8 +308,7 @@ void PyTcpSocket::connect(PyStr host, PyInt port)
   {
     _web_throw_oserror();
   }
-  struct sockaddr_in addr;
-  memset(&addr, 0, sizeof(addr));
+  struct sockaddr_in addr = {};
   addr.sin_family = AF_INET;
   addr.sin_port = htons((unsigned short)port);
   if (inet_pton(AF_INET, hbuf, &addr.sin_addr) <= 0)
@@ -342,8 +340,7 @@ void PyTcpSocket::bind(PyStr host, PyInt port)
   }
   int yes = 1;
   setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (const char*)&yes, (int)sizeof(yes));
-  struct sockaddr_in addr;
-  memset(&addr, 0, sizeof(addr));
+  struct sockaddr_in addr = {};
   addr.sin_family = AF_INET;
   addr.sin_port = htons((unsigned short)port);
   if (InetPtonA(AF_INET, hbuf, &addr.sin_addr) != 1)
@@ -365,8 +362,7 @@ void PyTcpSocket::bind(PyStr host, PyInt port)
   }
   int yes = 1;
   setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
-  struct sockaddr_in addr;
-  memset(&addr, 0, sizeof(addr));
+  struct sockaddr_in addr = {};
   addr.sin_family = AF_INET;
   addr.sin_port = htons((unsigned short)port);
   if (inet_pton(AF_INET, hbuf, &addr.sin_addr) <= 0)
@@ -461,8 +457,7 @@ PyInt PyTcpSocket::connectEx(PyStr host, PyInt port)
     _web_close_sock(s);
     _web_throw_oserror();
   }
-  struct sockaddr_in addr;
-  memset(&addr, 0, sizeof(addr));
+  struct sockaddr_in addr = {};
   addr.sin_family = AF_INET;
   addr.sin_port = htons((unsigned short)port);
   if (InetPtonA(AF_INET, hbuf, &addr.sin_addr) != 1)
@@ -495,8 +490,7 @@ PyInt PyTcpSocket::connectEx(PyStr host, PyInt port)
     _web_close_sock(s);
     _web_throw_oserror();
   }
-  struct sockaddr_in addr;
-  memset(&addr, 0, sizeof(addr));
+  struct sockaddr_in addr = {};
   addr.sin_family = AF_INET;
   addr.sin_port = htons((unsigned short)port);
   if (inet_pton(AF_INET, hbuf, &addr.sin_addr) <= 0)

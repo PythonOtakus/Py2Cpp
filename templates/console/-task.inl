@@ -5,7 +5,7 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include "ffi/windows/windows.h"
+#include "ffi/windows.h"
 #else
 #include "ffi/crt/errno.h"
 #include "ffi/crt/fcntl.h"
@@ -87,7 +87,7 @@ static wchar_t* _task_utf8_to_wide(const PyStr& s)
   {
     return nullptr;
   }
-  wchar_t* w = (wchar_t*)malloc((size_t)n * sizeof(wchar_t));
+  wchar_t* w = reinterpret_cast<wchar_t*>(static_cast<uintptr_t>(::ffi::crt::stdlib::pyiMalloc((PyUInt64)n * sizeof(wchar_t))));
   if (!w)
   {
     return nullptr;
@@ -158,7 +158,7 @@ static wchar_t* _task_env_block(const PyDict<PyStr, PyStr>& env)
   {
     return nullptr;
   }
-  wchar_t* block = (wchar_t*)malloc(65536 * sizeof(wchar_t));
+  wchar_t* block = reinterpret_cast<wchar_t*>(static_cast<uintptr_t>(::ffi::crt::stdlib::pyiMalloc(65536 * sizeof(wchar_t))));
   if (!block)
   {
     return nullptr;
@@ -172,9 +172,9 @@ static wchar_t* _task_env_block(const PyDict<PyStr, PyStr>& env)
     wchar_t* wv = _task_utf8_to_wide(val);
     if ((!wk) || (!wv))
     {
-      free(wk);
-      free(wv);
-      free(block);
+      ::ffi::crt::stdlib::pyiFree((PyUPtr)reinterpret_cast<uintptr_t>(wk));
+      ::ffi::crt::stdlib::pyiFree((PyUPtr)reinterpret_cast<uintptr_t>(wv));
+      ::ffi::crt::stdlib::pyiFree((PyUPtr)reinterpret_cast<uintptr_t>(block));
       return nullptr;
     }
     for (int j = 0; wk[j] && at + 3 < 65536; j++)
@@ -187,8 +187,8 @@ static wchar_t* _task_env_block(const PyDict<PyStr, PyStr>& env)
       block[at++] = wv[j];
     }
     block[at++] = 0;
-    free(wk);
-    free(wv);
+    ::ffi::crt::stdlib::pyiFree((PyUPtr)reinterpret_cast<uintptr_t>(wk));
+    ::ffi::crt::stdlib::pyiFree((PyUPtr)reinterpret_cast<uintptr_t>(wv));
   }
   block[at++] = 0;
   return block;
@@ -253,7 +253,7 @@ PyProcessTask::PyProcessTask(
   {
     env = env_opt.value__get();
   }
-  PyConsoleTaskState* st = (PyConsoleTaskState*)calloc(1, sizeof(PyConsoleTaskState));
+  PyConsoleTaskState* st = reinterpret_cast<PyConsoleTaskState*>(static_cast<uintptr_t>(::ffi::crt::stdlib::pyiCalloc(1, sizeof(PyConsoleTaskState))));
   if (!st)
   {
     throw PY2CPP_TYPE(PyOSError)();
@@ -283,7 +283,7 @@ PyProcessTask::PyProcessTask(
   {
     if (!CreatePipe(&st->out_rd, &st->out_wr, &sa, 0))
     {
-      free(st);
+      ::ffi::crt::stdlib::pyiFree((PyUPtr)reinterpret_cast<uintptr_t>(st));
       throw PY2CPP_TYPE(PyOSError)();
     }
     SetHandleInformation(st->out_rd, HANDLE_FLAG_INHERIT, 0);
@@ -292,7 +292,7 @@ PyProcessTask::PyProcessTask(
   {
     if (!CreatePipe(&st->err_rd, &st->err_wr, &sa, 0))
     {
-      free(st);
+      ::ffi::crt::stdlib::pyiFree((PyUPtr)reinterpret_cast<uintptr_t>(st));
       throw PY2CPP_TYPE(PyOSError)();
     }
     SetHandleInformation(st->err_rd, HANDLE_FLAG_INHERIT, 0);
@@ -301,7 +301,7 @@ PyProcessTask::PyProcessTask(
   {
     if (!CreatePipe(&st->in_rd, &st->in_wr, &sa, 0))
     {
-      free(st);
+      ::ffi::crt::stdlib::pyiFree((PyUPtr)reinterpret_cast<uintptr_t>(st));
       throw PY2CPP_TYPE(PyOSError)();
     }
     SetHandleInformation(st->in_wr, HANDLE_FLAG_INHERIT, 0);
@@ -371,7 +371,7 @@ PyProcessTask::~PyProcessTask()
     close(st->in_wr);
   }
 #endif
-  free(st);
+  ::ffi::crt::stdlib::pyiFree((PyUPtr)reinterpret_cast<uintptr_t>(st));
   _state = 0;
 }
 
@@ -402,7 +402,7 @@ void PyProcessTask::start()
       cmdline[at++] = L' ';
     }
     _task_append_quoted(cmdline, at, w, 32768);
-    free(w);
+    ::ffi::crt::stdlib::pyiFree((PyUPtr)reinterpret_cast<uintptr_t>(w));
   }
   cmdline[at] = 0;
   STARTUPINFOW si;
@@ -459,8 +459,8 @@ void PyProcessTask::start()
   BOOL ok = CreateProcessW(
     nullptr, cmdline, nullptr, nullptr, TRUE, flags, wenv, wcwd, &si, &st->pi
   );
-  free(wcwd);
-  free(wenv);
+  ::ffi::crt::stdlib::pyiFree((PyUPtr)reinterpret_cast<uintptr_t>(wcwd));
+  ::ffi::crt::stdlib::pyiFree((PyUPtr)reinterpret_cast<uintptr_t>(wenv));
   if (st->stdin_mode == -2 && si.hStdInput && si.hStdInput != INVALID_HANDLE_VALUE)
   {
     CloseHandle(si.hStdInput);
@@ -533,7 +533,7 @@ void PyProcessTask::start()
     {
       char cbuf[4096];
       st->cwd.copyToSpan(PySpan<PyByte>((PyByte*)cbuf, (PyInt)sizeof(cbuf), 1));
-      if (chdir(cbuf) != 0)
+      if (::ffi::posix::unistd::pyiChdir(cbuf) != 0)
       {
         _exit(127);
       }
@@ -670,7 +670,7 @@ PyCompletedTask PyProcessTask::communicate(PyStr input, PyFloat64 timeout)
     char buf[32768];
     input.copyToSpan(PySpan<PyByte>((PyByte*)buf, (PyInt)sizeof(buf), 1));
     DWORD n = 0;
-    WriteFile(st->in_wr, buf, (DWORD)strlen(buf), &n, nullptr);
+    WriteFile(st->in_wr, buf, (DWORD)::ffi::crt::string::pyiStrlen(buf), &n, nullptr);
   }
   _task_close_handle(st->in_wr);
   PyArray<PyChar> out_codes;
@@ -780,42 +780,3 @@ PyInt PyProcessTask::pid__get() const
   return (PyInt)st->pid;
 #endif
 }
-
-PY2CPP_BEGIN_SCOPE
-
-PyInt py_consoleSystem(const PyStr& command)
-{
-  char buf[4096];
-  command.copyToSpan(PySpan<PyByte>((PyByte*)buf, (PyInt)sizeof(buf), 1));
-  return (PyInt)::system(buf);
-}
-
-PyStr py_consolePopenRead(const PyStr& command)
-{
-  char buf[4096];
-  command.copyToSpan(PySpan<PyByte>((PyByte*)buf, (PyInt)sizeof(buf), 1));
-  FILE* fp =
-#if defined(_MSC_VER)
-    _popen(buf, "r");
-#else
-    popen(buf, "r");
-#endif
-  if (!fp)
-  {
-    throw PY2CPP_TYPE(PyOSError)();
-  }
-  PyArray<PyChar> codes;
-  char stack[4096];
-  while (fgets(stack, (int)sizeof(stack), fp))
-  {
-    _task_append_bytes(codes, stack, (int)strlen(stack));
-  }
-#if defined(_MSC_VER)
-  _pclose(fp);
-#else
-  pclose(fp);
-#endif
-  return _task_codes_to_str(codes);
-}
-
-PY2CPP_END_SCOPE

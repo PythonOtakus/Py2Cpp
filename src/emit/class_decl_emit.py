@@ -680,9 +680,6 @@ def _emit_class_declaration(tr: 'Translator', info: ClassInfo):
                     if cpx:
                         cpx = tr._typename_member_alias_type(cpx, info)
                         tr.write_line(f'{_EXPLICIT}operator {cpx}() const;')
-                if not info.is_union and info.name == 'str' and info.module_path.replace('\\', '/').endswith('text/str'):
-                    tr.write_line(f"{_EXPLICIT}operator {cpp_ident('int')}() const;")
-                    tr.write_line(f"{_EXPLICIT}operator {cpp_ident('float')}() const;")
                 _emit_exception_repr_decl(tr, info)
                 from .type_id_emit import emit_type_id_decls
                 emit_type_id_decls(tr, info)

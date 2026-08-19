@@ -49,6 +49,18 @@ class Base:
     out = _emit_cast_call(tr, target, node)
     self.assertEqual(out, "reinterpret_cast<PyByte*>(handle)")
 
+  def test_cast_cstr_to_uintptr(self):
+    tr = Translator("test/mod", "test/mod.py")
+    from src.analysis.analyzer import TypeParser
+
+    tr.type_parser = TypeParser()
+    node = ast.parse("cast[uintptr](text)", mode="eval").body
+    assert isinstance(node, ast.Call)
+    target = tr._parse_type(ast.Name(id="uintptr"), set())
+    tr.scope = Scope(ast.parse("pass").body[0])
+    tr._infer_expr_cpp_type = lambda _node: "CStr"
+    out = _emit_cast_call(tr, target, node)
+    self.assertEqual(out, "reinterpret_cast<PyUPtr>(text)")
   def test_cast_deduced_from_ann_assign(self):
     src = """
 from py2cpp import *

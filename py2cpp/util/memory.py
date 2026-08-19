@@ -7,6 +7,8 @@ from __future__ import annotations
 from ..builtins import *
 
 from ..text import str
+from ..util.span import span
+from ffi.crt.string import pyiStrlen
 
 
 @immutable
@@ -16,28 +18,21 @@ def strCbuf(s: str, cap: int) -> byte[:]:
   s.copyToSpan(buf.view)
   return buf
 
-
 @immutable
-def cstrLen(p: CStr) -> int:
-  """``strlen`` 子集（上限 4096）。"""
+def _cstrView(p: CStr) -> span[byte]:
+  """将 NUL 终止 ``CStr`` 转为不含终止符的 ``span[byte]``。"""
   if p is None:
-    return 0
-  for i in range(4096):
-    if int(p[i]) == 0:
-      return i
-  return 4096
-
+    return span[byte]()
+  addr: uintptr = cast(p)
+  raw: Pointer[byte] = cast(addr)
+  return new(raw, int(pyiStrlen(p)))
 
 @immutable
 def cstrSlice(p: CStr, start: int, n: int) -> str:
-  """从 ``CStr`` 拷 ``n`` 个字节为 ``str``。"""
+  """从 ``CStr`` 的字节视图拷 ``n`` 个字节为 ``str``。"""
   if n <= 0:
     return ""
-  buf: char[:] = new(n)
-  for i in range(n):
-    buf[i] = char(p[start + i])
-  return str.fromBuf(buf, n)
-
+  return str.fromSpan(p.view[start:start + n])
 
 @immutable
 def appendChars(buf: char[:], at: int, src: char[:], end: int) -> int:

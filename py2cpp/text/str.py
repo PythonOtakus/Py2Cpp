@@ -336,14 +336,32 @@ class str(StringMixin[char]):
 
   @staticmethod
   @native
+  @overload
   def fromBuf(buf: char[:], end: int) -> Self:
     """``buf[:end]`` → ``str``（encode ``finish`` 收尾）。"""
     ...
 
   @staticmethod
   @immutable
+  @overload
+  def fromBuf(buf: byte[:], end: int) -> Self:
+    """将单字节 ``buf[:end]`` 拷贝构造为 ``str``。"""
+    return Self.fromSpan(buf.view[:end])
+
+  @staticmethod
+  @immutable
+  @overload
   def fromSpan(seg: span[char]) -> Self:
     """由 ``span[char]`` 拷贝构造（``copyFromSpan`` 组合）。"""
+    dst: Self = ""
+    dst.copyFromSpan(seg)
+    return dst
+
+  @staticmethod
+  @immutable
+  @overload
+  def fromSpan(seg: span[byte]) -> Self:
+    """由单字节 ``span`` 拷贝构造。"""
     dst: Self = ""
     dst.copyFromSpan(seg)
     return dst

@@ -7,7 +7,7 @@
 from ..builtins import *
 from ..text import str
 from ..util.list import list
-from ..util.memory import appendChars, cstrLen, cstrSlice, strCbuf
+from ..util.memory import appendChars, cstrSlice, strCbuf
 from ffi.crt.stdio import (
   PyiIobuf,
   PyiSeekCur,
@@ -317,7 +317,7 @@ class TextIOWrapper(CloseMixin):
     p: CStr = pyiFgets(buf.view.at(0), cap, self._fp)
     if p is None:
       return ""
-    return cstrSlice(p, 0, cstrLen(p))
+    return cstrSlice(p, 0, len(p.view))
 
   def readLines(self, hint: int = -1) -> list[str]:
     lines: list[str] = []

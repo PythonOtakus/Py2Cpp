@@ -5766,6 +5766,10 @@ class Translator(ast.NodeVisitor):
                 if sp:
                     getter = self._property_getter_cpp_name(info, node.attr)
                     return f'{info.cpp_name()}::{getter}()'
+        if node.attr == "view" and self._infer_expr_cpp_type(node.value).rstrip() == "CStr":
+            from .analysis.module_namespace import qualify_symbol_in_module
+            recv = self.visit(node.value)
+            return f"{qualify_symbol_in_module('util/memory', '_cstrView')}({recv})"
         prop_read = self._property_read(node.value, node.attr)
         if prop_read is not None:
             return prop_read
@@ -6188,6 +6192,8 @@ class Translator(ast.NodeVisitor):
     def _infer_view_span_type(self, receiver: ast.expr) -> str | None:
         bt = self._infer_expr_cpp_type(receiver)
         elem = None
+        if bt == "CStr":
+            return cpp_span_type(cpp_ident("byte"))
         if is_stack_array_type(bt):
             elem = cpp_stack_array_elem_type(bt)
         elif is_array_type(bt) and cpp_array_ndim(bt) == 1:
@@ -6451,6 +6457,8 @@ class Translator(ast.NodeVisitor):
             case ast.Attribute(value=val, attr='view'):
                 bt = self._infer_expr_cpp_type(val)
                 elem = None
+                if bt == "CStr":
+                    return cpp_span_type(cpp_ident("byte"))
                 if is_stack_array_type(bt):
                     elem = cpp_stack_array_elem_type(bt)
                 elif is_array_type(bt) and cpp_array_ndim(bt) == 1:

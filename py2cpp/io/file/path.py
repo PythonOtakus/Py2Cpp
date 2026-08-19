@@ -4,7 +4,7 @@
 """
 from ...builtins import *
 from ...core.exceptions import FileNotFoundError, OSError, ValueError
-from ...util.memory import cstrLen, cstrSlice, strCbuf
+from ...util.memory import cstrSlice, strCbuf
 from ...util.list import list
 from ...text import str
 from ffi.crt.direct import pyiChdir, pyiGetcwd, pyiMkdir, pyiRmdir
@@ -204,7 +204,7 @@ def getCwd() -> str:
   p: CStr = pyiGetcwd(buf.view.at(0), _Cap)
   if p is None:
     _throwOs()
-  return cstrSlice(p, 0, cstrLen(p))
+  return cstrSlice(p, 0, len(p.view))
 
 
 @immutable
@@ -329,7 +329,7 @@ def readLink(path: str) -> str:
 @immutable
 def findDataName(fd: PyiWin32FindDataa) -> str:
   p: CStr = cast(fd.cFileName)
-  return cstrSlice(p, 0, cstrLen(p))
+  return cstrSlice(p, 0, len(p.view))
 
 
 @immutable

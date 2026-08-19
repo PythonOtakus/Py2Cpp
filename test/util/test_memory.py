@@ -5,7 +5,6 @@ from py2cpp.util.memory import (
   appendChars,
   copyBuf,
   copyBufRef,
-  cstrLen,
   cstrSlice,
   loadU64Le,
   loadU64LeBytes,
@@ -38,8 +37,15 @@ class MemoryCstrTests(TestCaseMixin):
   def test(self):
     buf: byte[:] = strCbuf("abc", 8)
     p: CStr = buf.view.at(0)
-    self.assertEqual(cstrLen(p), 3)
+    self.assertEqual(str.fromBuf(buf, 3), "abc")
+    seg: span[byte] = p.view
+    self.assertEqual(len(seg), 3)
+    self.assertEqual(int(seg[0]), ord("a"))
+    self.assertEqual(int(seg[2]), ord("c"))
+    null: CStr = cast(None)
+    self.assertEqual(len(null.view), 0)
     self.assertEqual(cstrSlice(p, 0, 3), "abc")
+    self.assertEqual(cstrSlice(p, 1, 2), "bc")
     self.assertEqual(cstrSlice(p, 3, 0), "")
 
 

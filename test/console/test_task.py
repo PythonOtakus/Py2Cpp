@@ -1,6 +1,7 @@
 """``console.task``：``Console.system`` / ``popen`` / ``run``。"""
 from py2cpp import *
-from py2cpp.console.task import Pipe, Console, CompletedTask, ProcessTask
+from py2cpp.concur.process import CompletedProcess, Pipe, Process
+from py2cpp.console.task import Console
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 
@@ -28,7 +29,7 @@ class ConsoleRunShellTests(TestCaseMixin):
 
   @override
   def test(self):
-    result: CompletedTask = Console.run("echo run_shell", shell=True)
+    result: CompletedProcess = Console.run("echo run_shell", shell=True)
     self.assertEqual(result.returnCode, 0)
 
 
@@ -38,7 +39,7 @@ class ConsoleRunListTests(TestCaseMixin):
   @override
   def test(self):
     args: list[str] = ["cmd.exe", "/c", "echo", "hello_run"]
-    result: CompletedTask = Console.run(args, captureOutput=True)
+    result: CompletedProcess = Console.run(args, captureOutput=True)
     self.assertEqual(result.returnCode, 0)
     self.assertTrue("hello_run" in result.stdout)
 
@@ -77,9 +78,9 @@ class TaskPipeTests(TestCaseMixin):
   @override
   def test(self):
     args: list[str] = ["cmd.exe", "/c", "echo", "pipe_ok"]
-    task: ProcessTask = new(args, "", None, 0, Pipe, Pipe)
+    task: Process = new(args, "", None, 0, Pipe, Pipe)
     task.start()
-    done: CompletedTask = task.communicate()
+    done: CompletedProcess = task.communicate()
     self.assertEqual(done.returnCode, 0)
     self.assertTrue("pipe_ok" in done.stdout)
 

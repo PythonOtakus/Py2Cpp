@@ -1,69 +1,15 @@
-"""``console.task``：外部进程、管道与后台命令（``docs/console.md`` §6）。"""
+"""``console.task``：基于 ``concur.process`` 的命令行同步包装（``docs/console.md`` §6）。"""
 from ..builtins import *
+from ..concur.process import CompletedProcess, DevNull, Pipe, _runWithEnv
 from ..io import StringIO
 from ..text import str
-from ..util.list import list
 from ..util.dict import dict
+from ..util.list import list
 from ..util.memory import strCbuf
 from ffi.crt.stdio import pyiFgets, pyiPclose, pyiPopen
 from ffi.crt.stdlib import pyiSystem
 
 from .exceptions import TaskExitError, TaskStartError
-
-
-Pipe: int = -1
-DevNull: int = -2
-
-
-@dataclass(frozen=True)
-class CompletedTask:
-  args: list[str]
-  returnCode: int
-  stdout: str
-  stderr: str
-
-
-@native
-@uncopyable
-class ProcessTask:
-  """低层进程对象；参数为 ``list[str]``（不经 shell）。"""
-
-  _state: uintptr = 0
-
-  def __init__(
-    self,
-    args: list[str],
-    cwd: str = "",
-    env: dict[str, str] | None = None,
-    stdin: int = 0,
-    stdout: int = 0,
-    stderr: int = 0,
-  ):
-    ...
-
-  def __del__(self): ...
-
-  def start(self) -> None: ...
-
-  def poll(self) -> int: ...
-
-  def wait(self, timeout: float64 = -1.0) -> int: ...
-
-  def terminate(self) -> None: ...
-
-  def kill(self) -> None: ...
-
-  def communicate(self, input: str = "", timeout: float64 = -1.0) -> CompletedTask: ...
-
-  @property
-  @immutable
-  def returnCode(self) -> int: ...
-
-  @property
-  @immutable
-  def pid(self) -> int: ...
-
-
 def consoleSystem(command: str) -> int:
   commandBuf: byte[:] = strCbuf(command, len(command) + 1)
   ccommand: CStr = cast(commandBuf.view.at())
@@ -99,17 +45,15 @@ class Console:
     timeout: float64 = -1.0,
     check: bool = False,
     shell: bool = False,
-  ) -> CompletedTask:
+  ) -> CompletedProcess:
     if shell:
       raise TaskStartError()
     outMode: int = Pipe if captureOutput else 0
     errMode: int = Pipe if captureOutput else 0
-    e: dict[str, str] = {}
+    actualEnv: dict[str, str] = {}
     if env is not None:
-      e = env
-    task: ProcessTask = new(args, cwd, e, 0, outMode, errMode)
-    task.start()
-    done: CompletedTask = task.communicate("", timeout)
+      actualEnv = env
+    done: CompletedProcess = _runWithEnv(args, cwd, actualEnv, 0, outMode, errMode, "", timeout)
     if check and done.returnCode != 0:
       raise TaskExitError(done.args, done.returnCode, done.stdout, done.stderr)
     return done
@@ -124,18 +68,18 @@ class Console:
     timeout: float64 = -1.0,
     check: bool = False,
     shell: bool = True,
-  ) -> CompletedTask:
+  ) -> CompletedProcess:
     if not shell:
       raise TaskStartError()
     empty: list[str] = []
     if captureOutput:
       text: str = consolePopenRead(args)
-      result: CompletedTask = new(empty, 0, text, "")
+      result: CompletedProcess = new(empty, 0, text, "")
       if check and result.returnCode != 0:
         raise TaskExitError(empty, result.returnCode, text, "")
       return result
     code: int = consoleSystem(args)
-    done: CompletedTask = new(empty, code, "", "")
+    done: CompletedProcess = new(empty, code, "", "")
     if check and code != 0:
       raise TaskExitError(empty, code, "", "")
     return done

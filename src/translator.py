@@ -1733,6 +1733,10 @@ class Translator(ast.NodeVisitor):
         """``@overload`` 首参 C++ 类型与实参类型的匹配分（越高越优先）。"""
         pt = strip_cpp_ref(param_t or '')
         at = strip_cpp_ref(arg_t or '')
+        if pt.startswith('const '):
+            pt = pt[6:].strip()
+        if at.startswith('const '):
+            at = at[6:].strip()
         if not pt or not at:
             return 0
         if pt == at:
@@ -2867,6 +2871,8 @@ class Translator(ast.NodeVisitor):
                     rt = templated_instance_call_return_type(self, info, method, sl)
                     if rt is not None:
                         return rt
+            case ast.Name():
+                return self._expr_var_type(node)
             case _:
                 return None
 
@@ -5415,8 +5421,9 @@ class Translator(ast.NodeVisitor):
         mgr = temp_name('with_mgr')
         frame.managers.append(mgr)
         mgr_type = self._constructor_type(item.context_expr)
+        mgr_is_ref = self._with_manager_binds_by_reference(item.context_expr, mgr_type)
         with self._use_block():
-            self.write_line(f'auto {mgr} = {self.visit(item.context_expr)};')
+            self.write_line(f'auto{"&" if mgr_is_ref else ""} {mgr} = {self.visit(item.context_expr)};')
             if mgr_type and self.scope:
                 self._bind_scope_var(mgr, mgr_type)
             if item.optional_vars is None:
@@ -5425,6 +5432,13 @@ class Translator(ast.NodeVisitor):
                 self._emit_with_as_target(item.optional_vars, mgr, mgr_type=mgr_type)
             self._emit_with_items(items[1:], body, frame)
             self.write_line(f'{mgr}.__exit__();')
+
+    def _with_manager_binds_by_reference(self, expr: ast.expr, mgr_type: str | None) -> bool:
+        """已命名的 ``@uncopyable`` 管理器必须以引用进入 ``with``。"""
+        if not isinstance(expr, ast.Name) or not mgr_type:
+            return False
+        info = self._class_info_for_type(mgr_type)
+        return bool(info and info.is_uncopyable)
 
     def _context_manager_enter_return_type(self, mgr_type: str | None) -> str | None:
         if not mgr_type:
@@ -5441,6 +5455,8 @@ class Translator(ast.NodeVisitor):
         ret = self._receiver_method_return_cpp_type(info, '__enter__')
         if not ret or ret == 'Self':
             enter_ty = info.storage_cpp_type()
+            if info.is_uncopyable:
+                enter_ty = f'{enter_ty}&'
         else:
             enter_ty = ret
         if info.module_path != RUNTIME_PKG and self._is_stdlib_module(info.module_path):

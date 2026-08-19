@@ -308,6 +308,28 @@ def call_param_cpp_types(tr: Translator, func: ast.expr, *, call: ast.Call | Non
             pass
     return None
 
+def _call_default_nodes(tr: Translator, node: ast.Call, param_names: list[str]) -> dict[str, ast.expr]:
+    """选中调用目标的形参默认值；供关键字实参补齐中间位置。"""
+    method_def: ast.FunctionDef | None = None
+    match node.func:
+        case ast.Attribute(value=recv, attr=method):
+            info = class_info_from_receiver(tr, recv)
+            if info is not None and (method in info.methods or method in info.method_overloads):
+                method_def = tr._method_def_for_call(info, method, node)
+        case ast.Name(id=name):
+            if tr.class_info and (name in tr.class_info.methods or name in tr.class_info.method_overloads):
+                method_def = tr._method_def_for_call(tr.class_info, name, node)
+    if method_def is None:
+        return {}
+    args = [a for a in method_def.args.args if a.arg not in ('self', 'cls')]
+    defaults = method_def.args.defaults
+    first_default = len(args) - len(defaults)
+    out: dict[str, ast.expr] = {}
+    for i, value in enumerate(defaults):
+        out[args[first_default + i].arg] = value
+    return {name: value for name, value in out.items() if name in param_names}
+
+
 def emit_named_call_args(tr: Translator, node: ast.Call, param_names: list[str], param_cpp_types: list[str], *, lazy_params: dict | None=None) -> str:
     lazy_params = lazy_params or {}
     bound: dict[str, str] = {}
@@ -339,7 +361,25 @@ def emit_named_call_args(tr: Translator, node: ast.Call, param_names: list[str],
         else:
             v = tr._visit_value_expr(kw.value)
         bound[kw.arg] = v
-    return ', '.join((bound[n] for n in param_names if n in bound))
+    last = -1
+    for i, name in enumerate(param_names):
+        if name in bound:
+            last = i
+    defaults = _call_default_nodes(tr, node, param_names)
+    out: list[str] = []
+    for i in range(last + 1):
+        name = param_names[i]
+        if name in bound:
+            out.append(bound[name])
+            continue
+        default = defaults.get(name)
+        if default is None:
+            raise NotImplementedError(f'关键字参数前缺少必填参数: {name}')
+        if i < len(param_cpp_types) and param_cpp_types[i]:
+            out.append(tr._visit_value_for_type(default, param_cpp_types[i]))
+        else:
+            out.append(tr._visit_value_expr(default))
+    return ', '.join(out)
 
 def _vararg_pack_for_call(tr: Translator, func: ast.expr, *, call: ast.Call | None=None) -> 'VarargPackInfo | None':
     from ..analysis.vararg_pack import VarargPackInfo

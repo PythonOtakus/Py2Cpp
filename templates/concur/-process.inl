@@ -16,7 +16,7 @@
 #endif
 
 PY2CPP_IGNORE
-#include "py2cpp/console/task.h"
+#include "py2cpp/concur/process.h"
 #include "py2cpp/core/exceptions.h"
 #include "py2cpp/text/str.h"
 #include "py2cpp/util/array.h"
@@ -24,7 +24,7 @@ PY2CPP_IGNORE
 #include "py2cpp/util/dict.h"
 PY2CPP_END
 
-struct PyConsoleTaskState
+struct PyProcessState
 {
 #if defined(_WIN32)
   PROCESS_INFORMATION pi;
@@ -54,7 +54,7 @@ struct PyConsoleTaskState
   PyInt stderr_mode;
 };
 
-static void _task_append_bytes(PyArray<PyChar>& codes, const char* p, int n)
+static void _process_append_bytes(PyArray<PyChar>& codes, const char* p, int n)
 {
   if ((!p) || n <= 0)
   {
@@ -68,7 +68,7 @@ static void _task_append_bytes(PyArray<PyChar>& codes, const char* p, int n)
   }
 }
 
-static PyStr _task_codes_to_str(PyArray<PyChar>& codes)
+static PyStr _process_codes_to_str(PyArray<PyChar>& codes)
 {
   if (codes.__len__() <= 0)
   {
@@ -78,7 +78,7 @@ static PyStr _task_codes_to_str(PyArray<PyChar>& codes)
 }
 
 #if defined(_WIN32)
-static wchar_t* _task_utf8_to_wide(const PyStr& s)
+static wchar_t* _process_utf8_to_wide(const PyStr& s)
 {
   char buf[32768];
   s.copyToSpan(PySpan<PyByte>((PyByte*)buf, (PyInt)sizeof(buf), 1));
@@ -96,7 +96,7 @@ static wchar_t* _task_utf8_to_wide(const PyStr& s)
   return w;
 }
 
-static void _task_close_handle(HANDLE& h)
+static void _process_close_handle(HANDLE& h)
 {
   if (h && h != INVALID_HANDLE_VALUE)
   {
@@ -105,7 +105,7 @@ static void _task_close_handle(HANDLE& h)
   h = nullptr;
 }
 
-static HANDLE _task_nul_handle(DWORD access)
+static HANDLE _process_nul_handle(DWORD access)
 {
   SECURITY_ATTRIBUTES sa;
   sa.nLength = sizeof(sa);
@@ -114,7 +114,7 @@ static HANDLE _task_nul_handle(DWORD access)
   return CreateFileW(L"NUL", access, FILE_SHARE_READ | FILE_SHARE_WRITE, &sa, OPEN_EXISTING, 0, nullptr);
 }
 
-static void _task_append_quoted(wchar_t* dst, int& at, const wchar_t* src, int cap)
+static void _process_append_quoted(wchar_t* dst, int& at, const wchar_t* src, int cap)
 {
   int need_quote = 0;
   for (int i = 0; src[i]; i++)
@@ -151,7 +151,7 @@ static void _task_append_quoted(wchar_t* dst, int& at, const wchar_t* src, int c
   }
 }
 
-static wchar_t* _task_env_block(const PyDict<PyStr, PyStr>& env)
+static wchar_t* _process_env_block(const PyDict<PyStr, PyStr>& env)
 {
   PyInt n = env.__len__();
   if (n <= 0)
@@ -168,8 +168,8 @@ static wchar_t* _task_env_block(const PyDict<PyStr, PyStr>& env)
   {
     PyStr key = env.keyAt(i);
     PyStr val = env.valueAt(i);
-    wchar_t* wk = _task_utf8_to_wide(key);
-    wchar_t* wv = _task_utf8_to_wide(val);
+    wchar_t* wk = _process_utf8_to_wide(key);
+    wchar_t* wv = _process_utf8_to_wide(val);
     if ((!wk) || (!wv))
     {
       ::ffi::crt::stdlib::pyiFree((PyUPtr)reinterpret_cast<uintptr_t>(wk));
@@ -194,7 +194,7 @@ static wchar_t* _task_env_block(const PyDict<PyStr, PyStr>& env)
   return block;
 }
 
-static void _task_drain_avail(HANDLE h, PyArray<PyChar>& codes)
+static void _process_drain_avail(HANDLE h, PyArray<PyChar>& codes)
 {
   if (!h)
   {
@@ -214,11 +214,11 @@ static void _task_drain_avail(HANDLE h, PyArray<PyChar>& codes)
     {
       return;
     }
-    _task_append_bytes(codes, stack, (int)n);
+    _process_append_bytes(codes, stack, (int)n);
   }
 }
 
-static PyStr _task_read_rest(HANDLE h)
+static PyStr _process_read_rest(HANDLE h)
 {
   PyArray<PyChar> codes;
   if (!h)
@@ -233,13 +233,13 @@ static PyStr _task_read_rest(HANDLE h)
     {
       break;
     }
-    _task_append_bytes(codes, stack, (int)n);
+    _process_append_bytes(codes, stack, (int)n);
   }
-  return _task_codes_to_str(codes);
+  return _process_codes_to_str(codes);
 }
 #endif
 
-PyProcessTask::PyProcessTask(
+PyProcess::PyProcess(
   const PyList<PyStr, 0>& args,
   PyStr cwd,
   PyOptional<PyDict<PyStr, PyStr>> env_opt,
@@ -253,7 +253,7 @@ PyProcessTask::PyProcessTask(
   {
     env = env_opt.value__get();
   }
-  PyConsoleTaskState* st = reinterpret_cast<PyConsoleTaskState*>(static_cast<uintptr_t>(::ffi::crt::stdlib::pyiCalloc(1, sizeof(PyConsoleTaskState))));
+  PyProcessState* st = reinterpret_cast<PyProcessState*>(static_cast<uintptr_t>(::ffi::crt::stdlib::pyiCalloc(1, sizeof(PyProcessState))));
   if (!st)
   {
     throw PY2CPP_TYPE(PyOSError)();
@@ -318,30 +318,30 @@ PyProcessTask::PyProcessTask(
   this->_state = (PyUPtr)(uintptr_t)st;
 }
 
-PyProcessTask::PyProcessTask(PyProcessTask&& other)
+PyProcess::PyProcess(PyProcess&& other)
 {
   this->_state = other._state;
   other._state = 0;
 }
 
-PyProcessTask& PyProcessTask::operator=(PyProcessTask&& other)
+PyProcess& PyProcess::operator=(PyProcess&& other)
 {
   if (this != &other)
   {
-    this->~PyProcessTask();
+    this->~PyProcess();
     this->_state = other._state;
     other._state = 0;
   }
   return *this;
 }
 
-PyProcessTask::~PyProcessTask()
+PyProcess::~PyProcess()
 {
   if (!_state)
   {
     return;
   }
-  PyConsoleTaskState* st = (PyConsoleTaskState*)(uintptr_t)_state;
+  PyProcessState* st = (PyProcessState*)(uintptr_t)_state;
 #if defined(_WIN32)
   if (st->pi.hProcess)
   {
@@ -351,12 +351,12 @@ PyProcessTask::~PyProcessTask()
   {
     CloseHandle(st->pi.hThread);
   }
-  _task_close_handle(st->out_rd);
-  _task_close_handle(st->out_wr);
-  _task_close_handle(st->err_rd);
-  _task_close_handle(st->err_wr);
-  _task_close_handle(st->in_rd);
-  _task_close_handle(st->in_wr);
+  _process_close_handle(st->out_rd);
+  _process_close_handle(st->out_wr);
+  _process_close_handle(st->err_rd);
+  _process_close_handle(st->err_wr);
+  _process_close_handle(st->in_rd);
+  _process_close_handle(st->in_wr);
 #else
   if (st->out_rd >= 0)
   {
@@ -375,9 +375,9 @@ PyProcessTask::~PyProcessTask()
   _state = 0;
 }
 
-void PyProcessTask::start()
+void PyProcess::start()
 {
-  PyConsoleTaskState* st = (PyConsoleTaskState*)(uintptr_t)_state;
+  PyProcessState* st = (PyProcessState*)(uintptr_t)_state;
   if ((!st) || st->started)
   {
     return;
@@ -392,7 +392,7 @@ void PyProcessTask::start()
   int at = 0;
   for (int i = 0; i < n; i++)
   {
-    wchar_t* w = _task_utf8_to_wide(st->args.__getitem__(i));
+    wchar_t* w = _process_utf8_to_wide(st->args.__getitem__(i));
     if (!w)
     {
       throw PY2CPP_TYPE(PyOSError)();
@@ -401,7 +401,7 @@ void PyProcessTask::start()
     {
       cmdline[at++] = L' ';
     }
-    _task_append_quoted(cmdline, at, w, 32768);
+    _process_append_quoted(cmdline, at, w, 32768);
     ::ffi::crt::stdlib::pyiFree((PyUPtr)reinterpret_cast<uintptr_t>(w));
   }
   cmdline[at] = 0;
@@ -415,7 +415,7 @@ void PyProcessTask::start()
   }
   else if (st->stdin_mode == -2)
   {
-    si.hStdInput = _task_nul_handle(GENERIC_READ);
+    si.hStdInput = _process_nul_handle(GENERIC_READ);
   }
   else
   {
@@ -427,7 +427,7 @@ void PyProcessTask::start()
   }
   else if (st->stdout_mode == -2)
   {
-    si.hStdOutput = _task_nul_handle(GENERIC_WRITE);
+    si.hStdOutput = _process_nul_handle(GENERIC_WRITE);
   }
   else
   {
@@ -439,7 +439,7 @@ void PyProcessTask::start()
   }
   else if (st->stderr_mode == -2)
   {
-    si.hStdError = _task_nul_handle(GENERIC_WRITE);
+    si.hStdError = _process_nul_handle(GENERIC_WRITE);
   }
   else
   {
@@ -448,9 +448,9 @@ void PyProcessTask::start()
   wchar_t* wcwd = nullptr;
   if (st->cwd.__len__() > 0)
   {
-    wcwd = _task_utf8_to_wide(st->cwd);
+    wcwd = _process_utf8_to_wide(st->cwd);
   }
-  wchar_t* wenv = _task_env_block(st->env);
+  wchar_t* wenv = _process_env_block(st->env);
   DWORD flags = 0;
   if (wenv)
   {
@@ -473,9 +473,9 @@ void PyProcessTask::start()
   {
     CloseHandle(si.hStdError);
   }
-  _task_close_handle(st->out_wr);
-  _task_close_handle(st->err_wr);
-  _task_close_handle(st->in_rd);
+  _process_close_handle(st->out_wr);
+  _process_close_handle(st->err_wr);
+  _process_close_handle(st->in_rd);
   if (!ok)
   {
     throw PY2CPP_TYPE(PyOSError)();
@@ -567,9 +567,22 @@ void PyProcessTask::start()
 #endif
 }
 
-PyInt PyProcessTask::poll()
+PyProcess& PyProcess::__enter__()
 {
-  PyConsoleTaskState* st = (PyConsoleTaskState*)(uintptr_t)_state;
+  this->start();
+  return *this;
+}
+
+void PyProcess::__exit__()
+{
+  if (this->running__get())
+  {
+    this->terminate();
+  }
+}
+PyInt PyProcess::poll()
+{
+  PyProcessState* st = (PyProcessState*)(uintptr_t)_state;
   if ((!st) || (!st->started))
   {
     return -1;
@@ -597,9 +610,9 @@ PyInt PyProcessTask::poll()
 #endif
 }
 
-PyInt PyProcessTask::wait(PyFloat64 timeout)
+PyInt PyProcess::wait(PyFloat64 timeout)
 {
-  PyConsoleTaskState* st = (PyConsoleTaskState*)(uintptr_t)_state;
+  PyProcessState* st = (PyProcessState*)(uintptr_t)_state;
   if ((!st) || (!st->started))
   {
     throw PY2CPP_TYPE(PyOSError)();
@@ -629,9 +642,9 @@ PyInt PyProcessTask::wait(PyFloat64 timeout)
 #endif
 }
 
-void PyProcessTask::terminate()
+void PyProcess::terminate()
 {
-  PyConsoleTaskState* st = (PyConsoleTaskState*)(uintptr_t)_state;
+  PyProcessState* st = (PyProcessState*)(uintptr_t)_state;
   if ((!st) || (!st->started))
   {
     return;
@@ -643,9 +656,9 @@ void PyProcessTask::terminate()
 #endif
 }
 
-void PyProcessTask::kill()
+void PyProcess::kill()
 {
-  PyConsoleTaskState* st = (PyConsoleTaskState*)(uintptr_t)_state;
+  PyProcessState* st = (PyProcessState*)(uintptr_t)_state;
   if ((!st) || (!st->started))
   {
     return;
@@ -657,9 +670,9 @@ void PyProcessTask::kill()
 #endif
 }
 
-PyCompletedTask PyProcessTask::communicate(PyStr input, PyFloat64 timeout)
+PyCompletedProcess PyProcess::communicate(PyStr input, PyFloat64 timeout)
 {
-  PyConsoleTaskState* st = (PyConsoleTaskState*)(uintptr_t)_state;
+  PyProcessState* st = (PyProcessState*)(uintptr_t)_state;
   if ((!st) || (!st->started))
   {
     throw PY2CPP_TYPE(PyOSError)();
@@ -672,15 +685,15 @@ PyCompletedTask PyProcessTask::communicate(PyStr input, PyFloat64 timeout)
     DWORD n = 0;
     WriteFile(st->in_wr, buf, (DWORD)::ffi::crt::string::pyiStrlen(buf), &n, nullptr);
   }
-  _task_close_handle(st->in_wr);
+  _process_close_handle(st->in_wr);
   PyArray<PyChar> out_codes;
   PyArray<PyChar> err_codes;
   ULONGLONG start = GetTickCount64();
   DWORD total_ms = (timeout < 0.0) ? INFINITE : (DWORD)(timeout * 1000.0);
   for (;;)
   {
-    _task_drain_avail(st->out_rd, out_codes);
-    _task_drain_avail(st->err_rd, err_codes);
+    _process_drain_avail(st->out_rd, out_codes);
+    _process_drain_avail(st->err_rd, err_codes);
     DWORD PySlice = 10;
     if (total_ms != INFINITE)
     {
@@ -701,11 +714,11 @@ PyCompletedTask PyProcessTask::communicate(PyStr input, PyFloat64 timeout)
   GetExitCodeProcess(st->pi.hProcess, &code);
   st->exit_code = code;
   st->done = TRUE;
-  PyStr out = _task_codes_to_str(out_codes);
-  PyStr err = _task_codes_to_str(err_codes);
+  PyStr out = _process_codes_to_str(out_codes);
+  PyStr err = _process_codes_to_str(err_codes);
   if (st->out_rd)
   {
-    PyStr rest = _task_read_rest(st->out_rd);
+    PyStr rest = _process_read_rest(st->out_rd);
     if (rest.__len__() > 0)
     {
       out = out.__add__(rest);
@@ -713,13 +726,13 @@ PyCompletedTask PyProcessTask::communicate(PyStr input, PyFloat64 timeout)
   }
   if (st->err_rd)
   {
-    PyStr rest = _task_read_rest(st->err_rd);
+    PyStr rest = _process_read_rest(st->err_rd);
     if (rest.__len__() > 0)
     {
       err = err.__add__(rest);
     }
   }
-  return PyCompletedTask(st->args, (PyInt)st->exit_code, out, err);
+  return PyCompletedProcess(st->args, (PyInt)st->exit_code, out, err);
 #else
   (void)input;
   (void)timeout;
@@ -736,7 +749,7 @@ PyCompletedTask PyProcessTask::communicate(PyStr input, PyFloat64 timeout)
       {
         break;
       }
-      _task_append_bytes(out_codes, stack, n);
+      _process_append_bytes(out_codes, stack, n);
     }
   }
   if (st->err_rd >= 0)
@@ -748,18 +761,18 @@ PyCompletedTask PyProcessTask::communicate(PyStr input, PyFloat64 timeout)
       {
         break;
       }
-      _task_append_bytes(err_codes, stack, n);
+      _process_append_bytes(err_codes, stack, n);
     }
   }
-  return PyCompletedTask(
-    st->args, (PyInt)st->exit_code, _task_codes_to_str(out_codes), _task_codes_to_str(err_codes)
+  return PyCompletedProcess(
+    st->args, (PyInt)st->exit_code, _process_codes_to_str(out_codes), _process_codes_to_str(err_codes)
   );
 #endif
 }
 
-PyInt PyProcessTask::returnCode__get() const
+PyInt PyProcess::returnCode__get() const
 {
-  PyConsoleTaskState* st = (PyConsoleTaskState*)(uintptr_t)_state;
+  PyProcessState* st = (PyProcessState*)(uintptr_t)_state;
   if ((!st) || (!st->done))
   {
     return -1;
@@ -767,9 +780,30 @@ PyInt PyProcessTask::returnCode__get() const
   return (PyInt)st->exit_code;
 }
 
-PyInt PyProcessTask::pid__get() const
+PyBool PyProcess::running__get() const
 {
-  PyConsoleTaskState* st = (PyConsoleTaskState*)(uintptr_t)_state;
+  PyProcessState* st = (PyProcessState*)(uintptr_t)_state;
+  if ((!st) || (!st->started) || st->done)
+  {
+    return false;
+  }
+#if defined(_WIN32)
+  return WaitForSingleObject(st->pi.hProcess, 0) == WAIT_TIMEOUT;
+#else
+  int status = 0;
+  pid_t r = waitpid(st->pid, &status, WNOHANG);
+  if (r == st->pid)
+  {
+    st->exit_code = WIFEXITED(status) ? WEXITSTATUS(status) : 1;
+    st->done = 1;
+    return false;
+  }
+  return r == 0;
+#endif
+}
+PyInt PyProcess::pid__get() const
+{
+  PyProcessState* st = (PyProcessState*)(uintptr_t)_state;
   if ((!st) || (!st->started))
   {
     return -1;

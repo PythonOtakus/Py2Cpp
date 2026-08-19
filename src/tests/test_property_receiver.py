@@ -31,13 +31,13 @@ def use() -> None:
       py = out / "mod.py"
       py.write_text(src, encoding="utf-8")
       _, cpp_path = Translator.translate_file(
-        str(py), output_dir=str(out), include_stdlib=False,
+        str(py), output_dir=str(out), include_stdlib=False, strict=False,
       )
       cpp = cpp_path.read_text(encoding="utf-8")
-      self.assertIn("this->get_parent()", cpp.replace(" ", ""))
-      self.assertIn("Node().get_parent()", cpp.replace(" ", ""))
-      self.assertNotIn("this->parent;", cpp)
-      self.assertNotIn("Node().parent;", cpp)
+      self.assertIn("this->parent__get()", cpp.replace(" ", ""))
+      self.assertIn("PyNode().parent__get()", cpp.replace(" ", ""))
+      self.assertNotIn("this->parent__get;", cpp)
+      self.assertNotIn("PyNode().parent__get;", cpp)
 
   def test_list_subscript_property_read_uses_getter_call(self):
     src = """
@@ -91,6 +91,33 @@ def use() -> None:
         str(py), output_dir=str(out), include_stdlib=False, strict=False,
       )
       cpp = cpp_path.read_text(encoding="utf-8")
-      self.assertIn("Box b =", cpp)
+      self.assertIn("PyBox& b =", cpp)
       self.assertIn("value__get()", cpp)
       self.assertNotRegex(cpp, r"\bb\.value[^_]")
+  def test_with_uncopyable_lvalue_binds_manager_and_alias_by_reference(self):
+    src = """
+from py2cpp import *
+
+@uncopyable
+class Handle:
+  def __enter__(self) -> Self:
+    return self
+
+  def __exit__(self):
+    pass
+
+def use() -> None:
+  handle: Handle = new()
+  with handle as entered:
+    _ = entered
+"""
+    with tempfile.TemporaryDirectory() as tmp:
+      out = Path(tmp)
+      py = out / "mod.py"
+      py.write_text(src, encoding="utf-8")
+      _, cpp_path = Translator.translate_file(
+        str(py), output_dir=str(out), include_stdlib=False, strict=False,
+      )
+      cpp = cpp_path.read_text(encoding="utf-8")
+      self.assertRegex(cpp, r"auto& __with_mgr\d+ = handle;")
+      self.assertRegex(cpp, r"PyHandle& entered = __with_ent\d+;")

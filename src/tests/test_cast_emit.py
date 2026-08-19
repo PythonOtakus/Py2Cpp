@@ -49,6 +49,13 @@ class Base:
     out = _emit_cast_call(tr, target, node)
     self.assertEqual(out, "reinterpret_cast<PyByte*>(handle)")
 
+  def test_overload_match_strips_const_list_reference(self):
+    tr = Translator("test/mod", "test/mod.py")
+    score = tr._overload_param_match_score(
+      "const PyList<PyStr>&", "PyList<PyStr>",
+    )
+    self.assertEqual(score, 100)
+
   def test_cast_cstr_to_uintptr(self):
     tr = Translator("test/mod", "test/mod.py")
     from src.analysis.analyzer import TypeParser

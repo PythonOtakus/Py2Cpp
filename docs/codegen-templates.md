@@ -397,7 +397,7 @@ Py2Cpp/                              # 仓库根
     text/
       +bytes.inl                      # paste_after → text/bytes.inl
       +str.h                          # 类头 inject → text/str.h
-      +str.inl                        # paste_after → text/str.inl（format / % / fromBuf 等）
+      +str.inl                        # paste_after → text/str.inl（format / % / fromArray 等）
     sql/
       +sqlite.inl                     # paste_after → sql/sqlite.inl
     ui/
@@ -406,7 +406,7 @@ Py2Cpp/                              # 仓库根
       +window.inl                    # 含 Win32 主题
       +widget.inl
     io/
-      # ``-file.inl`` 已下沉为 ``py2cpp/io/file/path.py`` + ffi，已删
+      # ``-file.inl`` 已下沉为 ``py2cpp/io/path.py`` + ffi，已删
       io.inl                         # 可 ../sql/~bind.inl
     web/
       +socket.inl                   # paste_after → web/socket.inl（TcpSocket）
@@ -588,7 +588,7 @@ explicit PY2CPP_ECHO(ctx_Cls)(const PY2CPP_TYPE(PyStr)& msg) : PY2CPP_ECHO(ctx_B
 | ``~class_header/str_format_header.inl`` 等 | ``text/+str.h`` | 声明：`format`` / ``__mod__`` / ``PyArray&&`` 构造等 |
 | ``text/~str_format_runtime.inl`` | ``text/+str.inl`` | 实现：format 替换、``%``、标量构造 |
 | ``text/~str_array_by_value.inl`` | （同上合并） | ``PyStr(PyArray<PyChar>&&`` |
-| ``text/~str_span.inl`` | （同上合并） | ``fromBuf`` |
+| ``text/~str_span.inl`` | （同上合并） | ``fromArray`` |
 | ``~operators/scalar_format.inl`` | ``+operators.inl``（format 段） | 与 divmod/pow/repr 等合并于同一 ``+operators.inl`` |
 | ``io/~text_io_wrapper.inl`` | ``+io.inl`` | ``TextIOWrapper`` 等写入 ``io.inl`` 尾部 |
 | ``web/~socket_tcp.inl`` | ``web/+socket.inl`` | ``TcpSocket`` 写入 ``web/socket.inl`` 尾部 |

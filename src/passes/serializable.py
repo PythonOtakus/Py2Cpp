@@ -152,10 +152,10 @@ def _load_fast_field_body(
         f"{prefix}{decoder}.skipSpaces()\n"
         f"{prefix}{target} = {decoder}.parseIntAt()"
       )
-    if ann.id == "varint":
+    if ann.id == "long":
       return (
         f"{prefix}{decoder}.skipSpaces()\n"
-        f"{prefix}{target} = {decoder}.parseVarintAt()"
+        f"{prefix}{target} = {decoder}.parseLongAt()"
       )
     if ann.id == "str":
       return f"{prefix}{target} = {decoder}.loadStr()"
@@ -165,10 +165,10 @@ def _load_fast_field_body(
       f"{prefix}{decoder}.skipSpaces()\n"
       f"{prefix}{target} = {decoder}.loadListIntValue()"
     )
-  if elem == "varint":
+  if elem == "long":
     return (
       f"{prefix}{decoder}.skipSpaces()\n"
-      f"{prefix}{target} = {decoder}.loadListVarintValue()"
+      f"{prefix}{target} = {decoder}.loadListLongValue()"
     )
   if elem == "str":
     return (
@@ -191,8 +191,8 @@ def _dump_fast_field_line(
       return f"{encoder}.dumpFieldBool({key}, {access})"
     if ann.id == "int":
       return f"{encoder}.dumpFieldInt({key}, {access})"
-    if ann.id == "varint":
-      return f"{encoder}.dumpFieldVarint({key}, {access})"
+    if ann.id == "long":
+      return f"{encoder}.dumpFieldLong({key}, {access})"
     if ann.id in ("float", "float64"):
       return None
     if ann.id == "str":
@@ -200,8 +200,8 @@ def _dump_fast_field_line(
   elem = _ann_list_elem(ann)
   if elem == "int":
     return f"{encoder}.dumpFieldListInt({key}, {access})"
-  if elem == "varint":
-    return f"{encoder}.dumpFieldListVarint({key}, {access})"
+  if elem == "long":
+    return f"{encoder}.dumpFieldListLong({key}, {access})"
   if elem == "str":
     return f"{encoder}.dumpFieldListStr({key}, {access})"
   if elem == "float":
@@ -215,8 +215,8 @@ def _dump_scalar(ann: ast.expr, access: str, encoder: str) -> str | None:
       return f"{encoder}.dumpBool({access})"
     if ann.id == "int":
       return f"{encoder}.dumpInt({access})"
-    if ann.id == "varint":
-      return f"{encoder}.dumpVarint({access})"
+    if ann.id == "long":
+      return f"{encoder}.dumpLong({access})"
     if ann.id in ("float", "float64"):
       return f"{encoder}.dumpFloat({access})"
     if ann.id == "str":
@@ -242,8 +242,8 @@ def _dump_field_lines(
   if elem is not None:
     if elem == "int":
       return [f"{encoder}.dumpListInt({access})"]
-    if elem == "varint":
-      return [f"{encoder}.dumpListVarint({access})"]
+    if elem == "long":
+      return [f"{encoder}.dumpListLong({access})"]
     if elem == "str":
       return [f"{encoder}.dumpListStr({access})"]
     if elem == "float":
@@ -266,8 +266,8 @@ def _dump_field_lines(
   if val_t is not None:
     if val_t == "int":
       return [f"{encoder}.dumpDictStrInt({access})"]
-    if val_t == "varint":
-      return [f"{encoder}.dumpDictStrVarint({access})"]
+    if val_t == "long":
+      return [f"{encoder}.dumpDictStrLong({access})"]
     if val_t == "str":
       return [f"{encoder}.dumpDictStrStr({access})"]
     if val_t == "float":
@@ -398,7 +398,7 @@ def _load_field_branch(
     fast_list = _load_fast_field_body(decoder, ann, target, body)
     if elem == "int" and fast_list is not None:
       return f"{indent}{kw} {decoder}.tryMatchKey({key}):\n{fast_list}"
-    if elem == "varint" and fast_list is not None:
+    if elem == "long" and fast_list is not None:
       return f"{indent}{kw} {decoder}.tryMatchKey({key}):\n{fast_list}"
     if elem == "str" and fast_list is not None:
       return f"{indent}{kw} {decoder}.tryMatchKey({key}):\n{fast_list}"
@@ -418,10 +418,10 @@ def _load_field_branch(
         f"{indent}{kw} {decoder}.tryMatchKey({key}):\n"
         f"{body}{target} = {decoder}.loadDictStrInt()"
       )
-    if val_t == "varint":
+    if val_t == "long":
       return (
         f"{indent}{kw} {decoder}.tryMatchKey({key}):\n"
-        f"{body}{target} = {decoder}.loadDictStrVarint()"
+        f"{body}{target} = {decoder}.loadDictStrLong()"
       )
     if val_t == "str":
       return (
@@ -468,8 +468,8 @@ def _default_for_ann(ann: ast.expr, tr: Translator | None = None) -> str:
       return "False"
     if ann.id == "int":
       return "0"
-    if ann.id == "varint":
-      return 'varint("")'
+    if ann.id == "long":
+      return 'long("")'
     if ann.id == "str":
       return '""'
     if ann.id in ("float", "float64"):
@@ -498,7 +498,7 @@ def _schema_deserialize_eligible(tr: Translator, specs: list[DataclassFieldSpec]
   for spec in specs:
     ann = spec.annotation
     if isinstance(ann, ast.Name):
-      if ann.id in ("int", "str", "bool", "varint"):
+      if ann.id in ("int", "str", "bool", "long"):
         continue
       if ann.id in ("float", "float64"):
         return False
@@ -528,10 +528,10 @@ def _ordered_field_parse_lines(
         f"{body}{decoder}.skipSpaces()",
         f"{body}{target} = {decoder}.parseIntAt()",
       ]
-    if ann.id == "varint":
+    if ann.id == "long":
       return [
         f"{body}{decoder}.skipSpaces()",
-        f"{body}{target} = {decoder}.parseVarintAt()",
+        f"{body}{target} = {decoder}.parseLongAt()",
       ]
     if ann.id == "str":
       return [
@@ -560,10 +560,10 @@ def _ordered_field_parse_lines(
       f"{body}{decoder}.skipSpaces()",
       f"{body}{target} = {decoder}.loadListIntValue()",
     ]
-  if elem == "varint":
+  if elem == "long":
     return [
       f"{body}{decoder}.skipSpaces()",
-      f"{body}{target} = {decoder}.loadListVarintValue()",
+      f"{body}{target} = {decoder}.loadListLongValue()",
     ]
   return [f"{body}{target} = {decoder}.loadStringSlow()"]
 
@@ -712,8 +712,8 @@ def _cpp_ordered_field_lines(
   if isinstance(ann, ast.Name):
     if ann.id == "int":
       return [f"  {target_cpp} = {_cpp_parseIntAt_expr(dec)};"]
-    if ann.id == "varint":
-      return [f"  {target_cpp} = {dec}.parseVarintAt();"]
+    if ann.id == "long":
+      return [f"  {target_cpp} = {dec}.parseLongAt();"]
     if ann.id == "str":
       if str_as_span:
         return [f"  {target_cpp} = {dec}.loadStrSpan();"]
@@ -802,7 +802,7 @@ def _cpp_ctor_fast_args(specs: list[DataclassFieldSpec]) -> tuple[str, str]:
       continue
     if spec.annotation.id == "int":
       id_arg = f"{spec.name}_v"
-    elif spec.annotation.id == "varint":
+    elif spec.annotation.id == "long":
       id_arg = f"{spec.name}_v"
     elif spec.annotation.id == "bool":
       active_arg = f"{spec.name}_v"
@@ -826,7 +826,7 @@ def _cpp_fast_ctor_placeholder_args(specs: list[DataclassFieldSpec]) -> str:
     if not isinstance(spec.annotation, ast.Name):
       continue
     ann = spec.annotation.id
-    if ann in ("int", "varint", "bool"):
+    if ann in ("int", "long", "bool"):
       parts.append(f"{spec.name}_v")
     elif ann == "str":
       parts.append(_cpp_str_field_ctor_default(spec))
@@ -837,7 +837,7 @@ def _cpp_is_scalar_int_bool_only(specs: list[DataclassFieldSpec]) -> bool:
   """仅 ``int``/``bool`` 字段（无 ``str``/``list``/嵌套），可 ``serdePushSlot`` + ``init``。"""
   for spec in specs:
     if isinstance(spec.annotation, ast.Name):
-      if spec.annotation.id in ("int", "bool", "varint"):
+      if spec.annotation.id in ("int", "bool", "long"):
         continue
       return False
     return False
@@ -847,7 +847,7 @@ def _cpp_is_scalar_int_bool_only(specs: list[DataclassFieldSpec]) -> bool:
 def _cpp_ctor_scalar_args(specs: list[DataclassFieldSpec]) -> str:
   parts: list[str] = []
   for spec in specs:
-    if isinstance(spec.annotation, ast.Name) and spec.annotation.id in ("int", "bool", "varint"):
+    if isinstance(spec.annotation, ast.Name) and spec.annotation.id in ("int", "bool", "long"):
       parts.append(f"{spec.name}_v")
   return ", ".join(parts)
 
@@ -902,8 +902,8 @@ def _cpp_emit_fast_from_ordered_helper(
       continue
     if spec.annotation.id == "int":
       params.append(f"PyInt {spec.name}_v")
-    elif spec.annotation.id == "varint":
-      params.append(f"PyVarInt {spec.name}_v")
+    elif spec.annotation.id == "long":
+      params.append(f"PyLong {spec.name}_v")
     elif spec.annotation.id == "str":
       params.append(f"PySpan<PyChar> {spec.name}_seg")
     elif spec.annotation.id == "bool":
@@ -933,7 +933,7 @@ def _cpp_finish_value_expr(
     for spec in specs:
       if not isinstance(spec.annotation, ast.Name):
         continue
-      if spec.annotation.id in ("int", "bool", "varint"):
+      if spec.annotation.id in ("int", "bool", "long"):
         args.append(f"{spec.name}_v")
       elif spec.annotation.id == "str":
         args.append(f"{spec.name}_seg")
@@ -950,8 +950,8 @@ def _cpp_emit_ordered_locals(
   for spec in specs:
     if isinstance(spec.annotation, ast.Name) and spec.annotation.id == "int":
       lines.append(f"  PyInt {spec.name}_v = 0;")
-    elif isinstance(spec.annotation, ast.Name) and spec.annotation.id == "varint":
-      lines.append(f'  PyVarInt {spec.name}_v = PyVarInt(PyStr(""));')
+    elif isinstance(spec.annotation, ast.Name) and spec.annotation.id == "long":
+      lines.append(f'  PyLong {spec.name}_v = PyLong(PyStr(""));')
     elif isinstance(spec.annotation, ast.Name) and spec.annotation.id == "str":
       if str_as_span:
         lines.append(f"  PySpan<PyChar> {spec.name}_seg(nullptr, 0);")
@@ -1055,7 +1055,7 @@ def _cpp_user_ctor_expr(cpp_cls: str, specs: list[DataclassFieldSpec]) -> tuple[
   for spec in specs:
     tgt = f"{spec.name}_v"
     if isinstance(spec.annotation, ast.Name):
-      if spec.annotation.id in ("int", "str", "bool", "varint"):
+      if spec.annotation.id in ("int", "str", "bool", "long"):
         ctor_params.append(tgt)
     elif _ann_list_elem(spec.annotation) == "str":
       post.append(f"  _u.{spec.name} = {tgt};")
@@ -1072,8 +1072,8 @@ def _cpp_default_ctor_expr(cpp_cls: str, specs: list[DataclassFieldSpec]) -> str
     if isinstance(spec.annotation, ast.Name):
       if spec.annotation.id == "int":
         parts.append("0")
-      elif spec.annotation.id == "varint":
-        parts.append('PyVarInt(PyStr(""))')
+      elif spec.annotation.id == "long":
+        parts.append('PyLong(PyStr(""))')
       elif spec.annotation.id == "str":
         parts.append("PyStr(\"\")")
       elif spec.annotation.id == "bool":

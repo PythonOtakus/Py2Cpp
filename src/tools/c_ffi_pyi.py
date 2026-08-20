@@ -121,7 +121,9 @@ PYI_PREFIX_LEGACY = "Pyi_"
 _PYI_ANN_BUILTINS = frozenset({
   "None",
   "int",
+  "int16",
   "int64",
+  "uint16",
   "uint",
   "uint64",
   "uintptr",
@@ -132,7 +134,8 @@ _PYI_ANN_BUILTINS = frozenset({
   "char",
   "str",
   "bytes",
-  "CStr",
+  "utf8ptr",
+  "utf16ptr",
   "Self",
   "object",
 })
@@ -253,6 +256,28 @@ def pyi_func_export_name(c_name: str) -> str:
 def pyi_const_export_name(c_name: str) -> str:
   """模块常量：``PyiSqliteOk``（与类型同式 Pascal）。"""
   return pyi_type_export_name(c_name, is_enum=False)
+
+
+def _resolveExportNameCollisions(model: FfiModel) -> None:
+  """避免常量与 ``@native`` 类型导出为同一 Python/C++ 名。"""
+  used = {
+    *(pyi_type_export_name(st.c_name) for st in model.structs),
+    *(pyi_type_export_name(en.c_name, is_enum=True) for en in model.enums),
+    *(alias.py_name for alias in model.aliases),
+    *(fn.py_name for fn in model.funcs),
+  }
+  for const in model.consts:
+    base = const.py_name
+    if base not in used:
+      used.add(base)
+      continue
+    candidate = f"{base}Const"
+    index = 2
+    while candidate in used:
+      candidate = f"{base}Const{index}"
+      index += 1
+    const.py_name = candidate
+    used.add(candidate)
 
 
 def pyi_field_export_name(c_name: str) -> str:
@@ -891,6 +916,10 @@ def default_clang_args(header: Path) -> list[str]:
         "-DWINGDIAPI=",
         "-DAPIENTRY=__stdcall",
       ])
+    bucket = windows_sdk_include_bucket(header)
+    if bucket in {"um", "shared", "winrt"} and hname != "windows.h":
+      # SDK 子头常假设已由 windows.h 定义 EXTERN_C、CALLBACK 等基础宏。
+      args.extend(["-include", "windows.h"])
   return args
 
 
@@ -1070,6 +1099,50 @@ def _record_decl_cursor(t):
   if decl is not None and decl.kind in (CursorKind.STRUCT_DECL, CursorKind.UNION_DECL):
     return decl
   return None
+
+
+_WIDE_CHAR_POINTER_TYPEDEFS = frozenset({
+  "BSTR",
+  "LPCOLESTR",
+  "LPCWCH",
+  "LPCWSTR",
+  "LPOLESTR",
+  "LPWCH",
+  "LPWSTR",
+  "PCOLESTR",
+  "PCWCH",
+  "PCWSTR",
+  "POLESTR",
+  "PWCH",
+  "PWSTR",
+})
+
+
+def _wide_char_pointer_annotation(t) -> str | None:
+  """Map Windows wide-character pointers without confusing USHORT arrays."""
+  can = _canonical(t)
+  if can.kind != TypeKind.POINTER:
+    return None
+  decl = t.get_declaration()
+  alias = (decl.spelling if decl is not None else "") or ""
+  spelling = _type_spelling(t)
+  is_wide = (
+    alias in _WIDE_CHAR_POINTER_TYPEDEFS
+    or "wchar_t" in spelling
+    or "WCHAR" in spelling
+  )
+  if not is_wide:
+    return None
+  pointee = can.get_pointee()
+  if pointee.is_const_qualified():
+    return "utf16ptr"
+  return "Pointer[uint16]"
+
+
+def _is_wide_char_scalar(t) -> bool:
+  decl = t.get_declaration()
+  name = (decl.spelling if decl is not None else "") or ""
+  return name in ("WCHAR", "OLECHAR") or _type_spelling(t) == "wchar_t"
 
 
 class TypeMapper:
@@ -1345,6 +1418,12 @@ class TypeMapper:
     if t is None:
       return "uintptr", "null type"
 
+    wide_ptr = _wide_char_pointer_annotation(t)
+    if wide_ptr is not None:
+      return wide_ptr, ""
+    if _is_wide_char_scalar(t):
+      return "uint16", ""
+
     k = t.kind
     if k == TypeKind.VOID:
       return "None", ""
@@ -1374,7 +1453,7 @@ class TypeMapper:
       if name in ("sqlite3_uint64", "sqlite_uint64"):
         return "uint64", ""
       if name in ("sqlite3_filename",):
-        return "CStr", ""
+        return "utf8ptr", ""
       # Win32 句柄 / void* 宽度别名（函数指针 FARPROC/PROC 等走 Function，不在此列）
       if name in (
         "HANDLE", "HWND", "HINSTANCE", "HMODULE", "HICON", "HCURSOR", "HBRUSH",
@@ -1421,15 +1500,15 @@ class TypeMapper:
           return self._map_function_proto(can_p)
       psp = _type_spelling(pointee).replace("const ", "").strip()
       if pk in (TypeKind.CHAR_S, TypeKind.CHAR_U, TypeKind.SCHAR, TypeKind.UCHAR):
-        return "CStr", ""
-      if psp in ("char", "signed char", "unsigned char", "WCHAR", "wchar_t"):
-        return "CStr", ""
+        return "utf8ptr", ""
+      if psp in ("char", "signed char", "unsigned char"):
+        return "utf8ptr", ""
       if pk == TypeKind.VOID:
         return "uintptr", ""
       if pk == TypeKind.TYPEDEF:
         tname = pointee.get_declaration().spelling or ""
-        if tname in ("WCHAR", "CHAR", "TCHAR"):
-          return "CStr", ""
+        if tname in ("CHAR", "TCHAR"):
+          return "utf8ptr", ""
       # GLfloat* / GLdouble* 等：ELABORATED/TYPEDEF 标量先映成 Pointer[float]/Pointer[float64]
       if pk in (TypeKind.TYPEDEF, TypeKind.ELABORATED):
         inner_ann, inner_cmt = self.map(pointee, is_return=False)
@@ -1439,6 +1518,7 @@ class TypeMapper:
           "float",
           "float64",
           "int",
+          "int16",
           "int64",
           "uint",
           "uint64",
@@ -1480,8 +1560,10 @@ class TypeMapper:
 
     if k in (TypeKind.BOOL,):
       return "bool", ""
-    if k in (TypeKind.CHAR_S, TypeKind.SCHAR, TypeKind.CHAR_U, TypeKind.UCHAR, TypeKind.WCHAR):
+    if k in (TypeKind.CHAR_S, TypeKind.SCHAR, TypeKind.CHAR_U, TypeKind.UCHAR):
       return "int", ""
+    if k == TypeKind.WCHAR:
+      return "uint16", ""
     if k in (TypeKind.SHORT, TypeKind.INT, TypeKind.LONG, TypeKind.LONGLONG):
       try:
         bits = t.get_size() * 8
@@ -1489,6 +1571,8 @@ class TypeMapper:
         bits = 32
       if bits >= 64:
         return "int64", ""
+      if bits == 16:
+        return "int16", ""
       return "int", ""
     if k in (TypeKind.USHORT, TypeKind.UINT, TypeKind.ULONG, TypeKind.ULONGLONG):
       try:
@@ -1497,6 +1581,8 @@ class TypeMapper:
         bits = 32
       if bits >= 64:
         return "uint64", ""
+      if bits == 16:
+        return "uint16", ""
       return "uint", ""
     if k == TypeKind.FLOAT:
       return "float", ""
@@ -1610,8 +1696,15 @@ def collect_model(
   header = header.resolve()
   sqlite_mode = "sqlite" in header.name.lower()
   if include_deps is None:
-    # sqlite amalgamation：不传递；Win32 / UCRT：传递（UCRT 根已限 ucrt/，见 _collect_roots）
-    include_deps = not sqlite_mode
+    # sqlite amalgamation 与 Win32 子头只导出自身声明；Windows 伞头和 UCRT
+    # 仍收集其传递依赖（UCRT 根已限 ucrt/，见 _collect_roots）。
+    include_deps = (
+      not sqlite_mode
+      and not (
+        windows_sdk_include_bucket(header) in {"um", "shared", "winrt"}
+        and header.name.lower() != "windows.h"
+      )
+    )
 
   args = list(default_clang_args(header))
   # 用户/调用方额外参数追加在后（可覆盖 -I）
@@ -1808,6 +1901,7 @@ def collect_model(
     by_py_const.setdefault(const.py_name, const)
   model.consts = sorted(by_py_const.values(), key=lambda x: x.name)
   model.funcs.sort(key=lambda x: x.c_name)
+  _resolveExportNameCollisions(model)
   return model
 
 

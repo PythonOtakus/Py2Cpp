@@ -579,7 +579,7 @@ for field in Self.iterFields(publicOnly=True):
 | `str` | `TEXT` | `PyStr` ↔ UTF-8 |
 | `float` | `REAL` | |
 | `bytes` | `BLOB` | |
-| `varint` | `INTEGER` | 与 json 一致 |
+| `long` | `INTEGER` | 与 json 一致 |
 | `Optional[T]` | 同上 | 允许 NULL |
 | `list[...]` / 嵌套 `@dataclass` | — | **P1 不支持**；P2+ 可 JSON 列 + `serde.json` |
 

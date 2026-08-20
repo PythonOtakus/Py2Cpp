@@ -243,6 +243,29 @@ def _make_iterator_class(
   body: list[ast.stmt] = []
   if type_params:
     body.append(_make_type_element_alias(type_params[0]))
+  host_ann: ast.expr = ast.Name(id=host_info.name, ctx=ast.Load())
+  if type_params:
+    host_ann = ast.Subscript(
+      value=ast.Name(id=host_info.name, ctx=ast.Load()),
+      slice=ast.Tuple(
+        elts=[ast.Name(id=p, ctx=ast.Load()) for p in type_params],
+        ctx=ast.Load(),
+      ),
+    )
+  # 默认迭代器在语义收集后注入；显式字段注解保证后续 C++ 声明
+  # 保留宿主类型，而不会从 ``__init__`` 赋值退化成 ``void*``。
+  body.append(ast.AnnAssign(
+    target=ast.Name(id="_host", ctx=ast.Store()),
+    annotation=host_ann,
+    value=None,
+    simple=1,
+  ))
+  body.append(ast.AnnAssign(
+    target=ast.Name(id="_index", ctx=ast.Store()),
+    annotation=ast.Name(id="int", ctx=ast.Load()),
+    value=ast.Constant(value=0),
+    simple=1,
+  ))
   body.append(_make_iterator_init(host_info.name, type_params=type_params))
   body.append(_make_iterator_iter())
   body.append(_make_iterator_next(copy.deepcopy(getitem.returns)))

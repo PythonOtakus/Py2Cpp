@@ -228,7 +228,7 @@ class TestFfiTranslateGlue(unittest.TestCase):
         "from py2cpp import *\n"
         "from ffi.crt.stdio import pyiSnprintf, pyiVsnprintf\n"
         "\n"
-        "def format_value(buf: CStr, value: int) -> int:\n"
+        "def format_value(buf: utf8ptr, value: int) -> int:\n"
         "  return pyiSnprintf(buf, 32, \"%d\", value)\n",
         encoding="utf-8",
       )
@@ -259,7 +259,7 @@ class TestFfiTranslateGlue(unittest.TestCase):
         "from ffi.crt.stat import PyiSIfdir\n"
         "from ffi.crt.stdio import pyiFileno\n"
         "\n"
-        "def probe(p: CStr) -> int:\n"
+        "def probe(p: utf8ptr) -> int:\n"
         "  _ = PyiSIfdir\n"
         "  return pyiChdir(p)\n",
         encoding="utf-8",

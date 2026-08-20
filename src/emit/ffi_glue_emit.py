@@ -32,19 +32,21 @@ if TYPE_CHECKING:
 
 _SCALAR_CAST: dict[str, str] = {
   "int": "PyInt",
+  "int16": "PyInt16",
   "int64": "PyInt64",
+  "uint16": "PyUInt16",
   "uint": "PyUInt",
   "uint64": "PyUInt64",
-  "uintptr": "PyUPtr",
+  "uintptr": "PyUIntPtr",
   "float": "PyFloat",
   "float64": "PyFloat64",
   "bool": "PyBool",
-  "CStr": "CStr",
+  "utf8ptr": "utf8ptr",
 }
 
 
-# ``CStr`` is represented as ``const char*`` in generated C++.  A small
-# set of C APIs uses a ``char*`` output buffer but is emitted as ``CStr`` by
+# ``utf8ptr`` is represented as ``const char*`` in generated C++.  A small
+# set of C APIs uses a ``char*`` output buffer but is emitted as ``utf8ptr`` by
 # the header generator, so glue performs the only required mutable cast.
 _MUTABLE_CSTR_PARAMS: frozenset[tuple[str, str]] = frozenset({
   ("fgets", "_Buffer"),
@@ -60,14 +62,9 @@ _MUTABLE_CSTR_PARAMS: frozenset[tuple[str, str]] = frozenset({
   ("GetFinalPathNameByHandleA", "lpszFilePath"),
 })
 
-_WIDE_CHAR_POINTER_PARAMS: frozenset[tuple[str, str]] = frozenset({
-  ("CommandLineToArgvW", "lpCmdLine"),
-  ("WideCharToMultiByte", "lpWideCharStr"),
-})
-
 @dataclass(frozen=True)
 class _Ann:
-  kind: str  # void|scalar|cstr|struct|fn|ptr_struct|ptr_scalar|ptr_cstr|ptr_ptr|unsupported
+  kind: str  # void|scalar|cstr|cwstr|struct|fn|ptr_struct|ptr_scalar|ptr_cstr|ptr_cwstr|ptr_ptr|unsupported
   name: str = ""
 
 
@@ -79,8 +76,10 @@ def _parse_ann(node: ast.expr | None) -> _Ann:
   if isinstance(node, ast.Name):
     if node.id == "None":
       return _Ann("void")
-    if node.id == "CStr":
+    if node.id == "utf8ptr":
       return _Ann("cstr")
+    if node.id == "utf16ptr":
+      return _Ann("cwstr")
     if node.id in _SCALAR_CAST:
       return _Ann("scalar", node.id)
     # 按值结构体 / 历史 *_h 名（剥后缀得 C 标签）
@@ -92,13 +91,17 @@ def _parse_ann(node: ast.expr | None) -> _Ann:
       return _Ann("unsupported")
     sl = node.slice
     if isinstance(sl, ast.Name):
-      if sl.id == "CStr":
+      if sl.id == "utf8ptr":
         return _Ann("ptr_cstr")
+      if sl.id == "utf16ptr":
+        return _Ann("ptr_cwstr")
       if sl.id in _SCALAR_CAST:
         return _Ann("ptr_scalar", sl.id)
       return _Ann("ptr_struct", sl.id)
     if isinstance(sl, ast.Subscript):
       # Pointer[Pointer[T]] → 直接传 T**
+      if isinstance(sl.value, ast.Name) and sl.value.id == "Pointer" and isinstance(sl.slice, ast.Name):
+        return _Ann("ptr_ptr", sl.slice.id)
       return _Ann("ptr_ptr")
   return _Ann("unsupported")
 
@@ -114,6 +117,8 @@ def _emit_arg_expr(pname: str, ann: _Ann, *, c_name: str) -> tuple[list[str], st
       return [], f"reinterpret_cast<va_list>(const_cast<char*>({pname}))"
     if (c_name, pname) in _MUTABLE_CSTR_PARAMS:
       return [], f"const_cast<char*>({pname})"
+    return [], pname
+  if ann.kind == "cwstr":
     return [], pname
   if ann.kind == "fn":
     # C 回调签名与 Py Function 指针布局一致但类型名不同，按需收窄
@@ -141,17 +146,21 @@ def _emit_arg_expr(pname: str, ann: _Ann, *, c_name: str) -> tuple[list[str], st
       return [], f"reinterpret_cast<float*>({pname})"
     if ann.name == "float64":
       return [], f"reinterpret_cast<double*>({pname})"
-    if ann.name == "uint" and (c_name, pname) in _WIDE_CHAR_POINTER_PARAMS:
-      return [], f"reinterpret_cast<const wchar_t*>({pname})"
+    if ann.name == "uint16":
+      return [], f"reinterpret_cast<wchar_t*>({pname})"
     if c_name == "ReleaseSemaphore" and pname == "lpPreviousCount":
       return [], f"reinterpret_cast<LONG*>({pname})"
     return [], pname
   if ann.kind == "ptr_cstr":
-    # ``CStr*`` ≈ ``const char**``；个别 API（如 ``sqlite3_exec`` errmsg）要 ``char**``
+    # ``utf8ptr*`` ≈ ``const char**``；个别 API（如 ``sqlite3_exec`` errmsg）要 ``char**``
     if c_name == "sqlite3_exec" or (c_name, pname) in {("GetFullPathNameA", "lpFilePart")}:
       return [], f"reinterpret_cast<char**>(static_cast<void*>({pname}))"
     return [], f"reinterpret_cast<const char**>(static_cast<void*>({pname}))"
+  if ann.kind == "ptr_cwstr":
+    return [], f"reinterpret_cast<const wchar_t**>(static_cast<void*>({pname}))"
   if ann.kind == "ptr_ptr":
+    if ann.name == "uint16":
+      return [], f"reinterpret_cast<wchar_t**>({pname})"
     return [], pname
   if ann.kind == "unsupported":
     return [], f"reinterpret_cast<void*>(static_cast<uintptr_t>({pname}))"
@@ -169,7 +178,9 @@ def _ret_store_type(ann: _Ann, fallback: str) -> str:
   if ann.kind == "struct":
     return fallback
   if ann.kind == "cstr":
-    return "CStr"
+    return "utf8ptr"
+  if ann.kind == "cwstr":
+    return "utf16ptr"
   if ann.kind == "fn":
     return fallback
   if ann.kind == "scalar":
@@ -179,7 +190,13 @@ def _ret_store_type(ann: _Ann, fallback: str) -> str:
 
 def _wrap_c_call_as_ret(c_call: str, ann: _Ann, store: str) -> str:
   if ann.kind == "cstr":
-    return f"(CStr)({c_call})"
+    return f"(utf8ptr)({c_call})"
+  if ann.kind == "cwstr":
+    return f"reinterpret_cast<utf16ptr>({c_call})"
+  if ann.kind == "ptr_scalar" and ann.name == "uint16":
+    return f"reinterpret_cast<{store}>({c_call})"
+  if ann.kind == "ptr_ptr" and ann.name == "uint16":
+    return f"reinterpret_cast<{store}>({c_call})"
   if ann.kind == "fn":
     return f"({store})({c_call})"
   if ann.kind == "scalar":
@@ -267,7 +284,7 @@ def emit_ffi_module_glue(tr: Translator, module_path: str) -> None:
       pre.extend(pref)
       call_args.append(expr)
       post.extend(_emit_out_writes(pname, ann))
-    # C ``printf(fmt, ...)`` ← ``def pyiPrintf(_Format: CStr, *_)``
+    # C ``printf(fmt, ...)`` ← ``def pyiPrintf(_Format: utf8ptr, *_)``
     if func.args.vararg is not None:
       call_args.append(f"{cpp_param(func.args.vararg.arg)}...")
     c_call = f"::{cnm}({', '.join(call_args)})"

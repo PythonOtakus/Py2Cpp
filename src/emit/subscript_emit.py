@@ -501,7 +501,7 @@ def visit_subscript(tr: Translator, node: ast.Subscript) -> str:
                     return f'this->{fcpp}->__getitem__({idx})'
                 return _emit_ptr_subscript(tr, f'this->{node.value.attr}', idx, ft)
     if isinstance(node.value, ast.Name) and tr.scope:
-        if scope_binding_storage_cpp(tr.scope, node.value.id) == 'CStr':
+        if scope_binding_storage_cpp(tr.scope, node.value.id) in ('utf8ptr', 'utf16ptr'):
             return f'{node.value.id}[{tr.visit(node.slice)}]'
         vt = scope_storage_cpp(tr, node.value.id)
         if is_stack_array_type(vt) or is_span_type(vt):

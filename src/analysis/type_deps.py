@@ -39,6 +39,9 @@ def _collect_base_dep(
   if base == "PyCallable":
     from ..constant.stdlib_layout import stdlib_header_include
 
+    # ``str.h`` 前置声明 PyCallable，避免 str → delegate → list → str 的头环。
+    if own_header == stdlib_header_include("text/str"):
+      return
     header = stdlib_header_include("core/delegate")
     if header != own_header and header not in out:
       out.append(header)

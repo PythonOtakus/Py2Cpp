@@ -59,7 +59,7 @@ class DecimalRatioTests(TestCaseMixin):
     @override
     def test(self):
         d: Decimal = new('1.25')
-        ratio: (varint, varint) = d.asIntegerRatio()
+        ratio: (long, long) = d.asIntegerRatio()
         self.assertEqual(int(ratio[0]), 5)
         self.assertEqual(int(ratio[1]), 4)
 

@@ -51,7 +51,7 @@ def _host_static_field_int(info: ClassInfo, field: str) -> int:
   return 0
 
 
-def _parse_sort_const_keyword(node: ast.Call) -> str | None | object:
+def _parse_sortConst_keyword(node: ast.Call) -> str | None | object:
   """解析 ``sortConst=…``；无该关键字返回 ``None``；非法则 ``_SENTINEL``。"""
   sort_key: str | None = None
   for kw in node.keywords:
@@ -82,7 +82,7 @@ def _parse_iter_register_call(
   mixin_name = _mixin_name_from_expr(func.value)
   if mixin_name is None or func.attr != ITER_SUBCLASSES or node.args:
     return None
-  parsed = _parse_sort_const_keyword(node)
+  parsed = _parse_sortConst_keyword(node)
   if parsed is _SENTINEL:
     return None
   return mixin_name, parsed
@@ -148,7 +148,7 @@ def collect_ordered_mixin_hosts(
   module_path: str,
   mixin_name: str,
   *,
-  require_method: str | None = DEFAULT_HOST_METHOD,
+  requireMethod: str | None = DEFAULT_HOST_METHOD,
 ) -> list[str]:
   """入口模块内按 ``class`` 声明顺序收集 ``mixin_name`` 宿主类名。"""
   tree = tr.module_asts.get(module_path)
@@ -168,7 +168,7 @@ def collect_ordered_mixin_hosts(
       continue
     if mixin_name not in info.bases:
       continue
-    if require_method is not None and require_method not in info.methods:
+    if requireMethod is not None and requireMethod not in info.methods:
       continue
     out.append(node.name)
   return out

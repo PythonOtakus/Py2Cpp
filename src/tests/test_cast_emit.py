@@ -65,9 +65,22 @@ class Base:
     assert isinstance(node, ast.Call)
     target = tr._parse_type(ast.Name(id="uintptr"), set())
     tr.scope = Scope(ast.parse("pass").body[0])
-    tr._infer_expr_cpp_type = lambda _node: "CStr"
+    tr._infer_expr_cpp_type = lambda _node: "utf8ptr"
     out = _emit_cast_call(tr, target, node)
-    self.assertEqual(out, "reinterpret_cast<PyUPtr>(text)")
+    self.assertEqual(out, "reinterpret_cast<PyUIntPtr>(text)")
+
+  def test_cast_uint16_pointer_to_cwstr(self):
+    tr = Translator("test/mod", "test/mod.py")
+    from src.analysis.analyzer import TypeParser
+
+    tr.type_parser = TypeParser()
+    node = ast.parse("cast[utf16ptr](text)", mode="eval").body
+    assert isinstance(node, ast.Call)
+    target = tr._parse_type(ast.Name(id="utf16ptr"), set())
+    tr.scope = Scope(ast.parse("pass").body[0])
+    tr._infer_expr_cpp_type = lambda _node: "PyUInt16*"
+    out = _emit_cast_call(tr, target, node)
+    self.assertEqual(out, "reinterpret_cast<utf16ptr>(text)")
   def test_cast_deduced_from_ann_assign(self):
     src = """
 from py2cpp import *

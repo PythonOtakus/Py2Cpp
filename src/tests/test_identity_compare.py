@@ -75,7 +75,7 @@ def check(x: int) -> bool:
     src = """
 from py2cpp import *
 
-def check(p: CStr) -> bool:
+def check(p: utf8ptr) -> bool:
   return p is None
 """
     with tempfile.TemporaryDirectory() as tmp:

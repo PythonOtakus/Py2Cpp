@@ -230,8 +230,12 @@ _SCALAR_TYPE_STATIC_ATTR_CPP: dict[tuple[str, str], str] = {
   ("float64", "NaN"): "PY2CPP_FLOAT64_NAN",
   ("int", "Min"): "PY2CPP_INT_MIN",
   ("int", "Max"): "PY2CPP_INT_MAX",
+  ("int16", "Min"): "PY2CPP_INT16_MIN",
+  ("int16", "Max"): "PY2CPP_INT16_MAX",
   ("int64", "Min"): "PY2CPP_INT64_MIN",
   ("int64", "Max"): "PY2CPP_INT64_MAX",
+  ("uint16", "Min"): "PY2CPP_UINT16_MIN",
+  ("uint16", "Max"): "PY2CPP_UINT16_MAX",
   ("uint", "Min"): "PY2CPP_UINT_MIN",
   ("uint", "Max"): "PY2CPP_UINT_MAX",
   ("uint64", "Min"): "PY2CPP_UINT64_MIN",
@@ -702,6 +706,15 @@ def cpp_stack_array_elem_type_any(cpp_type: str) -> str | None:
     parsed = parser(cpp_type)
     if parsed is not None:
       return parsed[0]
+  for prefix in (
+    CPP_STACK_ARRAY_PREFIX,
+    CPP_STACK_ARRAY2D_PREFIX,
+    CPP_STACK_ARRAY3D_PREFIX,
+  ):
+    inner = cpp_template_inner_args(cpp_type.strip(), prefix)
+    if inner is not None:
+      parts = split_cpp_template_args(inner)
+      return parts[0].strip() if parts else None
   return None
 
 
@@ -1224,7 +1237,7 @@ def format_cpp_uint64(value: int) -> str:
 
 
 def format_cpp_uintptr(value: int) -> str:
-  """Python ``int`` 字面量 → ``PyUPtr`` 常量（与 ``uintptr_t`` 同宽）。"""
+  """Python ``int`` 字面量 → ``PyUIntPtr`` 常量（与 ``uintptr_t`` 同宽）。"""
   if value < 0:
     raise ValueError(f"uintptr literal must be non-negative: {value}")
   if value > 0xFFFFFFFF:
@@ -1232,10 +1245,10 @@ def format_cpp_uintptr(value: int) -> str:
   return f"{value}ULL"
 
 
-def format_cpp_varint(value: int) -> str:
-  """``varint`` 注解下的 Python ``int`` 字面量 → ``PyVarInt(PyStr("…"))``（含超 ``PyInt`` 范围）。"""
+def format_cpp_long(value: int) -> str:
+  """``long`` 注解下的 Python ``int`` 字面量 → ``PyLong(PyStr("…"))``（含超 ``PyInt`` 范围）。"""
   ps = cpp_ident("str")
-  return f'{cpp_ident("varint")}({ps}({quote_cpp_string(str(value))}))'
+  return f'{cpp_ident("long")}({ps}({quote_cpp_string(str(value))}))'
 
 
 def format_cpp_float64(value: float) -> str:
@@ -1321,18 +1334,18 @@ def qualified_class_static_callee(
       if tp in effective_arg:
         effective_arg = None
         break
-  base = qualify_symbol_in_module(info.module_path, info.cpp_name())
+  base = "::" + qualify_symbol_in_module(info.module_path, info.cpp_name())
   if not info.is_template():
     return f"{base}::{member}"
   if info.type_params and not _static_method_uses_class_type_param(info, member):
     if info.cpp_name() == _cpp_complex_base_name():
       tpl = complex_template_cpp_type(None)
       b = _cpp_complex_base_name()
-      qbase = qualify_symbol_in_module(info.module_path, b)
+      qbase = "::" + qualify_symbol_in_module(info.module_path, b)
       if tpl.startswith(f"{b}<") and tpl.endswith(">"):
         args = tpl[len(b) + 1 : -1].strip()
         return f"{qbase}<{args}>::{member}"
-      return f"{qualify_symbol_in_module(info.module_path, tpl)}::{member}"
+      return f"::{qualify_symbol_in_module(info.module_path, tpl)}::{member}"
     default_args = _class_default_type_args_cpp(info)
     if default_args is not None:
       return f"{base}<{default_args}>::{member}"

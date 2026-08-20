@@ -360,6 +360,12 @@ def is_int_type(ty: TypeLike, *, classes: dict[str, ClassInfo] | None = None) ->
   return _is_scalar_type(ty, cpp_ident("int"), classes=classes)
 
 
+def is_int16_type(ty: TypeLike, *, classes: dict[str, ClassInfo] | None = None) -> bool:
+  from .ir import cpp_ident
+
+  return _is_scalar_type(ty, cpp_ident("int16"), classes=classes)
+
+
 def is_int64_type(ty: TypeLike, *, classes: dict[str, ClassInfo] | None = None) -> bool:
   from .ir import cpp_ident
 
@@ -370,6 +376,12 @@ def is_uint_type(ty: TypeLike, *, classes: dict[str, ClassInfo] | None = None) -
   from .ir import cpp_ident
 
   return _is_scalar_type(ty, cpp_ident("uint"), classes=classes)
+
+
+def is_uint16_type(ty: TypeLike, *, classes: dict[str, ClassInfo] | None = None) -> bool:
+  from .ir import cpp_ident
+
+  return _is_scalar_type(ty, cpp_ident("uint16"), classes=classes)
 
 
 def is_uint64_type(ty: TypeLike, *, classes: dict[str, ClassInfo] | None = None) -> bool:
@@ -385,7 +397,7 @@ def is_uintptr_type(ty: TypeLike, *, classes: dict[str, ClassInfo] | None = None
 
 
 def _is_named_cpp_type(node: TypeNode, *names: str) -> bool:
-  """类名 / 别名（``PyVarInt`` 等）——对齐旧 ``strip_cpp_ref`` + 字符串相等。"""
+  """类名 / 别名（``PyLong`` 等）——对齐旧 ``strip_cpp_ref`` + 字符串相等。"""
   if node.kind == TypeKind.POINTER:
     return False
   core = _peel_ref_only(node)
@@ -394,10 +406,10 @@ def _is_named_cpp_type(node: TypeNode, *names: str) -> bool:
   return core.name in names or any(core.name.endswith(f"::{n}") for n in names)
 
 
-def is_varint_type(ty: TypeLike, *, classes: dict[str, ClassInfo] | None = None) -> bool:
+def is_long_type(ty: TypeLike, *, classes: dict[str, ClassInfo] | None = None) -> bool:
   from .ir import cpp_ident, strip_cpp_ref
 
-  vn = cpp_ident("varint")
+  vn = cpp_ident("long")
   if isinstance(ty, str):
     t = strip_cpp_ref(ty.strip())
     return t == vn or t.endswith(f"::{vn}")
@@ -422,10 +434,12 @@ def is_float64_type(ty: TypeLike, *, classes: dict[str, ClassInfo] | None = None
 def is_scalar_int_type(ty: TypeLike, *, classes: dict[str, ClassInfo] | None = None) -> bool:
   return (
     is_int_type(ty, classes=classes)
+    or is_int16_type(ty, classes=classes)
     or is_int64_type(ty, classes=classes)
+    or is_uint16_type(ty, classes=classes)
     or is_uint_type(ty, classes=classes)
     or is_uint64_type(ty, classes=classes)
-    or is_varint_type(ty, classes=classes)
+    or is_long_type(ty, classes=classes)
   )
 
 

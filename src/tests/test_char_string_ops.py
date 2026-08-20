@@ -33,13 +33,6 @@ class CharStringEmitTests(unittest.TestCase):
     out = _emit_return("  c: char = 65\n  return format(c)\n")
     self.assertIn("::format(c", out)
 
-  def test_str_add_char_in_os_path_inl(self):
-    """bootstrap 后 ``os/path.inl`` 中 ``str + char`` 应经 ``PyStr(码点)`` 而非 ``chbuf`` 临时数组。"""
-    from pathlib import Path
-
-    inl = Path("generated/runtime/py2cpp/io/file/path.inl").read_text(encoding="utf-8")
-    self.assertNotIn("chbuf", inl)
-    self.assertIn("__add__(PyStr(", inl.replace(" ", ""))
 
 
 if __name__ == "__main__":

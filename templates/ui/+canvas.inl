@@ -102,7 +102,7 @@ static HFONT _ui_canvas_make_font(const PyStr& name, PyInt size, PyBool bold)
   lf.lfCharSet = DEFAULT_CHARSET;
   lf.lfQuality = CLEARTYPE_QUALITY;
   lf.lfPitchAndFamily = FF_DONTCARE;
-  name.copyToSpan(PySpan<PyByte>((PyByte*)lf.lfFaceName, (PyInt)sizeof(lf.lfFaceName), 1));
+  name.copyToSpanUtf8(PySpan<PyByte>((PyByte*)lf.lfFaceName, (PyInt)sizeof(lf.lfFaceName), 1));
   return CreateFontIndirectA(&lf);
 }
 
@@ -278,7 +278,7 @@ void PyUIPaintContext::_gdiDrawText(
   tr.right = x + w;
   tr.bottom = y + h;
   char tbuf[512];
-  text.copyToSpan(PySpan<PyByte>((PyByte*)tbuf, (PyInt)sizeof(tbuf), 1));
+  text.copyToSpanUtf8(PySpan<PyByte>((PyByte*)tbuf, (PyInt)sizeof(tbuf), 1));
   UINT fmt = DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS;
   if (textAlign == 1)
   {

@@ -2,7 +2,7 @@
 from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 from py2cpp.io.path import Path
-from py2cpp.io.file.path import join
+
 from py2cpp.serde.json import Json, JsonDocument
 from py2cpp.system.time import formatDuration, perfCounter
 from py2cpp.test.test_temp import _TestTemp, ensureTestTemp
@@ -144,8 +144,8 @@ class JsonDocumentPerfPatchTests(TestCaseMixin):
     org: Org = _makeOrg(_NTeams, _NMembers)
     js: str = Json.dumps(org)
     nbytes: int = len(js)
-    pathFull: Path = Path(join(_TestTemp, "_json_doc_perf_full.json"))
-    pathDoc: Path = Path(join(_TestTemp, "_json_doc_perf_doc.json"))
+    pathFull: Path = Path(_TestTemp) / "_json_doc_perf_full.json"
+    pathDoc: Path = Path(_TestTemp) / "_json_doc_perf_doc.json"
     pathFull.writeText(js)
     pathDoc.writeText(js)
 
@@ -178,7 +178,7 @@ class JsonDocumentPerfReadTests(TestCaseMixin):
     org: Org = _makeOrg(_NTeams, _NMembers)
     js: str = Json.dumps(org)
     nbytes: int = len(js)
-    path: Path = Path(join(_TestTemp, "_json_doc_perf_read.json"))
+    path: Path = Path(_TestTemp) / "_json_doc_perf_read.json"
     path.writeText(js)
 
     tFull: float64 = _benchFullRead(path, _TeamIdx, _MemberIdx)

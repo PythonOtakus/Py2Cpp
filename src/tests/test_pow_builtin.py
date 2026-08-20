@@ -10,7 +10,7 @@ from src.translator import Translator
 
 class PowBuiltinEmitTests(unittest.TestCase):
   def _translate(self, body: str) -> str:
-    src = f"""from py2cpp import varint
+    src = f"""from py2cpp import *
 
 def probe():
 {body}"""
@@ -31,14 +31,14 @@ def probe():
     cpp = self._translate("  return pow(3, -1, 5)\n")
     self.assertIn("::pow(3, -1, 5)", cpp)
 
-  def test_pow_varint_star_star(self):
-    cpp = self._translate("  a: varint = 3\n  b: varint = 2\n  return a ** b\n")
+  def test_pow_long_star_star(self):
+    cpp = self._translate("  a: long = 3\n  b: long = 2\n  return a ** b\n")
     self.assertIn(".__pow__(b)", cpp)
     self.assertNotIn("__pow__(a", cpp)
 
-  def test_pow_varint_three_args(self):
+  def test_pow_long_three_args(self):
     cpp = self._translate(
-      "  a: varint = 3\n  m: varint = 5\n  return pow(a, -1, m)\n",
+      "  a: long = 3\n  m: long = 5\n  return pow(a, -1, m)\n",
     )
     self.assertIn("::pow(a, -1, m)", cpp)
 

@@ -15,6 +15,7 @@ MODULES_WITHOUT_CPP_NAMESPACE_REL: frozenset[str] = frozenset({
 })
 
 BUILTIN_NAMESPACE_SEGMENT_OVERRIDES: dict[str, str] = {
+  "long": "py_long",
   "set": "py_set",
   "environ": "py_environ",
 }

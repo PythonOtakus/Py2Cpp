@@ -587,11 +587,20 @@ def resolve_ctor_cpp_type(tr: Translator, name: str) -> str | None:
     return info.cpp_name()
   if name in tr.delegates:
     return tr.delegates[name].cpp_name()
+  # ``type Frac = Fraction[int]`` 也可以像目标类型一样构造。
+  # 使用当前 TypeParser，保证其与注解、方法签名共享别名展开规则。
+  parser = getattr(tr, "type_parser", None)
+  if parser is not None:
+    expanded = parser.parse_type(
+      ast.Name(id=name, ctx=ast.Load()), tr._active_type_params(),
+    )
+    if expanded != cpp_ident(name):
+      return expanded
   mapped = cpp_ident(name)
   builtins = (
     "list", "dict", "set", "frozenset", "deque", "tuple", "str", "bytes", "slice", "range",
     "array", "array2d", "array3d",
-    "int", "int64", "uint", "uint64", "uintptr", "float", "float64", "bool", "char", "byte", "object",
+    "int", "int16", "int64", "uint16", "uint", "uint64", "uintptr", "float", "float64", "bool", "char", "byte", "object",
     "RefCount", "IterResult", "Optional",
   )
   if name in builtins:

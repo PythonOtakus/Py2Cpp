@@ -10,13 +10,13 @@ from ..core.exceptions import ValueError
 from ..util.dict import dict
 from ..util.list import list
 from ..util.slice import slice
+from ..util.span import span
 
 
 @mixin
 class StringMixin[Host: oneof[char, byte]]:
   """不可变堆序列（码点/字节）共享核心。"""
 
-  _EndIndex: int @const = int.Min
   _SsoCap: int @const = 22
 
   @staticmethod
@@ -24,10 +24,158 @@ class StringMixin[Host: oneof[char, byte]]:
     buf[at] = c
     return at + 1
 
+  def _didChangeData(self) -> None:
+    """宿主在缓冲写入后更新派生状态（``str`` 的哈希缓存等）。"""
+    pass
+
+  def copyTo(self, buf: Host[:], at: int = 0) -> int:
+    """把序列写入 ``buf[at:]``，返回新尾下标。"""
+    size: int = len(self)
+    if size == 0:
+      return at
+    end: int = at + size
+    if end > len(buf):
+      buf.reshape(end, len(buf))
+    for i in range(size):
+      buf[at + i] = self._data[i]
+    return end
+
+  def copySliceTo(
+    self,
+    buf: Host[:],
+    at: int = 0,
+    start: int = 0,
+    end: int = int.Max,
+  ) -> int:
+    """``self[start:end]`` 写入 ``buf[at:]``，返回新尾下标。"""
+    size: int = len(self)
+    if start < 0:
+      start = 0
+    if start > size:
+      start = size
+    if end > size:
+      end = size
+    if end < start:
+      end = start
+    count: int = end - start
+    if count <= 0:
+      return at
+    nextAt: int = at + count
+    buf.reserve(nextAt)
+    for i in range(count):
+      buf[at + i] = self._data[start + i]
+    return nextAt
+
+  @staticmethod
+  @immutable
+  def concat(parts: list[Self]) -> Self:
+    empty: Self = new()
+    return empty.join(parts)
+
+  def replaceSlice(
+    self,
+    repl: Self,
+    start: int = 0,
+    end: int = int.Max,
+  ) -> Self:
+    """单次分配拼接 ``self[:start] + repl + self[end:]``。"""
+    size: int = len(self)
+    if start < 0:
+      start = 0
+    if start > size:
+      start = size
+    if end > size:
+      end = size
+    if end < start:
+      end = start
+    if start == 0 and end == size:
+      return repl
+    tail: int = size - end
+    total: int = start + len(repl) + tail
+    if total == 0:
+      return new()
+    if tail == 0 and not repl and start == size:
+      return self
+    data: Host[:] = new(total)
+    at: int = 0
+    for i in range(start):
+      data[at + i] = self._data[i]
+    at += start
+    for i in range(len(repl)):
+      data[at + i] = repl._data[i]
+    at += len(repl)
+    for i in range(tail):
+      data[at + i] = self._data[end + i]
+    return new(data)
+
+  @staticmethod
+  @immutable
+  def fromArray(buf: Host[:], end: int = int.Max) -> Self:
+    """由 ``buf[:end]`` 拷贝构造。"""
+    end = Self._normEnd(len(buf), end)
+    return Self.fromSpan(buf.view[:end])
+
+  @staticmethod
+  @immutable
+  def fromArrayRef(buf: Host[:], end: int = int.Max) -> Self:
+    """``fromArray`` 的纯 Python 语义参照。"""
+    return Self.fromArray(buf, end)
+
+  @staticmethod
+  @immutable
+  def fromSpan(seg: span[Host]) -> Self:
+    """由 ``span[Host]`` 拷贝构造。"""
+    out: Self = new()
+    out.copyFromSpan(seg)
+    return out
+
+  def copyFromSpan(self, seg: span[Host]) -> None:
+    """将 ``span[Host]`` 写入已有序列。"""
+    size: int = len(seg)
+    if len(self._data) != size:
+      self._data.reshape(size, 0)
+    for i in range(size):
+      self._data[i] = seg[i]
+    self._didChangeData()
+
+  @immutable
+  def copyToSpan(self, dest: span[Host]) -> None:
+    """把原始元素写入 ``dest`` 并以零值收尾。"""
+    cap: int = len(dest)
+    if cap <= 0:
+      return
+    size: int = len(self)
+    limit: int = cap - 1
+    if size < limit:
+      limit = size
+    for i in range(limit):
+      dest[i] = self._data[i]
+    dest[limit] = cast[Host](0)
+
+  @immutable
+  def toArray(self) -> Host[:]:
+    """返回原始元素的独立数组副本。"""
+    size: int = len(self)
+    data: Host[:] = new(size)
+    for i in range(size):
+      data[i] = self._data[i]
+    return data
+
+  def adoptSpan(self, seg: span[Host]) -> None:
+    """接管 ``span[Host]`` 的底层缓冲。"""
+    self._data.adoptSpan(seg)
+    self._didChangeData()
+
+  @property
+  @immutable
+  def view(self) -> span[Host]:
+    """只读原始元素视图。"""
+    return self._data.view
+
   @immutable
   @staticmethod
   def _normEnd(n: int, end: int) -> int:
-    if end == Self._EndIndex:
+    if end == int.Max:
       return n
     if end < 0:
       end += n
@@ -237,7 +385,7 @@ class StringMixin[Host: oneof[char, byte]]:
     return self._compare(other) >= 0
 
   @immutable
-  def find(self, sub: Self, start: int = 0, end: int = Self._EndIndex) -> int:
+  def find(self, sub: Self, start: int = 0, end: int = int.Max) -> int:
     n: int = len(self)
     i: int = Self._normStart(n, start)
     j: int = Self._normEnd(n, end)
@@ -249,14 +397,14 @@ class StringMixin[Host: oneof[char, byte]]:
     return self._findSubForwardKmp(sub, i, j, subn)
 
   @immutable
-  def index(self, sub: Self, start: int = 0, end: int = Self._EndIndex) -> int:
+  def index(self, sub: Self, start: int = 0, end: int = int.Max) -> int:
     pos: int = self.find(sub, start, end)
     if pos < 0:
       raise ValueError("substring not found")
     return pos
 
   @immutable
-  def rfind(self, sub: Self, start: int = 0, end: int = Self._EndIndex) -> int:
+  def rfind(self, sub: Self, start: int = 0, end: int = int.Max) -> int:
     n: int = len(self)
     i: int = Self._normStart(n, start)
     j: int = Self._normEnd(n, end)
@@ -268,14 +416,14 @@ class StringMixin[Host: oneof[char, byte]]:
     return self._findSubBackwardKmp(sub, i, j, subn)
 
   @immutable
-  def rindex(self, sub: Self, start: int = 0, end: int = Self._EndIndex) -> int:
+  def rindex(self, sub: Self, start: int = 0, end: int = int.Max) -> int:
     pos: int = self.rfind(sub, start, end)
     if pos < 0:
       raise ValueError("substring not found")
     return pos
 
   @immutable
-  def count(self, sub: Self, start: int = 0, end: int = Self._EndIndex) -> int:
+  def count(self, sub: Self, start: int = 0, end: int = int.Max) -> int:
     n: int = len(self)
     i: int = Self._normStart(n, start)
     j: int = Self._normEnd(n, end)
@@ -296,7 +444,7 @@ class StringMixin[Host: oneof[char, byte]]:
 
   @immutable
   @overload
-  def startsWith(self, prefix: Self, start: int = 0, end: int = Self._EndIndex) -> bool:
+  def startsWith(self, prefix: Self, start: int = 0, end: int = int.Max) -> bool:
     sub: Self = self._sub(start, end)
     subn: int = len(sub)
     pren: int = len(prefix)
@@ -309,7 +457,7 @@ class StringMixin[Host: oneof[char, byte]]:
 
   @immutable
   @overload
-  def startsWith(self, prefix: Host[:], start: int = 0, end: int = Self._EndIndex) -> bool:
+  def startsWith(self, prefix: Host[:], start: int = 0, end: int = int.Max) -> bool:
     sub: Self = self._sub(start, end)
     subn: int = len(sub)
     pren: int = len(prefix)
@@ -322,7 +470,7 @@ class StringMixin[Host: oneof[char, byte]]:
 
   @immutable
   @overload
-  def startsWith(self, prefixes: list[Self], start: int = 0, end: int = Self._EndIndex) -> bool:
+  def startsWith(self, prefixes: list[Self], start: int = 0, end: int = int.Max) -> bool:
     cnt: int = len(prefixes)
     for i in range(cnt):
       if self.startsWith(prefixes[i], start, end):
@@ -331,7 +479,7 @@ class StringMixin[Host: oneof[char, byte]]:
 
   @immutable
   @overload
-  def startsWith(self, prefixes: Self[:], start: int = 0, end: int = Self._EndIndex) -> bool:
+  def startsWith(self, prefixes: Self[:], start: int = 0, end: int = int.Max) -> bool:
     cnt: int = len(prefixes)
     for i in range(cnt):
       if self.startsWith(prefixes[i], start, end):
@@ -340,7 +488,7 @@ class StringMixin[Host: oneof[char, byte]]:
 
   @immutable
   @overload
-  def endsWith(self, suffix: Self, start: int = 0, end: int = Self._EndIndex) -> bool:
+  def endsWith(self, suffix: Self, start: int = 0, end: int = int.Max) -> bool:
     sub: Self = self._sub(start, end)
     subn: int = len(sub)
     sufn: int = len(suffix)
@@ -354,7 +502,7 @@ class StringMixin[Host: oneof[char, byte]]:
 
   @immutable
   @overload
-  def endsWith(self, suffix: Host[:], start: int = 0, end: int = Self._EndIndex) -> bool:
+  def endsWith(self, suffix: Host[:], start: int = 0, end: int = int.Max) -> bool:
     sub: Self = self._sub(start, end)
     subn: int = len(sub)
     sufn: int = len(suffix)
@@ -368,7 +516,7 @@ class StringMixin[Host: oneof[char, byte]]:
 
   @immutable
   @overload
-  def endsWith(self, suffixes: list[Self], start: int = 0, end: int = Self._EndIndex) -> bool:
+  def endsWith(self, suffixes: list[Self], start: int = 0, end: int = int.Max) -> bool:
     cnt: int = len(suffixes)
     for i in range(cnt):
       if self.endsWith(suffixes[i], start, end):
@@ -377,7 +525,7 @@ class StringMixin[Host: oneof[char, byte]]:
 
   @immutable
   @overload
-  def endsWith(self, suffixes: Self[:], start: int = 0, end: int = Self._EndIndex) -> bool:
+  def endsWith(self, suffixes: Self[:], start: int = 0, end: int = int.Max) -> bool:
     cnt: int = len(suffixes)
     for i in range(cnt):
       if self.endsWith(suffixes[i], start, end):
@@ -386,7 +534,7 @@ class StringMixin[Host: oneof[char, byte]]:
 
   @immutable
   def _globNormcase(self) -> Self:
-    """``fnmatch`` 大小写规范化（``/``→``\\`` + ASCII ``lower``，对齐 ``io.file.path.normCase``）。"""
+    """``fnmatch`` 大小写规范化（``/``→``\\`` + ASCII ``lower``，对齐 ``Path`` 内部的 ``normCase`` 等价规范化）。"""
     n: int = len(self)
     if n == 0:
       return self
@@ -624,14 +772,14 @@ class StringMixin[Host: oneof[char, byte]]:
     return (before, sep, after)
 
   @immutable
-  def replace(self, old: Self, new: Self, count: int = -1) -> Self:
+  def replace(self, old: Self, new: Self, count: int = int.Max) -> Self:
     n: int = len(self)
     oldn: int = len(old)
     if oldn == 0:
       return self
+    if count < 0:
+      raise ValueError("count must be non-negative")
     limit: int = count
-    if limit < 0:
-      limit = n + 1
     out: list[Self] = []
     start: int = 0
     replaced: int = 0
@@ -739,13 +887,15 @@ class StringMixin[Host: oneof[char, byte]]:
 
   @immutable
   @overload
-  def split(self, maxSplit: int = -1) -> list[Self]:
+  def split(self, maxSplit: int = int.Max) -> list[Self]:
     return self.split(Self(), maxSplit)
 
   @immutable
   @overload
-  def split(self, sep: Self, maxSplit: int = -1) -> list[Self]:
+  def split(self, sep: Self, maxSplit: int = int.Max) -> list[Self]:
     """分隔子串匹配走 ``find``（KMP）。"""
+    if maxSplit < 0:
+      raise ValueError("maxSplit must be non-negative")
     out: list[Self] = []
     n: int = len(self)
     if sep:
@@ -753,7 +903,7 @@ class StringMixin[Host: oneof[char, byte]]:
       i: int = 0
       splits: int = 0
       while i <= n:
-        if maxSplit >= 0 and splits >= maxSplit:
+        if splits >= maxSplit:
           out.append(self._sub(i, n))
           return out
         pos: int = self.find(sep, i, n)
@@ -771,7 +921,7 @@ class StringMixin[Host: oneof[char, byte]]:
         i += 1
       if i >= n:
         break
-      if maxSplit >= 0 and splits >= maxSplit:
+      if splits >= maxSplit:
         out.append(self._sub(i, n))
         return out
       j: int = i
@@ -784,13 +934,15 @@ class StringMixin[Host: oneof[char, byte]]:
 
   @immutable
   @overload
-  def rsplit(self, maxSplit: int = -1) -> list[Self]:
+  def rsplit(self, maxSplit: int = int.Max) -> list[Self]:
     return self.rsplit(Self(), maxSplit)
 
   @immutable
   @overload
-  def rsplit(self, sep: Self, maxSplit: int = -1) -> list[Self]:
+  def rsplit(self, sep: Self, maxSplit: int = int.Max) -> list[Self]:
     """分隔子串匹配走 ``rfind``（KMP）。"""
+    if maxSplit < 0:
+      raise ValueError("maxSplit must be non-negative")
     n: int = len(self)
     sepn: int = len(sep)
     out: list[Self] = []
@@ -798,7 +950,7 @@ class StringMixin[Host: oneof[char, byte]]:
       splits: int = 0
       i: int = n
       while i >= 0:
-        if maxSplit >= 0 and splits >= maxSplit:
+        if splits >= maxSplit:
           out.append(self._sub(0, i))
           break
         pos: int = self.rfind(sep, 0, i)
@@ -816,7 +968,7 @@ class StringMixin[Host: oneof[char, byte]]:
         j -= 1
       if j == 0:
         break
-      if maxSplit >= 0 and splits >= maxSplit:
+      if splits >= maxSplit:
         out.append(self._sub(0, j))
         break
       k: int = j
@@ -953,12 +1105,14 @@ class StringMixin[Host: oneof[char, byte]]:
     return self._sub(pos + len(sep), len(self))
 
   @overload
-  def xsplit(self, maxSplit: int = -1) -> GeneratorType[Self, None, None]:
+  def xsplit(self, maxSplit: int = int.Max) -> GeneratorType[Self, None, None]:
     return self.xsplit(Self(), maxSplit)
 
   @overload
-  def xsplit(self, sep: Self, maxSplit: int = -1) -> GeneratorType[Self, None, None]:
+  def xsplit(self, sep: Self, maxSplit: int = int.Max) -> GeneratorType[Self, None, None]:
     """``split`` 的生成器版：逐段 ``yield``，语义与 ``split`` 一致。"""
+    if maxSplit < 0:
+      raise ValueError("maxSplit must be non-negative")
     i: int = 0
     splits: int = 0
     if not sep:
@@ -967,7 +1121,7 @@ class StringMixin[Host: oneof[char, byte]]:
           i += 1
         if i >= len(self):
           return
-        if maxSplit >= 0 and splits >= maxSplit:
+        if splits >= maxSplit:
           yield self._sub(i, len(self))
           return
         j: int = i
@@ -979,7 +1133,7 @@ class StringMixin[Host: oneof[char, byte]]:
       return
     sepn: int = len(sep)
     while i <= len(self):
-      if maxSplit >= 0 and splits >= maxSplit:
+      if splits >= maxSplit:
         yield self._sub(i, len(self))
         return
       pos: int = self.find(sep, i, len(self))
@@ -991,7 +1145,7 @@ class StringMixin[Host: oneof[char, byte]]:
       splits += 1
 
   @overload
-  def xrsplit(self, maxSplit: int = -1) -> GeneratorType[Self, None, None]:
+  def xrsplit(self, maxSplit: int = int.Max) -> GeneratorType[Self, None, None]:
     return self.xrsplit(Self(), maxSplit)
 
   def _xrsplitCollect(
@@ -1005,7 +1159,7 @@ class StringMixin[Host: oneof[char, byte]]:
       i: int = len(self)
       done: bool = False
       while i >= 0 and not done:
-        if maxSplit >= 0 and splits >= maxSplit:
+        if splits >= maxSplit:
           starts[cnt] = 0
           ends[cnt] = i
           cnt += 1
@@ -1032,7 +1186,7 @@ class StringMixin[Host: oneof[char, byte]]:
           j -= 1
         if j == 0:
           done = True
-        elif maxSplit >= 0 and splits >= maxSplit:
+        elif splits >= maxSplit:
           starts[cnt] = 0
           ends[cnt] = j
           cnt += 1
@@ -1049,10 +1203,15 @@ class StringMixin[Host: oneof[char, byte]]:
     return cnt
 
   @overload
-  def xrsplit(self, sep: Self, maxSplit: int = -1) -> GeneratorType[Self, None, None]:
+  def xrsplit(self, sep: Self, maxSplit: int = int.Max) -> GeneratorType[Self, None, None]:
     """``rsplit`` 的生成器版：产出顺序与 ``rsplit`` 列表一致（``int[:]`` 存区间，无 ``list[Self]``）。"""
-    starts: int[:] = new(maxSplit + 1 if maxSplit >= 0 else len(self) + 1)
-    ends: int[:] = new(maxSplit + 1 if maxSplit >= 0 else len(self) + 1)
+    if maxSplit < 0:
+      raise ValueError("maxSplit must be non-negative")
+    cap: int = len(self) + 1
+    if maxSplit < cap:
+      cap = maxSplit + 1
+    starts: int[:] = new(cap)
+    ends: int[:] = new(cap)
     cnt: int = self._xrsplitCollect(sep, maxSplit, starts, ends)
     for outI in range(cnt - 1, -1, -1):
       yield self._sub(starts[outI], ends[outI])
@@ -1406,7 +1565,7 @@ class StringMixin[Host: oneof[char, byte]]:
   def translate(self, table: dict[Host, Host], delete: Self = new()) -> Self:
     """``translate(table[, delete])``；表内删除哨兵由宿主 ``_translateDeleteMarker`` 提供。"""
     n: int = len(self)
-    cap: int = Self._translateBufLen(n)
+    cap: int = Self._translateArrayLen(n)
     buf: Host[:] = new(cap)
     at: int = 0
     for i in range(n):

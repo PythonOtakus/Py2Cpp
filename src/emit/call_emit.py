@@ -43,14 +43,16 @@ def _emit_cast_call(tr: Translator, target_cpp: str, node: ast.Call) -> str:
     bare_target = target_cpp.strip()
     raw_stripped = raw_t.rstrip()
     if bare_target.endswith('*') and bare_target != raw_stripped:
-        if raw_stripped in ('PyInt', 'PyInt64', 'PyUInt', 'PyUInt64', 'PyUPtr', 'uintptr', 'CStr') or raw_stripped.endswith('*') or (
+        if raw_stripped in ('PyInt', 'PyInt16', 'PyInt64', 'PyUInt16', 'PyUInt', 'PyUInt64', 'PyUIntPtr', 'uintptr', 'utf8ptr', 'utf16ptr') or raw_stripped.endswith('*') or (
           isinstance(arg, ast.Call)
           and isinstance(arg.func, ast.Name)
           and arg.func.id == 'id'
         ):
             return f'reinterpret_cast<{target_cpp}>({inner})'
-    if bare_target in ('PyUPtr', 'uintptr'):
-        if raw_stripped == 'CStr' or raw_stripped.endswith('*') or (
+    if bare_target == 'utf16ptr' and (raw_stripped == 'PyUInt16*' or raw_stripped.endswith('*')):
+        return f'reinterpret_cast<utf16ptr>({inner})'
+    if bare_target in ('PyUIntPtr', 'uintptr'):
+        if raw_stripped in ('utf8ptr', 'utf16ptr') or raw_stripped.endswith('*') or (
           isinstance(arg, ast.Call)
           and isinstance(arg.func, ast.Name)
           and arg.func.id == 'id'
@@ -928,7 +930,9 @@ def emit_class_static_method_call(tr: 'Translator', info: ClassInfo, method: str
         if not type_arg:
             return None
     arg_str = emit_call_args(tr, node, param_cpp_types=tr._ordered_method_param_cpp_types(info, method, call=node))
-    base = qualify_symbol_in_module(info.module_path, info.cpp_name())
+    # ``new.factory(...)`` bypasses the ordinary ``Cls.factory(...)`` emitter;
+    # keep its cross-module callee globally qualified inside nested namespaces.
+    base = "::" + qualify_symbol_in_module(info.module_path, info.cpp_name())
     member = info.cpp_member_name(method)
     if type_arg:
         callee = f'{base}<{type_arg}>::{member}'
@@ -1444,7 +1448,7 @@ def emit_call_expr(tr: Translator, node: ast.Call):
             if name == 'len':
                 arg = node.args[0]
                 from ..analysis.type_emit import scope_binding_storage_cpp
-                if isinstance(arg, ast.Name) and tr.scope and scope_binding_storage_cpp(tr.scope, arg.id) == 'CStr':
+                if isinstance(arg, ast.Name) and tr.scope and scope_binding_storage_cpp(tr.scope, arg.id) == 'utf8ptr':
                     return f'(int)strlen({arg.id})'
                 from .variadic_template_emit import try_emit_variadic_pack_len
                 vt_len = try_emit_variadic_pack_len(tr, arg)

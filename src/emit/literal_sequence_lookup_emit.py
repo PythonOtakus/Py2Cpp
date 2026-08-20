@@ -11,6 +11,7 @@ from ..constant.stdlib_layout import cpp_exception_ctor
 from .comprehensions_emit import _temp_name
 from .iife_emit import emit_iife
 from .literal_map_lookup_emit import (
+  _isStaticLiteralExpr,
   _literal_membership_or_chain,
   _literal_membership_or_chain_from_elts,
 )
@@ -67,7 +68,7 @@ def list_literal_has_starred(node: ast.List) -> bool:
     return any((isinstance(e, ast.Starred) for e in node.elts))
 
 def list_literal_elems_all_constant(node: ast.List) -> bool:
-    return all((isinstance(e, ast.Constant) for e in node.elts))
+    return all((_isStaticLiteralExpr(e) for e in node.elts))
 
 def list_literal_elem_cpp(tr: Translator, node: ast.List) -> str:
     if not node.elts:

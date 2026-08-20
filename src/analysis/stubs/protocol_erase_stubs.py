@@ -59,10 +59,10 @@ PROTOCOL_ERASE_SKIP: frozenset[str] = frozenset({
 })
 """``Element``/``Key``/``Value`` 别名已映射；``Self`` 协议（``TextIOType``/``DocumentType`` 等）仍不生成 C++。"""
 
-# ``protocol_erase.h`` 在全局命名空间；嵌套模块类型须 FQN（``minimal.h`` 中 ``varint.h`` 在其后）。
+# ``protocol_erase.h`` 在全局命名空间；嵌套模块类型须 FQN（``minimal.h`` 中 ``long.h`` 在其后）。
 _PROTOCOL_ERASE_TYPE_FQN: dict[str, str] = {
-  "varint": "py2cpp::numeric::varint::PyVarInt",
-  "PyVarInt": "py2cpp::numeric::varint::PyVarInt",
+  "long": "py2cpp::numeric::py_long::PyLong",
+  "PyLong": "py2cpp::numeric::py_long::PyLong",
 }
 
 PROTOCOL_ERASE_SPEC_ORDER: tuple[str, ...] = (
@@ -92,7 +92,7 @@ PROTOCOL_ERASE_SPEC_ORDER: tuple[str, ...] = (
 )
 
 PROTOCOL_ERASE_LATE_SPECS: frozenset[str] = frozenset({"EncoderType", "DecoderType"})
-"""依赖 ``varint`` 完整定义；在 ``numeric/varint.h`` 之后生成 ``protocol_erase_domain.h``。"""
+"""依赖 ``long`` 完整定义；在 ``numeric/long.h`` 之后生成 ``protocol_erase_domain.h``。"""
 
 
 def annotation_uses_self(ann: ast.expr | None) -> bool:

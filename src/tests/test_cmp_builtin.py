@@ -10,7 +10,7 @@ from src.translator import Translator
 
 class CmpBuiltinEmitTests(unittest.TestCase):
   def _translate(self, body: str, *, extra: str = "") -> str:
-    src = f"""from py2cpp import varint
+    src = f"""from py2cpp import *
 {extra}
 
 def probe():
@@ -29,9 +29,9 @@ def probe():
     self.assertIn("1 < 2 ? -1", cpp)
     self.assertNotIn("::py2cpp::py_cmp", cpp)
 
-  def test_cmp_varint_dunder(self):
+  def test_cmp_long_dunder(self):
     cpp = self._translate(
-      "  a: varint = varint('3')\n  b: varint = varint('5')\n"
+      "  a: long = long('3')\n  b: long = long('5')\n"
       "  return __cmp__(a, b)\n",
     )
     self.assertIn("__cmp__(b)", cpp)

@@ -27,8 +27,8 @@ class BootstrapIncrementalPlanTests(unittest.TestCase):
 
   def test_py_rel_to_module_path(self):
     self.assertEqual(
-      py_rel_to_module_path("py2cpp/io/file/path.py"),
-      "py2cpp/io/file/path",
+      py_rel_to_module_path("py2cpp/io/path.py"),
+      "py2cpp/io/path",
     )
     self.assertEqual(py_rel_to_module_path("py2cpp/io/__init__.py"), "py2cpp/io")
     self.assertIsNone(py_rel_to_module_path("templates/minimal.h"))
@@ -100,7 +100,7 @@ class SkipCachedAnalysisModuleTests(unittest.TestCase):
     tr.cached_analysis_modules = {"py2cpp/system/environ"}
     self.assertTrue(tr.skip_cached_analysis_module("py2cpp/system/environ"))
     self.assertTrue(tr.skip_cached_analysis_module("py2cpp\\system\\environ"))
-    self.assertFalse(tr.skip_cached_analysis_module("py2cpp/io/file/path"))
+    self.assertFalse(tr.skip_cached_analysis_module("py2cpp/io/path"))
 
 
 if __name__ == "__main__":

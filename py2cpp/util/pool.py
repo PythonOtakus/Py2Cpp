@@ -1,6 +1,6 @@
 """``Pool[T]``：多段块对象池（贴近 ``std::hive`` 块复用；非 CPython 标准库）。
 
-``_blockBufs`` 块表 + 栈定长 ``_freeTop`` / ``_freeData``（每块 LIFO 空闲下标，无 ``PyList``）
+``_blockArrays`` 块表 + 栈定长 ``_freeTop`` / ``_freeData``（每块 LIFO 空闲下标，无 ``PyList``）
 + ``_useMark``（在用槽标记）+ ``_meta_*`` / ``_skipHi``（``_skipHiAppend`` 增量维护）。
 扩容仅 ``allocArray`` 追加块。``capacity`` 为属性（写代替 ``reserve``）。
 
@@ -34,7 +34,7 @@ class Pool[Element]:
     if blockCapacity > Self._BlockCap:
       raise ValueError("Pool blockCapacity exceeds Self._BlockCap")
     self._blockCapacity: int = blockCapacity
-    self._blockBufs: list[Pointer[Element]] = []
+    self._blockArrays: list[Pointer[Element]] = []
     self._freeTop: int[:_BlockCount] = new()
     self._freeData: int[:_FreeDataLen] = new()
     self._metaBlockIndex: list[int] = []
@@ -50,7 +50,7 @@ class Pool[Element]:
   def __move__(self, other: Self):
     self.clear()
     self._blockCapacity = other._blockCapacity
-    self._blockBufs = other._blockBufs
+    self._blockArrays = other._blockArrays
     self._freeTop = other._freeTop
     self._freeData = other._freeData
     self._metaBlockIndex = other._metaBlockIndex
@@ -60,7 +60,7 @@ class Pool[Element]:
     self._useMark = other._useMark
     self._live = other._live
     other._blockCapacity = Self._BlockCap
-    other._blockBufs = []
+    other._blockArrays = []
     other._metaBlockIndex = []
     other._metaBase = []
     other._metaCapacity = []
@@ -78,16 +78,16 @@ class Pool[Element]:
   @property
   @immutable
   def capacity(self) -> int:
-    return len(self._blockBufs) * self._blockCapacity
+    return len(self._blockArrays) * self._blockCapacity
 
   @property.setter
   def capacity(self, need: int) -> None:
     if need < 0:
       raise ValueError("Pool.capacity must be >= 0")
-    cur: int = len(self._blockBufs) * self._blockCapacity
+    cur: int = len(self._blockArrays) * self._blockCapacity
     while cur < need:
       self._addBlock()
-      cur = len(self._blockBufs) * self._blockCapacity
+      cur = len(self._blockArrays) * self._blockCapacity
 
   def acquire(self) -> Pointer[Element]:
     loc: PoolSlotLoc = self._popFreeSlot()
@@ -119,18 +119,18 @@ class Pool[Element]:
   def clear(self):
     cap: int = self._blockCapacity
     if self._live > 0:
-      for bi in range(len(self._blockBufs)):
-        base: Pointer[Element] = self._blockBufs[bi]
+      for bi in range(len(self._blockArrays)):
+        base: Pointer[Element] = self._blockArrays[bi]
         markBase: int = self._freeBase(bi)
         for off in range(cap):
           mi: int = markBase + off
           if self._useMark[mi]:
             destroy(base + off)
             self._useMark[mi] = 0
-    for bi in range(len(self._blockBufs)):
-      freeArray(self._blockBufs[bi])
+    for bi in range(len(self._blockArrays)):
+      freeArray(self._blockArrays[bi])
       self._freeTop[bi] = 0
-    self._blockBufs.clear()
+    self._blockArrays.clear()
     self._metaBlockIndex.clear()
     self._metaBase.clear()
     self._metaCapacity.clear()
@@ -138,12 +138,12 @@ class Pool[Element]:
     self._live = 0
 
   def _addBlock(self):
-    nBlocks: int = len(self._blockBufs)
+    nBlocks: int = len(self._blockArrays)
     if nBlocks >= Self._BlockCount:
       raise ValueError("Pool: too many blocks (max Self._BlockCount)")
     cap: int = self._blockCapacity
     base: Pointer[Element] = allocArray[Element](cap)
-    self._blockBufs.append(base)
+    self._blockArrays.append(base)
     for o in range(cap):
       destroy(base + o)
     self._initFreeStack(nBlocks, cap)
@@ -225,7 +225,7 @@ class Pool[Element]:
     return lo
 
   def _popFreeSlot(self) -> PoolSlotLoc:
-    for b in range(len(self._blockBufs) - 1, -1, -1):
+    for b in range(len(self._blockArrays) - 1, -1, -1):
       top: int = self._freeTop[b]
       if top > 0:
         top -= 1
@@ -242,4 +242,4 @@ class Pool[Element]:
 
   @immutable
   def _slotPtr(self, blockIndex: int, offset: int) -> Pointer[Element]:
-    return self._blockBufs[blockIndex] + offset
+    return self._blockArrays[blockIndex] + offset

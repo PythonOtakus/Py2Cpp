@@ -59,7 +59,7 @@ static std::string _web_client_pystr_to_utf8(const PyStr& s)
   }
   std::string buf;
   buf.resize((size_t)n + 1u, '\0');
-  s.copyToSpan(PySpan<PyByte>((PyByte*)buf.data(), (PyInt)buf.size(), 1));
+  s.copyToSpanUtf8(PySpan<PyByte>((PyByte*)buf.data(), (PyInt)buf.size(), 1));
   return std::string(buf.c_str());
 }
 

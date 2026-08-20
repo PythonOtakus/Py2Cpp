@@ -1,6 +1,6 @@
 """``py2cpp.concur.process``：外部进程基础生命周期回归。"""
 from py2cpp import *
-from py2cpp.concur.process import CompletedProcess, Pipe, Process, ProcessEvent, ProcessMutex, ProcessPool, ProcessSemaphore, run as processRun
+from py2cpp.concur.process import CompletedProcess, Pipe, Process, ProcessChannel, ProcessEvent, ProcessMutex, ProcessPool, ProcessSemaphore, SharedMemory, run as processRun
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 
@@ -94,6 +94,47 @@ class ProcessSynchronizationTests(TestCaseMixin):
       mutexTwo.release()
 
 
+class SharedMemoryTests(TestCaseMixin):
+  _testTag = 19
+
+  @override
+  def test(self):
+    first: SharedMemory = new("Local\\py2cpp-shared-memory", 32)
+    second: SharedMemory = new("Local\\py2cpp-shared-memory", 32)
+    self.assertTrue(first.created)
+    self.assertFalse(second.created)
+    self.assertEqual(len(first.view), 32)
+    first.view[0] = 71
+    first.view[31] = 19
+    self.assertEqual(second.view[0], 71)
+    self.assertEqual(second.view[31], 19)
+    first.close()
+    second.close()
+
+
+class ProcessChannelTests(TestCaseMixin):
+  _testTag = 20
+
+  @override
+  def test(self):
+    sender: ProcessChannel = new("Local\\py2cpp-process-channel", 16)
+    receiver: ProcessChannel = new("Local\\py2cpp-process-channel", 16)
+    self.assertTrue(sender.created)
+    self.assertFalse(receiver.created)
+    payload: byte[:] = new(3)
+    payload[0] = 7
+    payload[1] = 21
+    payload[2] = 99
+    sender.send(payload)
+    got: byte[:] = receiver.receive(timeout=0.0)
+    self.assertEqual(len(got), 3)
+    self.assertEqual(got[0], 7)
+    self.assertEqual(got[1], 21)
+    self.assertEqual(got[2], 99)
+    sender.close()
+    receiver.close()
+
+
 class ProcessPoolTests(TestCaseMixin):
   _testTag = 20
 
@@ -120,6 +161,8 @@ suite.addTests([
   ProcessRunTests(),
   ProcessContextTests(),
   ProcessSynchronizationTests(),
+  SharedMemoryTests(),
+  ProcessChannelTests(),
   ProcessPoolTests(),
 ])
 TextTestRunner().run(suite)

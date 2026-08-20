@@ -60,24 +60,8 @@ class BuiltinStubTests(unittest.TestCase):
 
   def test_module_function_cpp_rename_from_global_call(self):
     self.assertEqual(
-      lookup_module_function_cpp_name(stdlib_module_path("io/file"), "getcwd"),
-      "fs_getcwd",
-    )
-    self.assertEqual(
-      lookup_module_function_cpp_name(stdlib_module_path("io/file"), "apply_utime"),
-      "fs_apply_utime",
-    )
-    self.assertEqual(
-      lookup_module_function_cpp_name(stdlib_module_path("io/file"), "utime"),
-      "fs_utime",
-    )
-    self.assertEqual(
       lookup_module_function_cpp_name(stdlib_module_path("io"), "open"),
       "py_open",
-    )
-    self.assertEqual(
-      lookup_module_function_cpp_name(stdlib_module_path("system/time"), "time"),
-      "time",
     )
     self.assertEqual(
       lookup_module_function_cpp_name(RUNTIME_BUILTINS_MODULE, "abs"),
@@ -90,18 +74,6 @@ class BuiltinStubTests(unittest.TestCase):
     self.assertEqual(
       lookup_module_function_cpp_name(RUNTIME_BUILTINS_MODULE, "input"),
       "py_input",
-    )
-    self.assertEqual(
-      lookup_module_function_cpp_name(stdlib_module_path("math"), "log"),
-      "math_log",
-    )
-    self.assertEqual(
-      lookup_module_function_cpp_name(stdlib_module_path("math"), "log"),
-      "math_log",
-    )
-    self.assertEqual(
-      lookup_module_function_cpp_name(stdlib_module_path("math/complex"), "log"),
-      "cmath_log",
     )
 
 

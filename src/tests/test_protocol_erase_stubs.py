@@ -58,21 +58,21 @@ class ProtocolEraseStubTests(unittest.TestCase):
     )
     self.assertEqual(cpp, "T")
 
-  def test_varint_maps_to_fqn(self):
+  def test_long_maps_to_fqn(self):
     from src.analysis.stubs.protocol_erase_stubs import (
       _protocol_ann_to_cpp,
       load_protocol_runtime_erase_candidates,
     )
 
     candidates = load_protocol_runtime_erase_candidates()
-    ann = ast.parse("varint").body[0].value
+    ann = ast.parse("long").body[0].value
     cpp = _protocol_ann_to_cpp(ann, (), {}, runtime_erase=candidates)
-    self.assertEqual(cpp, "py2cpp::numeric::varint::PyVarInt")
-    ann2 = ast.parse("list[varint]").body[0].value
+    self.assertEqual(cpp, "py2cpp::numeric::py_long::PyLong")
+    ann2 = ast.parse("list[long]").body[0].value
     cpp2 = _protocol_ann_to_cpp(ann2, (), {}, runtime_erase=candidates)
     self.assertEqual(
       cpp2,
-      "PyList<py2cpp::numeric::varint::PyVarInt>",
+      "PyList<py2cpp::numeric::py_long::PyLong>",
     )
 
   def test_domain_protocol_erase_specs(self):

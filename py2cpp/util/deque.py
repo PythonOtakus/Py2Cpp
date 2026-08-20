@@ -45,7 +45,6 @@ class DequeReverseIterator[Element]:
 
 
 class deque[Element](ContainerMixin):
-  _EndIndex: int @const = int.Min
 
   _NoMaxLen: int @const = int.Min
 
@@ -244,7 +243,7 @@ class deque[Element](ContainerMixin):
       cur = cur.next
 
   @immutable
-  def index(self, value: Element, start: int = 0, end: int = Self._EndIndex) -> int:
+  def index(self, value: Element, start: int = 0, end: int = int.Max) -> int:
     start = self._normStart(start)
     stop: int = self._normStop(end)
     cur: DequeNodeUnsafe[Element] = self._head
@@ -356,7 +355,7 @@ class deque[Element](ContainerMixin):
 
   @immutable
   def _normStop(self, end: int) -> int:
-    if end == Self._EndIndex:
+    if end == int.Max:
       return self._length
     if end < 0:
       end = self._length + end

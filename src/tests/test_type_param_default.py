@@ -60,6 +60,18 @@ def g() -> None:
       r"template\s*<\s*typename K\s*,\s*typename C\s*=\s*PyInt\s*>\s*\n\s*class Counter",
     )
 
+  def test_float64_binop_infers_generic_type_argument(self):
+    cpp = self._translate(
+      '''
+from py2cpp import *
+from py2cpp.math import safeSqrt
+
+def magnitude(x: float64, y: float64) -> float64:
+  return safeSqrt(x * x + y * y)
+'''
+    )
+    self.assertIn("safeSqrt<PyFloat64>", cpp)
+
 
 if __name__ == "__main__":
   unittest.main()

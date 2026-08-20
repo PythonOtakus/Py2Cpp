@@ -59,10 +59,10 @@ class ImportResolverCollectionsTests(unittest.TestCase):
         imp, level=3, module="util.memory", runtime_root=rt,
       )
 
-  def test_io_file_path_level3_to_py2cpp(self):
+  def test_io_path_level3_to_py2cpp(self):
     rt = Path("py2cpp").resolve()
     p = resolve_relative_module_path(
-      "py2cpp/io/file/path", level=3, module="text", runtime_root=rt,
+      "py2cpp/io/path", level=2, module="text", runtime_root=rt,
     )
     self.assertEqual(p, "py2cpp/text")
 

@@ -1040,7 +1040,7 @@ def pattern_to_match(tr: Translator, pattern: ast.pattern, *, subject_cpp: str, 
     raise NotImplementedError(f'不支持的 match 模式: {ast.dump(pattern)}')
 
 def _needs_subject_temp(subject: ast.expr, subject_cpp: str) -> bool:
-    if subject_cpp in (cpp_ident('int'), cpp_ident('float'), cpp_ident('bool'), cpp_ident('str'), cpp_ident('char'), 'CStr'):
+    if subject_cpp in (cpp_ident('int'), cpp_ident('float'), cpp_ident('bool'), cpp_ident('str'), cpp_ident('char'), 'utf8ptr', 'utf16ptr'):
         return False
     return not isinstance(subject, ast.Name)
 _SWITCHABLE_SUBJECT_CPP = frozenset({cpp_ident('int'), cpp_ident('bool'), cpp_ident('char')})

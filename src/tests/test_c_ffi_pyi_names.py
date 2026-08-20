@@ -12,6 +12,7 @@ from src.tools.c_ffi_pyi import (
   pyi_const_export_name,
   pyi_func_export_name,
   pyi_type_export_name,
+  _resolveExportNameCollisions,
 )
 
 
@@ -53,13 +54,26 @@ class CIdentToPascalTests(unittest.TestCase):
           c_name="printf",
           py_name="pyiPrintf",
           ret="int",
-          params=[ParamDef(py_name="_Format", ann="CStr")],
+          params=[ParamDef(py_name="_Format", ann="utf8ptr")],
           variadic=True,
         ),
       ],
     )
     text = render_pyi(Path("stdio.h"), model)
-    self.assertIn("def pyiPrintf(_Format: CStr, *_) -> int:", text)
+    self.assertIn("def pyiPrintf(_Format: utf8ptr, *_) -> int:", text)
+
+  def test_const_collision_with_native_type_appends_const(self):
+    from src.tools.c_ffi_pyi import ConstDef, FfiModel, StructDef
+
+    model = FfiModel(
+      structs=[StructDef(c_name="GLFWcursor", incomplete=True)],
+      consts=[ConstDef(
+        name="GLFW_CURSOR", py_name="PyiGlfwCursor", native="GLFW_CURSOR",
+        ann="int", value="0",
+      )],
+    )
+    _resolveExportNameCollisions(model)
+    self.assertEqual(model.consts[0].py_name, "PyiGlfwCursorConst")
 
 
 class DefaultPyiPathTests(unittest.TestCase):

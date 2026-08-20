@@ -14,10 +14,10 @@ from src.translator import Translator
 class SameClassProtectedAccessTests(unittest.TestCase):
   def _build(self, src: str) -> Translator:
     mod = ast.parse(src)
-    tr = Translator("test/varint_access", "test/varint_access.py")
+    tr = Translator("test/long_access", "test/long_access.py")
     for node in mod.body:
       if isinstance(node, ast.ClassDef):
-        tr.classes[node.name] = ClassInfo(node, "test/varint_access")
+        tr.classes[node.name] = ClassInfo(node, "test/long_access")
     expand_mixins(tr)
     return tr
 
@@ -26,7 +26,7 @@ class SameClassProtectedAccessTests(unittest.TestCase):
 from py2cpp import Self, copyable, immutable
 
 @copyable
-class varint:
+class long:
   @immutable
   def _peek(self) -> int:
     return 1
@@ -48,7 +48,7 @@ class varint:
 from py2cpp import Self, copyable, immutable
 
 @copyable
-class varint:
+class long:
   @staticmethod
   @immutable
   def _zero() -> Self:
@@ -69,7 +69,7 @@ class varint:
 from py2cpp import Self, copyable, immutable
 
 @copyable
-class varint:
+class long:
   @immutable
   def _divmod_abs(self, other: Self) -> int:
     return 0

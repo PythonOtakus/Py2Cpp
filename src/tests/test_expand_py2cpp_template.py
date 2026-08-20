@@ -240,7 +240,7 @@ class ExpandPy2CppTemplateTests(unittest.TestCase):
     self.assertIn("PyStr", blocks)
     self.assertEqual(len(blocks["PyStr"]), 2)
     joined = "\n".join(blocks["PyStr"])
-    self.assertIn("format(CStr fmt", joined)
+    self.assertIn("format(utf8ptr fmt", joined)
     self.assertIn("py2cpp::text::str::PyStr", joined)
     self.assertIn("__mod__(const PyTuple", joined)
     self.assertIn("PyArray<PyChar>&& data", joined)

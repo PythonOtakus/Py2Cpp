@@ -68,7 +68,7 @@ from .ir import (
   format_cpp_uint,
   format_cpp_uint64,
   format_cpp_uintptr,
-  format_cpp_varint,
+  format_cpp_long,
   str_cpp_from_literal,
   quote_cpp_string,
 )
@@ -100,7 +100,7 @@ from .type_pred import (
   is_uint64_type,
   is_uint_type,
   is_uintptr_type,
-  is_varint_type,
+  is_long_type,
 )
 
 from ..passes.move_state import ensure_move_state_field
@@ -600,7 +600,7 @@ class TypeParser:
           return erased_protocol_cpp_name(name)
         # 内置标量注解优先于模块 ``type int64 = int`` 等别名（``@const`` 类字段须保留 ``PyInt64``）。
         if name in (
-          "int", "int64", "uint", "uint64", "uintptr", "float", "float64", "bool", "str", "bytes", "char", "byte",
+          "int", "int16", "int64", "uint16", "uint", "uint64", "uintptr", "float", "float64", "bool", "str", "bytes", "char", "byte",
           "object", "RefCount", "IterResult", "Result", "Optional", "GeneratorType",
           "CoroutineType", "AsyncGeneratorType", "AwaitableType", "AsyncIterableType", "AsyncIteratorType",
           "ContextManagerType", "AsyncContextManagerType", "PyNone", "void", "Never",
@@ -608,8 +608,8 @@ class TypeParser:
           return cpp_ident(name)
         if name == "None":
           return cpp_ident("PyNone")
-        if name == "CStr":
-          return "CStr"
+        if name in ("utf8ptr", "utf16ptr"):
+          return name
         expanded = self._expand_type_alias_name(
           name, type_params, self_class=self_class, _seen=_alias_seen,
         )
@@ -638,16 +638,18 @@ class TypeParser:
             "类型注解 Object 已禁止，请改用 object（映射 PyObject）"
           )
         info = self._classes.get(name)
-        if info is not None and info.type_params and not info.typevar_tuple:
-          defaults = info.type_param_defaults
-          if defaults and len(defaults) == len(info.type_params):
-            cpp_args = [
-              self.parse_type(
-                defaults[p], type_params, self_class=self_class,
-              )
-              for p in info.type_params
-            ]
-            return f"{info.cpp_name()}<{', '.join(cpp_args)}>"
+        if info is not None:
+          if info.type_params and not info.typevar_tuple:
+            defaults = info.type_param_defaults
+            if defaults and len(defaults) == len(info.type_params):
+              cpp_args = [
+                self.parse_type(
+                  defaults[p], type_params, self_class=self_class,
+                )
+                for p in info.type_params
+              ]
+              return f"{info.cpp_name()}<{', '.join(cpp_args)}>"
+          return info.cpp_name()
         return cpp_ident(name)
       case ast.Subscript(value=ast.Name(id=name), slice=sl) if name == "WeakRef":
         inner = self._weakref_target_cpp_type(
@@ -1102,8 +1104,8 @@ class TypeParser:
             return format_cpp_uint64(v)
           if cpp_type and is_uintptr_type(cpp_type):
             return format_cpp_uintptr(v)
-          if cpp_type and is_varint_type(cpp_type):
-            return format_cpp_varint(v)
+          if cpp_type and is_long_type(cpp_type):
+            return format_cpp_long(v)
           return format_cpp_int(v)
         raise NotImplementedError(f"NTTP literal: {ast.dump(node)}")
       case ast.UnaryOp(op=ast.USub(), operand=ast.Constant(value=v)) if isinstance(v, int):
@@ -1115,8 +1117,8 @@ class TypeParser:
           raise NotImplementedError("uintptr NTTP 不支持一元负号")
         if cpp_type and is_int64_type(cpp_type):
           return format_cpp_int64(-v)
-        if cpp_type and is_varint_type(cpp_type):
-          return format_cpp_varint(-v)
+        if cpp_type and is_long_type(cpp_type):
+          return format_cpp_long(-v)
         return format_cpp_int(-v)
       case _:
         raise NotImplementedError(f"NTTP literal: {ast.dump(node)}")
@@ -1628,7 +1630,7 @@ class SignatureBuilder:
         if isinstance(v, str):
           if cpp_type and is_char_heap_array_type(cpp_type) and v == "":
             return f"{cpp_type}(0)"
-          if cpp_type == "CStr":
+          if cpp_type == "utf8ptr":
             return quote_cpp_string(v)
           return str_cpp_from_literal(v)
         if isinstance(v, float):
@@ -1648,8 +1650,8 @@ class SignatureBuilder:
             return format_cpp_uint64(v)
           if cpp_type and is_uintptr_type(cpp_type):
             return format_cpp_uintptr(v)
-          if cpp_type and is_varint_type(cpp_type):
-            return format_cpp_varint(v)
+          if cpp_type and is_long_type(cpp_type):
+            return format_cpp_long(v)
           return format_cpp_int(v)
         return format_cpp_int(v) if isinstance(v, int) else str(v)
       case ast.UnaryOp(op=ast.USub(), operand=ast.Constant(value=v)) if isinstance(v, int):
@@ -1659,8 +1661,8 @@ class SignatureBuilder:
           raise NotImplementedError("uint64 字面量不支持一元负号")
         if cpp_type and is_int64_type(cpp_type):
           return format_cpp_int64(-v)
-        if cpp_type and is_varint_type(cpp_type):
-          return format_cpp_varint(-v)
+        if cpp_type and is_long_type(cpp_type):
+          return format_cpp_long(-v)
         return format_cpp_int(-v)
       case ast.UnaryOp(op=ast.USub(), operand=ast.Constant(value=v)) if isinstance(v, float):
         if cpp_type and is_float64_type(cpp_type):
@@ -1783,6 +1785,8 @@ class SignatureBuilder:
           ):
             elem = self._alloc_elem_type_from_call(stmt.value)
             if elem:
+              if self._field_cpp_type(info, target.attr) != "void*":
+                continue
               self._set_field_cpp_type(info, target.attr, f"{elem}*")
 
   def _infer_fields_from_init_assignments(self, info: ClassInfo):
@@ -1990,8 +1994,15 @@ class SignatureBuilder:
     ):
       return f"{cpp_template_type('array', cpp_ident('byte'))}&"
     if info is not None:
-      if info.name == "str" and method and method.name == "__init__" and arg.arg == "text":
-        return "CStr"
+      if (
+        info.name == "str"
+        and method
+        and method.name == "__init__"
+        and arg.arg == "text"
+        and isinstance(arg.annotation, ast.Name)
+        and arg.annotation.id == "utf8ptr"
+      ):
+        return "utf8ptr"
       if method and arg.arg == "other":
         if method.name == "__copy__":
           if info.is_template():
@@ -2088,7 +2099,7 @@ class SignatureBuilder:
     method: ast.FunctionDef | None,
     arg_name: str | None,
   ) -> bool:
-    """``@staticmethod`` 上 ``z: Self`` 等可变接收者须 ``T&``（如 ``varint._parse_decimal``）。"""
+    """``@staticmethod`` 上 ``z: Self`` 等可变接收者须 ``T&``（如 ``long._parse_decimal``）。"""
     if info is None or method is None or not arg_name:
       return False
     if not has_named_decorator(method, "staticmethod"):
@@ -3355,10 +3366,11 @@ class SemanticAnalyzer:
         _n_hit += 1
         continue
       _n_miss += 1
-      self.types.set_type_aliases(
-        info.type_aliases,
-        use_as_cpp_name=not info.is_protocol,
-      )
+      # 类方法签名与方法体都应看见模块级 ``type`` 别名；否则
+      # ``type Frac = Fraction[int]`` 会在签名处退化为未声明的 ``PyFrac``。
+      aliases = effective_module_type_aliases(tr, info.module_path)
+      aliases.update(info.type_aliases)
+      self.types.set_type_aliases(aliases, use_as_cpp_name=False)
       if info.is_descriptor or info.is_mixin or info.is_annotation or info.is_protocol:
         continue
       if info.name in TYPE_MARKER_CLASSES:
@@ -3585,8 +3597,14 @@ class SemanticAnalyzer:
             includes.append(h)
           continue
         if is_runtime_module_path(imp.module_path):
-          # stdlib 仍靠类型文本推导，避免函数 import 拉满头文件环。
-          if imp.kind == "delegate":
+          # 子模块从标准库包根导入函数时须显式包含包根头，
+          # 例如 ``console.parse`` → ``console.argv``。其它标准库依赖仍由
+          # 类型文本与万能头排序处理，避免扩大为头文件环。
+          needs_header = False
+          if imp.kind == "function" and imp.module_path.startswith(f"{RUNTIME_PKG}/"):
+            rel = imp.module_path[len(RUNTIME_PKG) + 1:]
+            needs_header = (tr._runtime_root() / rel / "__init__.py").is_file()
+          if imp.kind == "delegate" or needs_header:
             h = header_for_module(imp.module_path)
             if h != own_header and h not in includes:
               includes.append(h)

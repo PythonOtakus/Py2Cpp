@@ -107,30 +107,30 @@ class Transform(Component):
 
   @property
   @immutable
-  def local_position(self) -> Vector3:
-    return self.space.local_position
+  def localPosition(self) -> Vector3:
+    return self.space.localPosition
 
   @property.setter
-  def local_position(self, value: Vector3) -> None:
-    self.space.local_position = value
+  def localPosition(self, value: Vector3) -> None:
+    self.space.localPosition = value
 
   @property
   @immutable
-  def local_rotation(self) -> Quaternion:
-    return self.space.local_rotation
+  def localRotation(self) -> Quaternion:
+    return self.space.localRotation
 
   @property.setter
-  def local_rotation(self, value: Quaternion) -> None:
-    self.space.local_rotation = value
+  def localRotation(self, value: Quaternion) -> None:
+    self.space.localRotation = value
 
   @property
   @immutable
-  def local_scale(self) -> Vector3:
-    return self.space.local_scale
+  def localScale(self) -> Vector3:
+    return self.space.localScale
 
   @property.setter
-  def local_scale(self, value: Vector3) -> None:
-    self.space.local_scale = value
+  def localScale(self, value: Vector3) -> None:
+    self.space.localScale = value
 
   @property
   @immutable
@@ -157,8 +157,8 @@ class Transform(Component):
 
   @property
   @immutable
-  def local_to_world_matrix(self) -> Matrix4:
-    return self.space.local_to_world_matrix
+  def localToWorldMatrix(self) -> Matrix4:
+    return self.space.localToWorldMatrix
 
   def attach(self, child: Self) -> None:
     self.space.attach(child.space)

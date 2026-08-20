@@ -312,9 +312,9 @@ def _placeholder_expr_for_annotation(ann: ast.expr | None) -> ast.expr:
       return ast.Constant(value=False)
     case ast.Name(id="str"):
       return ast.Constant(value="")
-    case ast.Name(id="varint"):
+    case ast.Name(id="long"):
       return ast.Call(
-        func=ast.Name(id="varint", ctx=ast.Load()),
+        func=ast.Name(id="long", ctx=ast.Load()),
         args=[ast.Constant(value="")],
         keywords=[],
       )

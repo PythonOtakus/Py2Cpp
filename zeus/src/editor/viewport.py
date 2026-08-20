@@ -5,7 +5,7 @@ from py2cpp import *
 from py2cpp.spatial.color import Color
 from py2cpp.spatial.vector import Vector3
 
-from ..command import CommandBus, ZeusCommand
+from ..command import CommandBus, ZeusCommandUnion
 from ..platform.window import Window
 from ..render.mesh import Mesh
 from ..render.opengl.gl_device import GLDevice
@@ -71,11 +71,11 @@ class SceneViewport:
     if self.bus.world.state != WORLD_PLAYING:
       sel: GameObject | None = self._selected_go()
       if sel is not None:
-        origin: Vector3 = sel.root.local_position
+        origin: Vector3 = sel.root.localPosition
         moved, new_pos = self.gizmo.update(self.win, origin, w, h)
         if moved:
           self.bus.dispatch(
-            ZeusCommand.ObjectSetPosition(sel.name, new_pos.x, new_pos.y, new_pos.z)
+            ZeusCommandUnion.ObjectSetPosition(sel.name, new_pos.x, new_pos.y, new_pos.z)
           )
     self.device.begin_frame(w, h)
     self.device.clear()
@@ -83,13 +83,13 @@ class SceneViewport:
     if self.bus.world.state != WORLD_PLAYING:
       sel2: GameObject | None = self._selected_go()
       if sel2 is not None:
-        self.gizmo.draw(self.device, sel2.root.local_position)
+        self.gizmo.draw(self.device, sel2.root.localPosition)
     self.win.swap()
 
   def _draw_go(self, go: GameObject) -> None:
     if not go.active or not go.visible:
       return
-    pos: Vector3 = go.root.local_position
+    pos: Vector3 = go.root.localPosition
     for i in range(go.component_count()):
       c: Component = go.component_at(i)
       m: Mesh | None = c.mesh_for_draw()

@@ -10,7 +10,7 @@ from src.translator import Translator
 
 class ModmulBuiltinEmitTests(unittest.TestCase):
   def _translate(self, body: str) -> str:
-    src = f"""from py2cpp import varint
+    src = f"""from py2cpp import *
 
 def probe():
 {body}"""
@@ -27,9 +27,9 @@ def probe():
     cpp = self._translate("  return modmul(1000000005, 2, 1000000007)\n")
     self.assertIn("::modmul(1000000005, 2, 1000000007)", cpp)
 
-  def test_modmul_varint(self):
+  def test_modmul_long(self):
     cpp = self._translate(
-      "  a: varint = 3\n  b: varint = 4\n  m: varint = 11\n  return modmul(a, b, m)\n",
+      "  a: long = 3\n  b: long = 4\n  m: long = 11\n  return modmul(a, b, m)\n",
     )
     self.assertIn("::modmul(a, b, m)", cpp)
 

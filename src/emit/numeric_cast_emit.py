@@ -2,7 +2,7 @@
 from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING
-from ..analysis.type_pred import is_byte_type, is_char_type, is_varint_type
+from ..analysis.type_pred import is_byte_type, is_char_type, is_long_type
 from ..analysis.type_pred import is_complex_type
 from ..analysis.ir import complex_element_cpp_type, complex_template_cpp_type, cpp_ident, format_cpp_complex_component, format_cpp_complex_literal, strip_cpp_ref
 from .complex_literal_emit import complex_literal_parts
@@ -44,7 +44,7 @@ def try_emit_int_ctor(tr: 'Translator', node: ast.Call) -> str | None:
         return enum_to_int_cast_expr(tr, cinfo, tr._paren_expr(tr.visit(arg)))
     if cinfo is not None and '__int__' in cinfo.methods:
         return _emit_static_cast(tr, arg, pi)
-    if is_varint_type(arg_t):
+    if is_long_type(arg_t):
         return _emit_static_cast(tr, arg, pi)
     return None
 
@@ -99,7 +99,7 @@ def try_emit_numeric_ctor(tr: 'Translator', name: str, node: ast.Call) -> str | 
     if name == 'complex':
         return try_emit_complex_ctor(tr, node)
     return None
-_PRIMITIVE_CAST_NAMES = frozenset({'char', 'byte', 'bool', 'int64', 'uint', 'uint64', 'uintptr', 'float64'})
+_PRIMITIVE_CAST_NAMES = frozenset({'char', 'byte', 'bool', 'int16', 'int64', 'uint16', 'uint', 'uint64', 'uintptr', 'float64'})
 
 def try_emit_primitive_ctor(tr: 'Translator', name: str, node: ast.Call) -> str | None:
     """``char(0)`` / ``byte(x)`` / ``int64(n)`` 等标量显式转换。"""

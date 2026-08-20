@@ -9,7 +9,7 @@
 from ..builtins import *
 from ..core.exceptions import ValueError
 from ..text import str
-from ..util.memory import cstrSlice, loadU64LeAtAddress, strCbuf
+from ..util.memory import loadU64LeAtAddress
 from ffi.crt.time import PyiTm, pyiGmtime64S, pyiLocaltime64S, pyiMktime64, pyiStrftime, pyiTime64
 from ffi.windows import PyiFiletime, PyiLargeInteger
 import ffi.windows as win32
@@ -75,14 +75,6 @@ def _dayOfWeek(y: int, m: int, d: int) -> int:
   return (y + y // 4 - y // 100 + y // 400 + t[m - 1] + d) % 7
 
 
-@immutable
-def _cstrSlice(p: CStr, start: int, n: int) -> str:
-  return cstrSlice(p, start, n)
-
-
-@immutable
-def _strCbuf(s: str, cap: int) -> byte[:]:
-  return strCbuf(s, cap)
 
 
 @immutable
@@ -259,11 +251,11 @@ def pyStrftime(fmt: str, st: CTime) -> str:
   tm: PyiTm = new()
   _ctimeToTm(st, tm)
   buf: byte[:] = new(256)
-  fmtBuf: byte[:] = _strCbuf(fmt, 256)
-  n: uint64 = pyiStrftime(buf.view.at(0), 256, fmtBuf.view.at(0), id(tm))
+  with fmt.useUtf8() as cfmt:
+    n: uint64 = pyiStrftime(buf.view.at(0), 256, cfmt, id(tm))
   if n == 0:
     return ""
-  return _cstrSlice(buf.view.at(0), 0, int(n))
+  return str.fromSpanBytes(buf.view[:int(n)])
 
 
 @immutable

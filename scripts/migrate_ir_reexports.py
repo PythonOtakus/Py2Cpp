@@ -19,7 +19,7 @@ PRED = {
   "is_py_callable_type", "is_py_coroutine_type", "is_py_generator_type",
   "is_refcount_type", "is_set_type", "is_span_type", "is_stack_array_type",
   "is_str_type", "is_tuple_type", "is_uint64_type", "is_uint_type",
-  "is_uintptr_type", "is_varint_type",
+  "is_uintptr_type", "is_long_type",
 }
 EXTRACT = {
   "async_generator_type_args", "coroutine_type_args", "dict_type_args",

@@ -42,7 +42,8 @@ _BUILTIN_AND_CONTAINER_TYPE_NAMES = frozenset(
     "ref",
     "view",
     "span",
-    "CStr",
+    "utf8ptr",
+    "utf16ptr",
   }
 )
 

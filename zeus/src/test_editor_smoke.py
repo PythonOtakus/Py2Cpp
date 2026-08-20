@@ -2,11 +2,11 @@
 from py2cpp import *
 from py2cpp.math import almost
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
-from py2cpp.test.test_temp import _TEST_TEMP, ensure_test_temp
-from py2cpp.io.file.path import join
+from py2cpp.test.test_temp import _TestTemp, ensureTestTemp
+from py2cpp.io.path import Path
 from py2cpp.ui.app import UIApp
 
-from .command import CommandBus, CommandResult, ZeusCommand
+from .command import CommandBus, CommandResult, ZeusCommandUnion
 from .editor.inspector import InspectorPanel
 from .editor.session import EditorSession
 from .editor.shell import EditorShell
@@ -15,8 +15,6 @@ from .scene import GameObject
 from .world import WORLD_PLAYING, WORLD_STOPPED
 from py2cpp.spatial.vector import Vector3
 
-_EDITOR_TMP: str = join(_TEST_TEMP, "zeus_editor_scene.zas")
-
 
 class CommandObjectTests(TestCaseMixin):
   _test_tag = 1
@@ -24,20 +22,20 @@ class CommandObjectTests(TestCaseMixin):
   @override
   def test(self):
     bus: CommandBus = new()
-    r: CommandResult = bus.dispatch(ZeusCommand.ObjectCreate("player", ""))
+    r: CommandResult = bus.dispatch(ZeusCommandUnion.ObjectCreate("player", ""))
     self.assertTrue(r.ok)
     found: GameObject | None = bus.world.root.find("player")
     self.assertTrue(found is not None)
-    r = bus.dispatch(ZeusCommand.ObjectSetPosition("player", 1.5, 2.0, -3.0))
+    r = bus.dispatch(ZeusCommandUnion.ObjectSetPosition("player", 1.5, 2.0, -3.0))
     self.assertTrue(r.ok)
-    pos0: Vector3 = found.root.local_position
+    pos0: Vector3 = found.root.localPosition
     self.assertTrue(almost(pos0.x, 1.5))
     self.assertTrue(almost(pos0.y, 2.0))
     self.assertTrue(almost(pos0.z, -3.0))
-    r = bus.dispatch(ZeusCommand.ObjectAddMesh("player", 1.0))
+    r = bus.dispatch(ZeusCommandUnion.ObjectAddMesh("player", 1.0))
     self.assertTrue(r.ok)
     self.assertTrue(found.find_component("MeshComponent") is not None)
-    r = bus.dispatch(ZeusCommand.EditorSelect("player"))
+    r = bus.dispatch(ZeusCommandUnion.EditorSelect("player"))
     self.assertTrue(r.ok)
     self.assertEqual(bus.selected, "player")
 
@@ -48,11 +46,11 @@ class CommandPlayStepTests(TestCaseMixin):
   @override
   def test(self):
     bus: CommandBus = new()
-    bus.dispatch(ZeusCommand.ObjectCreate("cube", ""))
-    r: CommandResult = bus.dispatch(ZeusCommand.PlayStep(3))
+    bus.dispatch(ZeusCommandUnion.ObjectCreate("cube", ""))
+    r: CommandResult = bus.dispatch(ZeusCommandUnion.PlayStep(3))
     self.assertTrue(r.ok)
     self.assertEqual(bus.world.state, WORLD_PLAYING)
-    bus.dispatch(ZeusCommand.PlayStop())
+    bus.dispatch(ZeusCommandUnion.PlayStop())
     self.assertEqual(bus.world.state, WORLD_STOPPED)
 
 
@@ -61,32 +59,32 @@ class SceneJsonRoundTripTests(TestCaseMixin):
 
   @override
   def test(self):
-    ensure_test_temp()
+    ensureTestTemp()
     bus: CommandBus = new()
-    bus.dispatch(ZeusCommand.ObjectCreate("player", ""))
-    bus.dispatch(ZeusCommand.ObjectSetPosition("player", 4.0, 5.0, 6.0))
-    bus.dispatch(ZeusCommand.ObjectAddMesh("player", 1.0))
-    bus.dispatch(ZeusCommand.ObjectSetActive("player", False))
+    bus.dispatch(ZeusCommandUnion.ObjectCreate("player", ""))
+    bus.dispatch(ZeusCommandUnion.ObjectSetPosition("player", 4.0, 5.0, 6.0))
+    bus.dispatch(ZeusCommandUnion.ObjectAddMesh("player", 1.0))
+    bus.dispatch(ZeusCommandUnion.ObjectSetActive("player", False))
     text: str = bus.dump_json()
     self.assertTrue("player" in text)
     self.assertTrue("MeshComponent" in text)
     bus2: CommandBus = new()
-    r: CommandResult = bus2.dispatch(ZeusCommand.SceneFromJson(text))
+    r: CommandResult = bus2.dispatch(ZeusCommandUnion.SceneFromJson(text))
     self.assertTrue(r.ok)
     p: GameObject | None = bus2.world.root.find("player")
     self.assertTrue(p is not None)
     self.assertFalse(p.active)
-    pos1: Vector3 = p.root.local_position
+    pos1: Vector3 = p.root.localPosition
     self.assertTrue(almost(pos1.x, 4.0))
     self.assertTrue(almost(pos1.y, 5.0))
     self.assertTrue(almost(pos1.z, 6.0))
     self.assertTrue(p.find_component("MeshComponent") is not None)
-    bus2.dispatch(ZeusCommand.SceneSave(_EDITOR_TMP, "RoundTrip"))
+    bus2.dispatch(ZeusCommandUnion.SceneSave(str(Path(_TestTemp) / "zeus_editor_scene.zas"), "RoundTrip"))
     bus3: CommandBus = new()
-    bus3.dispatch(ZeusCommand.SceneLoad(_EDITOR_TMP))
+    bus3.dispatch(ZeusCommandUnion.SceneLoad(str(Path(_TestTemp) / "zeus_editor_scene.zas")))
     p2: GameObject | None = bus3.world.root.find("player")
     self.assertTrue(p2 is not None)
-    pos2: Vector3 = p2.root.local_position
+    pos2: Vector3 = p2.root.localPosition
     self.assertTrue(almost(pos2.x, 4.0))
 
 
@@ -96,8 +94,8 @@ class EditorSessionSelectTests(TestCaseMixin):
   @override
   def test(self):
     session: EditorSession = new()
-    session.dispatch(ZeusCommand.ObjectCreate("a", ""))
-    session.dispatch(ZeusCommand.ObjectCreate("b", "a"))
+    session.dispatch(ZeusCommandUnion.ObjectCreate("a", ""))
+    session.dispatch(ZeusCommandUnion.ObjectCreate("b", "a"))
     session.rebuild_hierarchy()
     self.assertTrue(len(session.rows) >= 3)
     r: CommandResult = session.select_index(1)
@@ -111,8 +109,8 @@ class InspectorApplyTests(TestCaseMixin):
   @override
   def test(self):
     bus: CommandBus = new()
-    bus.dispatch(ZeusCommand.ObjectCreate("hero", ""))
-    bus.dispatch(ZeusCommand.EditorSelect("hero"))
+    bus.dispatch(ZeusCommandUnion.ObjectCreate("hero", ""))
+    bus.dispatch(ZeusCommandUnion.EditorSelect("hero"))
     panel: InspectorPanel = new()
     panel.bind_bus(bus)
     panel.load_from_selection()
@@ -125,7 +123,7 @@ class InspectorApplyTests(TestCaseMixin):
     go: GameObject | None = bus.world.root.find("hero")
     self.assertTrue(go is not None)
     self.assertFalse(go.active)
-    pos: Vector3 = go.root.local_position
+    pos: Vector3 = go.root.localPosition
     self.assertTrue(almost(pos.x, 9.0))
     self.assertTrue(almost(pos.y, 8.0))
     self.assertTrue(almost(pos.z, 7.0))
@@ -137,8 +135,8 @@ class InspectorJumpMotorTests(TestCaseMixin):
   @override
   def test(self):
     bus: CommandBus = new()
-    bus.dispatch(ZeusCommand.ObjectCreate("player", ""))
-    bus.dispatch(ZeusCommand.EditorSelect("player"))
+    bus.dispatch(ZeusCommandUnion.ObjectCreate("player", ""))
+    bus.dispatch(ZeusCommandUnion.EditorSelect("player"))
     go: GameObject | None = bus.world.root.find("player")
     self.assertTrue(go is not None)
     motor: JumpMotor = new()
@@ -152,7 +150,7 @@ class InspectorJumpMotorTests(TestCaseMixin):
     panel.apply()
     self.assertTrue(almost(motor.jump_power, 7.0))
     r: CommandResult = bus.dispatch(
-      ZeusCommand.ComponentSetFloat("player", "JumpMotor", "max_charge", 2.0)
+      ZeusCommandUnion.ComponentSetFloat("player", "JumpMotor", "max_charge", 2.0)
     )
     self.assertTrue(r.ok)
     self.assertTrue(almost(motor.max_charge, 2.0))
@@ -163,13 +161,13 @@ class EditorUiSmokeTests(TestCaseMixin):
 
   @override
   def test(self):
-    if not UIApp.is_available():
+    if not UIApp.isAvailable():
       return
     shell: EditorShell = new()
-    shell.session.dispatch(ZeusCommand.ObjectCreate("cube", ""))
-    shell.session.dispatch(ZeusCommand.ObjectSetPosition("cube", 1.0, 0.0, 0.0))
-    shell.session.dispatch(ZeusCommand.ObjectAddMesh("cube", 1.0))
-    shell.session.dispatch(ZeusCommand.EditorSelect("cube"))
+    shell.session.dispatch(ZeusCommandUnion.ObjectCreate("cube", ""))
+    shell.session.dispatch(ZeusCommandUnion.ObjectSetPosition("cube", 1.0, 0.0, 0.0))
+    shell.session.dispatch(ZeusCommandUnion.ObjectAddMesh("cube", 1.0))
+    shell.session.dispatch(ZeusCommandUnion.EditorSelect("cube"))
     ok: bool = shell.open()
     self.assertTrue(ok)
     self.assertTrue(shell.main_win.handle != 0)
@@ -182,6 +180,6 @@ class EditorUiSmokeTests(TestCaseMixin):
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_test_tag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)

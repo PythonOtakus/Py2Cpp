@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from py2cpp import *
-from py2cpp.math import safe_sqrt
+from py2cpp.math import safeSqrt
 from py2cpp.spatial.matrix import Matrix4
 from py2cpp.spatial.vector import Vector3
 
@@ -44,10 +44,10 @@ class TranslateGizmo:
     self.ready = True
 
   def _view_matrix(self) -> Matrix4:
-    cam_pos: Vector3 = new(0.0, 0.0, -4.0)
-    t: Matrix4 = new.from_position(cam_pos)
-    rx: Matrix4 = new.from_angle_x(25.0)
-    ry: Matrix4 = new.from_angle_y(35.0)
+
+    t: Matrix4 = Matrix4.fromPosition(Vector3(0.0, 0.0, -4.0))
+    rx: Matrix4 = Matrix4.fromAngleX(25.0)
+    ry: Matrix4 = Matrix4.fromAngleY(35.0)
     return t @ rx @ ry
 
   def project(
@@ -85,7 +85,7 @@ class TranslateGizmo:
     cy: float64 = ay + aby * t
     dx: float64 = px - cx
     dy: float64 = py - cy
-    return safe_sqrt(dx * dx + dy * dy)
+    return safeSqrt(dx * dx + dy * dy)
 
   def pick_axis(
     self, origin: Vector3, mx: float64, my: float64, width: int, height: int,

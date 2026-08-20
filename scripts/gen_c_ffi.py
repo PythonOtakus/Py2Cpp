@@ -49,7 +49,7 @@ def main(argv: list[str] | None = None) -> int:
     action=argparse.BooleanOptionalAction,
     default=None,
     help="Collect decls from transitive includes under SDK/third_party roots "
-    "(default: on for non-sqlite, off for sqlite amalgamation)",
+    "(default: on for Windows umbrella/UCRT, off for sqlite and Win32 child headers)",
   )
   ap.add_argument("--clang-arg", action="append", default=[], help="Extra libclang arg (repeatable)")
   ns = ap.parse_args(argv)

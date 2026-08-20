@@ -173,11 +173,11 @@ def read_fbx(path: str, color: Color) -> Mesh:
     return new.colored_cube(1.0, color)
   if not doc.exists():
     return new.colored_cube(1.0, color)
-  return mesh_from_fbx_ascii(doc.read_text(), color)
+  return mesh_from_fbx_ascii(doc.readText(), color)
 
 
 def write_fbx(mesh: Mesh, path: str) -> str:
   p: str = _ensure_fbx(path)
   doc: Path = new(p)
-  doc.write_text(mesh_to_fbx_ascii(mesh))
+  doc.writeText(mesh_to_fbx_ascii(mesh))
   return p

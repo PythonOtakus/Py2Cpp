@@ -15,7 +15,7 @@ static PyStr _ui_pick_file(PyBool save, PyStr title, PyStr default_name)
   char path[MAX_PATH] = {};
   if (save && default_name.__len__() > 0)
   {
-    default_name.copyToSpan(PySpan<PyByte>((PyByte*)path, (PyInt)sizeof(path), 1));
+    default_name.copyToSpanUtf8(PySpan<PyByte>((PyByte*)path, (PyInt)sizeof(path), 1));
   }
   OPENFILENAMEA ofn = {};
   ofn.lStructSize = sizeof(ofn);
@@ -24,7 +24,7 @@ static PyStr _ui_pick_file(PyBool save, PyStr title, PyStr default_name)
   ofn.lpstrFile = path;
   ofn.nMaxFile = MAX_PATH;
   char tbuf[256];
-  title.copyToSpan(PySpan<PyByte>((PyByte*)tbuf, (PyInt)sizeof(tbuf), 1));
+  title.copyToSpanUtf8(PySpan<PyByte>((PyByte*)tbuf, (PyInt)sizeof(tbuf), 1));
   ofn.lpstrTitle = tbuf;
   PyBool ok = false;
   if (save)

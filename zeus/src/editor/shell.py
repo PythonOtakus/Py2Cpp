@@ -50,11 +50,11 @@ class EditorShell:
     self.inspector.bind_bus(self.session.bus)
     self.inspector.load_from_selection()
     if self.main_win.handle != 0:
-      self.inspector.panel_sync_to_form()
+      self.inspector.panelSyncToForm()
 
   def _view_rect(self) -> (int, int, int, int):
     """中栏客户区 ``(x, y, w, h)``。"""
-    cw, ch = self.main_win.client_size()
+    cw, ch = self.main_win.clientSize()
     if cw < 1:
       cw = MAIN_W
     if ch < 1:
@@ -72,30 +72,30 @@ class EditorShell:
   def layout(self) -> None:
     if self.main_win.handle == 0:
       return
-    cw, ch = self.main_win.client_size()
+    cw, ch = self.main_win.clientSize()
     if cw < 1 or ch < 1:
       return
-    self.toolbar.set_bounds(0, 0, cw, TOOLBAR_H)
+    self.toolbar.setBounds(0, 0, cw, TOOLBAR_H)
     body_h: int = ch - TOOLBAR_H
     if body_h < 1:
       body_h = 1
-    self.hierarchy.set_bounds(0, TOOLBAR_H, HIER_W, body_h)
+    self.hierarchy.setBounds(0, TOOLBAR_H, HIER_W, body_h)
     vx, vy, vw, vh = self._view_rect()
-    ox, oy = self.main_win.client_origin_screen()
+    ox, oy = self.main_win.clientOriginScreen()
     self.viewport.set_screen_bounds(ox + vx, oy + vy, vw, vh)
     self.toolbar.invalidate()
     self.hierarchy.invalidate()
 
   def open(self) -> bool:
-    if not UIApp.is_available():
+    if not UIApp.isAvailable():
       return False
     self.sync_views()
     self.main_win.title = "Zeus Editor"
-    self.main_win.style.form_origin_x = HIER_W + (MAIN_W - HIER_W - INSP_W) + 8
-    self.main_win.style.form_origin_y = TOOLBAR_H
-    self.main_win.style.edit_size = (200, 22)
-    self.main_win.style.button_size = (200, 22)
-    self.main_win.style.slider_size = (200, 22)
+    self.main_win.style.formOriginX = HIER_W + (MAIN_W - HIER_W - INSP_W) + 8
+    self.main_win.style.formOriginY = TOOLBAR_H
+    self.main_win.style.editSize = (200, 22)
+    self.main_win.style.buttonSize = (200, 22)
+    self.main_win.style.sliderSize = (200, 22)
     self.main_win.show(MAIN_W, MAIN_H)
     self.toolbar.mount(self.main_win, 0, 0, MAIN_W, TOOLBAR_H)
     self.toolbar.bind_bus(self.session.bus)
@@ -104,7 +104,7 @@ class EditorShell:
     self.hierarchy.refresh_from(self.session.rows, self.session.bus)
     self.inspector.bind_bus(self.session.bus)
     self.inspector.load_from_selection()
-    self.inspector.draw_panel(self.main_win)
+    self.inspector.drawPanel(self.main_win)
     vw0: int = MAIN_W - HIER_W - INSP_W
     vh0: int = MAIN_H - TOOLBAR_H
     if not self.viewport.open(vw0, vh0):

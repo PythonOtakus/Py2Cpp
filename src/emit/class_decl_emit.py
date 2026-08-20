@@ -143,7 +143,7 @@ def _emit_class_decorator_check_specialization(tr: 'Translator', info: ClassInfo
     from ..analysis.ir import cpp_type_param_template_name
     name = info.cpp_name()
     ns = namespace_qualifier_for_module(info.module_path)
-    fq_base = f'{ns}::{name}' if ns else name
+    fq_base = f'::{ns}::{name}' if ns else name
     all_params = list(info.type_params)
     if all_params or info.typevar_tuple:
         tpl_header = ', '.join(_class_template_param_decls_plain(tr, info))

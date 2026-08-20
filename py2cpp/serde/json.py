@@ -9,14 +9,14 @@ from ..util.dict import dict
 from ..util.list import list
 from ..util.arena import Arena
 from ..util.memory import (
-  copyBuf,
-  copyBufRef,
+  copyArray,
+  copyArrayRef,
   loadU64Le,
 )
 from ..util.span import span
 from ..core.exceptions import OSError, ValueError
-from ..io.file import replace
-from ..numeric.varint import varint
+from ..io.path import Path
+from ..numeric.long import long
 from ..io import StringIO, TextIOWrapper
 from ..io.protocols import TextReaderType, TextWriterType
 from ..text import str
@@ -42,7 +42,7 @@ class JsonEncoder:
   """JSON ``EncoderType`` 实现；union 变体为 ``{"tag":…,"payload":{…}}``。
 
   默认在内部 ``char[:]`` 缓冲累积；``take()`` 移动取出 ``str``（``Json.dumps`` 快路径），
-  ``finish()`` 经 ``str.fromBuf`` 拷贝返回；``flushTo`` 直写 ``TextWriterType``（``Json.dump``）。
+  ``finish()`` 经 ``str.fromArray`` 拷贝返回；``flushTo`` 直写 ``TextWriterType``（``Json.dump``）。
   """
 
   sep: str = ""
@@ -63,7 +63,7 @@ class JsonEncoder:
       return
     self._buf.reshape(end, n)
 
-  def growBuf(self, end: int) -> None:
+  def growArray(self, end: int) -> None:
     """预扩容内部 ``char[:]`` 缓冲（``end`` 为目标 ``_at`` 上界）。"""
     self._ensure(end)
 
@@ -168,7 +168,7 @@ class JsonEncoder:
 
   @staticmethod
   @immutable
-  def _encodeListVarint(obj: list[varint]) -> str:
+  def _encodeListLong(obj: list[long]) -> str:
     parts: list[str] = ["["]
     n: int = len(obj)
     for i in range(n):
@@ -219,7 +219,7 @@ class JsonEncoder:
 
   @staticmethod
   @immutable
-  def _encodeDictStrVarint(obj: dict[str, varint]) -> str:
+  def _encodeDictStrLong(obj: dict[str, long]) -> str:
     parts: list[str] = ["{"]
     n: int = len(obj)
     for i in range(n):
@@ -382,7 +382,7 @@ class JsonEncoder:
     self.push(Self._encodeInt(value))
     self.sep = self._commaSep()
 
-  def dumpVarint(self, value: varint) -> None:
+  def dumpLong(self, value: long) -> None:
     if self.sep:
       self.push(self.sep)
     self.push(str(value))
@@ -456,10 +456,10 @@ class JsonEncoder:
     self._at = Self.appendIntAt(self._buf, self._at, value)
     self.sep = ","
 
-  def dumpFieldVarint(self, key: str, value: varint) -> None:
+  def dumpFieldLong(self, key: str, value: long) -> None:
     if self._pretty():
       self.dumpKey(key)
-      self.dumpVarint(value)
+      self.dumpLong(value)
       return
     if self.sep:
       self.push(self.sep)
@@ -575,10 +575,10 @@ class JsonEncoder:
       self._at = Self.appendListAt(self._buf, self._at, value)
     self.sep = ","
 
-  def dumpFieldListVarint(self, key: str, value: list[varint]) -> None:
+  def dumpFieldListLong(self, key: str, value: list[long]) -> None:
     if self._pretty():
       self.dumpKey(key)
-      self.dumpListVarint(value)
+      self.dumpListLong(value)
       return
     if self.sep:
       self.push(self.sep)
@@ -592,7 +592,7 @@ class JsonEncoder:
       self._buf[self._at] = ord("]")
       self._at += 1
     else:
-      self._at = Self.appendListVarintAt(self._buf, self._at, value)
+      self._at = Self.appendListLongAt(self._buf, self._at, value)
     self.sep = ","
 
   def dumpListInt(self, value: list[int]) -> None:
@@ -629,11 +629,11 @@ class JsonEncoder:
       self._at = Self.appendListAt(self._buf, self._at, value)
     self.sep = ","
 
-  def dumpListVarint(self, value: list[varint]) -> None:
+  def dumpListLong(self, value: list[long]) -> None:
     if self.sep:
       self.push(self.sep)
     if self._pretty():
-      self.push(Self._encodeListVarint(value))
+      self.push(Self._encodeListLong(value))
       self.sep = self._commaSep()
       return
     if not value:
@@ -643,7 +643,7 @@ class JsonEncoder:
       self._buf[self._at] = ord("]")
       self._at += 1
     else:
-      self._at = Self.appendListVarintAt(self._buf, self._at, value)
+      self._at = Self.appendListLongAt(self._buf, self._at, value)
     self.sep = ","
 
   def dumpListStr(self, value: list[str]) -> None:
@@ -671,10 +671,10 @@ class JsonEncoder:
       self.push(Self.fastEncode(value))
     self.sep = self._commaSep()
 
-  def dumpDictStrVarint(self, value: dict[str, varint]) -> None:
+  def dumpDictStrLong(self, value: dict[str, long]) -> None:
     self.push(self.sep)
     if self._pretty():
-      self.push(Self._encodeDictStrVarint(value))
+      self.push(Self._encodeDictStrLong(value))
     else:
       self.push(Self.fastEncode(value))
     self.sep = self._commaSep()
@@ -708,7 +708,7 @@ class JsonEncoder:
   def finish(self) -> str:
     if self._at == 0:
       return ""
-    return str.fromBuf(self._buf, self._at)
+    return str.fromArray(self._buf, self._at)
 
   def take(self) -> str:
     """移动取出内部 ``char[:]`` 为 ``str``（``finish`` 的无拷贝路径）。"""
@@ -815,8 +815,8 @@ class JsonEncoder:
 
 
   @staticmethod
-  def appendVarintAt(buf: char[:], at: int, obj: varint) -> int:
-    """``varint`` 十进制文本 → ``buf[at:]``（``str(obj)`` 语义）。"""
+  def appendLongAt(buf: char[:], at: int, obj: long) -> int:
+    """``long`` 十进制文本 → ``buf[at:]``（``str(obj)`` 语义）。"""
     return str(obj).copyTo(buf, at)
 
 
@@ -884,8 +884,8 @@ class JsonEncoder:
 
 
   @staticmethod
-  def appendListVarintAt(buf: char[:], at: int, obj: list[varint]) -> int:
-    """JSON ``list[varint]`` → ``buf[at:]``，返回新尾下标。"""
+  def appendListLongAt(buf: char[:], at: int, obj: list[long]) -> int:
+    """JSON ``list[long]`` → ``buf[at:]``，返回新尾下标。"""
     cnt: int = len(obj)
     est: int = at + 2
     for i in range(cnt):
@@ -897,7 +897,7 @@ class JsonEncoder:
       if i > 0:
         buf[at] = ord(",")
         at += 1
-      at = Self.appendVarintAt(buf, at, obj[i])
+      at = Self.appendLongAt(buf, at, obj[i])
     buf[at] = ord("]")
     at += 1
     return at
@@ -974,7 +974,7 @@ class JsonEncoder:
 
 
   @staticmethod
-  def _appendDictStrVarintAt(buf: char[:], at: int, obj: dict[str, varint]) -> int:
+  def _appendDictStrLongAt(buf: char[:], at: int, obj: dict[str, long]) -> int:
     cnt: int = len(obj)
     est: int = at + 2
     for i in range(cnt):
@@ -993,7 +993,7 @@ class JsonEncoder:
       at = Self.appendQuotedAt(buf, at, k)
       buf[at] = ord(":")
       at += 1
-      at = Self.appendVarintAt(buf, at, obj.valueAt(i))
+      at = Self.appendLongAt(buf, at, obj.valueAt(i))
     buf[at] = ord("}")
     at += 1
     return at
@@ -1030,7 +1030,7 @@ class JsonEncoder:
     cnt: int = len(obj)
     buf: char[:] = new((cnt * 12) + 2)
     at: int = Self.appendListIntAt(buf, 0, obj)
-    return str.fromBuf(buf, at)
+    return str.fromArray(buf, at)
 
 
   @staticmethod
@@ -1043,7 +1043,7 @@ class JsonEncoder:
       est += (len(obj[i]) * 2) + 3
     buf: char[:] = new(est)
     at: int = Self.appendListStrAt(buf, 0, obj)
-    return str.fromBuf(buf, at)
+    return str.fromArray(buf, at)
 
 
   @staticmethod
@@ -1056,20 +1056,20 @@ class JsonEncoder:
       est += len(str(obj[i])) + 1
     buf: char[:] = new(est)
     at: int = Self.appendListFloatAt(buf, 0, obj)
-    return str.fromBuf(buf, at)
+    return str.fromArray(buf, at)
 
 
   @staticmethod
   @overload
   @staticmethod
-  def fastEncode(obj: list[varint]) -> str:
+  def fastEncode(obj: list[long]) -> str:
     cnt: int = len(obj)
     est: int = 2
     for i in range(cnt):
       est += len(str(obj[i])) + 1
     buf: char[:] = new(est)
-    at: int = Self.appendListVarintAt(buf, 0, obj)
-    return str.fromBuf(buf, at)
+    at: int = Self.appendListLongAt(buf, 0, obj)
+    return str.fromArray(buf, at)
 
 
   @staticmethod
@@ -1079,7 +1079,7 @@ class JsonEncoder:
     cnt: int = len(obj)
     buf: char[:] = new((cnt * 32) + 2)
     at: int = Self._appendDictStrIntAt(buf, 0, obj)
-    return str.fromBuf(buf, at)
+    return str.fromArray(buf, at)
 
 
   @staticmethod
@@ -1094,21 +1094,21 @@ class JsonEncoder:
       est += (len(k) * 2) + (len(v) * 2) + 5
     buf: char[:] = new(est)
     at: int = Self._appendDictStrStrAt(buf, 0, obj)
-    return str.fromBuf(buf, at)
+    return str.fromArray(buf, at)
 
 
   @staticmethod
   @overload
   @staticmethod
-  def fastEncode(obj: dict[str, varint]) -> str:
+  def fastEncode(obj: dict[str, long]) -> str:
     cnt: int = len(obj)
     est: int = 2
     for i in range(cnt):
       k: str = obj.keyAt(i)
       est += (len(k) * 2) + len(str(obj.valueAt(i))) + 5
     buf: char[:] = new(est)
-    at: int = Self._appendDictStrVarintAt(buf, 0, obj)
-    return str.fromBuf(buf, at)
+    at: int = Self._appendDictStrLongAt(buf, 0, obj)
+    return str.fromArray(buf, at)
 
 
   @staticmethod
@@ -1122,7 +1122,7 @@ class JsonEncoder:
       est += (len(k) * 2) + len(str(obj.valueAt(i))) + 5
     buf: char[:] = new(est)
     at: int = Self._appendDictStrFloatAt(buf, 0, obj)
-    return str.fromBuf(buf, at)
+    return str.fromArray(buf, at)
 
 
 @copyable
@@ -1329,7 +1329,7 @@ class JsonDecoder:
     tok: str = self.s[start:end]
     out.append(int(tok))
 
-  def _parseVarintValue(self, out: list[varint] @ref) -> None:
+  def _parseLongValue(self, out: list[long] @ref) -> None:
     startOut: list[int] = []
     endOut: list[int] = []
     self._scanJsonNumber(startOut, endOut)
@@ -1339,7 +1339,7 @@ class JsonDecoder:
       if self.s[j] in ".eE":
         self.fail("expected int")
     tok: str = self.s[start:end]
-    out.append(varint(tok))
+    out.append(long(tok))
 
   def _parseFloatValue(self, out: list[float] @ref) -> None:
     startOut: list[int] = []
@@ -1688,8 +1688,8 @@ class JsonDecoder:
     """递归解码一个值，供泛型容器元素复用。"""
     if Root is int:
       return self.loadInt()
-    elif Root is varint:
-      return self.loadVarint()
+    elif Root is long:
+      return self.loadLong()
     elif Root is float:
       return self.loadFloat()
     elif Root is str:
@@ -1698,8 +1698,8 @@ class JsonDecoder:
       return self.loadBool()
     elif Root is list[int]:
       return self.loadListInt()
-    elif Root is list[varint]:
-      return self.loadListVarint()
+    elif Root is list[long]:
+      return self.loadListLong()
     elif Root is list[str]:
       return self.loadListStr()
     elif Root is list[float]:
@@ -1708,8 +1708,8 @@ class JsonDecoder:
       return self.loadContainer[Root]()
     elif Root is dict[str, int]:
       return self.loadDictStrInt()
-    elif Root is dict[str, varint]:
-      return self.loadDictStrVarint()
+    elif Root is dict[str, long]:
+      return self.loadDictStrLong()
     elif Root is dict[str, str]:
       return self.loadDictStrStr()
     elif Root is dict[str, float]:
@@ -1758,7 +1758,7 @@ class JsonDecoder:
       self.expectChar(",")
       self.skipSpaces()
 
-  def _parseVarintAt(self) -> varint:
+  def _parseLongAt(self) -> long:
     n: int = self.srcLen()
     start: int = self.pos
     if self.pos < n and self.srcChar(self.pos) in "-":
@@ -1775,9 +1775,9 @@ class JsonDecoder:
     tok: str = self.s[start:self.pos]
     return new(tok)
 
-  def parseVarintAt(self) -> varint:
+  def parseLongAt(self) -> long:
     """假定游标已在 JSON 数值首字符；不跳过前导空白。"""
-    return self._parseVarintAt()
+    return self._parseLongAt()
 
   def parseFloatAt(self) -> float:
     """假定游标已在 JSON 数值首字符；不跳过前导空白。"""
@@ -1793,9 +1793,9 @@ class JsonDecoder:
     """假定游标已在 ``[``。"""
     return self._loadListIntAt()
 
-  def loadListVarintValue(self) -> list[varint]:
+  def loadListLongValue(self) -> list[long]:
     """假定游标已在 ``[``。"""
-    return self._loadListVarintAt()
+    return self._loadListLongAt()
 
   def loadListStrValue(self) -> list[str]:
     """假定游标已在 ``[``。"""
@@ -1809,9 +1809,9 @@ class JsonDecoder:
     self._skipWs()
     return self._parseIntAt()
 
-  def loadVarint(self) -> varint:
+  def loadLong(self) -> long:
     self._skipWs()
-    return self._parseVarintAt()
+    return self._parseLongAt()
 
   def loadFloat(self) -> float:
     self._skipWs()
@@ -2029,7 +2029,7 @@ class JsonDecoder:
       self.expectChar(",")
       self.skipWs()
 
-  def _dictStrVarintPushAscii(self, out: dict[str, varint] @ref) -> None:
+  def _dictStrLongPushAscii(self, out: dict[str, long] @ref) -> None:
     kseg: span[char] = self._loadStrSpanBound()
     k: str = self._strAssignFromSegBound(kseg)
     self._skipWsBound()
@@ -2037,16 +2037,16 @@ class JsonDecoder:
     if self.pos >= n or not self._asciiByteIs(n, ":"):
       self.fail("expected :")
     self.pos += 1
-    out[k] = self.parseVarintAt()
+    out[k] = self.parseLongAt()
 
-  def _dictStrVarintPushAsciiRef(self, out: dict[str, varint] @ref) -> None:
+  def _dictStrLongPushAsciiRef(self, out: dict[str, long] @ref) -> None:
     seg: span[char] = self.loadStrSpan()
     k: str = str.fromSpan(seg)
     self.skipWs()
     self.expectChar(":")
-    out[k] = self.parseVarintAt()
+    out[k] = self.parseLongAt()
 
-  def _loadDictStrVarintAsciiLoop(self, out: dict[str, varint] @ref) -> None:
+  def _loadDictStrLongAsciiLoop(self, out: dict[str, long] @ref) -> None:
     n: int = self.asciiLen
     est: int = (self.asciiLen - self.pos) // 12
     if est > 0:
@@ -2055,7 +2055,7 @@ class JsonDecoder:
         cap = 8
       out.capacity = cap
     while True:
-      self._dictStrVarintPushAscii(out)
+      self._dictStrLongPushAscii(out)
       self._skipWsBound()
       n = self.asciiLen
       if self._asciiByteIs(n, "}"):
@@ -2066,9 +2066,9 @@ class JsonDecoder:
       self.pos += 1
       self._skipWsBound()
 
-  def _loadDictStrVarintAsciiLoopRef(self, out: dict[str, varint] @ref) -> None:
+  def _loadDictStrLongAsciiLoopRef(self, out: dict[str, long] @ref) -> None:
     while True:
-      self._dictStrVarintPushAsciiRef(out)
+      self._dictStrLongPushAsciiRef(out)
       self.skipWs()
       if self.pos < self.srcLen() and self.srcChar(self.pos) in "}":
         self.pos += 1
@@ -2173,15 +2173,15 @@ class JsonDecoder:
       self.expectChar(",")
       self._skipWs()
 
-  def _loadListVarintAt(self) -> list[varint]:
+  def _loadListLongAt(self) -> list[long]:
     self.expectChar("[")
-    out: list[varint] = []
+    out: list[long] = []
     self._skipWs()
     if self.pos < len(self.s) and self.s[self.pos] in "]":
       self.pos += 1
       return out
     while True:
-      out.append(self._parseVarintAt())
+      out.append(self._parseLongAt())
       self._skipWs()
       if self.pos < len(self.s) and self.s[self.pos] in "]":
         self.pos += 1
@@ -2193,9 +2193,9 @@ class JsonDecoder:
     self._skipWs()
     return self.loadListIntValue()
 
-  def loadListVarint(self) -> list[varint]:
+  def loadListLong(self) -> list[long]:
     self._skipWs()
-    return self.loadListVarintValue()
+    return self.loadListLongValue()
 
   def _loadListStrAt(self) -> list[str]:
     self.expectChar("[")
@@ -2274,16 +2274,16 @@ class JsonDecoder:
     self._skipWs()
     return self._loadDictStrIntAt()
 
-  def _loadDictStrVarintAt(self) -> dict[str, varint]:
+  def _loadDictStrLongAt(self) -> dict[str, long]:
     self.expectChar("{")
-    out: dict[str, varint] = {}
+    out: dict[str, long] = {}
     self.tryBindAscii()
     self._skipWs()
     if self.pos < len(self.s) and self.s[self.pos] in "}":
       self.pos += 1
       return out
     if self.asciiOk:
-      self._loadDictStrVarintAsciiLoop(out)
+      self._loadDictStrLongAsciiLoop(out)
       return out
     while True:
       kbuf: list[str] = []
@@ -2291,8 +2291,8 @@ class JsonDecoder:
       k: str = kbuf[0]
       self._skipWs()
       self.expectChar(":")
-      vbuf: list[varint] = []
-      self._parseVarintValue(vbuf)
+      vbuf: list[long] = []
+      self._parseLongValue(vbuf)
       out[k] = vbuf[0]
       self._skipWs()
       if self.pos < len(self.s) and self.s[self.pos] in "}":
@@ -2301,9 +2301,9 @@ class JsonDecoder:
       self.expectChar(",")
       self._skipWs()
 
-  def loadDictStrVarint(self) -> dict[str, varint]:
+  def loadDictStrLong(self) -> dict[str, long]:
     self._skipWs()
-    return self._loadDictStrVarintAt()
+    return self._loadDictStrLongAt()
 
   def _loadDictStrStrAt(self) -> dict[str, str]:
     self.expectChar("{")
@@ -2569,14 +2569,14 @@ class JsonDecoder:
 
 
   def strAssignFromSeg(self, seg: span[char]) -> str:
-    """``seg`` → 新 ``str``（Arena 时 ``copyBuf`` + ``adoptSpan``）。"""
+    """``seg`` → 新 ``str``（Arena 时 ``copyArray`` + ``adoptSpan``）。"""
     segLen: int = len(seg)
     if segLen == 0 or not self.strArenaActive:
       return self.strAssignFromSegRef(seg)
     buf: Pointer[char] = self.strArena.acquire(segLen)
     if buf is None:
       return self.strAssignFromSegRef(seg)
-    copyBuf(buf, seg.at(), segLen)
+    copyArray(buf, seg.at(), segLen)
     dst: str = ""
     dst.adoptSpan(span[char](buf, segLen, 1))
     self.strArena.release(buf)
@@ -2762,7 +2762,7 @@ class Json:
   @immutable
   def loadsUsesStrArena[Root]() -> bool:
     """``loads`` 是否需 ``strArena``（标量/纯数值容器为 ``False``）。"""
-    if Root in { int, varint, float, bool, list[int], list[varint], list[float] }:
+    if Root in { int, long, float, bool, list[int], list[long], list[float] }:
       return False
     else:
       return True
@@ -2789,10 +2789,10 @@ class Json:
 
   @staticmethod
   @overload
-  def dumps(obj: varint, indent: int = 0) -> str:
+  def dumps(obj: long, indent: int = 0) -> str:
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dumpVarint(obj)
+    enc.dumpLong(obj)
     return enc.take()
 
 
@@ -2831,12 +2831,12 @@ class Json:
 
   @staticmethod
   @overload
-  def dumps(obj: list[varint], indent: int = 0) -> str:
+  def dumps(obj: list[long], indent: int = 0) -> str:
     if indent == 0:
       return JsonEncoder.fastEncode(obj)
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dumpListVarint(obj)
+    enc.dumpListLong(obj)
     return enc.take()
 
 
@@ -2879,12 +2879,12 @@ class Json:
 
   @staticmethod
   @overload
-  def dumps(obj: dict[str, varint], indent: int = 0) -> str:
+  def dumps(obj: dict[str, long], indent: int = 0) -> str:
     if indent == 0:
       return JsonEncoder.fastEncode(obj)
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dumpDictStrVarint(obj)
+    enc.dumpDictStrLong(obj)
     return enc.take()
 
 
@@ -2930,7 +2930,7 @@ class Json:
     enc.indent = indent
     n: int = len(obj)
     if indent == 0 and n > 0:
-      enc.growBuf(n * 48 + 16)
+      enc.growArray(n * 48 + 16)
     enc.beginArray()
     for i in range(n):
       obj[i].serialize(enc)
@@ -2961,10 +2961,10 @@ class Json:
 
   @staticmethod
   @overload
-  def dump(obj: varint, fp: StringIO, indent: int = 0) -> None:
+  def dump(obj: long, fp: StringIO, indent: int = 0) -> None:
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dumpVarint(obj)
+    enc.dumpLong(obj)
     Self._finishDump(enc, fp)
 
 
@@ -3004,13 +3004,13 @@ class Json:
 
   @staticmethod
   @overload
-  def dump(obj: list[varint], fp: StringIO, indent: int = 0) -> None:
+  def dump(obj: list[long], fp: StringIO, indent: int = 0) -> None:
     if indent == 0:
       Self._writeFast(JsonEncoder.fastEncode(obj), fp)
       return
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dumpListVarint(obj)
+    enc.dumpListLong(obj)
     Self._finishDump(enc, fp)
 
 
@@ -3056,13 +3056,13 @@ class Json:
 
   @staticmethod
   @overload
-  def dump(obj: dict[str, varint], fp: StringIO, indent: int = 0) -> None:
+  def dump(obj: dict[str, long], fp: StringIO, indent: int = 0) -> None:
     if indent == 0:
       Self._writeFast(JsonEncoder.fastEncode(obj), fp)
       return
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dumpDictStrVarint(obj)
+    enc.dumpDictStrLong(obj)
     Self._finishDump(enc, fp)
 
 
@@ -3110,7 +3110,7 @@ class Json:
     enc.indent = indent
     n: int = len(obj)
     if indent == 0 and n > 0:
-      enc.growBuf(n * 48 + 16)
+      enc.growArray(n * 48 + 16)
     enc.beginArray()
     for i in range(n):
       obj[i].serialize(enc)
@@ -3141,10 +3141,10 @@ class Json:
 
   @staticmethod
   @overload
-  def dump(obj: varint, fp: TextIOWrapper, indent: int = 0) -> None:
+  def dump(obj: long, fp: TextIOWrapper, indent: int = 0) -> None:
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dumpVarint(obj)
+    enc.dumpLong(obj)
     Self._finishDump(enc, fp)
 
 
@@ -3184,13 +3184,13 @@ class Json:
 
   @staticmethod
   @overload
-  def dump(obj: list[varint], fp: TextIOWrapper, indent: int = 0) -> None:
+  def dump(obj: list[long], fp: TextIOWrapper, indent: int = 0) -> None:
     if indent == 0:
       Self._writeFast(JsonEncoder.fastEncode(obj), fp)
       return
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dumpListVarint(obj)
+    enc.dumpListLong(obj)
     Self._finishDump(enc, fp)
 
 
@@ -3236,13 +3236,13 @@ class Json:
 
   @staticmethod
   @overload
-  def dump(obj: dict[str, varint], fp: TextIOWrapper, indent: int = 0) -> None:
+  def dump(obj: dict[str, long], fp: TextIOWrapper, indent: int = 0) -> None:
     if indent == 0:
       Self._writeFast(JsonEncoder.fastEncode(obj), fp)
       return
     enc: JsonEncoder = new()
     enc.indent = indent
-    enc.dumpDictStrVarint(obj)
+    enc.dumpDictStrLong(obj)
     Self._finishDump(enc, fp)
 
 
@@ -3290,7 +3290,7 @@ class Json:
     enc.indent = indent
     n: int = len(obj)
     if indent == 0 and n > 0:
-      enc.growBuf(n * 48 + 16)
+      enc.growArray(n * 48 + 16)
     enc.beginArray()
     for i in range(n):
       obj[i].serialize(enc)
@@ -3308,8 +3308,8 @@ class Json:
       dec.enableStrArena()
     if Root is int:
       out = dec.loadInt()
-    elif Root is varint:
-      out = dec.loadVarint()
+    elif Root is long:
+      out = dec.loadLong()
     elif Root is float:
       out = dec.loadFloat()
     elif Root is str:
@@ -3318,8 +3318,8 @@ class Json:
       out = dec.loadBool()
     elif Root is list[int]:
       out = dec.loadListInt()
-    elif Root is list[varint]:
-      out = dec.loadListVarint()
+    elif Root is list[long]:
+      out = dec.loadListLong()
     elif Root is list[str]:
       out = dec.loadListStr()
     elif Root is list[float]:
@@ -3328,8 +3328,8 @@ class Json:
       out = dec.loadContainer[Root]()
     elif Root is dict[str, int]:
       out = dec.loadDictStrInt()
-    elif Root is dict[str, varint]:
-      out = dec.loadDictStrVarint()
+    elif Root is dict[str, long]:
+      out = dec.loadDictStrLong()
     elif Root is dict[str, str]:
       out = dec.loadDictStrStr()
     elif Root is dict[str, float]:
@@ -3559,7 +3559,7 @@ class JsonDocument[Root]:
     w: TextIOWrapper = new(tmp, "w")
     w.write(self.text)
     w.close()
-    replace(tmp, self.path)
+    Path(tmp).replace(self.path)
     self.orig = self.text
     self.dirty = False
 
@@ -3635,7 +3635,7 @@ class JsonDocument[Root]:
     start: int = self.dec.pos
     self.dec.skipValue()
     end: int = self.dec.pos
-    nxt: str = self.text.replaceSlice(start, end, encoded)
+    nxt: str = self.text.replaceSlice(encoded, start, end)
     self._markDirty(nxt)
 
   def _deleteAtDecoder(self):
@@ -3681,7 +3681,7 @@ class JsonDocument[Root]:
       end = start
     if end > sn:
       end = sn
-    nxt: str = self.text.replaceSlice(start, end, "")
+    nxt: str = self.text.replaceSlice("", start, end)
     self._markDirty(nxt)
 
   def _appendAtArray(self, encoded: str):
@@ -3693,10 +3693,10 @@ class JsonDocument[Root]:
     close: int = self._containerCloseIndex(openPos)
     nxt: str = ""
     if self.dec.pos < close and self.dec.s[self.dec.pos] in "]":
-      nxt = self.text.replaceSlice(close, close, encoded)
+      nxt = self.text.replaceSlice(encoded, close, close)
     else:
       mid: str = "," + encoded
-      nxt = self.text.replaceSlice(close, close, mid)
+      nxt = self.text.replaceSlice(mid, close, close)
     self._markDirty(nxt)
 
   def _applySteps(self, steps: list[JsonDocStepUnion]):

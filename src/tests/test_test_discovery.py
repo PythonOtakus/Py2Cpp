@@ -49,7 +49,7 @@ class Gamma(TestCase):
     names = collect_ordered_mixin_hosts(tr, "mod", "TestCaseMixin")
     self.assertEqual(names, ["Alpha", "Beta"])
 
-  def test_expand_iter_subclasses_loop(self):
+  def test_expand_iterSubclasses_loop(self):
     main_src = '''
 def main():
   suite: TestSuite = TestSuite()
@@ -117,7 +117,7 @@ class M(TestCaseMixin):
     hosts = collect_ordered_mixin_hosts(tr, "mod", "TestCaseMixin")
     self.assertEqual(sort_mixin_hosts(tr, hosts, "_testTag"), ["A", "M", "Z"])
 
-  def test_expand_iter_subclasses_sort_const_loop(self):
+  def test_expand_iterSubclasses_sortConst_loop(self):
     main_src = '''
 def main():
   suite: TestSuite = TestSuite()

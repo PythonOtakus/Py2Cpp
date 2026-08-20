@@ -31,7 +31,9 @@ if TYPE_CHECKING:
 _KNOWN_SCALARS = frozenset({
   "void",
   cpp_ident("int"),
+  cpp_ident("int16"),
   cpp_ident("int64"),
+  cpp_ident("uint16"),
   cpp_ident("uint"),
   cpp_ident("uint64"),
   cpp_ident("uintptr"),
@@ -44,7 +46,8 @@ _KNOWN_SCALARS = frozenset({
   cpp_ident("byte"),
   cpp_ident("PyNone"),
   cpp_ident("Never"),
-  "CStr",
+  "utf8ptr",
+  "utf16ptr",
   "void*",
 })
 

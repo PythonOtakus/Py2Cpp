@@ -27,6 +27,32 @@ def dict_literal_keys_all_constant(node: ast.Dict) -> bool:
   return all(isinstance(k, ast.Constant) for k in (node.keys or []))
 
 
+def _isStaticLiteralExpr(node: ast.expr) -> bool:
+  """表达式可在 C++ 函数局部 ``static`` 初始化时安全求值。"""
+  if isinstance(node, ast.Constant):
+    return True
+  if not isinstance(node, ast.Call):
+    return False
+  if not isinstance(node.func, ast.Name) or node.func.id != "ord":
+    return False
+  return (
+    len(node.args) == 1
+    and not node.keywords
+    and isinstance(node.args[0], ast.Constant)
+    and isinstance(node.args[0].value, str)
+  )
+
+
+def _dictLiteralEntriesStatic(node: ast.Dict) -> bool:
+  if dict_literal_has_unpack(node):
+    return False
+  return all(
+    _isStaticLiteralExpr(key) and _isStaticLiteralExpr(value)
+    for key, value in zip(node.keys or [], node.values or [])
+    if key is not None
+  )
+
+
 def dict_literal_inner_types(tr: Translator, node: ast.Dict) -> str:
   keys = [k for k in (node.keys or []) if k is not None]
   if not keys and not node.values:
@@ -86,6 +112,44 @@ def _emit_runtime_lookup(
   return emit_iife(val_t, stmts)
 
 
+def _emit_static_lookup(
+  tr: Translator,
+  node: ast.Dict,
+  key_expr: str,
+  *,
+  mode: str,
+  default_node: ast.expr | None = None,
+) -> str:
+  inner = dict_literal_inner_types(tr, node)
+  val_t = dict_literal_value_cpp(tr, node)
+  spec = cpp_template_type("dict", inner)
+  dname = _temp_name("dmap")
+  init_name = _temp_name("dinit")
+  init_lines = [f"{spec} {init_name};"]
+  for key, value in zip(node.keys or [], node.values or []):
+    assert key is not None
+    init_lines.append(
+      f"{init_name}.__setitem__({tr._visit_value_expr(key)}, {tr._visit_value_expr(value)});"
+    )
+  init_lines.append(f"return {init_name};")
+  static_init = "\n".join([
+    f"static {spec} {dname} = []() -> {spec}",
+    "{",
+    *[f"  {line}" for line in init_lines],
+    "}();",
+  ])
+  stmts = [static_init]
+  if mode == "getitem":
+    stmts.append(f"return {dname}.__getitem__({key_expr});")
+  else:
+    assert default_node is not None
+    from .lazy_param_emit import emit_lazy_supplier_from_expr
+
+    wrapped = emit_lazy_supplier_from_expr(tr, default_node, val_t)
+    stmts.append(f"return {dname}.get({key_expr}, {wrapped});")
+  return emit_iife(val_t, stmts)
+
+
 def try_emit_dict_literal_getitem(
   tr: Translator,
   dict_node: ast.Dict,
@@ -105,6 +169,8 @@ def try_emit_dict_literal_getitem(
     body = [f"if ({key_expr} == {k}) return {v}" for k, v in pairs]
     body.append(f"throw {throw_k}")
     return emit_iife(val_t, body)
+  if _dictLiteralEntriesStatic(dict_node):
+    return _emit_static_lookup(tr, dict_node, key_expr, mode="getitem")
   return _emit_runtime_lookup(tr, dict_node, key_expr, mode="getitem")
 
 
@@ -125,6 +191,10 @@ def try_emit_dict_literal_get(
     for k_cpp, v_cpp in reversed(pairs):
       acc = f"({key_expr} == {k_cpp} ? {v_cpp} : {acc})"
     return acc
+  if _dictLiteralEntriesStatic(dict_node):
+    return _emit_static_lookup(
+      tr, dict_node, key_expr, mode="get", default_node=default_node,
+    )
   return _emit_runtime_lookup(
     tr, dict_node, key_expr, mode="get", default_node=default_node,
   )

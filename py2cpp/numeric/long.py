@@ -1,16 +1,16 @@
-"""任意精度整数 ``varint``（CPython 3.13 ``int`` 语义，30 位 limb）。"""
+"""任意精度整数 ``long``（CPython 3.13 ``int`` 语义，30 位 limb）。"""
 from ..builtins import *
 from py2cpp import native_name, Self, const, copyable, immutable, int64, overload, property
 from py2cpp.core.exceptions import ValueError
 
 
 @copyable
-@native_name("PyVarInt")
-class varint:
-  """注解 ``varint``、``from py2cpp import varint``；字面量 ``100`` 等由译器生成十进制字符串构造。"""
+@native_name("PyLong")
+class long:
+  """注解 ``long``、``from py2cpp import long``；字面量 ``100`` 等由译器生成十进制字符串构造。"""
 
-  _VarintShift: int @const = 30
-  _VarintBase: int @const = 1073741824
+  _LongShift: int @const = 30
+  _LongBase: int @const = 1073741824
   _HashBits: int @const = 61
   _HashModulus: int64 @const = 2305843009213693951
 
@@ -79,8 +79,8 @@ class varint:
     for i in range(n):
       s: int = va._digitAt(i) + vb._digitAt(i) + carry
       carry = 0
-      if s >= Self._VarintBase:
-        s -= Self._VarintBase
+      if s >= Self._LongBase:
+        s -= Self._LongBase
         carry = 1
       out.append(s)
     if carry:
@@ -109,8 +109,8 @@ class varint:
       v = -v
     out: list[int] = []
     while v:
-      out.append(v % Self._VarintBase)
-      v //= Self._VarintBase
+      out.append(v % Self._LongBase)
+      v //= Self._LongBase
     return out
 
   @staticmethod
@@ -169,7 +169,7 @@ class varint:
     for i in range(n):
       work.append(self._digitAt(i))
     carry: int = 0
-    base64: int64 = Self._VarintBase
+    base64: int64 = Self._LongBase
     for j in range(n - 1, -1, -1):
       temp: int64 = work[j] + int64(carry) * base64
       work[j] = temp // 10
@@ -240,8 +240,8 @@ class varint:
     for i in range(n):
       s: int = self._digitAt(i) + other._digitAt(i) + carry
       carry = 0
-      if s >= Self._VarintBase:
-        s -= Self._VarintBase
+      if s >= Self._LongBase:
+        s -= Self._LongBase
         carry = 1
       digits.append(s)
     if carry:
@@ -259,7 +259,7 @@ class varint:
       borrow = 0
       diff: int = av - bv
       if diff < 0:
-        diff += Self._VarintBase
+        diff += Self._LongBase
         borrow = 1
       digits.append(diff)
     return new._fromAbsDigits(False, digits)
@@ -278,15 +278,15 @@ class varint:
       ai: int = self._digitAt(i)
       for j in range(nb):
         t: int64 = prod[i + j] + int64(ai) * other._digitAt(j) + carry
-        carry = t // Self._VarintBase
-        prod[i + j] = t % Self._VarintBase
+        carry = t // Self._LongBase
+        prod[i + j] = t % Self._LongBase
       k: int = i + nb
       while carry:
         if k >= len(prod):
           prod.append(0)
         t2: int64 = prod[k] + carry
-        carry = t2 // Self._VarintBase
-        prod[k] = t2 % Self._VarintBase
+        carry = t2 // Self._LongBase
+        prod[k] = t2 % Self._LongBase
         k += 1
     return new._fromAbsDigits(False, prod)
 
@@ -319,8 +319,8 @@ class varint:
   def _shlAbs(self, nBits: int) -> Self:
     if nBits <= 0 or not self:
       return self
-    digitShift: int = nBits // Self._VarintShift
-    bitShift: int = nBits % Self._VarintShift
+    digitShift: int = nBits // Self._LongShift
+    bitShift: int = nBits % Self._LongShift
     na: int = self._topIndex()
     digits: list[int] = []
     for k in range(digitShift):
@@ -328,8 +328,8 @@ class varint:
     carry: int = 0
     for i in range(na):
       v: int = (self._digitAt(i) << bitShift) | carry
-      carry = v >> Self._VarintShift
-      digits.append(v & (Self._VarintBase - 1))
+      carry = v >> Self._LongShift
+      digits.append(v & (Self._LongBase - 1))
     if carry:
       digits.append(carry)
     return new._fromAbsDigits(False, digits)
@@ -339,8 +339,8 @@ class varint:
     if nBits <= 0 or not self:
       return self
     na: int = self._topIndex()
-    digitShift: int = nBits // Self._VarintShift
-    bitShift: int = nBits % Self._VarintShift
+    digitShift: int = nBits // Self._LongShift
+    bitShift: int = nBits % Self._LongShift
     if digitShift >= na:
       return new._zero()
     digits: list[int] = []
@@ -352,7 +352,7 @@ class varint:
         if j > digitShift:
           low: int = v & ((1 << bitShift) - 1)
           out |= carry
-          carry = low << (Self._VarintShift - bitShift)
+          carry = low << (Self._LongShift - bitShift)
         else:
           out |= carry
       digits.append(out)
@@ -611,12 +611,12 @@ class varint:
     i: int = na - 1
     x: int64 = self._digitAt(i)
     i -= 1
-    if Self._HashBits >= Self._VarintShift + Self._VarintShift and i >= 0:
-      x = (x << Self._VarintShift) + self._digitAt(i)
+    if Self._HashBits >= Self._LongShift + Self._LongShift and i >= 0:
+      x = (x << Self._LongShift) + self._digitAt(i)
       i -= 1
     for i in range(i, -1, -1):
-      top: int64 = x >> (Self._HashBits - Self._VarintShift)
-      x = ((x << Self._VarintShift) & Self._HashModulus) | top
+      top: int64 = x >> (Self._HashBits - Self._LongShift)
+      x = ((x << Self._LongShift) & Self._HashModulus) | top
       x += self._digitAt(i)
       if x >= Self._HashModulus:
         x -= Self._HashModulus
@@ -626,7 +626,7 @@ class varint:
     return int(x)
 
   def __hash__(self) -> int:
-    """对齐 CPython ``long_hash``（惰性缓存），供 ``dict[varint, …]`` 等。"""
+    """对齐 CPython ``long_hash``（惰性缓存），供 ``dict[long, …]`` 等。"""
     if self._hashOk:
       return self._hash
     h: int = self._peekHash()
@@ -652,7 +652,7 @@ class varint:
       return 0
     acc: int = 0
     for i in range(na - 1, -1, -1):
-      acc *= Self._VarintBase
+      acc *= Self._LongBase
       acc += self._digitAt(i)
     if self._neg:
       acc = -acc
@@ -667,7 +667,7 @@ class varint:
       return 0
     na: int = self._topIndex()
     top: int = self._digitAt(na - 1)
-    bits: int = (na - 1) * Self._VarintShift
+    bits: int = (na - 1) * Self._LongShift
     while top:
       bits += 1
       top >>= 1

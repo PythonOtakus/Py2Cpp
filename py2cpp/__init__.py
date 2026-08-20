@@ -4,7 +4,7 @@
 """
 from .builtins import *
 from .core import *
-from .numeric import complex, complex128, varint
+from .numeric import complex, complex128, long
 from .util import *
 from .text import *
 from .io import StringIO, TextIOWrapper, open
@@ -59,7 +59,7 @@ __all__ = [
   "TextIOWrapper",
   "open",
   "char",
-  "CStr",
+  "utf8ptr",
   "int64",
   "uint",
   "uint64",
@@ -67,7 +67,7 @@ __all__ = [
   "float64",
   "complex",
   "complex128",
-  "varint",
+  "long",
   "Pointer",
   "Never",
   "ValOf",

@@ -47,7 +47,7 @@ CLASS_MAP = {
   "scandir_iterator": "ScandirIterator",
   "pool_slot_loc": "PoolSlotLoc",
   "c_stat": "CStat",
-  "c_str": "CStr",
+  "c_str": "utf8ptr",
   "c_time": "CTime",
 }
 

@@ -4,7 +4,7 @@
 """
 from ..builtins import *
 from ..core.exceptions import IndexError
-from ..util.memory import copyBuf
+from ..util.memory import copyArray
 from .span import span, span2d, span3d
 
 
@@ -119,49 +119,49 @@ class array[Element, StackLength: int = 0]:
     newSize: int,
     active: int,
     oldSize: int,
-    oldBuf: Pointer[Element],
+    oldArray: Pointer[Element],
     copyN: int,
   ) -> None:
     wasHeap: bool = self.isHeap()
     if newSize <= 0:
-      if oldBuf is not None:
+      if oldArray is not None:
         for j in range(copyN, oldSize):
           if j < active:
-            destroy(oldBuf + j)
+            destroy(oldArray + j)
         for i in range(copyN):
-          destroy(oldBuf + i)
+          destroy(oldArray + i)
         if wasHeap or StackLength <= 0:
-          freeArray(oldBuf)
+          freeArray(oldArray)
       self.clearState()
       return
     if StackLength > 0 and newSize <= StackLength:
-      newBuf: Pointer[Element] = self._stack.view.at(0)
+      newArray: Pointer[Element] = self._stack.view.at(0)
       for i in range(copyN):
-        if oldBuf is not None:
-          init(newBuf + i, oldBuf[i])
-      if oldBuf is not None:
+        if oldArray is not None:
+          init(newArray + i, oldArray[i])
+      if oldArray is not None:
         for j in range(copyN, oldSize):
           if j < active:
-            destroy(oldBuf + j)
+            destroy(oldArray + j)
         for i in range(copyN):
-          destroy(oldBuf + i)
+          destroy(oldArray + i)
         if wasHeap:
-          freeArray(oldBuf)
+          freeArray(oldArray)
       self.bindInline()
       return
-    newBuf: Pointer[Element] = allocRawArray[Element](newSize)
+    newArray: Pointer[Element] = allocRawArray[Element](newSize)
     for i in range(copyN):
-      if oldBuf is not None:
-        init(newBuf + i, oldBuf[i])
-    if oldBuf is not None:
+      if oldArray is not None:
+        init(newArray + i, oldArray[i])
+    if oldArray is not None:
       for j in range(copyN, oldSize):
         if j < active:
-          destroy(oldBuf + j)
+          destroy(oldArray + j)
       for i in range(copyN):
-        destroy(oldBuf + i)
+        destroy(oldArray + i)
       if wasHeap or StackLength <= 0:
-        freeArray(oldBuf)
-    self.adoptHeap(newBuf)
+        freeArray(oldArray)
+    self.adoptHeap(newArray)
 
   def releaseBuffer(self, active: int) -> None:
     """释放 ``active`` 个已构造元素并清空（``list._clear`` 等）。"""
@@ -229,11 +229,11 @@ class array[Element, StackLength: int = 0]:
     destroy(self.view.at(index))
 
   def copyPtrFrom(self, destOff: int, src: Pointer[Element], n: int) -> None:
-    copyBuf(self.view.at(destOff), src, n)
+    copyArray(self.view.at(destOff), src, n)
 
   @immutable
   def copyPtrTo(self, srcOff: int, dest: Pointer[Element], n: int) -> None:
-    copyBuf(dest, self.view.at(srcOff), n)
+    copyArray(dest, self.view.at(srcOff), n)
 
   def reshape(self, newSize: int, active: int = -1):
     """扩容/缩容缓冲。``active`` 为已构造元素个数（``list`` 传 ``_length``）；默认 -1 表示整块有效。"""

@@ -17,7 +17,7 @@ class CommandResult:
 
 
 @union
-class ZeusCommand:
+class ZeusCommandUnion:
   @variant
   class ObjectCreate:
     name: str
@@ -134,7 +134,7 @@ class CommandBus:
     r.message = msg
     return r
 
-  def _is_play_write(self, cmd: ZeusCommand) -> bool:
+  def _is_play_write(self, cmd: ZeusCommandUnion) -> bool:
     """Play 态禁止改场景的写命令（play / editor.select / 存读场景除外）。"""
     match cmd:
       case new.PlayStart:
@@ -156,7 +156,7 @@ class CommandBus:
       case _:
         return True
 
-  def dispatch(self, cmd: ZeusCommand) -> CommandResult:
+  def dispatch(self, cmd: ZeusCommandUnion) -> CommandResult:
     if self.world.state == WORLD_PLAYING and self._is_play_write(cmd):
       return self._fail("write blocked while playing")
     match cmd:
@@ -199,7 +199,7 @@ class CommandBus:
         pos_obj: GameObject | None = self._find(name)
         if pos_obj is None:
           return self._fail("not found")
-        pos_obj.root.local_position = Vector3(x, y, z)
+        pos_obj.root.localPosition = Vector3(x, y, z)
         return self._ok()
       case new.ObjectSetActive(name, active):
         act_obj: GameObject | None = self._find(name)

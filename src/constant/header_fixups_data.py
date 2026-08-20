@@ -116,13 +116,10 @@ MODULE_HEADER_FIXUPS: dict[str, tuple[tuple, ...]] = {
     ("insert_front_mod_if_missing", "web/url"),
     ("insert_front_mod_if_missing", "web/http"),
   ),
-  "io/file": (
-    ("insert_front_mod_if_missing", "io/file/path"),
-    ("forward", "file_walk_generator"),
-  ),
+
   "io/path": (("forward", "path_walk_step"),),
   "concur/task": (("forward", "task_slot_friend"),),
-  "system/environ": (("insert_front_mod_if_missing", "io/file/path"),),
+  "system/environ": (("insert_front_mod_if_missing", "io/path"),),
   "ui/flow/shell": (
     ("insert_front_mod_if_missing", "ui/menu"),
     ("insert_front_mod_if_missing", "ui/tooltip"),

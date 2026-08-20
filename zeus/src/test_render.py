@@ -32,6 +32,6 @@ class GlfwClearCubeTests(TestCaseMixin):
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_test_tag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)

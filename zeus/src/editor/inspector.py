@@ -6,7 +6,7 @@ from py2cpp.spatial.vector import Vector3
 from py2cpp.ui.meta import UIButtonMeta, UIInvisibleMeta, UILabelMeta
 from py2cpp.ui.panel import UIPanelMixin
 
-from ..command import CommandBus, ZeusCommand
+from ..command import CommandBus, ZeusCommandUnion
 from ..scene import Component, GameObject
 from .inspect_panels import JumpMotorPanel
 
@@ -57,7 +57,7 @@ class InspectorPanel(UIPanelMixin):
     self.object_name = go.name
     self.active = go.active
     self.visible = go.visible
-    lp: Vector3 = go.root.local_position
+    lp: Vector3 = go.root.localPosition
     self.pos_x = lp.x
     self.pos_y = lp.y
     self.pos_z = lp.z
@@ -77,23 +77,23 @@ class InspectorPanel(UIPanelMixin):
     if not self._bound_name:
       return
     if self.object_name and self.object_name != self._bound_name:
-      self._bus.dispatch(ZeusCommand.ObjectRename(self._bound_name, self.object_name))
+      self._bus.dispatch(ZeusCommandUnion.ObjectRename(self._bound_name, self.object_name))
       self._bound_name = self.object_name
-    self._bus.dispatch(ZeusCommand.ObjectSetActive(self._bound_name, self.active))
-    self._bus.dispatch(ZeusCommand.ObjectSetVisible(self._bound_name, self.visible))
+    self._bus.dispatch(ZeusCommandUnion.ObjectSetActive(self._bound_name, self.active))
+    self._bus.dispatch(ZeusCommandUnion.ObjectSetVisible(self._bound_name, self.visible))
     self._bus.dispatch(
-      ZeusCommand.ObjectSetPosition(self._bound_name, self.pos_x, self.pos_y, self.pos_z)
+      ZeusCommandUnion.ObjectSetPosition(self._bound_name, self.pos_x, self.pos_y, self.pos_z)
     )
     if self._has_jump:
       self._motor_panel.jump_power = self.jump_power
       self._motor_panel.max_charge = self.max_charge
       self._bus.dispatch(
-        ZeusCommand.ComponentSetFloat(
+        ZeusCommandUnion.ComponentSetFloat(
           self._bound_name, "JumpMotor", "jump_power", self.jump_power,
         )
       )
       self._bus.dispatch(
-        ZeusCommand.ComponentSetFloat(
+        ZeusCommandUnion.ComponentSetFloat(
           self._bound_name, "JumpMotor", "max_charge", self.max_charge,
         )
       )
@@ -105,41 +105,41 @@ class InspectorPanel(UIPanelMixin):
     parent: str = self._bound_name
     if not parent:
       parent = ""
-    self._bus.dispatch(ZeusCommand.ObjectCreate(name, parent))
-    self._bus.dispatch(ZeusCommand.EditorSelect(name))
+    self._bus.dispatch(ZeusCommandUnion.ObjectCreate(name, parent))
+    self._bus.dispatch(ZeusCommandUnion.EditorSelect(name))
     self.load_from_selection()
 
   @UIButtonMeta("Add Mesh")
   def add_mesh(self) -> None:
     if not self._bound_name:
       return
-    self._bus.dispatch(ZeusCommand.ObjectAddMesh(self._bound_name, 1.0))
+    self._bus.dispatch(ZeusCommandUnion.ObjectAddMesh(self._bound_name, 1.0))
     self.load_from_selection()
 
   @UIButtonMeta("Add Camera")
   def add_camera(self) -> None:
     if not self._bound_name:
       return
-    self._bus.dispatch(ZeusCommand.ObjectAddCamera(self._bound_name))
+    self._bus.dispatch(ZeusCommandUnion.ObjectAddCamera(self._bound_name))
     self.load_from_selection()
 
   @UIButtonMeta("Save")
   def save_scene(self) -> None:
     path: str = "zeus/examples/jump_demo/scenes/main.zas"
-    self._bus.dispatch(ZeusCommand.SceneSave(path, self._bus.scene_name))
+    self._bus.dispatch(ZeusCommandUnion.SceneSave(path, self._bus.scene_name))
 
   @UIButtonMeta("Play")
   def play(self) -> None:
-    self._bus.dispatch(ZeusCommand.PlayStart())
+    self._bus.dispatch(ZeusCommandUnion.PlayStart())
 
   @UIButtonMeta("Pause")
   def pause(self) -> None:
-    self._bus.dispatch(ZeusCommand.PlayPause())
+    self._bus.dispatch(ZeusCommandUnion.PlayPause())
 
   @UIButtonMeta("Stop")
   def stop(self) -> None:
-    self._bus.dispatch(ZeusCommand.PlayStop())
+    self._bus.dispatch(ZeusCommandUnion.PlayStop())
 
   @UIButtonMeta("Step")
   def step_one(self) -> None:
-    self._bus.dispatch(ZeusCommand.PlayStep(1))
+    self._bus.dispatch(ZeusCommandUnion.PlayStep(1))

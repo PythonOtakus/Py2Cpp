@@ -64,7 +64,7 @@ def translator_fingerprint(root: Path | None = None) -> str:
 
 
 def py_rel_to_module_path(rel: str) -> str | None:
-  """``py2cpp/io/file/path.py`` → ``py2cpp/io/file/path``。"""
+  """``py2cpp/io/path.py`` → ``py2cpp/io/path``。"""
   norm = rel.replace("\\", "/")
   if not norm.startswith("py2cpp/") or not norm.endswith(".py"):
     return None

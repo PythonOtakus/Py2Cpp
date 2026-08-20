@@ -38,7 +38,7 @@ class TcpSocket:
     """接受一个入站连接。"""
     ...
 
-  def send(self, buf: byte[:], end: int) -> int:
+  def send(self, buf: byte[:], end: int = int.Max) -> int:
     """发送 ``buf[:end]`` 字节，返回已发送数。"""
     ...
 
@@ -75,7 +75,12 @@ class TcpSocket:
     """非阻塞 accept；无连接时返回 closed socket。"""
     ...
 
-  def sendRangeNonblocking(self, buf: byte[:], start: int, end: int) -> int:
+  def sendRangeNonblocking(
+    self,
+    buf: byte[:],
+    start: int = 0,
+    end: int = int.Max,
+  ) -> int:
     """非阻塞发送 ``buf[start:end]``，would-block 返回 ``SocketWouldBlock``。"""
     ...
 

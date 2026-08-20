@@ -1,6 +1,6 @@
 """有理数 ``Fraction[T: IntegralType]``（对齐 CPython 3.13 ``fractions.Fraction`` 核心语义）。
 
-``T`` 为 ``int`` 或 ``varint``；字符串解析、``float`` / ``Decimal`` 构造重载（浮点经 ``float.asIntegerRatio``）。
+``T`` 为 ``int`` 或 ``long``；字符串解析、``float`` / ``Decimal`` 构造重载（浮点经 ``float.asIntegerRatio``）。
 """
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from ..core.exceptions import OverflowError, TypeError, ValueError, ZeroDivision
 from .decimal import Decimal
 from .protocols import IntegralType
 from .ratio import floatAsIntegerRatio
-from .varint import varint
+from .long import long
 
 
 @copyable
@@ -31,7 +31,7 @@ class Fraction[Scalar: IntegralType]:
 
   @overload
   def __init__(self, f: float64):
-    ratio: (varint, varint) = floatAsIntegerRatio(f)
+    ratio: (long, long) = floatAsIntegerRatio(f)
     self._num = Self._toT(ratio[0])
     self._den = Self._toT(ratio[1])
 
@@ -39,7 +39,7 @@ class Fraction[Scalar: IntegralType]:
   def __init__(self, dec: Decimal):
     if dec.isNan() or dec.isInfinite():
       raise OverflowError("cannot convert NaN or Infinity to Fraction")
-    r: (varint, varint) = dec.asIntegerRatio()
+    r: (long, long) = dec.asIntegerRatio()
     self._num = Self._toT(r[0])
     self._den = Self._toT(r[1])
 
@@ -98,7 +98,7 @@ class Fraction[Scalar: IntegralType]:
 
   @staticmethod
   @immutable
-  def _toT(v: varint) -> Scalar:
+  def _toT(v: long) -> Scalar:
     if not v:
       z: int = 0
       out: Scalar = z
@@ -144,10 +144,10 @@ class Fraction[Scalar: IntegralType]:
 
   @staticmethod
   @immutable
-  def _parseIntPart(s: str) -> varint:
+  def _parseIntPart(s: str) -> long:
     if not s:
-      return varint("0")
-    return varint(s)
+      return long("0")
+    return long(s)
 
   @staticmethod
   @immutable
@@ -172,13 +172,13 @@ class Fraction[Scalar: IntegralType]:
       right: str = Self._parseDigits(body[slash + 1 :].strip())
       if not right:
         raise ValueError("Invalid literal for Fraction: " + repr(text))
-      numV: varint = Self._parseIntPart(left)
-      denV: varint = Self._parseIntPart(right)
+      numV: long = Self._parseIntPart(left)
+      denV: long = Self._parseIntPart(right)
       if signNeg:
         numV = -numV
       return (Self._toT(numV), Self._toT(denV))
-    numV: varint = Self._parseIntPart("")
-    denV: varint = varint("1")
+    numV: long = Self._parseIntPart("")
+    denV: long = long("1")
     dot: int = body.find(".")
     expPos: int = body.find("e")
     expPos2: int = body.find("E")
@@ -203,16 +203,16 @@ class Fraction[Scalar: IntegralType]:
       intPart = Self._parseDigits(body)
     numV = Self._parseIntPart(intPart)
     if fracPart:
-      scale: varint = new.pow10(len(fracPart))
-      fracV: varint = Self._parseIntPart(fracPart)
+      scale: long = new.pow10(len(fracPart))
+      fracV: long = Self._parseIntPart(fracPart)
       numV = numV * scale + fracV
       denV = scale
     if expPart:
-      expV: varint = Self._parseIntPart(expPart)
+      expV: long = Self._parseIntPart(expPart)
       if int(expV) >= 0:
-        numV *= varint.pow10(int(expV))
+        numV *= long.pow10(int(expV))
       else:
-        denV *= varint.pow10(-int(expV))
+        denV *= long.pow10(-int(expV))
     if signNeg:
       numV = -numV
     return (Self._toT(numV), Self._toT(denV))

@@ -97,15 +97,17 @@ pip install clang libclang
 | 未知 / 非法注解 | `None  # C: …`（禁止 clang `unnamed at C:\…` 进注解；能映射则用已有类型） |
 | `void*` / `PVOID` / `LPVOID` 等 | `uintptr` |
 | 函数指针 / 回调 typedef | `Function[[Args…], Ret]`（`void` 返回 → `None`；见参考手册 `Function`） |
-| `const char*` / `char*` | `CStr` |
-| `int` / `unsigned` / 定宽整数 | `int` / `uint` / `int64` / `uint64` |
+| `const char*` / `char*` | `utf8ptr` |
+| Windows `const wchar_t*` / `LPCWSTR` 等只读宽字符串 | `utf16ptr` |
+| Windows `wchar_t*` / `LPWSTR` 等可写宽缓冲 | `Pointer[uint16]` |
+| `int` / `unsigned` / 定宽整数 | `int` / `uint16` / `uint` / `int64` / `uint64` |
 | `float` | `float`（Py2Cpp 32 位） |
 | `double` / `long double` | `float64` |
 | `float*` / `GLfloat*` 等 | `Pointer[float]` |
 | `double*` / `GLdouble*` 等 | `Pointer[float64]` |
 | 其它 `T*`（标量/完整类型） | `Pointer[T]`（`T` 已映射） |
 | `void` 返回 | `None` |
-| C 可变参数 ``f(fixed, ...)`` | 定参 + ``*_``（如 ``def pyiPrintf(_Format: CStr, *_) -> int``；译为 TypeVarTuple 形参包，glue ``::printf(fmt, _...)``） |
+| C 可变参数 ``f(fixed, ...)`` | 定参 + ``*_``（如 ``def pyiPrintf(_Format: utf8ptr, *_) -> int``；译为 TypeVarTuple 形参包，glue ``::printf(fmt, _...)``） |
 | `va_list` 等难映射 | `uintptr` + 行尾注释 |
 
 **注意**：仅真正的 **`void*`**（及 Win32 `PVOID`/`LPVOID`/`LPCVOID` 等）用 `uintptr`；**不要**把函数指针压成 `uintptr`。
@@ -185,7 +187,7 @@ ffi third_party\sqlite\sqlite3.h --check
 
 ## 9. Windows SDK（`ffi/windows/`）
 
-伞头几乎只有 `#include`，须**传递收集** SDK 树内声明，并带 MSVC 目标 / Kits `-I`。**所有 Win32 / SDK 声明面统一落在 `ffi/windows/`**（按头 stem 分文件；子系统头如 `commctrl.h` → `ffi/windows/commctrl.pyi`）。
+伞头几乎只有 `#include`，须**传递收集** SDK 树内声明，并带 MSVC 目标 / Kits `-I`。Win32 子头解析时会预包含 `windows.h` 以获得基础宏，但默认只导出子头自身声明，避免把伞头的整棵依赖树重复写入每个模块。**所有 Win32 / SDK 声明面统一落在 `ffi/windows/`**（按头 stem 分文件；子系统头如 `commctrl.h` → `ffi/windows/commctrl.pyi`）。
 
 | 能力 | 行为 |
 |------|------|
@@ -250,7 +252,7 @@ ffi math
 |------|------|------------------|
 | 薄 C 转发 | `+sqlite.inl` 调 `::ffi::sqlite::sqlite3::…`；**已去掉**直导 `<sqlite3.h>` | 异常、`PyStr` 转换、bind 循环继续下沉 Python 组合 |
 | 平台 API + 大量胶水 | `+canvas.inl`、`+window.inl`… | include 已迁 `"ffi/windows/…"`；WndProc/双缓冲等组合层分批改调 `ffi::`，**勿一次整文件删模板** |
-| CRT 叶子 | `+str.inl`、`util/+memory`；``system/time`` / ``system/environ`` / ``console/native_sys`` / ``io`` / ``io/file`` 已下沉为 Python + ``ffi::`` | include 已迁 `"ffi/crt/…"`；业务调用继续分批改 `ffi::crt::…` |
+| CRT 叶子 | `+str.inl`、`util/+memory`；``system/time`` / ``system/environ`` / ``console`` / ``io`` / ``io/path`` 已下沉为 Python + ``ffi::`` | include 已迁 `"ffi/crt/…"`；业务调用继续分批改 `ffi::crt::…` |
 | 译器基础设施 | `operators.*`、`protocol_traits`、`tuple`、异常 ctor；`<type_traits>` 等 **C++ STL** | **不在** A+B 迁移范围 |
 
 **迁移原则**：

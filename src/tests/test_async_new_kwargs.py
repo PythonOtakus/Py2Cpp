@@ -70,6 +70,28 @@ class Client:
     self.assertIn("request", cpp)
     self.assertNotIn("**options", cpp)
 
+  def test_await_async_method_on_host_field_keeps_coroutine_type(self):
+    cpp = self._translate(
+      '''
+from py2cpp import *
+
+@copyable
+class Sock:
+  async def sendAll(self) -> None:
+    return None
+
+@copyable
+class Writer:
+  sock: Sock = new()
+
+  async def write(self) -> int:
+    await self.sock.sendAll()
+    return 1
+'''
+    )
+    self.assertNotIn("PyInt __seq", cpp)
+    self.assertIn("Sock_sendAll_coroutine __seq", cpp)
+
   def test_debug_wrap_ref_return_keeps_reference(self):
     cpp = self._translate(
       '''

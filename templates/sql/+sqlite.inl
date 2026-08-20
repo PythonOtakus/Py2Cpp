@@ -187,12 +187,12 @@ void PySqliteConnection::commit()
   {
     return;
   }
-  CStr err = nullptr;
+  utf8ptr err = nullptr;
   if (ffi_sql::pyiSqlite3Exec(_db, "COMMIT", 0, 0, &err) != ffi_sql::PyiSqliteOk)
   {
     if (err)
     {
-      ffi_sql::pyiSqlite3Free((PyUPtr)(uintptr_t)err);
+      ffi_sql::pyiSqlite3Free((PyUIntPtr)(uintptr_t)err);
     }
     _sql_throw_operational();
   }
@@ -208,12 +208,12 @@ void PySqliteConnection::rollback()
   {
     return;
   }
-  CStr err = nullptr;
+  utf8ptr err = nullptr;
   if (ffi_sql::pyiSqlite3Exec(_db, "ROLLBACK", 0, 0, &err) != ffi_sql::PyiSqliteOk)
   {
     if (err)
     {
-      ffi_sql::pyiSqlite3Free((PyUPtr)(uintptr_t)err);
+      ffi_sql::pyiSqlite3Free((PyUIntPtr)(uintptr_t)err);
     }
     _sql_throw_operational();
   }

@@ -1,13 +1,12 @@
 """Phase 6：跳一跳 headless + FBX/ZAS 资产烟雾。"""
 from py2cpp import *
-from py2cpp.io.file.path import join
 from py2cpp.io.path import Path
 from py2cpp.spatial.color import Color
-from py2cpp.test.test_temp import _TEST_TEMP, ensure_test_temp
+from py2cpp.test.test_temp import _TestTemp, ensureTestTemp
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 from .assets.fbx_ascii import mesh_to_fbx_ascii, read_fbx, write_fbx
-from .command import CommandBus, ZeusCommand
+from .command import CommandBus, ZeusCommandUnion
 from .jump.game import JumpGame
 from .jump.motor import JUMP_FAILED, JUMP_IDLE, JUMP_LANDED
 from .render.mesh import Mesh
@@ -33,16 +32,14 @@ class FbxAsciiRoundTripTests(TestCaseMixin):
 
   @override
   def test(self):
-    ensure_test_temp()
+    ensureTestTemp()
     col: Color = new(0.2, 0.6, 0.9, 1.0)
-    cube: Mesh = new.colored_cube(1.0, col)
-    path: str = join(_TEST_TEMP, "zeus_cube.fbx")
-    write_fbx(cube, path)
-    doc: Path = new(path)
+    write_fbx(Mesh.colored_cube(1.0, col), str(Path(_TestTemp) / "zeus_cube.fbx"))
+    doc: Path = Path(_TestTemp) / "zeus_cube.fbx"
     self.assertTrue(doc.exists())
-    text: str = doc.read_text()
+    text: str = doc.readText()
     self.assertTrue(text.find("Vertices") >= 0)
-    loaded: Mesh = read_fbx(path, col)
+    loaded: Mesh = read_fbx(str(Path(_TestTemp) / "zeus_cube.fbx"), col)
     self.assertTrue(loaded.vertex_count > 0)
     ascii2: str = mesh_to_fbx_ascii(loaded)
     self.assertTrue(ascii2.find("Geometry") >= 0)
@@ -53,25 +50,24 @@ class ZasSceneRoundTripTests(TestCaseMixin):
 
   @override
   def test(self):
-    ensure_test_temp()
+    ensureTestTemp()
     bus: CommandBus = new()
-    bus.dispatch(ZeusCommand.ObjectCreate("p", ""))
-    bus.dispatch(ZeusCommand.ObjectAddMesh("p", 1.0))
-    path: str = join(_TEST_TEMP, "zeus_jump_scene.zas")
-    scene_save(bus.world, path, "JumpDemo")
-    doc: Path = new(path)
+    bus.dispatch(ZeusCommandUnion.ObjectCreate("p", ""))
+    bus.dispatch(ZeusCommandUnion.ObjectAddMesh("p", 1.0))
+    scene_save(bus.world, str(Path(_TestTemp) / "zeus_jump_scene.zas"), "JumpDemo")
+    doc: Path = Path(_TestTemp) / "zeus_jump_scene.zas"
     self.assertTrue(doc.exists())
-    text: str = doc.read_text()
+    text: str = doc.readText()
     self.assertTrue(text.find("zas") >= 0)
     bus2: CommandBus = new()
-    name: str = scene_load(bus2.world, path)
+    name: str = scene_load(bus2.world, str(Path(_TestTemp) / "zeus_jump_scene.zas"))
     self.assertEqual(name, "JumpDemo")
     self.assertTrue(bus2.world.root.find("p") is not None)
 
 
 def main() -> int:
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_test_tag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)
 

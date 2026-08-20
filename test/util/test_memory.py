@@ -1,16 +1,14 @@
-"""``util.memory``：通用叶子 ``@native``（``copyBuf`` / ``loadU64Le*``）；``str.fromBuf`` 见 ``test_str``。"""
+"""``util.memory``：通用叶子 ``@native``（``copyArray`` / ``loadU64Le*``）；``str.fromArray`` 见 ``test_str``。"""
 from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 from py2cpp.util.memory import (
   appendChars,
-  copyBuf,
-  copyBufRef,
-  cstrSlice,
+  copyArray,
+  copyArrayRef,
   loadU64Le,
   loadU64LeBytes,
   loadU64LeBytesRef,
   loadU64LeRef,
-  strCbuf,
 )
 
 
@@ -25,9 +23,9 @@ class MemoryAppendCharsTests(TestCaseMixin):
     src[2] = ord("c")
     dst: char[:] = new(4)
     dst[0] = ord("x")
-    at: int = appendChars(dst, 1, src, 3)
+    at: int = appendChars(dst, 1, src)
     self.assertEqual(at, 4)
-    self.assertEqual(str.fromBuf(dst, 4), "xabc")
+    self.assertEqual(str.fromArray(dst, 4), "xabc")
 
 
 class MemoryCstrTests(TestCaseMixin):
@@ -35,18 +33,20 @@ class MemoryCstrTests(TestCaseMixin):
 
   @override
   def test(self):
-    buf: byte[:] = strCbuf("abc", 8)
-    p: CStr = buf.view.at(0)
-    self.assertEqual(str.fromBuf(buf, 3), "abc")
+    data: byte[:] = "abc".toArrayUtf8()
+    p: utf8ptr = data.view.at(0)
+    self.assertEqual(str.fromArrayBytes(data, 3), "abc")
     seg: span[byte] = p.view
     self.assertEqual(len(seg), 3)
     self.assertEqual(int(seg[0]), ord("a"))
     self.assertEqual(int(seg[2]), ord("c"))
-    null: CStr = cast(None)
+    null: utf8ptr = cast(None)
     self.assertEqual(len(null.view), 0)
-    self.assertEqual(cstrSlice(p, 0, 3), "abc")
-    self.assertEqual(cstrSlice(p, 1, 2), "bc")
-    self.assertEqual(cstrSlice(p, 3, 0), "")
+    self.assertEqual(str.fromSpanBytes(p.view[:3]), "abc")
+    self.assertEqual(str.fromSpanBytes(p.view[1:3]), "bc")
+    self.assertEqual(str.fromSpanBytes(p.view[3:3]), "")
+    with "xyz".useUtf8() as scoped:
+      self.assertEqual(str.fromSpanBytes(scoped.view), "xyz")
 
 
 class MemoryLeafCopySegTests(TestCaseMixin):
@@ -55,14 +55,14 @@ class MemoryLeafCopySegTests(TestCaseMixin):
   @override
   def test(self):
     raw: str = "hello"
-    srcBuf: char[:] = new(5)
+    srcArray: char[:] = new(5)
     for i in range(5):
-      srcBuf[i] = char(raw[i])
+      srcArray[i] = char(raw[i])
     dstF: char[:] = new(8)
     dstR: char[:] = new(8)
-    copyBuf(dstF.view.at(0), srcBuf.view.at(0), 5)
-    copyBufRef(dstR.view.at(0), srcBuf.view.at(0), 5)
-    self.assertEqual(str.fromBuf(dstF, 5), str.fromBufRef(dstR, 5))
+    copyArray(dstF.view.at(0), srcArray.view.at(0), 5)
+    copyArrayRef(dstR.view.at(0), srcArray.view.at(0), 5)
+    self.assertEqual(str.fromArray(dstF, 5), str.fromArrayRef(dstR, 5))
 
 
 class MemoryLeafLoadU64Tests(TestCaseMixin):
@@ -71,11 +71,11 @@ class MemoryLeafLoadU64Tests(TestCaseMixin):
   @override
   def test(self):
     raw: str = "ABCDEFGH"
-    rawBuf: char[:] = new(8)
+    rawArray: char[:] = new(8)
     for i in range(8):
-      rawBuf[i] = char(raw[i])
-    gotF = loadU64Le(rawBuf.view.at(0), 0)
-    gotR = loadU64LeRef(rawBuf.view.at(0), 0)
+      rawArray[i] = char(raw[i])
+    gotF = loadU64Le(rawArray.view.at(0), 0)
+    gotR = loadU64LeRef(rawArray.view.at(0), 0)
     self.assertEqual(gotF, gotR)
     expect: uint64 = 0
     for i in range(8):

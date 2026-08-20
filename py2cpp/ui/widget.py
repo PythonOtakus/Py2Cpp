@@ -1,7 +1,6 @@
 """可挂载 Win32 控件的 ``UIWidget`` 子类。"""
 
 from ..builtins import *
-from ..util.memory import cstrSlice, strCbuf
 from ffi.windows import (
   PyiBmGetcheck,
   PyiBmSetcheck,
@@ -36,13 +35,13 @@ def _widgetText(handle: int64, cap: int) -> str:
   n: int = pyiGetWindowTextA(_widgetHandle(handle), buf.view.at(0), cap)
   if n <= 0:
     return ""
-  return cstrSlice(buf.view.at(0), 0, n)
+  return str.fromSpanBytes(buf.view[:n])
 
 
 @immutable
 def _widgetSetText(handle: int64, value: str) -> None:
-  buf: byte[:] = strCbuf(value, 512)
-  pyiSetWindowTextA(_widgetHandle(handle), buf.view.at(0))
+  with value.useUtf8() as cvalue:
+    pyiSetWindowTextA(_widgetHandle(handle), cvalue)
 
 
 @dataclass(eq=False, repr=False)

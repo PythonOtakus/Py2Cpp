@@ -42,7 +42,7 @@ class JumpGame:
     self._make_platform("Platform1", 4.0, 1.2)
     self.player = new("Player")
     self.player.parent = root
-    self.player.root.local_position = Vector3(0.0, 1.0, 0.0)
+    self.player.root.localPosition = Vector3(0.0, 1.0, 0.0)
     self.motor = new()
     # 满蓄力约落在 Platform1（x=4）：dist ≈ power²·2.2/|g|
     self.motor.jump_power = 5.5
@@ -53,7 +53,7 @@ class JumpGame:
     self.player.add_component(pm)
     self.camera = new("Camera")
     self.camera.parent = root
-    self.camera.root.local_position = Vector3(0.0, 4.0, 8.0)
+    self.camera.root.localPosition = Vector3(0.0, 4.0, 8.0)
     cam: CameraComponent = new()
     cam.look_at_target = Vector3(0.0, 1.0, 0.0)
     self.camera.add_component(cam)
@@ -61,7 +61,7 @@ class JumpGame:
   def _make_platform(self, name: str, x: float64, half: float64) -> None:
     go: GameObject = new(name)
     go.parent = self.world.root
-    go.root.local_position = Vector3(x, 0.0, 0.0)
+    go.root.localPosition = Vector3(x, 0.0, 0.0)
     pad: PlatformPad = new()
     pad.half_x = half
     pad.half_z = half
@@ -75,7 +75,7 @@ class JumpGame:
     self._plat_index += 1
     name: str = "Platform" + str(self._plat_index)
     dist: float64 = 3.5 + float(self._plat_index % 3) * 0.5
-    pos: Vector3 = self.player.root.local_position
+    pos: Vector3 = self.player.root.localPosition
     px: float64 = pos.x + dist
     self._make_platform(name, px, 1.0)
 
@@ -83,20 +83,20 @@ class JumpGame:
     return self.world.root.find("Platform" + str(index))
 
   def _try_land(self) -> bool:
-    p: Vector3 = self.player.root.local_position
+    p: Vector3 = self.player.root.localPosition
     if p.y > 1.2:
       return False
     for i in range(self._plat_index + 1):
       plat: GameObject | None = self._platform_at(i)
       if plat is not None and plat.find_component("PlatformPad") is not None:
-        pl: Vector3 = plat.root.local_position
+        pl: Vector3 = plat.root.localPosition
         cx: float64 = pl.x
         cz: float64 = pl.z
         hx: float64 = 1.2
         hz: float64 = 1.2
         if p.x >= cx - hx and p.x <= cx + hx and p.z >= cz - hz and p.z <= cz + hz:
           p.y = 1.0
-          self.player.root.local_position = p
+          self.player.root.localPosition = p
           self.motor.mark_landed()
           return True
     return False
@@ -117,7 +117,7 @@ class JumpGame:
       xf = self.player.root
       self.physics.ground_y = -50.0
       self.physics.step(self.motor.body, xf, dt)
-      lp: Vector3 = xf.local_position
+      lp: Vector3 = xf.localPosition
       if lp.y <= 1.0:
         if self._try_land():
           self.score += 1
@@ -125,8 +125,8 @@ class JumpGame:
           self.motor.ready_next()
         elif lp.y <= 0.0:
           self.motor.mark_failed()
-    target: Vector3 = self.player.root.local_position
-    self.camera.root.local_position = Vector3(target.x, target.y + 4.0, target.z + 8.0)
+    target: Vector3 = self.player.root.localPosition
+    self.camera.root.localPosition = Vector3(target.x, target.y + 4.0, target.z + 8.0)
     self.world.step()
 
   def simulate_perfect_jump(self) -> None:

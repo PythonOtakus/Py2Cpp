@@ -24,7 +24,6 @@ class InjectDiscoveryTests(unittest.TestCase):
     self.assertEqual(module_rel_from_paste_before_template("system/-time.inl"), "system/time")
     self.assertEqual(module_rel_from_paste_before_template("system/-environ.inl"), "system/environ")
 
-    self.assertEqual(module_rel_from_paste_before_template("io/-file.inl"), "io/file")
 
   def test_module_rel_from_inject_template_h(self):
     self.assertEqual(module_rel_from_inject_template("text/+str.h"), "text/str")
@@ -47,9 +46,8 @@ class InjectDiscoveryTests(unittest.TestCase):
     self.assertIn(("web/socket", "web/+socket.inl", False), found)
     self.assertIn(("core/exceptions", "core/+exceptions.inl", False), found)
 
-  def test_discover_system_paste_before_io_file(self):
+  def test_discover_removed_paste_before_templates(self):
     found = discover_module_paste_before_templates()
-    self.assertNotIn(("io/file", "io/-file.inl"), found)
     self.assertNotIn(("system/time", "system/-time.inl"), found)
     self.assertNotIn(("system/environ", "system/-environ.inl"), found)
 

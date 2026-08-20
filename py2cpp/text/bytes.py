@@ -110,7 +110,7 @@ class bytes(StringMixin[byte]):
     return b
 
   @staticmethod
-  def _translateBufLen(n: int) -> int:
+  def _translateArrayLen(n: int) -> int:
     return n
 
   @staticmethod
@@ -118,7 +118,7 @@ class bytes(StringMixin[byte]):
     return Self._DeleteByte
 
   @immutable
-  def decode(self, encoding: CStr = "utf-8", errors: CStr = "strict") -> str:
+  def decode(self, encoding: utf8ptr = "utf-8", errors: utf8ptr = "strict") -> str:
     n: int = len(self)
     if n == 0:
       return ""

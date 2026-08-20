@@ -1,7 +1,7 @@
 # 标准库链接模型：域库（`.lib` / 可选 `.dll`）与增量编译
 
-> **状态**：P0 已落地；**P1 默认开启**（``PY2CPP_HEADER_ONLY=1`` 回滚纯头文件）。目标：**编译效率优先**。  
-> **受众**：改 `layout_emit` / `compile.py` / `build*.bat` / umbrella 的维护者。  
+> **状态**：P0 已落地；**P1 默认开启**（``PY2CPP_HEADER_ONLY=1`` 回滚纯头文件）。目标：**编译效率优先**。
+> **受众**：改 `layout_emit` / `compile.py` / `build*.bat` / umbrella 的维护者。
 > **相关**：[参考手册 §链接模型](./参考手册.md)（现行默认链胖库 + 模板仍 header-only）、[编码规范](./编码规范.md)、[codegen-templates.md](./codegen-templates.md)、[c-ffi-pyi.md](./c-ffi-pyi.md)。**进程内代码热更**（运行时 `LoadLibrary`，不是本文件 P3）见 [hot-reload.md](./hot-reload.md)。
 
 ---
@@ -46,7 +46,7 @@ test_foo.cpp
 | `build_all` 墙钟时间随用例数近似线性放大 | N 个 exe × 同一份 runtime 实现 |
 | `py2cpp.cpp` 几乎用不上 | 历史汇总 TU；与 `minimal.h` 同链会 **LNK2005** |
 
-「编成 DLL」想解决的是：**稳定实现只编一次，测例只编自己的 TU + 链接**。  
+「编成 DLL」想解决的是：**稳定实现只编一次，测例只编自己的 TU + 链接**。
 这与 Unity「按程序集增量编译」同精神，**不是**「每个 `.py` / 每个生成文件一个 DLL」。
 
 ---
@@ -55,10 +55,10 @@ test_foo.cpp
 
 ### 2.1 目标
 
-1. **非模板**标准库实现进入 **若干静态库（`.lib`，首选）**；测例默认链这些库。  
-2. **模板 / 必须头可见**的实现仍 **header-only**（`list` / `dict` / `str` / `Queue[T]` / `tuple` 等）。  
-3. 按 **域（类似 Unity asmdef）** 切库，支持脏库重编，避免一改全库。  
-4. 同一套库 TU 可后续产出 **`.dll` + import lib**（发布/多进程），不挡第一阶段。  
+1. **非模板**标准库实现进入 **若干静态库（`.lib`，首选）**；测例默认链这些库。
+2. **模板 / 必须头可见**的实现仍 **header-only**（`list` / `dict` / `str` / `Queue[T]` / `tuple` 等）。
+3. 按 **域（类似 Unity asmdef）** 切库，支持脏库重编，避免一改全库。
+4. 同一套库 TU 可后续产出 **`.dll` + import lib**（发布/多进程），不挡第一阶段。
 5. 保留可回滚路径：环境变量或开关切回纯 header-only（过渡期）。
 
 ### 2.2 非目标（明确不做）
@@ -119,8 +119,8 @@ test_foo.cpp
 
 判定启发式（落地时写成显式表，勿纯猜）：
 
-- 模块内存在 **带类型参数的类**（`list`、`dict`、`Queue`…）→ 默认 `header_only`（整模块或拆「模板类 header / 非模板 companion library」——第一版整模块 header_only 更简单）。  
-- 无模板、以 `@native` 叶子 + 普通类为主（`concur/thread` 中非 `Queue` 部分、`system/time`、`io/file`…）→ `library`。  
+- 模块内存在 **带类型参数的类**（`list`、`dict`、`Queue`…）→ 默认 `header_only`（整模块或拆「模板类 header / 非模板 companion library」——第一版整模块 header_only 更简单）。
+- 无模板、以 `@native` 叶子 + 普通类为主（`concur/thread` 中非 `Queue` 部分、`system/time`、`io/path`…）→ `library`。
 - `operators`：模板重载留头；`pow(PyInt,…)` 等非模板重载可进 `core` 库（若拆文件有成本，第一版可整份 operators 暂留 header）。
 
 ### 4.1 第一刀域库划分（P2）
@@ -128,7 +128,7 @@ test_foo.cpp
 | 产物 | 大致模块 / 内容 | 备注 |
 |------|-----------------|------|
 | `py2cpp_core.lib` | builtins 非模板、`refcount`、小工具、适合进库的 operators 非模板部分 | 几乎每个测例都链 |
-| `py2cpp_io.lib` | `io/file`、path 叶子、`py_open` 等 | 重叶子 |
+| `py2cpp_io.lib` | `io/path`、`py_open` 等 | 重叶子 |
 | `py2cpp_concur.lib` | Thread / Lock / RLock / Condition / Event / Semaphore / Barrier / Future / ThreadPool / `atomic` 非模板；**`Queue[T]` 不进库** | 实现量大 |
 | `py2cpp_sql.lib` | `sql/sqlite` 包装 + 链 `third_party/sqlite/sqlite3.c` | 已独立 |
 | （暂缓） | `text` / `ui` / `web` / `serde` 等模板占比高的域 | P2 之后按需再拆 |
@@ -157,7 +157,7 @@ P1 可先落 **单一胖库** `py2cpp_runtime.lib`（上述 library 模块全进
 
 ### 5.3 `minimal.h` / umbrella
 
-- 继续 `#include` 各模块 **`.h`**。  
+- 继续 `#include` 各模块 **`.h`**。
 - 库 TU 先定义 ``PY2CPP_LIBRARY_TU`` 再 include 万能头：header-only 非模板 ``.inl`` 被跳过；模板 ``.inl`` 仍可见。非模板 ``__py2cpp_class_id__`` 出类定义带 ``__declspec(selectany)``，避免与测例 TU 重复。
 
 ### 5.4 关键代码路径（落地时改）
@@ -198,9 +198,9 @@ cl /EHsc /std:c++14 /utf-8 /I generated\runtime ^
 
 ### 6.3 可选 DLL（P3，链接期）
 
-- 同一批 `.obj`：`cl /LD … /Fe:py2cpp_concur.dll` + 生成 `.lib`（import）。  
-- 符号：`PY2CPP_API`（`dllexport` / `dllimport`）挂在 **非模板** 导出声明上；模板类 **不** 走导出。  
-- 开发迭代默认仍用 **静态 `.lib`**（无 DLL 搜索路径与 CRT 一致性负担）。  
+- 同一批 `.obj`：`cl /LD … /Fe:py2cpp_concur.dll` + 生成 `.lib`（import）。
+- 符号：`PY2CPP_API`（`dllexport` / `dllimport`）挂在 **非模板** 导出声明上；模板类 **不** 走导出。
+- 开发迭代默认仍用 **静态 `.lib`**（无 DLL 搜索路径与 CRT 一致性负担）。
 - **不是热更**：`dllimport` 把符号钉进 exe，进程启动后卸不掉。进程内卸装业务 DLL 见 [hot-reload.md](./hot-reload.md)（方案已文档化，未实现）。
 
 ---
@@ -230,8 +230,8 @@ cl /EHsc /std:c++14 /utf-8 /I generated\runtime ^
 
 **验收**：
 
-1. `build.bat concur/test_thread`（或一组代表测例）全绿。  
-2. 只改 `test/.../test_*.py` 时，不重编胖库（或库 mtime 不变），测例 TU 编译时间明显下降。  
+1. `build.bat concur/test_thread`（或一组代表测例）全绿。
+2. 只改 `test/.../test_*.py` 时，不重编胖库（或库 mtime 不变），测例 TU 编译时间明显下降。
 3. 改某一 `library` 模块 Python 源 → 重编库 + 重链相关 exe，**不必**每个 exe 重编译整份旧 inl。
 
 ### P2 — 按域拆库

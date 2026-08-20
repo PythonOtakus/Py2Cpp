@@ -6,7 +6,7 @@ PY2CPP_END
 #include <cstdarg>
 #include "ffi/crt/stdio.h"
 
-PyStr PyStr::_str_unescape_braces(CStr fmt)
+PyStr PyStr::_str_unescape_braces(utf8ptr fmt)
 {
   PyStr out("");
   if (!fmt)
@@ -36,7 +36,7 @@ PyStr PyStr::_str_unescape_braces(CStr fmt)
   return out;
 }
 
-PyStr PyStr::_str_format_substitute(CStr fmt, const PyStr* parts, int n)
+PyStr PyStr::_str_format_substitute(utf8ptr fmt, const PyStr* parts, int n)
 {
   PyStr out("");
   if (!fmt)
@@ -90,15 +90,15 @@ PyStr PyStr::_str_format_substitute(CStr fmt, const PyStr* parts, int n)
 
 PyStr::PrintfArg::PrintfArg(const PyStr& s)
 {
-  s.copyToSpan(PySpan<PyByte>((PyByte*)data, (PyInt)sizeof(data), 1));
+  s.copyToSpanUtf8(PySpan<PyByte>((PyByte*)data, (PyInt)sizeof(data), 1));
 }
 
-PyStr PyStr::percent_format(CStr fmt, ...)
+PyStr PyStr::percent_format(utf8ptr fmt, ...)
 {
   char buf[512];
   va_list ap;
   va_start(ap, fmt);
-  ::ffi::crt::stdio::pyiVsnprintf(buf, sizeof(buf), fmt, reinterpret_cast<CStr>(ap));
+  ::ffi::crt::stdio::pyiVsnprintf(buf, sizeof(buf), fmt, reinterpret_cast<utf8ptr>(ap));
   va_end(ap);
   return PyStr(buf);
 }
@@ -106,7 +106,7 @@ PyStr PyStr::percent_format(CStr fmt, ...)
 
 PyStr::PyStr(PyBool value)
 {
-  PyStr tmp(value ? (CStr)"True" : (CStr)"False");
+  PyStr tmp(value ? (utf8ptr)"True" : (utf8ptr)"False");
   (this->_data).__move__(tmp._data);
   this->_hash = tmp._hash;
   this->_hashOk = tmp._hashOk;
@@ -200,10 +200,4 @@ PyStr::PyStr(PY2CPP_TYPE(PyArray)<PyChar, 0>&& data)
   {
     this->_data.reshape(0, 0);
   }
-}
-
-PyStr PyStr::fromBuf(PyArray<PyChar>& buf, PyInt end)
-{
-  PyStr raw(buf);
-  return raw.__getitem__(PySlice<int, int>(0, end, 1));
 }

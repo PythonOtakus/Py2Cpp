@@ -110,7 +110,7 @@ struct PyTcpSocketState
   }
 };
 
-static PyTcpSocketState* _web_socket_state(PyUPtr handle)
+static PyTcpSocketState* _web_socket_state(PyUIntPtr handle)
 {
   return (PyTcpSocketState*)(uintptr_t)handle;
 }
@@ -238,7 +238,7 @@ static void _web_assign_open_sock(PyTcpSocketState* st, _web_sock_t sock)
 
 PyTcpSocket::PyTcpSocket()
 {
-  _state = (PyUPtr)(uintptr_t)(new PyTcpSocketState());
+  _state = (PyUIntPtr)(uintptr_t)(new PyTcpSocketState());
 }
 
 PyTcpSocket::~PyTcpSocket()
@@ -281,7 +281,7 @@ void PyTcpSocket::connect(PyStr host, PyInt port)
   PyTcpSocketState* st = _web_socket_state(_state);
   _web_close_state(st);
   char hbuf[256];
-  host.copyToSpan(PySpan<PyByte>((PyByte*)hbuf, (PyInt)sizeof(hbuf), 1));
+  host.copyToSpanUtf8(PySpan<PyByte>((PyByte*)hbuf, (PyInt)sizeof(hbuf), 1));
 #ifdef _WIN32
   _web_sock_t s = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (s == INVALID_SOCKET)
@@ -331,7 +331,7 @@ void PyTcpSocket::bind(PyStr host, PyInt port)
   PyTcpSocketState* st = _web_socket_state(_state);
   _web_close_state(st);
   char hbuf[256];
-  host.copyToSpan(PySpan<PyByte>((PyByte*)hbuf, (PyInt)sizeof(hbuf), 1));
+  host.copyToSpanUtf8(PySpan<PyByte>((PyByte*)hbuf, (PyInt)sizeof(hbuf), 1));
 #ifdef _WIN32
   _web_sock_t s = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (s == INVALID_SOCKET)
@@ -445,7 +445,7 @@ PyInt PyTcpSocket::connectEx(PyStr host, PyInt port)
   PyTcpSocketState* st = _web_socket_state(_state);
   _web_close_state(st);
   char hbuf[256];
-  host.copyToSpan(PySpan<PyByte>((PyByte*)hbuf, (PyInt)sizeof(hbuf), 1));
+  host.copyToSpanUtf8(PySpan<PyByte>((PyByte*)hbuf, (PyInt)sizeof(hbuf), 1));
 #ifdef _WIN32
   _web_sock_t s = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (s == INVALID_SOCKET)

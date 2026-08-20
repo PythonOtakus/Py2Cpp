@@ -68,7 +68,7 @@ _PY_TYPES = frozenset(
     "PyInt64",
     "PyUInt",
     "PyUInt64",
-    "PyUPtr",
+    "PyUIntPtr",
     "PyFloat64",
   }
 )

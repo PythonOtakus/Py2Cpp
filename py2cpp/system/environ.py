@@ -4,10 +4,8 @@
 """
 from ..builtins import *
 from ..core.exceptions import KeyError, OSError
-from ..io.file.path import baseName, dirName, join
 from ..util.list import list
 from ..text import str
-from ..util.memory import cstrSlice, strCbuf
 
 from ffi.windows import (
   PyiErrorEnvvarNotFound,
@@ -30,20 +28,12 @@ _Tilde: str = "~"
 _SepChars: str = "\\/"
 
 
-@immutable
-def _strCbuf(s: str, cap: int) -> byte[:]:
-  return strCbuf(s, cap)
-
-
-@immutable
-def _cstrSlice(p: CStr, start: int, n: int) -> str:
-  return cstrSlice(p, start, n)
 
 
 @immutable
 def _envKeyHas(key: str) -> bool:
-  kbuf: byte[:] = _strCbuf(key, 4096)
-  n: uint = pyiGetEnvironmentVariableA(kbuf.view.at(0), "", 0)
+  with key.useUtf8() as ckey:
+    n: uint = pyiGetEnvironmentVariableA(ckey, "", 0)
   if n == 0:
     if pyiGetLastError() == PyiErrorEnvvarNotFound:
       return False
@@ -52,13 +42,10 @@ def _envKeyHas(key: str) -> bool:
 
 @immutable
 def _envGetValue(key: str) -> str:
-  kbuf: byte[:] = _strCbuf(key, 4096)
-  vbuf: byte[:] = new(32767)
-  n: uint = pyiGetEnvironmentVariableA(kbuf.view.at(0), vbuf.view.at(0), 32767)
-  if n == 0:
-    if pyiGetLastError() == PyiErrorEnvvarNotFound:
-      return ""
-  return _cstrSlice(vbuf.view.at(0), 0, int(n))
+  with key.useUtf8() as ckey:
+    return str.fromUtf8Writer(
+      lambda p, capacity: pyiGetEnvironmentVariableA(ckey, p, capacity)
+    )
 
 
 @copyable
@@ -75,19 +62,19 @@ class Environ:
     return _envGetValue(key)
 
   def __setitem__(self, key: str, value: str) -> None:
-    kbuf: byte[:] = _strCbuf(key, 4096)
-    vbuf: byte[:] = _strCbuf(value, 32767)
-    if pyiSetEnvironmentVariableA(kbuf.view.at(0), vbuf.view.at(0)) == 0:
-      raise OSError()
+    with key.useUtf8() as ckey:
+      with value.useUtf8() as cvalue:
+        if pyiSetEnvironmentVariableA(ckey, cvalue) == 0:
+          raise OSError()
 
   def __delitem__(self, key: str) -> None:
     if not _envKeyHas(key):
       raise KeyError(key)
-    kbuf: byte[:] = _strCbuf(key, 4096)
-    if pyiSetEnvironmentVariableA(kbuf.view.at(0), None) == 0:
-      err: uint = pyiGetLastError()
-      if err != PyiErrorEnvvarNotFound:
-        raise OSError()
+    with key.useUtf8() as ckey:
+      if pyiSetEnvironmentVariableA(ckey, None) == 0:
+        err: uint = pyiGetLastError()
+        if err != PyiErrorEnvvarNotFound:
+          raise OSError()
 
   @immutable
   def __contains__(self, key: str) -> bool:
@@ -102,10 +89,10 @@ class Environ:
   @immutable
   def keys(self) -> list[str]:
     out: list[str] = []
-    block: CStr = pyiGetEnvironmentStrings()
+    block: utf8ptr = pyiGetEnvironmentStrings()
     if block is None:
       return out
-    base: CStr = block
+    base: utf8ptr = block
     off: int = 0
     while base[off] != 0:
       i: int = 0
@@ -116,7 +103,7 @@ class Environ:
         i += 1
       slen: int = i
       if eq > 0:
-        out.append(_cstrSlice(base, off, eq))
+        out.append(str.fromSpanBytes(base.view[off:off + eq]))
       off += slen + 1
     pyiFreeEnvironmentStringsA(block)
     return out
@@ -215,14 +202,17 @@ class Environ:
       return path
     else:
       drive: str = self.get("HOMEDRIVE", "")
-      userhome = join(drive, self["HOMEPATH"])
+      userhome = drive + self["HOMEPATH"]
     if i != 1:
       targetUser: str = path[1:i]
       currentUser: str = self.get("USERNAME", "")
       if targetUser != currentUser:
-        if currentUser != baseName(userhome):
+        sepAt: int = userhome.rfind("\\")
+        if sepAt < 0:
+          sepAt = userhome.rfind("/")
+        if sepAt < 0 or currentUser != userhome[sepAt + 1:]:
           return path
-        userhome = join(dirName(userhome), targetUser)
+        userhome = userhome[:sepAt + 1] + targetUser
     return userhome + path[i:]
 
 

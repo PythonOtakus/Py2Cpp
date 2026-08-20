@@ -8,7 +8,7 @@ from .bytes import bytes
 from ..util.dict import dict
 from ..core.exceptions import IndexError, ValueError
 from ..util.list import list
-from ..util.memory import copyBuf
+from ..util.memory import copyArray
 from ..util.array import array
 from ..util.slice import slice
 from ..util.span import span
@@ -58,6 +58,10 @@ class str(StringMixin[char]):
   _hash: int = 0
   _hashOk: bool = False
 
+  def _didChangeData(self) -> None:
+    self._hash = 0
+    self._hashOk = not self._data
+
   @immutable
   @staticmethod
   def reprChar(c: char) -> Self:
@@ -73,7 +77,7 @@ class str(StringMixin[char]):
     return 48
 
   @staticmethod
-  def _translateBufLen(n: int) -> int:
+  def _translateArrayLen(n: int) -> int:
     return n * 2
 
   @staticmethod
@@ -81,7 +85,7 @@ class str(StringMixin[char]):
     return Self._DeleteChar
 
   @staticmethod
-  def _appendByte(buf: byte[:], at: int, b: byte) -> int:
+  def _appendByte(buf: span[byte], at: int, b: byte) -> int:
     buf[at] = b
     return at + 1
 
@@ -217,7 +221,7 @@ class str(StringMixin[char]):
     return 4
 
   @staticmethod
-  def _writeUtf8(buf: byte[:], at: int, c: char) -> int:
+  def _writeUtf8(buf: span[byte], at: int, c: char) -> int:
     if c < 0x80:
       return Self._appendByte(buf, at, c)
     if c < 0x800:
@@ -232,15 +236,31 @@ class str(StringMixin[char]):
     at = Self._appendByte(buf, at, ((c >> 6) & 0x3F) | 0x80)
     return Self._appendByte(buf, at, (c & 0x3F) | 0x80)
 
+  @staticmethod
+  def _writeUtf16(buf: span[uint16], at: int, c: char) -> int:
+    if c >= 0xD800 and c <= 0xDFFF:
+      raise ValueError("invalid Unicode surrogate")
+    if c > 0x10FFFF:
+      raise ValueError("invalid Unicode code point")
+    if c < 0x10000:
+      buf[at] = uint16(c)
+      return at + 1
+    value: int = c - 0x10000
+    buf[at] = uint16(0xD800 + (value >> 10))
+    buf[at + 1] = uint16(0xDC00 + (value & 0x3FF))
+    return at + 2
+
+  @immutable
+  @staticmethod
+  def _isUtf8Continuation(value: int) -> bool:
+    return value >= 0x80 and value <= 0xBF
+
   @overload
-  def __init__(self, text: CStr = ""):
-    n: int = len(text)
+  def __init__(self, text: utf8ptr = ""):
+    decoded: Self = Self.fromUtf8(text)
     self._hash = 0
-    self._hashOk = n == 0
-    self._data: array[char, _SsoCap] = new(n)
-    if n > 0:
-      for i in range(n):
-        self._data[i] = char(text[i])
+    self._hashOk = not decoded
+    self._data: array[char, _SsoCap] = decoded._data
 
   @overload
   def __init__(self, data: char[:]):
@@ -258,131 +278,157 @@ class str(StringMixin[char]):
     self._hashOk = False
     self._data = [value]
 
-  def copyTo(self, buf: char[:], at: int = 0) -> int:
-    """把本串码点写入 ``buf[at:]``，返回新尾下标。"""
-    sn: int = len(self)
-    if sn == 0:
-      return at
-    end: int = at + sn
-    n: int = len(buf)
-    if end > n:
-      buf.reshape(end, n)
-    for i in range(sn):
-      buf[at + i] = self._data[i]
-    return end
-
-  def copySliceTo(self, start: int, end: int, buf: char[:], at: int) -> int:
-    """``self[start:end]`` 写入 ``buf[at:]``，返回新尾下标。"""
-    n: int = end - start
-    if n <= 0:
-      return at
-    need: int = at + n
-    buf.reserve(need)
-    seg: span[char] = self._data.view[start:end]
-    for i in range(n):
-      buf[at + i] = seg[i]
-    return need
-
   @staticmethod
   @immutable
-  def concat(parts: list[Self]) -> Self:
-    return "".join(parts)
-
-  def replaceSlice(self, start: int, end: int, repl: Self) -> Self:
-    """单次分配 ``char[:]`` 拼接 ``self[:start] + repl + self[end:]``。"""
-    sn: int = len(self)
-    if start < 0:
-      start = 0
-    if end < start:
-      end = start
-    if start > sn:
-      start = sn
-    if end > sn:
-      end = sn
-    rn: int = len(repl)
-    if start == 0 and end == sn:
-      return repl
-    tail: int = sn - end
-    newLen: int = start + rn + tail
-    if newLen == 0:
-      return ""
-    if tail == 0 and rn == 0 and start == sn:
-      return self
-    buf: char[:] = new(newLen)
-    at: int = 0
-    if start > 0:
-      head: span[char] = self._data.view[:start]
-      for i in range(start):
-        buf[at + i] = head[i]
-      at = start
-    if rn > 0:
-      rview: span[char] = repl.view[:rn]
-      for i in range(rn):
-        buf[at + i] = rview[i]
-      at += rn
-    tailN: int = sn - end
-    if tailN > 0:
-      tview: span[char] = self._data.view[end:sn]
-      for i in range(tailN):
-        buf[at + i] = tview[i]
-      at += tailN
-    return Self.fromBuf(buf, at)
-
-  @staticmethod
-  def fromBufRef(buf: char[:], end: int) -> Self:
-    """``buf[:end]`` → ``str``（纯 Python；``@native fromBuf`` 的语义参照）。"""
-    raw = str(buf)
-    return raw[:end]
-
-  @staticmethod
-  @native
-  @overload
-  def fromBuf(buf: char[:], end: int) -> Self:
-    """``buf[:end]`` → ``str``（encode ``finish`` 收尾）。"""
-    ...
-
-  @staticmethod
-  @immutable
-  @overload
-  def fromBuf(buf: byte[:], end: int) -> Self:
+  def fromArrayBytes(buf: byte[:], end: int = int.Max) -> Self:
     """将单字节 ``buf[:end]`` 拷贝构造为 ``str``。"""
-    return Self.fromSpan(buf.view[:end])
+    return Self.fromSpanBytes(buf.view[:end])
 
   @staticmethod
   @immutable
-  @overload
-  def fromSpan(seg: span[char]) -> Self:
-    """由 ``span[char]`` 拷贝构造（``copyFromSpan`` 组合）。"""
+  def fromArrayUtf8(buf: byte[:], end: int = int.Max) -> Self:
+    """Construct from strict UTF-8 bytes in buf[:end]."""
+    return Self.fromSpanUtf8(buf.view[:end])
+
+  @staticmethod
+  @immutable
+  def fromArrayUtf16(buf: uint16[:], end: int = int.Max) -> Self:
+    """Construct from strict UTF-16 code units in buf[:end]."""
+    return Self.fromSpanUtf16(buf.view[:end])
+
+  @staticmethod
+  @immutable
+  def fromSpanBytes(seg: span[byte]) -> Self:
+    """Expand each raw byte in seg to a Unicode code point."""
     dst: Self = ""
-    dst.copyFromSpan(seg)
+    dst.copyFromSpanBytes(seg)
     return dst
 
   @staticmethod
   @immutable
-  @overload
-  def fromSpan(seg: span[byte]) -> Self:
-    """由单字节 ``span`` 拷贝构造。"""
-    dst: Self = ""
-    dst.copyFromSpan(seg)
-    return dst
-
-  @overload
-  def copyFromSpan(self, seg: span[char]) -> None:
-    """将 ``span[char]`` 写入已有 ``PyStr``（``copyBuf`` 叶子）。"""
+  def fromSpanUtf8(seg: span[byte]) -> Self:
+    """Copy from a strict UTF-8 byte sequence."""
     n: int = len(seg)
-    if not n:
-      self._data.reshape(0, 0)
-      self._hash = 0
-      self._hashOk = True
-      return
-    if len(self._data) != n:
-      self._data.reshape(n, 0)
-    self._data.copyPtrFrom(0, seg.at(), n)
-    self._hash = 0
-    self._hashOk = False
+    if n == 0:
+      return ""
+    buf: char[:] = new(n)
+    at: int = 0
+    i: int = 0
+    while i < n:
+      b0 = int(seg[i])
+      if b0 < 0x80:
+        buf[at] = char(b0)
+        at += 1
+        i += 1
+        continue
+      need: int = 0
+      cp: int = 0
+      if b0 >= 0xC2 and b0 <= 0xDF:
+        need = 1
+        cp = b0 & 0x1F
+      elif b0 >= 0xE0 and b0 <= 0xEF:
+        need = 2
+        cp = b0 & 0x0F
+      elif b0 >= 0xF0 and b0 <= 0xF4:
+        need = 3
+        cp = b0 & 0x07
+      else:
+        raise ValueError("invalid UTF-8 leading byte")
+      if i + need >= n:
+        raise ValueError("truncated UTF-8 sequence")
+      b1 = int(seg[i + 1])
+      if not Self._isUtf8Continuation(b1):
+        raise ValueError("invalid UTF-8 continuation byte")
+      if (b0 == 0xE0 and b1 < 0xA0) or (b0 == 0xED and b1 >= 0xA0):
+        raise ValueError("invalid UTF-8 code point")
+      if (b0 == 0xF0 and b1 < 0x90) or (b0 == 0xF4 and b1 > 0x8F):
+        raise ValueError("invalid UTF-8 code point")
+      cp = (cp << 6) | (b1 & 0x3F)
+      for j in range(2, need + 1):
+        b = int(seg[i + j])
+        if not Self._isUtf8Continuation(b):
+          raise ValueError("invalid UTF-8 continuation byte")
+        cp = (cp << 6) | (b & 0x3F)
+      buf[at] = char(cp)
+      at += 1
+      i += need + 1
+    if at == n:
+      return Self.fromSpan(buf.view)
+    out: char[:] = new(at)
+    for j in range(at):
+      out[j] = buf[j]
+    return Self.fromSpan(out.view)
 
-  @overload
-  def copyFromSpan(self, seg: span[byte]) -> None:
+  @staticmethod
+  @immutable
+  def fromUtf8(text: utf8ptr) -> Self:
+    """Copy from a NUL-terminated UTF-8 C string."""
+    return Self.fromSpanUtf8(text.view)
+  @staticmethod
+  @immutable
+  def fromUtf8Writer(
+    write: Callable[[utf8ptr, uint], uint],
+    maxCapacity: int = int.Max,
+    initCapacity: int = 256,
+  ) -> Self:
+    """Build from a UTF-8 C writer returning length or required capacity."""
+    if maxCapacity <= 0:
+      raise ValueError("maxCapacity must be positive")
+    if initCapacity <= 0:
+      raise ValueError("initCapacity must be positive")
+    capacity: int = initCapacity
+    if capacity > maxCapacity:
+      raise ValueError("initCapacity exceeds maxCapacity")
+    while True:
+      data: byte[:] = new(capacity)
+      written: uint = write(cast[utf8ptr](data.view.at()), uint(capacity))
+      if written < capacity:
+        return Self.fromSpanUtf8(data.view[:int(written)])
+      capacity = int(written) + 1
+      if capacity > maxCapacity:
+        raise ValueError("C string output exceeds maxCapacity")
+
+  @staticmethod
+  @immutable
+  def fromSpanUtf16(seg: span[uint16]) -> Self:
+    """Copy from a strict UTF-16 code-unit sequence."""
+    n: int = len(seg)
+    if n == 0:
+      return ""
+    buf: char[:] = new(n)
+    at: int = 0
+    i: int = 0
+    while i < n:
+      unit = int(seg[i])
+      if unit >= 0xD800 and unit <= 0xDBFF:
+        if i + 1 >= n:
+          raise ValueError("truncated UTF-16 surrogate pair")
+        low = int(seg[i + 1])
+        if low < 0xDC00 or low > 0xDFFF:
+          raise ValueError("invalid UTF-16 surrogate pair")
+        buf[at] = char(0x10000 + ((unit - 0xD800) << 10) + (low - 0xDC00))
+        at += 1
+        i += 2
+        continue
+      if unit >= 0xDC00 and unit <= 0xDFFF:
+        raise ValueError("invalid UTF-16 surrogate")
+      buf[at] = char(unit)
+      at += 1
+      i += 1
+    if at == n:
+      return Self.fromSpan(buf.view)
+    out: char[:] = new(at)
+    for j in range(at):
+      out[j] = buf[j]
+    return Self.fromSpan(out.view)
+
+  @staticmethod
+  @immutable
+  def fromUtf16(text: utf16ptr) -> Self:
+    """Copy from a NUL-terminated Windows UTF-16 C string."""
+    return Self.fromSpanUtf16(text.view)
+
+  def copyFromSpanBytes(self, seg: span[byte]) -> None:
     """将 ``span[byte]`` 按 ``char`` 写入已有 ``PyStr``（C API / 单字节源）。"""
     n: int = len(seg)
     if not n:
@@ -397,43 +443,95 @@ class str(StringMixin[char]):
     self._hash = 0
     self._hashOk = False
 
+  def copyFromSpanUtf8(self, seg: span[byte]) -> None:
+    """Strictly decode UTF-8 seg into this string."""
+    text: Self = Self.fromSpanUtf8(seg)
+    self.copyFromSpan(text.view)
+
+  def copyFromSpanUtf16(self, seg: span[uint16]) -> None:
+    """Strictly decode UTF-16 seg into this string."""
+    text: Self = Self.fromSpanUtf16(seg)
+    self.copyFromSpan(text.view)
+
   @immutable
-  @overload
-  def copyToSpan(self, dest: span[byte]) -> None:
-    """把本串按单字节写入 ``dest`` 并以 ``\\0`` 收尾（``len(dest)`` 为容量上限；C API 缓冲）。"""
+  def copyToSpanUtf8(self, dest: span[byte]) -> None:
+    """Encode as UTF-8 into dest and append a NUL terminator."""
     cap: int = len(dest)
     if cap <= 0:
       return
-    n: int = len(self)
-    lim: int = n
-    maxBody: int = cap - 1
-    if lim > maxBody:
-      lim = maxBody
-    for i in range(lim):
-      dest[i] = byte(self[i])
-    dest[lim] = byte(0)
+    at: int = 0
+    for i in range(len(self)):
+      c: char = self[i]
+      if c == 0:
+        raise ValueError("C string cannot contain NUL")
+      width: int = Self._utf8ByteLen(c)
+      if at + width >= cap:
+        break
+      at = Self._writeUtf8(dest, at, c)
+    dest[at] = byte(0)
 
   @immutable
-  @overload
-  def copyToSpan(self, dest: span[char]) -> None:
-    """把码点写入 ``dest`` 并以 ``PyChar(0)`` 收尾（``len(dest)`` 为容量上限）。"""
+  def copyToSpanUtf16(self, dest: span[uint16]) -> None:
+    """Encode as UTF-16 into dest and append a NUL terminator."""
     cap: int = len(dest)
     if cap <= 0:
       return
-    n: int = len(self)
-    lim: int = n
-    maxBody: int = cap - 1
-    if lim > maxBody:
-      lim = maxBody
-    if lim > 0:
-      self._data.copyPtrTo(0, dest.at(), lim)
-    dest[lim] = char(0)
+    at: int = 0
+    for i in range(len(self)):
+      c: char = self[i]
+      if c == 0:
+        raise ValueError("C string cannot contain NUL")
+      width: int = 1
+      if c > 0xFFFF:
+        width = 2
+      if at + width >= cap:
+        break
+      at = Self._writeUtf16(dest, at, c)
+    dest[at] = uint16(0)
 
-  def adoptSpan(self, seg: span[char]) -> None:
-    """接管 ``span[char]`` 底层 ``char`` 缓冲（serde Arena；勿与 ``reshape`` 混用）。"""
-    self._data.adoptSpan(seg)
-    self._hash = 0
-    self._hashOk = False
+  @immutable
+  def toArrayUtf8(self) -> byte[:]:
+    """Return a UTF-8, NUL-terminated owned byte array."""
+    total: int = 0
+    for i in range(len(self)):
+      c: char = self[i]
+      if c == 0:
+        raise ValueError("C string cannot contain NUL")
+      total += Self._utf8ByteLen(c)
+    data: byte[:] = new(total + 1)
+    self.copyToSpanUtf8(data.view)
+    return data
+
+  @immutable
+  def toArrayUtf16(self) -> uint16[:]:
+    """Return a Windows UTF-16, NUL-terminated owned array."""
+    total: int = 0
+    for i in range(len(self)):
+      c: char = self[i]
+      if c == 0:
+        raise ValueError("C string cannot contain NUL")
+      if c >= 0xD800 and c <= 0xDFFF:
+        raise ValueError("invalid Unicode surrogate")
+      if c > 0x10FFFF:
+        raise ValueError("invalid Unicode code point")
+      total += 1
+      if c > 0xFFFF:
+        total += 1
+    data: uint16[:] = new(total + 1)
+    self.copyToSpanUtf16(data.view)
+    return data
+
+  @context
+  def useUtf8(self) -> utf8ptr:
+    """在 ``with self.useUtf8() as p`` 中借出本串的 NUL 终止 ``utf8ptr``。"""
+    _cstrData: byte[:] = self.toArrayUtf8()
+    yield cast(_cstrData.view.at())
+
+  @context
+  def useUtf16(self) -> utf16ptr:
+    """Borrow a UTF-16 utf16ptr for one context scope."""
+    data: uint16[:] = self.toArrayUtf16()
+    yield cast(data.view.at())
 
   def __copy__(self, other: Self):
     n: int = len(other._data)
@@ -446,30 +544,30 @@ class str(StringMixin[char]):
   @overload
   def __init__(self, value: int):
     buf: byte[:] = new(32)
-    ptr: CStr = cast(buf.view.at())
+    ptr: utf8ptr = cast(buf.view.at())
     pyiSnprintf(ptr, len(buf), "%d", value)
-    self.copyFromSpan(buf.view)
+    self.copyFromSpanBytes(buf.view)
 
   @overload
   def __init__(self, value: int64):
     buf: byte[:] = new(32)
-    ptr: CStr = cast(buf.view.at())
+    ptr: utf8ptr = cast(buf.view.at())
     pyiSnprintf(ptr, len(buf), "%lld", value)
-    self.copyFromSpan(buf.view)
+    self.copyFromSpanBytes(buf.view)
 
   @overload
   def __init__(self, value: float):
     buf: byte[:] = new(64)
-    ptr: CStr = cast(buf.view.at())
+    ptr: utf8ptr = cast(buf.view.at())
     pyiSnprintf(ptr, len(buf), "%g", value)
-    self.copyFromSpan(buf.view)
+    self.copyFromSpanBytes(buf.view)
 
   @overload
   def __init__(self, value: float64):
     buf: byte[:] = new(64)
-    ptr: CStr = cast(buf.view.at())
+    ptr: utf8ptr = cast(buf.view.at())
     pyiSnprintf(ptr, len(buf), "%g", value)
-    self.copyFromSpan(buf.view)
+    self.copyFromSpanBytes(buf.view)
 
   @overload
   @native
@@ -478,24 +576,19 @@ class str(StringMixin[char]):
 
   @immutable
   def __int__(self) -> int:
-    buf: byte[:] = new(len(self) + 1)
-    self.copyToSpan(buf.view)
-    ptr: CStr = cast(buf.view.at())
     value: int = 0
-    if pyiSscanf(ptr, "%d", id(value)) != 1:
-      raise ValueError
+    with self.useUtf8() as ptr:
+      if pyiSscanf(ptr, "%d", id(value)) != 1:
+        raise ValueError
     return value
 
   @immutable
   def __float__(self) -> float:
-    buf: byte[:] = new(len(self) + 1)
-    self.copyToSpan(buf.view)
-    ptr: CStr = cast(buf.view.at())
     value: float = 0.0
-    if pyiSscanf(ptr, "%lf", id(value)) != 1:
-      raise ValueError
+    with self.useUtf8() as ptr:
+      if pyiSscanf(ptr, "%lf", id(value)) != 1:
+        raise ValueError
     return value
-  @immutable
   def __str__(self) -> Self:
     return self
 
@@ -551,12 +644,6 @@ class str(StringMixin[char]):
       return False
     return self._compare(other) == 0
 
-  @property
-  @immutable
-  def view(self) -> span[char]:
-    """只读码点视图（``serde`` 等）。"""
-    return self._data.view
-
   def __iter__(self) -> StrIterator:
     return new(self.view)
 
@@ -568,7 +655,7 @@ class str(StringMixin[char]):
     return self.lower()
 
   @immutable
-  def encode(self, encoding: CStr = "utf-8", errors: CStr = "strict") -> bytes:
+  def encode(self, encoding: utf8ptr = "utf-8", errors: utf8ptr = "strict") -> bytes:
     n: int = len(self)
     total: int = 0
     for i in range(n):
@@ -579,7 +666,7 @@ class str(StringMixin[char]):
     buf: byte[:] = new(total)
     at: int = 0
     for i in range(n):
-      at = Self._writeUtf8(buf, at, self._data[i])
+      at = Self._writeUtf8(buf.view, at, self._data[i])
     return bytes(buf)
 
   @immutable

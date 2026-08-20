@@ -93,7 +93,7 @@ def _parse_name_node(
   if parser._maps_to_runtime_protocol_erase(name):
     return TypeNode.template(name, erased_protocol_cpp_name(name))
   scalars = {
-    "int", "int64", "uint", "uint64", "uintptr", "float", "float64", "bool",
+    "int", "int16", "int64", "uint16", "uint", "uint64", "uintptr", "float", "float64", "bool",
     "str", "bytes", "char", "byte", "object", "RefCount", "IterResult", "Result",
     "Optional", "GeneratorType", "CoroutineType", "AsyncGeneratorType", "AwaitableType",
     "AsyncIterableType", "AsyncIteratorType", "ContextManagerType", "AsyncContextManagerType",
@@ -103,8 +103,8 @@ def _parse_name_node(
     return TypeNode.scalar(cpp_ident(name))
   if name == "None":
     return TypeNode.scalar(cpp_ident("PyNone"))
-  if name == "CStr":
-    return TypeNode.scalar("CStr")
+  if name in ("utf8ptr", "utf16ptr"):
+    return TypeNode.scalar(name)
   expanded = parser._expand_type_alias_name(
     name, type_params, self_class=self_class, _seen=alias_seen,
   )
@@ -132,16 +132,18 @@ def _parse_name_node(
         "类型注解 Object 已禁止，请改用 object（映射 PyObject）"
       )
   info = parser._classes.get(name)
-  if info is not None and info.type_params and not info.typevar_tuple:
-    defaults = info.type_param_defaults
-    if defaults and len(defaults) == len(info.type_params):
-      args = tuple(
-        parse_type_node_direct(
-          parser, defaults[p], type_params, self_class=self_class,
+  if info is not None:
+    if info.type_params and not info.typevar_tuple:
+      defaults = info.type_param_defaults
+      if defaults and len(defaults) == len(info.type_params):
+        args = tuple(
+          parse_type_node_direct(
+            parser, defaults[p], type_params, self_class=self_class,
+          )
+          for p in info.type_params
         )
-        for p in info.type_params
-      )
-      return TypeNode.template(name, info.cpp_name(), *args)
+        return TypeNode.template(name, info.cpp_name(), *args)
+    return TypeNode.scalar(info.cpp_name())
   return TypeNode.scalar(cpp_ident(name))
 
 

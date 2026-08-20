@@ -34,7 +34,7 @@ PRED_RENAME = {
   "is_cpp_uint_type": "is_uint_type",
   "is_cpp_uint64_type": "is_uint64_type",
   "is_cpp_uintptr_type": "is_uintptr_type",
-  "is_cpp_varint_type": "is_varint_type",
+  "is_cpp_long_type": "is_long_type",
   "is_cpp_float_type": "is_float_type",
   "is_cpp_float64_type": "is_float64_type",
   "is_cpp_scalar_int_type": "is_scalar_int_type",

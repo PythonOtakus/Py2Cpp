@@ -1,6 +1,6 @@
 """块状内存原语（``char[:]`` 直写）；``serde`` / ``str`` 热路径共用。
 
-**纯 Python**：``copyBuf`` / ``loadU64Le*`` 直接复用参照实现；``str.fromBuf`` 见 ``text/str``；缓冲扩容见 ``array.reserve``。
+**纯 Python**：``copyArray`` / ``loadU64Le*`` 直接复用参照实现；``str.fromArray`` 见 ``text/str``；缓冲扩容见 ``array.reserve``。
 """
 from __future__ import annotations
 
@@ -8,35 +8,33 @@ from ..builtins import *
 
 from ..text import str
 from ..util.span import span
-from ffi.crt.string import pyiStrlen
+from ffi.crt.string import pyiStrlen, pyiWcslen
 
 
 @immutable
-def strCbuf(s: str, cap: int) -> byte[:]:
-  """把 ``s`` 写入长度 ``cap`` 的 ``byte[:]``（含 ``NUL``，供 ``CStr`` 形参）。"""
-  buf: byte[:] = new(cap)
-  s.copyToSpan(buf.view)
-  return buf
-
-@immutable
-def _cstrView(p: CStr) -> span[byte]:
-  """将 NUL 终止 ``CStr`` 转为不含终止符的 ``span[byte]``。"""
+def _cstrView(p: utf8ptr) -> span[byte]:
+  """将 NUL 终止 ``utf8ptr`` 转为不含终止符的 ``span[byte]``。"""
   if p is None:
     return span[byte]()
   addr: uintptr = cast(p)
   raw: Pointer[byte] = cast(addr)
   return new(raw, int(pyiStrlen(p)))
 
-@immutable
-def cstrSlice(p: CStr, start: int, n: int) -> str:
-  """从 ``CStr`` 的字节视图拷 ``n`` 个字节为 ``str``。"""
-  if n <= 0:
-    return ""
-  return str.fromSpan(p.view[start:start + n])
 
 @immutable
-def appendChars(buf: char[:], at: int, src: char[:], end: int) -> int:
-  """把 ``src[0:end]`` 写入 ``buf[at:]``，返回新尾下标（``copyBuf`` + ``reshape``）。"""
+def _cwstrView(p: utf16ptr) -> span[uint16]:
+  """将 NUL 终止 utf16ptr 转为不含终止符的 UTF-16 span。"""
+  if p is None:
+    return span[uint16]()
+  addr: uintptr = cast(p)
+  raw: Pointer[uint16] = cast(addr)
+  return new(raw, int(pyiWcslen(p)))
+
+@immutable
+def appendChars(buf: char[:], at: int, src: char[:], end: int = int.Max) -> int:
+  """把 ``src[0:end]`` 写入 ``buf[at:]``，返回新尾下标（``copyArray`` + ``reshape``）。"""
+  if end > len(src):
+    end = len(src)
   if end <= 0:
     return at
   need: int = at + end
@@ -49,17 +47,17 @@ def appendChars(buf: char[:], at: int, src: char[:], end: int) -> int:
 
 
 @immutable
-def copyBufRef(dst: Pointer[char], src: Pointer[char], n: int) -> None:
-  """``src[:n]`` → ``dst``（纯 Python；``@native copyBuf`` 的语义参照）。"""
+def copyArrayRef(dst: Pointer[char], src: Pointer[char], n: int) -> None:
+  """``src[:n]`` → ``dst``（纯 Python；``@native copyArray`` 的语义参照）。"""
   if n <= 0:
     return
   for i in range(n):
     dst[i] = src[i]
 
 
-def copyBuf(dst: Pointer[char], src: Pointer[char], n: int) -> None:
+def copyArray(dst: Pointer[char], src: Pointer[char], n: int) -> None:
   """连续 ``n`` 个 ``PyChar``：``src`` → ``dst``。"""
-  copyBufRef(dst, src, n)
+  copyArrayRef(dst, src, n)
 
 
 @immutable

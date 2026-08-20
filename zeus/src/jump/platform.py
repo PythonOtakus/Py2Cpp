@@ -8,7 +8,7 @@ from ..scene import Component
 
 @refcount
 class PlatformPad(Component):
-  """水平平台半宽（XZ）；顶面 y 取宿主 ``root.local_position.y``。"""
+  """水平平台半宽（XZ）；顶面 y 取宿主 ``root.localPosition.y``。"""
 
   half_x: float64 = 1.0
   half_z: float64 = 1.0

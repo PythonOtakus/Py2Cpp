@@ -58,15 +58,15 @@ def f(c: int) -> bool:
     cpp = self._translate(
       '''
 @enum
-class Kind:
+class KindEnum:
   A = 0
   B = 1
 
-def f(k: Kind) -> bool:
-  return k in {Kind.A, Kind.B}
+def f(k: KindEnum) -> bool:
+  return k in {KindEnum.A, KindEnum.B}
 '''
     )
-    self.assertIn("Kind::A", cpp)
+    self.assertIn("KindEnum::A", cpp)
     self.assertIn("||", cpp)
     self.assertNotIn("PySet<", cpp)
     self.assertNotIn(".add(", cpp)
@@ -122,6 +122,16 @@ def f(i: int) -> int:
     )
     self.assertIn("static const", cpp)
     self.assertIn("_tbl[]", cpp)
+    self.assertNotIn(".append(", cpp)
+
+  def test_pure_literal_list_subscript_uses_static_table(self):
+    cpp = self._translate(
+      r'''
+def escape(i: int) -> char:
+  return [ord("a"), ord("b")][i]
+'''
+    )
+    self.assertIn("static const PyInt _tbl[]", cpp)
     self.assertNotIn(".append(", cpp)
 
   def test_list_literal_const_index(self):
@@ -210,6 +220,20 @@ def h(a: int, k: int) -> int:
     )
     self.assertIn("__setitem__", cpp)
     self.assertIn("__getitem__", cpp)
+
+  def test_pure_literal_dict_get_uses_static_dict(self):
+    cpp = self._translate(
+      r'''
+def escape(c: char) -> str:
+  return {
+    ord("'"): "\\'",
+    ord("\\"): "\\\\",
+  }.get(c, "")
+'''
+    )
+    self.assertIn("static PyDict<", cpp)
+    self.assertIn(".__setitem__(", cpp)
+    self.assertIn(".get(c", cpp)
 
 
 if __name__ == "__main__":

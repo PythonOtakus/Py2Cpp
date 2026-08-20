@@ -37,7 +37,7 @@ class SqliteDialect:
         return "INTEGER"
       case "bool":
         return "INTEGER"
-      case "varint":
+      case "long":
         return "INTEGER"
       case "str":
         return "TEXT"

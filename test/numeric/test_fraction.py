@@ -1,4 +1,4 @@
-"""``Fraction[T: IntegralType]`` 回归（``int`` / ``varint``）。"""
+"""``Fraction[T: IntegralType]`` 回归（``int`` / ``long``）。"""
 from py2cpp import *
 from py2cpp.numeric.fraction import Fraction
 from py2cpp.numeric.ratio import floatAsIntegerRatio
@@ -33,7 +33,7 @@ class FractionFloatRatioTests(TestCaseMixin):
 
     @override
     def test(self):
-        ratio: (varint, varint) = floatAsIntegerRatio(1.47)
+        ratio: (long, long) = floatAsIntegerRatio(1.47)
         self.assertEqual(str(ratio[0]), '6620291452234629')
         self.assertEqual(str(ratio[1]), '4503599627370496')
 

@@ -494,9 +494,9 @@ def _generate_cmp(specs: list[DataclassFieldSpec], class_name: str) -> ast.Funct
   return fn
 
 
-def _repr_has_varint(specs: list[DataclassFieldSpec]) -> bool:
+def _repr_has_long(specs: list[DataclassFieldSpec]) -> bool:
   return any(
-    isinstance(spec.annotation, ast.Name) and spec.annotation.id == "varint"
+    isinstance(spec.annotation, ast.Name) and spec.annotation.id == "long"
     for spec in specs
   )
 
@@ -537,7 +537,7 @@ def _repr_concat_expr(specs: list[DataclassFieldSpec], class_name: str) -> ast.e
 
 
 def _generate_repr(specs: list[DataclassFieldSpec], class_name: str) -> ast.FunctionDef:
-  if _repr_has_varint(specs):
+  if _repr_has_long(specs):
     ret_expr = _repr_concat_expr(specs, class_name)
   else:
     values: list[ast.expr] = [ast.Constant(value=f"{class_name}(")]

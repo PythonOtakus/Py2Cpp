@@ -3,15 +3,20 @@
 #include <cfloat>
 #include <cmath>
 
+// Callable signatures may be used before core/delegate.h is included.
+template<typename Ret, typename... Args> struct PyCallable;
+
 /// Python ``int`` / ``float`` / ``bool`` 注解对应的 C++ 标量别名（与 ``PyStr`` 等命名一致）
 typedef int PyInt;
 typedef float PyFloat;
 typedef bool PyBool;
-/// 高精度标量：``int64`` → ``int64_t``，``float64`` → ``double``（与 ``int``/``float`` 并存）
+/// 定宽/高精度标量：`int16` / `int64` 与 `float64`（与 `int`/`float` 并存）
+typedef int16_t PyInt16;
 typedef int64_t PyInt64;
+typedef uint16_t PyUInt16;
 typedef uint32_t PyUInt;
 typedef uint64_t PyUInt64;
-typedef uintptr_t PyUPtr;
+typedef uintptr_t PyUIntPtr;
 typedef double PyFloat64;
 /// 标量静态属性（译器 ``visit_Attribute`` 直映）：``float.Inf`` / ``int.Min`` 等
 #define PY2CPP_FLOAT_INF ((PyFloat)INFINITY)
@@ -21,8 +26,12 @@ typedef double PyFloat64;
 /// ``int.Min``；勿写 ``-2147483648``（MSVC C4146：一元 ``-`` 作用于无符号字面量）。
 #define PY2CPP_INT_MIN ((PyInt)(-2147483647 - 1))
 #define PY2CPP_INT_MAX ((PyInt)2147483647)
+#define PY2CPP_INT16_MIN ((PyInt16)INT16_MIN)
+#define PY2CPP_INT16_MAX ((PyInt16)INT16_MAX)
 #define PY2CPP_INT64_MIN ((PyInt64)INT64_MIN)
 #define PY2CPP_INT64_MAX ((PyInt64)INT64_MAX)
+#define PY2CPP_UINT16_MIN ((PyUInt16)0)
+#define PY2CPP_UINT16_MAX ((PyUInt16)UINT16_MAX)
 #define PY2CPP_UINT_MIN ((PyUInt)0)
 #define PY2CPP_UINT_MAX ((PyUInt)UINT32_MAX)
 #define PY2CPP_UINT64_MIN ((PyUInt64)0)

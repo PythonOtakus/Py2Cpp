@@ -24,6 +24,7 @@ UMBRELLA_PREFIX_SPECS: tuple[tuple[UmbrellaSpecKind, str], ...] = (
   ("primitive", "c_str.h"),
   ("primitive", "py_types.h"),
   ("primitive", "member_access.h"),
+  ("module", "util/tuple"),
   ("module", "builtins"),
   ("module", "core/exceptions"),
 )
@@ -139,7 +140,7 @@ def expand_umbrella_include_paths(
       continue
     paths.append(stdlib_header_include(name))
     if (
-      name == "numeric/varint"
+      name == "numeric/long"
       and _umbrella_early_matches("if_any_protocols", "protocol_traits", stdlib_set)
     ):
       paths.append(f"{CORE_PKG}/protocol_erase_domain.h")

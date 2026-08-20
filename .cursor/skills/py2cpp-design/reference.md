@@ -310,7 +310,7 @@ Py2Cpp/
 | `@immutable` | 方法 | 不生成非 const 重载 |
 | `@staticmethod` | 方法 | 静态成员 |
 
-类型标记（非装饰器）：`Pointer[T]`、`Callable`、`Self`、`char`、`CStr`。
+类型标记（非装饰器）：`Pointer[T]`、`Callable`、`Self`、`char`、`utf8ptr`。
 
 ---
 

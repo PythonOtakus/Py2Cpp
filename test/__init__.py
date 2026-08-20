@@ -1,14 +1,14 @@
 """py2cpp 集成测试包（``scripts/build_all.bat`` 递归 ``test/**/test_*.py``）。
 
 目录与 ``py2cpp/<域>/`` 对齐：``test/<域>/test_<模块>.py`` 对应 ``py2cpp/<域>/<模块>.py``；
-子包同理（如 ``test/io/file/test_file.py`` ↔ ``py2cpp/io/file/__init__.py``）。
+子包同理（如 ``test/io/test_path.py`` ↔ ``py2cpp/io/path.py``）。
 
 | 目录 | 对应标准库 |
 |------|------------|
 | ``text/`` | ``py2cpp/text/`` |
 | ``util/`` | ``py2cpp/util/``（含 ``Pool``、``misc``） |
 | ``io/`` | ``py2cpp/io/``（``test_io.py``） |
-| ``io/file/`` | ``py2cpp/io/file/``、``io/file/path`` |
+| ``io/`` | ``py2cpp/io/``、``py2cpp/io/path.py`` |
 | ``system/`` | ``py2cpp/system/``（``time``、``datetime``） |
 | ``serde/`` | ``py2cpp/serde/`` |
 | ``core/`` | ``py2cpp/core/`` |

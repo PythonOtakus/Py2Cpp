@@ -180,23 +180,23 @@ def main() -> None:
   )
   fix_text_replace(
     ROOT / "src/constant/primitive_headers.py",
-    [("py2cpp/CStr.h", "py2cpp/c_str.h")],
+    [("py2cpp/utf8ptr.h", "py2cpp/c_str.h")],
   )
-  fix_text_replace(ROOT / "src/constant/umbrella.py", [("CStr.h", "c_str.h")])
-  fix_text_replace(ROOT / "src/constant/inject_specs.py", [("CStr.h", "c_str.h")])
+  fix_text_replace(ROOT / "src/constant/umbrella.py", [("utf8ptr.h", "c_str.h")])
+  fix_text_replace(ROOT / "src/constant/inject_specs.py", [("utf8ptr.h", "c_str.h")])
   fix_text_replace(
     ROOT / "src/codegen/stdlib_mirror_codegen.py",
     [
       ("util/StackArray", "util/stack_array"),
-      ("CStr.h", "c_str.h"),
-      ("py2cpp/CStr", "py2cpp/c_str"),
+      ("utf8ptr.h", "c_str.h"),
+      ("py2cpp/utf8ptr", "py2cpp/c_str"),
     ],
   )
   fix_text_replace(
     ROOT / "src/emit/layout_emit.py",
     [
-      ('f"{RUNTIME_PREFIX}/CStr"', 'f"{RUNTIME_PREFIX}/c_str"'),
-      ("CStr.h", "c_str.h"),
+      ('f"{RUNTIME_PREFIX}/utf8ptr"', 'f"{RUNTIME_PREFIX}/c_str"'),
+      ("utf8ptr.h", "c_str.h"),
     ],
   )
   for rel in [

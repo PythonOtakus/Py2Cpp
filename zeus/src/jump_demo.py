@@ -15,7 +15,7 @@ from .scene import Component, GameObject
 def _draw_go(device: GLDevice, go: GameObject) -> None:
   if not go.active or not go.visible:
     return
-  pos: Vector3 = go.root.local_position
+  pos: Vector3 = go.root.localPosition
   for i in range(go.component_count()):
     c: Component = go.component_at(i)
     m: Mesh | None = c.mesh_for_draw()

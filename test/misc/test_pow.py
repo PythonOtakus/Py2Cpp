@@ -15,28 +15,28 @@ class PowIntTests(TestCaseMixin):
     self.assertEqual(pow(10, 100, 1000), 0)
 
 
-class PowVarintTests(TestCaseMixin):
+class PowLongTests(TestCaseMixin):
   _testTag = 11
 
   @override
   def test(self):
-    a: varint = 3
-    m: varint = 5
-    exp2: varint = 2
-    inv: varint = -1
-    r1: varint = pow(a, exp2, m)
+    a: long = 3
+    m: long = 5
+    exp2: long = 2
+    inv: long = -1
+    r1: long = pow(a, exp2, m)
     self.assertEqual(int(r1), 4)
-    r2: varint = pow(a, inv, m)
+    r2: long = pow(a, inv, m)
     self.assertEqual(int(r2), 2)
-    b: varint = 7
-    mod13: varint = 13
-    zero: varint = 0
-    r3: varint = pow(b, zero, mod13)
+    b: long = 7
+    mod13: long = 13
+    zero: long = 0
+    r3: long = pow(b, zero, mod13)
     self.assertEqual(int(r3), 1)
-    base: varint = 10
-    exp100: varint = 100
-    bigMod: varint = 1000
-    r4: varint = pow(base, exp100, bigMod)
+    base: long = 10
+    exp100: long = 100
+    bigMod: long = 1000
+    r4: long = pow(base, exp100, bigMod)
     self.assertEqual(int(r4), 0)
 
 

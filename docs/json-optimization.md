@@ -23,13 +23,13 @@
 | **4c** | `loadStrSpan` 引号 SwAR（修 ``i+k``）；`list[str]` ``serdePushSlot``；`list[int]` push 槽 | ✅ | `py2cpp/serde/json.py` |
 | **4d** | 纯 ``int`` dataclass（``Ticker``）``serdePushSlot`` + ``init`` | ✅ | `serializable.py` |
 | **4 arena** | `PyArena` + `acquire`/`release` + `adopt_codes_buf`；`loads` 启 `strArena` | ✅ | 见上 |
-| **4 arena-2** | `span.at()` + `memory.copyBuf`（``memcpy``）；`reserve(sl/2)` | ✅ | 见 perf |
+| **4 arena-2** | `span.at()` + `memory.copyArray`（``memcpy``）；`reserve(sl/2)` | ✅ | 见 perf |
 | **PR-0** | 零拷贝 ASCII bind（``PyChar`` 视图、无 packed 分配）、``loads`` 入口 ``try_bind``、按 ``T`` 条件 ``strArena`` | ✅ | 大 payload 省 O(n) 拷贝 + arena 固定开销 |
 | **PR-1** | ``list[int|str]`` ASCII 叶子 + ``load_list_*_ascii_loop``（C++ 内联 push/skip；ref = 纯 Python 组合） | ✅ | ``loads list[int]`` 50k **~26 ms**；``loads list[str]`` 20k **~20 ms** |
 | **PR-2** | 恢复 ``serializable`` ``_fast_load_list_*`` + ``_json_loads_list_element<Cls>`` 特化（用户模块 ``.inl``） | ✅ | ``loads list[User]`` 2k **~9.3 ms** |
 | **strict 原子化** | 去掉 composite ``_json_read_list_*``；``loads`` 容器为 Python 组合 + 叶子 ``@native`` | ✅ | 见 [编码规范 §9.4](./编码规范.md#94-native-原子化基础设施) |
 | **PR-P2** | ``dict[str,str]`` ASCII 叶子 + ``dict._index`` 用 ``hash(key)`` | ✅ | ``loads dict[str,str]`` 5k **~150 ms** |
-| **PR-P3** | ``dict`` ``setCapacity`` 预分配；``dict[str,varint|float]`` ASCII 叶子循环 | ✅ | 减 rehash；varint/float 镜像 int/str |
+| **PR-P3** | ``dict`` ``setCapacity`` 预分配；``dict[str,long|float]`` ASCII 叶子循环 | ✅ | 减 rehash；long/float 镜像 int/str |
 | **译器单测** | `src/tests/test_serializable_schema.py` | ⏸ | 未开始 |
 
 **MSVC（`scripts/build_perf_json.bat`）**：`test_json` 7/7；`test_json_serde` 含 `Ticker`/`MiniUser`/`loads list[int|str]` 等对照用例。

@@ -380,7 +380,7 @@ class TestTypePred(unittest.TestCase):
 
     def test_container_predicates_match_is_cpp(self):
         from src.analysis.type_compat import type_node_from_cpp_string
-        from src.analysis.type_pred import coerce_type_node, is_container_type, is_dict_type, is_list_type, is_optional_type, is_str_type, is_tuple_type, is_char_type, is_varint_type
+        from src.analysis.type_pred import coerce_type_node, is_container_type, is_dict_type, is_list_type, is_optional_type, is_str_type, is_tuple_type, is_char_type, is_long_type
         samples = [('PyList<PyInt>', is_list_type), ('PyDict<PyStr, PyInt>', is_dict_type), ('PyStr', is_str_type), ('PyOptional<PyTuple<PyInt>>', is_optional_type)]
         for cpp, pred in samples:
             self.assertTrue(pred(cpp), cpp)
@@ -393,7 +393,7 @@ class TestTypePred(unittest.TestCase):
         self.assertFalse(is_char_type('PyChar*'))
         self.assertTrue(is_char_type('PyChar'))
         self.assertTrue(is_char_type('PyChar&'))
-        self.assertTrue(is_varint_type('PyVarInt'))
+        self.assertTrue(is_long_type('PyLong'))
 
     def test_result_and_complex_predicates(self):
         from src.analysis.type_compat import type_node_from_cpp_string

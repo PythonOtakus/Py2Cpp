@@ -45,7 +45,7 @@ void PyUITooltipHost::showAtClient(window::PyUIWindow& win, PyStr text, PyInt cx
     return;
   }
   char tbuf[512];
-  text.copyToSpan(PySpan<PyByte>((PyByte*)tbuf, (PyInt)sizeof(tbuf), 1));
+  text.copyToSpanUtf8(PySpan<PyByte>((PyByte*)tbuf, (PyInt)sizeof(tbuf), 1));
   TOOLINFOA ti = {};
   ti.cbSize = sizeof(ti);
   ti.uFlags = TTF_TRACK | TTF_SUBCLASS;

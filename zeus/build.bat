@@ -18,10 +18,17 @@ if errorlevel 1 (
 call "%ZEUS_ROOT%setup_deps.bat"
 if errorlevel 1 exit /b 1
 
-if not exist "%PY2CPP_RUNTIME_INC%\py2cpp\minimal.h" (
-  echo [zeus] bootstrapping repo generated\runtime ...
-  call "%REPO_ROOT%\scripts\_bootstrap_runtime.bat"
-  if errorlevel 1 exit /b 1
+echo [zeus] bootstrapping repo generated\runtime ...
+call "%REPO_ROOT%\scripts\_bootstrap_runtime.bat"
+if errorlevel 1 exit /b 1
+
+set "PY2CPP_RUNTIME_LINK="
+if /I not "%PY2CPP_HEADER_ONLY%"=="1" (
+  set "PY2CPP_RUNTIME_LINK="%PY2CPP_RUNTIME_INC%\lib\py2cpp_runtime.lib""
+  if not exist "%PY2CPP_RUNTIME_INC%\lib\py2cpp_runtime.lib" (
+    echo ERROR: py2cpp_runtime.lib was not generated.
+    exit /b 1
+  )
 )
 
 set "GLFW_INC=%ZEUS_ROOT%third_party\glfw\include"
@@ -48,6 +55,7 @@ cl /nologo /EHsc /utf-8 /std:c++14 ^
   /I"%ZEUS_ROOT%generated" /I"%ZEUS_ROOT%generated\zeus\src" /I"%ZEUS_RUNTIME_INC%" /I"%PY2CPP_RUNTIME_INC%" /I"%SQLITE_INC%" ^
   "%ZEUS_ROOT%generated\zeus\src\test_runtime.cpp" ^
   "%SQLITE_INC%\sqlite3.c" ^
+  %PY2CPP_RUNTIME_LINK% ^
   /Fe:"%ZEUS_ROOT%generated\zeus\src\test_runtime.exe" /link /STACK:8388608
 if errorlevel 1 exit /b 1
 
@@ -64,6 +72,7 @@ cl /nologo /EHsc /utf-8 /std:c++14 ^
   /I"%ZEUS_ROOT%generated" /I"%ZEUS_ROOT%generated\zeus\src" /I"%ZEUS_RUNTIME_INC%" /I"%PY2CPP_RUNTIME_INC%" /I"%SQLITE_INC%" /I"%GLFW_INC%" ^
   "%ZEUS_ROOT%generated\zeus\src\test_render.cpp" ^
   "%SQLITE_INC%\sqlite3.c" ^
+  %PY2CPP_RUNTIME_LINK% ^
   /Fe:"%ZEUS_ROOT%generated\zeus\src\test_render.exe" ^
   /link /STACK:8388608 /LIBPATH:"%GLFW_LIB%" %GLFW_LINK% opengl32.lib user32.lib gdi32.lib shell32.lib
 if errorlevel 1 exit /b 1
@@ -85,6 +94,7 @@ cl /nologo /EHsc /utf-8 /std:c++14 ^
   /I"%ZEUS_ROOT%generated" /I"%ZEUS_ROOT%generated\zeus\src" /I"%ZEUS_RUNTIME_INC%" /I"%PY2CPP_RUNTIME_INC%" /I"%SQLITE_INC%" /I"%GLFW_INC%" ^
   "%ZEUS_ROOT%generated\zeus\src\test_editor_smoke.cpp" ^
   "%SQLITE_INC%\sqlite3.c" ^
+  %PY2CPP_RUNTIME_LINK% ^
   /Fe:"%ZEUS_ROOT%generated\zeus\src\test_editor_smoke.exe" ^
   /link /STACK:33554432 /LIBPATH:"%GLFW_LIB%" %GLFW_LINK% opengl32.lib user32.lib gdi32.lib gdiplus.lib comdlg32.lib ole32.lib shell32.lib
 if errorlevel 1 exit /b 1
@@ -105,6 +115,7 @@ cl /nologo /EHsc /utf-8 /std:c++14 ^
   /I"%ZEUS_ROOT%generated" /I"%ZEUS_ROOT%generated\zeus\src" /I"%ZEUS_RUNTIME_INC%" /I"%PY2CPP_RUNTIME_INC%" /I"%SQLITE_INC%" ^
   "%ZEUS_ROOT%generated\zeus\src\test_commands.cpp" ^
   "%SQLITE_INC%\sqlite3.c" ^
+  %PY2CPP_RUNTIME_LINK% ^
   /Fe:"%ZEUS_ROOT%generated\zeus\src\test_commands.exe" ^
   /link /STACK:8388608
 if errorlevel 1 exit /b 1
@@ -122,6 +133,7 @@ cl /nologo /EHsc /utf-8 /std:c++14 ^
   /I"%ZEUS_ROOT%generated" /I"%ZEUS_ROOT%generated\zeus\src" /I"%ZEUS_RUNTIME_INC%" /I"%PY2CPP_RUNTIME_INC%" /I"%SQLITE_INC%" ^
   "%ZEUS_ROOT%generated\zeus\src\test_jump.cpp" ^
   "%SQLITE_INC%\sqlite3.c" ^
+  %PY2CPP_RUNTIME_LINK% ^
   /Fe:"%ZEUS_ROOT%generated\zeus\src\test_jump.exe" ^
   /link /STACK:8388608
 if errorlevel 1 exit /b 1

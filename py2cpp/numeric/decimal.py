@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from ..builtins import *
 from ..core.exceptions import InvalidOperationError, OverflowError, ValueError
-from .varint import varint
+from .long import long
 
 
 @enum
@@ -68,18 +68,18 @@ class Decimal:
   """符号 + 系数 × 10^指数；特殊值 ``NaN`` / ``Inf``。"""
 
   _sign: bool
-  _coeff: varint
+  _coeff: long
   _exp: int
   _special: int
 
   @staticmethod
   @immutable
-  def _pow10(n: int) -> varint:
+  def _pow10(n: int) -> long:
     return new.pow10(n)
 
   @overload
   def __init__(self):
-    zero: varint = 0
+    zero: long = 0
     self._sign = False
     self._coeff = zero
     self._exp = 0
@@ -87,7 +87,7 @@ class Decimal:
 
   @overload
   def __init__(self, text: str):
-    zero: varint = 0
+    zero: long = 0
     self._sign = False
     self._coeff = zero
     self._exp = 0
@@ -96,16 +96,16 @@ class Decimal:
 
   @overload
   def __init__(self, value: int):
-    zero: varint = 0
+    zero: long = 0
     self._sign = False
     self._coeff = zero
     self._exp = 0
     self._special = 0
     if value < 0:
       self._sign = True
-      self._coeff = varint(str(-value))
+      self._coeff = long(str(-value))
     else:
-      self._coeff = varint(str(value))
+      self._coeff = long(str(value))
     self._exp = 0
     self._normalizeCoeff()
 
@@ -183,14 +183,14 @@ class Decimal:
       expPart = body[expPos + 1 :]
     else:
       intPart = body
-    coeff: varint = varint(intPart if intPart else "0")
+    coeff: long = long(intPart if intPart else "0")
     expVal: int = 0
     if fracPart:
-      coeff = coeff * Self._pow10(len(fracPart)) + varint(fracPart if fracPart else "0")
+      coeff = coeff * Self._pow10(len(fracPart)) + long(fracPart if fracPart else "0")
       expVal -= len(fracPart)
     if expPart:
-      expVal += int(varint(expPart))
-    zero: varint = 0
+      expVal += int(long(expPart))
+    zero: long = 0
     self._sign = signNeg and coeff != zero
     self._coeff = coeff
     self._exp = expVal
@@ -199,21 +199,21 @@ class Decimal:
   def _normalizeCoeff(self) -> None:
     if self._special:
       return
-    zero: varint = 0
+    zero: long = 0
     if self._coeff == zero:
       self._sign = False
       self._exp = 0
       return
-    ten: varint = 10
+    ten: long = 10
     while self._coeff % ten == zero:
       self._coeff //= ten
       self._exp += 1
 
   @staticmethod
   @immutable
-  def _fromFinite(sign: bool, coeff: varint, exp: int) -> Self:
+  def _fromFinite(sign: bool, coeff: long, exp: int) -> Self:
     """由符号/系数/指数直接构造（避免字符串往返）。"""
-    zero: varint = 0
+    zero: long = 0
     out: Self = new()
     out._sign = sign and coeff != zero
     out._coeff = coeff
@@ -226,7 +226,7 @@ class Decimal:
     return self._sign
 
   @property
-  def coefficient(self) -> varint:
+  def coefficient(self) -> long:
     return self._coeff
 
   @property
@@ -235,8 +235,8 @@ class Decimal:
 
   @staticmethod
   @immutable
-  def _formatFinite(sign: bool, coeff: varint, exp: int) -> str:
-    zero: varint = 0
+  def _formatFinite(sign: bool, coeff: long, exp: int) -> str:
+    zero: long = 0
     if coeff == zero:
       return "0"
     c = str(coeff)
@@ -305,40 +305,40 @@ class Decimal:
 
   @staticmethod
   @immutable
-  def _gcdVarint(a: varint, b: varint) -> varint:
-    x: varint = a
-    y: varint = b
-    zero: varint = 0
+  def _gcdLong(a: long, b: long) -> long:
+    x: long = a
+    y: long = b
+    zero: long = 0
     while y != zero:
-      t: varint = y
+      t: long = y
       y = x % y
       x = t
     return x
 
   @immutable
-  def asIntegerRatio(self) -> (varint, varint):
+  def asIntegerRatio(self) -> (long, long):
     if self._special:
       raise OverflowError("cannot convert NaN or Infinity to integer ratio")
-    zero: varint = 0
-    one: varint = 1
+    zero: long = 0
+    one: long = 1
     if self._coeff == zero:
       return (zero, one)
-    num: varint = self._coeff
-    den: varint = one
+    num: long = self._coeff
+    den: long = one
     if self._exp >= 0:
       num *= Self._pow10(self._exp)
     else:
       den *= Self._pow10(-self._exp)
     if self._sign:
       num = -num
-    g: varint = Self._gcdVarint(abs(num), den)
+    g: long = Self._gcdLong(abs(num), den)
     num //= g
     den //= g
     return (num, den)
 
   @immutable
   def __bool__(self) -> bool:
-    zero: varint = 0
+    zero: long = 0
     if self._special:
       return True
     return self._coeff != zero
@@ -408,8 +408,8 @@ class Decimal:
       if other.isNegative:
         return 1
       return -1
-    ac: varint
-    bc: varint
+    ac: long
+    bc: long
     c: int = 0
     if self._exp < other.exponent:
       scale: int = other.exponent - self._exp
@@ -435,9 +435,9 @@ class Decimal:
     return c
 
   @immutable
-  def _alignExp(self, other: Self) -> (varint, varint, int):
-    ac: varint
-    bc: varint
+  def _alignExp(self, other: Self) -> (long, long, int):
+    ac: long
+    bc: long
     exp: int
     if self._exp <= other.exponent:
       shift: int = other.exponent - self._exp
@@ -465,8 +465,8 @@ class Decimal:
       if other.isNegative:
         return new("-Infinity")
       return new("Infinity")
-    ac: varint
-    bc: varint
+    ac: long
+    bc: long
     exp: int
     ac, bc, exp = self._alignExp(other)
     if self.isNegative == other.isNegative:
@@ -494,7 +494,7 @@ class Decimal:
     if self.isNan() or other.isNan():
       return new.NaN
     if self.isInfinite() or other.isInfinite():
-      zero: varint = 0
+      zero: long = 0
       if other.coefficient == zero and not other.isInfinite() and not other.isNan():
         return new.NaN
       if self._coeff == zero and not self.isInfinite() and not self.isNan():
@@ -511,7 +511,7 @@ class Decimal:
   def __truediv__(self, other: Self) -> Self:
     if self.isNan() or other.isNan():
       return new.NaN
-    zero: varint = 0
+    zero: long = 0
     if not other.isFinite() and other.coefficient == zero:
       if self._special:
         return new.NaN
@@ -524,17 +524,17 @@ class Decimal:
       return new._makeSpecial(self.isNegative != other.isNegative, 2)
     if other.isInfinite():
       return new(0)
-    rem: varint = self._coeff % other.coefficient
+    rem: long = self._coeff % other.coefficient
     if rem != zero:
-      scale: varint = 10
-      num: varint = self._coeff
+      scale: long = 10
+      num: long = self._coeff
       num *= scale
-      den: varint = other.coefficient
+      den: long = other.coefficient
       extra: int = 1
       while num % den and extra < 28:
         num *= scale
         extra += 1
-      coeffQ: varint = num // den
+      coeffQ: long = num // den
       expQ: int = self._exp - other.exponent - extra
       return new._fromFinite(self.isNegative != other.isNegative, coeffQ, expQ)
     return new._fromFinite(
@@ -558,12 +558,12 @@ class Decimal:
       pad: int = self._exp - targetExp
       return new._fromFinite(self._sign, self._coeff * Self._pow10(pad), targetExp)
     shift: int = targetExp - self._exp
-    div: varint = Self._pow10(shift)
-    q: varint = self._coeff // div
-    r: varint = self._coeff % div
-    two: varint = 2
-    one: varint = 1
-    half: varint = div // two
+    div: long = Self._pow10(shift)
+    q: long = self._coeff // div
+    r: long = self._coeff % div
+    two: long = 2
+    one: long = 1
+    half: long = div // two
     if r > half or (r == half and q % two == one):
       q += one
     return new._fromFinite(self._sign, q, targetExp)

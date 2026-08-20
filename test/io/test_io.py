@@ -3,13 +3,9 @@
 from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 from py2cpp.io import StringIO, open
-from py2cpp.io.file.path import join
+from py2cpp.io.path import Path
 from py2cpp.test.test_temp import _TestTemp, ensureTestTemp
 
-_IoTmp: str = join(_TestTemp, "test_io_tmp.txt")
-_IoWritelines: str = join(_TestTemp, "test_io_writelines.txt")
-_IoIter: str = join(_TestTemp, "test_io_iter.txt")
-_WithTmp: str = join(_TestTemp, "test_with_tmp.txt")
 
 
 class StringIOWriteTests(TestCaseMixin):
@@ -33,7 +29,7 @@ class StringIOWriteCharsTests(TestCaseMixin):
     buf[0] = ord("a")
     buf[1] = ord("b")
     buf[2] = ord("c")
-    self.assertEqual(sio.write(buf, 3), 3)
+    self.assertEqual(sio.write(buf), 3)
     self.assertEqual(sio.value, "abc")
     self.assertEqual(sio.tell(), 3)
 
@@ -174,11 +170,11 @@ class FileIOWriteReadTests(TestCaseMixin):
   @override
   def test(self):
     ensureTestTemp()
-    w = open(_IoTmp, "wb")
+    w = open(str(Path(_TestTemp) / "test_io_tmp.txt"), "wb")
     self.assertTrue(w)
     self.assertEqual(w.write("abc\n"), 4)
     w.close()
-    r = open(_IoTmp, "rb")
+    r = open(str(Path(_TestTemp) / "test_io_tmp.txt"), "rb")
     self.assertTrue(r)
     self.assertEqual(r.read(), "abc\n")
     r.close()
@@ -190,10 +186,10 @@ class FileIOReadlineTests(TestCaseMixin):
   @override
   def test(self):
     ensureTestTemp()
-    w = open(_IoTmp, "wb")
+    w = open(str(Path(_TestTemp) / "test_io_tmp.txt"), "wb")
     w.write("line1\nline2\n")
     w.close()
-    r = open(_IoTmp, "rb")
+    r = open(str(Path(_TestTemp) / "test_io_tmp.txt"), "rb")
     self.assertEqual(r.readLine(), "line1\n")
     self.assertEqual(r.readLine(), "line2\n")
     self.assertEqual(r.readLine(), "")
@@ -206,10 +202,10 @@ class FileIOReadlinesTests(TestCaseMixin):
   @override
   def test(self):
     ensureTestTemp()
-    w = open(_IoTmp, "wb")
+    w = open(str(Path(_TestTemp) / "test_io_tmp.txt"), "wb")
     w.write("a\nbb\nccc\n")
     w.close()
-    r = open(_IoTmp, "rb")
+    r = open(str(Path(_TestTemp) / "test_io_tmp.txt"), "rb")
     got: list[str] = r.readLines()
     self.assertEqual(len(got), 3)
     self.assertEqual(got[0], "a\n")
@@ -228,14 +224,14 @@ class FileIOWritelinesTests(TestCaseMixin):
   @override
   def test(self):
     ensureTestTemp()
-    w = open(_IoWritelines, "wb")
+    w = open(str(Path(_TestTemp) / "test_io_writelines.txt"), "wb")
     parts: list[str] = []
     parts.append("hi")
     parts.append("\n")
     parts.append("there")
     w.writeLines(parts)
     w.close()
-    r = open(_IoWritelines, "rb")
+    r = open(str(Path(_TestTemp) / "test_io_writelines.txt"), "rb")
     self.assertEqual(r.read(), "hi\nthere")
     r.close()
 
@@ -246,10 +242,10 @@ class FileIOIterTests(TestCaseMixin):
   @override
   def test(self):
     ensureTestTemp()
-    w = open(_IoIter, "wb")
+    w = open(str(Path(_TestTemp) / "test_io_iter.txt"), "wb")
     w.write("p\nq\n")
     w.close()
-    r = open(_IoIter, "rb")
+    r = open(str(Path(_TestTemp) / "test_io_iter.txt"), "rb")
     out: list[str] = []
     for line in r:
       out.append(line)
@@ -265,10 +261,10 @@ class FileIOSeekTellTests(TestCaseMixin):
   @override
   def test(self):
     ensureTestTemp()
-    w = open(_IoTmp, "wb")
+    w = open(str(Path(_TestTemp) / "test_io_tmp.txt"), "wb")
     w.write("abcdef")
     w.close()
-    r = open(_IoTmp, "rb")
+    r = open(str(Path(_TestTemp) / "test_io_tmp.txt"), "rb")
     self.assertEqual(r.tell(), 0)
     self.assertEqual(r.read(3), "abc")
     self.assertEqual(r.tell(), 3)
@@ -294,10 +290,10 @@ class FileWithCloseTests(TestCaseMixin):
   @override
   def test(self):
     ensureTestTemp()
-    with open(_WithTmp, "wb") as f:
+    with open(str(Path(_TestTemp) / "test_with_tmp.txt"), "wb") as f:
       self.assertTrue(f)
       f.write("data")
-    r = open(_WithTmp, "rb")
+    r = open(str(Path(_TestTemp) / "test_with_tmp.txt"), "rb")
     self.assertEqual(r.read(), "data")
     r.close()
 

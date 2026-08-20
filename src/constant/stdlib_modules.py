@@ -40,15 +40,11 @@ UMBRELLA_PREFIX_TIERS: tuple[str, ...] = (
 )
 
 UMBRELLA_PRIORITY_MODULES: tuple[str, ...] = (
-  "io/file",
-  "io/file/path",
   "io/path",
   "serde/json",
   "serde/yaml",
   "alg/protocols",
-  # ``console`` 包根再导出子模块类型；须先于 ``console`` 打开嵌套 namespace
   "console/exceptions",
-  "console/native_sys",
   "console/parse",
   "console/render",
   "console/task",
@@ -166,9 +162,8 @@ HEADER_SKIP_OPERATORS_BEFORE_INL_REL: frozenset[str] = frozenset({
 HEADER_INL_BEFORE_NS_CLOSE_PKG: frozenset[str] = frozenset({"py2cpp"})
 
 JSON_API_MODULE_REL = "serde/json"
-JSON_API_EXTRA_HEADER_INCLUDE_RELS: tuple[str, ...] = ("io", "io/file")
+JSON_API_EXTRA_HEADER_INCLUDE_RELS: tuple[str, ...] = ("io", "io/path")
 
-IO_FILE_PATH_MODULE_REL = "io/file/path"
 IO_PATH_MODULE_REL = "io/path"
 SYSTEM_DATETIME_MODULE_REL = "system/datetime"
 PROTOCOL_TRAITS_MODULE_REL = "core/protocols"

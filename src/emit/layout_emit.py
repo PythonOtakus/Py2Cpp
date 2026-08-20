@@ -443,8 +443,6 @@ def write_per_module_headers(tr: Translator) -> None:
     # UI 等可能先于万能头 io-late ``#undef`` 拉入本头；在头内再清一轮 Win 宏（如 ``stat``）
     if module_path in (
       "py2cpp/io/path",
-      "py2cpp/io/file/path",
-      "py2cpp/io/file",
       "py2cpp/console",
     ):
       from ..constant.stdlib_modules import UMBRELLA_MSVC_UNDEF_MACROS

@@ -558,6 +558,122 @@ class StrLiteralFindTests(TestCaseMixin):
     self.assertEqual("abcabc".rfind("abc"), 3)
 
 
+
+class StrCffiUtf8Tests(TestCaseMixin):
+  _testTag = 320
+
+  @override
+  def test(self):
+    text: str = "Aé中😀"
+    chars: char[:] = text.toArray()
+    self.assertEqual(len(chars), 4)
+    self.assertEqual(str.fromArray(chars), text)
+    self.assertEqual(str.fromSpan(chars.view), text)
+    chars[0] = char(ord("B"))
+    self.assertEqual(text[0], char(ord("A")))
+    data: byte[:] = text.toArrayUtf8()
+    self.assertEqual(len(data), 11)
+    self.assertEqual(int(data[0]), ord("A"))
+    self.assertEqual(int(data[1]), 0xC3)
+    self.assertEqual(int(data[2]), 0xA9)
+    self.assertEqual(int(data[3]), 0xE4)
+    self.assertEqual(int(data[6]), 0xF0)
+    self.assertEqual(int(data[10]), 0)
+    self.assertEqual(str.fromArrayUtf8(data, 10), text)
+    raw: byte[:] = [0xC3, 0xA9]
+    self.assertEqual(str.fromArrayUtf8(raw), chr(0xE9))
+    self.assertEqual(str.fromArrayBytes(raw, 2), chr(0xC3) + chr(0xA9))
+    self.assertEqual(str.fromSpanUtf8(raw.view), chr(0xE9))
+    copied: str = ""
+    copied.copyFromSpanUtf8(raw.view)
+    self.assertEqual(copied, chr(0xE9))
+    copied.copyToSpanUtf8(data.view)
+    self.assertEqual(str.fromUtf8(cast[utf8ptr](data.view.at())), text)
+    self.assertEqual("abcd".replaceSlice("X"), "X")
+    self.assertEqual("abcd".replaceSlice("X", 1, 3), "aXd")
+    copiedChars: char[:] = new(0)
+    self.assertEqual("abcd".copySliceTo(copiedChars), 4)
+    self.assertEqual(str.fromArray(copiedChars), "abcd")
+    with text.useUtf8() as ctext:
+      self.assertEqual(len(ctext.view), 10)
+      self.assertEqual(str.fromUtf8(ctext), text)
+      self.assertEqual(str(ctext), text)
+    invalid: byte[:] = [0xC3]
+    raised: bool = False
+    try:
+      str.fromSpanUtf8(invalid.view)
+    except ValueError:
+      raised = True
+    self.assertTrue(raised)
+    raised = False
+    try:
+      with "a\0b".useUtf8() as _:
+        pass
+    except ValueError:
+      raised = True
+    self.assertTrue(raised)
+
+
+class Strutf8ptrWriterTests(TestCaseMixin):
+  _testTag = 323
+
+  @override
+  def test(self):
+    raised: bool = False
+    try:
+      str.fromUtf8Writer(lambda p, capacity: capacity, 4)
+    except ValueError:
+      raised = True
+    self.assertTrue(raised)
+    raised = False
+    try:
+      str.fromUtf8Writer(lambda p, capacity: 0, 4, 5)
+    except ValueError:
+      raised = True
+    self.assertTrue(raised)
+
+
+class StrCffiUtf16Tests(TestCaseMixin):
+  _testTag = 325
+
+  @override
+  def test(self):
+    text: str = "Aé中😀"
+    data: uint16[:] = text.toArrayUtf16()
+    self.assertEqual(len(data), 6)
+    self.assertEqual(int(data[0]), ord("A"))
+    self.assertEqual(int(data[1]), 0xE9)
+    self.assertEqual(int(data[2]), 0x4E2D)
+    self.assertEqual(int(data[3]), 0xD83D)
+    self.assertEqual(int(data[4]), 0xDE00)
+    self.assertEqual(int(data[5]), 0)
+    self.assertEqual(str.fromArrayUtf16(data, 5), text)
+    unit: uint16[:] = [0xE9]
+    self.assertEqual(str.fromArrayUtf16(unit), chr(0xE9))
+    copied: str = ""
+    copied.copyFromSpanUtf16(data.view[:5])
+    self.assertEqual(copied, text)
+    copied.copyToSpanUtf16(data.view)
+    self.assertEqual(str.fromUtf16(cast[utf16ptr](data.view.at())), text)
+    with text.useUtf16() as ctext:
+      self.assertEqual(len(ctext.view), 5)
+      self.assertEqual(str.fromUtf16(ctext), text)
+      self.assertEqual(str(ctext), text)
+    invalid: uint16[:] = [0xD83D]
+    raised: bool = False
+    try:
+      str.fromSpanUtf16(invalid.view)
+    except ValueError:
+      raised = True
+    self.assertTrue(raised)
+    raised = False
+    try:
+      with "a\0b".useUtf16() as _:
+        pass
+    except ValueError:
+      raised = True
+    self.assertTrue(raised)
+
 def main():
   suite: TestSuite = new()
   for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):

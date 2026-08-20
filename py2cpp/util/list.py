@@ -15,7 +15,6 @@ from .slice import slice
 class FrozenListMixin[Element, StackLength: int = 0]:
   """序列共享核心（``list`` / ``frozenlist``）；宿主须声明 ``_length``、``_capacity``、``_data``。"""
 
-  _EndIndex: int @const = int.Min
   def __del__(self):
     self._clear()
 
@@ -158,7 +157,7 @@ class FrozenListMixin[Element, StackLength: int = 0]:
 
   @immutable
   def _normStop(self, end: int) -> int:
-    if end == Self._EndIndex:
+    if end == int.Max:
       return self._length
     if end < 0:
       end = self._length + end
@@ -397,7 +396,7 @@ class list[Element, StackLength: int = 0](
       self.append(other[i])
 
   @immutable
-  def index(self, value: Element, start: int = 0, end: int = Self._EndIndex) -> int:
+  def index(self, value: Element, start: int = 0, end: int = int.Max) -> int:
     start = self._normStart(start)
     stop: int = self._normStop(end)
     for i in range(start, stop):
@@ -657,7 +656,7 @@ class frozenlist[Element, StackLength: int = 0](
     return n
 
   @immutable
-  def index(self, value: Element, start: int = 0, end: int = Self._EndIndex) -> int:
+  def index(self, value: Element, start: int = 0, end: int = int.Max) -> int:
     start = self._normStart(start)
     stop: int = self._normStop(end)
     for i in range(start, stop):

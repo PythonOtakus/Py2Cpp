@@ -14,7 +14,7 @@ class CopyableAssignTests(unittest.TestCase):
 from py2cpp import *
 
 @copyable
-class varint:
+class long:
   def __init__(self):
     self._x: int = 0
 
@@ -39,7 +39,7 @@ class varint:
 
   def test_ann_assign_same_class_uses_copy_ctor(self):
     cpp = self._translate("    b: Self = self\n")
-    self.assertTrue("PyVarInt b(self)" in cpp or "PyVarInt b = *this" in cpp)
+    self.assertTrue("PyLong b(self)" in cpp or "PyLong b = *this" in cpp)
     self.assertNotIn("b.__move__(self)", cpp)
 
   def test_reassign_uses_copy_not_move(self):

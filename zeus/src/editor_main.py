@@ -2,7 +2,7 @@
 from py2cpp import *
 from py2cpp.io.path import Path
 
-from .command import CommandResult, ZeusCommand
+from .command import CommandResult, ZeusCommandUnion
 from .editor.shell import EditorShell
 
 
@@ -12,11 +12,11 @@ def _load_jump_scene(shell: EditorShell) -> int:
   if not scene.exists():
     print("scene not found: " + jump_scene)
     return 1
-  r: CommandResult = shell.session.dispatch(ZeusCommand.SceneLoad(jump_scene))
+  r: CommandResult = shell.session.dispatch(ZeusCommandUnion.SceneLoad(jump_scene))
   if not r.ok:
     print("SceneLoad failed: " + r.message)
     return 1
-  shell.session.dispatch(ZeusCommand.EditorSelect("Player"))
+  shell.session.dispatch(ZeusCommandUnion.EditorSelect("Player"))
   print("Zeus editor: " + jump_scene + " (" + shell.session.bus.scene_name + ")")
   return 0
 

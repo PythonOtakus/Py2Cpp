@@ -165,28 +165,28 @@ class TemplateConventionsTests(unittest.TestCase):
 
     lines = [
       "PY2CPP_IGNORE\n",
-      '#include "py2cpp/io/file.h"\n',
-      "namespace py2cpp { namespace io { namespace file {\n",
+      '#include "py2cpp/io/path.h"\n',
+      "namespace py2cpp { namespace io { namespace path {\n",
       "PY2CPP_END\n",
       "\n",
-      "PY2CPP_INJECT_CLASS(PyScandirIterator)\n",
+      "PY2CPP_INJECT_CLASS(PyPath)\n",
       "  void foo();\n",
       "PY2CPP_END\n",
     ]
     hits = scan_inject_class_shell_violations(lines)
-    self.assertTrue(any("class PyScandirIterator" in msg for _, msg in hits))
+    self.assertTrue(any("class PyPath" in msg for _, msg in hits))
 
   def test_t22_rejects_class_name_mismatch(self):
     from src.codegen.template_scan import scan_inject_class_shell_violations
 
     lines = [
       "PY2CPP_IGNORE\n",
-      '#include "py2cpp/io/file.h"\n',
-      "namespace py2cpp { namespace io { namespace file {\n",
+      '#include "py2cpp/io/path.h"\n',
+      "namespace py2cpp { namespace io { namespace path {\n",
       "class Foo {\n",
       "PY2CPP_END\n",
       "\n",
-      "PY2CPP_INJECT_CLASS(ScandirIterator)\n",
+      "PY2CPP_INJECT_CLASS(Path)\n",
       "  void foo();\n",
       "PY2CPP_END\n",
       "\n",
@@ -202,12 +202,12 @@ class TemplateConventionsTests(unittest.TestCase):
 
     lines = [
       "PY2CPP_IGNORE\n",
-      '#include "py2cpp/io/file.h"\n',
-      "namespace py2cpp { namespace io { namespace file {\n",
-      "class ScandirIterator {\n",
+      '#include "py2cpp/io/path.h"\n',
+      "namespace py2cpp { namespace io { namespace path {\n",
+      "class Path {\n",
       "PY2CPP_END\n",
       "\n",
-      "PY2CPP_INJECT_CLASS(ScandirIterator)\n",
+      "PY2CPP_INJECT_CLASS(Path)\n",
       "  void foo();\n",
       "PY2CPP_END\n",
       "\n",

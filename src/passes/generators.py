@@ -2448,7 +2448,7 @@ def expand_generators(tr: Translator) -> None:
           elif isinstance(inner, ast.FunctionDef) and body_needs_resume_machine(
             inner.body,
           ):
-            if skip_gen:
+            if skip_gen or _is_decorator_or_context_factory(inner):
               new_cls_body.append(inner)
               continue
             gen_name = f"{stmt.name}_{inner.name}{GENERATOR_SUFFIX}"

@@ -4000,7 +4000,7 @@ class _StrictStyleChecker(ast.NodeVisitor):
             self._add(self._s06_construct_rule(), node, _s06_msg_prefer('new(...)', 'Self(...) 或显式 `Cls(...)` / `Cls.静态成员`', scene, example=example, reason=_s06_reason_no_new_in_expr()))
         if isinstance(node.func, ast.Attribute) and _is_new_receiver_attribute(node.func) and (self._context_has('aug_assign') or self._context_has('binop')):
             attr = node.func.attr
-            self._add(S06D, node, _s06_msg_prefer(f'new.{attr}(...)', f'Self.{attr}(...) 或显式 Cls.{attr}(...)', self._s06_scene(), example=f'`varint._one() + varint._one()`、`rotation * Vector3.right` 勿 `new.{attr}() + new.{attr}()`', reason=_s06_reason_no_new_in_expr()))
+            self._add(S06D, node, _s06_msg_prefer(f'new.{attr}(...)', f'Self.{attr}(...) 或显式 Cls.{attr}(...)', self._s06_scene(), example=f'`long._one() + long._one()`、`rotation * Vector3.right` 勿 `new.{attr}() + new.{attr}()`', reason=_s06_reason_no_new_in_expr()))
         self._check_s06_construct_priority(node)
         self._check_s06_prefer_new_receiver_static(node)
         if isinstance(node.func, ast.Subscript) and isinstance(node.func.value, ast.Name) and (node.func.value.id == 'cast') and self._in_new_preferred_context() and (self._type_context_ann is not None) and node.args:
@@ -4010,7 +4010,7 @@ class _StrictStyleChecker(ast.NodeVisitor):
                 bad = f'cast[{ast.unparse(cast_ty)}](...)'
                 self._add(S40, node, _strict_msg(bad, 'cast(...)', self._s06_scene(), example=f'`x: {ast.unparse(ctx_ty)} = cast(obj)` 勿 `{bad}`', reason='赋值/返回注解已给出目标类型，须 `cast(obj)` 简写'))
         info = _class_info_for_ctor(self.tr, node.func)
-        if info is not None and info.name != 'varint' and (not self._s06_call_exempt(node)) and self._in_new_preferred_context() and self._s06_cls_call_in_new_context(node, info) and (self._dunder_method not in ('__copy__', '__move__')) and (id(node) not in self._kwargs_opts_ctor_ids) and (not self._context_has('binop')) and (not self._context_has('aug_assign')):
+        if info is not None and info.name != 'long' and (not self._s06_call_exempt(node)) and self._in_new_preferred_context() and self._s06_cls_call_in_new_context(node, info) and (self._dunder_method not in ('__copy__', '__move__')) and (id(node) not in self._kwargs_opts_ctor_ids) and (not self._context_has('binop')) and (not self._context_has('aug_assign')):
             ann_cls = _ann_root_name(self._type_context_ann)
             if ann_cls == info.name and node.args and (not node.keywords):
                 bad = f'{info.name}[T](...)' if isinstance(node.func, ast.Subscript) else f'{info.name}(...)'

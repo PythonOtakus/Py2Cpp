@@ -18,20 +18,31 @@ class byte:
   pass
 
 
-@native_name("CStr")
-class CStr:
-  """C 字符串指针（C++ ``typedef const char* CStr``），非 py2cpp ``str`` 类。"""
+@native_name("utf8ptr")
+class utf8ptr:
+  """C 字符串指针（C++ ``typedef const char* utf8ptr``），非 py2cpp ``str`` 类。"""
 
   pass
 
 
-# 有符号 64 位整数（C++ ``PyInt64`` / ``int64_t``）
+@native_name("utf16ptr")
+class utf16ptr:
+  """Windows UTF-16 C string pointer."""
+
+  pass
+
+
+# 有符号 16 位整数（C++ `PyInt16` / `int16_t`）
+type int16 = int
+# 有符号 64 位整数（C++ `PyInt64` / `int64_t`）
 type int64 = int
+# 无符号 16 位整数（C++ `PyUInt16` / `uint16_t`）
+type uint16 = int
 # 无符号 32 位整数（C++ ``PyUInt`` / ``uint32_t``）
 type uint = int
 # 无符号 64 位整数（C++ ``PyUInt64`` / ``uint64_t``）
 type uint64 = int
-# 指针宽度无符号整数（C++ ``PyUPtr`` / ``uintptr_t``），存 ``void*`` / ``FILE*`` 等
+# 指针宽度无符号整数（C++ ``PyUIntPtr`` / ``uintptr_t``），存 ``void*`` / ``FILE*`` 等
 type uintptr = int
 # IEEE 754 双精度浮点（C++ ``PyFloat64`` / ``double``）
 type float64 = float
@@ -56,24 +67,62 @@ class Callable:
 
 
 class Self:
-  """``@staticproperty`` / 混入展开时表示当前类（翻译期替换为具体类名）。
+  """``@staticproperty`` / 混入展开时表示当前类（翻译期替换为具体类名）。"""
 
-  ``Self.getFieldType(field)`` / ``Self.getFieldDefault(field)`` 仅可用于会被
-  ``Self.iterFields`` 展开的混入方法；``field`` 须在翻译期解析为当前宿主的字段名。
-  ``getFieldType`` 替换为去除全部 ``@`` 标记后的基础类型；``getFieldDefault``
-  替换为字段默认值表达式，无默认则为 ``None``。
-  """
+  @staticmethod
+  def iterFields(*, publicOnly: bool = False, mro: bool = False, glob: str | None = None):
+    """翻译期枚举当前宿主类的字段名；支持 ``@`` 标记、可见性、继承和名称筛选。"""
+    pass
+
+  @staticmethod
+  def enumFields(*, publicOnly: bool = False, mro: bool = False):
+    """翻译期枚举 ``(字段序号, 字段名)``；参数语义与 ``iterFields`` 一致。"""
+    pass
 
   @staticmethod
   def getFieldType(field):
+    """翻译期取得字段去除全部 ``@`` 标记后的基础类型。"""
     pass
 
   @staticmethod
   def getFieldDefault(field):
+    """翻译期取得字段默认值表达式；字段无默认值时结果为 ``None``。"""
     pass
 
-  pass
+  @staticmethod
+  def getFieldAnnotation(field):
+    """翻译期取得字段上的指定 ``@`` 标记；标记不存在时结果为 ``None``。"""
+    pass
 
+  @staticmethod
+  def getFieldAnnotations(field):
+    """翻译期取得字段的全部 ``@`` 标记，顺序与源注解自外向内一致。"""
+    pass
+
+  @staticmethod
+  def iterMethods(*, publicOnly: bool = False, mro: bool = False, glob: str | None = None):
+    """翻译期枚举当前宿主类的方法名；支持 ``@`` 标记、可见性、继承和名称筛选。"""
+    pass
+
+  @staticmethod
+  def getMethodAnnotation(method):
+    """翻译期取得方法上的指定 ``@`` 标记；标记不存在时结果为 ``None``。"""
+    pass
+
+  @staticmethod
+  def iterMethodParams(method):
+    """翻译期枚举方法的形参名，不包含实例方法的 ``self``。"""
+    pass
+
+  @staticmethod
+  def getMethodParamType(method, param):
+    """翻译期取得指定方法形参去除全部 ``@`` 标记后的基础类型。"""
+    pass
+
+  @staticmethod
+  def getMethodReturnType(method):
+    """翻译期取得方法返回值去除全部 ``@`` 标记后的基础类型；无返回注解时为 ``None``。"""
+    pass
 
 class Super:
   """直接实体基类类型（严格等于译器注入的 ``type __base__``；对标 ``Self``）。"""
@@ -627,7 +676,7 @@ def input[Element = str](prompt: str = "") -> Element:
   return cast[Element](prompt)
 
 
-def print(*args, sep: CStr = " ", end: CStr = "\n", flush: bool = False):
+def print(*args, sep: utf8ptr = " ", end: utf8ptr = "\n", flush: bool = False):
   """内置 print：普通实参 ``str(...)`` 后 ``fprintf``；f-string 实参 ``PyStr::format``（见 ``_emit_print``）。"""
   pass
 

@@ -6,7 +6,7 @@ ROOT = Path(__file__).resolve().parents[1]
 n = 0
 for p in (ROOT / "ffi").rglob("*.pyi"):
   t = p.read_text(encoding="utf-8")
-  t2 = re.sub(r"\bc_str\b", "CStr", t)
+  t2 = re.sub(r"\bc_str\b", "utf8ptr", t)
   if t2 != t:
     p.write_text(t2, encoding="utf-8", newline="\n")
     n += 1

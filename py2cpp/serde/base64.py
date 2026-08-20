@@ -60,7 +60,14 @@ def _bytesFromDecodeText(s: str) -> byte[:]:
 
 
 @immutable
-def _appendBytes(dst: byte[:], at: int, src: byte[:], end: int) -> int:
+def _appendBytes(
+  dst: byte[:],
+  at: int,
+  src: byte[:],
+  end: int = int.Max,
+) -> int:
+  if end > len(src):
+    end = len(src)
   if end <= 0:
     return at
   need: int = at + end
@@ -270,10 +277,10 @@ def encodeBytes(s: bytes) -> bytes:
       end = n
     chunk: bytes = s[i:end]
     line: bytes = b64encode(chunk)
-    lineBuf: byte[:] = _bytesFromDecodeData(line)
-    nlBuf: byte[:] = _bytesFromDecodeData(nl)
-    at = _appendBytes(out, at, lineBuf, len(line))
-    at = _appendBytes(out, at, nlBuf, 1)
+    lineArray: byte[:] = _bytesFromDecodeData(line)
+    nlArray: byte[:] = _bytesFromDecodeData(nl)
+    at = _appendBytes(out, at, lineArray, len(line))
+    at = _appendBytes(out, at, nlArray, 1)
   trimmed: byte[:] = new(at)
   for j in range(at):
     trimmed[j] = out[j]

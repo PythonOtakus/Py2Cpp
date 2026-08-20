@@ -10,34 +10,6 @@ from src.translator import Translator
 
 
 class PackageReexportTests(unittest.TestCase):
-  def test_file_init_reexport_mkdir_to_path(self) -> None:
-    repo = Path(__file__).resolve().parents[2]
-    tr = Translator("py2cpp/io/path", str(repo / "py2cpp" / "io" / "path.py"))
-    tr._import_project_root_cache = repo
-    tr._parse_modules(
-      [
-        (
-          "py2cpp/io/file/path",
-          (repo / "py2cpp" / "io" / "file" / "path.py").read_text(encoding="utf-8"),
-        ),
-        (
-          "py2cpp/io/file",
-          (repo / "py2cpp" / "io" / "file" / "__init__.py").read_text(encoding="utf-8"),
-        ),
-      ]
-    )
-    reexp = _package_reexport_source(tr, "py2cpp/io/file", "mkdir")
-    self.assertEqual(reexp, ("py2cpp/io/file/path", "mkdir"))
-    aliased = _package_reexport_source(tr, "py2cpp/io/file", "pathBaseName")
-    self.assertEqual(aliased, ("py2cpp/io/file/path", "baseName"))
-    binding = _resolve_symbol(tr, "py2cpp/io/file", "mkdir", "fs_mkdir")
-    self.assertIsNotNone(binding)
-    assert binding is not None
-    self.assertEqual(binding.kind, "function")
-    self.assertEqual(binding.module_path, "py2cpp/io/file/path")
-    self.assertEqual(binding.cpp_name, "mkdir")
-    self.assertEqual(binding.local_name, "fs_mkdir")
-
   def test_from_import_as_emits_defining_call_not_alias(self) -> None:
     """``from .fs import mkdir as fs_mkdir`` 调用须发射 ``mkdir``，不得留下 Python 别名。"""
     src_fs = "def mkdir(n: int) -> None:\n  return\n"

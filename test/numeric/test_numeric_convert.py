@@ -6,16 +6,28 @@ from py2cpp.numeric.modint import ModInt
 type Int = ModInt[int, 1000000007]
 
 
-class VarIntConvertTests(TestCaseMixin):
+class FixedWidthIntConvertTests(TestCaseMixin):
+  _testTag = 0
+
+  @override
+  def test(self):
+    signed: int16 = int16(-123)
+    unsigned: uint16 = uint16(65535)
+    self.assertEqual(signed, -123)
+    self.assertEqual(unsigned, 65535)
+    self.assertEqual(int16.Min, -32768)
+    self.assertEqual(uint16.Max, 65535)
+
+class LongConvertTests(TestCaseMixin):
   _testTag = 1
 
   @override
   def test(self):
-    v: varint = 42
+    v: long = 42
     self.assertEqual(float(v), 42.0)
     self.assertEqual(complex(v).real, 42)
     self.assertEqual(complex(v).imag, 0)
-    big: varint = 16777215
+    big: long = 16777215
     self.assertEqual(float(big), 16777215.0)
 
 

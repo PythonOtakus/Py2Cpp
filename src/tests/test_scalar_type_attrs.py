@@ -22,12 +22,16 @@ class ScalarTypeStaticAttrTests(unittest.TestCase):
   def test_int_min_max(self):
     self.assertEqual(scalar_type_static_attr_cpp("int", "Min"), "PY2CPP_INT_MIN")
     self.assertEqual(scalar_type_static_attr_cpp("int", "Max"), "PY2CPP_INT_MAX")
+    self.assertEqual(scalar_type_static_attr_cpp("int16", "Min"), "PY2CPP_INT16_MIN")
+    self.assertEqual(scalar_type_static_attr_cpp("int16", "Max"), "PY2CPP_INT16_MAX")
     self.assertEqual(scalar_type_static_attr_cpp("int64", "Min"), "PY2CPP_INT64_MIN")
     self.assertEqual(scalar_type_static_attr_cpp("int64", "Max"), "PY2CPP_INT64_MAX")
 
   def test_uint_min_max(self):
     self.assertEqual(scalar_type_static_attr_cpp("uint", "Min"), "PY2CPP_UINT_MIN")
     self.assertEqual(scalar_type_static_attr_cpp("uint", "Max"), "PY2CPP_UINT_MAX")
+    self.assertEqual(scalar_type_static_attr_cpp("uint16", "Min"), "PY2CPP_UINT16_MIN")
+    self.assertEqual(scalar_type_static_attr_cpp("uint16", "Max"), "PY2CPP_UINT16_MAX")
     self.assertEqual(scalar_type_static_attr_cpp("uint64", "Min"), "PY2CPP_UINT64_MIN")
     self.assertEqual(scalar_type_static_attr_cpp("uint64", "Max"), "PY2CPP_UINT64_MAX")
 

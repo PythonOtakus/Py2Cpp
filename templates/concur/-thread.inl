@@ -66,7 +66,7 @@ namespace py2cpp_concur_thread_detail
     std::unique_lock<std::mutex>& lock,
     double timeout)
   {
-    if (timeout < 0.0)
+    if (timeout == PY2CPP_FLOAT64_INF)
     {
       cv.wait(lock);
       return true;
@@ -207,22 +207,22 @@ namespace py2cpp_concur_thread_detail
   static void retain_thread(ThreadState* st);
   static void release_thread(ThreadState* st);
 
-  static LockState* lock_from_handle(PyUPtr handle)
+  static LockState* lock_from_handle(PyUIntPtr handle)
   {
     return reinterpret_cast<LockState*>((uintptr_t)handle);
   }
 
-  static RLockState* rlock_from_handle(PyUPtr handle)
+  static RLockState* rlock_from_handle(PyUIntPtr handle)
   {
     return reinterpret_cast<RLockState*>((uintptr_t)handle);
   }
 
-  static ConditionState* condition_from_handle(PyUPtr handle)
+  static ConditionState* condition_from_handle(PyUIntPtr handle)
   {
     return reinterpret_cast<ConditionState*>((uintptr_t)handle);
   }
 
-  static ThreadState* thread_from_handle(PyUPtr handle)
+  static ThreadState* thread_from_handle(PyUIntPtr handle)
   {
     return reinterpret_cast<ThreadState*>((uintptr_t)handle);
   }
@@ -338,13 +338,13 @@ namespace py2cpp_concur_thread_detail
   }
 
   template<typename T>
-  static AtomicState<T>* atomic_from_handle(PyUPtr handle)
+  static AtomicState<T>* atomic_from_handle(PyUIntPtr handle)
   {
     return reinterpret_cast<AtomicState<T>*>((uintptr_t)handle);
   }
 
   template<typename T>
-  static QueueState<T>* queue_from_handle(PyUPtr handle)
+  static QueueState<T>* queue_from_handle(PyUIntPtr handle)
   {
     return reinterpret_cast<QueueState<T>*>((uintptr_t)handle);
   }
@@ -418,11 +418,11 @@ namespace py2cpp_concur_thread_detail
 
   static void validate_blocking_timeout(PyBool blocking, PyFloat64 timeout)
   {
-    if (!blocking && timeout >= 0.0)
+    if (!blocking && timeout != PY2CPP_FLOAT64_INF)
     {
       throw PY2CPP_TYPE(PyValueError)();
     }
-    if (timeout < -1.0)
+    if (timeout < 0.0)
     {
       throw PY2CPP_TYPE(PyValueError)();
     }
@@ -461,13 +461,13 @@ namespace py2cpp_concur_thread_detail
       return false;
     }
     double end = 0.0;
-    if (timeout >= 0.0)
+    if (timeout != PY2CPP_FLOAT64_INF)
     {
       end = timeout_deadline(timeout);
     }
     while (st->locked)
     {
-      if (timeout < 0.0)
+      if (timeout == PY2CPP_FLOAT64_INF)
       {
         st->cv.wait(lk);
       }
@@ -549,13 +549,13 @@ namespace py2cpp_concur_thread_detail
       return false;
     }
     double end = 0.0;
-    if (timeout >= 0.0)
+    if (timeout != PY2CPP_FLOAT64_INF)
     {
       end = timeout_deadline(timeout);
     }
     while (st->owner != 0)
     {
-      if (timeout < 0.0)
+      if (timeout == PY2CPP_FLOAT64_INF)
       {
         st->cv.wait(lk);
       }
@@ -713,7 +713,7 @@ namespace py2cpp_concur_thread_detail
   {
     if (st->lock_kind == CONDITION_LOCK)
     {
-      acquire_lock_state(reinterpret_cast<LockState*>(st->lock_state), true, -1.0);
+      acquire_lock_state(reinterpret_cast<LockState*>(st->lock_state), true, PY2CPP_FLOAT64_INF);
     }
     else
     {
@@ -727,7 +727,7 @@ namespace py2cpp_concur_thread_detail
     {
       throw PY2CPP_TYPE(PyRuntimeError)();
     }
-    if (timeout < -1.0)
+    if (timeout < 0.0)
     {
       throw PY2CPP_TYPE(PyValueError)();
     }
@@ -736,7 +736,7 @@ namespace py2cpp_concur_thread_detail
       throw PY2CPP_TYPE(PyRuntimeError)();
     }
     double end = 0.0;
-    if (timeout >= 0.0)
+    if (timeout != PY2CPP_FLOAT64_INF)
     {
       end = timeout_deadline(timeout);
     }
@@ -753,7 +753,7 @@ namespace py2cpp_concur_thread_detail
       saved = condition_release_save_state(st);
       released = true;
       PyBool ok = true;
-      if (timeout < 0.0)
+      if (timeout == PY2CPP_FLOAT64_INF)
       {
         st->cv.wait(lk);
       }
@@ -925,13 +925,13 @@ void _barrierNoAction()
 template<typename _Value>
 PyAtomic<_Value>::PyAtomic()
 {
-  _state = (PyUPtr)(uintptr_t)(new py2cpp_concur_thread_detail::AtomicState<_Value>(_Value()));
+  _state = (PyUIntPtr)(uintptr_t)(new py2cpp_concur_thread_detail::AtomicState<_Value>(_Value()));
 }
 
 template<typename _Value>
 PyAtomic<_Value>::PyAtomic(_Value value)
 {
-  _state = (PyUPtr)(uintptr_t)(new py2cpp_concur_thread_detail::AtomicState<_Value>(value));
+  _state = (PyUIntPtr)(uintptr_t)(new py2cpp_concur_thread_detail::AtomicState<_Value>(value));
 }
 
 template<typename _Value>
@@ -1034,7 +1034,7 @@ _Value PyAtomic<_Value>::fetchSub(_Value delta)
 
 PyLock::PyLock()
 {
-  _state = (PyUPtr)(uintptr_t)(new py2cpp_concur_thread_detail::LockState());
+  _state = (PyUIntPtr)(uintptr_t)(new py2cpp_concur_thread_detail::LockState());
 }
 
 PyLock::~PyLock()
@@ -1083,7 +1083,7 @@ PyBool PyLock::locked() const
 
 PyLock& PyLock::__enter__()
 {
-  acquire(true, -1.0);
+  acquire(true, PY2CPP_FLOAT64_INF);
   return *this;
 }
 
@@ -1094,7 +1094,7 @@ void PyLock::__exit__()
 
 PyRLock::PyRLock()
 {
-  _state = (PyUPtr)(uintptr_t)(new py2cpp_concur_thread_detail::RLockState());
+  _state = (PyUIntPtr)(uintptr_t)(new py2cpp_concur_thread_detail::RLockState());
 }
 
 PyRLock::~PyRLock()
@@ -1164,7 +1164,7 @@ void PyRLock::_acquireRestore(PyInt count)
 
 PyRLock& PyRLock::__enter__()
 {
-  acquire(true, -1.0);
+  acquire(true, PY2CPP_FLOAT64_INF);
   return *this;
 }
 
@@ -1177,7 +1177,7 @@ PyCondition::PyCondition()
 {
   py2cpp_concur_thread_detail::RLockState* lock =
     new py2cpp_concur_thread_detail::RLockState();
-  _state = (PyUPtr)(uintptr_t)(new py2cpp_concur_thread_detail::ConditionState(
+  _state = (PyUIntPtr)(uintptr_t)(new py2cpp_concur_thread_detail::ConditionState(
     py2cpp_concur_thread_detail::CONDITION_RLOCK, lock));
 }
 
@@ -1186,7 +1186,7 @@ PyCondition::PyCondition(PyLock lock)
   py2cpp_concur_thread_detail::LockState* lock_state =
     py2cpp_concur_thread_detail::lock_from_handle(lock._state);
   py2cpp_concur_thread_detail::retain_lock(lock_state);
-  _state = (PyUPtr)(uintptr_t)(new py2cpp_concur_thread_detail::ConditionState(
+  _state = (PyUIntPtr)(uintptr_t)(new py2cpp_concur_thread_detail::ConditionState(
     py2cpp_concur_thread_detail::CONDITION_LOCK, lock_state));
 }
 
@@ -1195,7 +1195,7 @@ PyCondition::PyCondition(PyRLock lock)
   py2cpp_concur_thread_detail::RLockState* lock_state =
     py2cpp_concur_thread_detail::rlock_from_handle(lock._state);
   py2cpp_concur_thread_detail::retain_rlock(lock_state);
-  _state = (PyUPtr)(uintptr_t)(new py2cpp_concur_thread_detail::ConditionState(
+  _state = (PyUIntPtr)(uintptr_t)(new py2cpp_concur_thread_detail::ConditionState(
     py2cpp_concur_thread_detail::CONDITION_RLOCK, lock_state));
 }
 
@@ -1267,19 +1267,19 @@ PyBool PyCondition::waitFor(PyCallable<PyBool> predicate, PyFloat64 timeout)
   {
     return true;
   }
-  if (timeout < -1.0)
+  if (timeout < 0.0)
   {
     throw PY2CPP_TYPE(PyValueError)();
   }
   double end = 0.0;
-  if (timeout >= 0.0)
+  if (timeout != PY2CPP_FLOAT64_INF)
   {
     end = py2cpp_concur_thread_detail::timeout_deadline(timeout);
   }
   while (true)
   {
-    PyFloat64 wait_time = -1.0;
-    if (timeout >= 0.0)
+    PyFloat64 wait_time = PY2CPP_FLOAT64_INF;
+    if (timeout != PY2CPP_FLOAT64_INF)
     {
       double now = (double)py2cpp::system::time::monotonic();
       double remaining = end - now;
@@ -1316,7 +1316,7 @@ void PyCondition::notifyAll()
 
 PyCondition& PyCondition::__enter__()
 {
-  acquire(true, -1.0);
+  acquire(true, PY2CPP_FLOAT64_INF);
   return *this;
 }
 
@@ -1328,7 +1328,7 @@ void PyCondition::__exit__()
 template<typename _Element>
 PyQueue<_Element>::PyQueue(PyInt maxsize)
 {
-  _state = (PyUPtr)(uintptr_t)(new py2cpp_concur_thread_detail::QueueState<_Element>(maxsize));
+  _state = (PyUIntPtr)(uintptr_t)(new py2cpp_concur_thread_detail::QueueState<_Element>(maxsize));
 }
 
 template<typename _Element>
@@ -1397,11 +1397,11 @@ void PyQueue<_Element>::put(_Element item, PyBool block, PyFloat64 timeout)
   {
     throw PY2CPP_TYPE(PyRuntimeError)();
   }
-  if (!block && timeout >= 0.0)
+  if (!block && timeout != PY2CPP_FLOAT64_INF)
   {
     throw PY2CPP_TYPE(PyValueError)();
   }
-  if (timeout < -1.0)
+  if (timeout < 0.0)
   {
     throw PY2CPP_TYPE(PyValueError)();
   }
@@ -1411,7 +1411,7 @@ void PyQueue<_Element>::put(_Element item, PyBool block, PyFloat64 timeout)
     throw PyShutDownError();
   }
   double end = 0.0;
-  if (timeout >= 0.0)
+  if (timeout != PY2CPP_FLOAT64_INF)
   {
     end = (double)py2cpp::system::time::monotonic() + (double)timeout;
   }
@@ -1425,7 +1425,7 @@ void PyQueue<_Element>::put(_Element item, PyBool block, PyFloat64 timeout)
     {
       throw PyFullError();
     }
-    if (timeout < 0.0)
+    if (timeout == PY2CPP_FLOAT64_INF)
     {
       st->not_full.wait(lk);
     }
@@ -1453,7 +1453,7 @@ void PyQueue<_Element>::put(_Element item, PyBool block, PyFloat64 timeout)
 template<typename _Element>
 void PyQueue<_Element>::putNoWait(_Element item)
 {
-  put(item, false, -1.0);
+  put(item, false, PY2CPP_FLOAT64_INF);
 }
 
 template<typename _Element>
@@ -1465,17 +1465,17 @@ _Element PyQueue<_Element>::get(PyBool block, PyFloat64 timeout)
   {
     throw PY2CPP_TYPE(PyRuntimeError)();
   }
-  if (!block && timeout >= 0.0)
+  if (!block && timeout != PY2CPP_FLOAT64_INF)
   {
     throw PY2CPP_TYPE(PyValueError)();
   }
-  if (timeout < -1.0)
+  if (timeout < 0.0)
   {
     throw PY2CPP_TYPE(PyValueError)();
   }
   std::unique_lock<std::mutex> lk(st->mutex);
   double end = 0.0;
-  if (timeout >= 0.0)
+  if (timeout != PY2CPP_FLOAT64_INF)
   {
     end = (double)py2cpp::system::time::monotonic() + (double)timeout;
   }
@@ -1489,7 +1489,7 @@ _Element PyQueue<_Element>::get(PyBool block, PyFloat64 timeout)
     {
       throw PyEmptyError();
     }
-    if (timeout < 0.0)
+    if (timeout == PY2CPP_FLOAT64_INF)
     {
       st->not_empty.wait(lk);
     }
@@ -1517,7 +1517,7 @@ _Element PyQueue<_Element>::get(PyBool block, PyFloat64 timeout)
 template<typename _Element>
 _Element PyQueue<_Element>::getNoWait()
 {
-  return get(false, -1.0);
+  return get(false, PY2CPP_FLOAT64_INF);
 }
 
 template<typename _Element>
@@ -1583,7 +1583,7 @@ void PyQueue<_Element>::shutdown(PyBool immediate)
 
 _PyThreadHandle::_PyThreadHandle()
 {
-  _state = (PyUPtr)(uintptr_t)(new py2cpp_concur_thread_detail::ThreadState());
+  _state = (PyUIntPtr)(uintptr_t)(new py2cpp_concur_thread_detail::ThreadState());
 }
 
 _PyThreadHandle::~_PyThreadHandle()
@@ -1618,7 +1618,7 @@ _PyThreadHandle _PyThreadHandle::PY2CPP_GETTER(current)()
     py2cpp_concur_thread_detail::thread_from_handle(handle._state);
   py2cpp_concur_thread_detail::release_thread(old);
   py2cpp_concur_thread_detail::retain_thread(st);
-  handle._state = (PyUPtr)(uintptr_t)st;
+  handle._state = (PyUIntPtr)(uintptr_t)st;
   return handle;
 }
 
@@ -1631,7 +1631,7 @@ _PyThreadHandle _PyThreadHandle::PY2CPP_GETTER(main)()
     py2cpp_concur_thread_detail::thread_from_handle(handle._state);
   py2cpp_concur_thread_detail::release_thread(old);
   py2cpp_concur_thread_detail::retain_thread(st);
-  handle._state = (PyUPtr)(uintptr_t)st;
+  handle._state = (PyUIntPtr)(uintptr_t)st;
   return handle;
 }
 
@@ -1664,7 +1664,7 @@ PY2CPP_TYPE(PyList)<_PyThreadHandle> _PyThreadHandle::PY2CPP_GETTER(actives)()
       py2cpp_concur_thread_detail::thread_from_handle(handle._state);
     py2cpp_concur_thread_detail::release_thread(old);
     py2cpp_concur_thread_detail::retain_thread(cur);
-    handle._state = (PyUPtr)(uintptr_t)cur;
+    handle._state = (PyUIntPtr)(uintptr_t)cur;
     out.append(handle);
     cur = cur->registry_next;
   }
@@ -1754,6 +1754,10 @@ PyBool _PyThreadHandle::join(PyFloat64 timeout)
   {
     throw PY2CPP_TYPE(PyRuntimeError)();
   }
+  if (timeout < 0.0)
+  {
+    throw PY2CPP_TYPE(PyValueError)();
+  }
   bool should_join = false;
   {
     std::unique_lock<std::mutex> lk(st->mutex);
@@ -1764,13 +1768,13 @@ PyBool _PyThreadHandle::join(PyFloat64 timeout)
     if (!st->finished)
     {
       double end = 0.0;
-      if (timeout >= 0.0)
+      if (timeout != PY2CPP_FLOAT64_INF)
       {
         end = (double)py2cpp::system::time::monotonic() + (double)timeout;
       }
       while (!st->finished)
       {
-        if (timeout < 0.0)
+        if (timeout == PY2CPP_FLOAT64_INF)
         {
           st->cv.wait(lk);
         }

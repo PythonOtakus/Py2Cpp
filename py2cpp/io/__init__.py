@@ -7,7 +7,7 @@
 from ..builtins import *
 from ..text import str
 from ..util.list import list
-from ..util.memory import appendChars, cstrSlice, strCbuf
+from ..util.memory import appendChars
 from ffi.crt.stdio import (
   PyiIobuf,
   PyiSeekCur,
@@ -114,23 +114,27 @@ class StringIO(CloseMixin):
     return sn
 
   @overload
-  def write(self, src: char[:], end: int) -> int:
+  def write(self, src: char[:], end: int = int.Max) -> int:
     """自 ``_pos`` 写入 ``src[0:end]``（无 ``str`` 中间对象；``Json.dump`` 紧凑路径）。"""
     if self._closed:
       return 0
+    if end > len(src):
+      end = len(src)
     if end <= 0:
       return 0
     self._pos = appendChars(self._buf, self._pos, src, end)
     return end
 
-  def read(self, size: int = -1) -> str:
+  def read(self, size: int = int.Max) -> str:
     if self._closed:
       return ""
+    if size < 0:
+      raise ValueError("size must be non-negative")
     n: int = len(self._buf)
     at: int = self._pos
     if at >= n:
       return ""
-    if size < 0:
+    if size == int.Max:
       size = n - at
     if size > (n - at):
       size = n - at
@@ -142,15 +146,17 @@ class StringIO(CloseMixin):
     self._pos = at + size
     return str(buf)
 
-  def readLine(self, size: int = -1) -> str:
+  def readLine(self, size: int = int.Max) -> str:
     if self._closed:
       return ""
+    if size < 0:
+      raise ValueError("size must be non-negative")
     n: int = len(self._buf)
     at: int = self._pos
     if at >= n:
       return ""
     limit: int = n
-    if size >= 0:
+    if size != int.Max:
       limit = at + size
       if limit > n:
         limit = n
@@ -170,15 +176,17 @@ class StringIO(CloseMixin):
     self._pos = at + cnt
     return str(buf)
 
-  def readLines(self, hint: int = -1) -> list[str]:
+  def readLines(self, hint: int = int.Max) -> list[str]:
     """按行读到 EOF；``hint`` 为已读字符累计上界（对齐 CPython ``TextIOBase.readLines``）。"""
+    if hint < 0:
+      raise ValueError("hint must be non-negative")
     lines: list[str] = []
     while True:
       line: str = self.readLine()
       if not line:
         break
       lines.append(line)
-      if hint >= 0:
+      if hint != int.Max:
         hint -= len(line)
         if hint <= 0:
           break
@@ -253,12 +261,12 @@ class TextIOWrapper(CloseMixin):
   def __init__(self, path: str, mode: str = "r"):
     self._owns = True
     self._closed = False
-    pbuf: byte[:] = strCbuf(path, 4096)
     m: str = mode
     if not m:
       m = "r"
-    mbuf: byte[:] = strCbuf(m, 16)
-    self._fp = pyiFopen(pbuf.view.at(0), mbuf.view.at(0))
+    with path.useUtf8() as cpath:
+      with m.useUtf8() as cmode:
+        self._fp = pyiFopen(cpath, cmode)
     if self._fp is None:
       self._closed = True
 
@@ -276,10 +284,12 @@ class TextIOWrapper(CloseMixin):
   def __bool__(self) -> bool:
     return (self._fp is not None) and (not self._closed)
 
-  def read(self, size: int = -1) -> str:
+  def read(self, size: int = int.Max) -> str:
     if self._fp is None or self._closed:
       return ""
     if size < 0:
+      raise ValueError("size must be non-negative")
+    if size == int.Max:
       codes: char[:] = new(0)
       total: int = 0
       chunk: byte[:] = new(4096)
@@ -294,7 +304,7 @@ class TextIOWrapper(CloseMixin):
         total = appendChars(codes, total, tmp, n)
       if total <= 0:
         return ""
-      return str.fromBuf(codes, total)
+      return str.fromArray(codes, total)
     cap: int = size
     if cap <= 0:
       return ""
@@ -305,29 +315,33 @@ class TextIOWrapper(CloseMixin):
     n2 = int(pyiFread(addr2, 1, uint64(cap), self._fp))
     if n2 <= 0:
       return ""
-    return cstrSlice(buf.view.at(0), 0, n2)
+    return str.fromSpanBytes(buf.view[:n2])
 
-  def readLine(self, size: int = -1) -> str:
+  def readLine(self, size: int = int.Max) -> str:
     if self._fp is None or self._closed:
       return ""
+    if size < 0:
+      raise ValueError("size must be non-negative")
     cap: int = 4096
     if size > 0 and size < cap:
       cap = size
     buf: byte[:] = new(cap)
-    p: CStr = pyiFgets(buf.view.at(0), cap, self._fp)
+    p: utf8ptr = pyiFgets(buf.view.at(0), cap, self._fp)
     if p is None:
       return ""
-    return cstrSlice(p, 0, len(p.view))
+    return str.fromSpanBytes(p.view)
 
-  def readLines(self, hint: int = -1) -> list[str]:
+  def readLines(self, hint: int = int.Max) -> list[str]:
+    if hint < 0:
+      raise ValueError("hint must be non-negative")
     lines: list[str] = []
     rest: int = hint
     while True:
-      line: str = self.readLine(-1)
+      line: str = self.readLine()
       if not line:
         break
       lines.append(line)
-      if rest >= 0:
+      if rest != int.Max:
         rest -= len(line)
         if rest <= 0:
           break
@@ -356,9 +370,11 @@ class TextIOWrapper(CloseMixin):
     return n
 
   @overload
-  def write(self, src: char[:], end: int) -> int:
+  def write(self, src: char[:], end: int = int.Max) -> int:
     if self._fp is None or self._closed:
       return -1
+    if end > len(src):
+      end = len(src)
     if end <= 0:
       return 0
     stack: byte[:] = new(4096)
@@ -388,7 +404,7 @@ class TextIOWrapper(CloseMixin):
     return self
 
   def __next__(self) -> str:
-    line: str = self.readLine(-1)
+    line: str = self.readLine()
     if not line:
       raise StopIteration
     return line

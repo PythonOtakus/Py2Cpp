@@ -2,7 +2,7 @@
 from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING
-from ..analysis.type_pred import is_array_type, is_float64_type, is_float_type, is_int64_type, is_int_type, is_varint_type
+from ..analysis.type_pred import is_array_type, is_float64_type, is_float_type, is_int64_type, is_int_type, is_long_type
 from ..analysis.ir import cpp_ident, quote_cpp_string
 from ..analysis.module_namespace import namespace_qualifier_for_module, qualify_symbol_in_module
 from .fstring_emit import emit_format_expr, plan_format_literal
@@ -85,7 +85,7 @@ def emit_cmp_call(tr: Translator, left: ast.expr, right: ast.expr) -> str:
     right_t = tr._infer_expr_cpp_type(right)
     if (is_int_type(left_t) or is_int64_type(left_t) or is_float_type(left_t) or is_float64_type(left_t)) and (is_int_type(right_t) or is_int64_type(right_t) or is_float_type(right_t) or is_float64_type(right_t)):
         return emit_scalar_cmp_ternary(tr._visit_value_expr(left), tr._visit_value_expr(right))
-    if is_varint_type(left_t):
+    if is_long_type(left_t):
         return tr._member_call_with_arg(left, '__cmp__', right)
     left_info = tr._class_info_for_expr(left)
     if left_info and '__cmp__' in left_info.methods:
@@ -100,7 +100,7 @@ def emit_abs_call(tr: Translator, arg: ast.expr) -> str:
     if is_int_type(arg_t) or is_int64_type(arg_t) or is_float_type(arg_t):
         e = tr._visit_value_expr(arg)
         return f'({e} < 0 ? -{e} : {e})'
-    if is_varint_type(arg_t):
+    if is_long_type(arg_t):
         return emit_instance_dunder_call(tr, '__abs__', arg)
     info = tr._class_info_for_expr(arg)
     if info and '__abs__' in info.methods:
@@ -182,7 +182,7 @@ def format_spec_literal(node: ast.expr) -> str | None:
             return None
 
 def format_spec_cpp(tr: Translator, node: ast.expr | None) -> str:
-    """``format_spec`` 编译期字符串 → ``CStr`` 字面量。"""
+    """``format_spec`` 编译期字符串 → ``utf8ptr`` 字面量。"""
     if node is None:
         return quote_cpp_string('')
     lit = format_spec_literal(node)

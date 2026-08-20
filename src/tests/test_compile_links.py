@@ -32,7 +32,7 @@ class LinksRuntimeCppTests(unittest.TestCase):
     self.assertTrue(_links_runtime_cpp(src))
 
   def test_msvc_fo_places_obj_beside_cpp(self):
-    src = Path("generated/test/io/file/test_path.cpp").resolve()
+    src = Path("generated/test/io/test_path.cpp").resolve()
     flags = _msvc_object_file_flags([src])
     self.assertEqual(flags, [f"/Fo{src.with_suffix('.obj')}"])
 

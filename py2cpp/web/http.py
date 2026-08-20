@@ -277,7 +277,7 @@ def _headerIsChunked(headers: dict[str, str]) -> bool:
 
 
 @immutable
-def _bytesFromBuf(buf: byte[:], n: int) -> bytes:
+def _bytesFromArray(buf: byte[:], n: int) -> bytes:
   out: byte[:] = new(n)
   for i in range(n):
     out[i] = buf[i]
@@ -683,11 +683,11 @@ class ClientStreamResponse:
     while True:
       while self._state._chunkPos >= len(self._state._chunk):
         if not self._readNextChunk():
-          return _bytesFromBuf(buf, at).decode()
+          return _bytesFromArray(buf, at).decode()
       b: byte = self._state._chunk[self._state._chunkPos]
       self._state._chunkPos += 1
       if b == ord("\n"):
-        return _bytesFromBuf(buf, at).decode()
+        return _bytesFromArray(buf, at).decode()
       if b != ord("\r"):
         at = _appendOne(buf, at, b)
 
@@ -782,11 +782,11 @@ class AsyncClientStreamResponse:
       while self._chunkPos >= len(self._chunk):
         more: bool = await self._readNextChunk()
         if not more:
-          return _bytesFromBuf(buf, at).decode()
+          return _bytesFromArray(buf, at).decode()
       b: byte = self._chunk[self._chunkPos]
       self._chunkPos += 1
       if b == ord("\n"):
-        return _bytesFromBuf(buf, at).decode()
+        return _bytesFromArray(buf, at).decode()
       if b != ord("\r"):
         at = _appendOne(buf, at, b)
 
@@ -841,10 +841,10 @@ def _headerLines(block: bytes) -> list[bytes]:
   while i < n:
     if i + 1 < n and buf[i] == ord("\r") and buf[i + 1] == ord("\n"):
       ln: int = i - start
-      lineBuf: byte[:] = new(ln)
+      lineArray: byte[:] = new(ln)
       for j in range(ln):
-        lineBuf[j] = buf[start + j]
-      line: bytes = bytes(lineBuf)
+        lineArray[j] = buf[start + j]
+      line: bytes = bytes(lineArray)
       if not line:
         break
       out.append(line)

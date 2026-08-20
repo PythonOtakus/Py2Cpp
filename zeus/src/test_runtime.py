@@ -65,8 +65,8 @@ class TransformComposeTests(TestCaseMixin):
   def test(self):
     parent: Transform = new()
     child: Transform = new()
-    parent.local_position = Vector3(10.0, 0.0, 0.0)
-    child.local_position = Vector3(2.0, 3.0, 0.0)
+    parent.localPosition = Vector3(10.0, 0.0, 0.0)
+    child.localPosition = Vector3(2.0, 3.0, 0.0)
     parent.attach(child)
     wp: Vector3 = child.position
     self.assertTrue(almost(wp.x, 12.0))
@@ -131,6 +131,6 @@ class SceneSerializeSmokeTests(TestCaseMixin):
 
 def main():
   suite: TestSuite = new()
-  for Class in TestCaseMixin.iter_subclasses(sort_const="_test_tag"):
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_test_tag"):
     suite.addTest(Class())
   return TextTestRunner().run(suite)

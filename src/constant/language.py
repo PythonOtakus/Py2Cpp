@@ -26,10 +26,13 @@ CPP_PARAM_RENAME: dict[str, str] = {
 
 CPP_RENAME: dict[str, str] = {
   "int": "PyInt",
+  "int16": "PyInt16",
+  "long": "PyLong",
   "int64": "PyInt64",
+  "uint16": "PyUInt16",
   "uint": "PyUInt",
   "uint64": "PyUInt64",
-  "uintptr": "PyUPtr",
+  "uintptr": "PyUIntPtr",
   "float": "PyFloat",
   "float64": "PyFloat64",
   "bool": "PyBool",

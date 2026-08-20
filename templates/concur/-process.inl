@@ -74,14 +74,14 @@ static PyStr _process_codes_to_str(PyArray<PyChar>& codes)
   {
     return PyStr("");
   }
-  return PyStr::fromBuf(codes, codes.__len__());
+  return PyStr(codes);
 }
 
 #if defined(_WIN32)
 static wchar_t* _process_utf8_to_wide(const PyStr& s)
 {
   char buf[32768];
-  s.copyToSpan(PySpan<PyByte>((PyByte*)buf, (PyInt)sizeof(buf), 1));
+  s.copyToSpanUtf8(PySpan<PyByte>((PyByte*)buf, (PyInt)sizeof(buf), 1));
   int n = MultiByteToWideChar(CP_UTF8, 0, buf, -1, nullptr, 0);
   if (n <= 0)
   {
@@ -172,9 +172,9 @@ static wchar_t* _process_env_block(const PyDict<PyStr, PyStr>& env)
     wchar_t* wv = _process_utf8_to_wide(val);
     if ((!wk) || (!wv))
     {
-      ::ffi::crt::stdlib::pyiFree((PyUPtr)reinterpret_cast<uintptr_t>(wk));
-      ::ffi::crt::stdlib::pyiFree((PyUPtr)reinterpret_cast<uintptr_t>(wv));
-      ::ffi::crt::stdlib::pyiFree((PyUPtr)reinterpret_cast<uintptr_t>(block));
+      ::ffi::crt::stdlib::pyiFree((PyUIntPtr)reinterpret_cast<uintptr_t>(wk));
+      ::ffi::crt::stdlib::pyiFree((PyUIntPtr)reinterpret_cast<uintptr_t>(wv));
+      ::ffi::crt::stdlib::pyiFree((PyUIntPtr)reinterpret_cast<uintptr_t>(block));
       return nullptr;
     }
     for (int j = 0; wk[j] && at + 3 < 65536; j++)
@@ -187,8 +187,8 @@ static wchar_t* _process_env_block(const PyDict<PyStr, PyStr>& env)
       block[at++] = wv[j];
     }
     block[at++] = 0;
-    ::ffi::crt::stdlib::pyiFree((PyUPtr)reinterpret_cast<uintptr_t>(wk));
-    ::ffi::crt::stdlib::pyiFree((PyUPtr)reinterpret_cast<uintptr_t>(wv));
+    ::ffi::crt::stdlib::pyiFree((PyUIntPtr)reinterpret_cast<uintptr_t>(wk));
+    ::ffi::crt::stdlib::pyiFree((PyUIntPtr)reinterpret_cast<uintptr_t>(wv));
   }
   block[at++] = 0;
   return block;
@@ -283,7 +283,7 @@ PyProcess::PyProcess(
   {
     if (!CreatePipe(&st->out_rd, &st->out_wr, &sa, 0))
     {
-      ::ffi::crt::stdlib::pyiFree((PyUPtr)reinterpret_cast<uintptr_t>(st));
+      ::ffi::crt::stdlib::pyiFree((PyUIntPtr)reinterpret_cast<uintptr_t>(st));
       throw PY2CPP_TYPE(PyOSError)();
     }
     SetHandleInformation(st->out_rd, HANDLE_FLAG_INHERIT, 0);
@@ -292,7 +292,7 @@ PyProcess::PyProcess(
   {
     if (!CreatePipe(&st->err_rd, &st->err_wr, &sa, 0))
     {
-      ::ffi::crt::stdlib::pyiFree((PyUPtr)reinterpret_cast<uintptr_t>(st));
+      ::ffi::crt::stdlib::pyiFree((PyUIntPtr)reinterpret_cast<uintptr_t>(st));
       throw PY2CPP_TYPE(PyOSError)();
     }
     SetHandleInformation(st->err_rd, HANDLE_FLAG_INHERIT, 0);
@@ -301,7 +301,7 @@ PyProcess::PyProcess(
   {
     if (!CreatePipe(&st->in_rd, &st->in_wr, &sa, 0))
     {
-      ::ffi::crt::stdlib::pyiFree((PyUPtr)reinterpret_cast<uintptr_t>(st));
+      ::ffi::crt::stdlib::pyiFree((PyUIntPtr)reinterpret_cast<uintptr_t>(st));
       throw PY2CPP_TYPE(PyOSError)();
     }
     SetHandleInformation(st->in_wr, HANDLE_FLAG_INHERIT, 0);
@@ -315,7 +315,7 @@ PyProcess::PyProcess(
   st->started = 0;
   st->done = 0;
 #endif
-  this->_state = (PyUPtr)(uintptr_t)st;
+  this->_state = (PyUIntPtr)(uintptr_t)st;
 }
 
 PyProcess::PyProcess(PyProcess&& other)
@@ -371,7 +371,7 @@ PyProcess::~PyProcess()
     close(st->in_wr);
   }
 #endif
-  ::ffi::crt::stdlib::pyiFree((PyUPtr)reinterpret_cast<uintptr_t>(st));
+  ::ffi::crt::stdlib::pyiFree((PyUIntPtr)reinterpret_cast<uintptr_t>(st));
   _state = 0;
 }
 
@@ -402,7 +402,7 @@ void PyProcess::start()
       cmdline[at++] = L' ';
     }
     _process_append_quoted(cmdline, at, w, 32768);
-    ::ffi::crt::stdlib::pyiFree((PyUPtr)reinterpret_cast<uintptr_t>(w));
+    ::ffi::crt::stdlib::pyiFree((PyUIntPtr)reinterpret_cast<uintptr_t>(w));
   }
   cmdline[at] = 0;
   STARTUPINFOW si;
@@ -459,8 +459,8 @@ void PyProcess::start()
   BOOL ok = CreateProcessW(
     nullptr, cmdline, nullptr, nullptr, TRUE, flags, wenv, wcwd, &si, &st->pi
   );
-  ::ffi::crt::stdlib::pyiFree((PyUPtr)reinterpret_cast<uintptr_t>(wcwd));
-  ::ffi::crt::stdlib::pyiFree((PyUPtr)reinterpret_cast<uintptr_t>(wenv));
+  ::ffi::crt::stdlib::pyiFree((PyUIntPtr)reinterpret_cast<uintptr_t>(wcwd));
+  ::ffi::crt::stdlib::pyiFree((PyUIntPtr)reinterpret_cast<uintptr_t>(wenv));
   if (st->stdin_mode == -2 && si.hStdInput && si.hStdInput != INVALID_HANDLE_VALUE)
   {
     CloseHandle(si.hStdInput);
@@ -532,7 +532,7 @@ void PyProcess::start()
     if (st->cwd.__len__() > 0)
     {
       char cbuf[4096];
-      st->cwd.copyToSpan(PySpan<PyByte>((PyByte*)cbuf, (PyInt)sizeof(cbuf), 1));
+      st->cwd.copyToSpanUtf8(PySpan<PyByte>((PyByte*)cbuf, (PyInt)sizeof(cbuf), 1));
       if (::ffi::posix::unistd::pyiChdir(cbuf) != 0)
       {
         _exit(127);
@@ -543,7 +543,7 @@ void PyProcess::start()
     int argc = n < 255 ? n : 255;
     for (int i = 0; i < argc; i++)
     {
-      st->args.__getitem__(i).copyToSpan(
+      st->args.__getitem__(i).copyToSpanUtf8(
         PySpan<PyByte>((PyByte*)storage[i], (PyInt)sizeof(storage[i]), 1)
       );
       argv[i] = storage[i];
@@ -617,8 +617,12 @@ PyInt PyProcess::wait(PyFloat64 timeout)
   {
     throw PY2CPP_TYPE(PyOSError)();
   }
+  if (timeout < 0.0)
+  {
+    throw PY2CPP_TYPE(PyValueError)();
+  }
 #if defined(_WIN32)
-  DWORD ms = (timeout < 0.0) ? INFINITE : (DWORD)(timeout * 1000.0);
+  DWORD ms = (timeout == PY2CPP_FLOAT64_INF) ? INFINITE : (DWORD)(timeout * 1000.0);
   DWORD r = WaitForSingleObject(st->pi.hProcess, ms);
   if (r == WAIT_TIMEOUT)
   {
@@ -677,11 +681,15 @@ PyCompletedProcess PyProcess::communicate(PyStr input, PyFloat64 timeout)
   {
     throw PY2CPP_TYPE(PyOSError)();
   }
+  if (timeout < 0.0)
+  {
+    throw PY2CPP_TYPE(PyValueError)();
+  }
 #if defined(_WIN32)
   if (st->in_wr && input.__len__() > 0)
   {
     char buf[32768];
-    input.copyToSpan(PySpan<PyByte>((PyByte*)buf, (PyInt)sizeof(buf), 1));
+    input.copyToSpanUtf8(PySpan<PyByte>((PyByte*)buf, (PyInt)sizeof(buf), 1));
     DWORD n = 0;
     WriteFile(st->in_wr, buf, (DWORD)::ffi::crt::string::pyiStrlen(buf), &n, nullptr);
   }
@@ -689,7 +697,7 @@ PyCompletedProcess PyProcess::communicate(PyStr input, PyFloat64 timeout)
   PyArray<PyChar> out_codes;
   PyArray<PyChar> err_codes;
   ULONGLONG start = GetTickCount64();
-  DWORD total_ms = (timeout < 0.0) ? INFINITE : (DWORD)(timeout * 1000.0);
+  DWORD total_ms = (timeout == PY2CPP_FLOAT64_INF) ? INFINITE : (DWORD)(timeout * 1000.0);
   for (;;)
   {
     _process_drain_avail(st->out_rd, out_codes);
@@ -736,7 +744,7 @@ PyCompletedProcess PyProcess::communicate(PyStr input, PyFloat64 timeout)
 #else
   (void)input;
   (void)timeout;
-  this->wait(-1.0);
+  this->wait(PY2CPP_FLOAT64_INF);
   PyArray<PyChar> out_codes;
   PyArray<PyChar> err_codes;
   char stack[4096];

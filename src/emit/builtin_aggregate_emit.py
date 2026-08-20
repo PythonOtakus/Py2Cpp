@@ -2,7 +2,7 @@
 from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING
-from ..analysis.type_pred import is_scalar_float_type, is_scalar_int_type, is_str_type, is_varint_type
+from ..analysis.type_pred import is_scalar_float_type, is_scalar_int_type, is_str_type, is_long_type
 from ..analysis.ir import cpp_ident, cpp_iterator_type, cpp_result_type, iter_result_done_cpp, iter_result_value_cpp
 from ..analysis.type_emit import scope_storage_cpp, bind_scope_var
 from ..constant.stdlib_layout import cpp_exception_ctor
@@ -105,7 +105,7 @@ def _values_cmp_expr(tr: Translator, left_cpp: str, right_cpp: str, elem_t: str)
     rk = right_cpp
     if is_scalar_int_type(elem_t) or is_scalar_float_type(elem_t):
         return emit_scalar_cmp_ternary(lk, rk)
-    if is_varint_type(elem_t) or is_str_type(elem_t):
+    if is_long_type(elem_t) or is_str_type(elem_t):
         return f'{lk}.__cmp__({rk})'
     return f'::py2cpp::py_cmp({lk}, {rk})'
 

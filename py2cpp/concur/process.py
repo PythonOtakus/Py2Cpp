@@ -7,21 +7,28 @@ from ..builtins import *
 from ..core.exceptions import OSError, RuntimeError, ValueError
 from ..util.dict import dict
 from ..util.list import list
-from ..util.memory import strCbuf
-from .thread import Future, ThreadPool
+from ..util.span import span
+from ffi.crt.stdio import pyiFgets, pyiPclose, pyiPopen
+from ffi.crt.stdlib import pyiSystem
+from .thread import Future, ThreadPool, TimeoutError
 from ffi.windows import (
   PyiErrorAlreadyExists,
+  PyiFileMapWrite,
   PyiInfinite,
+  PyiPageReadwrite,
   PyiWaitTimeout,
   pyiCloseHandle,
+  pyiCreateFileMappingA,
   pyiCreateEventA,
   pyiCreateMutexA,
   pyiCreateSemaphoreA,
   pyiGetLastError,
+  pyiMapViewOfFile,
   pyiReleaseMutex,
   pyiReleaseSemaphore,
   pyiResetEvent,
   pyiSetEvent,
+  pyiUnmapViewOfFile,
   pyiWaitForSingleObject,
 )
 
@@ -82,7 +89,7 @@ class Process:
     """返回退出码；尚未结束或未启动时返回 ``-1``。"""
     ...
 
-  def wait(self, timeout: float64 = -1.0) -> int:
+  def wait(self, timeout: float64 = float.Inf) -> int:
     """等待退出并返回退出码；超时抛 ``RuntimeError``。"""
     ...
 
@@ -90,7 +97,7 @@ class Process:
 
   def kill(self) -> None: ...
 
-  def communicate(self, input: str = "", timeout: float64 = -1.0) -> CompletedProcess: ...
+  def communicate(self, input: str = "", timeout: float64 = float.Inf) -> CompletedProcess: ...
 
   @property
   @immutable
@@ -135,6 +142,37 @@ def _runWithEnv(
   process.start()
   return process.communicate(input, timeout)
 
+def _shellSystem(command: str) -> int:
+  """通过系统 shell 运行命令并返回退出码。"""
+  with command.useUtf8() as ccommand:
+    return pyiSystem(ccommand)
+
+
+def _shellPopenRead(command: str) -> CompletedProcess:
+  """通过系统 shell 运行命令，读取 stdout，并保留真实退出码。"""
+  out: str = ""
+  code: int = 0
+  with command.useUtf8() as ccommand:
+    stream = pyiPopen(ccommand, "r")
+    if stream is None:
+      raise OSError()
+    data: byte[:] = new(4096)
+    raw: Pointer[byte] = data.view.at()
+    carray: utf8ptr = cast(raw)
+    while pyiFgets(carray, len(data), stream) is not None:
+      out += str(raw)
+    code = pyiPclose(stream)
+  args: list[str] = []
+  return new(args, code, out, "")
+
+
+def _runShell(command: str, captureOutput: bool = False) -> CompletedProcess:
+  """运行显式 shell 命令；仅供上层兼容 API 复用。"""
+  if captureOutput:
+    return _shellPopenRead(command)
+  args: list[str] = []
+  return new(args, _shellSystem(command), "", "")
+
 @uncopyable
 class ProcessPool:
   """受限并发的外部命令池。
@@ -159,7 +197,7 @@ class ProcessPool:
     stdout: int = -1,
     stderr: int = -1,
     input: str = "",
-    timeout: float64 = -1.0,
+    timeout: float64 = float.Inf,
   ) -> Future[CompletedProcess]:
     """提交一个外部命令；默认捕获 stdout/stderr。"""
     actualEnv: dict[str, str] = {}
@@ -172,7 +210,7 @@ class ProcessPool:
   def map(
     self,
     commands: list[list[str]],
-    timeout: float64 = -1.0,
+    timeout: float64 = float.Inf,
   ) -> list[CompletedProcess]:
     """并发运行命令并按输入顺序返回结果。"""
     futures: list[Future[CompletedProcess]] = []
@@ -180,7 +218,7 @@ class ProcessPool:
       futures.append(self.submit(commands[i], timeout=timeout))
     out: list[CompletedProcess] = []
     for i in range(len(futures)):
-      out.append(futures[i].result(timeout=-1.0))
+      out.append(futures[i].result(timeout=float.Inf))
     return out
 
   def shutdown(self, wait: bool = True, cancelFutures: bool = False) -> None:
@@ -197,18 +235,11 @@ _WaitAbandoned: uint = 128
 
 
 @immutable
-def _processSyncName(name: str) -> byte[:]:
-  if not name:
-    raise ValueError("process synchronization name must not be empty")
-  return strCbuf(name, len(name) + 1)
-
-
-@immutable
 def _processWait(handle: uintptr, timeout: float64) -> bool:
-  if timeout < -1.0:
+  if timeout < 0.0:
     raise ValueError("timeout value must be non-negative")
   millis: uint = PyiInfinite
-  if timeout >= 0.0:
+  if timeout != float.Inf:
     millis = uint(timeout * 1000.0)
   result: uint = pyiWaitForSingleObject(handle, millis)
   if result in {_WaitObject0, _WaitAbandoned}:
@@ -227,8 +258,10 @@ class ProcessEvent:
   created: bool = False
 
   def __init__(self, name: str, initial: bool = False):
-    buf: byte[:] = _processSyncName(name)
-    handle: uintptr = pyiCreateEventA(None, 1, int(initial), buf.view.at(0))
+    if not name:
+      raise ValueError("process synchronization name must not be empty")
+    with name.useUtf8() as cname:
+      handle: uintptr = pyiCreateEventA(None, 1, int(initial), cname)
     if handle == 0:
       raise OSError()
     self._handle = handle
@@ -252,7 +285,7 @@ class ProcessEvent:
     if pyiResetEvent(self._handle) == 0:
       raise OSError()
 
-  def wait(self, timeout: float64 = -1.0) -> bool:
+  def wait(self, timeout: float64 = float.Inf) -> bool:
     return _processWait(self._handle, timeout)
 
 
@@ -265,8 +298,10 @@ class ProcessMutex:
   created: bool = False
 
   def __init__(self, name: str):
-    buf: byte[:] = _processSyncName(name)
-    handle: uintptr = pyiCreateMutexA(None, 0, buf.view.at(0))
+    if not name:
+      raise ValueError("process synchronization name must not be empty")
+    with name.useUtf8() as cname:
+      handle: uintptr = pyiCreateMutexA(None, 0, cname)
     if handle == 0:
       raise OSError()
     self._handle = handle
@@ -278,8 +313,8 @@ class ProcessMutex:
       pyiCloseHandle(self._handle)
       self._handle = 0
 
-  def acquire(self, blocking: bool = True, timeout: float64 = -1.0) -> bool:
-    if not blocking and timeout >= 0.0:
+  def acquire(self, blocking: bool = True, timeout: float64 = float.Inf) -> bool:
+    if not blocking and timeout != float.Inf:
       raise ValueError("can't specify timeout for non-blocking acquire")
     if not blocking:
       return _processWait(self._handle, 0.0)
@@ -308,8 +343,10 @@ class ProcessSemaphore:
   def __init__(self, name: str, value: int = 1, maximum: int = 2147483647):
     if value < 0 or maximum <= 0 or value > maximum:
       raise ValueError("invalid process semaphore value or maximum")
-    buf: byte[:] = _processSyncName(name)
-    handle: uintptr = pyiCreateSemaphoreA(None, value, maximum, buf.view.at(0))
+    if not name:
+      raise ValueError("process synchronization name must not be empty")
+    with name.useUtf8() as cname:
+      handle: uintptr = pyiCreateSemaphoreA(None, value, maximum, cname)
     if handle == 0:
       raise OSError()
     self._handle = handle
@@ -321,8 +358,8 @@ class ProcessSemaphore:
       pyiCloseHandle(self._handle)
       self._handle = 0
 
-  def acquire(self, blocking: bool = True, timeout: float64 = -1.0) -> bool:
-    if not blocking and timeout >= 0.0:
+  def acquire(self, blocking: bool = True, timeout: float64 = float.Inf) -> bool:
+    if not blocking and timeout != float.Inf:
       raise ValueError("can't specify timeout for non-blocking acquire")
     if not blocking:
       return _processWait(self._handle, 0.0)
@@ -340,3 +377,165 @@ class ProcessSemaphore:
 
   def __exit__(self):
     self.release()
+
+@uncopyable
+class SharedMemory:
+  """Windows 命名共享内存；同名参与者须传入相同的 ``size``。"""
+
+  _handle: uintptr = 0
+  _address: uintptr = 0
+  name: str = ""
+  size: int = 0
+  created: bool = False
+
+  def __init__(self, name: str, size: int):
+    if size <= 0:
+      raise ValueError("shared memory size must be positive")
+    if not name:
+      raise ValueError("process synchronization name must not be empty")
+    invalidHandle: int = -1
+    fileHandle: uintptr = cast(invalidHandle)
+    with name.useUtf8() as cname:
+      handle: uintptr = pyiCreateFileMappingA(
+        fileHandle,
+        None,
+        PyiPageReadwrite,
+        0,
+        uint(size),
+        cname,
+      )
+    if handle == 0:
+      raise OSError()
+    address: uintptr = pyiMapViewOfFile(handle, PyiFileMapWrite, 0, 0, uint64(size))
+    if address == 0:
+      pyiCloseHandle(handle)
+      raise OSError()
+    self._handle = handle
+    self._address = address
+    self.name = name
+    self.size = size
+    self.created = pyiGetLastError() != PyiErrorAlreadyExists
+
+  def __del__(self):
+    self.close()
+
+  def close(self) -> None:
+    if self._address != 0:
+      pyiUnmapViewOfFile(self._address)
+      self._address = 0
+    if self._handle != 0:
+      pyiCloseHandle(self._handle)
+      self._handle = 0
+
+  @property
+  @immutable
+  def view(self) -> span[byte]:
+    if self._address == 0:
+      raise RuntimeError("shared memory is closed")
+    data: Pointer[byte] = cast(self._address)
+    return new(data, self.size)
+
+_ChannelHeaderSize: int = 4
+
+
+@uncopyable
+class ProcessChannel:
+  """单槽命名字节通道：跨进程发送/接收一条不超过 ``capacity`` 的消息。"""
+
+  _memory: Pointer[SharedMemory] = None
+  _mutex: Pointer[ProcessMutex] = None
+  _empty: Pointer[ProcessSemaphore] = None
+  _ready: Pointer[ProcessSemaphore] = None
+  capacity: int = 0
+  name: str = ""
+  created: bool = False
+
+  def __init__(self, name: str, capacity: int):
+    if capacity <= 0:
+      raise ValueError("process channel capacity must be positive")
+    self._memory = alloc[SharedMemory]()
+    init(self._memory, name + "-memory", _ChannelHeaderSize + capacity)
+    self._mutex = alloc[ProcessMutex]()
+    init(self._mutex, name + "-mutex")
+    self._empty = alloc[ProcessSemaphore]()
+    init(self._empty, name + "-empty", 1, 1)
+    self._ready = alloc[ProcessSemaphore]()
+    init(self._ready, name + "-ready", 0, 1)
+    self.capacity = capacity
+    self.name = name
+    self.created = self._memory.created
+    initLock: ProcessMutex = new(name + "-init")
+    initLock.acquire()
+    try:
+      if self.created:
+        view: span[byte] = self._memory.view
+        for i in range(_ChannelHeaderSize):
+          view[i] = 0
+    finally:
+      initLock.release()
+
+  def __del__(self):
+    self.close()
+
+  def close(self) -> None:
+    if self._memory != None:
+      self._memory.close()
+      destroy(self._memory)
+      free(self._memory)
+      self._memory = None
+    if self._mutex != None:
+      destroy(self._mutex)
+      free(self._mutex)
+      self._mutex = None
+    if self._empty != None:
+      destroy(self._empty)
+      free(self._empty)
+      self._empty = None
+    if self._ready != None:
+      destroy(self._ready)
+      free(self._ready)
+      self._ready = None
+
+  def send(self, data: byte[:], timeout: float64 = float.Inf) -> None:
+    if len(data) > self.capacity:
+      raise ValueError("process channel message exceeds capacity")
+    if not self._empty.acquire(timeout=timeout):
+      raise TimeoutError()
+    published: bool = False
+    try:
+      self._mutex.acquire()
+      try:
+        view: span[byte] = self._memory.view
+        n: int = len(data)
+        view[0] = n & 255
+        view[1] = (n >> 8) & 255
+        view[2] = (n >> 16) & 255
+        view[3] = (n >> 24) & 255
+        for i in range(n):
+          view[_ChannelHeaderSize + i] = data[i]
+      finally:
+        self._mutex.release()
+      self._ready.release()
+      published = True
+    finally:
+      if not published:
+        self._empty.release()
+
+  def receive(self, timeout: float64 = float.Inf) -> byte[:]:
+    if not self._ready.acquire(timeout=timeout):
+      raise TimeoutError()
+    try:
+      self._mutex.acquire()
+      try:
+        view: span[byte] = self._memory.view
+        n: int = int(view[0]) | (int(view[1]) << 8) | (int(view[2]) << 16) | (int(view[3]) << 24)
+        if n < 0 or n > self.capacity:
+          raise RuntimeError("invalid process channel message length")
+        out: byte[:] = new(n)
+        for i in range(n):
+          out[i] = view[_ChannelHeaderSize + i]
+        return out
+      finally:
+        self._mutex.release()
+    finally:
+      self._empty.release()

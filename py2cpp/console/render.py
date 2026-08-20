@@ -7,7 +7,7 @@ from ..text import str
 from ..util.list import list
 
 from .exceptions import RenderError
-from .native_sys import colorOverrideGet
+from . import _colorOverrideGet
 
 
 @enum
@@ -56,7 +56,7 @@ class LogRecord:
 
 
 def _ansiEnabledFor(stream: TextIOWrapper) -> bool:
-  ov: int = colorOverrideGet()
+  ov: int = _colorOverrideGet()
   if ov == 0:
     return False
   if ov == 1:

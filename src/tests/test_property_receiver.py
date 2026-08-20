@@ -121,3 +121,73 @@ def use() -> None:
       cpp = cpp_path.read_text(encoding="utf-8")
       self.assertRegex(cpp, r"auto& __with_mgr\d+ = handle;")
       self.assertRegex(cpp, r"PyHandle& entered = __with_ent\d+;")
+  def test_with_instance_method_uses_enter_return_type(self):
+    src = """
+from py2cpp import *
+
+@uncopyable
+class Scope:
+  def __enter__(self) -> int:
+    return 1
+
+  def __exit__(self):
+    pass
+
+@uncopyable
+class CScope:
+  def __enter__(self) -> utf8ptr:
+    return "x"
+
+  def __exit__(self):
+    pass
+
+class Source:
+  def scope(self) -> Scope:
+    return new()
+
+  def cScope(self) -> CScope:
+    return new()
+
+def use() -> None:
+  with Source().scope() as value:
+    _ = value
+  with Source().cScope() as cvalue:
+    _ = cvalue
+"""
+    with tempfile.TemporaryDirectory() as tmp:
+      out = Path(tmp)
+      py = out / "mod.py"
+      py.write_text(src, encoding="utf-8")
+      _, cpp_path = Translator.translate_file(
+        str(py), output_dir=str(out), include_stdlib=False, strict=False,
+      )
+      cpp = cpp_path.read_text(encoding="utf-8")
+      self.assertRegex(cpp, r"PyInt value = __with_ent\d+;")
+      self.assertRegex(cpp, r"utf8ptr cvalue = __with_ent\d+;")
+  def test_pointer_to_local_class_uses_cpp_class_name(self):
+    src = """
+from py2cpp import *
+
+@uncopyable
+class Handle:
+  def __init__(self):
+    pass
+
+class Owner:
+  direct: Handle = None
+  handle: Pointer[Handle] = None
+
+  def __init__(self):
+    self.handle = alloc[Handle]()
+"""
+    with tempfile.TemporaryDirectory() as tmp:
+      out = Path(tmp)
+      py = out / "mod.py"
+      py.write_text(src, encoding="utf-8")
+      header_path, _ = Translator.translate_file(
+        str(py), output_dir=str(out), include_stdlib=False, strict=False,
+      )
+      header = header_path.read_text(encoding="utf-8")
+      self.assertIn("PyHandle direct", header)
+      self.assertIn("PyHandle* handle", header)
+      self.assertNotRegex(header, r"(?m)^\s+Handle(?:\*|\s+direct)")

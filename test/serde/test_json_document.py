@@ -2,7 +2,7 @@
 from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 from py2cpp.io.path import Path
-from py2cpp.io.file.path import join
+
 from py2cpp.serde.json import Json, JsonDocument
 from py2cpp.test.test_temp import _TestTemp, ensureTestTemp
 
@@ -46,7 +46,7 @@ class JsonDocumentLoadTests(TestCaseMixin):
   @override
   def test(self):
     ensureTestTemp()
-    path: Path = new(join(_TestTemp, "_json_doc_load.json"))
+    path: Path = Path(_TestTemp) / "_json_doc_load.json"
     path.writeText(_Sample)
     doc: JsonDocument[Org] = new.open(str(path), "r")
     org: Org = doc.load()
@@ -63,7 +63,7 @@ class JsonDocumentReadTests(TestCaseMixin):
   @override
   def test(self):
     ensureTestTemp()
-    path: Path = new(join(_TestTemp, "_json_doc_read.json"))
+    path: Path = Path(_TestTemp) / "_json_doc_read.json"
     path.writeText(_Sample)
     doc: JsonDocument[Org] = new.open(str(path), "r")
     name: str = doc.teams[0].members[0].name
@@ -78,7 +78,7 @@ class JsonDocumentCrudTests(TestCaseMixin):
   @override
   def test(self):
     ensureTestTemp()
-    path: Path = new(join(_TestTemp, "_json_doc_crud.json"))
+    path: Path = Path(_TestTemp) / "_json_doc_crud.json"
     path.writeText(_Sample)
     doc: JsonDocument[Org] = new.open(str(path), "r+")
     doc.teams[0].members[0].name = "alice"

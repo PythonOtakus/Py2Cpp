@@ -1,10 +1,10 @@
 """``py2cpp.io.path.Path``（``pathlib`` 子集）回归。"""
 from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
-from py2cpp.io.file import getCwd
+
 from py2cpp.io.path import Path
 from py2cpp.system.environ import environ
-from py2cpp.io.file.path import join
+
 from py2cpp.test.test_temp import _TestTemp, ensureTestTemp
 _TestDir: str = 'test_path_dir'
 _TestFile: str = 'test_path_file.txt'
@@ -99,11 +99,11 @@ class PathExistsTests(TestCaseMixin):
 
     def _prepareTree(self) -> Path:
         ensureTestTemp()
-        cwd: str = getCwd()
+        cwd: Path = new.cwd()
         cwdP: Path = new(cwd)
         self.assertTrue(cwdP.exists())
         self.assertTrue(cwdP.isDir())
-        dirPath: Path = new(join(join(cwd, _TestTemp), _TestDir))
+        dirPath: Path = cwd / _TestTemp / _TestDir
         filePath: Path = dirPath / _TestFile
         nested: Path = dirPath / 'a' / 'b'
         subA: Path = dirPath / 'a'

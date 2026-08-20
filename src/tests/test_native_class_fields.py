@@ -18,7 +18,7 @@ class TestNativeClassFields(unittest.TestCase):
       strict=False,
     )
     header = (out / "runtime" / "py2cpp" / "web" / "socket.h").read_text(encoding="utf-8")
-    self.assertIn("PyUPtr _state", header)
+    self.assertIn("PyUIntPtr _state", header)
     self.assertNotIn("PyUInt64 _sock", header)
     self.assertNotIn("PyBool _closed", header)
     self.assertNotIn("web_tcp_socket_tail", header)
@@ -35,7 +35,7 @@ class TestNativeClassFields(unittest.TestCase):
       strict=False,
     )
     header = (out / "runtime" / "py2cpp" / "io.h").read_text(encoding="utf-8")
-    self.assertIn("PyUPtr _fp", header)
+    self.assertIn("PyUIntPtr _fp", header)
     self.assertIn("PyBool _closed", header)
     self.assertNotIn("io_textiowrapper_tail", header)
     self.assertNotIn("FILE* _fp", header)

@@ -56,6 +56,13 @@ class TypeDepsTests(unittest.TestCase):
     deps = collect_type_header_deps("PyStr", "py2cpp/util/list.h", classes)
     self.assertEqual(deps, [stdlib_header_include("text/str")])
 
+  def test_str_callable_uses_forward_declaration(self):
+    deps = collect_type_header_deps(
+      "PyCallable<PyUInt, utf8ptr, PyUInt>",
+      stdlib_header_include("text/str"),
+      {},
+    )
+    self.assertNotIn(stdlib_header_include("core/delegate"), deps)
   def test_own_header_excluded(self):
     classes = {"list": _info("list", "py2cpp/util/list", cpp_rename="PyList")}
     own = header_for_module("py2cpp/util/list")

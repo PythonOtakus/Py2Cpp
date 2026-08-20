@@ -25,8 +25,7 @@ _LIBRARY_REL_PATHS: frozenset[str] = frozenset({
   "util/arena",
   "util/types",
   "io",
-  "io/file",
-  "io/file/path",
+  "io/path",
   "sql/sqlite",
 })
 

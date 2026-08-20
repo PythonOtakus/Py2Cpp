@@ -33,6 +33,14 @@ class ConsoleRunShellTests(TestCaseMixin):
     self.assertEqual(result.returnCode, 0)
 
 
+class ConsoleRunShellExitCodeTests(TestCaseMixin):
+  _testTag = 35
+
+  @override
+  def test(self):
+    result: CompletedProcess = Console.run("cmd.exe /c exit /b 7", captureOutput=True, shell=True)
+    self.assertEqual(result.returnCode, 7)
+
 class ConsoleRunListTests(TestCaseMixin):
   _testTag = 40
 

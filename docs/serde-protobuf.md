@@ -141,7 +141,7 @@ P0 支持：
 | `list[T]` | repeated T | 由元素类型决定 |
 | protobuf dataclass | embedded message | length-delimited |
 
-整数 wire 编码使用 64 位 protobuf varint，不使用 `numeric.varint` 的任意精度值模型。
+整数 wire 编码使用 64 位 protobuf varint，不使用 `numeric.long` 的任意精度值模型。
 
 ### 4.3 `ProtoScalar` 覆盖
 

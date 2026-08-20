@@ -3,10 +3,9 @@ from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 from py2cpp.io import open
 from py2cpp.io import StringIO
-from py2cpp.io.file.path import join
+from py2cpp.io.path import Path
 from py2cpp.serde.json import Json, JsonDecoder, JsonEncoder
 from py2cpp.test.test_temp import _TestTemp, ensureTestTemp
-_JsonTmp: str = join(_TestTemp, 'test_json_tmp.json')
 
 @serializable
 @copyable
@@ -58,7 +57,7 @@ class TickPacketUnion:
 @copyable
 @dataclass
 class BigRecord:
-    n: varint
+    n: long
 
 class JsonScalarTests(TestCaseMixin):
     _testTag = 1
@@ -225,18 +224,18 @@ class JsonFileTests(TestCaseMixin):
     def test(self):
         ensureTestTemp()
         xs: list[int] = [1, 2, 3]
-        w = open(_JsonTmp, 'w')
+        w = open(str(Path(_TestTemp) / 'test_json_tmp.json'), 'w')
         Json.dump(xs, w)
         w.close()
-        r = open(_JsonTmp, 'r')
+        r = open(str(Path(_TestTemp) / 'test_json_tmp.json'), 'r')
         ys: list[int] = Json.load(r)
         r.close()
         self.assertEqual(ys[1], 2)
         u: User = new(id=3, name='eve', tags=['json'])
-        w2 = open(_JsonTmp, 'w')
+        w2 = open(str(Path(_TestTemp) / 'test_json_tmp.json'), 'w')
         Json.dump(u, w2, 2)
         w2.close()
-        r2 = open(_JsonTmp, 'r')
+        r2 = open(str(Path(_TestTemp) / 'test_json_tmp.json'), 'r')
         u2: User = Json.load(r2)
         r2.close()
         self.assertEqual(u2.id, 3)
@@ -245,10 +244,10 @@ class JsonFileTests(TestCaseMixin):
         jsU: str = Json.dumps(u2, 2)
         self.assertTrue(jsU.find('\n') >= 0)
         login: RequestUnion = new.Login(user='ann', ttl=60)
-        w3 = open(_JsonTmp, 'w')
+        w3 = open(str(Path(_TestTemp) / 'test_json_tmp.json'), 'w')
         Json.dump(login, w3, 4)
         w3.close()
-        r3 = open(_JsonTmp, 'r')
+        r3 = open(str(Path(_TestTemp) / 'test_json_tmp.json'), 'r')
         req: RequestUnion = Json.load(r3)
         r3.close()
         js: str = Json.dumps(req)
@@ -264,7 +263,7 @@ class JsonMemoryAppendIntTests(TestCaseMixin):
         for v in cases:
             buf: char[:] = new(64)
             at: int = JsonEncoder.appendIntAt(buf, 0, v)
-            got: str = str.fromBuf(buf, at)
+            got: str = str.fromArray(buf, at)
             self.assertEqual(got, str(v))
 
 class JsonMemoryAppendQuotedTests(TestCaseMixin):
@@ -277,7 +276,7 @@ class JsonMemoryAppendQuotedTests(TestCaseMixin):
         for i in range(len(samples)):
             buf: char[:] = new(128)
             at: int = JsonEncoder.appendQuotedAt(buf, 0, samples[i])
-            self.assertEqual(str.fromBuf(buf, at), expects[i])
+            self.assertEqual(str.fromArray(buf, at), expects[i])
 
 class JsonMemoryAppendRangeTests(TestCaseMixin):
     _testTag = 130
@@ -286,8 +285,8 @@ class JsonMemoryAppendRangeTests(TestCaseMixin):
     def test(self):
         src: str = 'abcdef'
         buf: char[:] = new(32)
-        at: int = src.copySliceTo(1, 4, buf, 0)
-        self.assertEqual(str.fromBuf(buf, at), 'bcd')
+        at: int = src.copySliceTo(buf, 0, 1, 4)
+        self.assertEqual(str.fromArray(buf, at), 'bcd')
 
 class JsonMemoryAppendListTests(TestCaseMixin):
     _testTag = 140
@@ -299,23 +298,23 @@ class JsonMemoryAppendListTests(TestCaseMixin):
         floats: list[float] = [1.5, 2.0, 3.25]
         buf: char[:] = new(256)
         at: int = JsonEncoder.appendListAt(buf, 0, ints)
-        self.assertEqual(str.fromBuf(buf, at), '[1,-2,0,42]')
+        self.assertEqual(str.fromArray(buf, at), '[1,-2,0,42]')
         buf = new(256)
         at = JsonEncoder.appendListAt(buf, 0, strs)
-        self.assertEqual(str.fromBuf(buf, at), '["a","b\\"c",""]')
+        self.assertEqual(str.fromArray(buf, at), '["a","b\\"c",""]')
         buf = new(256)
         at = JsonEncoder.appendListAt(buf, 0, floats)
-        self.assertEqual(str.fromBuf(buf, at), '[1.5,2,3.25]')
+        self.assertEqual(str.fromArray(buf, at), '[1.5,2,3.25]')
 
-class JsonMemoryAppendListVarintTests(TestCaseMixin):
+class JsonMemoryAppendListLongTests(TestCaseMixin):
     _testTag = 145
 
     @override
     def test(self):
-        vars: list[varint] = [varint('1'), varint('-99')]
+        vars: list[long] = [long('1'), long('-99')]
         buf: char[:] = new(128)
-        at: int = JsonEncoder.appendListVarintAt(buf, 0, vars)
-        self.assertEqual(str.fromBuf(buf, at), '[1,-99]')
+        at: int = JsonEncoder.appendListLongAt(buf, 0, vars)
+        self.assertEqual(str.fromArray(buf, at), '[1,-99]')
 
 class JsonMemoryFastEncodeTests(TestCaseMixin):
     _testTag = 150
@@ -325,10 +324,10 @@ class JsonMemoryFastEncodeTests(TestCaseMixin):
         ints: list[int] = [1, -2, 0]
         strs: list[str] = ['x', 'y"z']
         floats: list[float] = [1.0, -2.5]
-        vars: list[varint] = [varint('99'), varint('-1')]
+        vars: list[long] = [long('99'), long('-1')]
         dInt: dict[str, int] = {'a': 1, 'b': -2}
         dStr: dict[str, str] = {'k': 'v', 'q': 'a"b'}
-        dVar: dict[str, varint] = {'n': varint('42')}
+        dVar: dict[str, long] = {'n': long('42')}
         dFloat: dict[str, float] = {'f': 1.5}
         self.assertEqual(JsonEncoder.fastEncode(ints), '[1,-2,0]')
         self.assertEqual(JsonEncoder.fastEncode(strs), '["x","y\\"z"]')
@@ -628,57 +627,57 @@ class JsonEncoderSmokeTests(TestCaseMixin):
         enc2.endObject()
         self.assertEqual(enc2.finish(), '{"id":1}')
 
-class JsonVarintScalarTests(TestCaseMixin):
+class JsonLongScalarTests(TestCaseMixin):
     _testTag = 310
 
     @override
     def test(self):
-        small: varint = 42
+        small: long = 42
         self.assertEqual(Json.dumps(small), '42')
-        back: varint = Json.loads[varint]('42')
+        back: long = Json.loads[long]('42')
         self.assertEqual(str(back), '42')
-        over: varint = 9223372036854775808
+        over: long = 9223372036854775808
         self.assertEqual(Json.dumps(over), '9223372036854775808')
-        over2: varint = Json.loads[varint]('9223372036854775808')
+        over2: long = Json.loads[long]('9223372036854775808')
         self.assertTrue(over2 == over)
-        neg: varint = -10000000000000000000
+        neg: long = -10000000000000000000
         self.assertEqual(Json.dumps(neg), '-10000000000000000000')
-        neg2: varint = Json.loads[varint]('-10000000000000000000')
+        neg2: long = Json.loads[long]('-10000000000000000000')
         self.assertTrue(neg2 == neg)
 
-class JsonVarintContainerTests(TestCaseMixin):
+class JsonLongContainerTests(TestCaseMixin):
     _testTag = 320
 
     @override
     def test(self):
-        one: varint = 1
-        over: varint = 9223372036854775808
-        seven: varint = -7
-        xs: list[varint] = []
+        one: long = 1
+        over: long = 9223372036854775808
+        seven: long = -7
+        xs: list[long] = []
         xs.append(one)
         xs.append(over)
         xs.append(seven)
         self.assertEqual(Json.dumps(xs), '[1,9223372036854775808,-7]')
-        ys: list[varint] = Json.loads[list[varint]](Json.dumps(xs))
+        ys: list[long] = Json.loads[list[long]](Json.dumps(xs))
         self.assertEqual(str(ys[0]), '1')
         self.assertEqual(str(ys[1]), '9223372036854775808')
         self.assertEqual(str(ys[2]), '-7')
-        ten: varint = 10
-        dec20: varint = 10000000000000000000
-        d: dict[str, varint] = {}
+        ten: long = 10
+        dec20: long = 10000000000000000000
+        d: dict[str, long] = {}
         d['a'] = ten
         d['big'] = dec20
         self.assertEqual(Json.dumps(d), '{"a":10,"big":10000000000000000000}')
-        d2: dict[str, varint] = Json.loads[dict[str, varint]](Json.dumps(d))
+        d2: dict[str, long] = Json.loads[dict[str, long]](Json.dumps(d))
         self.assertEqual(str(d2['a']), '10')
         self.assertEqual(str(d2['big']), '10000000000000000000')
 
-class JsonVarintDataclassTests(TestCaseMixin):
+class JsonLongDataclassTests(TestCaseMixin):
     _testTag = 330
 
     @override
     def test(self):
-        over: varint = 9223372036854775808
+        over: long = 9223372036854775808
         rec: BigRecord = new(n=over)
         exp: str = '{"n":9223372036854775808}'
         self.assertEqual(Json.dumps(rec), exp)

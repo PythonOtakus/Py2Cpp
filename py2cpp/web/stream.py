@@ -6,7 +6,14 @@ from .socket import AsyncTcpSocket, TcpSocket
 
 
 @immutable
-def _appendBytes(dst: byte[:], at: int, src: byte[:], end: int) -> None:
+def _appendBytes(
+  dst: byte[:],
+  at: int,
+  src: byte[:],
+  end: int = int.Max,
+) -> None:
+  if end > len(src):
+    end = len(src)
   if end <= 0:
     return
   need: int = at + end
@@ -18,7 +25,14 @@ def _appendBytes(dst: byte[:], at: int, src: byte[:], end: int) -> None:
 
 
 @immutable
-def _appendBytesFromBytes(dst: byte[:], at: int, src: bytes, end: int) -> None:
+def _appendBytesFromBytes(
+  dst: byte[:],
+  at: int,
+  src: bytes,
+  end: int = int.Max,
+) -> None:
+  if end > len(src):
+    end = len(src)
   if end <= 0:
     return
   need: int = at + end

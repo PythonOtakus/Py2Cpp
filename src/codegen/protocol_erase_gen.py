@@ -237,7 +237,7 @@ def protocol_erase_domain_header_lines(*, generated_at: str) -> list[str]:
     return []
   lines: list[str] = [
     *codegen_file_header_lines(
-      "py2cpp/serde/protocols.py 等（运行时擦除 · varint 域）",
+      "py2cpp/serde/protocols.py 等（运行时擦除 · long 域）",
       generated_at,
     ),
     "#ifndef PY2CPP_PROTOCOL_ERASE_DOMAIN_H",

@@ -319,12 +319,17 @@ def _apply_named_decorator(
   return apply_decorator(wrapped, factory, call)
 
 
-def _parse_context_call(expr: ast.expr) -> tuple[str, ast.Call | None] | None:
+def _parse_context_call(expr: ast.expr) -> tuple[str, ast.Call | None, ast.expr | None] | None:
+  """解析模块级或实例 `@context` 工厂调用。"""
   match expr:
     case ast.Call(func=ast.Name(id=name)):
-      return name, expr
+      return name, expr, None
     case ast.Name(id=name):
-      return name, None
+      return name, None, None
+    case ast.Call(func=ast.Attribute(value=receiver, attr=name)):
+      return name, expr, receiver
+    case ast.Attribute(value=receiver, attr=name):
+      return name, None, receiver
     case _:
       return None
 
@@ -340,7 +345,9 @@ def _split_context_body(body: list[ast.stmt]) -> tuple[list[ast.stmt], list[ast.
   pre: list[ast.stmt] = []
   post: list[ast.stmt] = []
   after_yield = False
-  for stmt in body:
+  for index, stmt in enumerate(body):
+    if index == 0 and isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Constant) and isinstance(stmt.value.value, str):
+      continue
     if isinstance(stmt, ast.Expr) and isinstance(stmt.value, (ast.Yield, ast.YieldFrom)):
       after_yield = True
       continue
@@ -387,92 +394,148 @@ def _bind_stmts_for_with(stmts: list[ast.stmt], bound: dict[str, ast.expr]) -> l
   return out
 
 
+def _context_yield_value(body: list[ast.stmt]) -> ast.expr | None:
+  for stmt in body:
+    if isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Yield):
+      return stmt.value.value
+  return None
+
+
+def _bind_expr_for_with(expr: ast.expr, bound: dict[str, ast.expr]) -> ast.expr:
+  value = _BindParams(bound).visit(copy.deepcopy(expr))
+  value = _WithBlockFuncNameReplacer().visit(value)
+  return _FoldStringOr().visit(value)
+
+
 def _is_expandable_context_with(
-  node: ast.With, context_defs: dict[str, ast.FunctionDef]
+  node: ast.With,
+  context_defs: dict[str, ast.FunctionDef],
+  method_context_defs: dict[str, ast.FunctionDef],
 ) -> bool:
-  """仅 ``@context`` 工厂且单上下文、无 ``as`` 时在翻译期展开；其余走 ``__enter__`` / ``__exit__``。"""
-  if getattr(node, "is_async", False):
+  """单一 `@context` 工厂在翻译期展开，支持实例调用和 `with ... as x`。"""
+  if getattr(node, "is_async", False) or len(node.items) != 1:
     return False
-  if len(node.items) != 1:
-    return False
-  item = node.items[0]
-  if item.optional_vars is not None:
-    return False
-  parsed = _parse_context_call(item.context_expr)
+  parsed = _parse_context_call(node.items[0].context_expr)
   if parsed is None:
     return False
-  cm_name, _ = parsed
-  return cm_name in context_defs
+  cm_name, _, receiver = parsed
+  return cm_name in (method_context_defs if receiver is not None else context_defs)
 
 
-def _expand_with_stmt(node: ast.With, context_defs: dict[str, ast.FunctionDef]) -> list[ast.stmt]:
-  if not _is_expandable_context_with(node, context_defs):
+def _expand_with_stmt(
+  node: ast.With,
+  context_defs: dict[str, ast.FunctionDef],
+  method_context_defs: dict[str, ast.FunctionDef],
+) -> list[ast.stmt]:
+  if not _is_expandable_context_with(node, context_defs, method_context_defs):
     return [copy.deepcopy(node)]
   item = node.items[0]
   parsed = _parse_context_call(item.context_expr)
   assert parsed is not None
-  cm_name, call = parsed
-  cm = context_defs[cm_name]
-  pre, post = _split_context_body(cm.body)
+  cm_name, call, receiver = parsed
+  cm = (method_context_defs if receiver is not None else context_defs)[cm_name]
+  try:
+    pre, post = _split_context_body(cm.body)
+  except ValueError as exc:
+    raise ValueError(f"@context {cm.name}: {exc}") from exc
   bound = bind_call_params(cm, call)
-  inner = expand_with_in_stmts(node.body, context_defs)
-  return _bind_stmts_for_with(pre, bound) + inner + _bind_stmts_for_with(post, bound)
+  if receiver is not None:
+    if not cm.args.args:
+      raise ValueError("实例 @context 工厂须以 self 为第一个参数")
+    bound[cm.args.args[0].arg] = copy.deepcopy(receiver)
+  inner = expand_with_in_stmts(node.body, context_defs, method_context_defs)
+  out = _bind_stmts_for_with(pre, bound)
+  if item.optional_vars is not None:
+    yielded = _context_yield_value(cm.body)
+    if yielded is None:
+      raise ValueError("带 as 的上下文管理器须 yield 一个值")
+    value = _bind_expr_for_with(yielded, bound)
+    if isinstance(item.optional_vars, ast.Name) and cm.returns is not None:
+      out.append(ast.AnnAssign(
+        target=copy.deepcopy(item.optional_vars),
+        annotation=copy.deepcopy(cm.returns),
+        value=value,
+        simple=1,
+      ))
+    else:
+      out.append(ast.Assign(targets=[copy.deepcopy(item.optional_vars)], value=value))
+  return out + inner + _bind_stmts_for_with(post, bound)
 
 
-def expand_with_in_stmts(stmts: list[ast.stmt], context_defs: dict[str, ast.FunctionDef]) -> list[ast.stmt]:
+def expand_with_in_stmts(
+  stmts: list[ast.stmt],
+  context_defs: dict[str, ast.FunctionDef],
+  method_context_defs: dict[str, ast.FunctionDef],
+) -> list[ast.stmt]:
   out: list[ast.stmt] = []
   for stmt in stmts:
     if isinstance(stmt, ast.With):
-      out.extend(_expand_with_stmt(stmt, context_defs))
+      out.extend(_expand_with_stmt(stmt, context_defs, method_context_defs))
       continue
     if isinstance(stmt, ast.If):
       stmt = copy.deepcopy(stmt)
-      stmt.body = expand_with_in_stmts(stmt.body, context_defs)
-      stmt.orelse = expand_with_in_stmts(stmt.orelse, context_defs)
+      stmt.body = expand_with_in_stmts(stmt.body, context_defs, method_context_defs)
+      stmt.orelse = expand_with_in_stmts(stmt.orelse, context_defs, method_context_defs)
       out.append(stmt)
       continue
     if isinstance(stmt, ast.For):
       stmt = copy.deepcopy(stmt)
-      stmt.body = expand_with_in_stmts(stmt.body, context_defs)
-      stmt.orelse = expand_with_in_stmts(stmt.orelse, context_defs)
+      stmt.body = expand_with_in_stmts(stmt.body, context_defs, method_context_defs)
+      stmt.orelse = expand_with_in_stmts(stmt.orelse, context_defs, method_context_defs)
       out.append(stmt)
       continue
     if isinstance(stmt, ast.While):
       stmt = copy.deepcopy(stmt)
-      stmt.body = expand_with_in_stmts(stmt.body, context_defs)
-      stmt.orelse = expand_with_in_stmts(stmt.orelse, context_defs)
+      stmt.body = expand_with_in_stmts(stmt.body, context_defs, method_context_defs)
+      stmt.orelse = expand_with_in_stmts(stmt.orelse, context_defs, method_context_defs)
+      out.append(stmt)
+      continue
+    if isinstance(stmt, ast.Try):
+      stmt = copy.deepcopy(stmt)
+      stmt.body = expand_with_in_stmts(stmt.body, context_defs, method_context_defs)
+      stmt.orelse = expand_with_in_stmts(stmt.orelse, context_defs, method_context_defs)
+      stmt.finalbody = expand_with_in_stmts(stmt.finalbody, context_defs, method_context_defs)
+      for handler in stmt.handlers:
+        handler.body = expand_with_in_stmts(handler.body, context_defs, method_context_defs)
       out.append(stmt)
       continue
     out.append(stmt)
   return out
 
 
-def expand_with_in_function(func: ast.FunctionDef, context_defs: dict[str, ast.FunctionDef]) -> None:
-  if not context_defs:
+def expand_with_in_function(
+  func: ast.FunctionDef,
+  context_defs: dict[str, ast.FunctionDef],
+  method_context_defs: dict[str, ast.FunctionDef],
+) -> None:
+  if not context_defs and not method_context_defs:
     return
-  func.body = expand_with_in_stmts(func.body, context_defs)
-  ast.fix_missing_locations(func)
+  func.body = expand_with_in_stmts(func.body, context_defs, method_context_defs)
 
 
-def _expand_with_in_class(info, context_defs: dict[str, ast.FunctionDef]) -> None:
+def _expand_with_in_class(
+  info,
+  context_defs: dict[str, ast.FunctionDef],
+  method_context_defs: dict[str, ast.FunctionDef],
+) -> None:
   for init in info.inits:
-    expand_with_in_function(init, context_defs)
+    expand_with_in_function(init, context_defs, method_context_defs)
   for method in info.iter_methods():
-    expand_with_in_function(method, context_defs)
+    expand_with_in_function(method, context_defs, method_context_defs)
   for prop in info.properties.values():
     if prop.getter:
-      expand_with_in_function(prop.getter, context_defs)
+      expand_with_in_function(prop.getter, context_defs, method_context_defs)
     if prop.setter:
-      expand_with_in_function(prop.setter, context_defs)
+      expand_with_in_function(prop.setter, context_defs, method_context_defs)
     if prop.postsetter:
-      expand_with_in_function(prop.postsetter, context_defs)
+      expand_with_in_function(prop.postsetter, context_defs, method_context_defs)
   for prop in info.static_properties.values():
     if prop.getter:
-      expand_with_in_function(prop.getter, context_defs)
+      expand_with_in_function(prop.getter, context_defs, method_context_defs)
     if prop.setter:
-      expand_with_in_function(prop.setter, context_defs)
+      expand_with_in_function(prop.setter, context_defs, method_context_defs)
     if prop.postsetter:
-      expand_with_in_function(prop.postsetter, context_defs)
+      expand_with_in_function(prop.postsetter, context_defs, method_context_defs)
 
 
 def _expandable_decorator_apps(
@@ -554,6 +617,7 @@ def _expand_class_method_decorators(
 def expand_decorators(tr: Translator) -> None:
   decorator_defs: dict[str, ast.FunctionDef] = {}
   context_defs: dict[str, ast.FunctionDef] = {}
+  method_context_defs: dict[str, ast.FunctionDef] = {}
   to_remove: list[tuple[str, ast.FunctionDef]] = []
 
   for mp, func in tr.module_functions:
@@ -568,6 +632,17 @@ def expand_decorators(tr: Translator) -> None:
 
   for item in to_remove:
     tr.module_functions.remove(item)
+
+  for info in tr.classes.values():
+    for name, method in list(info.methods.items()):
+      if not is_context_definition(method):
+        continue
+      if name in method_context_defs:
+        raise ValueError(f"重复的实例 @context 工厂: {name}")
+      _normalize_factory_func_names(method)
+      method_context_defs[name] = method
+      del info.methods[name]
+      info.node.body = [stmt for stmt in info.node.body if stmt is not method]
 
   impls: list[tuple[str, ast.FunctionDef]] = []
   skip = getattr(tr, "skip_cached_analysis_module", None)
@@ -589,10 +664,10 @@ def expand_decorators(tr: Translator) -> None:
   for _mp, func in tr.module_functions:
     if skip is not None and skip(_mp):
       continue
-    expand_with_in_function(func, context_defs)
+    expand_with_in_function(func, context_defs, method_context_defs)
   for info in tr.classes.values():
     if skip is not None and skip(info.module_path):
       continue
     if info.is_descriptor or info.is_mixin or info.is_annotation:
       continue
-    _expand_with_in_class(info, context_defs)
+    _expand_with_in_class(info, context_defs, method_context_defs)

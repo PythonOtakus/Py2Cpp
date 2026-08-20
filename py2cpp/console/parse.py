@@ -9,7 +9,7 @@ from ..builtins import *
 from ..io import TextIOWrapper, wrapStd
 from ..util.list import list
 
-from .native_sys import nativeArgv, nativeExit
+from . import argv, exit
 
 
 @annotation
@@ -42,17 +42,17 @@ class FlagArgMeta:
 
 @copyable
 class ArgParserIO:
-  """供 mixin ``parse`` 调用的 IO 叶子；类名全局可解析，避免宿主模块看不到 ``nativeExit``。"""
+  """供 mixin ``parse`` 调用的 IO 叶子；类名全局可解析，避免宿主模块看不到 ``exit``。"""
 
   @staticmethod
-  def resolveArgv(argv: list[str] | None = None) -> list[str]:
-    if argv is None:
-      full: list[str] = nativeArgv()
+  def resolveArgv(args: list[str] | None = None) -> list[str]:
+    if args is None:
+      full: list[str] = argv()
       if len(full) <= 1:
         empty: list[str] = []
         return empty
       return full[1:]
-    return argv
+    return args
 
   @staticmethod
   def fail(msg: str, usage: str) -> None:
@@ -63,7 +63,7 @@ class ArgParserIO:
     err.write(usage)
     err.write("\n")
     err.flush()
-    nativeExit(2)
+    exit(2)
 
   @staticmethod
   def showHelp(usage: str) -> None:
@@ -71,7 +71,7 @@ class ArgParserIO:
     err.write(usage)
     err.write("\n")
     err.flush()
-    nativeExit(0)
+    exit(0)
 
 
 @mixin

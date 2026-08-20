@@ -1,4 +1,4 @@
-"""数值类型：``varint``、``complex``、``ModInt``、``Fraction``、``Decimal`` 等。"""
+"""数值类型：``long``、``complex``、``ModInt``、``Fraction``、``Decimal`` 等。"""
 from ..builtins import *
 from .complex import complex, complex128
 from .decimal import (
@@ -9,7 +9,7 @@ from .decimal import (
   setContext,
 )
 from .fraction import Fraction
-from .varint import varint
+from .long import long
 
 __all__ = [
   "RoundingModeEnum",
@@ -20,5 +20,5 @@ __all__ = [
   "complex128",
   "getContext",
   "setContext",
-  "varint",
+  "long",
 ]

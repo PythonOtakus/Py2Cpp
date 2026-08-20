@@ -4,7 +4,7 @@ from __future__ import annotations
 from py2cpp import *
 from py2cpp.ui.canvas import UICanvas, UIPaintContext
 
-from ..command import CommandBus, ZeusCommand
+from ..command import CommandBus, ZeusCommandUnion
 
 BTN_H: int = 28
 BTN_W: int = 72
@@ -35,12 +35,12 @@ class ToolbarView(UICanvas):
   @override
   def on_paint(self, ctx: UIPaintContext @ref) -> None:
     ctx.zoom = 1.0
-    ctx.fill_rect(0, 0, ctx.width, ctx.height, (45, 45, 48))
-    ctx.draw_text(PAD, 6, 120, BTN_H, "Zeus", (220, 220, 230))
+    ctx.fillRect(0, 0, ctx.width, ctx.height, (45, 45, 48))
+    ctx.drawText(PAD, 6, 120, BTN_H, "Zeus", (220, 220, 230))
     x: int = 100
     for i in range(4):
-      ctx.fill_rect(x, 4, BTN_W, BTN_H, (70, 70, 78))
-      ctx.draw_text(x + 8, 6, BTN_W - 12, BTN_H, self._label_at(i), (240, 240, 245))
+      ctx.fillRect(x, 4, BTN_W, BTN_H, (70, 70, 78))
+      ctx.drawText(x + 8, 6, BTN_W - 12, BTN_H, self._label_at(i), (240, 240, 245))
       x += BTN_W + GAP
 
   @override
@@ -58,12 +58,12 @@ class ToolbarView(UICanvas):
   def _dispatch(self, name: str) -> None:
     match name:
       case "Play":
-        self.bus.dispatch(ZeusCommand.PlayStart())
+        self.bus.dispatch(ZeusCommandUnion.PlayStart())
       case "Pause":
-        self.bus.dispatch(ZeusCommand.PlayPause())
+        self.bus.dispatch(ZeusCommandUnion.PlayPause())
       case "Stop":
-        self.bus.dispatch(ZeusCommand.PlayStop())
+        self.bus.dispatch(ZeusCommandUnion.PlayStop())
       case "Step":
-        self.bus.dispatch(ZeusCommand.PlayStep(1))
+        self.bus.dispatch(ZeusCommandUnion.PlayStep(1))
       case _:
         pass

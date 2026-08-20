@@ -112,7 +112,7 @@ static void _ui_theme_ensure_font(const py2cpp::ui::style::PyUIStyle& style)
     return;
   }
   char face[LF_FACESIZE] = {};
-  style.fontName.copyToSpan(PySpan<PyByte>((PyByte*)face, (PyInt)sizeof(face), 1));
+  style.fontName.copyToSpanUtf8(PySpan<PyByte>((PyByte*)face, (PyInt)sizeof(face), 1));
   if (!face[0])
   {
     _ui_copy_cstr(face, (PyInt)sizeof(face), "Segoe UI");
@@ -475,7 +475,7 @@ void PyUIWindow::_applyTitle()
     return;
   }
   char tbuf[512];
-  title__value.copyToSpan(PySpan<PyByte>((PyByte*)tbuf, (PyInt)sizeof(tbuf), 1));
+  title__value.copyToSpanUtf8(PySpan<PyByte>((PyByte*)tbuf, (PyInt)sizeof(tbuf), 1));
   SetWindowTextA(panel, tbuf);
 }
 
@@ -484,7 +484,7 @@ void PyUIWindow::show(PyInt width, PyInt height)
   py2cpp::ui::layout::ui_form_session_reset();
   _ui_ensure_class();
   char tbuf[512];
-  title__value.copyToSpan(PySpan<PyByte>((PyByte*)tbuf, (PyInt)sizeof(tbuf), 1));
+  title__value.copyToSpanUtf8(PySpan<PyByte>((PyByte*)tbuf, (PyInt)sizeof(tbuf), 1));
   PyBool defer_w = (width < 0);
   PyBool defer_h = (height < 0);
   int w = width;

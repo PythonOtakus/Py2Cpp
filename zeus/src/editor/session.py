@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from py2cpp import *
 
-from ..command import CommandBus, CommandResult, ZeusCommand
+from ..command import CommandBus, CommandResult, ZeusCommandUnion
 from ..scene import GameObject
 
 
@@ -37,7 +37,7 @@ class EditorSession:
       row.depth = depths[i]
       self.rows.append(row)
 
-  def dispatch(self, cmd: ZeusCommand) -> CommandResult:
+  def dispatch(self, cmd: ZeusCommandUnion) -> CommandResult:
     r: CommandResult = self.bus.dispatch(cmd)
     match cmd:
       case new.ObjectCreate(_, _):
@@ -60,4 +60,4 @@ class EditorSession:
       r.ok = False
       r.message = "bad index"
       return r
-    return self.dispatch(ZeusCommand.EditorSelect(self.rows[index].name))
+    return self.dispatch(ZeusCommandUnion.EditorSelect(self.rows[index].name))

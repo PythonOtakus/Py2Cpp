@@ -2,7 +2,7 @@
 from ..builtins import *
 from ..core.exceptions import Exception, ValueError
 from ..io import StringIO, TextIOWrapper
-from ..io.file.path import exists, join, realPath
+from ..io.path import Path
 from .json import JsonEncoder
 from .yaml import Yaml
 
@@ -288,16 +288,17 @@ class _PymlExpander:
       self._fail(line, "module import cycle")
     if not self.context.moduleRoot:
       self._fail(line, "module import requires moduleRoot")
-    path: str = self.context.moduleRoot
+    path: Path = new(self.context.moduleRoot)
     for part in name.split("."):
-      path = join(path, part)
-    path += ".pyml"
-    path = realPath(path)
+      path = path / part
+    path = path.withSuffix(".pyml")
+    path = path.resolve()
     if self.context.allowedRoot:
-      allowed: str = realPath(self.context.allowedRoot)
-      if path != allowed and not path.startsWith(allowed + "\\") and not path.startsWith(allowed + "/"):
+      allowed: Path = new(self.context.allowedRoot)
+      allowed = allowed.resolve()
+      if path != allowed and not path.isRelativeTo(str(allowed)):
         self._fail(line, "module import escapes allowed root")
-    if not exists(path):
+    if not path.exists():
       self._fail(line, "module not found")
     childContext: PymlContext = new(
       moduleName=name,
@@ -308,7 +309,7 @@ class _PymlExpander:
     if name in self.moduleCache:
       source = self.moduleCache[name]
     else:
-      fp: TextIOWrapper = new(path)
+      fp: TextIOWrapper = path.open()
       source = fp.read()
       fp.close()
       self.moduleCache[name] = source

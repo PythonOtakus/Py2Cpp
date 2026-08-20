@@ -197,7 +197,7 @@ static void _ui_layout_row(py2cpp::ui::window::PyUIWindow& self, PyStr label, HW
     slot_h = ctrl_h;
   }
   char lbuf[256];
-  label.copyToSpan(PySpan<PyByte>((PyByte*)lbuf, (PyInt)sizeof(lbuf), 1));
+  label.copyToSpanUtf8(PySpan<PyByte>((PyByte*)lbuf, (PyInt)sizeof(lbuf), 1));
   int y = self.nextY;
   int ctrl_x = pad_x + label_w + formSpacing;
   HWND lbl = CreateWindowExA(
@@ -372,7 +372,7 @@ static void _ui_row_sync_to_native(UIRowEntry& row)
     }
     case UI_ROW_LINE_EDIT: {
       char vbuf[512];
-      row.sval.copyToSpan(PySpan<PyByte>((PyByte*)vbuf, (PyInt)sizeof(vbuf), 1));
+      row.sval.copyToSpanUtf8(PySpan<PyByte>((PyByte*)vbuf, (PyInt)sizeof(vbuf), 1));
       SetWindowTextA(row.ctrl, vbuf);
       break;
     }
@@ -463,7 +463,7 @@ static void _ui_mount_row(py2cpp::ui::window::PyUIWindow& win, UIRowEntry& row)
       py2cpp::ui::window::ui_theme_layout_metrics(
           win, NULL, NULL, NULL, NULL, NULL, &edit_w, &edit_h, NULL, NULL);
       char vbuf[512];
-      row.sval.copyToSpan(PySpan<PyByte>((PyByte*)vbuf, (PyInt)sizeof(vbuf), 1));
+      row.sval.copyToSpanUtf8(PySpan<PyByte>((PyByte*)vbuf, (PyInt)sizeof(vbuf), 1));
       row.ctrl = _ui_create_edit(parent, vbuf, edit_w, edit_h);
       _ui_layout_row(win, row.label, row.ctrl, edit_w, edit_h);
       _ui_row_mount_widget_handle(row);
@@ -525,7 +525,7 @@ static void _ui_mount_button(py2cpp::ui::window::PyUIWindow& win, UIButtonEntry&
     btn_h = py2cpp::ui::window::ui_theme_scale_ctx(win, win.style.buttonSize.template get<1>());
   }
   char lbuf[256];
-  btn.text.copyToSpan(PySpan<PyByte>((PyByte*)lbuf, (PyInt)sizeof(lbuf), 1));
+  btn.text.copyToSpanUtf8(PySpan<PyByte>((PyByte*)lbuf, (PyInt)sizeof(lbuf), 1));
   btn.ctrl = _ui_create_push_button(parent, lbuf, btn_w, btn_h);
   btn.widget.handle = (PyInt64)((INT_PTR)btn.ctrl);
   _ui_layout_row(win, PyStr(""), btn.ctrl, btn_w, btn_h);

@@ -2,9 +2,9 @@
 from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING
-from ..analysis.type_pred import is_byte_type, is_char_type, is_int_type, is_refcount_type, is_str_type, is_varint_type
+from ..analysis.type_pred import is_byte_type, is_char_type, is_int_type, is_refcount_type, is_str_type, is_long_type
 from ..analysis.type_pred import is_complex_type
-from ..analysis.ir import cpp_ident, format_cpp_int, format_cpp_varint, strip_cpp_ref
+from ..analysis.ir import cpp_ident, format_cpp_int, format_cpp_long, strip_cpp_ref
 from .complex_literal_emit import complex_literal_parts, try_emit_complex_literal_expr
 from .literal_map_lookup_emit import try_emit_set_literal_contains
 from .literal_sequence_lookup_emit import try_emit_list_literal_contains, try_emit_str_literal_contains
@@ -49,9 +49,9 @@ def _ascii_int_char_code(node: ast.expr) -> int | None:
     return _ord_single_char_value(node)
 
 def _scalar_scalar_binop(tr: Translator, node: ast.BinOp) -> bool:
-    if is_varint_type(tr._infer_expr_cpp_type(node.left)):
+    if is_long_type(tr._infer_expr_cpp_type(node.left)):
         return False
-    if is_varint_type(tr._infer_expr_cpp_type(node.right)):
+    if is_long_type(tr._infer_expr_cpp_type(node.right)):
         return False
     return tr._is_py_scalar_expr(node.left) and tr._is_py_scalar_expr(node.right)
 
@@ -62,7 +62,7 @@ def _operand_is_complex(tr: Translator, node: ast.expr, cpp_type: str | None) ->
     return complex_literal_parts(node) is not None
 
 def try_global_forward_binop(tr: Translator, node: ast.BinOp) -> str | None:
-    """``PyComplex`` / ``varint`` 等：仅 ``/`` ``//`` ``%`` 走全局 dunder（与 C++ 语义不一致）。"""
+    """``PyComplex`` / ``long`` 等：仅 ``/`` ``//`` ``%`` 走全局 dunder（与 C++ 语义不一致）。"""
     match node.op:
         case ast.Mod():
             fn = '__mod__'
@@ -78,7 +78,7 @@ def try_global_forward_binop(tr: Translator, node: ast.BinOp) -> str | None:
         return None
     left_t = tr._infer_expr_cpp_type(node.left)
     right_t = tr._infer_expr_cpp_type(node.right)
-    if not (_operand_is_complex(tr, node.left, left_t) or _operand_is_complex(tr, node.right, right_t) or is_varint_type(left_t) or is_varint_type(right_t)):
+    if not (_operand_is_complex(tr, node.left, left_t) or _operand_is_complex(tr, node.right, right_t) or is_long_type(left_t) or is_long_type(right_t)):
         return None
     l = tr._visit_value_expr(node.left)
     r = tr._visit_value_expr(node.right)
@@ -97,7 +97,7 @@ def try_global_scalar_binop(tr: Translator, node: ast.BinOp) -> str | None:
             return None
     left_t = tr._infer_expr_cpp_type(node.left)
     right_t = tr._infer_expr_cpp_type(node.right)
-    if is_varint_type(left_t) or is_varint_type(right_t):
+    if is_long_type(left_t) or is_long_type(right_t):
         return None
     if not tr._is_py_scalar_expr(node.left) or not tr._is_py_scalar_expr(node.right):
         return None
@@ -170,8 +170,8 @@ def emit_unary_op(tr: Translator, node: ast.UnaryOp) -> str:
             if isinstance(node.operand, ast.Constant) and isinstance(node.operand.value, int):
                 neg_val = -int(node.operand.value)
                 ctx_type = tr._infer_expr_cpp_type(node)
-                if ctx_type and is_varint_type(ctx_type):
-                    return format_cpp_varint(neg_val)
+                if ctx_type and is_long_type(ctx_type):
+                    return format_cpp_long(neg_val)
                 return format_cpp_int(neg_val)
             info = tr._class_info_for_expr(node.operand)
             if info and '__neg__' in info.methods:
@@ -291,9 +291,9 @@ def _is_raw_ptr_cpp_type(cpp_type: str) -> bool:
     return t.endswith('*') and (not is_refcount_type(t))
 
 def _is_nullable_identity_cpp_type(cpp_type: str) -> bool:
-    """``is None`` / ``is not None`` 可与 ``nullptr`` 比较的 C++ 类型（裸指针、``CStr``、``Callable`` 函数指针）。"""
+    """``is None`` / ``is not None`` 可与 ``nullptr`` 比较的 C++ 类型（裸指针、``utf8ptr``、``Callable`` 函数指针）。"""
     t = cpp_type.strip()
-    if t in ("CStr", "const char*"):
+    if t in ("utf8ptr", "utf16ptr", "const char*", "const wchar_t*"):
         return True
     if _is_raw_ptr_cpp_type(t):
         return True

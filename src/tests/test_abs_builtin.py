@@ -10,7 +10,7 @@ from src.translator import Translator
 
 class AbsBuiltinEmitTests(unittest.TestCase):
   def _translate(self, body: str, *, extra: str = "") -> str:
-    src = f"""from py2cpp import varint
+    src = f"""from py2cpp import *
 {extra}
 
 def probe():
@@ -29,14 +29,14 @@ def probe():
     self.assertIn("n < 0 ? -n : n", cpp)
     self.assertNotIn("::py2cpp::py_abs", cpp)
 
-  def test_abs_varint_dunder(self):
-    cpp = self._translate("  v: varint = varint('-5')\n  return abs(v)\n")
+  def test_abs_long_dunder(self):
+    cpp = self._translate("  v: long = long('-5')\n  return abs(v)\n")
     self.assertIn("__abs__()", cpp)
 
   def test_abs_self_uses_dunder(self):
     cpp = self._translate(
       "  return abs(self)\n",
-      extra="""from py2cpp import Self, copyable
+      extra="""
 
 @copyable
 class Box:

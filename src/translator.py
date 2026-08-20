@@ -40,9 +40,9 @@ from .analysis.import_resolver import discover_translation_modules, iter_module_
 from .analysis.imports import ImportUsing
 from .analysis.module_namespace import MODULES_WITHOUT_CPP_NAMESPACE, inl_namespace_segments, merge_consecutive_namespace_blocks, module_path_namespace_segments, namespace_qualifier_for_module, splice_before_innermost_namespace_close, qualify_base_in_module, qualify_symbol_in_module, use_cpp_namespaces, using_namespace_line, using_symbol_line
 from .analysis.imports import binding_cpp_name, resolve_class_ref_cpp, resolve_ctor_cpp_type, resolve_import_attribute_chain
-from .analysis.type_pred import is_str_type, is_bytes_type, is_char_type, is_int_type, is_int64_type, is_uint_type, is_uint64_type, is_uintptr_type, is_varint_type, is_float_type, is_float64_type, is_scalar_int_type, is_scalar_float_type, is_refcount_type, is_optional_type, is_array_type, is_byte_type, is_stack_array_type, is_span_type, is_dict_type, is_set_type, is_frozenset_type, is_frozenlist_type, is_frozendict_type, is_deque_type, is_list_type, is_container_type, is_callable_type, is_py_generator_type, is_concrete_generator_type, is_py_coroutine_type, is_concrete_coroutine_type, is_py_async_generator_type, is_char_heap_array_type, is_byte_heap_array_type, is_char_stack_array_type, is_heap_array_type, is_iter_result_type, is_fault_result_type, is_complex_type
+from .analysis.type_pred import is_str_type, is_bytes_type, is_char_type, is_int_type, is_int16_type, is_int64_type, is_uint16_type, is_uint_type, is_uint64_type, is_uintptr_type, is_long_type, is_float_type, is_float64_type, is_scalar_int_type, is_scalar_float_type, is_refcount_type, is_optional_type, is_array_type, is_byte_type, is_stack_array_type, is_span_type, is_dict_type, is_set_type, is_frozenset_type, is_frozenlist_type, is_frozendict_type, is_deque_type, is_list_type, is_container_type, is_callable_type, is_py_generator_type, is_concrete_generator_type, is_py_coroutine_type, is_concrete_coroutine_type, is_py_async_generator_type, is_char_heap_array_type, is_byte_heap_array_type, is_char_stack_array_type, is_heap_array_type, is_iter_result_type, is_fault_result_type, is_complex_type
 from .analysis.type_extract import dict_type_args, set_elem_type, frozenset_elem_type, frozenlist_elem_type, frozendict_type_args, deque_elem_type, list_elem_type, optional_inner_type
-from .analysis.ir import INT_FIELDS, ClassInfo, TypeAliasInfo, TYPE_MARKER_CLASSES, FuncTypeParams, class_base_name, FunctionSig, MethodSig, ModuleAnalysis, codegen_file_header_lines, cpp_ident, cpp_type_param_template_name, cpp_param, cpp_result_type_args, cpp_template_inner_args, cpp_template_type, cpp_result_type, cpp_iter_result_return_expr, cpp_iter_result_yield_expr, iter_result_done_cpp, iter_result_value_cpp, iter_result_return_value_cpp, cpp_refcount_type, cpp_iterator_type, is_json_doc_cursor_type, cpp_slice_result_type, strip_cpp_ref, format_cpp_int, format_cpp_int64, format_cpp_uint, format_cpp_uint64, format_cpp_uintptr, format_cpp_varint, format_cpp_complex_literal, format_cpp_float64, cpp_fault_ok_expr, cpp_fault_err_expr, fault_result_ok_expr, fault_result_value_expr, cpp_option_some_expr, cpp_option_none_expr, cpp_pointer_type_for_object, option_is_none_expr, option_is_not_none_expr, option_unbox_expr, bytes_cpp_from_literal, cpp_array_elem_type, cpp_array_ndim, cpp_stack_array_size, cpp_stack_array_offset, cpp_stack_array_field_decl, cpp_stack_array_var_decl, cpp_stack_array_elem_type, cpp_stack_array_type, parse_cpp_stack_array_type, cpp_span_var_decl, cpp_span_elem_type, cpp_span_type, parse_subslice_bounds, CPP_RESULT_PREFIX, CPP_REFCount_PREFIX, strip_cpp_type_qualifiers, format_fn_sig, fn_noexcept_suffix, format_cpp_float, format_cpp_callable_var_decl, cpp_make_py_generator_expr, cpp_make_py_coroutine_expr, cpp_make_py_async_generator_expr, is_overload_stub, is_stub_function_body, quote_cpp_string, str_cpp_from_literal, has_named_decorator
+from .analysis.ir import INT_FIELDS, ClassInfo, TypeAliasInfo, TYPE_MARKER_CLASSES, FuncTypeParams, class_base_name, FunctionSig, MethodSig, ModuleAnalysis, codegen_file_header_lines, cpp_ident, cpp_type_param_template_name, cpp_param, cpp_result_type_args, cpp_template_inner_args, cpp_template_type, cpp_result_type, cpp_iter_result_return_expr, cpp_iter_result_yield_expr, iter_result_done_cpp, iter_result_value_cpp, iter_result_return_value_cpp, cpp_refcount_type, cpp_iterator_type, is_json_doc_cursor_type, cpp_slice_result_type, strip_cpp_ref, format_cpp_int, format_cpp_int64, format_cpp_uint, format_cpp_uint64, format_cpp_uintptr, format_cpp_long, format_cpp_complex_literal, format_cpp_float64, cpp_fault_ok_expr, cpp_fault_err_expr, fault_result_ok_expr, fault_result_value_expr, cpp_option_some_expr, cpp_option_none_expr, cpp_pointer_type_for_object, option_is_none_expr, option_is_not_none_expr, option_unbox_expr, bytes_cpp_from_literal, cpp_array_elem_type, cpp_array_ndim, cpp_stack_array_size, cpp_stack_array_offset, cpp_stack_array_field_decl, cpp_stack_array_var_decl, cpp_stack_array_elem_type, cpp_stack_array_type, parse_cpp_stack_array_type, cpp_span_var_decl, cpp_span_elem_type, cpp_span_type, parse_subslice_bounds, CPP_RESULT_PREFIX, CPP_REFCount_PREFIX, strip_cpp_type_qualifiers, format_fn_sig, fn_noexcept_suffix, format_cpp_float, format_cpp_callable_var_decl, cpp_make_py_generator_expr, cpp_make_py_coroutine_expr, cpp_make_py_async_generator_expr, is_overload_stub, is_stub_function_body, quote_cpp_string, str_cpp_from_literal, has_named_decorator
 from .analysis.patterns import DUNDER_METHODS, RESERVED, temp_name
 from .passes.dataclass_expand import check_native_function_bodies, expand_dataclass
 from .passes.default_bool import expand_default_bool
@@ -93,7 +93,7 @@ from .emit.object_repr_emit import has_effective_str
 from .codegen.expand_py2cpp_template import expand_template
 from .codegen.stdlib_mirror_codegen import expand_whole_file_template
 from .emit.layout_emit import build_stdlib_cpp_lines, module_path_to_guard, sync_runtime_cpp_usings, write_per_module_headers, write_per_module_inl, write_primitive_type_headers, write_umbrella_header
-from .emit.layout_config_emit import GENERATED_DIR, RUNTIME_CPP, RUNTIME_OUTPUT_SUBDIR, RUNTIME_PREFIX, _JSON_API_METHODS_NEED_TYPE_ARG, _OS_PATH_MODULE, _IO_PATH_OO_MODULE, _DATETIME_MODULE, UMBRELLA_HEADER
+from .emit.layout_config_emit import GENERATED_DIR, RUNTIME_CPP, RUNTIME_OUTPUT_SUBDIR, RUNTIME_PREFIX, _JSON_API_METHODS_NEED_TYPE_ARG, _IO_PATH_OO_MODULE, _DATETIME_MODULE, UMBRELLA_HEADER
 from .emit.loops_emit import element_type_of_iterable, emit_native_range_loop_from_call, emit_range_len_expr, is_direct_range_call, visit_async_for, visit_for, visit_while
 from .emit.print_emit import emit_print
 from .emit.binop_emit import emit_bin_op, emit_compare, emit_unary_op
@@ -556,9 +556,30 @@ class Translator(ast.NodeVisitor):
     def _use_import_bindings(self, module_path: str):
         prev = self._emit_bindings_scope
         self._emit_bindings_scope = self.module_import_bindings.get(module_path, {})
+        parser = self.type_parser
+        prev_bindings = None
+        prev_aliases = None
+        prev_alias_use_cpp_name = False
+        if parser is not None:
+            from .analysis.imports import effective_module_type_aliases
+
+            prev_bindings = parser._import_bindings
+            prev_aliases = parser._type_aliases
+            prev_alias_use_cpp_name = parser._alias_use_cpp_name
+            parser.set_import_bindings(self._emit_bindings_scope)
+            parser.set_type_aliases(
+                effective_module_type_aliases(self, module_path),
+                use_as_cpp_name=False,
+            )
         try:
             yield
         finally:
+            if parser is not None:
+                parser.set_import_bindings(prev_bindings)
+                parser.set_type_aliases(
+                    prev_aliases,
+                    use_as_cpp_name=prev_alias_use_cpp_name,
+                )
             self._emit_bindings_scope = prev
 
     def _effective_import_bindings(self) -> dict:
@@ -1376,11 +1397,11 @@ class Translator(ast.NodeVisitor):
             return boxing
         if t in ('bool', cpp_ident('bool')):
             return cpp
-        if t in (cpp_ident('int'), cpp_ident('int64'), cpp_ident('float'), cpp_ident('float64'), cpp_ident('char'), 'int', 'float'):
+        if t in (cpp_ident('int'), cpp_ident('int16'), cpp_ident('int64'), cpp_ident('uint16'), cpp_ident('uint'), cpp_ident('uint64'), cpp_ident('float'), cpp_ident('float64'), cpp_ident('char'), 'int', 'float'):
             return f'({cpp})'
         if is_char_type(t, classes=self.classes):
             return f'({cpp})'
-        if t in ('CStr', 'const char*'):
+        if t in ('utf8ptr', 'utf16ptr', 'const char*', 'const wchar_t*'):
             return f'({cpp} != 0)'
         if is_refcount_type(t, classes=self.classes):
             pb = cpp_ident('PyBool')
@@ -2039,7 +2060,7 @@ class Translator(ast.NodeVisitor):
             left_info = self.classes.get('str')
         if left_info and self._class_info_has_method(left_info, dunder):
             return self._emit_dunder_call(node.left, dunder, node.right)
-        if is_varint_type(left_t):
+        if is_long_type(left_t):
             return self._emit_dunder_call(node.left, dunder, node.right)
         rdunder = self._binop_rdunder(node.op)
         if rdunder:
@@ -2051,7 +2072,7 @@ class Translator(ast.NodeVisitor):
                 right_info = self.classes.get('str')
             if right_info and self._class_info_has_method(right_info, rdunder):
                 return self._emit_dunder_call(node.right, rdunder, node.left)
-            if is_varint_type(right_t):
+            if is_long_type(right_t):
                 return self._emit_dunder_call(node.right, rdunder, node.left)
         return None
 
@@ -2170,12 +2191,12 @@ class Translator(ast.NodeVisitor):
             return None
         tgt = strip_cpp_ref(cpp_type) if cpp_type else ''
         if is_str_type(tgt):
-            return f'({expr}).read_str()'
-        if is_int_type(tgt) or is_int64_type(tgt) or is_varint_type(tgt):
-            return f'({expr}).read_int()'
+            return f'({expr}).readStr()'
+        if is_int_type(tgt) or is_int16_type(tgt) or is_int64_type(tgt) or is_uint16_type(tgt) or is_uint_type(tgt) or is_uint64_type(tgt) or is_long_type(tgt):
+            return f'({expr}).readInt()'
         ps_bool = cpp_ident('bool')
         if tgt in ('bool', ps_bool):
-            return f'({expr}).read_bool()'
+            return f'({expr}).readBool()'
         return None
 
     def _should_use_cpp_attr_dispatch(self, receiver: ast.expr) -> bool:
@@ -2406,7 +2427,9 @@ class Translator(ast.NodeVisitor):
         t = strip_cpp_type_qualifiers(strip_cpp_ref(cpp_type)).strip()
         prim = {
             cpp_ident('int'): 'int',
+            cpp_ident('int16'): 'int16',
             cpp_ident('int64'): 'int64',
+            cpp_ident('uint16'): 'uint16',
             cpp_ident('uint'): 'uint',
             cpp_ident('uint64'): 'uint64',
             cpp_ident('uintptr'): 'uintptr',
@@ -3356,6 +3379,8 @@ class Translator(ast.NodeVisitor):
                 parts.append(cur.cpp_name())
             cur = cur.outer_class
         inner = '::'.join(reversed(parts))
+        if not self._is_stdlib_module(info.module_path) and not self._is_ffi_module(info.module_path):
+            return inner
         return f'{ns}::{inner}' if ns else inner
 
     def _module_function_qualifier(self, module_path: str, func_name: str) -> str:
@@ -3367,10 +3392,6 @@ class Translator(ast.NodeVisitor):
     def _stdlib_source_note(module_path: str) -> str:
         if module_path == RUNTIME_PKG:
             return f'{RUNTIME_PREFIX}/__init__.py'
-        if module_path == stdlib_module_path('io/file'):
-            return f'{RUNTIME_PREFIX}/io/file/__init__.py'
-        if module_path == _OS_PATH_MODULE:
-            return f'{RUNTIME_PREFIX}/io/file/path.py'
         if module_path == _IO_PATH_OO_MODULE:
             return f'{RUNTIME_PREFIX}/io/path.py'
         return f'{module_path}.py'
@@ -3530,9 +3551,16 @@ class Translator(ast.NodeVisitor):
         if self.type_parser is None:
             return
         if info is None:
-            self.type_parser.set_type_aliases(None)
+            self.type_parser.set_type_aliases(
+                self._module_type_alias_map(),
+                use_as_cpp_name=False,
+            )
             return
-        self.type_parser.set_type_aliases(info.type_aliases, use_as_cpp_name=not info.is_protocol)
+        # 方法体不依赖类声明里的 ``using`` 名；将模块与类的别名一并展开。
+        # 例如 ``type Frac = Fraction[int]`` 在测试类方法中不得退化成 ``PyFrac``。
+        aliases = self._module_type_alias_map()
+        aliases.update(info.type_aliases)
+        self.type_parser.set_type_aliases(aliases, use_as_cpp_name=False)
 
     def _type_alias_rhs_cpp(self, alias: TypeAliasInfo, info: ClassInfo) -> str:
         assert self.type_parser is not None
@@ -4844,7 +4872,7 @@ class Translator(ast.NodeVisitor):
     @staticmethod
     def _is_primitive_cpp_type(cpp_type: str) -> bool:
         base = cpp_type.strip().rstrip('*').split('<', 1)[0]
-        return base in (cpp_ident('int'), cpp_ident('int64'), cpp_ident('float'), cpp_ident('float64'), cpp_ident('bool'), cpp_ident('char'))
+        return base in (cpp_ident('int'), cpp_ident('int16'), cpp_ident('int64'), cpp_ident('uint16'), cpp_ident('uint'), cpp_ident('uint64'), cpp_ident('float'), cpp_ident('float64'), cpp_ident('bool'), cpp_ident('char'))
 
     def _cpp_type_for_assign_target(self, target: ast.expr) -> str:
         match target:
@@ -5420,7 +5448,7 @@ class Translator(ast.NodeVisitor):
         item = items[0]
         mgr = temp_name('with_mgr')
         frame.managers.append(mgr)
-        mgr_type = self._constructor_type(item.context_expr)
+        mgr_type = self._infer_expr_cpp_type(item.context_expr) or self._constructor_type(item.context_expr)
         mgr_is_ref = self._with_manager_binds_by_reference(item.context_expr, mgr_type)
         with self._use_block():
             self.write_line(f'auto{"&" if mgr_is_ref else ""} {mgr} = {self.visit(item.context_expr)};')
@@ -5459,14 +5487,25 @@ class Translator(ast.NodeVisitor):
                 enter_ty = f'{enter_ty}&'
         else:
             enter_ty = ret
-        if info.module_path != RUNTIME_PKG and self._is_stdlib_module(info.module_path):
+        # utf8ptr / utf16ptr are native scalar aliases, not runtime class namespace members.
+        # Imported annotations may temporarily retain the package qualifier.
+        enter_base = strip_cpp_ref(enter_ty)
+        if enter_base.rsplit('::', 1)[-1] in ('utf8ptr', 'utf16ptr'):
+            base = enter_base.rsplit('::', 1)[-1]
+            return f'{base}&' if enter_ty.rstrip().endswith('&') else base
+        enter_info = self._class_info_for_type(strip_cpp_ref(enter_ty))
+        if (
+            enter_info is not None
+            and enter_info.module_path != RUNTIME_PKG
+            and self._is_stdlib_module(enter_info.module_path)
+        ):
             is_ref = enter_ty.rstrip().endswith('&')
             enter_base = strip_cpp_ref(enter_ty)
             base, _, tail = enter_base.partition('<')
             if tail:
-                enter_ty = f'{qualify_symbol_in_module(info.module_path, base)}<{tail}'
+                enter_ty = f'{qualify_symbol_in_module(enter_info.module_path, base)}<{tail}'
             else:
-                enter_ty = qualify_symbol_in_module(info.module_path, enter_base)
+                enter_ty = qualify_symbol_in_module(enter_info.module_path, enter_base)
             if is_ref:
                 enter_ty = f'{enter_ty}&'
         return enter_ty
@@ -5555,7 +5594,7 @@ class Translator(ast.NodeVisitor):
             self.write_line(f'{val};')
 
     def _is_ptr_type(self, t: str) -> bool:
-        return bool(t) and t.endswith('*') and (t not in ('CStr', 'const char*'))
+        return bool(t) and t.endswith('*') and (t not in ('utf8ptr', 'const char*'))
 
     @staticmethod
     def _array_ndim_from_type(t: str) -> int | None:
@@ -5782,10 +5821,12 @@ class Translator(ast.NodeVisitor):
                 if sp:
                     getter = self._property_getter_cpp_name(info, node.attr)
                     return f'{info.cpp_name()}::{getter}()'
-        if node.attr == "view" and self._infer_expr_cpp_type(node.value).rstrip() == "CStr":
+        cstr_type = self._infer_expr_cpp_type(node.value).rstrip()
+        if node.attr == "view" and cstr_type in ("utf8ptr", "utf16ptr"):
             from .analysis.module_namespace import qualify_symbol_in_module
             recv = self.visit(node.value)
-            return f"{qualify_symbol_in_module('util/memory', '_cstrView')}({recv})"
+            helper = "_cstrView" if cstr_type == "utf8ptr" else "_cwstrView"
+            return f"{qualify_symbol_in_module('util/memory', helper)}({recv})"
         prop_read = self._property_read(node.value, node.attr)
         if prop_read is not None:
             return prop_read
@@ -6087,15 +6128,15 @@ class Translator(ast.NodeVisitor):
                     return format_cpp_uint64(value)
                 if cpp_type and is_uintptr_type(cpp_type):
                     return format_cpp_uintptr(value)
-                if cpp_type and is_varint_type(cpp_type):
-                    return format_cpp_varint(value)
+                if cpp_type and is_long_type(cpp_type):
+                    return format_cpp_long(value)
                 return format_cpp_int(value)
             case float():
                 if cpp_type and is_float64_type(cpp_type):
                     return format_cpp_float64(value)
                 return format_cpp_float(value)
             case str():
-                if cpp_type in ('CStr', 'const char*'):
+                if cpp_type in ('utf8ptr', 'const char*'):
                     return quote_cpp_string(value)
                 return str_cpp_from_literal(value)
             case bytes():
@@ -6208,8 +6249,10 @@ class Translator(ast.NodeVisitor):
     def _infer_view_span_type(self, receiver: ast.expr) -> str | None:
         bt = self._infer_expr_cpp_type(receiver)
         elem = None
-        if bt == "CStr":
+        if bt == "utf8ptr":
             return cpp_span_type(cpp_ident("byte"))
+        if bt == "utf16ptr":
+            return cpp_span_type(cpp_ident("uint16"))
         if is_stack_array_type(bt):
             elem = cpp_stack_array_elem_type(bt)
         elif is_array_type(bt) and cpp_array_ndim(bt) == 1:
@@ -6368,6 +6411,13 @@ class Translator(ast.NodeVisitor):
                 if ft:
                     return ft
             case ast.Call(func=ast.Attribute(value=recv, attr=method)):
+                if method == '__await__' and (not node.args) and (not node.keywords):
+                    recv_t = strip_cpp_ref(self._infer_expr_cpp_type(recv) or '')
+                    recv_info = self._class_info_for_type(recv_t)
+                    if recv_info is not None:
+                        from .passes.generators import COROUTINE_SUFFIX
+                        if recv_info.name.endswith(COROUTINE_SUFFIX):
+                            return recv_t
                 if method == '__next__' and (not node.args) and (not node.keywords):
                     info = self._class_info_for_expr(recv)
                     if info and '__next__' in info.method_sigs:
@@ -6409,7 +6459,25 @@ class Translator(ast.NodeVisitor):
                     ret = self._receiver_method_return_cpp_type(self.classes[recv.id], method, recv)
                     if ret:
                         return ret
+            case ast.BinOp(op=ast.Add(), left=left, right=right):
+                left_t = self._infer_expr_cpp_type(left)
+                right_t = self._infer_expr_cpp_type(right)
+                if (
+                    (is_str_type(left_t, classes=self.classes) or is_char_type(left_t, classes=self.classes))
+                    and (is_str_type(right_t, classes=self.classes) or is_char_type(right_t, classes=self.classes))
+                ):
+                    return cpp_ident('str')
+                if is_scalar_float_type(left_t) or is_scalar_float_type(right_t):
+                    if is_float64_type(left_t) or is_float64_type(right_t):
+                        return cpp_ident('float64')
+                    return cpp_ident('float')
             case ast.BinOp() as bin_node:
+                left_t = self._infer_expr_cpp_type(bin_node.left)
+                right_t = self._infer_expr_cpp_type(bin_node.right)
+                if is_scalar_float_type(left_t) or is_scalar_float_type(right_t):
+                    if is_float64_type(left_t) or is_float64_type(right_t):
+                        return cpp_ident('float64')
+                    return cpp_ident('float')
                 dunder = self._binop_dunder(bin_node.op)
                 if dunder:
                     left_info = self._class_info_for_expr(bin_node.left)
@@ -6449,8 +6517,12 @@ class Translator(ast.NodeVisitor):
                     return vt.strip()[:-1].rstrip()
                 if is_str_type(vt):
                     return cpp_ident('char')
-                if is_char_heap_array_type(vt) or is_byte_heap_array_type(vt):
+                if is_array_type(vt):
                     elem = cpp_array_elem_type(vt)
+                    if elem:
+                        return elem.strip()
+                if is_stack_array_type(vt):
+                    elem = cpp_stack_array_elem_type(vt)
                     if elem:
                         return elem.strip()
                 if is_list_type(vt):
@@ -6473,8 +6545,10 @@ class Translator(ast.NodeVisitor):
             case ast.Attribute(value=val, attr='view'):
                 bt = self._infer_expr_cpp_type(val)
                 elem = None
-                if bt == "CStr":
+                if bt == "utf8ptr":
                     return cpp_span_type(cpp_ident("byte"))
+                if bt == "utf16ptr":
+                    return cpp_span_type(cpp_ident("uint16"))
                 if is_stack_array_type(bt):
                     elem = cpp_stack_array_elem_type(bt)
                 elif is_array_type(bt) and cpp_array_ndim(bt) == 1:

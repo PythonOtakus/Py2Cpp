@@ -148,7 +148,7 @@ class Lock(friends=(Condition,)):
 
   def __copy__(self, other: Self): ...
 
-  def acquire(self, blocking: bool = True, timeout: float64 = -1.0) -> bool:
+  def acquire(self, blocking: bool = True, timeout: float64 = float.Inf) -> bool:
     """获取锁；``blocking=False`` 且显式 timeout 时抛 ``ValueError``。"""
     ...
 
@@ -183,7 +183,7 @@ class RLock(friends=(Condition,)):
 
   def __copy__(self, other: Self): ...
 
-  def acquire(self, blocking: bool = True, timeout: float64 = -1.0) -> bool:
+  def acquire(self, blocking: bool = True, timeout: float64 = float.Inf) -> bool:
     """获取递归锁；owner 重入时递归层数加一。"""
     ...
 
@@ -238,7 +238,7 @@ class Condition:
 
   def __copy__(self, other: Self): ...
 
-  def acquire(self, blocking: bool = True, timeout: float64 = -1.0) -> bool:
+  def acquire(self, blocking: bool = True, timeout: float64 = float.Inf) -> bool:
     """获取底锁。"""
     ...
 
@@ -256,11 +256,11 @@ class Condition:
     """当前调用者是否持有底锁。"""
     ...
 
-  def wait(self, timeout: float64 = -1.0) -> bool:
+  def wait(self, timeout: float64 = float.Inf) -> bool:
     """释放底锁并等待通知；被通知返回 True，超时返回 False。"""
     ...
 
-  def waitFor(self, predicate: Callable[[], bool], timeout: float64 = -1.0) -> bool:
+  def waitFor(self, predicate: Callable[[], bool], timeout: float64 = float.Inf) -> bool:
     """在持锁状态循环等待 ``predicate`` 变为 True。"""
     ...
 
@@ -314,7 +314,7 @@ class Event:
     finally:
       self._cond.release()
 
-  def wait(self, timeout: float64 = -1.0) -> bool:
+  def wait(self, timeout: float64 = float.Inf) -> bool:
     """等待事件标志变为 True；超时返回 False。"""
     signaled: bool = True
     self._cond.acquire()
@@ -339,11 +339,11 @@ class Semaphore:
     self._cond = new()
     self._value = new(value)
 
-  def acquire(self, blocking: bool = True, timeout: float64 = -1.0) -> bool:
+  def acquire(self, blocking: bool = True, timeout: float64 = float.Inf) -> bool:
     """计数大于零时递减并返回 True，否则按参数等待。"""
-    if not blocking and timeout >= 0.0:
+    if not blocking and timeout != float.Inf:
       raise ValueError("can't specify timeout for non-blocking acquire")
-    if timeout < -1.0:
+    if timeout < 0.0:
       raise ValueError("timeout value must be non-negative")
     acquired: bool = False
     self._cond.acquire()
@@ -352,7 +352,7 @@ class Semaphore:
         acquired = False
       else:
         if blocking:
-          if timeout < 0.0:
+          if timeout == float.Inf:
             while self._value.load() <= 0:
               self._cond.wait()
           else:
@@ -402,11 +402,11 @@ class BoundedSemaphore:
     self._value = new(value)
     self._initialValue = value
 
-  def acquire(self, blocking: bool = True, timeout: float64 = -1.0) -> bool:
+  def acquire(self, blocking: bool = True, timeout: float64 = float.Inf) -> bool:
     """计数大于零时递减并返回 True，否则按参数等待。"""
-    if not blocking and timeout >= 0.0:
+    if not blocking and timeout != float.Inf:
       raise ValueError("can't specify timeout for non-blocking acquire")
-    if timeout < -1.0:
+    if timeout < 0.0:
       raise ValueError("timeout value must be non-negative")
     acquired: bool = False
     self._cond.acquire()
@@ -415,7 +415,7 @@ class BoundedSemaphore:
         acquired = False
       else:
         if blocking:
-          if timeout < 0.0:
+          if timeout == float.Inf:
             while self._value.load() <= 0:
               self._cond.wait()
           else:
@@ -461,7 +461,7 @@ class Barrier:
   _parties: int = 0
   _count: atomic[int]
   _state: atomic[int]
-  _timeout: float64 = -1.0
+  _timeout: float64 = float.Inf
   _hasAction: bool = False
 
   @overload
@@ -473,14 +473,14 @@ class Barrier:
     self._parties = parties
     self._count = new(0)
     self._state = new(int(_BarrierStateEnum.Filling))
-    self._timeout = -1.0
+    self._timeout = float.Inf
     self._hasAction = False
 
   @overload
   def __init__(self, parties: int, timeout: float64):
     if parties < 1:
       raise ValueError("parties must be >= 1")
-    if timeout < -1.0:
+    if timeout < 0.0:
       raise ValueError("timeout value must be non-negative")
     self._cond = new()
     self._action = _barrierNoAction
@@ -499,14 +499,14 @@ class Barrier:
     self._parties = parties
     self._count = new(0)
     self._state = new(int(_BarrierStateEnum.Filling))
-    self._timeout = -1.0
+    self._timeout = float.Inf
     self._hasAction = True
 
   @overload
   def __init__(self, parties: int, action: Callable[[], None], timeout: float64):
     if parties < 1:
       raise ValueError("parties must be >= 1")
-    if timeout < -1.0:
+    if timeout < 0.0:
       raise ValueError("timeout value must be non-negative")
     self._cond = new()
     self._action = action
@@ -533,7 +533,7 @@ class Barrier:
       raise BrokenBarrierError()
 
   def _wait(self, timeout: float64) -> None:
-    if timeout < -1.0:
+    if timeout < 0.0:
       raise ValueError("timeout value must be non-negative")
     ok: bool = self._cond.waitFor(lambda: self._state.load() != int(_BarrierStateEnum.Filling), timeout)
     if not ok:
@@ -552,10 +552,10 @@ class Barrier:
     self._state.store(int(_BarrierStateEnum.Broken))
     self._cond.notifyAll()
 
-  def wait(self, timeout: float64 = -1.0) -> int:
+  def wait(self, timeout: float64 = float.Inf) -> int:
     """等待一轮 barrier 完成，并返回本轮 ``0..parties-1`` 的 index。"""
     actualTimeout: float64 = timeout
-    if actualTimeout < 0.0:
+    if actualTimeout == float.Inf:
       actualTimeout = self._timeout
     self._cond.acquire()
     try:
@@ -688,8 +688,8 @@ class Future[Value]:
     finally:
       self.cond.release()
 
-  def result(self, timeout: float64 = -1.0) -> Value:
-    if timeout < -1.0:
+  def result(self, timeout: float64 = float.Inf) -> Value:
+    if timeout < 0.0:
       raise ValueError("timeout value must be non-negative")
     self.cond.acquire()
     try:
@@ -707,9 +707,9 @@ class Future[Value]:
       self.cond.release()
     return self.resultValue
 
-  def exception(self, timeout: float64 = -1.0) -> bool:
+  def exception(self, timeout: float64 = float.Inf) -> bool:
     """首版返回是否保存了任务异常；完整异常对象 type-erasure 后续补齐。"""
-    if timeout < -1.0:
+    if timeout < 0.0:
       raise ValueError("timeout value must be non-negative")
     self.cond.acquire()
     try:
@@ -754,7 +754,7 @@ class Queue[Element]:
     """队列当前是否已达到 ``maxSize``。"""
     ...
 
-  def put(self, item: Element, block: bool = True, timeout: float64 = -1.0) -> None:
+  def put(self, item: Element, block: bool = True, timeout: float64 = float.Inf) -> None:
     """入队；满队列按 ``block`` / ``timeout`` 等待，失败抛 ``FullError``。"""
     ...
 
@@ -762,7 +762,7 @@ class Queue[Element]:
     """等价于 ``put(item, block=False)``。"""
     ...
 
-  def get(self, block: bool = True, timeout: float64 = -1.0) -> Element:
+  def get(self, block: bool = True, timeout: float64 = float.Inf) -> Element:
     """出队；空队列按 ``block`` / ``timeout`` 等待，失败抛 ``EmptyError``。"""
     ...
 
@@ -824,7 +824,7 @@ class _ThreadHandle:
     """返回当前活动线程句柄快照。"""
     ...
 
-  def join(self, timeout: float64 = -1.0) -> bool:
+  def join(self, timeout: float64 = float.Inf) -> bool:
     """等待线程结束；返回是否已结束。"""
     ...
 
@@ -934,16 +934,15 @@ class Thread:
   def run(self) -> None:
     self._target()
 
-  def join(self, timeout: float64 = -1.0) -> None:
+  def join(self, timeout: float64 = float.Inf) -> None:
     if self._phase == int(_ThreadPhaseEnum.Initial):
       raise RuntimeError("cannot join thread before it is started")
     current: Self = new.current
     if current.ident == self.ident:
       raise RuntimeError("cannot join current thread")
-    waitTimeout: float64 = timeout
-    if waitTimeout < 0.0:
-      waitTimeout = -1.0
-    finished: bool = self._handle.join(waitTimeout)
+    if timeout < 0.0:
+      raise ValueError("timeout value must be non-negative")
+    finished: bool = self._handle.join(timeout)
     if finished:
       self._phase = int(_ThreadPhaseEnum.Stopped)
 

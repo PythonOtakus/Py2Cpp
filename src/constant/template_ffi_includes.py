@@ -1,4 +1,4 @@
-"""``templates/**`` 直导 A/B 头 → ``ffi/…`` 映射（T26 + 迁移）。
+"""``templates/**`` 直导 A/B 头 → ``ffi/…`` 映射（R0902 + 迁移）。
 
 A+B：第三方 / Windows SDK / CRT·UCRT / POSIX（``#else`` 分支）。
 **不**含 C++ STL（``type_traits`` / ``atomic`` / ``utility`` / ``cstdint`` / ``string`` 等）。
@@ -96,7 +96,7 @@ def ffi_include_for_system_header(header: str) -> str | None:
 
 
 def is_forbidden_template_ab_include(header: str) -> bool:
-  """T26：禁止的 A/B 直导（已有 ffi 映射或未登记的系统头，且非 STL）。"""
+  """R0902：禁止的 A/B 直导（已有 ffi 映射或未登记的系统头，且非 STL）。"""
   h = normalize_system_header(header)
   if h in _ALLOWED_CPP_STL_HEADERS:
     return False

@@ -2,8 +2,8 @@
 
 对 `templates/**/*.h` / `templates/**/*.inl` 提供：
 
-- **Problems 诊断**：复用仓库 `src/codegen/template_conventions.py` 的译期 **T\*** 规则（bootstrap 同款）
-- **悬停提示**：`PY2CPP_*` 宏、`ctx_*` 键、常见 `[Txx]` 规则说明
+- **Problems 诊断**：复用仓库 `src/codegen/template_conventions.py` 的译期 **R\*** 规则（bootstrap 同款）
+- **悬停提示**：`PY2CPP_*` 宏、`ctx_*` 键、常见 `[Rxxxx]` 规则说明
 - **配对宏高亮**：`PY2CPP_BEGIN`/`END`、`IGNORE`、`INJECT_CLASS`、`BEGIN_SCOPE`/`END_SCOPE` 按嵌套深度三级配色（由外向内黄→紫→蓝），光标所在块的开/闭宏加强强调
 - **块折叠**：每个配对宏块可折叠（行首 gutter 折叠控件）
 
@@ -56,7 +56,7 @@ pkg-tpl.bat
 | `py2cpp-template.pythonPath` | `python` | Python 可执行文件 |
 | `py2cpp-template.repoRoot` | （空） | 仓库根；空则自动查找含 `main.py` + `templates/` 的目录 |
 | `py2cpp-template.enableDiagnostics` | `true` | 是否自动诊断 |
-| `py2cpp-template.includeWarnings` | `true` | 是否显示 warning（如 T6） |
+| `py2cpp-template.includeWarnings` | `true` | 是否显示 warning（如 R0202） |
 | `py2cpp-template.enableMacroPairs` | `true` | 配对宏三级高亮与 DocumentType Highlight |
 | `py2cpp-template.enableMacroFolding` | `true` | 配对宏块代码折叠 |
 

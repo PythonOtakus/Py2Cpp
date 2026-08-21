@@ -1,6 +1,6 @@
 """编码规范强检查（``--strict``，默认开启）。
 
-规则编号 ``SXXYY``（前两位类别、后两位类内序号），分类见 ``docs/编码规范.md`` §1.1；旧号对照 ``docs/strict-renumber.md``。
+规则编号 ``SXXYY``（前两位类别、后两位类内序号），分类见 ``docs/编码规范.md`` §1.1。
 检查 ``py2cpp/``、用户模块与 ``test/**``；``test/fail/`` 豁免；``# py2cpp: strict-off`` 可关单文件。
 
 内部 helper 前缀 ``_sXXXX_`` / ``_check_sXXXX_`` 与 §1.1 规则 ID 一致。

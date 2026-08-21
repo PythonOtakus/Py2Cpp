@@ -140,18 +140,18 @@ def _check_filename_rules(rel: str) -> list[TemplateViolation]:
   violations: list[TemplateViolation] = []
   if name.startswith("+") and name.count(".") != 1:
     violations.append(TemplateViolation(
-      "T2", rel, 1,
+      "R0102", rel, 1,
       f"inject 模板须为 +<stem>.inl 或 +<stem>.h（单扩展名），当前: {name}",
     ))
   if name.startswith("-") and (not name.endswith(".inl") or name.count(".") != 1):
     violations.append(TemplateViolation(
-      "T3", rel, 1,
+      "R0103", rel, 1,
       f"paste_before 模板须为 -<stem>.inl（单扩展名），当前: {name}",
     ))
   if not _mirror_skip_template_rel(rel) and not _mirror_skip_template_name(name):
     if name.startswith("~"):
       violations.append(TemplateViolation(
-        "T1", rel, 1,
+        "R0101", rel, 1,
         f"镜像模板文件名不得以 ~ / + / - 开头，当前: {name}",
       ))
   return violations
@@ -166,7 +166,7 @@ def _check_module_bindings(
   ):
     if module_rel not in stdlib_rel_paths:
       violations.append(TemplateViolation(
-        "T4", template_rel, None,
+        "R0201", template_rel, None,
         f"{kind} 绑定模块不在 py2cpp 标准库中: {module_rel}",
       ))
   root = template_root().resolve()
@@ -187,7 +187,7 @@ def _check_module_bindings(
       continue
     if module_rel not in stdlib_rel_paths:
       violations.append(TemplateViolation(
-        "T4", rel, None,
+        "R0201", rel, None,
         f"{kind} 绑定模块不在 py2cpp 标准库中: {module_rel}",
       ))
   for path in sorted(root.rglob("*.h")):
@@ -201,7 +201,7 @@ def _check_module_bindings(
     module_rel = module_rel_from_inject_template(rel)
     if module_rel not in stdlib_rel_paths:
       violations.append(TemplateViolation(
-        "T4", rel, None,
+        "R0201", rel, None,
         f"inject_h 绑定模块不在 py2cpp 标准库中: {module_rel}",
       ))
   return violations
@@ -258,7 +258,7 @@ def _check_orphan_tilde_files(include_closure: frozenset[str]) -> list[TemplateV
     if rel in paste_map:
       continue
     violations.append(TemplateViolation(
-      "T6", rel, 1,
+      "R0202", rel, 1,
       "孤立的 ~ 模板：未登记 module_rel、未被 PY2CPP_INCLUDE/hook 引用",
       severity=ViolationSeverity.WARNING,
     ))
@@ -284,7 +284,7 @@ def _check_codegen_ctx_key_naming() -> list[TemplateViolation]:
         if ctx_key_has_pascal_suffix(key):
           continue
         violations.append(TemplateViolation(
-          "T25", rel, i,
+          "R0603", rel, i,
           f"ctx 键须 ctx_PascalCase，当前: {key}",
         ))
   return violations
@@ -303,7 +303,7 @@ def _check_duplicate_paste_after() -> list[TemplateViolation]:
     module_rel = module_rel_from_inject_template(rel)
     if module_rel in seen:
       violations.append(TemplateViolation(
-        "T9", rel, None,
+        "R0203", rel, None,
         f"重复 paste_after 模块 {module_rel}（已有 {seen[module_rel]}）",
       ))
     else:
@@ -319,93 +319,93 @@ def _scan_file_content(rel: str, text: str, base_dir: Path) -> list[TemplateViol
   for lineno, line in enumerate(lines, start=1):
     if _FORBIDDEN_TYPE_EVAL_RE.search(line):
       violations.append(TemplateViolation(
-        "T17", rel, lineno,
+        "R0402", rel, lineno,
         "禁止 PY2CPP_TYPE(PY2CPP_EVAL(...))；请用 IGNORE #define ctx_* + PY2CPP_ECHO(ctx_*)",
       ))
     if _FORBIDDEN_DYNAMIC_TYPE_RE.search(line):
       violations.append(TemplateViolation(
-        "T10", rel, lineno,
+        "R0401", rel, lineno,
         "PY2CPP_DYNAMIC_TYPE 已删除；请用 IGNORE #define ctx_* + PY2CPP_ECHO(ctx_*)",
       ))
     for pat, name in _DEPRECATED_MACRO_RES:
       if pat.search(line):
         violations.append(TemplateViolation(
-          "T10", rel, lineno,
+          "R0401", rel, lineno,
           f"已弃用宏 {name}（见 codegen-templates §14）",
         ))
     if _NAMESPACE_MACRO_RE.search(line) and not rel.startswith("~macro/"):
       violations.append(TemplateViolation(
-        "T21", rel, lineno,
+        "R0403", rel, lineno,
         "PY2CPP_NAMESPACE 仅用于生成的 ~macro 桩；paste/镜像模板勿用",
       ))
     if _BACKSLASH_INCLUDE_RE.search(line):
       violations.append(TemplateViolation(
-        "T8", rel, lineno,
+        "R0301", rel, lineno,
         "PY2CPP_INCLUDE 路径须使用正斜杠 /",
       ))
 
   for lineno, kind, stmt in _find_forbidden_stl_container_lines(text):
     violations.append(TemplateViolation(
-      "T18", rel, lineno,
+      "R0801", rel, lineno,
       f"禁止 STL 容器（{kind}）: {stmt.strip()}",
     ))
 
   for lineno, inc in iter_include_refs(text):
     if "\\" in inc:
       violations.append(TemplateViolation(
-        "T8", rel, lineno,
+        "R0301", rel, lineno,
         f'PY2CPP_INCLUDE 路径须使用正斜杠 /: "{inc}"',
       ))
       continue
     resolved = resolve_include_path(base_dir, inc, root)
     if resolved is None:
       violations.append(TemplateViolation(
-        "T8", rel, lineno,
+        "R0301", rel, lineno,
         f'PY2CPP_INCLUDE 路径越界或不存在: "{inc}"',
       ))
     elif not resolved.is_file():
       violations.append(TemplateViolation(
-        "T8", rel, lineno,
+        "R0301", rel, lineno,
         f'PY2CPP_INCLUDE 目标不存在: "{inc}"',
       ))
 
   for lineno, _q, header in iter_include_headers_in_text(text):
     if is_forbidden_template_ab_include(header):
       violations.append(TemplateViolation(
-        "T26", rel, lineno,
+        "R0902", rel, lineno,
         f"禁止模板直导 A/B 系统头 <{header}>；改 #include \"ffi/…\" "
         f"或 C++ 包装头（cstdint/cstdarg/cfloat）；见 docs/c-ffi-pyi.md §11",
       ))
 
   ignore_regions = partition_ignore_regions(lines)
   for lineno, msg in scan_include_guard_violations(lines):
-    violations.append(TemplateViolation("T23", rel, lineno, msg))
+    violations.append(TemplateViolation("R0901", rel, lineno, msg))
   for lineno, msg in scan_qualified_cut_type_violations(
     lines,
     ignore_regions=ignore_regions,
   ):
-    violations.append(TemplateViolation("T24", rel, lineno, msg))
+    violations.append(TemplateViolation("R0802", rel, lineno, msg))
   for lineno, msg in scan_ctx_key_naming_violations(lines):
-    violations.append(TemplateViolation("T25", rel, lineno, msg))
+    violations.append(TemplateViolation("R0603", rel, lineno, msg))
   for lineno, msg in scan_ctx_ignore_echo_set_violations(
     lines,
     ignore_regions=ignore_regions,
   ):
-    violations.append(TemplateViolation("T25", rel, lineno, msg))
+    violations.append(TemplateViolation("R0603", rel, lineno, msg))
 
   blocks, struct_errors = scan_begin_end_blocks(lines)
   for lineno, msg in struct_errors:
-    violations.append(TemplateViolation("T11", rel, lineno or None, msg))
+    violations.append(TemplateViolation("R0501", rel, lineno or None, msg))
   for lineno, msg in scan_orphan_elif_else(blocks):
-    violations.append(TemplateViolation("T12", rel, lineno, msg))
+    violations.append(TemplateViolation("R0502", rel, lineno, msg))
   for block in blocks:
     header_lineno = block.start + 1
     for _, msg in scan_def_naming(block.header, header_lineno):
-      violations.append(TemplateViolation("T14", rel, header_lineno, msg))
+      violations.append(TemplateViolation("R0601", rel, header_lineno, msg))
     for _, msg in scan_for_var_naming(block.header, header_lineno):
-      violations.append(TemplateViolation("T16", rel, header_lineno, msg))
+      violations.append(TemplateViolation("R0602", rel, header_lineno, msg))
   for lineno, msg in scan_scope_pair_errors(lines):
-    violations.append(TemplateViolation("T13", rel, lineno or None, msg))
+    violations.append(TemplateViolation("R0503", rel, lineno or None, msg))
 
   if _is_paste_inject_rel(rel):
     for lineno, msg in scan_inject_ignore_violations(
@@ -413,12 +413,12 @@ def _scan_file_content(rel: str, text: str, base_dir: Path) -> list[TemplateViol
       check_py2cpp_include=True,
       check_ctx_define=True,
     ):
-      rule = "T19" if "include" in msg else "T20"
+      rule = "R0701" if "include" in msg else "R0702"
       violations.append(TemplateViolation(rule, rel, lineno, msg))
 
   if _is_class_header_inject_template_name(rel.split("/")[-1]):
     for lineno, msg in scan_inject_class_shell_violations(lines):
-      violations.append(TemplateViolation("T22", rel, lineno, msg))
+      violations.append(TemplateViolation("R0703", rel, lineno, msg))
 
   return violations
 
@@ -498,7 +498,7 @@ def collect_forbidden_type_eval_violations() -> list[str]:
   return [
     format_template_violation(v).strip()
     for v in collect_template_violations()
-    if v.rule == "T17"
+    if v.rule == "R0402"
   ]
 
 
@@ -506,14 +506,14 @@ def collect_forbidden_dynamic_type_violations() -> list[str]:
   return [
     v.template_rel
     for v in collect_template_violations()
-    if v.rule == "T10" and "DYNAMIC_TYPE" in v.message
+    if v.rule == "R0401" and "DYNAMIC_TYPE" in v.message
   ]
 
 
 def collect_forbidden_stl_container_violations() -> list[str]:
   out: list[str] = []
   for v in collect_template_violations():
-    if v.rule != "T18":
+    if v.rule != "R0801":
       continue
     loc = f"{v.template_rel}:{v.lineno}"
     out.append(

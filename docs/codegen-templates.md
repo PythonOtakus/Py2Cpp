@@ -545,7 +545,7 @@ PY2CPP_END
 
 #### §8.3.2 ``PY2CPP_TYPE`` / ``PY2CPP_EVAL``（clangd 可展开）
 
-**模板写法**：``util`` / ``core`` / ``text`` 下已在 ``_type_registry`` 注册的类**须** ``PY2CPP_TYPE(短名)``（如 ``PY2CPP_TYPE(PyStr)``、``PY2CPP_TYPE(PyIterResult)<Y,R>``）；**禁止**手写 ``py2cpp::core::iter_result::PyIterResult`` 等全限定名（译期 **T24**）。亦接受无参 token ``PY2CPP_TYPE_PyStr``。**动态 C++ 片段**（``ctx_Base``/``ctx_Qualified``/…）一律 ``PY2CPP_ECHO(ctx_*)``；IGNORE 内 ``#define ctx_* …`` 供 clangd，构建期 ``ctx`` 粘贴。**``BEGIN(for)`` 名称列表**循环变量用 ``var_*`` + PascalCase（如 ``var_Name``），IGNORE 内 ``#define var_Name …`` 作 clangd 占位；``PY2CPP_ECHO(var_Name)`` 在循环体内展开。registry 短名自动限定。**禁止** ``PY2CPP_TYPE(PY2CPP_EVAL(name))``（展开器报错，见 [§14](#14-已弃用宏勿使用)）。模板 ``ctx`` 键统一 ``ctx_`` + PascalCase（如 ``ctx_MakeFn``、``ctx_ProtocolName``），与生成 C++ 标识符区分。
+**模板写法**：``util`` / ``core`` / ``text`` 下已在 ``_type_registry`` 注册的类**须** ``PY2CPP_TYPE(短名)``（如 ``PY2CPP_TYPE(PyStr)``、``PY2CPP_TYPE(PyIterResult)<Y,R>``）；**禁止**手写 ``py2cpp::core::iter_result::PyIterResult`` 等全限定名（译期 **R0802**）。亦接受无参 token ``PY2CPP_TYPE_PyStr``。**动态 C++ 片段**（``ctx_Base``/``ctx_Qualified``/…）一律 ``PY2CPP_ECHO(ctx_*)``；IGNORE 内 ``#define ctx_* …`` 供 clangd，构建期 ``ctx`` 粘贴。**``BEGIN(for)`` 名称列表**循环变量用 ``var_*`` + PascalCase（如 ``var_Name``），IGNORE 内 ``#define var_Name …`` 作 clangd 占位；``PY2CPP_ECHO(var_Name)`` 在循环体内展开。registry 短名自动限定。**禁止** ``PY2CPP_TYPE(PY2CPP_EVAL(name))``（展开器报错，见 [§14](#14-已弃用宏勿使用)）。模板 ``ctx`` 键统一 ``ctx_`` + PascalCase（如 ``ctx_MakeFn``、``ctx_ProtocolName``），与生成 C++ 标识符区分。
 
 **自动桩**（``gen_compile_commands.py`` → ``templates/~macro/<rel>.h``）：
 
@@ -571,7 +571,7 @@ explicit PY2CPP_ECHO(ctx_Cls)(const PY2CPP_TYPE(PyStr)& msg) : PY2CPP_ECHO(ctx_B
 
 **动态异常 convert ctor**：``explicit Exception(const PY2CPP_ECHO(var_Name)& o);``（IGNORE 内 ``#define var_Name ValueError``；``BEGIN(for var_Name in exception_type_names)``）。
 
-**``PY2CPP_ECHO``**：须在 IGNORE 内为每个 ``ctx_*`` 键提供 ``#define``——行内片段写范例 C++（如 ``#define ctx_Base PyIterator``），**整行/多块**预生成片段（``ctx_PublicMethods``、``ctx_IsInstanceBody``、``ctx_AppendImpls`` 等）写**空宏** ``#define ctx_PublicMethods`` 即可。IGNORE 内 ``#define ctx_*`` 集合须与模板中 ``PY2CPP_ECHO(ctx_*)`` 键集合**一致**（双向，译期 **T25**）；``BEGIN(if ctx_*)`` 展开期布尔键不在此列。见 ``core/~protocol_erase_spec.inl``、``core/~exception_group_dynamic_impl.inl``。
+**``PY2CPP_ECHO``**：须在 IGNORE 内为每个 ``ctx_*`` 键提供 ``#define``——行内片段写范例 C++（如 ``#define ctx_Base PyIterator``），**整行/多块**预生成片段（``ctx_PublicMethods``、``ctx_IsInstanceBody``、``ctx_AppendImpls`` 等）写**空宏** ``#define ctx_PublicMethods`` 即可。IGNORE 内 ``#define ctx_*`` 集合须与模板中 ``PY2CPP_ECHO(ctx_*)`` 键集合**一致**（双向，译期 **R0603**）；``BEGIN(if ctx_*)`` 展开期布尔键不在此列。见 ``core/~protocol_erase_spec.inl``、``core/~exception_group_dynamic_impl.inl``。
 
 **勿**在 IGNORE 外手写 ``#define ctx_Cls …``（会落盘到 ``generated/``）。
 
@@ -739,37 +739,37 @@ buf[1] = 2;
 | 译期规范 | `src/tests/test_template_conventions.py` | bootstrap 全树 T* 规则（见 §11.1） |
 | 集成 | 试点 `templates/sql/sqlite.inl` → `generated/.../sql/sqlite.inl` + `build.bat sql/test_sqlite` | 展开后 SQLite 行为与改前一致 |
 
-### 11.1 译期 T* 规则表（bootstrap / `include_stdlib`）
+### 11.1 译期 R* 规则表（bootstrap / `include_stdlib`）
 
-**入口**：`python main.py py2cpp\__init__.py -o generated --no-main` 时，`check_template_conventions(strict=…)` 扫描 `templates/**`（含 `~test/`；跳过 `~macro/`）。`--no-strict` 关闭；T6 孤立 `~` 文件为 **stderr 警告** 不阻断。
+**入口**：`python main.py py2cpp\__init__.py -o generated --no-main` 时，`check_template_conventions(strict=…)` 扫描 `templates/**`（含 `~test/`；跳过 `~macro/`）。`--no-strict` 关闭；**R0202** 孤立 `~` 文件为 **stderr 警告** 不阻断。
 
-**实现**：`src/codegen/template_conventions.py` + `template_scan.py`；单文件展开仍保留 `expand_template()` 即时断言。
+**实现**：`src/codegen/template_conventions.py` + `template_scan.py`；单文件展开仍保留 `expand_template()` 即时断言。规则编号为 **`RXXYY`**（前两位类别、后两位类内序号）。
 
 | ID | 类别 | 规则 |
 |----|------|------|
-| **T1** | 命名 | 镜像 `*.inl`/`*.h` 文件名不得以 `~` / `+` / `-` 开头 |
-| **T2** | 命名 | inject 须为单扩展名 `+<stem>.inl` 或 `+<stem>.h` |
-| **T3** | 命名 | paste_before 须为 `-<stem>.inl`（单扩展名） |
-| **T4** | 绑定 | mirror / `+` / `-` 模板（非 codegen 专用）须对应 `py2cpp/<module_rel>.py` |
-| **T6** | 绑定 | 孤立 `~` 片段（无 hook / INCLUDE 引用 / module_rel）→ **warning** |
-| **T8** | INCLUDE | 路径用 `/`、落在 `templates/` 内、目标存在 |
-| **T9** | 绑定 | 同一模块不得有两个 paste_after `+*.inl` |
-| **T10** | 宏 | §14 弃用宏（含 `PY2CPP_DYNAMIC_TYPE`、`PY2CPP_INLINE_ECHO` 等） |
-| **T11** | 结构 | `PY2CPP_BEGIN`/`END`、`IGNORE`、`INJECT_CLASS` 配对 |
-| **T12** | 结构 | 禁止孤立 `elif` / `else` |
-| **T13** | 结构 | `PY2CPP_BEGIN_SCOPE`/`END_SCOPE` 配对 |
-| **T14** | 命名 | `BEGIN(def fn_PascalCase(in_PascalCase…))` |
-| **T16** | 命名 | `BEGIN(for var_PascalCase in …)` |
-| **T17** | 宏 | 禁止 `PY2CPP_TYPE(PY2CPP_EVAL(…))` |
-| **T18** | 容器 | 禁止 STL 容器头 / `std::vector<` 等 |
-| **T19** | inject | `+/-` 模板：`#include "py2cpp/…"` 须在 `PY2CPP_IGNORE` 内 |
-| **T20** | inject | `+/-` 模板：`#define ctx_*` 须在 `PY2CPP_IGNORE` 内 |
-| **T21** | 宏 | paste/镜像模板禁止 `PY2CPP_NAMESPACE`（仅 `~macro` 桩） |
-| **T22** | inject | `+<stem>.h`：须 `IGNORE` 内 `class C {` … `PY2CPP_END` → `INJECT_CLASS(C)`（可重复同名）→ `IGNORE` + `};`；文件首行 `PY2CPP_IGNORE` 且含 `namespace py2cpp` |
-| **T25** | 命名 | `ctx_*` 键须 `ctx_` + PascalCase；IGNORE `#define ctx_*` 与 `PY2CPP_ECHO(ctx_*)` 键集合**双向一致**（`BEGIN(if ctx_*)` 除外）；`*_gen.py` 传入的 `ctx` 字典键同名 |
-| **T23** | 包壳 | **禁止**模板内 `#pragma once` 与手写 include guard（`#ifndef`/`#define …_H`/`#endif // …`）；整文件 guard 由 `finalize_codegen_file_text` / `expand_whole_file_template` 在 Python 侧包壳 |
-| **T24** | 类型 | **禁止**手写 `py2cpp::core|util|text::…::TypeName` 全限定类型；须 `PY2CPP_TYPE(短名)`（`using namespace py2cpp::core::exceptions` 等 **namespace** 行除外；`concur`/`io` 等其它域仍可用全限定名） |
-| **T26** | FFI | **禁止**模板直导 A/B 系统头（`<stdio.h>` / `<windows.h>` / `<sqlite3.h>` 等）；须 `#include "ffi/…"`；`stdint.h`/`stdarg.h`/`float.h`/`math.h` 改 `<cstdint>`/`<cstdarg>`/`<cfloat>`/`<cmath>`；C++ STL（`type_traits`/`atomic`/…）仍可直导。见 [c-ffi-pyi.md §11](c-ffi-pyi.md#11-模板迁移策略组合可留禁止直导-ab) |
+| **R0101** | 文件命名 | 镜像 `*.inl`/`*.h` 文件名不得以 `~` / `+` / `-` 开头 |
+| **R0102** | 文件命名 | inject 须为单扩展名 `+<stem>.inl` 或 `+<stem>.h` |
+| **R0103** | 文件命名 | paste_before 须为 `-<stem>.inl`（单扩展名） |
+| **R0201** | 模块绑定 | mirror / `+` / `-` 模板（非 codegen 专用）须对应 `py2cpp/<module_rel>.py` |
+| **R0202** | 模块绑定 | 孤立 `~` 片段（无 hook / INCLUDE 引用 / module_rel）→ **warning** |
+| **R0203** | 模块绑定 | 同一模块不得有两个 paste_after `+*.inl` |
+| **R0301** | INCLUDE | 路径用 `/`、落在 `templates/` 内、目标存在 |
+| **R0401** | 宏 | §14 弃用宏（含 `PY2CPP_DYNAMIC_TYPE`、`PY2CPP_INLINE_ECHO` 等） |
+| **R0402** | 宏 | 禁止 `PY2CPP_TYPE(PY2CPP_EVAL(…))` |
+| **R0403** | 宏 | paste/镜像模板禁止 `PY2CPP_NAMESPACE`（仅 `~macro` 桩） |
+| **R0501** | 块结构 | `PY2CPP_BEGIN`/`END`、`IGNORE`、`INJECT_CLASS` 配对 |
+| **R0502** | 块结构 | 禁止孤立 `elif` / `else` |
+| **R0503** | 块结构 | `PY2CPP_BEGIN_SCOPE`/`END_SCOPE` 配对 |
+| **R0601** | 块内标识 | `BEGIN(def fn_PascalCase(in_PascalCase…))` |
+| **R0602** | 块内标识 | `BEGIN(for var_PascalCase in …)` |
+| **R0603** | 块内标识 | `ctx_*` 键须 `ctx_` + PascalCase；IGNORE `#define ctx_*` 与 `PY2CPP_ECHO(ctx_*)` 键集合**双向一致**（`BEGIN(if ctx_*)` 除外）；`*_gen.py` 传入的 `ctx` 字典键同名 |
+| **R0701** | inject | `+/-` 模板：`#include "py2cpp/…"` 须在 `PY2CPP_IGNORE` 内 |
+| **R0702** | inject | `+/-` 模板：`#define ctx_*` 须在 `PY2CPP_IGNORE` 内 |
+| **R0703** | inject | `+<stem>.h`：须 `IGNORE` 内 `class C {` … `PY2CPP_END` → `INJECT_CLASS(C)`（可重复同名）→ `IGNORE` + `};`；文件首行 `PY2CPP_IGNORE` 且含 `namespace py2cpp` |
+| **R0801** | 类型与容器 | 禁止 STL 容器头 / `std::vector<` 等 |
+| **R0802** | 类型与容器 | **禁止**手写 `py2cpp::core|util|text::…::TypeName` 全限定类型；须 `PY2CPP_TYPE(短名)`（`using namespace py2cpp::core::exceptions` 等 **namespace** 行除外；`concur`/`io` 等其它域仍可用全限定名） |
+| **R0901** | 包壳与 FFI | **禁止**模板内 `#pragma once` 与手写 include guard（`#ifndef`/`#define …_H`/`#endif // …`）；整文件 guard 由 `finalize_codegen_file_text` / `expand_whole_file_template` 在 Python 侧包壳 |
+| **R0902** | 包壳与 FFI | **禁止**模板直导 A/B 系统头（`<stdio.h>` / `<windows.h>` / `<sqlite3.h>` 等）；须 `#include "ffi/…"`；`stdint.h`/`stdarg.h`/`float.h`/`math.h` 改 `<cstdint>`/`<cstdarg>`/`<cfloat>`/`<cmath>`；C++ STL（`type_traits`/`atomic`/…）仍可直导。见 [c-ffi-pyi.md §11](c-ffi-pyi.md#11-模板迁移策略组合可留禁止直导-ab) |
 
 **`_type_registry` 扩展**（`expand_py2cpp_template._STD_TYPES`）：除 `PyStr`/`PyList`/异常等外，模板常用类型含 `PyArray`/`PyArray2D`/`PyArray3D`、`PyIterResult`、`PyNone`、`PyCoroutine`、`PyOptional` 等；未注册短名在展开期仍会报错。
 

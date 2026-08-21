@@ -114,7 +114,7 @@ Py2Cpp/
 
 | 场景 | C++ |
 |------|-----|
-| 普通无注解形参 | `T0`, `T1`… + `template`（`FuncTypeParams`） |
+| 普通无注解形参 | `T0`, `R0101`… + `template`（`FuncTypeParams`） |
 | `x: ComparableType` / `f[T: Bound](…)` | `T`/`T0` + `Bound_requires` |
 | PEP 695 头 **不**绑定无注解 `left` | 须 `left: ItL` |
 | 未注解字段 ∈ `INT_FIELDS` | `PyInt` |
@@ -261,7 +261,7 @@ Py2Cpp/
 | 源 | 仓库根 `ffi/`（`ffi.bat` **自动生成**，禁止手写）；Zeus 旁路 `zeus/ffi/` |
 | 布局 | Win32 → `ffi/windows/<stem>.pyi`；UCRT → `ffi/crt/<stem>.pyi`；第三方 → `ffi/<path>.pyi` |
 | 范围 | **A+B**（第三方 + SDK + CRT）；**不含** C++ STL |
-| 模板 | 可保留组合；**禁止**直导 A/B 头（译期 **T26**）；须 `#include "ffi/…"`；`#include <c_header>` 仅 glue |
+| 模板 | 可保留组合；**禁止**直导 A/B 头（译期 **R0902**）；须 `#include "ffi/…"`；`#include <c_header>` 仅 glue |
 | MSVC 链库 | glue 可 `#pragma comment(lib, …)`（`ffi_msvc_comment_libs`；`shellapi` → `shell32.lib`）；勿把链接依赖留在已删除的业务模板 |
 | 禁止 | `from ffi… import *`；全量 Win32 进 `minimal.h`；手改 `AUTO-GENERATED` `.pyi`；批量删 UI 组合模板 |
 

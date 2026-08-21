@@ -23,7 +23,7 @@
 | Windows SDK（`um`/`shared`/`winrt`） | — |
 | UCRT / CRT（`stdio`/`string`/`math`/…） | — |
 
-**本阶段已做**：`@native`→C glue（sqlite）；模板 A/B include 全量迁 `"ffi/…"`（T26）；默认输出 `ffi/windows/<stem>.pyi`、`ffi/crt/<stem>.pyi`。**仍未做**：Win32/CRT 业务模板全量改调 `ffi::`、全量 glue allowlist、删光 UI 组合模板。
+**本阶段已做**：`@native`→C glue（sqlite）；模板 A/B include 全量迁 `"ffi/…"`（R0902）；默认输出 `ffi/windows/<stem>.pyi`、`ffi/crt/<stem>.pyi`。**仍未做**：Win32/CRT 业务模板全量改调 `ffi::`、全量 glue allowlist、删光 UI 组合模板。
 
 ## 2. 分层（与业务 API 分离）
 
@@ -246,7 +246,7 @@ ffi math
 
 ## 11. 模板迁移（策略：组合可留，禁止直导 A/B）
 
-**定案**：`templates/**` 与业务 C++ 注入**可保留组合/胶水**，但**禁止**再 `#include` 第三方库或 CRT 头（译期 **T26**）；平台/CRT 经 `#include "ffi/…"`；真实 `#include <c_header>` **仅**出现在生成的 ffi glue（`generated/runtime/ffi/…`）。`stdint.h`/`stdarg.h`/`float.h`/`math.h` 改用 C++ 包装 `<cstdint>`/`<cstdarg>`/`<cfloat>`/`<cmath>`（属允许的 STL，不进 `ffi/`；`math.h`→`<cmath>` 亦避免 `py_types.h`↔`ffi/crt/math.h` 环依赖）。
+**定案**：`templates/**` 与业务 C++ 注入**可保留组合/胶水**，但**禁止**再 `#include` 第三方库或 CRT 头（译期 **R0902**）；平台/CRT 经 `#include "ffi/…"`；真实 `#include <c_header>` **仅**出现在生成的 ffi glue（`generated/runtime/ffi/…`）。`stdint.h`/`stdarg.h`/`float.h`/`math.h` 改用 C++ 包装 `<cstdint>`/`<cstdarg>`/`<cfloat>`/`<cmath>`（属允许的 STL，不进 `ffi/`；`math.h`→`<cmath>` 亦避免 `py_types.h`↔`ffi/crt/math.h` 环依赖）。
 
 | 类型 | 例子 | 与 `.pyi` 的关系 |
 |------|------|------------------|

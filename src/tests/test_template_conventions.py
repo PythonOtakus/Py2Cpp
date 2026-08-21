@@ -59,14 +59,14 @@ class TemplateConventionsTests(unittest.TestCase):
   def test_no_strict_skips_check(self):
     check_template_conventions(strict=False)
 
-  def test_t23_rejects_pragma_once(self):
+  def test_r0901_rejects_pragma_once(self):
     from src.codegen.template_scan import scan_include_guard_violations
 
     hits = scan_include_guard_violations(["#pragma once\n"])
     self.assertEqual(len(hits), 1)
     self.assertIn("pragma once", hits[0][1].lower())
 
-  def test_t24_rejects_qualified_cut_type(self):
+  def test_r0802_rejects_qualified_cut_type(self):
     from src.codegen.template_scan import partition_ignore_regions, scan_qualified_cut_type_violations
 
     lines = ["py2cpp::core::iter_result::PyIterResult<A,B> fn();\n"]
@@ -77,7 +77,7 @@ class TemplateConventionsTests(unittest.TestCase):
     self.assertEqual(len(hits), 1)
     self.assertIn("PY2CPP_TYPE", hits[0][1])
 
-  def test_t25_rejects_bad_ctx_key_naming(self):
+  def test_r0603_rejects_bad_ctx_key_naming(self):
     from src.codegen.template_scan import scan_ctx_key_naming_violations
 
     lines = ["PY2CPP_ECHO(ctx_make_fn)();\n"]
@@ -85,7 +85,7 @@ class TemplateConventionsTests(unittest.TestCase):
     self.assertEqual(len(hits), 1)
     self.assertIn("PascalCase", hits[0][1])
 
-  def test_t25_rejects_echo_without_ignore_define(self):
+  def test_r0603_rejects_echo_without_ignore_define(self):
     from src.codegen.template_scan import partition_ignore_regions, scan_ctx_ignore_echo_set_violations
 
     lines = ["PY2CPP_ECHO(ctx_Foo)();\n"]
@@ -96,7 +96,7 @@ class TemplateConventionsTests(unittest.TestCase):
     self.assertEqual(len(hits), 1)
     self.assertIn("#define ctx_Foo", hits[0][1])
 
-  def test_t25_rejects_orphan_ignore_define(self):
+  def test_r0603_rejects_orphan_ignore_define(self):
     from src.codegen.template_scan import partition_ignore_regions, scan_ctx_ignore_echo_set_violations
 
     lines = [
@@ -112,7 +112,7 @@ class TemplateConventionsTests(unittest.TestCase):
     self.assertIn("ctx_Unused", hits[0][1])
     self.assertIn("PY2CPP_ECHO", hits[0][1])
 
-  def test_t25_accepts_ignore_define_and_echo(self):
+  def test_r0603_accepts_ignore_define_and_echo(self):
     from src.codegen.template_scan import partition_ignore_regions, scan_ctx_ignore_echo_set_violations
 
     lines = [
@@ -127,24 +127,24 @@ class TemplateConventionsTests(unittest.TestCase):
     )
     self.assertEqual(hits, [])
 
-  def test_t26_rejects_ab_system_include(self):
+  def test_r0902_rejects_ab_system_include(self):
     from src.codegen.template_conventions import _scan_file_content
 
     text = '#include <stdio.h>\n#include <cstdint>\n#include <cmath>\n#include "ffi/crt/stdio.h"\n'
     hits = [
       v for v in _scan_file_content("probe.inl", text, template_root())
-      if v.rule == "T26"
+      if v.rule == "R0902"
     ]
     self.assertEqual(len(hits), 1)
     self.assertIn("stdio.h", hits[0].message)
 
-  def test_t26_rejects_c_stdint_not_cstdint(self):
+  def test_r0902_rejects_c_stdint_not_cstdint(self):
     from src.codegen.template_conventions import _scan_file_content
 
     text = "#include <stdint.h>\n"
     hits = [
       v for v in _scan_file_content("probe.inl", text, template_root())
-      if v.rule == "T26"
+      if v.rule == "R0902"
     ]
     self.assertEqual(len(hits), 1)
     self.assertIn("stdint.h", hits[0].message)
@@ -158,9 +158,9 @@ class TemplateConventionsTests(unittest.TestCase):
     if not warnings:
       self.skipTest("当前 templates 树无孤立 ~ 警告")
     rules = {v.rule for v in warnings}
-    self.assertIn("T6", rules)
+    self.assertIn("R0202", rules)
 
-  def test_t22_rejects_inject_without_class_shell(self):
+  def test_r0703_rejects_inject_without_class_shell(self):
     from src.codegen.template_scan import scan_inject_class_shell_violations
 
     lines = [
@@ -176,7 +176,7 @@ class TemplateConventionsTests(unittest.TestCase):
     hits = scan_inject_class_shell_violations(lines)
     self.assertTrue(any("class PyPath" in msg for _, msg in hits))
 
-  def test_t22_rejects_class_name_mismatch(self):
+  def test_r0703_rejects_class_name_mismatch(self):
     from src.codegen.template_scan import scan_inject_class_shell_violations
 
     lines = [
@@ -197,7 +197,7 @@ class TemplateConventionsTests(unittest.TestCase):
     hits = scan_inject_class_shell_violations(lines)
     self.assertTrue(any("不一致" in msg for _, msg in hits))
 
-  def test_t22_accepts_valid_shell(self):
+  def test_r0703_accepts_valid_shell(self):
     from src.codegen.template_scan import scan_inject_class_shell_violations
 
     lines = [
@@ -218,7 +218,7 @@ class TemplateConventionsTests(unittest.TestCase):
     hits = scan_inject_class_shell_violations(lines)
     self.assertEqual(hits, [])
 
-  def test_t22_accepts_multiple_inject_same_shell(self):
+  def test_r0703_accepts_multiple_inject_same_shell(self):
     from src.codegen.template_scan import scan_inject_class_shell_violations
 
     lines = [

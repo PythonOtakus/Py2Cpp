@@ -263,7 +263,7 @@ def _make_iterator_class(
   body.append(ast.AnnAssign(
     target=ast.Name(id="_index", ctx=ast.Store()),
     annotation=ast.Name(id="int", ctx=ast.Load()),
-    value=ast.Constant(value=0),
+    value=None,
     simple=1,
   ))
   body.append(_make_iterator_init(host_info.name, type_params=type_params))

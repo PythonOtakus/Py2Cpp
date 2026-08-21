@@ -23,12 +23,12 @@ INSP_W: int = 320
 class EditorShell:
   """Unity 式单窗：Toolbar / Hierarchy / GL Scene View / Inspector。"""
 
-  session: EditorSession = new()
-  hierarchy: HierarchyView = new()
-  inspector: InspectorPanel = new()
-  toolbar: ToolbarView = new()
-  viewport: SceneViewport = new()
-  main_win: UIWindow = new()
+  session: EditorSession
+  hierarchy: HierarchyView
+  inspector: InspectorPanel
+  toolbar: ToolbarView
+  viewport: SceneViewport
+  main_win: UIWindow
 
   def __init__(self):
     self.session = new()

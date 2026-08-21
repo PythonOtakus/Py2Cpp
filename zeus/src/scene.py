@@ -36,7 +36,7 @@ class GameNodeMixin:
 class Component:
   """挂在 ``GameObject`` 上的逻辑组件。"""
 
-  kind: str = "Component"
+  kind: str
   enabled: bool = True
   asset_path: str = ""
   _owner: GameObject | None = None
@@ -88,12 +88,10 @@ class Component:
 class Transform(Component):
   """场景组件；数学委托 ``Transform3D``。"""
 
-  space: Transform3D = new("transform")
+  space: Transform3D
 
   def __init__(self):
     self.kind = "Transform"
-    self.enabled = True
-    self._owner = None
     self.space = new("transform")
 
   @property
@@ -174,15 +172,12 @@ class Transform(Component):
 class MeshComponent(Transform):
   """``Transform`` + ``Mesh``；模型资产路径为 ``.fbx``。"""
 
-  has_mesh: bool = False
-  mesh: Mesh = new()
-  color: Color = new(0.2, 0.6, 0.9, 1.0)
+  has_mesh: bool
+  mesh: Mesh
+  color: Color
 
   def __init__(self):
     self.kind = "MeshComponent"
-    self.enabled = True
-    self.asset_path = ""
-    self._owner = None
     self.space = new("transform")
     self.has_mesh = False
     self.mesh = new()
@@ -211,15 +206,13 @@ class MeshComponent(Transform):
 class CameraComponent(Transform):
   """投影参数 + 位姿。"""
 
-  fov_deg: float64 = 60.0
-  z_near: float64 = 0.1
-  z_far: float64 = 100.0
-  look_at_target: Vector3 = new(0.0, 0.0, 0.0)
+  fov_deg: float64
+  z_near: float64
+  z_far: float64
+  look_at_target: Vector3
 
   def __init__(self):
     self.kind = "CameraComponent"
-    self.enabled = True
-    self._owner = None
     self.space = new("transform")
     self.fov_deg = 60.0
     self.z_near = 0.1
@@ -231,16 +224,14 @@ class CameraComponent(Transform):
 class GameObject(GameNodeMixin):
   """可放置对象：对象树 + 组件 + root ``Transform``。"""
 
-  name: str = "GameObject"
-  _parent: Self | None = None
-  _children: list[Self] = []
-  _components: list[Component] = []
-  root: Transform = new()
+  name: str
+  _parent: Self | None
+  _children: list[Self]
+  _components: list[Component]
+  root: Transform
 
   def __init__(self, name: str = "GameObject"):
     self.name = name
-    self.active = True
-    self.visible = True
     self._parent = None
     self._children = []
     self._components = []

@@ -352,12 +352,12 @@ inline PY2CPP_TYPE(PyStr) repr(PyChar v)
   return (PY2CPP_TYPE(PyStr)("'")).__add__(PY2CPP_TYPE(PyStr)::reprChar(v)).__add__(PY2CPP_TYPE(PyStr)("'"));
 }
 
-static bool str_format_spec_empty(utf8ptr spec)
+static bool str_format_spec_empty(PyUtf8Ptr spec)
 {
   return (!spec || !spec[0]);
 }
 
-static void str_format_printf_spec(utf8ptr spec, char* buf, size_t cap)
+static void str_format_printf_spec(PyUtf8Ptr spec, char* buf, size_t cap)
 {
   if (!buf || cap == 0)
   {
@@ -382,7 +382,7 @@ static void str_format_printf_spec(utf8ptr spec, char* buf, size_t cap)
   buf[at] = '\0';
 }
 
-inline PY2CPP_TYPE(PyStr) format(PyInt v, utf8ptr format_spec)
+inline PY2CPP_TYPE(PyStr) format(PyInt v, PyUtf8Ptr format_spec)
 {
   if (str_format_spec_empty(format_spec))
   {
@@ -393,7 +393,7 @@ inline PY2CPP_TYPE(PyStr) format(PyInt v, utf8ptr format_spec)
   return PY2CPP_TYPE(PyStr)::percent_format(fmt, v);
 }
 
-inline PY2CPP_TYPE(PyStr) format(PyFloat v, utf8ptr format_spec)
+inline PY2CPP_TYPE(PyStr) format(PyFloat v, PyUtf8Ptr format_spec)
 {
   if (str_format_spec_empty(format_spec))
   {
@@ -404,7 +404,7 @@ inline PY2CPP_TYPE(PyStr) format(PyFloat v, utf8ptr format_spec)
   return PY2CPP_TYPE(PyStr)::percent_format(fmt, v);
 }
 
-inline PY2CPP_TYPE(PyStr) format(PyBool v, utf8ptr format_spec)
+inline PY2CPP_TYPE(PyStr) format(PyBool v, PyUtf8Ptr format_spec)
 {
   if (str_format_spec_empty(format_spec))
   {
@@ -415,7 +415,7 @@ inline PY2CPP_TYPE(PyStr) format(PyBool v, utf8ptr format_spec)
   return PY2CPP_TYPE(PyStr)::percent_format(fmt, v ? "True" : "False");
 }
 
-inline PY2CPP_TYPE(PyStr) format(PyChar v, utf8ptr format_spec)
+inline PY2CPP_TYPE(PyStr) format(PyChar v, PyUtf8Ptr format_spec)
 {
   if (str_format_spec_empty(format_spec))
   {
@@ -426,7 +426,7 @@ inline PY2CPP_TYPE(PyStr) format(PyChar v, utf8ptr format_spec)
   return PY2CPP_TYPE(PyStr)::percent_format(fmt, (int)(int32_t)v);
 }
 
-inline PY2CPP_TYPE(PyStr) format(const PY2CPP_TYPE(PyStr)& v, utf8ptr format_spec)
+inline PY2CPP_TYPE(PyStr) format(const PY2CPP_TYPE(PyStr)& v, PyUtf8Ptr format_spec)
 {
   (void)format_spec;
   return v;
@@ -845,7 +845,7 @@ inline PY2CPP_TYPE(PyStr) repr(PyFloat64 v)
   return PY2CPP_TYPE(PyStr)(v);
 }
 
-inline PY2CPP_TYPE(PyStr) format(PyInt64 v, utf8ptr format_spec) {
+inline PY2CPP_TYPE(PyStr) format(PyInt64 v, PyUtf8Ptr format_spec) {
   if (str_format_spec_empty(format_spec)) {
     return repr(v);
   }
@@ -854,7 +854,7 @@ inline PY2CPP_TYPE(PyStr) format(PyInt64 v, utf8ptr format_spec) {
   return PY2CPP_TYPE(PyStr)::percent_format(fmt, (long long)v);
 }
 
-inline PY2CPP_TYPE(PyStr) format(PyFloat64 v, utf8ptr format_spec) {
+inline PY2CPP_TYPE(PyStr) format(PyFloat64 v, PyUtf8Ptr format_spec) {
   if (str_format_spec_empty(format_spec)) {
     return repr(v);
   }

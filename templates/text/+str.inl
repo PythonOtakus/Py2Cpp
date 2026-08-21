@@ -6,7 +6,7 @@ PY2CPP_END
 #include <cstdarg>
 #include "ffi/crt/stdio.h"
 
-PyStr PyStr::_str_unescape_braces(utf8ptr fmt)
+PyStr PyStr::_str_unescape_braces(PyUtf8Ptr fmt)
 {
   PyStr out("");
   if (!fmt)
@@ -36,7 +36,7 @@ PyStr PyStr::_str_unescape_braces(utf8ptr fmt)
   return out;
 }
 
-PyStr PyStr::_str_format_substitute(utf8ptr fmt, const PyStr* parts, int n)
+PyStr PyStr::_str_format_substitute(PyUtf8Ptr fmt, const PyStr* parts, int n)
 {
   PyStr out("");
   if (!fmt)
@@ -93,12 +93,12 @@ PyStr::PrintfArg::PrintfArg(const PyStr& s)
   s.copyToSpanUtf8(PySpan<PyByte>((PyByte*)data, (PyInt)sizeof(data), 1));
 }
 
-PyStr PyStr::percent_format(utf8ptr fmt, ...)
+PyStr PyStr::percent_format(PyUtf8Ptr fmt, ...)
 {
   char buf[512];
   va_list ap;
   va_start(ap, fmt);
-  ::ffi::crt::stdio::pyiVsnprintf(buf, sizeof(buf), fmt, reinterpret_cast<utf8ptr>(ap));
+  ::ffi::crt::stdio::pyiVsnprintf(buf, sizeof(buf), fmt, reinterpret_cast<PyUtf8Ptr>(ap));
   va_end(ap);
   return PyStr(buf);
 }
@@ -106,7 +106,7 @@ PyStr PyStr::percent_format(utf8ptr fmt, ...)
 
 PyStr::PyStr(PyBool value)
 {
-  PyStr tmp(value ? (utf8ptr)"True" : (utf8ptr)"False");
+  PyStr tmp(value ? (PyUtf8Ptr)"True" : (PyUtf8Ptr)"False");
   (this->_data).__move__(tmp._data);
   this->_hash = tmp._hash;
   this->_hashOk = tmp._hashOk;

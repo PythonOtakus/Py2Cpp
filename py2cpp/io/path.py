@@ -163,6 +163,9 @@ class Path:
     drive, root, tail = Self._splitRoot(path)
     pos: int = Self._lastSepIndex(tail)
     if pos < 0:
+      # CPython: Path("foo").parent → Path(".")；有盘符/根时保留前缀
+      if not drive and not root:
+        return "."
       return drive + root
     if pos == 0:
       return drive + root + _PathSep

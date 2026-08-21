@@ -20,12 +20,12 @@ PY2CPP_END
 
 PY2CPP_INJECT_CLASS(PyStr)
 private:
-  static PY2CPP_TYPE(PyStr) _str_unescape_braces(utf8ptr fmt);
-  static PY2CPP_TYPE(PyStr) _str_format_substitute(utf8ptr fmt, const PY2CPP_TYPE(PyStr)* parts, int n);
+  static PY2CPP_TYPE(PyStr) _str_unescape_braces(PyUtf8Ptr fmt);
+  static PY2CPP_TYPE(PyStr) _str_format_substitute(PyUtf8Ptr fmt, const PY2CPP_TYPE(PyStr)* parts, int n);
 public:
   /// ``{{}}`` 占位（f-string / ``str.format``）；实参须为 ``PyStr``（可变参数模板，个数与 ``sizeof...(Args)`` 一致）。
   template<typename... Args>
-  static PY2CPP_TYPE(PyStr) format(utf8ptr fmt, Args... args)
+  static PY2CPP_TYPE(PyStr) format(PyUtf8Ptr fmt, Args... args)
   {
     static_assert(sizeof...(Args) <= 32, "PyStr::format: at most 32 placeholders");
     if (sizeof...(Args) == 0)
@@ -41,7 +41,7 @@ public:
     char data[512];
     explicit PrintfArg(const PY2CPP_TYPE(PyStr)& s);
   };
-  static PY2CPP_TYPE(PyStr) percent_format(utf8ptr fmt, ...);
+  static PY2CPP_TYPE(PyStr) percent_format(PyUtf8Ptr fmt, ...);
   /// 仅 ``PyTuple<...>``（``str %`` → ``::__mod__(fmt, makeTuple(...))``）；无 ``T0`` 非元组重载。
   template<typename... Args>
   PY2CPP_TYPE(PyStr) __mod__(const PyTuple<Args...>& other) const;

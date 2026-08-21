@@ -46,8 +46,8 @@ _KNOWN_SCALARS = frozenset({
   cpp_ident("byte"),
   cpp_ident("PyNone"),
   cpp_ident("Never"),
-  "utf8ptr",
-  "utf16ptr",
+  cpp_ident("utf8ptr"),
+  cpp_ident("utf16ptr"),
   "void*",
 })
 

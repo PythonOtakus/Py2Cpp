@@ -15,13 +15,13 @@ from .platform import PlatformPad
 class JumpGame:
   """最小跳一跳会话（headless / 有窗共用）。"""
 
-  world: World = new()
-  physics: SimpleWorld = new()
-  score: int = 0
-  player: GameObject = new("Player")
-  motor: JumpMotor = new()
-  camera: GameObject = new("Camera")
-  _plat_index: int = 0
+  world: World
+  physics: SimpleWorld
+  score: int
+  player: GameObject
+  motor: JumpMotor
+  camera: GameObject
+  _plat_index: int
 
   def __init__(self):
     self.world = new()

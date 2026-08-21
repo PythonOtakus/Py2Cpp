@@ -254,8 +254,8 @@ class TextIOWrapper(CloseMixin):
   """
 
   _fp: Pointer[PyiIobuf]
-  _closed: bool = True
-  _owns: bool = False
+  _closed: bool
+  _owns: bool
 
   @overload
   def __init__(self, path: str, mode: str = "r"):

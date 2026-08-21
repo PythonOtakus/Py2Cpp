@@ -40,10 +40,10 @@ DevNull: int = -2
 class CompletedProcess:
   """已结束子进程的参数、退出码和已捕获输出。"""
 
-  args: list[str] = []
-  returnCode: int = 0
-  stdout: str = ""
-  stderr: str = ""
+  args: list[str]
+  returnCode: int
+  stdout: str
+  stderr: str
 
   @overload
   def __init__(self):
@@ -253,9 +253,9 @@ def _processWait(handle: uintptr, timeout: float64) -> bool:
 class ProcessEvent:
   """Windows 命名事件：可由独立进程按同一 ``name`` 共享。"""
 
-  _handle: uintptr = 0
-  name: str = ""
-  created: bool = False
+  _handle: uintptr
+  name: str
+  created: bool
 
   def __init__(self, name: str, initial: bool = False):
     if not name:
@@ -293,9 +293,9 @@ class ProcessEvent:
 class ProcessMutex:
   """Windows 命名递归 mutex：同一 ``name`` 可跨进程互斥。"""
 
-  _handle: uintptr = 0
-  name: str = ""
-  created: bool = False
+  _handle: uintptr
+  name: str
+  created: bool
 
   def __init__(self, name: str):
     if not name:
@@ -336,9 +336,9 @@ class ProcessMutex:
 class ProcessSemaphore:
   """Windows 命名信号量：许可计数由同一名称的所有进程共享。"""
 
-  _handle: uintptr = 0
-  name: str = ""
-  created: bool = False
+  _handle: uintptr
+  name: str
+  created: bool
 
   def __init__(self, name: str, value: int = 1, maximum: int = 2147483647):
     if value < 0 or maximum <= 0 or value > maximum:
@@ -382,11 +382,11 @@ class ProcessSemaphore:
 class SharedMemory:
   """Windows 命名共享内存；同名参与者须传入相同的 ``size``。"""
 
-  _handle: uintptr = 0
-  _address: uintptr = 0
-  name: str = ""
-  size: int = 0
-  created: bool = False
+  _handle: uintptr
+  _address: uintptr
+  name: str
+  size: int
+  created: bool
 
   def __init__(self, name: str, size: int):
     if size <= 0:
@@ -442,13 +442,13 @@ _ChannelHeaderSize: int = 4
 class ProcessChannel:
   """单槽命名字节通道：跨进程发送/接收一条不超过 ``capacity`` 的消息。"""
 
-  _memory: Pointer[SharedMemory] = None
-  _mutex: Pointer[ProcessMutex] = None
-  _empty: Pointer[ProcessSemaphore] = None
-  _ready: Pointer[ProcessSemaphore] = None
-  capacity: int = 0
-  name: str = ""
-  created: bool = False
+  _memory: Pointer[SharedMemory]
+  _mutex: Pointer[ProcessMutex]
+  _empty: Pointer[ProcessSemaphore]
+  _ready: Pointer[ProcessSemaphore]
+  capacity: int
+  name: str
+  created: bool
 
   def __init__(self, name: str, capacity: int):
     if capacity <= 0:

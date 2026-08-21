@@ -58,7 +58,7 @@ class TypeDepsTests(unittest.TestCase):
 
   def test_str_callable_uses_forward_declaration(self):
     deps = collect_type_header_deps(
-      "PyCallable<PyUInt, utf8ptr, PyUInt>",
+      "PyCallable<PyUInt, PyUtf8Ptr, PyUInt>",
       stdlib_header_include("text/str"),
       {},
     )

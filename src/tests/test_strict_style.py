@@ -93,7 +93,7 @@ def main():
   def test_s01_allows_super_init_in_subclass_init(self):
     self._translate(
       """class Base:
-  n: int = 0
+  n: int
 
   def __init__(self, n: int = 0):
     self.n = n
@@ -455,8 +455,7 @@ def main():
   def test_s03_allows_empty_set_new(self):
     self._translate(
       """def main():
-  s: set[int] = new()
-  return len(s)
+  return len(set[int]())
 """
     )
 
@@ -480,8 +479,8 @@ async def use_async_with() -> int:
   async with cm as v:
     return v
 
-def main():
-  return use_async_with()
+def main() -> int:
+  return 0
 """,
         encoding="utf-8",
       )
@@ -514,14 +513,13 @@ def main():
   def test_s03_allows_new_with_args_when_ann_self(self):
     self._translate(
       """class Holder:
-  data: int = 0
+  data: int
 
   def __init__(self, data: int):
     self.data = data
 
   def dup(self) -> Self:
-    out: Self = new(1)
-    return out
+    return new(1)
 
 def main():
   h: Holder = new(data=0)
@@ -591,13 +589,13 @@ def main():
   def test_s03_allows_self_in_aug_assign(self):
     self._translate(
       """class Holder:
-  data: int = 0
+  data: int
 
   def __init__(self, data: int):
     self.data = data
 
   def mix(self, ch: int) -> Self:
-    out: Self = new()
+    out: Self = new(0)
     out += Self(ch)
     return out
 
@@ -610,13 +608,13 @@ def main():
   def test_s03_allows_self_in_return_binop(self):
     self._translate(
       """class Holder:
-  data: int = 0
+  data: int
 
   def __init__(self, data: int):
     self.data = data
 
   def join(self, tail: int) -> Self:
-    head: Self = new()
+    head: Self = new(0)
     return head + Self(tail)
 
 def main():
@@ -1026,8 +1024,8 @@ def main():
     """注解目标类 + ``new(src)``（非空容器字面量）应通过 strict 且可翻译。"""
     self._translate(
       """class slot_loc:
-  a: int = 0
-  b: int = 0
+  a: int
+  b: int
 
   def __init__(self, a: int, b: int):
     self.a = a
@@ -1043,7 +1041,7 @@ def main():
   def test_s06b_allows_new_self_with_typed_return(self):
     self._translate(
       """class box_iterator:
-  data: int = 0
+  data: int
 
   def __init__(self, box: Box):
     self.data = box.data
@@ -1088,8 +1086,8 @@ def main():
   def test_s06b_allows_new_static_factory_with_self_ann(self):
     self._translate(
       """class Mat:
-  a: int = 0
-  b: int = 0
+  a: int
+  b: int
 
   def __init__(self, a: int, b: int):
     self.a = a
@@ -1100,11 +1098,10 @@ def main():
     return new(a, b)
 
   def make(self) -> Self:
-    m: Self = new.from_parts(1, 2)
-    return m
+    return new.from_parts(1, 2)
 
 def main():
-  x: Mat = new()
+  x: Mat = new(0, 0)
   return x.make()
 """
     )
@@ -1225,9 +1222,7 @@ def main():
 
   def test_s03_rejects_new_on_self_field_assign(self):
     self._expect_strict_fail(
-      """from py2cpp import Self, copyable
-
-@copyable
+      """@copyable
 class Grid:
   adj: list[list[int]]
 
@@ -1244,9 +1239,7 @@ def main():
 
   def test_s03_rejects_new_on_other_field_assign(self):
     self._expect_strict_fail(
-      """from py2cpp import Self, copyable
-
-@copyable
+      """@copyable
 class Grid:
   adj: list[list[int]]
 
@@ -1262,9 +1255,7 @@ def main():
 
   def test_s03_allows_literal_on_other_field_assign(self):
     self._translate(
-      """from py2cpp import Self, copyable
-
-@copyable
+      """@copyable
 class Grid:
   adj: list[list[int]]
 
@@ -1299,9 +1290,7 @@ def main():
 
   def test_s15_rejects_same_class_name_in_expr(self):
     self._expect_strict_fail(
-      """from py2cpp import Self, new
-
-class Point:
+      """class Point:
   x: int = 0
   y: int = 0
 
@@ -1324,9 +1313,7 @@ class Point:
 
   def test_s15_allows_self_static_in_expr(self):
     self._translate(
-      """from py2cpp import Self, new
-
-class Point:
+      """class Point:
   x: int = 0
   y: int = 0
 
@@ -1400,9 +1387,7 @@ def main():
 
   def test_s09_rejects_class_name_annotation(self):
     self._expect_strict_fail(
-      """from py2cpp import Self, new
-
-class Point:
+      """class Point:
   def copy(self) -> Point:
     out: Point = new(0, 0)
     return out
@@ -1417,15 +1402,12 @@ def main():
 
   def test_s09_allows_self_in_class_body(self):
     self._translate(
-      """from py2cpp import Self, new
-
-class Point:
+      """class Point:
   x: int = 0
   y: int = 0
 
   def copy(self) -> Self:
-    out: Self = new(self.x, self.y)
-    return out
+    return new(self.x, self.y)
 
 def main():
   p: Point = new(1, 2)
@@ -1500,9 +1482,7 @@ def main():
 
   def test_s10_allows_all_overload(self):
     self._translate(
-      """from py2cpp import overload
-
-class Scaler:
+      """class Scaler:
   base: int = 1
 
   @overload
@@ -2521,7 +2501,7 @@ class Point:
 
 @copyable
 class Box:
-  item: Point = new()
+  item: Point
 
   def __init__(self):
     self.item = new()
@@ -2596,9 +2576,7 @@ def ok() -> Resp:
 
   def test_s23_allows_exhaustive_union_without_wildcard(self):
     self._translate(
-      """from py2cpp import union, variant
-
-@union
+      """@union
 class U:
   @variant
   class A:
@@ -2633,9 +2611,7 @@ def f(u: U) -> int:
 
   def test_s23_allows_exhaustive_enum_without_wildcard(self):
     self._translate(
-      """from py2cpp import enum
-
-@enum
+      """@enum
 class Color:
   RED = 0
   GREEN = 1
@@ -2655,9 +2631,7 @@ def f(c: Color) -> int:
 
   def test_s23_allows_enum_or_pattern_without_wildcard(self):
     self._translate(
-      """from py2cpp import enum
-
-@enum
+      """@enum
 class Color:
   RED = 0
   GREEN = 1
@@ -2672,9 +2646,7 @@ def f(c: Color) -> int:
 
   def test_s23_rejects_partial_enum_without_wildcard(self):
     self._expect_strict_fail(
-      """from py2cpp import enum
-
-@enum
+      """@enum
 class Color:
   RED = 0
   GREEN = 1
@@ -2860,9 +2832,7 @@ class FrozenPoint:
 
   def test_s23_rejects_enum_member_case_with_guard_for_exhaustive(self):
     self._expect_strict_fail(
-      """from py2cpp import enum
-
-@enum
+      """@enum
 class Color:
   RED = 0
   GREEN = 1
@@ -2880,9 +2850,7 @@ def f(c: Color) -> int:
 
   def test_s23_allows_union_with_guard_if_still_exhaustive(self):
     self._translate(
-      """from py2cpp import union, variant
-
-@union
+      """@union
 class U:
   @variant
   class A:
@@ -2906,9 +2874,7 @@ def f(u: U) -> int:
 
   def test_s23_allows_union_partial_field_bind_exhaustive(self):
     self._translate(
-      """from py2cpp import union, variant
-
-@union
+      """@union
 class U:
   @variant
   class Pair:
@@ -2925,9 +2891,7 @@ def f(u: U) -> int:
 
   def test_s23_rejects_union_missing_variant_without_wildcard(self):
     self._expect_strict_fail(
-      """from py2cpp import union, variant
-
-@union
+      """@union
 class U:
   @variant
   class A:
@@ -2948,9 +2912,7 @@ def f(u: U) -> int:
 
   def test_s23_allows_union_empty_parens_full_bind(self):
     self._translate(
-      """from py2cpp import union, variant
-
-@union
+      """@union
 class U:
   @variant
   class Pair:
@@ -2967,9 +2929,7 @@ def f(u: U) -> int:
 
   def test_s23_allows_union_kwd_full_bind(self):
     self._translate(
-      """from py2cpp import union, variant
-
-@union
+      """@union
 class U:
   @variant
   class Pair:
@@ -2986,9 +2946,7 @@ def f(u: U) -> int:
 
   def test_s23_rejects_union_literal_positional_for_exhaustive(self):
     self._expect_strict_fail(
-      """from py2cpp import union, variant
-
-@union
+      """@union
 class U:
   @variant
   class Pair:
@@ -3006,9 +2964,7 @@ def f(u: U) -> int:
 
   def test_s23_rejects_union_literal_kwd_for_exhaustive(self):
     self._expect_strict_fail(
-      """from py2cpp import union, variant
-
-@union
+      """@union
 class U:
   @variant
   class Pair:
@@ -3026,9 +2982,7 @@ def f(u: U) -> int:
 
   def test_s24_rejects_wide_union_case_before_literal(self):
     self._expect_strict_fail(
-      """from py2cpp import union, variant
-
-@union
+      """@union
 class U:
   @variant
   class Move:
@@ -3048,9 +3002,7 @@ def f(u: U) -> int:
 
   def test_s24_allows_literal_before_wide_union_case(self):
     self._translate(
-      """from py2cpp import union, variant
-
-@union
+      """@union
 class U:
   @variant
   class Move:
@@ -3069,9 +3021,7 @@ def f(u: U) -> int:
 
   def test_s24_ignores_shadow_when_earlier_has_guard(self):
     self._translate(
-      """from py2cpp import union, variant
-
-@union
+      """@union
 class U:
   @variant
   class Move:
@@ -3092,9 +3042,7 @@ def f(u: U) -> int:
 
   def test_s24_rejects_catchall_before_literal_same_variant(self):
     self._expect_strict_fail(
-      """from py2cpp import union, variant
-
-@union
+      """@union
 class U:
   @variant
   class Move:
@@ -3114,9 +3062,7 @@ def f(u: U) -> int:
 
   def test_s24_rejects_interleaved_variant_cases(self):
     self._expect_strict_fail(
-      """from py2cpp import union, variant
-
-@union
+      """@union
 class U:
   @variant
   class Move:
@@ -3141,9 +3087,7 @@ def f(u: U) -> int:
 
   def test_s24_allows_contiguous_same_variant_cases(self):
     self._translate(
-      """from py2cpp import union, variant
-
-@union
+      """@union
 class U:
   @variant
   class Move:
@@ -3554,6 +3498,141 @@ def main():
 
 def main():
   return identity(1)
+"""
+    )
+
+  def test_s49_rejects_class_default_and_init_assign(self):
+    self._expect_strict_fail(
+      """class Box:
+  n: int = 0
+
+  def __init__(self, n: int):
+    self.n = n
+
+def main():
+  b: Box = new(1)
+  return b.n
+""",
+      "S49",
+    )
+
+  def test_s49_rejects_augassign_in_init(self):
+    self._expect_strict_fail(
+      """class Box:
+  n: int = 0
+
+  def __init__(self):
+    self.n += 1
+
+def main():
+  b: Box = new()
+  return b.n
+""",
+      "S49",
+    )
+
+  def test_s49_rejects_conditional_assign_in_init(self):
+    self._expect_strict_fail(
+      """class Box:
+  n: int = 0
+
+  def __init__(self, n: int):
+    if n:
+      self.n = n
+
+def main():
+  b: Box = new(1)
+  return b.n
+""",
+      "S49",
+    )
+
+  def test_s49_rejects_subclass_assign_of_base_default(self):
+    self._expect_strict_fail(
+      """class Base:
+  n: int = 0
+
+class Derived(Base):
+  def __init__(self, n: int):
+    self.n = n
+
+def main():
+  d: Derived = new(1)
+  return d.n
+""",
+      "S49",
+    )
+
+  def test_s49_allows_class_default_without_init_assign(self):
+    self._translate(
+      """class Box:
+  n: int = 0
+
+  def __init__(self):
+    pass
+
+def main():
+  b: Box = new()
+  return b.n
+"""
+    )
+
+  def test_s49_allows_init_assign_without_class_default(self):
+    self._translate(
+      """class Box:
+  n: int
+
+  def __init__(self, n: int):
+    self.n = n
+
+def main():
+  b: Box = new(1)
+  return b.n
+"""
+    )
+
+  def test_s49_allows_init_ann_assign_without_class_default(self):
+    self._translate(
+      """class Box:
+  def __init__(self, n: int):
+    self.n: int = n
+
+def main():
+  b: Box = new(1)
+  return b.n
+"""
+    )
+
+  def test_s49_allows_copy_assign_with_class_default(self):
+    self._translate(
+      """class Box:
+  n: int = 0
+
+  def __copy__(self, other: Self):
+    self.n = other.n
+
+  @immutable
+  def copy(self) -> Self:
+    out: Self = new()
+    out.__copy__(self)
+    return out
+
+def main():
+  a: Box = new()
+  return a.copy().n
+"""
+    )
+
+  def test_s49_allows_dataclass_field_default(self):
+    self._translate(
+      """@dataclass
+class Point:
+  x: int = 0
+  y: int = 0
+
+def main():
+  p: Point = new(1, 2)
+  return p.x + p.y
 """
     )
 

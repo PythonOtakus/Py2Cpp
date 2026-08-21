@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from ..analysis.ir import (
+  cpp_ident,
   cpp_param,
   decorator_string_arg,
   format_fn_sig,
@@ -41,11 +42,11 @@ _SCALAR_CAST: dict[str, str] = {
   "float": "PyFloat",
   "float64": "PyFloat64",
   "bool": "PyBool",
-  "utf8ptr": "utf8ptr",
+  "utf8ptr": "PyUtf8Ptr",
 }
 
 
-# ``utf8ptr`` is represented as ``const char*`` in generated C++.  A small
+# ``utf8ptr`` is represented as ``PyUtf8Ptr`` (``const char*``) in generated C++.  A small
 # set of C APIs uses a ``char*`` output buffer but is emitted as ``utf8ptr`` by
 # the header generator, so glue performs the only required mutable cast.
 _MUTABLE_CSTR_PARAMS: frozenset[tuple[str, str]] = frozenset({
@@ -178,9 +179,9 @@ def _ret_store_type(ann: _Ann, fallback: str) -> str:
   if ann.kind == "struct":
     return fallback
   if ann.kind == "cstr":
-    return "utf8ptr"
+    return cpp_ident("utf8ptr")
   if ann.kind == "cwstr":
-    return "utf16ptr"
+    return cpp_ident("utf16ptr")
   if ann.kind == "fn":
     return fallback
   if ann.kind == "scalar":
@@ -190,9 +191,9 @@ def _ret_store_type(ann: _Ann, fallback: str) -> str:
 
 def _wrap_c_call_as_ret(c_call: str, ann: _Ann, store: str) -> str:
   if ann.kind == "cstr":
-    return f"(utf8ptr)({c_call})"
+    return f"({cpp_ident('utf8ptr')})({c_call})"
   if ann.kind == "cwstr":
-    return f"reinterpret_cast<utf16ptr>({c_call})"
+    return f"reinterpret_cast<{cpp_ident('utf16ptr')}>({c_call})"
   if ann.kind == "ptr_scalar" and ann.name == "uint16":
     return f"reinterpret_cast<{store}>({c_call})"
   if ann.kind == "ptr_ptr" and ann.name == "uint16":

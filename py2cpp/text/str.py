@@ -55,8 +55,8 @@ class str(StringMixin[char]):
 
   _DeleteChar: int @const = 0xFFFF
 
-  _hash: int = 0
-  _hashOk: bool = False
+  _hash: int
+  _hashOk: bool
 
   def _didChangeData(self) -> None:
     self._hash = 0
@@ -257,10 +257,30 @@ class str(StringMixin[char]):
 
   @overload
   def __init__(self, text: utf8ptr = ""):
-    decoded: Self = Self.fromUtf8(text)
+    # 空 C 串不可再走 fromUtf8→fromSpanUtf8→`return ""`→本构造，否则栈溢出
+    view: span[byte] = text.view
+    if not view:
+      self._hash = 0
+      self._hashOk = True
+      self._data = new(0)
+      return
+    decoded: Self = Self.fromSpanUtf8(view)
     self._hash = 0
     self._hashOk = not decoded
     self._data: array[char, _SsoCap] = decoded._data
+
+  @overload
+  def __init__(self, text: utf16ptr):
+    view: span[uint16] = text.view
+    if not view:
+      self._hash = 0
+      self._hashOk = True
+      self._data = new(0)
+      return
+    decoded: Self = Self.fromSpanUtf16(view)
+    self._hash = 0
+    self._hashOk = not decoded
+    self._data = decoded._data
 
   @overload
   def __init__(self, data: char[:]):
@@ -300,7 +320,8 @@ class str(StringMixin[char]):
   @immutable
   def fromSpanBytes(seg: span[byte]) -> Self:
     """Expand each raw byte in seg to a Unicode code point."""
-    dst: Self = ""
+    buf0: char[:] = new(0)
+    dst: Self = new(buf0)
     dst.copyFromSpanBytes(seg)
     return dst
 
@@ -310,12 +331,14 @@ class str(StringMixin[char]):
     """Copy from a strict UTF-8 byte sequence."""
     n: int = len(seg)
     if n == 0:
-      return ""
+      buf0: char[:] = new(0)
+      return new(buf0)
     buf: char[:] = new(n)
     at: int = 0
     i: int = 0
     while i < n:
-      b0 = int(seg[i])
+      # MSVC 上 PyByte 为有符号 char：须 & 0xFF 再判 UTF-8 前导字节
+      b0 = int(seg[i]) & 0xFF
       if b0 < 0x80:
         buf[at] = char(b0)
         at += 1
@@ -336,7 +359,7 @@ class str(StringMixin[char]):
         raise ValueError("invalid UTF-8 leading byte")
       if i + need >= n:
         raise ValueError("truncated UTF-8 sequence")
-      b1 = int(seg[i + 1])
+      b1 = int(seg[i + 1]) & 0xFF
       if not Self._isUtf8Continuation(b1):
         raise ValueError("invalid UTF-8 continuation byte")
       if (b0 == 0xE0 and b1 < 0xA0) or (b0 == 0xED and b1 >= 0xA0):
@@ -345,7 +368,7 @@ class str(StringMixin[char]):
         raise ValueError("invalid UTF-8 code point")
       cp = (cp << 6) | (b1 & 0x3F)
       for j in range(2, need + 1):
-        b = int(seg[i + j])
+        b = int(seg[i + j]) & 0xFF
         if not Self._isUtf8Continuation(b):
           raise ValueError("invalid UTF-8 continuation byte")
         cp = (cp << 6) | (b & 0x3F)
@@ -394,7 +417,8 @@ class str(StringMixin[char]):
     """Copy from a strict UTF-16 code-unit sequence."""
     n: int = len(seg)
     if n == 0:
-      return ""
+      buf0: char[:] = new(0)
+      return new(buf0)
     buf: char[:] = new(n)
     at: int = 0
     i: int = 0
@@ -439,7 +463,7 @@ class str(StringMixin[char]):
     if len(self._data) != n:
       self._data.reshape(n, 0)
     for i in range(n):
-      self._data[i] = char(seg[i])
+      self._data[i] = char(int(seg[i]) & 0xFF)
     self._hash = 0
     self._hashOk = False
 
@@ -543,31 +567,48 @@ class str(StringMixin[char]):
 
   @overload
   def __init__(self, value: int):
+    # 仅拷贝 snprintf 写入长度；勿用整段 buf（否则嵌入 NUL，PrintfArg 抛 ValueError）
     buf: byte[:] = new(32)
     ptr: utf8ptr = cast(buf.view.at())
-    pyiSnprintf(ptr, len(buf), "%d", value)
-    self.copyFromSpanBytes(buf.view)
+    n: int = pyiSnprintf(ptr, len(buf), "%d", value)
+    if n < 0:
+      n = 0
+    elif n >= len(buf):
+      n = len(buf) - 1
+    self.copyFromSpanBytes(buf.view[:n])
 
   @overload
   def __init__(self, value: int64):
     buf: byte[:] = new(32)
     ptr: utf8ptr = cast(buf.view.at())
-    pyiSnprintf(ptr, len(buf), "%lld", value)
-    self.copyFromSpanBytes(buf.view)
+    n: int = pyiSnprintf(ptr, len(buf), "%lld", value)
+    if n < 0:
+      n = 0
+    elif n >= len(buf):
+      n = len(buf) - 1
+    self.copyFromSpanBytes(buf.view[:n])
 
   @overload
   def __init__(self, value: float):
     buf: byte[:] = new(64)
     ptr: utf8ptr = cast(buf.view.at())
-    pyiSnprintf(ptr, len(buf), "%g", value)
-    self.copyFromSpanBytes(buf.view)
+    n: int = pyiSnprintf(ptr, len(buf), "%g", value)
+    if n < 0:
+      n = 0
+    elif n >= len(buf):
+      n = len(buf) - 1
+    self.copyFromSpanBytes(buf.view[:n])
 
   @overload
   def __init__(self, value: float64):
     buf: byte[:] = new(64)
     ptr: utf8ptr = cast(buf.view.at())
-    pyiSnprintf(ptr, len(buf), "%g", value)
-    self.copyFromSpanBytes(buf.view)
+    n: int = pyiSnprintf(ptr, len(buf), "%g", value)
+    if n < 0:
+      n = 0
+    elif n >= len(buf):
+      n = len(buf) - 1
+    self.copyFromSpanBytes(buf.view[:n])
 
   @overload
   @native

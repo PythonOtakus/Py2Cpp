@@ -14,8 +14,8 @@ class long:
   _HashBits: int @const = 61
   _HashModulus: int64 @const = 2305843009213693951
 
-  _hash: int = 0
-  _hashOk: bool = False
+  _hash: int
+  _hashOk: bool
 
   def __init__(self, value: str = ""):
     self._neg: bool = False

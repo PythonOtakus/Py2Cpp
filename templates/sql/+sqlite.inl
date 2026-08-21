@@ -187,7 +187,7 @@ void PySqliteConnection::commit()
   {
     return;
   }
-  utf8ptr err = nullptr;
+  PyUtf8Ptr err = nullptr;
   if (ffi_sql::pyiSqlite3Exec(_db, "COMMIT", 0, 0, &err) != ffi_sql::PyiSqliteOk)
   {
     if (err)
@@ -208,7 +208,7 @@ void PySqliteConnection::rollback()
   {
     return;
   }
-  utf8ptr err = nullptr;
+  PyUtf8Ptr err = nullptr;
   if (ffi_sql::pyiSqlite3Exec(_db, "ROLLBACK", 0, 0, &err) != ffi_sql::PyiSqliteOk)
   {
     if (err)

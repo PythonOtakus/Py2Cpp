@@ -601,6 +601,7 @@ class TypeParser:
         # 内置标量注解优先于模块 ``type int64 = int`` 等别名（``@const`` 类字段须保留 ``PyInt64``）。
         if name in (
           "int", "int16", "int64", "uint16", "uint", "uint64", "uintptr", "float", "float64", "bool", "str", "bytes", "char", "byte",
+          "utf8ptr", "utf16ptr",
           "object", "RefCount", "IterResult", "Result", "Optional", "GeneratorType",
           "CoroutineType", "AsyncGeneratorType", "AwaitableType", "AsyncIterableType", "AsyncIteratorType",
           "ContextManagerType", "AsyncContextManagerType", "PyNone", "void", "Never",
@@ -608,8 +609,6 @@ class TypeParser:
           return cpp_ident(name)
         if name == "None":
           return cpp_ident("PyNone")
-        if name in ("utf8ptr", "utf16ptr"):
-          return name
         expanded = self._expand_type_alias_name(
           name, type_params, self_class=self_class, _seen=_alias_seen,
         )
@@ -1630,7 +1629,7 @@ class SignatureBuilder:
         if isinstance(v, str):
           if cpp_type and is_char_heap_array_type(cpp_type) and v == "":
             return f"{cpp_type}(0)"
-          if cpp_type == "utf8ptr":
+          if cpp_type == cpp_ident("utf8ptr"):
             return quote_cpp_string(v)
           return str_cpp_from_literal(v)
         if isinstance(v, float):
@@ -2002,7 +2001,7 @@ class SignatureBuilder:
         and isinstance(arg.annotation, ast.Name)
         and arg.annotation.id == "utf8ptr"
       ):
-        return "utf8ptr"
+        return cpp_ident("utf8ptr")
       if method and arg.arg == "other":
         if method.name == "__copy__":
           if info.is_template():

@@ -104,7 +104,7 @@ class TcpSocket:
 class AsyncTcpSocket:
   """协作式异步 TCP socket；基于真实 non-blocking socket + ``Task`` IO readiness。"""
 
-  _sock: TcpSocket = new()
+  _sock: TcpSocket
 
   def __init__(self):
     self._sock = new()

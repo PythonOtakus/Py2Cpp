@@ -11,12 +11,10 @@ from .world import World
 
 @refcount
 class ScoreBoard(Component):
-  score: int = 0
+  score: int
 
   def __init__(self):
     self.kind = "ScoreBoard"
-    self.enabled = True
-    self._owner = None
     self.score = 0
 
   @override

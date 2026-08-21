@@ -94,7 +94,7 @@ def _parse_name_node(
     return TypeNode.template(name, erased_protocol_cpp_name(name))
   scalars = {
     "int", "int16", "int64", "uint16", "uint", "uint64", "uintptr", "float", "float64", "bool",
-    "str", "bytes", "char", "byte", "object", "RefCount", "IterResult", "Result",
+    "str", "bytes", "char", "byte", "utf8ptr", "utf16ptr", "object", "RefCount", "IterResult", "Result",
     "Optional", "GeneratorType", "CoroutineType", "AsyncGeneratorType", "AwaitableType",
     "AsyncIterableType", "AsyncIteratorType", "ContextManagerType", "AsyncContextManagerType",
     "PyNone", "void", "Never",
@@ -103,8 +103,6 @@ def _parse_name_node(
     return TypeNode.scalar(cpp_ident(name))
   if name == "None":
     return TypeNode.scalar(cpp_ident("PyNone"))
-  if name in ("utf8ptr", "utf16ptr"):
-    return TypeNode.scalar(name)
   expanded = parser._expand_type_alias_name(
     name, type_params, self_class=self_class, _seen=alias_seen,
   )

@@ -43,16 +43,16 @@ def _emit_cast_call(tr: Translator, target_cpp: str, node: ast.Call) -> str:
     bare_target = target_cpp.strip()
     raw_stripped = raw_t.rstrip()
     if bare_target.endswith('*') and bare_target != raw_stripped:
-        if raw_stripped in ('PyInt', 'PyInt16', 'PyInt64', 'PyUInt16', 'PyUInt', 'PyUInt64', 'PyUIntPtr', 'uintptr', 'utf8ptr', 'utf16ptr') or raw_stripped.endswith('*') or (
+        if raw_stripped in ('PyInt', 'PyInt16', 'PyInt64', 'PyUInt16', 'PyUInt', 'PyUInt64', 'PyUIntPtr', 'uintptr', cpp_ident('utf8ptr'), cpp_ident('utf16ptr')) or raw_stripped.endswith('*') or (
           isinstance(arg, ast.Call)
           and isinstance(arg.func, ast.Name)
           and arg.func.id == 'id'
         ):
             return f'reinterpret_cast<{target_cpp}>({inner})'
-    if bare_target == 'utf16ptr' and (raw_stripped == 'PyUInt16*' or raw_stripped.endswith('*')):
-        return f'reinterpret_cast<utf16ptr>({inner})'
+    if bare_target == cpp_ident('utf16ptr') and (raw_stripped == 'PyUInt16*' or raw_stripped.endswith('*')):
+        return f'reinterpret_cast<{cpp_ident("utf16ptr")}>({inner})'
     if bare_target in ('PyUIntPtr', 'uintptr'):
-        if raw_stripped in ('utf8ptr', 'utf16ptr') or raw_stripped.endswith('*') or (
+        if raw_stripped in (cpp_ident('utf8ptr'), cpp_ident('utf16ptr')) or raw_stripped.endswith('*') or (
           isinstance(arg, ast.Call)
           and isinstance(arg.func, ast.Name)
           and arg.func.id == 'id'
@@ -1448,7 +1448,7 @@ def emit_call_expr(tr: Translator, node: ast.Call):
             if name == 'len':
                 arg = node.args[0]
                 from ..analysis.type_emit import scope_binding_storage_cpp
-                if isinstance(arg, ast.Name) and tr.scope and scope_binding_storage_cpp(tr.scope, arg.id) == 'utf8ptr':
+                if isinstance(arg, ast.Name) and tr.scope and scope_binding_storage_cpp(tr.scope, arg.id) == cpp_ident('utf8ptr'):
                     return f'(int)strlen({arg.id})'
                 from .variadic_template_emit import try_emit_variadic_pack_len
                 vt_len = try_emit_variadic_pack_len(tr, arg)
@@ -1509,7 +1509,11 @@ def emit_call_expr(tr: Translator, node: ast.Call):
             if name == 'chr' and len(node.args) == 1:
                 arg_node = node.args[0]
                 if isinstance(arg_node, ast.Constant) and isinstance(arg_node.value, int):
-                    return str_cpp_from_literal(chr(arg_node.value))
+                    code = arg_node.value
+                    # ``PyStr("\0...")`` 经 utf8ptr/strlen 会在 NUL 处截断；码点 0 必须走 ``::chr``
+                    if code == 0:
+                        return '::chr(0)'
+                    return str_cpp_from_literal(chr(code))
                 return f'::chr({tr._visit_value_expr(arg_node)})'
             if name == 'ord' and len(node.args) == 1:
                 arg_node = node.args[0]

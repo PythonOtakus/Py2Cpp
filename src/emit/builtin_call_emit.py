@@ -182,7 +182,7 @@ def format_spec_literal(node: ast.expr) -> str | None:
             return None
 
 def format_spec_cpp(tr: Translator, node: ast.expr | None) -> str:
-    """``format_spec`` 编译期字符串 → ``utf8ptr`` 字面量。"""
+    """``format_spec`` 编译期字符串 → ``PyUtf8Ptr`` 字面量。"""
     if node is None:
         return quote_cpp_string('')
     lit = format_spec_literal(node)

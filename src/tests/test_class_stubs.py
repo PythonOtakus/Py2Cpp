@@ -29,6 +29,8 @@ _SAMPLE_NATIVE_NAMES = {
   "range": "PyRange",
   "Optional": "PyOptional",
   "datetime": "PyDateTime",
+  "utf8ptr": "PyUtf8Ptr",
+  "utf16ptr": "PyUtf16Ptr",
 }
 
 

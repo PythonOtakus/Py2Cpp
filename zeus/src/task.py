@@ -8,8 +8,8 @@ from py2cpp import *
 class Task:
   """具名阶段（detect / update / draw / refresh）。"""
 
-  name: str = ""
-  enabled: bool = True
+  name: str
+  enabled: bool
 
   def __init__(self, name: str = ""):
     self.name = name

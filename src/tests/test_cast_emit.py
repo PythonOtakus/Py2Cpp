@@ -65,7 +65,7 @@ class Base:
     assert isinstance(node, ast.Call)
     target = tr._parse_type(ast.Name(id="uintptr"), set())
     tr.scope = Scope(ast.parse("pass").body[0])
-    tr._infer_expr_cpp_type = lambda _node: "utf8ptr"
+    tr._infer_expr_cpp_type = lambda _node: "PyUtf8Ptr"
     out = _emit_cast_call(tr, target, node)
     self.assertEqual(out, "reinterpret_cast<PyUIntPtr>(text)")
 
@@ -80,7 +80,7 @@ class Base:
     tr.scope = Scope(ast.parse("pass").body[0])
     tr._infer_expr_cpp_type = lambda _node: "PyUInt16*"
     out = _emit_cast_call(tr, target, node)
-    self.assertEqual(out, "reinterpret_cast<utf16ptr>(text)")
+    self.assertEqual(out, "reinterpret_cast<PyUtf16Ptr>(text)")
   def test_cast_deduced_from_ann_assign(self):
     src = """
 from py2cpp import *

@@ -587,7 +587,8 @@ class StrCffiUtf8Tests(TestCaseMixin):
     copied: str = ""
     copied.copyFromSpanUtf8(raw.view)
     self.assertEqual(copied, chr(0xE9))
-    copied.copyToSpanUtf8(data.view)
+    # 整串 round-trip（勿用仅含 é 的 copied 覆盖 data 后再期望还原为 text）
+    text.copyToSpanUtf8(data.view)
     self.assertEqual(str.fromUtf8(cast[utf8ptr](data.view.at())), text)
     self.assertEqual("abcd".replaceSlice("X"), "X")
     self.assertEqual("abcd".replaceSlice("X", 1, 3), "aXd")
@@ -607,7 +608,9 @@ class StrCffiUtf8Tests(TestCaseMixin):
     self.assertTrue(raised)
     raised = False
     try:
-      with "a\0b".useUtf8() as _:
+      # 含 NUL 不能写 ``"a\0b"``（C 字面量在首个 NUL 截断）
+      nulish: str = "a" + chr(0) + "b"
+      with nulish.useUtf8() as _:
         pass
     except ValueError:
       raised = True
@@ -668,7 +671,8 @@ class StrCffiUtf16Tests(TestCaseMixin):
     self.assertTrue(raised)
     raised = False
     try:
-      with "a\0b".useUtf16() as _:
+      nulish: str = "a" + chr(0) + "b"
+      with nulish.useUtf16() as _:
         pass
     except ValueError:
       raised = True

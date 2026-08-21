@@ -393,7 +393,7 @@ class BoundedSemaphore:
 
   _cond: Condition
   _value: atomic[int]
-  _initialValue: int = 0
+  _initialValue: int
 
   def __init__(self, value: int = 1):
     if value < 0:
@@ -458,11 +458,11 @@ class Barrier:
 
   _cond: Condition
   _action: Callable[[], None]
-  _parties: int = 0
+  _parties: int
   _count: atomic[int]
   _state: atomic[int]
-  _timeout: float64 = float.Inf
-  _hasAction: bool = False
+  _timeout: float64
+  _hasAction: bool
 
   @overload
   def __init__(self, parties: int):
@@ -872,8 +872,8 @@ class Thread:
   _handle: _ThreadHandle
   _target: Callable[[], None]
   _name: str
-  _phase: int = 0
-  _daemon: bool = False
+  _phase: int
+  _daemon: bool
 
   def __init__(
     self,
@@ -991,7 +991,7 @@ class ThreadPool[Value]:
   lock: Lock = new()
   workQueue: Queue[_WorkItem[Value]] = new()
   threads: list[Thread] = []
-  maxWorkers: int = 0
+  maxWorkers: int
   threadNamePrefix: str
   shutdownFlag: atomic[bool] = new(False)
   broken: atomic[bool] = new(False)

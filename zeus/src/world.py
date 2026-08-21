@@ -16,12 +16,12 @@ WORLD_PAUSED: int = 2
 class World:
   """引擎世界：对象树根 + detect→update→draw→refresh。"""
 
-  state: int = 0
-  dt: float64 = 0.016
-  clear_color: Color = new(0.1, 0.1, 0.15, 1.0)
-  root: GameObject = new("world_root")
-  _tasks: list[Task] = []
-  _quit: bool = False
+  state: int
+  dt: float64
+  clear_color: Color
+  root: GameObject
+  _tasks: list[Task]
+  _quit: bool
 
   def __init__(self):
     self.state = WORLD_STOPPED

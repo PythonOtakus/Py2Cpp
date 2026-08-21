@@ -90,7 +90,7 @@ class _CoroSlot[Value](_SlotBase):
   """协程任务槽：``@property result -> R``。"""
 
   _coro: CoroutineType[LoopHandle, None, Value]
-  _useSend: bool = False
+  _useSend: bool
   _result: Value
 
   def __init__(self, coro: CoroutineType[LoopHandle, None, Value]):
@@ -280,14 +280,14 @@ class _TaskAwaitIter[Value]:
 
 @copyable
 class Scheduler(friends=(Task, _TaskAwaitIter)):
-  period: float64 = 0.0
-  periodCount: int64 = 0
-  _ready: list[int64] = []
-  _slots: list[_SlotBase] = []
-  _waitLinks: list[_WaitLink] = []
-  _timers: list[_TimerEntry] = []
-  _ioWaits: list[_IoWaitEntry] = []
-  _gatherLinks: list[_GatherChildLink] = []
+  period: float64
+  periodCount: int64
+  _ready: list[int64]
+  _slots: list[_SlotBase]
+  _waitLinks: list[_WaitLink]
+  _timers: list[_TimerEntry]
+  _ioWaits: list[_IoWaitEntry]
+  _gatherLinks: list[_GatherChildLink]
 
   def __repr__(self) -> str:
     return "<Scheduler>"

@@ -11,8 +11,8 @@ from .scene import Transform
 class SimpleBody:
   """质点速度。"""
 
-  velocity: Vector3 = new(0.0, 0.0, 0.0)
-  grounded: bool = False
+  velocity: Vector3
+  grounded: bool
 
   def __init__(self):
     self.velocity = new(0.0, 0.0, 0.0)
@@ -23,8 +23,8 @@ class SimpleBody:
 class SimpleWorld:
   """匀加速重力 + y=ground 落点。"""
 
-  gravity: float64 = -9.8
-  ground_y: float64 = 0.0
+  gravity: float64
+  ground_y: float64
 
   def __init__(self, gravity: float64 = -9.8, ground_y: float64 = 0.0):
     self.gravity = gravity

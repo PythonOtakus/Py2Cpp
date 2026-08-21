@@ -38,6 +38,10 @@ def try_emit_int_ctor(tr: 'Translator', node: ast.Call) -> str | None:
     pi = cpp_ident('int')
     if arg_t == cpp_ident('str'):
         return _emit_static_cast(tr, arg, pi)
+    # ``byte`` 在 C++ 为有符号 ``char``：``int(b)`` 须零扩展为 0–255
+    if is_byte_type(arg_t):
+        expr = tr._paren_expr(tr._visit_value_expr(arg))
+        return f'static_cast<{pi}>(static_cast<unsigned char>({expr}))'
     cinfo = _class_info_for_arg(tr, arg, arg_t)
     if cinfo is not None and cinfo.is_enum:
         from .enum_emit import enum_to_int_cast_expr

@@ -211,18 +211,18 @@ def _pymlOuterParentheses(text: str) -> bool:
 
 
 class _PymlExpander:
-  sourceName: str = "<string>"
-  lines: list[_PymlLine] = []
-  symbols: dict[str, _PymlValueUnion] = {}
-  returned: bool = False
+  sourceName: str
+  lines: list[_PymlLine]
+  symbols: dict[str, _PymlValueUnion]
+  returned: bool
   resultValue: _PymlValueUnion
-  runKind: int = 0
-  callStack: list[str] = []
+  runKind: int
+  callStack: list[str]
   context: PymlContext
   # Cache source text, never callable indexes tied to an importing line table.
   # Every importer rebases begin/end into its own line table.
-  moduleCache: dict[str, str] = {}
-  importStack: list[str] = []
+  moduleCache: dict[str, str]
+  importStack: list[str]
 
   def __init__(self, source: str, context: PymlContext):
     self.lines = []
@@ -237,6 +237,8 @@ class _PymlExpander:
     if context.moduleName:
       self.sourceName = context.moduleName
       self.importStack.append(context.moduleName)
+    else:
+      self.sourceName = "<string>"
     for raw in source.splitLines():
       clean: str = _pymlStripComment(raw.replace("\t", "  "))
       if not clean.strip():

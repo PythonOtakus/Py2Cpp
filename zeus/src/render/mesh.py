@@ -9,8 +9,8 @@ from py2cpp.spatial.color import Color
 class Mesh:
   """交错顶点：x,y,z,r,g,b（每顶点 6 float）。"""
 
-  vertices: list[float64] = []
-  vertex_count: int = 0
+  vertices: list[float64]
+  vertex_count: int
 
   def __init__(self):
     self.vertices = []

@@ -185,10 +185,10 @@ def _splitFlowParts(body: str) -> list[str]:
   parts.append(body[start:].strip())
   return parts
 class _YamlParser:
-  lines: list[str] = []
-  pos: int = 0
-  anchorNames: list[str] = []
-  anchorValues: list[str] = []
+  lines: list[str]
+  pos: int
+  anchorNames: list[str]
+  anchorValues: list[str]
 
   def __init__(self, source: str):
     self.lines = []

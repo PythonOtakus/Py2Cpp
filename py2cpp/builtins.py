@@ -18,16 +18,16 @@ class byte:
   pass
 
 
-@native_name("utf8ptr")
+@native_name("PyUtf8Ptr")
 class utf8ptr:
-  """C 字符串指针（C++ ``typedef const char* utf8ptr``），非 py2cpp ``str`` 类。"""
+  """C 字符串指针（C++ ``typedef const char* PyUtf8Ptr``），非 py2cpp ``str`` 类。"""
 
   pass
 
 
-@native_name("utf16ptr")
+@native_name("PyUtf16Ptr")
 class utf16ptr:
-  """Windows UTF-16 C string pointer."""
+  """Windows UTF-16 C string pointer（C++ ``typedef const wchar_t* PyUtf16Ptr``）。"""
 
   pass
 

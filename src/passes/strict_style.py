@@ -1,6 +1,6 @@
 """编码规范强检查（``--strict``，默认开启）。
 
-S01–S29 按 A–F 分组（见 ``docs/编码规范.md`` §1.1）；``S06`` 构造优先级用子码 ``S06a``–``S06e``；``S18`` 为覆盖基类 ``@virtual``/``@abstract`` 方法（含继承链上纯虚/虚声明）时子类须 ``@override``；**静态**：覆盖基类 ``@staticmethod``+``@override``，或模块内 ``func[Cls]`` 绑定之 ``@protocol`` 静态虚成员，亦须 ``@staticmethod``+``@override``（不检查 dunder；``@mixin`` 基类豁免）；``S27`` 为 import 布局；``S28`` 为堆/栈数组切片注解；``S29`` 为同类型反向 dunder；``S30`` 为继承顺序（mixin 在实体类前、至多一个实体基类）；``S31`` 禁止显式 ``RefCount``（含 ``RefCount()`` / ``RefCount[T]``；``@refcount`` 类与 ``T: refcount`` 须写 ``T``，清空用 ``new()``）；``S32`` 为 ``@dataclass`` 须至少一个非 ``@optional`` 实例字段；``S33`` 禁止类成员名 ``assign``/``build``/``select``（与译期专用 API 冲突）；``S34`` 禁止非字面量 ``ord``；``S35`` 禁止仅作类型转换且无再赋值的注解临时变量（勿 ``n: int = int(x); return n``）；``S36`` 禁止定长元组解包中未使用的具名绑定（须 ``_`` / ``*_``）；``S37`` 禁止显式 ``PyNone``（须写 ``None``；``py2cpp/core/none.py`` 豁免）；``S38`` 禁止 ``for x in …: yield x``（须 ``yield from …``；``async def`` 异步生成器豁免；``for`` ``else`` 分支除外）；``S41`` 禁止 ``return self._field`` 与 ``self._field = 形参`` 成对的手写 getter/setter（须 ``@property`` 或公有字段）；``S42`` 禁止 trivial ``@property`` getter + 顶层 ``self._field = value`` 与其它语句的 ``@property.setter``（须 ``@property.postsetter`` / 字段简写）；``S45`` 禁止非 ``@dataclass`` 字段使用 ``@optional``；``S46`` 禁止仅为 ``new`` 造类型上下文的注解临时变量（勿 ``sp: T = new(...); self.f = sp`` / ``fn(sp)``，须 ``self.f = new(...)`` 或实参处 ``fn(Cls(...))`` / ``fn(Union.Variant(...))``）；``S47`` 强制特殊类型 / Meta / Var / Mixin / 异常类名后缀（见编码规范 §1.0.2）；``S48`` 禁止类 PEP 695 形参使用单字母或单字母+数字（``T`` / ``T1``；须 ``Element`` / ``Key`` 等语义名）。
+S01–S29 按 A–F 分组（见 ``docs/编码规范.md`` §1.1）；``S06`` 构造优先级用子码 ``S06a``–``S06e``；``S18`` 为覆盖基类 ``@virtual``/``@abstract`` 方法（含继承链上纯虚/虚声明）时子类须 ``@override``；**静态**：覆盖基类 ``@staticmethod``+``@override``，或模块内 ``func[Cls]`` 绑定之 ``@protocol`` 静态虚成员，亦须 ``@staticmethod``+``@override``（不检查 dunder；``@mixin`` 基类豁免）；``S27`` 为 import 布局；``S28`` 为堆/栈数组切片注解；``S29`` 为同类型反向 dunder；``S30`` 为继承顺序（mixin 在实体类前、至多一个实体基类）；``S31`` 禁止显式 ``RefCount``（含 ``RefCount()`` / ``RefCount[T]``；``@refcount`` 类与 ``T: refcount`` 须写 ``T``，清空用 ``new()``）；``S32`` 为 ``@dataclass`` 须至少一个非 ``@optional`` 实例字段；``S33`` 禁止类成员名 ``assign``/``build``/``select``（与译期专用 API 冲突）；``S34`` 禁止非字面量 ``ord``；``S35`` 禁止仅作类型转换且无再赋值的注解临时变量（勿 ``n: int = int(x); return n``）；``S36`` 禁止定长元组解包中未使用的具名绑定（须 ``_`` / ``*_``）；``S37`` 禁止显式 ``PyNone``（须写 ``None``；``py2cpp/core/none.py`` 豁免）；``S38`` 禁止 ``for x in …: yield x``（须 ``yield from …``；``async def`` 异步生成器豁免；``for`` ``else`` 分支除外）；``S41`` 禁止 ``return self._field`` 与 ``self._field = 形参`` 成对的手写 getter/setter（须 ``@property`` 或公有字段）；``S42`` 禁止 trivial ``@property`` getter + 顶层 ``self._field = value`` 与其它语句的 ``@property.setter``（须 ``@property.postsetter`` / 字段简写）；``S45`` 禁止非 ``@dataclass`` 字段使用 ``@optional``；``S46`` 禁止仅为 ``new`` 造类型上下文的注解临时变量（勿 ``sp: T = new(...); self.f = sp`` / ``fn(sp)``，须 ``self.f = new(...)`` 或实参处 ``fn(Cls(...))`` / ``fn(Union.Variant(...))``）；``S47`` 强制特殊类型 / Meta / Var / Mixin / 异常类名后缀（见编码规范 §1.0.2）；``S48`` 禁止类 PEP 695 形参使用单字母或单字母+数字（``T`` / ``T1``；须 ``Element`` / ``Key`` 等语义名）；``S49`` 禁止类体已有字段默认又在 ``__init__`` 内对 ``self.x`` 赋值。
 检查 ``py2cpp/``、用户模块与 ``test/**``；``test/fail/`` 豁免；``# py2cpp: strict-off`` 可关单文件。
 
 内部 helper 前缀 ``_sNN_`` / ``_check_sNN_`` 与 §1.1 规则 ID 一致。
@@ -76,6 +76,7 @@ S45 = 'S45'
 S46 = 'S46'
 S47 = 'S47'
 S48 = 'S48'
+S49 = 'S49'
 _PRIMITIVE_CONVERT_CTORS = frozenset({'int', 'float', 'bool', 'char', 'byte', 'str', 'int64', 'float64', 'uint', 'uint64', 'uintptr'})
 # 类 PEP 695 形参禁止单字母 / 单字母+数字（``T`` / ``T1``）；会落成 ``using`` 别名，须语义化。
 _SHORT_CLASS_TYPE_PARAM = re.compile(r'^[A-Za-z]\d*$')
@@ -2331,6 +2332,72 @@ def _s48_short_class_type_param_message(class_name: str, param: str) -> str:
         example=f'class {class_name}[Element]: … 勿 class {class_name}[{param}]:',
     )
 
+_S49_PROPERTY_STORAGE_SUFFIX = '__value'
+
+def _s49_display_field(name: str) -> str:
+    if name.endswith(_S49_PROPERTY_STORAGE_SUFFIX) and len(name) > len(_S49_PROPERTY_STORAGE_SUFFIX):
+        return name[:-len(_S49_PROPERTY_STORAGE_SUFFIX)]
+    return name
+
+def _s49_field_aliases(name: str) -> set[str]:
+    names = {name}
+    if name.endswith(_S49_PROPERTY_STORAGE_SUFFIX) and len(name) > len(_S49_PROPERTY_STORAGE_SUFFIX):
+        names.add(name[:-len(_S49_PROPERTY_STORAGE_SUFFIX)])
+    else:
+        names.add(name + _S49_PROPERTY_STORAGE_SUFFIX)
+    return names
+
+def _s49_skip_class(info: ClassInfo | None) -> bool:
+    if info is None:
+        return True
+    if info.is_mixin or info.is_protocol or info.is_annotation or info.is_descriptor:
+        return True
+    if _is_desugar_generated_name(info.name):
+        return True
+    return False
+
+def _s49_defaulted_fields(tr: Translator, info: ClassInfo) -> set[str]:
+    names: set[str] = set()
+    seen: set[int] = set()
+
+    def walk(ci: ClassInfo) -> None:
+        key = id(ci)
+        if key in seen:
+            return
+        seen.add(key)
+        for fname in ci.field_defaults:
+            if fname in ci.static_class_fields or fname in ci.thread_local_fields:
+                continue
+            if fname in ci.static_property_storage:
+                continue
+            if fname in ci.final_fields:
+                continue
+            names.update(_s49_field_aliases(fname))
+        for base_name in ci.bases:
+            binfo = tr.classes.get(base_name)
+            if binfo is not None:
+                walk(binfo)
+
+    walk(info)
+    return names
+
+def _s49_message(class_name: str, field: str) -> str:
+    display = _s49_display_field(field)
+    return _strict_msg(
+        f'类体 `{display}: T = …` 且 `__init__` 内 `self.{display} = …`',
+        f'`{display}: T` 只在 `__init__` 赋值，或类体 `{display}: T = …` 且 `__init__` 不赋该字段',
+        f'类 `{class_name}` 的 `__init__`',
+        reason='类体默认已生成 C++ 成员初值，构造函数再赋值会使默认成为死代码',
+        example=f'`{display}: int` + `self.{display} = x`，或 `{display}: int = 0` 且 `__init__` 不写 `self.{display}`',
+    )
+
+def _s49_iter_assign_targets(target: ast.expr):
+    if isinstance(target, (ast.Tuple, ast.List)):
+        for elt in target.elts:
+            yield from _s49_iter_assign_targets(elt)
+    else:
+        yield target
+
 def _s15_subscript_slice_matches_class_type_params(sl: ast.expr, class_type_params: list[str]) -> bool:
     """``Task[T]`` 体内 ``Task[T]`` 表当前实例；``Task[None]``/``Task[U]``/``Task[list[U]]`` 等不算。"""
     if not class_type_params:
@@ -4028,6 +4095,31 @@ class _StrictStyleChecker(ast.NodeVisitor):
         for kw in node.keywords:
             self._visit_in_context('call_arg', kw.value)
 
+    def _s49_generated_iterator_names(self) -> set[str]:
+        cached = getattr(self, '_s49_iter_names', None)
+        if cached is not None:
+            return cached
+        names = {ci.seq_iterator_name for ci in self.tr.classes.values() if ci.seq_iterator_name}
+        self._s49_iter_names = names
+        return names
+
+    def _s49_check_target(self, target: ast.expr, node: ast.AST) -> None:
+        if self._current_method != '__init__' or not self._class_stack:
+            return
+        if self._s06_in_desugar_host():
+            return
+        if not _is_self_field_ann_assign(target):
+            return
+        info = self._current_class_info()
+        if info is None or _s49_skip_class(info):
+            return
+        if info.name in self._s49_generated_iterator_names():
+            return
+        field = target.attr
+        if field not in _s49_defaulted_fields(self.tr, info):
+            return
+        self._add(S49, node, _s49_message(info.name, field))
+
     def visit_AnnAssign(self, node: ast.AnnAssign):
         if self._class_stack and self._current_method is None:
             field = _field_name_from_ann_target(node.target)
@@ -4036,6 +4128,8 @@ class _StrictStyleChecker(ast.NodeVisitor):
         if self._current_method is not None and self._current_method != '__init__' and _is_self_field_ann_assign(node.target) and (not self._s06_in_desugar_host()):
             field = _field_name_from_ann_target(node.target) or 'field'
             self._add(S14, node, _strict_msg(f'`self.{field}: T = …`', f'`self.{field} = …`', f'非 `__init__` 方法 `{self._current_method}` 内', example=f'类体或 `__init__` 写 `{field}: T`；方法内写 `self.{field} = v`', reason='实例字段类型注解仅允许在类体或 `__init__`'))
+        if node.value is not None:
+            self._s49_check_target(node.target, node)
         self._check_s15_annotation(node.annotation, node)
         self._check_s16_tuple_annotation(node.annotation, node)
         _s35_check_primitive_convert_temp(self, node)
@@ -4046,6 +4140,9 @@ class _StrictStyleChecker(ast.NodeVisitor):
         self._type_context_ann = prev_ann
 
     def visit_Assign(self, node: ast.Assign):
+        for target in node.targets:
+            for tgt in _s49_iter_assign_targets(target):
+                self._s49_check_target(tgt, node)
         self._note_kwargs_opts_ctor(node)
         if isinstance(node.value, ast.BinOp) and type(node.value.op) in _AUG_BINOPS:
             for target in node.targets:
@@ -4069,6 +4166,7 @@ class _StrictStyleChecker(ast.NodeVisitor):
             self.visit(node.value)
 
     def visit_AugAssign(self, node: ast.AugAssign):
+        self._s49_check_target(node.target, node)
         prev_aug = self._current_aug_op
         self._current_aug_op = _aug_op_text(node.op)
         self.visit(node.target)

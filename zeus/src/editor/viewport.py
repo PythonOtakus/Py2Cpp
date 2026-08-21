@@ -18,11 +18,11 @@ from .gizmo import TranslateGizmo
 class SceneViewport:
   """对齐主窗中栏的无边框 GL 视口。"""
 
-  win: Window = new()
-  device: GLDevice = new()
-  bus: CommandBus = new()
-  gizmo: TranslateGizmo = new()
-  ready: bool = False
+  win: Window
+  device: GLDevice
+  bus: CommandBus
+  gizmo: TranslateGizmo
+  ready: bool
 
   def __init__(self):
     self.win = new()

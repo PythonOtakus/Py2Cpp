@@ -1401,7 +1401,7 @@ class Translator(ast.NodeVisitor):
             return f'({cpp})'
         if is_char_type(t, classes=self.classes):
             return f'({cpp})'
-        if t in ('utf8ptr', 'utf16ptr', 'const char*', 'const wchar_t*'):
+        if t in (cpp_ident('utf8ptr'), cpp_ident('utf16ptr'), 'const char*', 'const wchar_t*'):
             return f'({cpp} != 0)'
         if is_refcount_type(t, classes=self.classes):
             pb = cpp_ident('PyBool')
@@ -2457,6 +2457,21 @@ class Translator(ast.NodeVisitor):
         return ast.Name(id=info.name if info is not None else base_name, ctx=ast.Load())
 
     def _self_annotation_for_receiver(self, info: ClassInfo, receiver: ast.expr) -> ast.expr:
+        # ``Point.origin = new(...)``：接收者是类名时 ``_infer_expr_cpp_type`` 会回落成 ``int``，
+        # 须用已解析的 ``info``（否则 ``Self`` → ``PyInt``，``new(3, 4)`` 变成 ``PyInt(3, 4)``）。
+        if isinstance(receiver, ast.Name) and (
+            receiver.id == 'Self' or self._name_refers_to_class(receiver.id)
+        ):
+            if info.type_params and info.type_param_defaults:
+                args: list[ast.expr] = []
+                for p in info.type_params:
+                    dv = info.type_param_defaults.get(p)
+                    if dv is None:
+                        return ast.Name(id=info.name, ctx=ast.Load())
+                    args.append(copy.deepcopy(dv))
+                sl: ast.expr = args[0] if len(args) == 1 else ast.Tuple(elts=args, ctx=ast.Load())
+                return ast.Subscript(value=ast.Name(id=info.name, ctx=ast.Load()), slice=sl, ctx=ast.Load())
+            return ast.Name(id=info.name, ctx=ast.Load())
         recv_t = self._infer_expr_cpp_type(receiver)
         if recv_t:
             recv_t = ClassInfo.unwrap_refcount_type(strip_cpp_ref(recv_t))
@@ -5487,10 +5502,10 @@ class Translator(ast.NodeVisitor):
                 enter_ty = f'{enter_ty}&'
         else:
             enter_ty = ret
-        # utf8ptr / utf16ptr are native scalar aliases, not runtime class namespace members.
+        # utf8ptr / utf16ptr are native scalar aliases (PyUtf8Ptr / PyUtf16Ptr), not runtime class namespace members.
         # Imported annotations may temporarily retain the package qualifier.
         enter_base = strip_cpp_ref(enter_ty)
-        if enter_base.rsplit('::', 1)[-1] in ('utf8ptr', 'utf16ptr'):
+        if enter_base.rsplit('::', 1)[-1] in (cpp_ident('utf8ptr'), cpp_ident('utf16ptr')):
             base = enter_base.rsplit('::', 1)[-1]
             return f'{base}&' if enter_ty.rstrip().endswith('&') else base
         enter_info = self._class_info_for_type(strip_cpp_ref(enter_ty))
@@ -5594,7 +5609,7 @@ class Translator(ast.NodeVisitor):
             self.write_line(f'{val};')
 
     def _is_ptr_type(self, t: str) -> bool:
-        return bool(t) and t.endswith('*') and (t not in ('utf8ptr', 'const char*'))
+        return bool(t) and t.endswith('*') and (t not in (cpp_ident('utf8ptr'), 'const char*'))
 
     @staticmethod
     def _array_ndim_from_type(t: str) -> int | None:
@@ -5822,10 +5837,10 @@ class Translator(ast.NodeVisitor):
                     getter = self._property_getter_cpp_name(info, node.attr)
                     return f'{info.cpp_name()}::{getter}()'
         cstr_type = self._infer_expr_cpp_type(node.value).rstrip()
-        if node.attr == "view" and cstr_type in ("utf8ptr", "utf16ptr"):
+        if node.attr == "view" and cstr_type in (cpp_ident("utf8ptr"), cpp_ident("utf16ptr")):
             from .analysis.module_namespace import qualify_symbol_in_module
             recv = self.visit(node.value)
-            helper = "_cstrView" if cstr_type == "utf8ptr" else "_cwstrView"
+            helper = "_cstrView" if cstr_type == cpp_ident("utf8ptr") else "_cwstrView"
             return f"{qualify_symbol_in_module('util/memory', helper)}({recv})"
         prop_read = self._property_read(node.value, node.attr)
         if prop_read is not None:
@@ -6136,7 +6151,7 @@ class Translator(ast.NodeVisitor):
                     return format_cpp_float64(value)
                 return format_cpp_float(value)
             case str():
-                if cpp_type in ('utf8ptr', 'const char*'):
+                if cpp_type in (cpp_ident('utf8ptr'), 'const char*'):
                     return quote_cpp_string(value)
                 return str_cpp_from_literal(value)
             case bytes():
@@ -6249,9 +6264,9 @@ class Translator(ast.NodeVisitor):
     def _infer_view_span_type(self, receiver: ast.expr) -> str | None:
         bt = self._infer_expr_cpp_type(receiver)
         elem = None
-        if bt == "utf8ptr":
+        if bt == cpp_ident("utf8ptr"):
             return cpp_span_type(cpp_ident("byte"))
-        if bt == "utf16ptr":
+        if bt == cpp_ident("utf16ptr"):
             return cpp_span_type(cpp_ident("uint16"))
         if is_stack_array_type(bt):
             elem = cpp_stack_array_elem_type(bt)
@@ -6545,9 +6560,9 @@ class Translator(ast.NodeVisitor):
             case ast.Attribute(value=val, attr='view'):
                 bt = self._infer_expr_cpp_type(val)
                 elem = None
-                if bt == "utf8ptr":
+                if bt == cpp_ident("utf8ptr"):
                     return cpp_span_type(cpp_ident("byte"))
-                if bt == "utf16ptr":
+                if bt == cpp_ident("utf16ptr"):
                     return cpp_span_type(cpp_ident("uint16"))
                 if is_stack_array_type(bt):
                     elem = cpp_stack_array_elem_type(bt)

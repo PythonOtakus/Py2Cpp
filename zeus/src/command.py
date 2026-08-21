@@ -108,9 +108,9 @@ class ZeusCommandUnion:
 class CommandBus:
   """持有 ``World`` 与编辑选中名；``dispatch`` 执行命令。"""
 
-  world: World = new()
-  selected: str = ""
-  scene_name: str = "Scene"
+  world: World
+  selected: str
+  scene_name: str
 
   def __init__(self):
     self.world = new()

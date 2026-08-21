@@ -19,13 +19,13 @@ DRAG_SCALE: float64 = 0.02
 class TranslateGizmo:
   """与 ``GLDevice.begin_frame`` 固定相机一致的平移 gizmo。"""
 
-  axis: int = 0
-  dragging: bool = False
-  last_mx: float64 = 0.0
-  last_my: float64 = 0.0
-  _px: Pointer[float64] = None
-  _py: Pointer[float64] = None
-  ready: bool = False
+  axis: int
+  dragging: bool
+  last_mx: float64
+  last_my: float64
+  _px: Pointer[float64]
+  _py: Pointer[float64]
+  ready: bool
 
   def __init__(self):
     self.axis = 0

@@ -9,6 +9,8 @@ from src.translator import Translator
 
 
 def _emit_return(body: str, *, entry: str = "mod") -> str:
+  from pathlib import Path
+
   mod_src = f"from py2cpp import char, byte\n\ndef probe():\n{body}"
   tree = ast.parse(mod_src)
   func = tree.body[1]
@@ -17,6 +19,7 @@ def _emit_return(body: str, *, entry: str = "mod") -> str:
   assert isinstance(ret, ast.Return) and ret.value is not None
   tr = Translator(entry, f"{entry}.py")
   tr.entry_module_path = entry
+  tr._import_project_root_cache = Path(__file__).resolve().parents[2]
   tr._parse_modules([(entry, mod_src)])
   SemanticAnalyzer().analyze(tr)
   return tr.visit(ret.value)
@@ -32,6 +35,10 @@ class ChrOrdEmitTests(unittest.TestCase):
     self.assertIn('PyStr("A")', out.replace(" ", ""))
     self.assertNotIn("::chr", out)
 
+  def test_chr_nul_uses_runtime_chr(self):
+    out = _emit_return("  return chr(0)\n")
+    self.assertIn("::chr(0)", out.replace(" ", ""))
+
   def test_ord_literal_folds_to_pychar(self):
     out = _emit_return("  return ord('a')\n")
     compact = out.replace(" ", "")
@@ -45,12 +52,15 @@ class ChrOrdEmitTests(unittest.TestCase):
     self.assertNotIn("::ord", compact)
 
   def test_ord_non_literal_raises(self):
+    from pathlib import Path
+
     mod_src = 'from py2cpp import char\n\ndef probe():\n  c: char = 65\n  return ord(c)\n'
     tree = ast.parse(mod_src)
     func = tree.body[1]
     ret = func.body[-1]
     assert isinstance(ret, ast.Return) and ret.value is not None
     tr = Translator("mod", "mod.py")
+    tr._import_project_root_cache = Path(__file__).resolve().parents[2]
     tr._parse_modules([("mod", mod_src)])
     SemanticAnalyzer().analyze(tr)
     with self.assertRaises(NotImplementedError):
@@ -68,6 +78,8 @@ class ChrOrdEmitTests(unittest.TestCase):
     self.assertIn("i==116", compact)
 
   def test_char_eq_single_char_str_uses_pychar(self):
+    from pathlib import Path
+
     mod_src = (
       "class C:\n"
       "  s: str\n"
@@ -81,6 +93,7 @@ class ChrOrdEmitTests(unittest.TestCase):
     ret = func.body[0]
     assert isinstance(ret, ast.Return) and ret.value is not None
     tr = Translator("mod", "mod.py")
+    tr._import_project_root_cache = Path(__file__).resolve().parents[2]
     tr._parse_modules([("mod", mod_src)])
     SemanticAnalyzer().analyze(tr)
     tr.class_info = tr.classes["C"]

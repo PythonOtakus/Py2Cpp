@@ -605,14 +605,14 @@ class _ClientStreamResponseState(
 ):
   """``ClientStreamResponse`` 共享状态；返回/复制响应对象时不复制底层流。"""
 
-  status: int = 0
-  headers: dict[str, str] = {}
-  _reader: StreamReader = new()
-  _chunked: bool = False
-  _closed: bool = False
-  _done: bool = False
-  _chunk: bytes = b""
-  _chunkPos: int = 0
+  status: int
+  headers: dict[str, str]
+  _reader: StreamReader
+  _chunked: bool
+  _closed: bool
+  _done: bool
+  _chunk: bytes
+  _chunkPos: int
 
   def __init__(self):
     self.status = 0
@@ -629,7 +629,7 @@ class _ClientStreamResponseState(
 class ClientStreamResponse:
   """客户端流式 HTTP 响应；响应头已读，body 保持从 socket 增量读取。"""
 
-  _state: _ClientStreamResponseState = new()
+  _state: _ClientStreamResponseState
 
   def __init__(self):
     self._state = new()
@@ -717,15 +717,15 @@ class ClientStreamResponse:
 class AsyncClientStreamResponse:
   """异步客户端流式 HTTP 响应；响应头已读，body 保持 non-blocking 增量读取。"""
 
-  status: int = 0
-  headers: dict[str, str] = {}
-  _reader: AsyncStreamReader = new()
-  _writer: AsyncStreamWriter = new()
-  _chunked: bool = False
-  _closed: bool = False
-  _done: bool = False
-  _chunk: bytes = b""
-  _chunkPos: int = 0
+  status: int
+  headers: dict[str, str]
+  _reader: AsyncStreamReader
+  _writer: AsyncStreamWriter
+  _chunked: bool
+  _closed: bool
+  _done: bool
+  _chunk: bytes
+  _chunkPos: int
 
   def __init__(self):
     self.status = 0

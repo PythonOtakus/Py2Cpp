@@ -163,7 +163,7 @@ def use() -> None:
       )
       cpp = cpp_path.read_text(encoding="utf-8")
       self.assertRegex(cpp, r"PyInt value = __with_ent\d+;")
-      self.assertRegex(cpp, r"utf8ptr cvalue = __with_ent\d+;")
+      self.assertRegex(cpp, r"PyUtf8Ptr cvalue = __with_ent\d+;")
   def test_pointer_to_local_class_uses_cpp_class_name(self):
     src = """
 from py2cpp import *

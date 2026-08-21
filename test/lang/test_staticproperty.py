@@ -5,8 +5,8 @@ from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 @copyable
 class Point:
-  x: int = 0
-  y: int = 0
+  x: int
+  y: int
 
   def __init__(self, x: int = 0, y: int = 0):
     self.x = x

@@ -277,6 +277,7 @@ Py2Cpp/
 |--------|-----|
 | int / float / bool | PyInt / PyFloat / PyBool |
 | str / bytes / char | PyStr / PyBytes / PyChar |
+| utf8ptr / utf16ptr | PyUtf8Ptr / PyUtf16Ptr |
 | list / dict / deque / slice | PyList / PyDict / PyDeque / PySlice |
 | tuple / range | PyTuple / PyRange |
 | array / array2d / array3d | PyArray / PyArray2D / PyArray3D |

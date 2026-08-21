@@ -20,19 +20,16 @@ JUMP_FAILED: int = 4
 class JumpMotor(Component):
   """按住蓄力、松开起跳；落地由 ``JumpGame`` 判定。"""
 
-  jump_power: float64 @UILabelMeta("Jump Power") = 8.0
-  max_charge: float64 @UILabelMeta("Max Charge") = 1.2
-  charge: float64 @UIInvisibleMeta = 0.0
-  state: int @UIInvisibleMeta = 0
-  body: SimpleBody @UIInvisibleMeta = new()
-  forward_x: float64 @UIInvisibleMeta = 1.0
-  forward_z: float64 @UIInvisibleMeta = 0.0
+  jump_power: float64 @UILabelMeta("Jump Power")
+  max_charge: float64 @UILabelMeta("Max Charge")
+  charge: float64 @UIInvisibleMeta
+  state: int @UIInvisibleMeta
+  body: SimpleBody @UIInvisibleMeta
+  forward_x: float64 @UIInvisibleMeta
+  forward_z: float64 @UIInvisibleMeta
 
   def __init__(self):
     self.kind = "JumpMotor"
-    self.enabled = True
-    self.asset_path = ""
-    self._owner = None
     self.jump_power = 8.0
     self.max_charge = 1.2
     self.charge = 0.0

@@ -14,7 +14,7 @@ class CodegenInsertHook:
 CODEGEN_INSERT_HOOKS: dict[str, CodegenInsertHook] = {
   "layout.primitive_headers": CodegenInsertHook(
     "operators.h",
-    "``write_primitive_type_headers``：char/byte/utf8ptr/py_types/member_access/operators",
+    "``write_primitive_type_headers``：char/byte/c_str/py_types/member_access/operators",
   ),
   "layout.umbrella_header": CodegenInsertHook(
     "minimal.h",

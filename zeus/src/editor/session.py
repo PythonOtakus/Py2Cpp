@@ -18,8 +18,8 @@ class HierarchyRow:
 class EditorSession:
   """命令总线包装；维护 Hierarchy 扁平行与选中。"""
 
-  bus: CommandBus = new()
-  rows: list[HierarchyRow, 0] = []
+  bus: CommandBus
+  rows: list[HierarchyRow, 0]
 
   def __init__(self):
     self.bus = new()

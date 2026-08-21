@@ -121,7 +121,7 @@ def _skip_class(info: ClassInfo) -> bool:
 def _writable_member_names(info: ClassInfo) -> frozenset[str]:
   """``assign`` / ``Cls(kw=…)`` / ``new(kw=…)`` 可写成员：存储字段 + 带 setter 的 ``@property``。
 
-  ``@optional`` 不进 ``__init__`` 形参，但仍可用关键字赋值（容器默认须 ``@optional``，见 **S26**）。
+  ``@optional`` 不进 ``__init__`` 形参，但仍可用关键字赋值（容器默认须 ``@optional``，见 **S0401**）。
   ``T @final`` 仅能在 ``__init__`` 中初始化，不可 ``assign`` / 关键字构造。
   """
   names = {n for n in info.fields if n not in info.final_fields}

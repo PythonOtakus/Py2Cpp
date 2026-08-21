@@ -1,7 +1,7 @@
 """``@dataclass``：从类体字段生成 ``__init__`` / ``__eq__`` / ``__repr__`` / ``__cmp__``（对齐 CPython 3.13 常用选项）。
 
 字段默认值直接写在类体（``y: int = 0``、``items: list[int] @optional = []``）；容器 / ``char[:]``
-默认不能进 ``__init__`` 形参（C++ 容器按引用传参，**S26** 强制 ``@optional``）。``T @optional`` 不参与
+默认不能进 ``__init__`` 形参（C++ 容器按引用传参，**S0401** 强制 ``@optional``）。``T @optional`` 不参与
 ``__init__`` / ``assign`` 形参；``order=True`` 时亦不参与 ``__cmp__`` 字典序比较。类内
 ``__post_init__`` 在自动生成 ``__init__`` 末尾调用（对齐 CPython）。
 """

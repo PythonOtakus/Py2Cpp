@@ -73,14 +73,14 @@ Py2Cpp/
 
 | 阶段 | 函数（摘） | 作用摘要 |
 |------|------------|----------|
-| 前检 | `check_s32_*` / `check_s44_*` | dataclass 必填字段、注解标记 |
+| 前检 | `check_s0402_*` / `check_s0403_*` | dataclass 必填字段、注解标记 |
 | 展开 | `expand_dataclass` → `expand_class_id` → `expand_enum_mro` / `expand_union_mro` → **`expand_enum`** → **`expand_union`** → `expand_serializable` | 数据类 / 枚举 / 联合 / 序列化 |
 | | `check_native_function_bodies` | `@native` 体须 `...` |
 | | `expand_default_iter` → `expand_descriptors` → `expand_mixins` → `expand_proxy` → `expand_class_type_base` | 迭代默认、描述符、mixin、proxy |
 | | `expand_field_properties` / `expand_property_value_references` | 字段 `@property` |
 | | `expand_default_bool` → `expand_default_numeric_convert` → `expand_default_ne` | 默认协议 |
 | | `expand_test_discovery` → `expand_kwargs_options` → `expand_static_reflect` | 测试发现 / kwargs / 静态反射 |
-| 生成器前 | **`check_yield_from_for_style`（S38）** → **`check_yield_from_in_async_def`** | 须在 `expand_generators` **之前** |
+| 生成器前 | **`check_yield_from_for_style`（S1201）** → **`check_yield_from_in_async_def`** | 须在 `expand_generators` **之前** |
 | | **`expand_generators`** | `yield` → `*_generator`（**须在** `expand_decorators` **之前**） |
 | | `expand_decorators` → `check_noexcept_functions` → `expand_copyable` → **`expand_move_state`** | 装饰器 / copyable / moved |
 | | `expand_protocol` → `expand_member_access` → **`expand_descriptor_signatures`** → `expand_lazy_params` → `expand_final_ctor_inits` | 协议 / 访问 / 描述符签名 |

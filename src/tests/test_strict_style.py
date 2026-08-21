@@ -36,25 +36,25 @@ class StrictStyleTests(unittest.TestCase):
         )
       self.assertIn(f"[{rule}]", str(ctx.exception))
 
-  def test_s45_rejects_optional_outside_dataclass(self):
+  def test_s0404_rejects_optional_outside_dataclass(self):
     self._expect_strict_fail(
       """@copyable
 class Opt:
   xs: list[int] @optional = []
 """,
-      "S45",
+      "S0404",
     )
 
-  def test_s01_rejects_dunder_call(self):
+  def test_s0101_rejects_dunder_call(self):
     self._expect_strict_fail(
       """def main():
   xs: list[int] = [1]
   return xs.__len__()
 """,
-      "S01",
+      "S0101",
     )
 
-  def test_s01_rejects_dunder_inside_dunder_body(self):
+  def test_s0101_rejects_dunder_inside_dunder_body(self):
     self._expect_strict_fail(
       """class Box:
   n: int = 0
@@ -68,10 +68,10 @@ def main():
   b.__copy__(a)
   return b.n
 """,
-      "S01",
+      "S0101",
     )
 
-  def test_s01_allows_global_cmp_only(self):
+  def test_s0101_allows_global_cmp_only(self):
     self._translate(
       """class Pair:
   a: int = 0
@@ -90,7 +90,7 @@ def main():
 """
     )
 
-  def test_s01_allows_super_init_in_subclass_init(self):
+  def test_s0101_allows_super_init_in_subclass_init(self):
     self._translate(
       """class Base:
   n: int
@@ -110,7 +110,7 @@ def main():
 """
     )
 
-  def test_s01_allows_self_init_forward_in_overload(self):
+  def test_s0101_allows_self_init_forward_in_overload(self):
     self._translate(
       """class Pair:
   a: int
@@ -132,7 +132,7 @@ def main():
 """
     )
 
-  def test_s01_rejects_self_init_outside_init(self):
+  def test_s0101_rejects_self_init_outside_init(self):
     self._expect_strict_fail(
       """class Box:
   n: int = 0
@@ -146,10 +146,10 @@ def main():
   b.bump()
   return b.n
 """,
-      "S01",
+      "S0101",
     )
 
-  def test_s01_rejects_cmp_attribute(self):
+  def test_s0101_rejects_cmp_attribute(self):
     self._expect_strict_fail(
       """class Pair:
   a: int = 0
@@ -157,10 +157,10 @@ def main():
   def __cmp__(self, other: Self) -> int:
     return self.a.__cmp__(other.a)
 """,
-      "S01",
+      "S0101",
     )
 
-  def test_s01_rejects_aenter_attribute_in_user_code(self):
+  def test_s0101_rejects_aenter_attribute_in_user_code(self):
     self._expect_strict_fail(
       """class CM:
   async def __aenter__(self) -> int:
@@ -173,10 +173,10 @@ def main():
   cm: CM = new()
   return cm.__aenter__()
 """,
-      "S01",
+      "S0101",
     )
 
-  def test_s01_allows_await_attribute_in_user_code(self):
+  def test_s0101_allows_await_attribute_in_user_code(self):
     self._translate(
       """class AwaitableBox:
   def __await__(self) -> int:
@@ -189,7 +189,7 @@ def main():
 """
     )
 
-  def test_s01_allows_copy_in_non_copyable(self):
+  def test_s0101_allows_copy_in_non_copyable(self):
     self._translate(
       """class Box:
   n: int = 0
@@ -209,7 +209,7 @@ def main():
 """
     )
 
-  def test_s01_rejects_copy_in_copyable(self):
+  def test_s0101_rejects_copy_in_copyable(self):
     self._expect_strict_fail(
       """@copyable
 class Box:
@@ -228,10 +228,10 @@ def main():
   a: Box = new(n=7)
   return a.copy().n
 """,
-      "S01",
+      "S0101",
     )
 
-  def test_s01_allows_move_in_copyable(self):
+  def test_s0101_allows_move_in_copyable(self):
     self._translate(
       """@copyable
 class Node:
@@ -253,7 +253,7 @@ def main():
 """
     )
 
-  def test_s01_rejects_move_in_non_copyable(self):
+  def test_s0101_rejects_move_in_non_copyable(self):
     self._expect_strict_fail(
       """class Box:
   n: int = 0
@@ -271,28 +271,28 @@ def main():
   b.take_from(a)
   return b.n
 """,
-      "S01",
+      "S0101",
     )
 
-  def test_s02_rejects_empty_list_factory(self):
+  def test_s0102_rejects_empty_list_factory(self):
     self._expect_strict_fail(
       """def main():
   xs: list[int] = list()
   return len(xs)
 """,
-      "S04",
+      "S0301",
     )
 
-  def test_s06a_rejects_deque_empty_new(self):
+  def test_s0303_rejects_deque_empty_new(self):
     self._expect_strict_fail(
       """def main():
   q: deque[int] = new()
   return len(q)
 """,
-      "S06a",
+      "S0303",
     )
 
-  def test_s06a_rejects_delegate_explicit_ctor(self):
+  def test_s0303_rejects_delegate_explicit_ctor(self):
     self._expect_strict_fail(
       """@delegate
 def FuncDelegate[T](x: T) -> T: ...
@@ -301,10 +301,10 @@ def main():
   d: FuncDelegate[int] = FuncDelegate[int]()
   return 0
 """,
-      "S06a",
+      "S0303",
     )
 
-  def test_s06a_allows_deque_new_maxlen(self):
+  def test_s0303_allows_deque_new_maxlen(self):
     self._translate(
       """def main():
   q: deque[int] = new(2)
@@ -328,30 +328,30 @@ def main():
       self.assertIn(f"[{rule}]", str(ctx.exception))
       return str(ctx.exception)
 
-  def test_s01_message_suggests_len_builtin(self):
+  def test_s0101_message_suggests_len_builtin(self):
     msg = self._strict_fail_message(
       """def main():
   xs: list[int] = [1]
   return xs.__len__()
 """,
-      "S01",
+      "S0101",
     )
     self.assertIn("len(x)", msg)
     self.assertIn("例如", msg)
 
-  def test_s05_message_suggests_aug_assign(self):
+  def test_s0302_message_suggests_aug_assign(self):
     msg = self._strict_fail_message(
       """def main():
   n: int = 0
   n = n + 1
   return n
 """,
-      "S11",
+      "S0704",
     )
     self.assertIn("+=", msg)
     self.assertIn("n = n +", msg)
 
-  def test_s11_message_suggests_imatmul_aug_assign(self):
+  def test_s0704_message_suggests_imatmul_aug_assign(self):
     msg = self._strict_fail_message(
       """class M:
   def __matmul__(self, other: Self) -> Self:
@@ -367,12 +367,12 @@ def main():
   a.step(b)
   return 0
 """,
-      "S11",
+      "S0704",
     )
     self.assertIn("@=", msg)
     self.assertIn("p = p @", msg)
 
-  def test_s06_message_suggests_not_seq(self):
+  def test_s0303_message_suggests_not_seq(self):
     msg = self._strict_fail_message(
       """def main():
   xs: list[int] = []
@@ -380,12 +380,12 @@ def main():
     return 1
   return 0
 """,
-      "S08",
+      "S0701",
     )
     self.assertIn("not xs", msg)
     self.assertIn("len(xs) == 0", msg)
 
-  def test_s03_rejects_user_ctor_in_init(self):
+  def test_s0103_rejects_user_ctor_in_init(self):
     self._expect_strict_fail(
       """class Box:
   def __init__(self, n: int):
@@ -395,10 +395,10 @@ def main():
   b: Box = Box()
   return b.n
 """,
-      "S06a",
+      "S0303",
     )
 
-  def test_s03_rejects_new_in_call_arg(self):
+  def test_s0103_rejects_new_in_call_arg(self):
     self._expect_strict_fail(
       """class Box:
   n: int = 0
@@ -409,10 +409,10 @@ def use(b: Box) -> int:
 def main():
   return use(new(n=1))
 """,
-      "S06e",
+      "S0307",
     )
 
-  def test_s03_allows_cls_in_call_arg(self):
+  def test_s0103_allows_cls_in_call_arg(self):
     self._translate(
       """class Box:
   n: int = 0
@@ -425,42 +425,42 @@ def main():
 """
     )
 
-  def test_s03_rejects_new_when_literal(self):
+  def test_s0103_rejects_new_when_literal(self):
     self._expect_strict_fail(
       """def main():
   xs: list[int] = new()
   return len(xs)
 """,
-      "S06a",
+      "S0303",
     )
 
-  def test_s03_rejects_new_empty_str(self):
+  def test_s0103_rejects_new_empty_str(self):
     self._expect_strict_fail(
       """def main():
   s: str = new("")
   return len(s)
 """,
-      "S06a",
+      "S0303",
     )
 
-  def test_s03_rejects_empty_set_factory(self):
+  def test_s0103_rejects_empty_set_factory(self):
     self._expect_strict_fail(
       """def main():
   s: set[int] = set()
   return len(s)
 """,
-      "S06a",
+      "S0303",
     )
 
-  def test_s03_allows_empty_set_new(self):
+  def test_s0103_allows_empty_set_new(self):
     self._translate(
       """def main():
   return len(set[int]())
 """
     )
 
-  def test_s06_allows_async_desugar_ctor_in_coroutine(self):
-    """协程脱糖可翻译；``*_coroutine`` 体内 ``__aenter__``/``__aexit__``/``__await__`` 由 S01 脱糖豁免。"""
+  def test_s0303_allows_async_desugar_ctor_in_coroutine(self):
+    """协程脱糖可翻译；``*_coroutine`` 体内 ``__aenter__``/``__aexit__``/``__await__`` 由 S0101 脱糖豁免。"""
     with tempfile.TemporaryDirectory() as tmp:
       out = Path(tmp)
       py = out / "mod.py"
@@ -491,7 +491,7 @@ def main() -> int:
         strict=True,
       )
 
-  def test_s03_rejects_self_with_args_when_ann_self(self):
+  def test_s0103_rejects_self_with_args_when_ann_self(self):
     self._expect_strict_fail(
       """class Holder:
   data: int = 0
@@ -507,10 +507,10 @@ def main():
   h: Holder = new(data=0)
   return h.dup().data
 """,
-      "S06b",
+      "S0304",
     )
 
-  def test_s03_allows_new_with_args_when_ann_self(self):
+  def test_s0103_allows_new_with_args_when_ann_self(self):
     self._translate(
       """class Holder:
   data: int
@@ -527,7 +527,7 @@ def main():
 """
     )
 
-  def test_s03_rejects_new_in_aug_assign(self):
+  def test_s0103_rejects_new_in_aug_assign(self):
     body = """class Holder:
   data: int = 0
 
@@ -555,12 +555,12 @@ def main():
           strict=True,
         )
     msg = str(ctx.exception)
-    self.assertIn("[S06c]", msg)
+    self.assertIn("[S0305]", msg)
     self.assertIn("增强赋值", msg)
     self.assertIn("Self(...)", msg)
     self.assertIn("out += Self", msg)
 
-  def test_s03_rejects_new_in_return_binop(self):
+  def test_s0103_rejects_new_in_return_binop(self):
     body = """class Holder:
   def join(self, tail: int) -> Self:
     head: Self = new()
@@ -582,11 +582,11 @@ def main():
           strict=True,
         )
     msg = str(ctx.exception)
-    self.assertIn("[S06d]", msg)
+    self.assertIn("[S0306]", msg)
     self.assertIn("二元表达式", msg)
     self.assertIn("return out + Self", msg)
 
-  def test_s03_allows_self_in_aug_assign(self):
+  def test_s0103_allows_self_in_aug_assign(self):
     self._translate(
       """class Holder:
   data: int
@@ -605,7 +605,7 @@ def main():
 """
     )
 
-  def test_s03_allows_self_in_return_binop(self):
+  def test_s0103_allows_self_in_return_binop(self):
     self._translate(
       """class Holder:
   data: int
@@ -623,7 +623,7 @@ def main():
 """
     )
 
-  def test_s06d_allows_explicit_cls_in_binop(self):
+  def test_s0306_allows_explicit_cls_in_binop(self):
     self._translate(
       """from py2cpp.spatial.rotator import Quaternion
 from py2cpp.spatial.vector import Vector3
@@ -635,7 +635,7 @@ def main() -> int:
 """
     )
 
-  def test_s06d_rejects_new_staticproperty_in_binop(self):
+  def test_s0306_rejects_new_staticproperty_in_binop(self):
     self._expect_strict_fail(
       """from py2cpp.spatial.rotator import Quaternion
 from py2cpp.spatial.vector import Vector3
@@ -645,10 +645,10 @@ def main() -> int:
   v: Vector3 = q * new.right
   return 0
 """,
-      "S06d",
+      "S0306",
     )
 
-  def test_s03_self_annotation_empty_self_rejected(self):
+  def test_s0103_self_annotation_empty_self_rejected(self):
     self._expect_strict_fail(
       """class Holder:
   def blank(self) -> Self:
@@ -658,10 +658,10 @@ def main():
   h: Holder = new()
   return 0
 """,
-      "S06b",
+      "S0304",
     )
 
-  def test_s03_self_annotation_empty_new_ok(self):
+  def test_s0103_self_annotation_empty_new_ok(self):
     self._translate(
       """class Holder:
   def blank(self) -> Self:
@@ -673,7 +673,7 @@ def main():
 """
     )
 
-  def test_s06b_rejects_subscript_ctor_with_typed_return(self):
+  def test_s0304_rejects_subscript_ctor_with_typed_return(self):
     self._expect_strict_fail(
       """class box_iterator:
   data: int = 0
@@ -691,10 +691,10 @@ def main():
   b: Box = new()
   return b.data
 """,
-      "S06b",
+      "S0304",
     )
 
-  def test_s06b_rejects_items_view_ctor_with_typed_return(self):
+  def test_s0304_rejects_items_view_ctor_with_typed_return(self):
     self._expect_strict_fail(
       """class items_view:
   pass
@@ -707,10 +707,10 @@ def main():
   m: Mapping = new()
   return 0
 """,
-      "S06b",
+      "S0304",
     )
 
-  def test_s06b_rejects_pool_slot_loc_ctor_with_typed_ann(self):
+  def test_s0304_rejects_pool_slot_loc_ctor_with_typed_ann(self):
     self._expect_strict_fail(
       """class PoolSlotLoc:
   block: int = 0
@@ -724,10 +724,10 @@ def main():
   loc: PoolSlotLoc = PoolSlotLoc(-1, -1)
   return loc.block
 """,
-      "S06b",
+      "S0304",
     )
 
-  def test_s40_rejects_redundant_cast_subscript(self):
+  def test_s0309_rejects_redundant_cast_subscript(self):
     self._expect_strict_fail(
       """from py2cpp import *
 
@@ -742,10 +742,10 @@ class Derived(Base):
 def narrow(slot: Base) -> None:
   d: Derived @ref = cast[Derived](slot)
 """,
-      "S40",
+      "S0309",
     )
 
-  def test_s40_allows_cast_shorthand(self):
+  def test_s0309_allows_cast_shorthand(self):
     self._translate(
       """from py2cpp import *
 
@@ -762,7 +762,7 @@ def narrow(slot: Base) -> None:
 """
     )
 
-  def test_s41_rejects_private_field_accessor_pair(self):
+  def test_s0501_rejects_private_field_accessor_pair(self):
     self._expect_strict_fail(
       """@copyable
 class Box:
@@ -779,10 +779,10 @@ def main():
   b.setKind(1)
   return b.kind()
 """,
-      "S41",
+      "S0501",
     )
 
-  def test_s41_allows_property_accessor(self):
+  def test_s0501_allows_property_accessor(self):
     self._translate(
       """@copyable
 class Box:
@@ -803,7 +803,7 @@ def main():
 """
     )
 
-  def test_s41_allows_getter_without_setter(self):
+  def test_s0501_allows_getter_without_setter(self):
     self._translate(
       """@copyable
 class Box:
@@ -822,7 +822,7 @@ def main():
 """
     )
 
-  def test_s41_rejects_get_set_named_pair(self):
+  def test_s0501_rejects_get_set_named_pair(self):
     self._expect_strict_fail(
       """@copyable
 class Box:
@@ -839,10 +839,10 @@ def main():
   b.setValue(1)
   return b.getValue()
 """,
-      "S41",
+      "S0501",
     )
 
-  def test_s41_rejects_is_set_named_pair(self):
+  def test_s0501_rejects_is_set_named_pair(self):
     self._expect_strict_fail(
       """@copyable
 class Box:
@@ -859,10 +859,10 @@ def main():
   b.setDone(True)
   return b.isDone()
 """,
-      "S41",
+      "S0501",
     )
 
-  def test_s41_allows_setter_with_extra_param(self):
+  def test_s0501_allows_setter_with_extra_param(self):
     self._translate(
       """@copyable
 class Store:
@@ -881,7 +881,7 @@ def main():
 """
     )
 
-  def test_s42_rejects_assign_then_callback_property(self):
+  def test_s0502_rejects_assign_then_callback_property(self):
     self._expect_strict_fail(
       """@copyable
 class Panel:
@@ -905,10 +905,10 @@ def main():
   p.title = "hi"
   return p.rev
 """,
-      "S42",
+      "S0502",
     )
 
-  def test_s42_allows_postsetter(self):
+  def test_s0502_allows_postsetter(self):
     self._translate(
       """@copyable
 class Panel:
@@ -928,7 +928,7 @@ def main():
 """
     )
 
-  def test_s42_allows_pure_property_setter(self):
+  def test_s0502_allows_pure_property_setter(self):
     self._translate(
       """@copyable
 class Box:
@@ -949,7 +949,7 @@ def main():
 """
     )
 
-  def test_s42_allows_delegate_setter(self):
+  def test_s0502_allows_delegate_setter(self):
     """``self._reserve(value)`` / ``if`` 分支赋值等非顶层 assign+callback 豁免。"""
     self._translate(
       """@copyable
@@ -975,7 +975,7 @@ def main():
 """
     )
 
-  def test_s42_allows_conditional_assign_setter(self):
+  def test_s0502_allows_conditional_assign_setter(self):
     self._translate(
       """@copyable
 class Table:
@@ -1002,25 +1002,25 @@ def main():
 """
     )
 
-  def test_s06a_rejects_empty_frozendict_new(self):
+  def test_s0303_rejects_empty_frozendict_new(self):
     self._expect_strict_fail(
       """def main():
   fd: frozendict[int, int] = new()
   return 0
 """,
-      "S06a",
+      "S0303",
     )
 
-  def test_s04_rejects_empty_frozendict_factory(self):
+  def test_s0301_rejects_empty_frozendict_factory(self):
     self._expect_strict_fail(
       """def main():
   fd: frozendict[int, int] = frozendict()
   return 0
 """,
-      "S04",
+      "S0301",
     )
 
-  def test_s06b_allows_new_with_single_arg_copy(self):
+  def test_s0304_allows_new_with_single_arg_copy(self):
     """注解目标类 + ``new(src)``（非空容器字面量）应通过 strict 且可翻译。"""
     self._translate(
       """class slot_loc:
@@ -1038,7 +1038,7 @@ def main():
 """
     )
 
-  def test_s06b_allows_new_self_with_typed_return(self):
+  def test_s0304_allows_new_self_with_typed_return(self):
     self._translate(
       """class box_iterator:
   data: int
@@ -1058,7 +1058,7 @@ def main():
 """
     )
 
-  def test_s06b_rejects_self_static_factory_with_self_ann(self):
+  def test_s0304_rejects_self_static_factory_with_self_ann(self):
     self._expect_strict_fail(
       """class Mat:
   a: int = 0
@@ -1080,10 +1080,10 @@ def main():
   x: Mat = new()
   return x.make()
 """,
-      "S06b",
+      "S0304",
     )
 
-  def test_s06b_allows_new_static_factory_with_self_ann(self):
+  def test_s0304_allows_new_static_factory_with_self_ann(self):
     self._translate(
       """class Mat:
   a: int
@@ -1106,7 +1106,7 @@ def main():
 """
     )
 
-  def test_s06b_rejects_self_staticproperty(self):
+  def test_s0304_rejects_self_staticproperty(self):
     self._expect_strict_fail(
       """class Mat:
   @staticproperty
@@ -1120,10 +1120,10 @@ def main():
   x: Mat = new()
   return x.make()
 """,
-      "S06b",
+      "S0304",
     )
 
-  def test_s06b_allows_new_staticproperty(self):
+  def test_s0304_allows_new_staticproperty(self):
     self._translate(
       """class Mat:
   @staticproperty
@@ -1139,7 +1139,7 @@ def main():
 """
     )
 
-  def test_s06b_allows_self_staticproperty_when_ann_is_not_host(self):
+  def test_s0304_allows_self_staticproperty_when_ann_is_not_host(self):
     self._translate(
       """class Mat:
   @staticproperty
@@ -1156,7 +1156,7 @@ def main():
 """
     )
 
-  def test_s03_self_annotation_empty_str_literal_rejected(self):
+  def test_s0103_self_annotation_empty_str_literal_rejected(self):
     self._expect_strict_fail(
       """class Holder:
   def blank(self) -> Self:
@@ -1166,10 +1166,10 @@ def main():
   h: Holder = new()
   return 0
 """,
-      "S06b",
+      "S0304",
     )
 
-  def test_s03_str_class_allows_empty_literal_with_self_return(self):
+  def test_s0103_str_class_allows_empty_literal_with_self_return(self):
     self._translate(
       """class str:
   def blank(self) -> Self:
@@ -1180,7 +1180,7 @@ def main():
 """
     )
 
-  def test_s03_list_class_allows_literal_with_self_return(self):
+  def test_s0103_list_class_allows_literal_with_self_return(self):
     self._translate(
       """class list[Element]:
   def blank(self) -> Self:
@@ -1194,7 +1194,7 @@ def main():
 """
     )
 
-  def test_s03_list_class_rejects_empty_new_with_self_return(self):
+  def test_s0103_list_class_rejects_empty_new_with_self_return(self):
     self._expect_strict_fail(
       """class list[Element]:
   def blank(self) -> Self:
@@ -1203,10 +1203,10 @@ def main():
 def main():
   return 0
 """,
-      "S06a",
+      "S0303",
     )
 
-  def test_s03_rejects_self_when_literal(self):
+  def test_s0103_rejects_self_when_literal(self):
     self._expect_strict_fail(
       """class Holder:
   def build(self) -> list[int]:
@@ -1217,10 +1217,10 @@ def main():
   h: Holder = new()
   return len(h.build())
 """,
-      "S06a",
+      "S0303",
     )
 
-  def test_s03_rejects_new_on_self_field_assign(self):
+  def test_s0103_rejects_new_on_self_field_assign(self):
     self._expect_strict_fail(
       """@copyable
 class Grid:
@@ -1234,10 +1234,10 @@ def main():
   g.reset()
   return len(g.adj)
 """,
-      "S06a",
+      "S0303",
     )
 
-  def test_s03_rejects_new_on_other_field_assign(self):
+  def test_s0103_rejects_new_on_other_field_assign(self):
     self._expect_strict_fail(
       """@copyable
 class Grid:
@@ -1250,10 +1250,10 @@ def main():
   g: Grid = new()
   return 0
 """,
-      "S06a",
+      "S0303",
     )
 
-  def test_s03_allows_literal_on_other_field_assign(self):
+  def test_s0103_allows_literal_on_other_field_assign(self):
     self._translate(
       """@copyable
 class Grid:
@@ -1268,7 +1268,7 @@ def main():
 """
     )
 
-  def test_s06_rejects_len_eq_zero(self):
+  def test_s0303_rejects_len_eq_zero(self):
     self._expect_strict_fail(
       """def main():
   s: str = "ab"
@@ -1276,19 +1276,19 @@ def main():
     return 0
   return 1
 """,
-      "S08",
+      "S0701",
     )
 
-  def test_s07_rejects_zero_lower_slice(self):
+  def test_s0308_rejects_zero_lower_slice(self):
     self._expect_strict_fail(
       """def main():
   s: str = "abcd"
   return s[0:2]
 """,
-      "S09",
+      "S0702",
     )
 
-  def test_s15_rejects_same_class_name_in_expr(self):
+  def test_s0602_rejects_same_class_name_in_expr(self):
     self._expect_strict_fail(
       """class Point:
   x: int = 0
@@ -1308,10 +1308,10 @@ def main():
   def make_zero(self) -> Self:
     return Point.zero
 """,
-      "S15",
+      "S0602",
     )
 
-  def test_s15_allows_self_static_in_expr(self):
+  def test_s0602_allows_self_static_in_expr(self):
     self._translate(
       """class Point:
   x: int = 0
@@ -1334,14 +1334,14 @@ def main():
 """
     )
 
-  def test_s15_rejects_len_minus_k_subscript(self):
+  def test_s0602_rejects_len_minus_k_subscript(self):
     self._expect_strict_fail(
       """def main():
   path: list[int] = []
   path.append(0)
   return path[len(path) - 1]
 """,
-      "S10",
+      "S0703",
     )
 
   def test_disabled_when_not_strict(self):
@@ -1368,7 +1368,7 @@ def main():
 """
     )
 
-  def test_s08_rejects_self_field_ann_outside_init(self):
+  def test_s0701_rejects_self_field_ann_outside_init(self):
     self._expect_strict_fail(
       """class Box:
   def __init__(self, n: int):
@@ -1382,10 +1382,10 @@ def main():
   b.reset()
   return b.n
 """,
-      "S14",
+      "S0601",
     )
 
-  def test_s09_rejects_class_name_annotation(self):
+  def test_s0702_rejects_class_name_annotation(self):
     self._expect_strict_fail(
       """class Point:
   def copy(self) -> Point:
@@ -1397,10 +1397,10 @@ def main():
   q: Point = p.copy()
   return q.copy().x
 """,
-      "S15",
+      "S0602",
     )
 
-  def test_s09_allows_self_in_class_body(self):
+  def test_s0702_allows_self_in_class_body(self):
     self._translate(
       """class Point:
   x: int = 0
@@ -1416,7 +1416,7 @@ def main():
 """
     )
 
-  def test_s09_allows_other_type_param_same_template(self):
+  def test_s0702_allows_other_type_param_same_template(self):
     self._translate(
       """
 class Box[Element]:
@@ -1431,7 +1431,7 @@ def main():
 """
     )
 
-  def test_s15_allows_other_generic_instantiation(self):
+  def test_s0602_allows_other_generic_instantiation(self):
     self._translate(
       """from py2cpp import *
 
@@ -1450,7 +1450,7 @@ def main():
 """
     )
 
-  def test_s15_rejects_same_class_type_param_in_annotation(self):
+  def test_s0602_rejects_same_class_type_param_in_annotation(self):
     self._expect_strict_fail(
       """from py2cpp import *
 
@@ -1463,10 +1463,10 @@ def main():
   t: Task[int] = new()
   return t.copy()
 """,
-      "S15",
+      "S0602",
     )
 
-  def test_s10_rejects_duplicate_without_overload(self):
+  def test_s0703_rejects_duplicate_without_overload(self):
     self._expect_strict_fail(
       """def foo(x: int) -> int:
   return x
@@ -1477,10 +1477,10 @@ def foo(y: str) -> str:
 def main():
   return foo(1)
 """,
-      "S17",
+      "S1001",
     )
 
-  def test_s10_allows_all_overload(self):
+  def test_s0703_allows_all_overload(self):
     self._translate(
       """class Scaler:
   base: int = 1
@@ -1499,7 +1499,7 @@ def main():
 """
     )
 
-  def test_s18_allows_shadow_without_base_virtual(self):
+  def test_s1002_allows_shadow_without_base_virtual(self):
     self._translate(
       """class Base:
   def foo(self) -> int:
@@ -1515,7 +1515,7 @@ def main():
 """
     )
 
-  def test_s18_rejects_missing_override_on_virtual_base(self):
+  def test_s1002_rejects_missing_override_on_virtual_base(self):
     self._expect_strict_fail(
       """from py2cpp import *
 
@@ -1532,10 +1532,10 @@ def main():
   c: Child = new()
   return c.foo()
 """,
-      "S18",
+      "S1002",
     )
 
-  def test_s18_allows_override_without_base_virtual(self):
+  def test_s1002_allows_override_without_base_virtual(self):
     self._translate(
       """from py2cpp import *
 
@@ -1554,7 +1554,7 @@ def main():
 """
     )
 
-  def test_s11_allows_both_override_and_virtual(self):
+  def test_s0704_allows_both_override_and_virtual(self):
     self._translate(
       """from py2cpp import *
 
@@ -1574,7 +1574,7 @@ def main():
 """
     )
 
-  def test_s18_rejects_missing_override_on_abstract_base(self):
+  def test_s1002_rejects_missing_override_on_abstract_base(self):
     self._expect_strict_fail(
       """from py2cpp import *
 
@@ -1591,10 +1591,10 @@ def main():
   c: Child = new()
   return c.foo()
 """,
-      "S18",
+      "S1002",
     )
 
-  def test_s18_rejects_missing_override_on_abstract_chain(self):
+  def test_s1002_rejects_missing_override_on_abstract_chain(self):
     self._expect_strict_fail(
       """from py2cpp import *
 
@@ -1616,10 +1616,10 @@ def main():
   c: Child = new()
   return c.foo()
 """,
-      "S18",
+      "S1002",
     )
 
-  def test_s18_rejects_missing_override_on_static_protocol_impl(self):
+  def test_s1002_rejects_missing_override_on_static_protocol_impl(self):
     self._expect_strict_fail(
       """from py2cpp import *
 
@@ -1641,10 +1641,10 @@ def main():
   w: Widget = try_parse[Widget]("1")
   return 0
 """,
-      "S18",
+      "S1002",
     )
 
-  def test_s18_rejects_missing_override_on_static_inherit_chain(self):
+  def test_s1002_rejects_missing_override_on_static_inherit_chain(self):
     self._expect_strict_fail(
       """from py2cpp import *
 
@@ -1662,10 +1662,10 @@ class Child(Base):
 def main():
   return Child.tag()
 """,
-      "S18",
+      "S1002",
     )
 
-  def test_s39_rejects_virtual_and_final(self):
+  def test_s1003_rejects_virtual_and_final(self):
     self._expect_strict_fail(
       """from py2cpp import *
 
@@ -1679,10 +1679,10 @@ def main():
   b: Box = new()
   return b.value()
 """,
-      "S39",
+      "S1003",
     )
 
-  def test_s39_rejects_abstract_and_virtual(self):
+  def test_s1003_rejects_abstract_and_virtual(self):
     self._expect_strict_fail(
       """from py2cpp import *
 
@@ -1695,10 +1695,10 @@ class Base:
 def main():
   pass
 """,
-      "S39",
+      "S1003",
     )
 
-  def test_s39_allows_final_alone(self):
+  def test_s1003_allows_final_alone(self):
     self._translate(
       """from py2cpp import *
 
@@ -1714,7 +1714,7 @@ def main():
     )
 
 
-  def test_s12_rejects_explicit_memory_type_arg(self):
+  def test_s0705_rejects_explicit_memory_type_arg(self):
     self._expect_strict_fail(
       """class Widget:
   pass
@@ -1722,10 +1722,10 @@ def main():
 def drop(p: Pointer[Widget]) -> None:
   destroy[Widget](p)
 """,
-      "S07",
+      "S0308",
     )
 
-  def test_s12_allows_deduced_memory_calls(self):
+  def test_s0705_allows_deduced_memory_calls(self):
     self._translate(
       """class Widget:
   pass
@@ -1736,15 +1736,15 @@ def drop(p: Pointer[Widget]) -> None:
 """
     )
 
-  def test_s13_rejects_outermost_tuple_subscript(self):
+  def test_s0706_rejects_outermost_tuple_subscript(self):
     self._expect_strict_fail(
       """def pair() -> tuple[int, int]:
   return (1, 2)
 """,
-      "S16",
+      "S0603",
     )
 
-  def test_s13_allows_tuple_inside_generic(self):
+  def test_s0706_allows_tuple_inside_generic(self):
     self._translate(
       """def rows() -> list[tuple[int, int]]:
   out: list[tuple[int, int]] = []
@@ -1752,34 +1752,34 @@ def drop(p: Pointer[Widget]) -> None:
 """
     )
 
-  def test_s13_allows_parenthesized_tuple_type(self):
+  def test_s0706_allows_parenthesized_tuple_type(self):
     self._translate(
       """def pair() -> (int, int):
   return (1, 2)
 """
     )
 
-  def test_s14_rejects_push_back_def_only(self):
+  def test_s0601_rejects_push_back_def_only(self):
     self._expect_strict_fail(
       """class Box:
   def push_back(self, x: int) -> None:
     pass
 """,
-      "S02",
+      "S0102",
     )
 
-  def test_s14_rejects_leading_underscore_push_back_def(self):
+  def test_s0601_rejects_leading_underscore_push_back_def(self):
     msg = self._strict_fail_message(
       """class Box:
   def _push_back(self, x: int) -> None:
     pass
 """,
-      "S02",
+      "S0102",
     )
     self.assertIn("push_back", msg)
     self.assertIn("前导 `_`", msg)
 
-  def test_s14_allows_leading_underscore_reserve_def(self):
+  def test_s0601_allows_leading_underscore_reserve_def(self):
     self._translate(
       """class Buf:
   def _reserve(self, n: int) -> None:
@@ -1787,7 +1787,7 @@ def drop(p: Pointer[Widget]) -> None:
 """
     )
 
-  def test_s02_allows_rect_contains_and_size(self):
+  def test_s0102_allows_rect_contains_and_size(self):
     self._translate(
       """class Rect:
   @property
@@ -1799,16 +1799,16 @@ def drop(p: Pointer[Widget]) -> None:
 """
     )
 
-  def test_s02_rejects_contains_outside_rect(self):
+  def test_s0102_rejects_contains_outside_rect(self):
     self._expect_strict_fail(
       """class Box:
   def contains(self, x: int) -> bool:
     return True
 """,
-      "S02",
+      "S0102",
     )
 
-  def test_s14_allows_cpp_style_method_call(self):
+  def test_s0601_allows_cpp_style_method_call(self):
     self._translate(
       """class Box:
   def append(self, x: int) -> None:
@@ -1819,7 +1819,7 @@ def use(b: Box) -> None:
 """
     )
 
-  def test_s14_allows_reserve_on_buffer(self):
+  def test_s0601_allows_reserve_on_buffer(self):
     self._translate(
       """class Buf:
   def reserve(self, n: int) -> None:
@@ -1830,16 +1830,16 @@ def grow(b: Buf) -> None:
 """
     )
 
-  def test_s14_rejects_resize_def(self):
+  def test_s0102_rejects_resize_def(self):
     self._expect_strict_fail(
       """class Buf:
   def resize(self, n: int) -> None:
     pass
 """,
-      "S02",
+      "S0102",
     )
 
-  def test_s14_allows_reshape_def(self):
+  def test_s0102_allows_reshape_def(self):
     self._translate(
       """class Buf:
   def reshape(self, n: int) -> None:
@@ -1847,22 +1847,22 @@ def grow(b: Buf) -> None:
 """
     )
 
-  def test_s16_rejects_unused_header_type_param(self):
+  def test_s1004_rejects_unused_header_type_param(self):
     self._expect_strict_fail(
       """def bad[Nav, Node: DictKeyType](nav: NavigatableType[Node], start: Node) -> Node:
   return start
 """,
-      "S19",
+      "S1004",
     )
 
-  def test_s16_allows_navigatable_node_pattern(self):
+  def test_s1004_allows_navigatable_node_pattern(self):
     self._translate(
       """def ok[Node: DictKeyType](nav: NavigatableType[Node], start: Node) -> Node:
   return start
 """,
     )
 
-  def test_s17_rejects_ascending_while_index_plus(self):
+  def test_s1001_rejects_ascending_while_index_plus(self):
     self._expect_strict_fail(
       """def scan(n: int) -> int:
   i: int = 0
@@ -1872,10 +1872,10 @@ def grow(b: Buf) -> None:
     i += 1
   return s
 """,
-      "S12",
+      "S0705",
     )
 
-  def test_s17_rejects_descending_while_index_minus(self):
+  def test_s1001_rejects_descending_while_index_minus(self):
     msg = self._strict_fail_message(
       """def down(n: int) -> int:
   i: int = n
@@ -1885,21 +1885,21 @@ def grow(b: Buf) -> None:
     i -= 2
   return s
 """,
-      "S12",
+      "S0705",
     )
     self.assertIn("range", msg)
 
-  def test_s17_rejects_lte_while_index_plus(self):
+  def test_s1001_rejects_lte_while_index_plus(self):
     self._expect_strict_fail(
       """def walk(stop: int) -> None:
   i: int = 0
   while i <= stop:
     i += 1
 """,
-      "S12",
+      "S0705",
     )
 
-  def test_s12_allows_while_with_extra_index_assign(self):
+  def test_s0705_allows_while_with_extra_index_assign(self):
     self._translate(
       """def mixed(n: int) -> None:
   i: int = 0
@@ -1911,7 +1911,7 @@ def grow(b: Buf) -> None:
 """
     )
 
-  def test_s12_allows_while_with_index_reassign(self):
+  def test_s0705_allows_while_with_index_reassign(self):
     self._translate(
       """def scan(n: int) -> None:
   i: int = 0
@@ -1921,7 +1921,7 @@ def grow(b: Buf) -> None:
 """
     )
 
-  def test_s17_allows_while_cur_is_not_none(self):
+  def test_s1001_allows_while_cur_is_not_none(self):
     self._translate(
       """class Node:
   next: Pointer[Self]
@@ -1933,7 +1933,7 @@ def walk(head: Pointer[Node]) -> None:
 """
     )
 
-  def test_s17_allows_dual_pointer_reverse(self):
+  def test_s1001_allows_dual_pointer_reverse(self):
     self._translate(
       """def swap_pair(a: list[int]) -> None:
   lo: int = 0
@@ -1947,7 +1947,7 @@ def walk(head: Pointer[Node]) -> None:
 """
     )
 
-  def test_s17_allows_negative_step_plus_on_gt(self):
+  def test_s1001_allows_negative_step_plus_on_gt(self):
     self._translate(
       """def rev(stop: int, step: int) -> None:
   i: int = 10
@@ -1956,7 +1956,7 @@ def walk(head: Pointer[Node]) -> None:
 """
     )
 
-  def test_s18_rejects_range_zero_start(self):
+  def test_s1002_rejects_range_zero_start(self):
     self._expect_strict_fail(
       """def walk(n: int) -> int:
   s: int = 0
@@ -1964,10 +1964,10 @@ def walk(head: Pointer[Node]) -> None:
     s += i
   return s
 """,
-      "S13",
+      "S0706",
     )
 
-  def test_s18_allows_range_with_step(self):
+  def test_s1002_allows_range_with_step(self):
     self._translate(
       """def stride(n: int) -> int:
   s: int = 0
@@ -1977,7 +1977,7 @@ def walk(head: Pointer[Node]) -> None:
 """
     )
 
-  def test_s18_allows_range_single_arg(self):
+  def test_s1002_allows_range_single_arg(self):
     self._translate(
       """def count(n: int) -> int:
   t: int = 0
@@ -1987,7 +1987,7 @@ def walk(head: Pointer[Node]) -> None:
 """
     )
 
-  def test_s18_rejects_range_zero_start_step_one(self):
+  def test_s1002_rejects_range_zero_start_step_one(self):
     self._expect_strict_fail(
       """def every(n: int) -> int:
   s: int = 0
@@ -1995,10 +1995,10 @@ def walk(head: Pointer[Node]) -> None:
     s += i
   return s
 """,
-      "S13",
+      "S0706",
     )
 
-  def test_s18_rejects_range_nonzero_start_step_one(self):
+  def test_s1002_rejects_range_nonzero_start_step_one(self):
     msg = self._strict_fail_message(
       """def slice_sum(a: int, b: int) -> int:
   s: int = 0
@@ -2006,12 +2006,12 @@ def walk(head: Pointer[Node]) -> None:
     s += i
   return s
 """,
-      "S13",
+      "S0706",
     )
     self.assertIn("range(a, b, 1)", msg)
     self.assertIn("range(a, b)", msg)
 
-  def test_s18_allows_range_two_arg_nonzero_start(self):
+  def test_s1002_allows_range_two_arg_nonzero_start(self):
     self._translate(
       """def slice_sum(a: int, b: int) -> int:
   s: int = 0
@@ -2021,7 +2021,7 @@ def walk(head: Pointer[Node]) -> None:
 """
     )
 
-  def test_s03_rejects_self_static_forward(self):
+  def test_s0103_rejects_self_static_forward(self):
     self._expect_strict_fail(
       """from py2cpp import *
 
@@ -2033,10 +2033,10 @@ class Point:
   def sqr_length(self) -> int:
     return Self._sqr_length(self)
 """,
-      "S03",
+      "S0103",
     )
 
-  def test_s03_allows_self_static_with_extra_logic(self):
+  def test_s0103_allows_self_static_with_extra_logic(self):
     self._translate(
       """from py2cpp import *
 
@@ -2054,7 +2054,7 @@ class Point:
 """
     )
 
-  def test_s19_rejects_method_param_shuffle(self):
+  def test_s0103_rejects_method_param_shuffle(self):
     self._expect_strict_fail(
       """class Box:
   def run(self, a: int, b: int, c: int) -> int:
@@ -2063,10 +2063,10 @@ class Point:
   def compute(self, x: int, y: int, z: int) -> int:
     return x + y + z
 """,
-      "S03",
+      "S0103",
     )
 
-  def test_s19_rejects_module_global_shuffle(self):
+  def test_s0103_rejects_module_global_shuffle(self):
     self._expect_strict_fail(
       """def pick(a: int, b: int) -> int:
   return choose(b, a)
@@ -2074,10 +2074,10 @@ class Point:
 def choose(x: int, y: int) -> int:
   return x - y
 """,
-      "S03",
+      "S0103",
     )
 
-  def test_s19_allows_method_with_extra_logic(self):
+  def test_s0103_allows_method_with_extra_logic(self):
     self._translate(
       """class Box:
   def run(self, a: int, b: int) -> int:
@@ -2088,7 +2088,7 @@ def choose(x: int, y: int) -> int:
 """
     )
 
-  def test_s19_rejects_expr_forward_without_return(self):
+  def test_s0103_rejects_expr_forward_without_return(self):
     self._expect_strict_fail(
       """class Log:
   def emit(self, msg: str) -> None:
@@ -2097,10 +2097,10 @@ def choose(x: int, y: int) -> int:
   def write(self, text: str) -> None:
     pass
 """,
-      "S03",
+      "S0103",
     )
 
-  def test_s20_rejects_three_consecutive_if_same_subject(self):
+  def test_s0801_rejects_three_consecutive_if_same_subject(self):
     self._expect_strict_fail(
       """def pick(x: int) -> int:
   if x == 1:
@@ -2111,10 +2111,10 @@ def choose(x: int, y: int) -> int:
     return 30
   return 0
 """,
-      "S20",
+      "S0801",
     )
 
-  def test_s20_rejects_if_elif_chain_same_subject(self):
+  def test_s0801_rejects_if_elif_chain_same_subject(self):
     self._expect_strict_fail(
       """def pick(x: int) -> int:
   if x == 1:
@@ -2125,10 +2125,10 @@ def choose(x: int, y: int) -> int:
     return 30
   return 0
 """,
-      "S20",
+      "S0801",
     )
 
-  def test_s20_allows_two_branches(self):
+  def test_s0801_allows_two_branches(self):
     self._translate(
       """def pick(x: int) -> int:
   if x == 1:
@@ -2139,7 +2139,7 @@ def choose(x: int, y: int) -> int:
 """
     )
 
-  def test_s20_allows_three_branches_different_subjects(self):
+  def test_s0801_allows_three_branches_different_subjects(self):
     self._translate(
       """def pick(x: int, y: int) -> int:
   if x == 1:
@@ -2152,7 +2152,7 @@ def choose(x: int, y: int) -> int:
 """
     )
 
-  def test_s20_allows_and_suffix_on_compare(self):
+  def test_s0801_allows_and_suffix_on_compare(self):
     self._translate(
       """def pick(x: int, ok: bool) -> int:
   if x == 1 and ok:
@@ -2163,7 +2163,7 @@ def choose(x: int, y: int) -> int:
 """
     )
 
-  def test_s20_rejects_three_with_and_suffix(self):
+  def test_s0801_rejects_three_with_and_suffix(self):
     self._expect_strict_fail(
       """def pick(x: int, ok: bool) -> int:
   if x == 1 and ok:
@@ -2174,10 +2174,10 @@ def choose(x: int, y: int) -> int:
     return 30
   return 0
 """,
-      "S20",
+      "S0801",
     )
 
-  def test_s20_allows_three_if_rhs_is_variable(self):
+  def test_s0801_allows_three_if_rhs_is_variable(self):
     self._translate(
       """def pick(x: int, a: int, b: int, c: int) -> int:
   if x == a:
@@ -2190,7 +2190,7 @@ def choose(x: int, y: int) -> int:
 """
     )
 
-  def test_s20_rejects_three_if_rhs_ord_single_char(self):
+  def test_s0801_rejects_three_if_rhs_ord_single_char(self):
     self._expect_strict_fail(
       """def pick(c: int) -> int:
   if c == ord("a"):
@@ -2201,36 +2201,36 @@ def choose(x: int, y: int) -> int:
     return 3
   return 0
 """,
-      "S20",
+      "S0801",
     )
 
-  def test_s20_allows_ord_non_single_char_rhs(self):
+  def test_s0801_allows_non_literal_rhs_chain(self):
     self._translate(
-      """def pick(c: int) -> int:
-  if c == ord("ab"):
+      """def pick(c: int, a: int, b: int, d: int) -> int:
+  if c == a:
     return 1
-  if c == ord("cd"):
+  if c == b:
     return 2
-  if c == ord("ef"):
+  if c == d:
     return 3
   return 0
 """
     )
 
-  def test_s21_rejects_eq_or_chain_int_literals(self):
+  def test_s0802_rejects_eq_or_chain_int_literals(self):
     self._expect_strict_fail(
       """def pick(x: int) -> bool:
   return x == 1 or x == 2 or x == 3
 """,
-      "S21",
+      "S0802",
     )
 
-  def test_s21_rejects_eq_or_chain_char_string_hint(self):
+  def test_s0802_rejects_eq_or_chain_char_string_hint(self):
     self._expect_strict_fail(
       """def pick(c: char) -> bool:
   return c == ord("a") or c == ord("b")
 """,
-      "S21",
+      "S0802",
     )
     with tempfile.TemporaryDirectory() as tmp:
       out = Path(tmp)
@@ -2250,29 +2250,29 @@ def choose(x: int, y: int) -> int:
         )
       self.assertIn('in "ab"', str(ctx.exception))
 
-  def test_s21_allows_different_subjects(self):
+  def test_s0802_allows_different_subjects(self):
     self._translate(
       """def pick(x: int, y: int) -> bool:
   return x == 1 or y == 2
 """
     )
 
-  def test_s21_allows_single_eq(self):
+  def test_s0802_allows_single_eq(self):
     self._translate(
       """def pick(x: int) -> bool:
   return x == 1
 """
     )
 
-  def test_s21_rejects_ne_and_chain(self):
+  def test_s0802_rejects_ne_and_chain(self):
     self._expect_strict_fail(
       """def ok(x: int) -> bool:
   return x != 1 and x != 2 and x != 3
 """,
-      "S21",
+      "S0802",
     )
 
-  def test_s21_rejects_ne_and_chain_char_string_hint(self):
+  def test_s0802_rejects_ne_and_chain_char_string_hint(self):
     with tempfile.TemporaryDirectory() as tmp:
       out = Path(tmp)
       py = out / "mod.py"
@@ -2291,107 +2291,113 @@ def choose(x: int, y: int) -> int:
         )
       self.assertIn('not in "ab"', str(ctx.exception))
 
-  def test_s21_allows_ne_and_different_subjects(self):
+  def test_s0802_allows_ne_and_different_subjects(self):
     self._translate(
       """def ok(x: int, y: int) -> bool:
   return x != 1 and y != 2
 """
     )
 
-  def test_s22_rejects_char_eq_single_char_literal(self):
+  def test_s0901_rejects_char_eq_single_char_literal(self):
     self._expect_strict_fail(
       """def ok(ch: char) -> bool:
   return ch == 'a'
 """,
-      "S22",
+      "S0901",
     )
 
-  def test_s22_rejects_char_ne_single_char_literal(self):
+  def test_s0901_rejects_char_ne_single_char_literal(self):
     self._expect_strict_fail(
       """def ok(ch: char) -> bool:
   return ch != 'a'
 """,
-      "S22",
+      "S0901",
     )
 
-  def test_s22_allows_ord_single_char(self):
+  def test_s0901_allows_ord_single_char(self):
     self._translate(
       """def ok(ch: char) -> bool:
   return ch == ord('a')
 """
     )
 
-  def test_s22_allows_compare_in_match_case_body(self):
+  def test_s0901_allows_compare_in_match_case_body(self):
     self._translate(
       """def ok(ch: char) -> bool:
   match ch:
     case 'a':
       return ch == 'a'
+    case _:
+      return False
   return False
 """
     )
 
-  def test_s22_rejects_compare_in_match_guard(self):
+  def test_s0901_rejects_compare_in_match_guard(self):
     self._expect_strict_fail(
       """def ok(ch: char) -> bool:
   match ch:
     case 'a' if ch == 'b':
       return True
+    case _:
+      return False
   return False
 """,
-      "S22",
+      "S0901",
     )
 
-  def test_s22_allows_ord_in_match_guard(self):
+  def test_s0901_allows_ord_in_match_guard(self):
     self._translate(
       """def ok(ch: char) -> bool:
   match ch:
     case 'a' if ch == ord('b'):
       return True
+    case _:
+      return False
   return False
 """
     )
 
-  def test_s22_allows_char_in_string_literal(self):
+  def test_s0901_allows_char_in_string_literal(self):
     self._translate(
       """def ok(ch: char) -> bool:
   return ch in "ab"
 """
     )
 
-  def test_s34_rejects_ord_on_variable(self):
+  def test_s0902_rejects_ord_on_variable(self):
     self._expect_strict_fail(
       """def bad(c: char) -> char:
   return ord(c)
 """,
-      "S34",
+      "S0902",
     )
 
-  def test_s34_rejects_ord_on_str_index(self):
+  def test_s0902_rejects_ord_on_str_index(self):
     self._expect_strict_fail(
       """def bad(s: str) -> char:
   return ord(s[0])
 """,
-      "S34",
+      "S0902",
     )
 
-  def test_s34_allows_ord_single_char_literal(self):
+  def test_s0902_allows_ord_single_char_literal(self):
     self._translate(
       """def ok() -> char:
   return ord('a')
 """
     )
 
-  def test_s35_rejects_primitive_convert_temp(self):
+  def test_s0903_rejects_primitive_convert_temp(self):
     self._expect_strict_fail(
       """def bad(x: int) -> int:
   n: int = int(x)
   return n
 """,
-      "S35",
+      "S0903",
     )
 
-  def test_s35_allows_unannotated_convert_temp(self):
+  def test_s0903_allows_unannotated_convert_temp(self):
     self._translate(
       """def ok(x: int) -> int:
   n = int(x)
@@ -2399,7 +2405,7 @@ def choose(x: int, y: int) -> int:
 """
     )
 
-  def test_s35_allows_reassigned_convert_temp(self):
+  def test_s0903_allows_reassigned_convert_temp(self):
     self._translate(
       """def ok(x: int, i: int) -> int:
   j: int = int(x)
@@ -2408,7 +2414,7 @@ def choose(x: int, y: int) -> int:
 """
     )
 
-  def test_s35_allows_non_pure_ctor_rhs(self):
+  def test_s0903_allows_non_pure_ctor_rhs(self):
     self._translate(
       """def ok(ch: str) -> int:
   d: int = int(ch) - ord('0')
@@ -2416,41 +2422,41 @@ def choose(x: int, y: int) -> int:
 """
     )
 
-  def test_s46_rejects_new_type_context_temp_call_arg(self):
+  def test_s0310_rejects_new_type_context_temp_call_arg(self):
     self._expect_strict_fail(
       """@union
-class Cmd:
+class CmdUnion:
   @variant
   class Go:
     n: int
 
-def take(c: Cmd) -> int:
+def take(c: CmdUnion) -> int:
   return 0
 
 def bad() -> int:
   c: Cmd = new.Go(1)
   return take(c)
 """,
-      "S46",
+      "S0310",
     )
 
-  def test_s46_allows_union_variant_in_call_arg(self):
+  def test_s0310_allows_union_variant_in_call_arg(self):
     self._translate(
       """@union
-class Cmd:
+class CmdUnion:
   @variant
   class Go:
     n: int
 
-def take(c: Cmd) -> int:
+def take(c: CmdUnion) -> int:
   return 0
 
 def ok() -> int:
-  return take(Cmd.Go(1))
+  return take(CmdUnion.Go(1))
 """
     )
 
-  def test_s46_rejects_new_type_context_temp_assign(self):
+  def test_s0310_rejects_new_type_context_temp_assign(self):
     self._expect_strict_fail(
       """@copyable
 class Point:
@@ -2464,10 +2470,10 @@ class Box:
     sp: Point = new()
     self.item = sp
 """,
-      "S46",
+      "S0310",
     )
 
-  def test_s46_rejects_new_type_context_temp_return(self):
+  def test_s0310_rejects_new_type_context_temp_return(self):
     self._expect_strict_fail(
       """@copyable
 class Point:
@@ -2477,10 +2483,10 @@ def bad() -> Point:
   p: Point = new()
   return p
 """,
-      "S46",
+      "S0310",
     )
 
-  def test_s46_allows_new_temp_with_mutation(self):
+  def test_s0310_allows_new_temp_with_mutation(self):
     self._translate(
       """@copyable
 class Point:
@@ -2493,7 +2499,7 @@ def ok() -> Point:
 """
     )
 
-  def test_s46_allows_direct_field_new(self):
+  def test_s0310_allows_direct_field_new(self):
     self._translate(
       """@copyable
 class Point:
@@ -2508,7 +2514,7 @@ class Box:
 """
     )
 
-  def test_s46_allows_explicit_cls_in_call_arg(self):
+  def test_s0310_allows_explicit_cls_in_call_arg(self):
     self._translate(
       """@copyable
 class Point:
@@ -2522,7 +2528,7 @@ def ok() -> int:
 """
     )
 
-  def test_s46_allows_new_temp_before_cleanup_return(self):
+  def test_s0310_allows_new_temp_before_cleanup_return(self):
     self._translate(
       """@copyable
 class Resp:
@@ -2542,14 +2548,14 @@ def ok() -> Resp:
 """
     )
 
-  def test_s22_ignores_str_compare(self):
+  def test_s0901_ignores_str_compare(self):
     self._translate(
       """def ok(s: str) -> bool:
   return s == 'a'
 """
     )
 
-  def test_s23_rejects_match_without_default(self):
+  def test_s0803_rejects_match_without_default(self):
     self._expect_strict_fail(
       """def pick(x: int) -> int:
   match x:
@@ -2559,10 +2565,10 @@ def ok() -> Resp:
       return 2
   return 0
 """,
-      "S23",
+      "S0803",
     )
 
-  def test_s23_allows_match_ending_with_wildcard(self):
+  def test_s0803_allows_match_ending_with_wildcard(self):
     self._translate(
       """def pick(x: int) -> int:
   match x:
@@ -2574,10 +2580,10 @@ def ok() -> Resp:
 """
     )
 
-  def test_s23_allows_exhaustive_union_without_wildcard(self):
+  def test_s0803_allows_exhaustive_union_without_wildcard(self):
     self._translate(
       """@union
-class U:
+class UUnion:
   @variant
   class A:
     x: int
@@ -2586,17 +2592,17 @@ class U:
   class B:
     pass
 
-def f(u: U) -> int:
+def f(u: UUnion) -> int:
   match u:
-    case U.A(x):
+    case new.A(x):
       return x
-    case U.B:
+    case new.B:
       return 0
   return 0
 """
     )
 
-  def test_s23_rejects_wildcard_guard_as_last_case(self):
+  def test_s0803_rejects_wildcard_guard_as_last_case(self):
     self._expect_strict_fail(
       """def pick(x: int) -> int:
   match x:
@@ -2606,61 +2612,61 @@ def f(u: U) -> int:
       return 2
   return 0
 """,
-      "S23",
+      "S0803",
     )
 
-  def test_s23_allows_exhaustive_enum_without_wildcard(self):
+  def test_s0803_allows_exhaustive_enum_without_wildcard(self):
     self._translate(
       """@enum
-class Color:
+class ColorEnum:
   RED = 0
   GREEN = 1
   BLUE = 2
 
-def f(c: Color) -> int:
+def f(c: ColorEnum) -> int:
   match c:
-    case Color.RED:
+    case ColorEnum.RED:
       return 0
-    case Color.GREEN:
+    case ColorEnum.GREEN:
       return 1
-    case Color.BLUE:
+    case ColorEnum.BLUE:
       return 2
   return 0
 """
     )
 
-  def test_s23_allows_enum_or_pattern_without_wildcard(self):
+  def test_s0803_allows_enum_or_pattern_without_wildcard(self):
     self._translate(
       """@enum
-class Color:
+class ColorEnum:
   RED = 0
   GREEN = 1
 
-def f(c: Color) -> int:
+def f(c: ColorEnum) -> int:
   match c:
-    case Color.RED | Color.GREEN:
+    case ColorEnum.RED | ColorEnum.GREEN:
       return 0
   return 0
 """
     )
 
-  def test_s23_rejects_partial_enum_without_wildcard(self):
+  def test_s0803_rejects_partial_enum_without_wildcard(self):
     self._expect_strict_fail(
       """@enum
-class Color:
+class ColorEnum:
   RED = 0
   GREEN = 1
 
-def f(c: Color) -> int:
+def f(c: ColorEnum) -> int:
   match c:
-    case Color.RED:
+    case ColorEnum.RED:
       return 0
   return 0
 """,
-      "S23",
+      "S0803",
     )
 
-  def test_s25_rejects_optional_some_match_pattern(self):
+  def test_s0805_rejects_optional_some_match_pattern(self):
     self._expect_strict_fail(
       """from py2cpp.core.optional import Optional
 
@@ -2671,10 +2677,10 @@ def f(opt: Optional[int]) -> int:
     case None:
       return -1
 """,
-      "S25",
+      "S0805",
     )
 
-  def test_s25_rejects_optional_none_union_match_pattern(self):
+  def test_s0805_rejects_optional_none_union_match_pattern(self):
     self._expect_strict_fail(
       """from py2cpp.core.optional import Optional
 
@@ -2685,10 +2691,10 @@ def f(opt: Optional[int]) -> int:
     case v:
       return v
 """,
-      "S25",
+      "S0805",
     )
 
-  def test_s25_allows_optional_sugar_match(self):
+  def test_s0805_allows_optional_sugar_match(self):
     self._translate(
       """from py2cpp.core.optional import Optional
 
@@ -2701,7 +2707,7 @@ def f(opt: Optional[int]) -> int:
 """
     )
 
-  def test_s25_rejects_optional_eq_none(self):
+  def test_s0805_rejects_optional_eq_none(self):
     self._expect_strict_fail(
       """from py2cpp.core.optional import Optional
 
@@ -2710,10 +2716,10 @@ def f(opt: Optional[int]) -> int:
     return -1
   return opt.value
 """,
-      "S25",
+      "S0805",
     )
 
-  def test_s25_allows_optional_is_none(self):
+  def test_s0805_allows_optional_is_none(self):
     self._translate(
       """from py2cpp.core.optional import Optional
 
@@ -2726,27 +2732,27 @@ def f(opt: Optional[int]) -> int:
 """
     )
 
-  def test_s25_rejects_optional_some_ctor(self):
+  def test_s0805_rejects_optional_some_ctor(self):
     self._expect_strict_fail(
       """from py2cpp.core.optional import Optional
 
 def f(v: int) -> Optional[int]:
   return Optional[int].Some(v)
 """,
-      "S25",
+      "S0805",
     )
 
-  def test_s25_rejects_optional_none_ctor(self):
+  def test_s0805_rejects_optional_none_ctor(self):
     self._expect_strict_fail(
       """from py2cpp.core.optional import Optional
 
 def f() -> Optional[int]:
   return Optional[int].None_()
 """,
-      "S25",
+      "S0805",
     )
 
-  def test_s25_allows_optional_assign_sugar(self):
+  def test_s0805_allows_optional_assign_sugar(self):
     self._translate(
       """from py2cpp.core.optional import Optional
 
@@ -2757,16 +2763,16 @@ def f(v: int) -> Optional[int]:
 """
     )
 
-  def test_s26_rejects_dataclass_container_default_without_optional(self):
+  def test_s0401_rejects_dataclass_container_default_without_optional(self):
     self._expect_strict_fail(
       """@dataclass
 class Box:
   items: list[int] = []
 """,
-      "S26",
+      "S0401",
     )
 
-  def test_s26_allows_dataclass_container_default_with_optional(self):
+  def test_s0401_allows_dataclass_container_default_with_optional(self):
     self._translate(
       """@dataclass
 class Box:
@@ -2775,26 +2781,26 @@ class Box:
 """
     )
 
-  def test_s32_rejects_empty_dataclass(self):
+  def test_s0402_rejects_empty_dataclass(self):
     self._expect_strict_fail(
       """@dataclass
 class Empty:
   pass
 """,
-      "S32",
+      "S0402",
     )
 
-  def test_s32_rejects_all_optional_dataclass(self):
+  def test_s0402_rejects_all_optional_dataclass(self):
     self._expect_strict_fail(
       """@dataclass
 class AllOpt:
   items: list[int] @optional = []
   tags: list[str] @optional = []
 """,
-      "S32",
+      "S0402",
     )
 
-  def test_s32_allows_required_with_optional_fields(self):
+  def test_s0402_allows_required_with_optional_fields(self):
     self._translate(
       """@dataclass
 class Box:
@@ -2803,25 +2809,25 @@ class Box:
 """
     )
 
-  def test_s44_rejects_final_optional_same_field(self):
+  def test_s0403_rejects_final_optional_same_field(self):
     self._expect_strict_fail(
       """class Box:
   v: int @final @optional = 0
 """,
-      "S44",
+      "S0403",
     )
 
-  def test_s44_rejects_frozen_dataclass_optional(self):
+  def test_s0403_rejects_frozen_dataclass_optional(self):
     self._expect_strict_fail(
       """@dataclass(frozen=True)
 class FrozenBox:
   key: int
   extra: int @optional = 99
 """,
-      "S44",
+      "S0403",
     )
 
-  def test_s44_allows_frozen_dataclass_without_optional(self):
+  def test_s0403_allows_frozen_dataclass_without_optional(self):
     self._translate(
       """@dataclass(frozen=True)
 class FrozenPoint:
@@ -2830,28 +2836,28 @@ class FrozenPoint:
 """
     )
 
-  def test_s23_rejects_enum_member_case_with_guard_for_exhaustive(self):
+  def test_s0803_rejects_enum_member_case_with_guard_for_exhaustive(self):
     self._expect_strict_fail(
       """@enum
-class Color:
+class ColorEnum:
   RED = 0
   GREEN = 1
 
-def f(c: Color) -> int:
+def f(c: ColorEnum) -> int:
   match c:
-    case Color.RED if True:
+    case ColorEnum.RED if True:
       return 0
-    case Color.GREEN:
+    case ColorEnum.GREEN:
       return 1
   return 0
 """,
-      "S23",
+      "S0803",
     )
 
-  def test_s23_allows_union_with_guard_if_still_exhaustive(self):
+  def test_s0803_allows_union_with_guard_if_still_exhaustive(self):
     self._translate(
       """@union
-class U:
+class UUnion:
   @variant
   class A:
     x: int
@@ -2860,39 +2866,39 @@ class U:
   class B:
     pass
 
-def f(u: U) -> int:
+def f(u: UUnion) -> int:
   match u:
-    case U.A(x) if x > 0:
+    case new.A(x) if x > 0:
       return x
-    case U.A(x):
+    case new.A(x):
       return 0
-    case U.B:
+    case new.B:
       return -1
   return 0
 """
     )
 
-  def test_s23_allows_union_partial_field_bind_exhaustive(self):
+  def test_s0803_allows_union_partial_field_bind_exhaustive(self):
     self._translate(
       """@union
-class U:
+class UUnion:
   @variant
   class Pair:
     a: int
     b: int
 
-def f(u: U) -> int:
+def f(u: UUnion) -> int:
   match u:
-    case U.Pair(a):
+    case new.Pair(a):
       return a
   return 0
 """
     )
 
-  def test_s23_rejects_union_missing_variant_without_wildcard(self):
+  def test_s0803_rejects_union_missing_variant_without_wildcard(self):
     self._expect_strict_fail(
       """@union
-class U:
+class UUnion:
   @variant
   class A:
     x: int
@@ -2901,169 +2907,169 @@ class U:
   class B:
     pass
 
-def f(u: U) -> int:
+def f(u: UUnion) -> int:
   match u:
-    case U.A(x):
+    case new.A(x):
       return x
   return 0
 """,
-      "S23",
+      "S0803",
     )
 
-  def test_s23_allows_union_empty_parens_full_bind(self):
+  def test_s0803_allows_union_empty_parens_full_bind(self):
     self._translate(
       """@union
-class U:
+class UUnion:
   @variant
   class Pair:
     a: int
     b: int
 
-def f(u: U) -> int:
+def f(u: UUnion) -> int:
   match u:
-    case U.Pair():
+    case new.Pair():
       return 0
   return 0
 """
     )
 
-  def test_s23_allows_union_kwd_full_bind(self):
+  def test_s0803_allows_union_kwd_full_bind(self):
     self._translate(
       """@union
-class U:
+class UUnion:
   @variant
   class Pair:
     a: int
     b: int
 
-def f(u: U) -> int:
+def f(u: UUnion) -> int:
   match u:
-    case U.Pair(a=a, b=b):
+    case new.Pair(a=a, b=b):
       return a + b
   return 0
 """
     )
 
-  def test_s23_rejects_union_literal_positional_for_exhaustive(self):
+  def test_s0803_rejects_union_literal_positional_for_exhaustive(self):
     self._expect_strict_fail(
       """@union
-class U:
+class UUnion:
   @variant
   class Pair:
     a: int
     b: int
 
-def f(u: U) -> int:
+def f(u: UUnion) -> int:
   match u:
-    case U.Pair(a, 1):
+    case new.Pair(a, 1):
       return a
   return 0
 """,
-      "S23",
+      "S0803",
     )
 
-  def test_s23_rejects_union_literal_kwd_for_exhaustive(self):
+  def test_s0803_rejects_union_literal_kwd_for_exhaustive(self):
     self._expect_strict_fail(
       """@union
-class U:
+class UUnion:
   @variant
   class Pair:
     a: int
     b: int
 
-def f(u: U) -> int:
+def f(u: UUnion) -> int:
   match u:
-    case U.Pair(a=1, b=b):
+    case new.Pair(a=1, b=b):
       return b
   return 0
 """,
-      "S23",
+      "S0803",
     )
 
-  def test_s24_rejects_wide_union_case_before_literal(self):
+  def test_s0804_rejects_wide_union_case_before_literal(self):
     self._expect_strict_fail(
       """@union
-class U:
+class UUnion:
   @variant
   class Move:
     x: int
     y: int
 
-def f(u: U) -> int:
+def f(u: UUnion) -> int:
   match u:
-    case U.Move(x, _):
+    case new.Move(x, _):
       return x
-    case U.Move(0, y):
+    case new.Move(0, y):
       return y
   return 0
 """,
-      "S24",
+      "S0804",
     )
 
-  def test_s24_allows_literal_before_wide_union_case(self):
+  def test_s0804_allows_literal_before_wide_union_case(self):
     self._translate(
       """@union
-class U:
+class UUnion:
   @variant
   class Move:
     x: int
     y: int
 
-def f(u: U) -> int:
+def f(u: UUnion) -> int:
   match u:
-    case U.Move(0, y):
+    case new.Move(0, y):
       return y
-    case U.Move(x, _):
+    case new.Move(x, _):
       return x
   return 0
 """
     )
 
-  def test_s24_ignores_shadow_when_earlier_has_guard(self):
+  def test_s0804_ignores_shadow_when_earlier_has_guard(self):
     self._translate(
       """@union
-class U:
+class UUnion:
   @variant
   class Move:
     x: int
     y: int
 
-def f(u: U) -> int:
+def f(u: UUnion) -> int:
   match u:
-    case U.Move(x, _) if x != 0:
+    case new.Move(x, _) if x != 0:
       return x
-    case U.Move(0, y):
+    case new.Move(0, y):
       return y
-    case U.Move(x, y):
+    case new.Move(x, y):
       return 0
   return 0
 """
     )
 
-  def test_s24_rejects_catchall_before_literal_same_variant(self):
+  def test_s0804_rejects_catchall_before_literal_same_variant(self):
     self._expect_strict_fail(
       """@union
-class U:
+class UUnion:
   @variant
   class Move:
     x: int
     y: int
 
-def f(u: U) -> int:
+def f(u: UUnion) -> int:
   match u:
-    case U.Move(x, y):
+    case new.Move(x, y):
       return x + y
-    case U.Move(0, y):
+    case new.Move(0, y):
       return y
   return 0
 """,
-      "S24",
+      "S0804",
     )
 
-  def test_s24_rejects_interleaved_variant_cases(self):
+  def test_s0804_rejects_interleaved_variant_cases(self):
     self._expect_strict_fail(
       """@union
-class U:
+class UUnion:
   @variant
   class Move:
     x: int
@@ -3072,23 +3078,23 @@ class U:
   class Write:
     s: str
 
-def f(u: U) -> int:
+def f(u: UUnion) -> int:
   match u:
-    case U.Move(x):
+    case new.Move(x):
       return x
-    case U.Write(s):
+    case new.Write(s):
       return len(s)
-    case U.Move(y):
+    case new.Move(y):
       return y
   return 0
 """,
-      "S24",
+      "S0804",
     )
 
-  def test_s24_allows_contiguous_same_variant_cases(self):
+  def test_s0804_allows_contiguous_same_variant_cases(self):
     self._translate(
       """@union
-class U:
+class UUnion:
   @variant
   class Move:
     x: int
@@ -3097,22 +3103,22 @@ class U:
   class Write:
     s: str
 
-def f(u: U) -> int:
+def f(u: UUnion) -> int:
   match u:
-    case U.Move(1):
+    case new.Move(1):
       return 1
-    case U.Move(2):
+    case new.Move(2):
       return 2
-    case U.Move(x):
+    case new.Move(x):
       return x
-    case U.Write(s):
+    case new.Write(s):
       return len(s)
   return 0
 """
     )
 
 
-  def test_s29_rejects_reverse_self_dunder(self):
+  def test_s1005_rejects_reverse_self_dunder(self):
     self._expect_strict_fail(
       """class Num:
   def __add__(self, other: Self) -> Self:
@@ -3126,10 +3132,10 @@ def main():
   b: Num = new()
   return a + b
 """,
-      "S29",
+      "S1005",
     )
 
-  def test_s29_rejects_reverse_rmatmul_self(self):
+  def test_s1005_rejects_reverse_rmatmul_self(self):
     self._expect_strict_fail(
       """class Mat:
   def __matmul__(self, other: Self) -> Self:
@@ -3143,22 +3149,21 @@ def main():
   b: Mat = new()
   return a @ b
 """,
-      "S29",
+      "S1005",
     )
 
-  def test_s29_allows_reverse_scalar_dunder(self):
+  def test_s1005_allows_reverse_scalar_dunder(self):
     self._translate(
       """class Row:
   def __rmul__(self, n: int) -> Self:
     return self
 
-def main():
-  r: Row = new()
-  return r
+def main() -> Row:
+  return new()
 """
     )
 
-  def test_s33_rejects_translator_only_method(self):
+  def test_s0106_rejects_translator_only_method(self):
     self._expect_strict_fail(
       """class Box:
   def build(self) -> None:
@@ -3167,10 +3172,10 @@ def main():
 def main():
   b: Box = new()
 """,
-      "S33",
+      "S0106",
     )
 
-  def test_s33_rejects_translator_only_field(self):
+  def test_s0106_rejects_translator_only_field(self):
     self._expect_strict_fail(
       """class Box:
   select: int = 0
@@ -3178,10 +3183,10 @@ def main():
 def main():
   b: Box = new()
 """,
-      "S33",
+      "S0106",
     )
 
-  def test_s33_allows_copy_from(self):
+  def test_s0106_allows_copy_from(self):
     self._translate(
       """class Box:
   def copy_from(self, other: Self) -> None:
@@ -3192,7 +3197,7 @@ def main():
 """
     )
 
-  def test_s27_allows_unittest_submodule_import(self):
+  def test_s0201_allows_unittest_submodule_import(self):
     self._translate(
       """from py2cpp import *
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
@@ -3205,12 +3210,11 @@ class T(TestCaseMixin):
     pass
 
 def main():
-  suite: TestSuite = new()
-  return TextTestRunner().run(suite)
+  return TextTestRunner().run(TestSuite())
 """
     )
 
-  def test_s27_rejects_unittest_submodule_override(self):
+  def test_s0201_rejects_unittest_submodule_override(self):
     self._expect_strict_fail(
       """from py2cpp import *
 from py2cpp.test.unittest import override
@@ -3225,10 +3229,10 @@ class T(TestCaseMixin):
 def main():
   return 0
 """,
-      "S27",
+      "S0201",
     )
 
-  def test_s27_rejects_named_py2cpp_import(self):
+  def test_s0201_rejects_named_py2cpp_import(self):
     self._expect_strict_fail(
       """from py2cpp import override
 
@@ -3240,10 +3244,10 @@ class Base:
 def main():
   return 0
 """,
-      "S27",
+      "S0201",
     )
 
-  def test_s27_allows_io_submodule_import(self):
+  def test_s0201_allows_io_submodule_import(self):
     self._translate(
       """from py2cpp import *
 from py2cpp.io import open, StringIO
@@ -3255,7 +3259,7 @@ def main():
     )
 
 
-  def test_s37_rejects_pynone_annotation(self):
+  def test_s1102_rejects_pynone_annotation(self):
     self._expect_strict_fail(
       """def gen() -> GeneratorType[int, PyNone, PyNone]:
   yield 1
@@ -3263,10 +3267,10 @@ def main():
 def main():
   return 0
 """,
-      "S37",
+      "S1102",
     )
 
-  def test_s37_allows_none_annotation(self):
+  def test_s1102_allows_none_annotation(self):
     self._translate(
       """def gen() -> GeneratorType[int, None, None]:
   yield 1
@@ -3276,7 +3280,7 @@ def main():
 """
     )
 
-  def test_s38_rejects_for_yield_delegation(self):
+  def test_s1201_rejects_for_yield_delegation(self):
     self._expect_strict_fail(
       """def gen(xs: list[int]) -> GeneratorType[int, None, None]:
   for x in xs:
@@ -3285,10 +3289,10 @@ def main():
 def main():
   return 0
 """,
-      "S38",
+      "S1201",
     )
 
-  def test_s38_allows_yield_from(self):
+  def test_s1201_allows_yield_from(self):
     self._translate(
       """def gen(xs: list[int]) -> GeneratorType[int, None, None]:
   yield from xs
@@ -3298,7 +3302,7 @@ def main():
 """
     )
 
-  def test_s38_allows_for_else_yield(self):
+  def test_s1201_allows_for_else_yield(self):
     self._translate(
       """def gen() -> GeneratorType[int, None, None]:
   for i in range(3):
@@ -3311,7 +3315,7 @@ def main():
 """
     )
 
-  def test_s38_exempts_async_generator(self):
+  def test_s1201_exempts_async_generator(self):
     self._translate(
       """async def gen(xs: list[int]):
   for x in xs:
@@ -3322,7 +3326,7 @@ def main():
 """
     )
 
-  def test_s47_rejects_enum_without_enum_suffix(self):
+  def test_s0104_rejects_enum_without_enum_suffix(self):
     self._expect_strict_fail(
       """@enum
 class Mode:
@@ -3332,10 +3336,10 @@ class Mode:
 def main():
   return int(Mode.On)
 """,
-      "S47",
+      "S0104",
     )
 
-  def test_s47_rejects_flag_without_flag_suffix(self):
+  def test_s0104_rejects_flag_without_flag_suffix(self):
     self._expect_strict_fail(
       """@enum(flag=True)
 class Perm:
@@ -3345,10 +3349,10 @@ class Perm:
 def main():
   return int(Perm.Read)
 """,
-      "S47",
+      "S0104",
     )
 
-  def test_s47_rejects_protocol_without_type_suffix(self):
+  def test_s0104_rejects_protocol_without_type_suffix(self):
     self._expect_strict_fail(
       """@protocol
 class Sized:
@@ -3357,10 +3361,10 @@ class Sized:
 def main():
   return 0
 """,
-      "S47",
+      "S0104",
     )
 
-  def test_s47_rejects_boxing_without_unsafe_suffix(self):
+  def test_s0104_rejects_boxing_without_unsafe_suffix(self):
     self._expect_strict_fail(
       """@boxing
 class Cell:
@@ -3370,10 +3374,10 @@ class Cell:
 def main():
   return 0
 """,
-      "S47",
+      "S0104",
     )
 
-  def test_s47_allows_cpython_exception_names(self):
+  def test_s0104_allows_cpython_exception_names(self):
     self._translate(
       """class StopIteration(Exception):
   pass
@@ -3386,7 +3390,7 @@ def main():
 """
     )
 
-  def test_s47_rejects_union_without_union_suffix(self):
+  def test_s0104_rejects_union_without_union_suffix(self):
     self._expect_strict_fail(
       """@union
 class Message:
@@ -3397,10 +3401,10 @@ class Message:
 def main():
   return 0
 """,
-      "S47",
+      "S0104",
     )
 
-  def test_s47_allows_result_optional_iter_result(self):
+  def test_s0104_allows_result_optional_iter_result(self):
     self._translate(
       """def take(r: Result[int, str], o: Optional[int], ir: IterResult[int, None]) -> int:
   return 0
@@ -3410,7 +3414,7 @@ def main():
 """
     )
 
-  def test_s47_rejects_exception_without_error_suffix(self):
+  def test_s0104_rejects_exception_without_error_suffix(self):
     self._expect_strict_fail(
       """class Boom(Exception):
   pass
@@ -3418,10 +3422,10 @@ def main():
 def main():
   raise Boom()
 """,
-      "S47",
+      "S0104",
     )
 
-  def test_s47_allows_enum_and_protocol_suffixes(self):
+  def test_s0104_allows_enum_and_protocol_suffixes(self):
     self._translate(
       """@enum
 class ModeEnum:
@@ -3433,7 +3437,7 @@ def main():
 """
     )
 
-  def test_s47_rejects_delegate_without_delegate_suffix(self):
+  def test_s0104_rejects_delegate_without_delegate_suffix(self):
     self._expect_strict_fail(
       """@delegate
 def UIEvent() -> None: ...
@@ -3441,10 +3445,10 @@ def UIEvent() -> None: ...
 def main():
   return 0
 """,
-      "S47",
+      "S0104",
     )
 
-  def test_s47_allows_delegate_suffix(self):
+  def test_s0104_allows_delegate_suffix(self):
     self._translate(
       """@delegate
 def UIEventDelegate() -> None: ...
@@ -3455,7 +3459,7 @@ def main():
 """
     )
 
-  def test_s48_rejects_single_letter_class_type_param(self):
+  def test_s0105_rejects_single_letter_class_type_param(self):
     self._expect_strict_fail(
       """class Box[T]:
   value: T = new()
@@ -3463,10 +3467,10 @@ def main():
 def main():
   return 0
 """,
-      "S48",
+      "S0105",
     )
 
-  def test_s48_rejects_letter_digit_class_type_param(self):
+  def test_s0105_rejects_letter_digit_class_type_param(self):
     self._expect_strict_fail(
       """class Box[T1]:
   value: T1 = new()
@@ -3474,10 +3478,10 @@ def main():
 def main():
   return 0
 """,
-      "S48",
+      "S0105",
     )
 
-  def test_s48_allows_semantic_class_type_param(self):
+  def test_s0105_allows_semantic_class_type_param(self):
     self._translate(
       """class Box[Element]:
   value: Element
@@ -3491,7 +3495,7 @@ def main():
 """
     )
 
-  def test_s48_allows_short_function_type_param(self):
+  def test_s0105_allows_short_function_type_param(self):
     self._translate(
       """def identity[T](x: T) -> T:
   return x
@@ -3501,7 +3505,7 @@ def main():
 """
     )
 
-  def test_s49_rejects_class_default_and_init_assign(self):
+  def test_s0405_rejects_class_default_and_init_assign(self):
     self._expect_strict_fail(
       """class Box:
   n: int = 0
@@ -3513,10 +3517,10 @@ def main():
   b: Box = new(1)
   return b.n
 """,
-      "S49",
+      "S0405",
     )
 
-  def test_s49_rejects_augassign_in_init(self):
+  def test_s0405_rejects_augassign_in_init(self):
     self._expect_strict_fail(
       """class Box:
   n: int = 0
@@ -3528,10 +3532,10 @@ def main():
   b: Box = new()
   return b.n
 """,
-      "S49",
+      "S0405",
     )
 
-  def test_s49_rejects_conditional_assign_in_init(self):
+  def test_s0405_rejects_conditional_assign_in_init(self):
     self._expect_strict_fail(
       """class Box:
   n: int = 0
@@ -3544,10 +3548,10 @@ def main():
   b: Box = new(1)
   return b.n
 """,
-      "S49",
+      "S0405",
     )
 
-  def test_s49_rejects_subclass_assign_of_base_default(self):
+  def test_s0405_rejects_subclass_assign_of_base_default(self):
     self._expect_strict_fail(
       """class Base:
   n: int = 0
@@ -3560,10 +3564,10 @@ def main():
   d: Derived = new(1)
   return d.n
 """,
-      "S49",
+      "S0405",
     )
 
-  def test_s49_allows_class_default_without_init_assign(self):
+  def test_s0405_allows_class_default_without_init_assign(self):
     self._translate(
       """class Box:
   n: int = 0
@@ -3577,7 +3581,7 @@ def main():
 """
     )
 
-  def test_s49_allows_init_assign_without_class_default(self):
+  def test_s0405_allows_init_assign_without_class_default(self):
     self._translate(
       """class Box:
   n: int
@@ -3591,7 +3595,7 @@ def main():
 """
     )
 
-  def test_s49_allows_init_ann_assign_without_class_default(self):
+  def test_s0405_allows_init_ann_assign_without_class_default(self):
     self._translate(
       """class Box:
   def __init__(self, n: int):
@@ -3603,7 +3607,7 @@ def main():
 """
     )
 
-  def test_s49_allows_copy_assign_with_class_default(self):
+  def test_s0405_allows_copy_assign_with_class_default(self):
     self._translate(
       """class Box:
   n: int = 0
@@ -3623,7 +3627,7 @@ def main():
 """
     )
 
-  def test_s49_allows_dataclass_field_default(self):
+  def test_s0405_allows_dataclass_field_default(self):
     self._translate(
       """@dataclass
 class Point:

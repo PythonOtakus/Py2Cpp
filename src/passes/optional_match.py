@@ -1,4 +1,4 @@
-"""``Optional[T]`` 的 ``match`` 语法糖（``case None`` / 字面量 / 捕获；**S25** 禁止 ``case Optional.Some`` / ``case Optional.None_``）。"""
+"""``Optional[T]`` 的 ``match`` 语法糖（``case None`` / 字面量 / 捕获；**S0805** 禁止 ``case Optional.Some`` / ``case Optional.None_``）。"""
 from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING

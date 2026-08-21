@@ -1,6 +1,6 @@
 """py2cpp 内建：类型标记、内存 API、装饰器桩、new/len/print 等。
 
-由 ``py2cpp/__init__.py`` 再导出；标准库子模块须 ``from ..builtins import *``（深度见编码规范 S27）。
+由 ``py2cpp/__init__.py`` 再导出；标准库子模块须 ``from ..builtins import *``（深度见编码规范 S0201）。
 """
 from __future__ import annotations
 
@@ -600,9 +600,9 @@ def new(*args):
 
   静态工厂/方法：``x: JsonDocument[Org] = new.open(...)`` 等价于 ``JsonDocument[Org].open(...)``；
   ``@union`` 变体：``x: Message = new.Quit()`` / ``new.Move(1, 2)`` 等价于 ``Message.Quit()`` / ``Message.Move(1, 2)``（须左侧注解或 ``return`` 返回类型）。
-  ``match`` 主体为 ``@union`` 时优先 ``case new.Variant(...):`` 勿 ``case Union.Variant(...):``（S06b）。
+  ``match`` 主体为 ``@union`` 时优先 ``case new.Variant(...):`` 勿 ``case Union.Variant(...):``（S0304）。
 
-  字符串用 ``\"...\"`` 字面量，容器空表用 ``[]``/``{}``（``deque``/``frozendict``/``dict``/``frozenlist`` 等勿无参 ``new()``；``deque`` 有界用 ``new(maxLen)``）；元组用 ``(a, b)``；拷贝/迭代器/view 等字面量无法表达时用 ``new(...)``（勿 ``Cls(...)``，S06b）；注解 ``Self`` 见 S06。
+  字符串用 ``\"...\"`` 字面量，容器空表用 ``[]``/``{}``（``deque``/``frozendict``/``dict``/``frozenlist`` 等勿无参 ``new()``；``deque`` 有界用 ``new(maxLen)``）；元组用 ``(a, b)``；拷贝/迭代器/view 等字面量无法表达时用 ``new(...)``（勿 ``Cls(...)``，S0304）；注解 ``Self`` 见 S0303–S0307。
   """
   pass
 

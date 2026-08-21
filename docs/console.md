@@ -132,7 +132,7 @@ class BuildArgs(ArgumentParserMixin):
 args: BuildArgs = new.parse()
 ```
 
-宿主须显式继承 ``ArgumentParserMixin``。赋值处按 S06 写 ``new.parse()`` / ``new.parse(argv)``（语义即 ``BuildArgs.parse``）。默认读取进程参数；传入 ``argv`` 供测试和嵌入式程序使用。参数来源需由最小 `py2cpp.system.sys.argv` 支持，该能力与本模块同时实施。勿写 ``ArgumentParserMixin.parse[T]``。
+宿主须显式继承 ``ArgumentParserMixin``。赋值处按 S0303–S0307 写 ``new.parse()`` / ``new.parse(argv)``（语义即 ``BuildArgs.parse``）。默认读取进程参数；传入 ``argv`` 供测试和嵌入式程序使用。参数来源需由最小 `py2cpp.system.sys.argv` 支持，该能力与本模块同时实施。勿写 ``ArgumentParserMixin.parse[T]``。
 
 `PosArgMeta`、`OptArgMeta`、`FlagArgMeta` 都是 `@annotation` + `@dataclass` 元数据类，字段注解必须遵循项目既有的 `Type @Meta(...)` 写法。字段名始终是 Python `snake_case`；长选项由字段名自动转换为 kebab-case，例如 `asset_root` 对应 `--asset-root`。短选项只由 `short` 指定，避免再引入重复表达同一名称的 `dest` 或 `long`。
 

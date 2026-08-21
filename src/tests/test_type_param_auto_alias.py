@@ -40,7 +40,7 @@ class Box[Element]:
       ),
     )
 
-  def test_s43_rejects_manual_forward(self):
+  def test_s0605_rejects_manual_forward(self):
     with tempfile.TemporaryDirectory() as tmp:
       out = Path(tmp)
       py = out / "mod.py"
@@ -56,7 +56,7 @@ class Box[T]:
       )
       with self.assertRaises(Exception) as ctx:
         Translator.translate_file(str(py), output_dir=str(out), include_stdlib=True)
-      self.assertIn("S43", str(ctx.exception))
+      self.assertIn("S0605", str(ctx.exception))
 
 
 if __name__ == "__main__":

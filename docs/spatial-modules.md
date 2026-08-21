@@ -11,7 +11,7 @@
 | 模块 | 源码 | 测试 | 说明 |
 |------|------|------|------|
 | `spatial.color` | `py2cpp/spatial/color.py` | `test/spatial/test_color.py` | `Color[Scalar: RealType = float]` / `ColorMatrix[Scalar: RealType = float]`；`[0,1]` 钳制；`lerp`/`withAlpha`/`toArgb`/`fromArgb`；矩阵用 `ColorMatrix.apply(color)`（**无** `Color.applyMatrix`，避免同类前向声明） |
-| `spatial.rect` | `py2cpp/spatial/rect.py` | `test/spatial/test_rect.py` | `Rect[Scalar: RealType = float]`；轴对齐；尺寸属性 **`size`**（``Vector2[Scalar]``；S02 对 ``Rect`` 豁免）；谓词 `contains`/`overlaps`/`embraces`；`&`/`|`；`in`；`applyMatrix(Matrix3[Scalar])`；**无** `Rect @ Rect` |
+| `spatial.rect` | `py2cpp/spatial/rect.py` | `test/spatial/test_rect.py` | `Rect[Scalar: RealType = float]`；轴对齐；尺寸属性 **`size`**（``Vector2[Scalar]``；S0102 对 ``Rect`` 豁免）；谓词 `contains`/`overlaps`/`embraces`；`&`/`|`；`in`；`applyMatrix(Matrix3[Scalar])`；**无** `Rect @ Rect` |
 | 其余 | — | — | 未实现 |
 
 ---

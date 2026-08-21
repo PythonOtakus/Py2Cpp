@@ -184,7 +184,7 @@ session.close()
 - **``Table[T]``** 内 ORM 调用 ``orm.py`` 静态 helper，以 **``Self = T``** 做 ``Self.iterFields`` 译期展开；**不再**向方法传入实体类名。
 - **事务**：``commit`` / ``rollback`` / ``close`` 在 **``Session``**；DML 在 **``Table[T]``** 上，共用同一 ``ConnectionType``。
 
-**命名**：``Table`` 方法**勿**用 ``select``（与译期 ``obj.select("…")`` 路径 DSL 及 [编码规范 S33](./编码规范.md) 区分）；全表物化用 **`all()``**；懒遍历用 **`for u in users`**（P2，**无** ``users.iter()`` 公开方法）。
+**命名**：``Table`` 方法**勿**用 ``select``（与译期 ``obj.select("…")`` 路径 DSL 及 [编码规范 S0106](./编码规范.md) 区分）；全表物化用 **`all()``**；懒遍历用 **`for u in users`**（P2，**无** ``users.iter()`` 公开方法）。
 
 **``Table[T]`` 方法（P1 / P2）**：
 

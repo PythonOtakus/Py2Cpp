@@ -1,4 +1,4 @@
-"""``PyTuple`` 解包：``*_`` / 负 ``get`` / S36。"""
+"""``PyTuple`` 解包：``*_`` / 负 ``get`` / S1202。"""
 from __future__ import annotations
 
 import ast
@@ -117,7 +117,7 @@ def empty_mid() -> PyTuple[()]:
 
 
 class TupleUnpackStrictS36Tests(unittest.TestCase):
-  def _expect_s36(self, body: str) -> None:
+  def _expect_s1202(self, body: str) -> None:
     with tempfile.TemporaryDirectory() as tmp:
       out = Path(tmp)
       py = out / "mod.py"
@@ -126,10 +126,10 @@ class TupleUnpackStrictS36Tests(unittest.TestCase):
         Translator.translate_file(
           str(py), output_dir=str(out / "generated"), include_stdlib=True, strict=True,
         )
-      self.assertIn("[S36]", str(ctx.exception))
+      self.assertIn("[S1202]", str(ctx.exception))
 
-  def test_s36_unused_unpack_binding(self):
-    self._expect_s36(
+  def test_s1202_unused_unpack_binding(self):
+    self._expect_s1202(
       """
 def bad() -> int:
   a: int
@@ -140,7 +140,7 @@ def bad() -> int:
 """
     )
 
-  def test_s36_allows_underscore_slot(self):
+  def test_s1202_allows_underscore_slot(self):
     with tempfile.TemporaryDirectory() as tmp:
       out = Path(tmp)
       py = out / "mod.py"

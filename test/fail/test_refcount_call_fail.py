@@ -1,4 +1,4 @@
-"""负向：S31 — 勿 ``RefCount()`` 清空强引用，须 ``new()``。"""
+"""负向：S1101 — 勿 ``RefCount()`` 清空强引用，须 ``new()``。"""
 from py2cpp import *
 
 

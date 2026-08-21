@@ -8,7 +8,7 @@ from src.analysis.proxy import (
   is_super_call_form,
   is_super_dunder_call,
   is_super_method_call,
-  is_s01_init_forward_call,
+  is_s0101_init_forward_call,
   unwrap_super_receiver,
 )
 from src.passes.class_type_base import _entity_base_ast, expand_class_type_base
@@ -78,8 +78,8 @@ class TestProxyPass(unittest.TestCase):
       args=[ast.Constant(value=1)],
       keywords=[],
     )
-    self.assertTrue(is_s01_init_forward_call(fwd, in_class_init=True))
-    self.assertFalse(is_s01_init_forward_call(fwd, in_class_init=False))
+    self.assertTrue(is_s0101_init_forward_call(fwd, in_class_init=True))
+    self.assertFalse(is_s0101_init_forward_call(fwd, in_class_init=False))
 
   def test_cpp_proxy_inner_type(self):
     self.assertEqual(cpp_proxy_inner_type("PyProxy<Widget>"), "Widget")

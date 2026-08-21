@@ -94,7 +94,7 @@ def load_doc(path: str) -> None:
         Translator.translate_file(
           str(py), output_dir=str(out), include_stdlib=False, strict=True,
         )
-      self.assertIn("[S06b]", str(ctx.exception))
+      self.assertIn("[S0304]", str(ctx.exception))
       self.assertIn("new.open", str(ctx.exception))
 
   def test_ann_assign_new_union_variant(self):
@@ -146,7 +146,7 @@ def make_quit() -> None:
         Translator.translate_file(
           str(py), output_dir=str(out), include_stdlib=False, strict=True,
         )
-      self.assertIn("[S06b]", str(ctx.exception))
+      self.assertIn("[S0304]", str(ctx.exception))
       self.assertIn("new.Quit", str(ctx.exception))
 
   def test_strict_rejects_explicit_union_match(self):
@@ -181,7 +181,7 @@ def dispatch(msg: Message) -> int:
         Translator.translate_file(
           str(py), output_dir=str(out), include_stdlib=False, strict=True,
         )
-      self.assertIn("[S06b]", str(ctx.exception))
+      self.assertIn("[S0304]", str(ctx.exception))
       self.assertIn("new.Quit", str(ctx.exception))
 
 

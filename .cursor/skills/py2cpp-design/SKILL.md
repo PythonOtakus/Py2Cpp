@@ -238,7 +238,7 @@ generated\test\misc\test_containers.exe
 
 1. **解析**：`ast.parse` → `ClassInfo`、模块函数  
 2. **预处理 / 分析 / 后检**：完整顺序见 [reference.md §2.1](./reference.md#21-passessrcpasses顺序不可乱)（与 `translator.py` 对齐）。硬约束摘要：  
-   `expand_enum` / `expand_union` 在 dataclass 后；**S38 / `check_yield_from_in_async_def` 在 `expand_generators` 前**；**generators 在 decorators 前**；`expand_move_state` / `expand_descriptor_signatures` 在 analyze 前；analyze 后含 `check_parallel_loops`、`check_moved_use` 等。  
+   `expand_enum` / `expand_union` 在 dataclass 后；**S1201 / `check_yield_from_in_async_def` 在 `expand_generators` 前**；**generators 在 decorators 前**；`expand_move_state` / `expand_descriptor_signatures` 在 analyze 前；analyze 后含 `check_parallel_loops`、`check_moved_use` 等。  
 3. **生成**：`.h` / `.cpp` / `.inl`；runtime bootstrap 写 `py2cpp/minimal.h`（万能头）
 
 新增 pass：在 `src/passes/` 实现并在 `src/translator.py` **按依赖**插入；同步 reference §2.1 与 [参考手册 §4](../../../docs/参考手册.md#4-翻译流水线)；加 `src/tests/test_*.py`。

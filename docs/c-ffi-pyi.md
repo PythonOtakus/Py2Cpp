@@ -275,7 +275,7 @@ ffi math
 | docstring | 仅 `.pyi` 可读性；**不**编进 glue（§7.1） |
 | Umbrella | **不**进 `minimal.h` / bootstrap bulk；仅 import 闭包写入 |
 | Star-import | **禁止** `from ffi… import *`（strict / 解析期报错，§10） |
-| S27 | FFI 模块允许 `from py2cpp.builtins import *`（生成器风格） |
+| S0201 | FFI 模块允许 `from py2cpp.builtins import *`（生成器风格） |
 | `@native` glue | `src/emit/ffi_glue_emit.py`：`inline` 转发；`#include <c_header>`；指针/按值直传；白名单 `ffi_glue_allowlist`；Win32 导入库经 `ffi_msvc_comment_libs` 发 `#pragma comment(lib, …)`（如 `shellapi` → `shell32.lib`） |
 | sqlite 业务 | `py2cpp/sql/sqlite.py` 用 `Pointer[PyiSqlite3]`；`templates/sql/+sqlite.inl` 调 `::ffi::sqlite::sqlite3::…`（经 ffi 头间接拿到 C API） |
 

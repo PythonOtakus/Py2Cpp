@@ -3370,7 +3370,7 @@ class JsonDocStepUnion:
 @copyable
 @dataclass
 class JsonDocument[Root]:
-  """JSON 持久化文档；打开文件用 ``new.open(path, mode)``（``x: JsonDocument[T] = new.open(...)``；勿 ``JsonDocument[T].open``，S06b）。"""
+  """JSON 持久化文档；打开文件用 ``new.open(path, mode)``（``x: JsonDocument[T] = new.open(...)``；勿 ``JsonDocument[T].open``，S0304）。"""
 
   path: str = ""
   mode: str = ""

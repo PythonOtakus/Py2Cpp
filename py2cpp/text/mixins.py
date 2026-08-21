@@ -2,7 +2,7 @@
 
 宿主须声明 ``_data: T[:]`` 或 ``_data: array[T, StackLength]``（``StackLength>0`` 时 ``array`` 内联 SSO；``str`` 用 ``StringMixin._SsoCap``）；
 ``str(StringMixin[char])``、``bytes(StringMixin[byte])``。
-注解 ``Self`` 的空序列用 ``new()``（S06b）；``char[:]``/``byte[:]`` 缓冲见编码规范 §2.1。
+注解 ``Self`` 的空序列用 ``new()``（S0304）；``char[:]``/``byte[:]`` 缓冲见编码规范 §2.1。
 """
 from ..builtins import *
 from ..core.protocols import GeneratorType

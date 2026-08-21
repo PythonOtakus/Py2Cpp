@@ -1,4 +1,4 @@
-"""S30：mixin 须在实体基类之前（``test/fail/``）。"""
+"""S1006：mixin 须在实体基类之前（``test/fail/``）。"""
 from py2cpp import *
 
 

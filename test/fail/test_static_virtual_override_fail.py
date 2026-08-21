@@ -1,4 +1,4 @@
-"""``@protocol`` 静态虚实现缺 ``@override``（``test/fail/``，译期 S18）。"""
+"""``@protocol`` 静态虚实现缺 ``@override``（``test/fail/``，译期 S1002）。"""
 from py2cpp import *
 
 

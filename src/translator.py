@@ -70,7 +70,7 @@ from .passes.move_state import MOVE_STATE_FIELD, emit_move_state_epilogue_lines,
 from .passes.parallel_loop_check import check_parallel_loops
 from .passes.moved_use_check import check_moved_use
 from .passes.new_type_args import check_new_type_arguments
-from .passes.strict_style import check_static_virtual_override_s18, check_strict_style, check_yield_from_for_style, check_refcount_source_style, check_pynone_source_style, check_s32_dataclass_required_fields, check_s44_field_annotation_markers, _resolve_inherited_method
+from .passes.strict_style import check_static_virtual_override_s1002, check_strict_style, check_yield_from_for_style, check_refcount_source_style, check_pynone_source_style, check_s0402_dataclass_required_fields, check_s0403_field_annotation_markers, _resolve_inherited_method
 from .passes.protocol import expand_protocol
 from .codegen.protocol_traits_gen import compare_ops_no_pybool_only_helper_lines, protocol_traits_lines
 from .passes.decorators import expand_decorators
@@ -455,8 +455,8 @@ class Translator(ast.NodeVisitor):
                     stdlib_names.append(rel)
         translator.stdlib_modules_for_umbrella = tuple(stdlib_names)
         try:
-            check_s32_dataclass_required_fields(translator)
-            check_s44_field_annotation_markers(translator)
+            check_s0402_dataclass_required_fields(translator)
+            check_s0403_field_annotation_markers(translator)
             # 须在 expand_dataclass 之前：dataclass 会清掉类体字段默认值
             expand_argument_parser(translator)
             expand_dataclass(translator)
@@ -513,7 +513,7 @@ class Translator(ast.NodeVisitor):
             check_refcount_source_style(translator)
             check_pynone_source_style(translator)
             check_strict_style(translator)
-            check_static_virtual_override_s18(translator)
+            check_static_virtual_override_s1002(translator)
             check_parallel_loops(translator)
             check_moved_use(translator)
             prof.mark('checks')

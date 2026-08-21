@@ -1,4 +1,4 @@
-"""负向：S31 — ``@refcount`` 类或 ``T: refcount`` 形参勿写 ``RefCount[T]``。"""
+"""负向：S1101 — ``@refcount`` 类或 ``T: refcount`` 形参勿写 ``RefCount[T]``。"""
 from py2cpp import *
 
 

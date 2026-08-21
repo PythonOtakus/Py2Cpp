@@ -1,4 +1,4 @@
-"""S30：多实体继承 / mixin 顺序（``test/fail/``，见 ``build_fail.bat``）。"""
+"""S1006：多实体继承 / mixin 顺序（``test/fail/``，见 ``build_fail.bat``）。"""
 from py2cpp import *
 
 

@@ -1,7 +1,7 @@
 """``console.parse``：dataclass + ``*ArgMeta`` 声明式 CLI（见 ``docs/console.md`` §4）。
 
 宿主须继承 ``ArgumentParserMixin`` 并标 ``@dataclass``。调用 ``new.parse()`` /
-``new.parse(argv)``（赋值处 S06，语义即 ``BuildArgs.parse``）。``parse`` 与
+``new.parse(argv)``（赋值处 S0303–S0307，语义即 ``BuildArgs.parse``）。``parse`` 与
 ``@staticproperty helpText`` 用 ``Self.iterFields`` / ``getFieldAnnotation`` /
 ``getFieldType`` / ``getFieldDefault`` 译期展开。首版不含子命令。
 """

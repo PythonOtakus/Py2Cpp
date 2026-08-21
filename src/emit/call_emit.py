@@ -408,7 +408,7 @@ def _vararg_pack_for_call(tr: Translator, func: ast.expr, *, call: ast.Call | No
             return None
 
 def _try_emit_pynone_call_arg(tr: Translator, func: ast.expr, arg: ast.expr) -> str | None:
-    """``coro.send(None)`` / ``agen.asend(None)`` → ``PyNone()``（S37 禁止源码写 ``PyNone``）。"""
+    """``coro.send(None)`` / ``agen.asend(None)`` → ``PyNone()``（S1102 禁止源码写 ``PyNone``）。"""
     if not tr._is_none_constant(arg):
         return None
     match func:

@@ -57,7 +57,7 @@ def is_super_method_call(node: ast.Call) -> bool:
 
 
 def is_super_dunder_call(node: ast.Call) -> bool:
-  """``super.__call__()`` / ``super().__call__()`` / ``super.__init__(...)``（S01 豁免；不含 ``super().__init__``）。"""
+  """``super.__call__()`` / ``super().__call__()`` / ``super.__init__(...)``（S0101 豁免；不含 ``super().__init__``）。"""
   if not isinstance(node.func, ast.Attribute):
     return False
   if node.func.attr not in ("__call__", "__init__"):
@@ -69,8 +69,8 @@ def is_super_dunder_call(node: ast.Call) -> bool:
   return True
 
 
-def is_s01_init_forward_call(node: ast.Call, *, in_class_init: bool) -> bool:
-  """``__init__`` 内 ``super.__init__(...)`` / ``self.__init__(...)`` 参数转发（S01 豁免）。"""
+def is_s0101_init_forward_call(node: ast.Call, *, in_class_init: bool) -> bool:
+  """``__init__`` 内 ``super.__init__(...)`` / ``self.__init__(...)`` 参数转发（S0101 豁免）。"""
   if not in_class_init:
     return False
   if not isinstance(node.func, ast.Attribute) or node.func.attr != "__init__":

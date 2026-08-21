@@ -236,7 +236,7 @@ def pyi_type_export_name(c_name: str, *, is_enum: bool = False) -> str:
     base = PYI_PREFIX + c_ident_to_pascal(c_name[len(PYI_PREFIX_LEGACY):])
   else:
     base = PYI_PREFIX + c_ident_to_pascal(c_name)
-  # 避免 ``_exception`` → ``PyiException`` 被 S47 误判为 Python 异常类
+  # 避免 ``_exception`` → ``PyiException`` 被 S0104 误判为 Python 异常类
   if base.endswith("Exception") and not base.endswith("ExceptionRec"):
     base = f"{base}Rec"
   if is_enum and not base.endswith("Enum"):
@@ -1906,7 +1906,7 @@ def collect_model(
 
 
 def _rewrite_self_ann(ann: str, c_name: str) -> str:
-  """同类字段注解：``Pointer[PyiFoo]`` / ``PyiFoo`` → ``Self``（满足 S15）。"""
+  """同类字段注解：``Pointer[PyiFoo]`` / ``PyiFoo`` → ``Self``（满足 S0602）。"""
   if not c_name:
     return ann
   py = pyi_type_export_name(c_name)
@@ -2021,7 +2021,7 @@ def render_pyi(header: Path, model: FfiModel) -> str:
     "# ---------------------------------------------------------------------------",
     "",
   ])
-  # 同 py 导出名（如 ``_chdir``/``chdir`` → ``pyiChdir``）须全部 ``@overload``（S17）
+  # 同 py 导出名（如 ``_chdir``/``chdir`` → ``pyiChdir``）须全部 ``@overload``（S1001）
   py_name_counts: dict[str, int] = {}
   for fn in model.funcs:
     py_name_counts[fn.py_name] = py_name_counts.get(fn.py_name, 0) + 1

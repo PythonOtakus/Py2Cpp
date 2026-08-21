@@ -89,7 +89,7 @@ def drop(p: Pointer[Node]) -> None:
         Translator.translate_file(
           str(py), output_dir=str(out), include_stdlib=False, strict=True,
         )
-      self.assertIn("[S07]", str(ctx.exception))
+      self.assertIn("[S0308]", str(ctx.exception))
 
 
 if __name__ == "__main__":

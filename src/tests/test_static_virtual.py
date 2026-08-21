@@ -83,7 +83,7 @@ class Bad:
 """
     self._expect_strict_fail(
       src,
-      "S39",
+      "S1003",
       substring="仅允许写在 ``@protocol``",
     )
 
@@ -120,7 +120,7 @@ def main():
   w: Widget = try_parse[Widget]("1")
   return 0
 """
-    self._expect_strict_fail(src, "S18", substring="协议静态虚成员")
+    self._expect_strict_fail(src, "S1002", substring="协议静态虚成员")
 
   def test_is_protocol_static_virtual_method(self):
     node = ast.parse(

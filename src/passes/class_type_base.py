@@ -52,19 +52,19 @@ def _entity_base_ast(info: ClassInfo, tr: Translator) -> ast.expr | None:
 
 
 def check_class_inheritance_bases(tr: Translator) -> None:
-  """S30：全模块（含 ``test/fail/``）检查继承顺序与实体基类数量。"""
+  """S1006：全模块（含 ``test/fail/``）检查继承顺序与实体基类数量。"""
   from ..translation_error import TranslationError, location_from_node
-  from .strict_style import _Violation, _check_s30_inheritance_bases
+  from .strict_style import _Violation, _check_s1006_inheritance_bases
 
   violations: list[_Violation] = []
   for module_path in tr.module_asts:
     skip = getattr(tr, "skip_cached_analysis_module", None)
     if skip is not None and skip(module_path):
       continue
-    _check_s30_inheritance_bases(tr, module_path, violations)
+    _check_s1006_inheritance_bases(tr, module_path, violations)
   if not violations:
     return
-  parts: list[str] = [f"发现 {len(violations)} 处继承规则违规（S30）："]
+  parts: list[str] = [f"发现 {len(violations)} 处继承规则违规（S1006）："]
   first_loc = None
   for v in violations:
     loc = location_from_node(tr, v.node, module_path=v.module_path)

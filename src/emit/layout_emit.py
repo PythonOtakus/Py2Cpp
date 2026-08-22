@@ -445,7 +445,6 @@ def write_per_module_headers(tr: Translator) -> None:
       "py2cpp/io/path",
       "py2cpp/console",
       "py2cpp/console/popen",
-      "py2cpp/console/task",
     ):
       from ..constant.stdlib_modules import UMBRELLA_MSVC_UNDEF_MACROS
 
@@ -462,7 +461,7 @@ def write_per_module_headers(tr: Translator) -> None:
       for inc in _JSON_API_EXTRA_HEADER_INCLUDES:
         if inc not in ma.includes:
           extra_includes.append(inc)
-    if module_path == "py2cpp/console/task":
+    if module_path == "py2cpp/console":
       popen_h = "py2cpp/console/popen.h"
       if popen_h not in ma.includes and popen_h not in extra_includes:
         extra_includes.append(popen_h)
@@ -514,8 +513,8 @@ def write_per_module_headers(tr: Translator) -> None:
       content.append("")
     # stdio 等会把 ``popen`` 重新定义为宏；须在 include 之后、命名空间/声明之前再清一轮
     if module_path in (
+      "py2cpp/console",
       "py2cpp/console/popen",
-      "py2cpp/console/task",
     ):
       content.append("#ifdef _MSC_VER")
       content.append("#ifdef popen")

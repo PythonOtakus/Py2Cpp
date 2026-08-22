@@ -423,10 +423,16 @@ def _emit_method_impl(
   with tr._method_emit_context(info, msig), tr._use_source():
     cls_qual = tr._class_method_qualifier(info)
     params_def = params_def_override or msig.params_def
+    forward_call = None
     if method.name == "__init__":
-      from .final_emit import emit_final_ctor_init_suffix
+      from ..analysis.proxy import parse_self_init_forward_body
+      from .final_emit import emit_final_ctor_init_suffix, emit_self_init_delegate_suffix
 
-      init_suffix = emit_final_ctor_init_suffix(tr, info, method)
+      forward_call = parse_self_init_forward_body(method)
+      if forward_call is not None:
+        init_suffix = emit_self_init_delegate_suffix(tr, info, method, forward_call)
+      else:
+        init_suffix = emit_final_ctor_init_suffix(tr, info, method)
       params_def = tr._typename_member_alias_params(params_def, info)
       sig = f"{cls_qual}::{info.cpp_name()}({params_def}){init_suffix}"
     elif method.name == "__del__":
@@ -500,7 +506,9 @@ def _emit_method_impl(
             from .lazy_param_emit import emit_lazy_param_prologue
 
             emit_lazy_param_prologue(tr, msig.lazy_params)
-          if (info.module_path, info.name, method.name) in tr.generator_methods:
+          if forward_call is not None:
+            pass
+          elif (info.module_path, info.name, method.name) in tr.generator_methods:
             emit_generator_next(tr, method.body, class_info=info)
           else:
             tr._emit_generic_body_or_type_if(

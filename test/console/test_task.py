@@ -1,7 +1,7 @@
-"""``console.task`` / ``console.popen``：``Console`` 与 ``Popen``。"""
+"""``console`` / ``console.popen``：``Console`` 与 ``Popen``。"""
 from py2cpp import *
-from py2cpp.console.popen import CompletedProcess, Pipe, Popen
-from py2cpp.console.task import Console
+from py2cpp.console import Console
+from py2cpp.console.popen import Pipe, Popen, ProcessResult
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 
@@ -29,7 +29,7 @@ class ConsoleRunShellTests(TestCaseMixin):
 
   @override
   def test(self):
-    result: CompletedProcess = Console.run("echo run_shell", shell=True)
+    result: ProcessResult = Console.runShell("echo run_shell")
     self.assertEqual(result.returnCode, 0)
 
 
@@ -38,7 +38,7 @@ class ConsoleRunShellExitCodeTests(TestCaseMixin):
 
   @override
   def test(self):
-    result: CompletedProcess = Console.run("cmd.exe /c exit /b 7", captureOutput=True, shell=True)
+    result: ProcessResult = Console.runShell("cmd.exe /c exit /b 7", captureOutput=True)
     self.assertEqual(result.returnCode, 7)
 
 
@@ -48,7 +48,7 @@ class ConsoleRunListTests(TestCaseMixin):
   @override
   def test(self):
     args: list[str] = ["cmd.exe", "/c", "echo", "hello_run"]
-    result: CompletedProcess = Console.run(args, captureOutput=True)
+    result: ProcessResult = Console.run(args, captureOutput=True)
     self.assertEqual(result.returnCode, 0)
     self.assertTrue("hello_run" in result.stdout)
 
@@ -87,9 +87,9 @@ class PopenPipeTests(TestCaseMixin):
   @override
   def test(self):
     args: list[str] = ["cmd.exe", "/c", "echo", "pipe_ok"]
-    task: Popen = new(args, "", None, 0, Pipe, Pipe)
+    task: Popen = new(args, "", 0, Pipe, Pipe)
     task.start()
-    done: CompletedProcess = task.communicate()
+    done: ProcessResult = task.communicate()
     self.assertEqual(done.returnCode, 0)
     self.assertTrue("pipe_ok" in done.stdout)
 

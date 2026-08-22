@@ -39,19 +39,20 @@ class RangeIterator:
 class range(
   friends=(RangeIterator,),
 ):
+  _start: int = 0
+  _step: int = 1
+
   @overload
   def __init__(self, stop: int):
-    self._start: int = 0
-    self._stop: int = stop
-    self._step: int = 1
+    self.__init__(0, stop, 1)
 
   @overload
   def __init__(self, start: int, stop: int, step: int = 1):
     if step == 0:
       raise ValueError("range() arg 3 must not be zero")
-    self._start: int = start
-    self._stop: int = stop
-    self._step: int = step
+    self._start = start
+    self._stop = stop
+    self._step = step
 
   @property
   @immutable

@@ -48,7 +48,6 @@ UMBRELLA_PRIORITY_MODULES: tuple[str, ...] = (
   "console/parse",
   "console/render",
   "console/popen",
-  "console/task",
   "ui/meta",
   "ui/style",
   "ui/events",

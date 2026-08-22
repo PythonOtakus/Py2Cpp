@@ -37,9 +37,9 @@ class TestTypeNodeRoundtrip(unittest.TestCase):
     def test_pointer_and_ref_roundtrip(self):
         ptr = type_node_from_cpp_string('PyDictEntryUnsafe<Key, Value>*')
         self.assertEqual(ptr.render(CLASS_BODY), 'PyDictEntryUnsafe<Key, Value>*')
-        ref = type_node_from_cpp_string('PyTextIOWrapper&')
+        ref = type_node_from_cpp_string('PyTextIO&')
         self.assertEqual(ref.kind, TypeKind.REF)
-        self.assertEqual(ref.render(CLASS_BODY), 'PyTextIOWrapper&')
+        self.assertEqual(ref.render(CLASS_BODY), 'PyTextIO&')
 
     def test_pointer_and_array(self):
         inner = TypeNode.template('DictEntryUnsafe', 'PyDictEntryUnsafe', TypeNode.type_param('Key'), TypeNode.type_param('Value'))

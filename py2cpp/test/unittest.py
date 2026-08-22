@@ -26,21 +26,26 @@ class TestResult:
   若按值传递，``beginTest`` 的计数与用例名会丢失（进度恒为 ``[0/N]``、名为 ``.``、耗时异常）。
   """
 
+  testsRun: int = 0
+  testsFailed: int = 0
+  assertionsFailed: int = 0
+  failedTags: list[int]
+  failedNames: list[str]
+  failedDeltas: list[int]
+  _currentTag: int = 0
+  _caseFailuresBefore: int = 0
+  verbosity: int = 0
+  caseTotal: int = 0
+  _currentName: str = "."
+  _caseStart: float64 = 0.0
+  caseElapsed: list[float64]
+  totalSeconds: float64 = 0.0
+
   def __init__(self):
-    self.testsRun: int = 0
-    self.testsFailed: int = 0
-    self.assertionsFailed: int = 0
-    self.failedTags: list[int] = []
-    self.failedNames: list[str] = []
-    self.failedDeltas: list[int] = []
-    self._currentTag: int = 0
-    self._caseFailuresBefore: int = 0
-    self.verbosity: int = 0
-    self.caseTotal: int = 0
-    self._currentName: str = "."
-    self._caseStart: float64 = 0.0
-    self.caseElapsed: list[float64] = []
-    self.totalSeconds: float64 = 0.0
+    self.failedTags = []
+    self.failedNames = []
+    self.failedDeltas = []
+    self.caseElapsed = []
 
   @immutable
   def formatElapsed(self, seconds: float64) -> str:
@@ -113,8 +118,7 @@ class TestResult:
 class TestCase:
   """测试基类：软断言（累加 ``failures``，不抛异常）。"""
 
-  def __init__(self):
-    self.failures = 0
+  failures: int = 0
 
   def setUp(self) -> None:
     pass

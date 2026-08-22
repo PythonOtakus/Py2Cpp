@@ -27,6 +27,8 @@ class ComponentTableMeta:
 class ECSComponentTableIterator[Component]:
   """遍历当前持有组件 ``T`` 的实体（稠密序）。"""
 
+  _index: int = 0
+
   @overload
   def __init__(self):
     pass
@@ -34,7 +36,6 @@ class ECSComponentTableIterator[Component]:
   @overload
   def __init__(self, owner: ECSComponentTable[Component]):
     self._owner: ECSComponentTable[Component] = owner
-    self._index: int = 0
 
   def __iter__(self) -> Self:
     return self
@@ -50,6 +51,8 @@ class ECSComponentTableIterator[Component]:
 class ECSComponentTableQuery[Lead, Other]:
   """``for e in table_a & table_b``：遍历在 ``table_a`` 与 ``table_b`` 中均持有组件的实体。"""
 
+  _index: int = 0
+
   @overload
   def __init__(self):
     pass
@@ -58,7 +61,6 @@ class ECSComponentTableQuery[Lead, Other]:
   def __init__(self, lead: ECSComponentTable[Lead], other: ECSComponentTable[Other]):
     self._lead: ECSComponentTable[Lead] = lead
     self._other: ECSComponentTable[Other] = other
-    self._index: int = 0
 
   def __iter__(self) -> Self:
     return self

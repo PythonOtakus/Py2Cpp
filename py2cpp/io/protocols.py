@@ -7,7 +7,7 @@ from ..core.protocols import Self, protocol
 
 @protocol
 class TextWriterType:
-  """文本写出端；``TextIOWrapper`` / ``StringIO`` 均实现。"""
+  """文本写出端；``TextIO`` / ``StringIO`` 均实现。"""
 
   @overload
   def write(self, s: str) -> int: ...
@@ -20,14 +20,14 @@ class TextWriterType:
 
 @protocol
 class TextReaderType:
-  """文本读入端；``TextIOWrapper`` / ``StringIO`` 均实现。"""
+  """文本读入端；``TextIO`` / ``StringIO`` 均实现。"""
 
   def read(self, size: int = int.Max) -> str: ...
 
 
 @protocol
 class TextIOType:
-  """文本双向流（``io.TextIOBase`` 子集）；``StringIO`` / ``TextIOWrapper`` 均实现。"""
+  """文本双向流（``io.TextIOBase`` 子集）；``StringIO`` / ``TextIO`` 均实现。"""
 
   def __bool__(self) -> bool: ...
 

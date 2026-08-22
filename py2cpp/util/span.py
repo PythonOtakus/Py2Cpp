@@ -11,18 +11,20 @@ from .slice import slice
 class span[Element]:
   """绑定 ``StackArray`` / ``array`` / ``list`` 的连续区间。"""
 
+  _ptr: Pointer[Element] = None
+  _length: int = 0
+  _step: int = 1
+
   @overload
   def __init__(self):
-    self._ptr: Pointer[Element] = None
-    self._length: int = 0
-    self._step: int = 1
+    pass
 
   @overload
   def __init__(self, ptr: Pointer[Element], length: int, step: int = 1):
     """``length`` 为自 ``ptr`` 起的底层槽位跨度（``step==1`` 时即元素个数）。"""
-    self._ptr: Pointer[Element] = ptr
-    self._length: int = length
-    self._step: int = step
+    self._ptr = ptr
+    self._length = length
+    self._step = step
 
   def __copy__(self, other: Self):
     self._ptr = other._ptr

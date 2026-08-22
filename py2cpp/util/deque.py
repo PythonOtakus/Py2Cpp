@@ -13,9 +13,10 @@ class DequeNodeUnsafe[Element]:
 
 
 class DequeIterator[Element]:
+  _index: int = 0
+
   def __init__(self, dq: deque[Element]):
     self._dq: deque[Element] = dq
-    self._index: int = 0
 
   def __iter__(self):
     return self
@@ -47,13 +48,13 @@ class DequeReverseIterator[Element]:
 class deque[Element](ContainerMixin):
 
   _NoMaxLen: int @const = int.Min
+  _head: DequeNodeUnsafe[Element] = None
+  _tail: DequeNodeUnsafe[Element] = None
+  _length: int = 0
 
   __repr__ = __str__
 
   def __init__(self, maxLen: int = Self._NoMaxLen):
-    self._head: DequeNodeUnsafe[Element] = None
-    self._tail: DequeNodeUnsafe[Element] = None
-    self._length: int = 0
     self._maxLen: int = maxLen
 
   def __del__(self):

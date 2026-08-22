@@ -27,6 +27,7 @@ class Pool[Element]:
   _BlockCount: int @const = 32
   _FreeDataLen: int @const = 2048
   _SlotCap: int @const = 2048
+  _live: int = 0
 
   def __init__(self, blockCapacity: int = Self._BlockCap):
     if blockCapacity < 1:
@@ -42,7 +43,6 @@ class Pool[Element]:
     self._metaCapacity: list[int] = []
     self._skipHi: list[int] = []
     self._useMark: int[:_FreeDataLen] = new()
-    self._live: int = 0
 
   def __del__(self):
     self.clear()

@@ -9,7 +9,7 @@ from ..system.time import time
 from ..text.bytes import bytes
 from ..text import str
 from ..util.list import list
-from . import TextIOWrapper
+from . import TextIO
 from ffi.crt.direct import pyiChdir, pyiGetcwd, pyiMkdir, pyiRmdir
 from ffi.crt.stat import PyiSIfdir, PyiSIfreg, PyiStat64I32, pyiStat64I32
 from ffi.crt.stdio import pyiRemove
@@ -980,7 +980,7 @@ class Path:
     if not self.exists():
       if not existOk:
         raise FileNotFoundError()
-      f: TextIOWrapper = new(self._path, "wb")
+      f: TextIO = new(self._path, "wb")
       f.close()
     _ = mode
     stamp: PyiUtimbuf64 = new()
@@ -998,7 +998,7 @@ class Path:
     encoding: str = "",
     errors: str = "",
     newline: str = "",
-  ) -> TextIOWrapper:
+  ) -> TextIO:
     """对齐 ``pathlib.Path.open``；``buffering`` / ``errors`` / ``newline`` 暂未实现。"""
     _ = buffering
     _ = errors
@@ -1012,13 +1012,13 @@ class Path:
     _ = errors
     _ = newline
     _ = Self._textEncoding(encoding)
-    f: TextIOWrapper = new(self._path, "r")
+    f: TextIO = new(self._path, "r")
     data: str = f.read()
     f.close()
     return data
 
   def readBytes(self) -> bytes:
-    f: TextIOWrapper = new(self._path, "rb")
+    f: TextIO = new(self._path, "rb")
     data: str = f.read()
     f.close()
     return Self._strToBytes(data)
@@ -1033,13 +1033,13 @@ class Path:
     _ = errors
     _ = newline
     _ = Self._textEncoding(encoding)
-    f: TextIOWrapper = new(self._path, "w")
+    f: TextIO = new(self._path, "w")
     n: int = f.write(data)
     f.close()
     return n
 
   def writeBytes(self, data: bytes) -> int:
-    f: TextIOWrapper = new(self._path, "wb")
+    f: TextIO = new(self._path, "wb")
     buf: char[:] = Self._bytesToWriteBuf(data)
     n: int = f.write(buf, len(data))
     f.close()

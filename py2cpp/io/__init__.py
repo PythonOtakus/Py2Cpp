@@ -13,7 +13,6 @@ from ffi.crt.stdio import (
   PyiSeekCur,
   PyiSeekEnd,
   PyiSeekSet,
-  pyiAcrtIobFunc,
   pyiFclose,
   pyiFflush,
   pyiFgets,
@@ -54,10 +53,11 @@ class AsyncCloseMixin:
 class StringIO(CloseMixin):
   """内存文本流：``write`` / ``read`` / ``value`` / ``pos`` / ``seek`` / ``tell``。"""
 
+  _pos: int = 0
+  _closed: bool = False
+
   def __init__(self, initial: str = ""):
     self._buf: char[:] = ""
-    self._pos: int = 0
-    self._closed: bool = False
     if initial:
       self.write(initial)
       self._pos = 0
@@ -74,7 +74,7 @@ class StringIO(CloseMixin):
     self._closed = True
 
   def flush(self) -> None:
-    """内存流无缓冲副作用；保留 API 与 ``TextIOWrapper.flush`` 对齐。"""
+    """内存流无缓冲副作用；保留 API 与 ``TextIO.flush`` 对齐。"""
     return
 
   @property
@@ -246,21 +246,19 @@ class StringIO(CloseMixin):
 
 
 @uncopyable
-class TextIOWrapper(CloseMixin):
+class TextIO(CloseMixin):
   """基于 ``FILE*`` 的文本文件包装（``ffi.crt.stdio``）。
 
-  ``wrapFp`` / ``wrapStd`` 可绑定已有句柄；``owns=False`` 时 ``close``/``with``/析构
-  **不** ``fclose`` 真实标准流（见 ``docs/console.md``）。
+  ``TextIO(fp, owns)`` 可绑定已有句柄；标准流请用 ``Console.stdio``（``owns=False``，
+  ``close``/``with``/析构 **不** ``fclose``；见 ``docs/console.md``）。
   """
 
   _fp: Pointer[PyiIobuf]
-  _closed: bool
-  _owns: bool
+  _closed: bool = False
+  _owns: bool = True
 
   @overload
   def __init__(self, path: str, mode: str = "r"):
-    self._owns = True
-    self._closed = False
     m: str = mode
     if not m:
       m = "r"
@@ -443,21 +441,7 @@ class TextIOWrapper(CloseMixin):
 
 
 @global_call("py_*")
-def open(path: str, mode: str = "r", encoding: str = "utf-8") -> TextIOWrapper:
-  """``open(path, mode)`` → ``TextIOWrapper``（``encoding`` 暂仅支持类 UTF-8 码点路径）。"""
+def open(path: str, mode: str = "r", encoding: str = "utf-8") -> TextIO:
+  """``open(path, mode)`` → ``TextIO``（``encoding`` 暂仅支持类 UTF-8 码点路径）。"""
   _ = encoding
   return new(path, mode)
-
-
-@global_call("py_*")
-def wrapFp(fp: uintptr, owns: bool = False) -> TextIOWrapper:
-  """绑定已有 ``FILE*``（``fp`` 为指针位型）；``owns=False`` 时永不 ``fclose``。"""
-  return new(fp, owns)
-
-
-@global_call("py_*")
-def wrapStd(fd: int) -> TextIOWrapper:
-  """绑定标准流：``0``=stdin、``1``=stdout、``2``=stderr；始终 ``owns=False``。"""
-  p: Pointer[PyiIobuf] = pyiAcrtIobFunc(uint(fd))
-  h: uintptr = cast(p)
-  return new(h, False)

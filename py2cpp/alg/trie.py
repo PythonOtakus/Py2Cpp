@@ -23,11 +23,12 @@ from ..util.mixins import ContainerMixin
 class Trie(ContainerMixin):
   """0-based 节点池 + ``dict[char, 子节点]``。"""
 
+  _count: int = 0
+
   def __init__(self):
     self._next: list[dict[char, int]] = []
     self._pass: list[int] = []
     self._end: list[int] = []
-    self._count: int = 0
     self._newNode()
 
   def __copy__(self, other: Self):

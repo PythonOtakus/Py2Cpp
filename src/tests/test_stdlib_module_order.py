@@ -40,7 +40,7 @@ class StdlibModuleOrderTests(unittest.TestCase):
     self.assertLess(ordered.index("util/stack_array"), ordered.index("util/pool"))
 
   def test_package_root_after_children(self):
-    mods = ("console", "console/exceptions", "console/render", "console/task")
+    mods = ("console", "console/exceptions", "console/render", "console/popen")
     ma = {
       stdlib_module_path("console"): ModuleAnalysis(
         path=stdlib_module_path("console"),
@@ -50,4 +50,4 @@ class StdlibModuleOrderTests(unittest.TestCase):
     ordered = order_stdlib_modules_by_header_deps(mods, ma)
     self.assertLess(ordered.index("console/exceptions"), ordered.index("console"))
     self.assertLess(ordered.index("console/render"), ordered.index("console"))
-    self.assertLess(ordered.index("console/task"), ordered.index("console"))
+    self.assertLess(ordered.index("console/popen"), ordered.index("console"))

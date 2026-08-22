@@ -918,10 +918,6 @@ namespace py2cpp {
 namespace concur {
 namespace thread {
 
-void _barrierNoAction()
-{
-}
-
 template<typename _Value>
 PyAtomic<_Value>::PyAtomic()
 {

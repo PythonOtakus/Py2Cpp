@@ -285,6 +285,31 @@ def _imported_function_param_cpp_types(tr: Translator, func: ast.expr, *, call: 
         return None
     return _module_function_param_cpp_types(tr, binding.module_path, binding.symbol, call=call)
 
+def resolve_call_param_cpp_types(
+    tr: Translator,
+    func: ast.expr,
+    call: ast.Call,
+    *,
+    type_ann: ast.expr | None = None,
+) -> list[str] | None:
+    """调用实参对应的形参 C++ 类型；``new(...)`` 从赋值/返回注解等类型上下文推导。"""
+    types = call_param_cpp_types(tr, func, call=call)
+    if types:
+        return types
+    if isinstance(func, ast.Name) and func.id == 'new':
+        ann = type_ann if type_ann is not None else type_context_ann_from_stack(tr)
+        if ann is None:
+            return None
+        try:
+            cpp_type = tr._parse_storage_type(ann, tr._active_type_params())
+        except NotImplementedError:
+            return None
+        if not cpp_type:
+            return None
+        from .literal_ctor_emit import new_ctor_param_cpp_types
+        return new_ctor_param_cpp_types(tr, cpp_type, call)
+    return None
+
 def call_param_cpp_types(tr: Translator, func: ast.expr, *, call: ast.Call | None=None) -> list[str] | None:
     match func:
         case ast.Attribute(value=val, attr=method):

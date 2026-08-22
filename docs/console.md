@@ -19,33 +19,34 @@
 
 ```text
 py2cpp/console/
-  __init__.py       # stdin/stdout/stderr、常用再导出、轻量终端入口
+  __init__.py       # Console（标准流 / argv / exit / 终端 / 进程）与常用再导出
   parse.py          # 参数、子命令、帮助与强类型转换
   render.py         # 样式、终端渲染、进度、日志
-  task.py           # 外部进程、管道、后台命令任务
+  popen.py          # 外部进程、管道（subprocess 子集）
 ```
 
 | 模块 | 负责 | 不负责 |
 |---|---|---|
-| `console` 根模块 | 标准流、终端能力查询、常用再导出 | 参数解析、进度状态、进程生命周期 |
+| `console` 根模块（``Console``） | 标准流、argv/exit、终端查询、一站式外部命令 | 参数解析细节、进度状态机、低层 pipe |
 | `parse` | CLI 解析、usage、help、子命令 | 动态任意对象绑定、完整 CPython action 系统 |
 | `render` | 样式、日志、表格、进度与动态区域协调 | 进程控制、文件系统操作 |
-| `task` | 外部进程、管道、超时、退出状态 | 协程调度器、默认 shell 解释 |
+| `popen` | 外部进程、管道、超时、退出状态 | 协程调度器、默认 shell 解释 |
 
-## 2. 包根：标准流与公共入口
+## 2. 包根：`Console` 与公共入口
 
-`py2cpp.console` 根模块拥有 `stdin`、`stdout`、`stderr`，不再另设 `terminal` 子模块：
+标准流、进程参数与终端能力均挂在 ``Console`` 上（``@staticproperty`` / ``@staticmethod``），不再另设 `terminal` 子模块：
 
 ```python
-from py2cpp.console import stdin, stdout, stderr
+from py2cpp.console import Console
 
-line: str = stdin.readLine()
-stdout.write("ready\n")
-stderr.write("warning\n")
-stdout.flush()
+line: str = Console.stdin.readLine()
+Console.stdout.write("ready\n")
+Console.stderr.write("warning\n")
+Console.stdout.flush()
+# 等价：Console.stdio(0/1/2)
 ```
 
-三者为稳定的文本流对象，首版最少支持：
+三者为 ``TextIO``（``owns=False``），首版最少支持：
 
 - `read()`、`readLine()`、`readLines()`；
 - `write()`、`writeLines()`、`flush()`；
@@ -55,14 +56,15 @@ stdout.flush()
 包根还提供少量公共便利入口：
 
 ```python
-from py2cpp.console import terminal_size, supports_color
-from py2cpp.console import ArgumentParserMixin, Progress
+from py2cpp.console import Console, ArgumentParserMixin
+from py2cpp.console.render import Progress
 
-width, height = terminal_size()
-enabled: bool = supports_color()
+width, height = Console.terminalSize()
+enabled: bool = Console.colorful
+args: list[str] = Console.argv
 ```
 
-`terminal_size() -> tuple[int, int]` 返回列数和行数。`supports_color(stream=stdout) -> bool` 综合 TTY、环境变量和用户禁用设置判断是否允许颜色。光标控制、ANSI 编码和动态区域协调属于 `render` 的内部能力，不在包根暴露低层 API。
+`Console.terminalSize() -> tuple[int, int]` 返回列数和行数。`Console.colorful` 为可读写静态属性：赋值显式开/关颜色，读取时综合 TTY、环境变量与显式覆盖。光标控制、ANSI 编码和动态区域协调属于 `render` 的内部能力，不在包根暴露低层 API。
 
 ## 3. 总体原则
 
@@ -71,14 +73,13 @@ enabled: bool = supports_color()
 推荐接口接收“可执行文件 + 参数列表”，不经 shell：
 
 ```python
-from py2cpp.console import stdout
-from py2cpp.console.task import Console
+from py2cpp.console import Console
 
-result = Console.run(["asset_compiler", "--input", source], capture_output=True, check=True)
-stdout.write(result.stdout)
+result = Console.run(["asset_compiler", "--input", source], captureOutput=True, check=True)
+Console.stdout.write(result.stdout)
 ```
 
-字符串命令仅在显式 `shell=True`、`Console.system()` 或 `Console.popen()` 时经过 shell。参数数组绝不能通过字符串拼接后交给 shell。
+字符串命令经 ``Console.runShell()``、``Console.system()`` 或 ``Console.popen()`` 时经过 shell。参数数组绝不能通过字符串拼接后交给 shell。
 
 ### 3.2 无 TTY 时保持正确
 
@@ -220,43 +221,42 @@ log.error("构建失败", code=result.returnCode, output=result.stderr)
 
 `Logger` 不维护按名称缓存的全局 registry，也不提供 `get_logger()`；名称仅用于记录分类和输出。Logger 的生命周期、sink 组合与关闭均由创建者显式持有和管理。以后增加基于 `serde.json.Json` 的 `JsonFormatter` 与基于 `Queue[LogRecord]` 的 `AsyncSink`。异步 sink 必须定义 flush、关闭和背压/丢弃策略。日志不引入 printf 式动态格式化；使用 f-string 或 `format()` 写消息，结构化信息单独传字段。
 
-## 6. `console.task`：进程、管道和后台命令
+## 6. `Console` / `console.popen`：进程、管道和外部命令
 
-`task` 指外部命令及其输出、退出和后台生命周期，不是新的协程调度器。该名称使 CLI 中“启动、观察、等待、取消一项外部任务”保持统一。
+外部命令及其输出、退出与生命周期由包根 ``Console`` 一站式包装，低层对象在 ``console.popen``。
 
 ### 6.1 推荐 API
 
 ```python
-from py2cpp.console import stdout
-from py2cpp.console.task import Console
+from py2cpp.console import Console
 
 result = Console.run(
   ["tool", "--input", source],
   cwd=work_dir,
   env=environment,
-  capture_output=True,
+  captureOutput=True,
   timeout=30.0,
   check=True,
 )
-stdout.write(result.stdout)
+Console.stdout.write(result.stdout)
 ```
 
 ```python
 @dataclass(frozen=True)
-class CompletedProcess:
+class ProcessResult:
   args: list[str]
   returnCode: int
   stdout: str
   stderr: str
 ```
 
-`check=True` 且退出码非零时抛出 `TaskExitError`，异常持有 `CompletedProcess`，调用者可继续读取 stdout/stderr 作诊断。
+`check=True` 且退出码非零时抛出 `TaskExitError`，异常持有 `ProcessResult`，调用者可继续读取 stdout/stderr 作诊断。
 
 ### 6.2 Popen 与兼容接口
 
 ```python
-from py2cpp.console.popen import CompletedProcess, Pipe, Popen
-from py2cpp.console.task import Console
+from py2cpp.console import Console
+from py2cpp.console.popen import Pipe, Popen, ProcessResult
 
 code: int = Console.system("git status")
 reader = Console.popen("git rev-parse --show-toplevel")
@@ -267,14 +267,15 @@ task.start()
 code = task.wait(timeout=10.0)
 ```
 
-- `Popen`（`py2cpp.console.popen`）：推荐的低层外部命令对象，接收 `list[str]`（对齐 ``subprocess.Popen`` 子集）；
-- `Console.run`：推荐的一站式同步接口；
+- `Popen`（`py2cpp.console.popen`）：推荐的低层外部命令对象，接收 `list[str]`（对齐 ``subprocess.Popen`` 子集）；``Popen.run(args)`` 同步运行并默认捕获 stdout/stderr；
+- `Console.run`：推荐的一站式同步接口（``list[str]``，不经 shell；支持 ``cwd`` / ``env`` / ``timeout`` / ``check``）；
+- `Console.runShell(command: str, …)`：显式 shell 同步入口，返回 ``ProcessResult``（CRT ``system`` / ``popen``；暂不支持 ``cwd`` / ``env`` / ``timeout``）；
 - `Console.system(command: str) -> int`：显式 shell 兼容入口，返回规范化退出码；
 - `Console.popen(command: str, mode: str = "r")`：显式 shell 单向文本管道，首版仅 `"r"` / `"w"`。
 
 callable 子进程（``multiprocessing.Process``）见 ``py2cpp.concur.process.Process``，与外部命令 ``Popen`` 分离。
 
-`Console` 定义在 `py2cpp.console.task`。`run`、`system`、`popen` 仅作为该类的静态方法存在，不保留模块级函数，也不从 `py2cpp.system` 或 `py2cpp.console` 包根导出；shell 语义因此在调用点可见。
+`Console` 定义在 `py2cpp.console` 包根。``Console.run`` / ``Console.system`` / ``Console.popen`` 以及 ``Popen.run`` 等均挂在类上，不保留同名模块级薄包装；shell 语义因此在调用点可见。
 
 ### 6.3 必须保证的语义
 
@@ -341,10 +342,9 @@ test/console/
 
 ```python
 from py2cpp import *
-from py2cpp.console import Progress
+from py2cpp.console import Console, Progress
 from py2cpp.console.parse import ArgumentParserMixin, FlagArgMeta, OptArgMeta, PosArgMeta
 from py2cpp.console.render import Logger
-from py2cpp.console.task import Console
 
 def main() -> int:
     @dataclass
@@ -361,7 +361,7 @@ def main() -> int:
     work = progress.add_task("构建中", total=1)
     result = Console.run(
       ["asset_compiler", "--source", args.source, "--jobs", str(args.jobs)],
-      capture_output=True,
+      captureOutput=True,
     )
     progress.complete(work)
 

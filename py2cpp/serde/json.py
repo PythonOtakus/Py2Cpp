@@ -17,7 +17,7 @@ from ..util.span import span
 from ..core.exceptions import OSError, ValueError
 from ..io.path import Path
 from ..numeric.long import long
-from ..io import StringIO, TextIOWrapper
+from ..io import StringIO, TextIO
 from ..io.protocols import TextReaderType, TextWriterType
 from ..text import str
 
@@ -727,7 +727,7 @@ class JsonEncoder:
     fp.write(self._buf, self._at)
 
   @overload
-  def flushTo(self, fp: TextIOWrapper) -> None:
+  def flushTo(self, fp: TextIO) -> None:
     if self._at == 0:
       return
     fp.write(self._buf, self._at)
@@ -2744,7 +2744,7 @@ class Json:
 
   @staticmethod
   @overload
-  def _finishDump(enc: JsonEncoder, fp: TextIOWrapper) -> None:
+  def _finishDump(enc: JsonEncoder, fp: TextIO) -> None:
     enc.flushTo(fp)
 
   @staticmethod
@@ -2755,7 +2755,7 @@ class Json:
 
   @staticmethod
   @overload
-  def _writeFast(s: str, fp: TextIOWrapper) -> None:
+  def _writeFast(s: str, fp: TextIO) -> None:
     fp.write(s)
 
   @staticmethod
@@ -3121,7 +3121,7 @@ class Json:
 
   @staticmethod
   @overload
-  def dump(obj: bool, fp: TextIOWrapper, indent: int = 0) -> None:
+  def dump(obj: bool, fp: TextIO, indent: int = 0) -> None:
     enc: JsonEncoder = new()
     enc.indent = indent
     enc.dumpBool(obj)
@@ -3131,7 +3131,7 @@ class Json:
 
   @staticmethod
   @overload
-  def dump(obj: int, fp: TextIOWrapper, indent: int = 0) -> None:
+  def dump(obj: int, fp: TextIO, indent: int = 0) -> None:
     enc: JsonEncoder = new()
     enc.indent = indent
     enc.dumpInt(obj)
@@ -3141,7 +3141,7 @@ class Json:
 
   @staticmethod
   @overload
-  def dump(obj: long, fp: TextIOWrapper, indent: int = 0) -> None:
+  def dump(obj: long, fp: TextIO, indent: int = 0) -> None:
     enc: JsonEncoder = new()
     enc.indent = indent
     enc.dumpLong(obj)
@@ -3151,7 +3151,7 @@ class Json:
 
   @staticmethod
   @overload
-  def dump(obj: float, fp: TextIOWrapper, indent: int = 0) -> None:
+  def dump(obj: float, fp: TextIO, indent: int = 0) -> None:
     enc: JsonEncoder = new()
     enc.indent = indent
     enc.dumpFloat(obj)
@@ -3161,7 +3161,7 @@ class Json:
 
   @staticmethod
   @overload
-  def dump(obj: str, fp: TextIOWrapper, indent: int = 0) -> None:
+  def dump(obj: str, fp: TextIO, indent: int = 0) -> None:
     enc: JsonEncoder = new()
     enc.indent = indent
     enc.dumpStr(obj)
@@ -3171,7 +3171,7 @@ class Json:
 
   @staticmethod
   @overload
-  def dump(obj: list[int], fp: TextIOWrapper, indent: int = 0) -> None:
+  def dump(obj: list[int], fp: TextIO, indent: int = 0) -> None:
     if indent == 0:
       Self._writeFast(JsonEncoder.fastEncode(obj), fp)
       return
@@ -3184,7 +3184,7 @@ class Json:
 
   @staticmethod
   @overload
-  def dump(obj: list[long], fp: TextIOWrapper, indent: int = 0) -> None:
+  def dump(obj: list[long], fp: TextIO, indent: int = 0) -> None:
     if indent == 0:
       Self._writeFast(JsonEncoder.fastEncode(obj), fp)
       return
@@ -3197,7 +3197,7 @@ class Json:
 
   @staticmethod
   @overload
-  def dump(obj: list[str], fp: TextIOWrapper, indent: int = 0) -> None:
+  def dump(obj: list[str], fp: TextIO, indent: int = 0) -> None:
     if indent == 0:
       Self._writeFast(JsonEncoder.fastEncode(obj), fp)
       return
@@ -3210,7 +3210,7 @@ class Json:
 
   @staticmethod
   @overload
-  def dump(obj: list[float], fp: TextIOWrapper, indent: int = 0) -> None:
+  def dump(obj: list[float], fp: TextIO, indent: int = 0) -> None:
     if indent == 0:
       Self._writeFast(JsonEncoder.fastEncode(obj), fp)
       return
@@ -3223,7 +3223,7 @@ class Json:
 
   @staticmethod
   @overload
-  def dump(obj: dict[str, int], fp: TextIOWrapper, indent: int = 0) -> None:
+  def dump(obj: dict[str, int], fp: TextIO, indent: int = 0) -> None:
     if indent == 0:
       Self._writeFast(JsonEncoder.fastEncode(obj), fp)
       return
@@ -3236,7 +3236,7 @@ class Json:
 
   @staticmethod
   @overload
-  def dump(obj: dict[str, long], fp: TextIOWrapper, indent: int = 0) -> None:
+  def dump(obj: dict[str, long], fp: TextIO, indent: int = 0) -> None:
     if indent == 0:
       Self._writeFast(JsonEncoder.fastEncode(obj), fp)
       return
@@ -3249,7 +3249,7 @@ class Json:
 
   @staticmethod
   @overload
-  def dump(obj: dict[str, str], fp: TextIOWrapper, indent: int = 0) -> None:
+  def dump(obj: dict[str, str], fp: TextIO, indent: int = 0) -> None:
     if indent == 0:
       Self._writeFast(JsonEncoder.fastEncode(obj), fp)
       return
@@ -3262,7 +3262,7 @@ class Json:
 
   @staticmethod
   @overload
-  def dump(obj: dict[str, float], fp: TextIOWrapper, indent: int = 0) -> None:
+  def dump(obj: dict[str, float], fp: TextIO, indent: int = 0) -> None:
     if indent == 0:
       Self._writeFast(JsonEncoder.fastEncode(obj), fp)
       return
@@ -3275,7 +3275,7 @@ class Json:
 
   @staticmethod
   @overload
-  def dump[Root](obj: Root, fp: TextIOWrapper, indent: int = 0) -> None:
+  def dump[Root](obj: Root, fp: TextIO, indent: int = 0) -> None:
     enc: JsonEncoder = new()
     enc.indent = indent
     obj.serialize(enc)
@@ -3285,7 +3285,7 @@ class Json:
 
   @staticmethod
   @overload
-  def dump[Root](obj: list[Root], fp: TextIOWrapper, indent: int = 0) -> None:
+  def dump[Root](obj: list[Root], fp: TextIO, indent: int = 0) -> None:
     enc: JsonEncoder = new()
     enc.indent = indent
     n: int = len(obj)
@@ -3346,7 +3346,7 @@ class Json:
 
   @staticmethod
   @overload
-  def load[Root](fp: TextIOWrapper) -> Root:
+  def load[Root](fp: TextIO) -> Root:
     """``json.load``：``fp.read()`` 后 ``Json.loads[T]``。"""
     return Self.loads[Root](fp.read())
 
@@ -3503,7 +3503,7 @@ class JsonDocument[Root]:
     if "w" in mode:
       doc.text = "{}"
     else:
-      f: TextIOWrapper = new(path, "r")
+      f: TextIO = new(path, "r")
       doc.text = f.read()
       f.close()
     doc.orig = doc.text
@@ -3556,7 +3556,7 @@ class JsonDocument[Root]:
     if not self.dirty:
       return
     tmp: str = self.path + ".tmp"
-    w: TextIOWrapper = new(tmp, "w")
+    w: TextIO = new(tmp, "w")
     w.write(self.text)
     w.close()
     Path(tmp).replace(self.path)

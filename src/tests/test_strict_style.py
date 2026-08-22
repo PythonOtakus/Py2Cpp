@@ -400,6 +400,17 @@ def main():
 
   def test_s0103_rejects_new_in_call_arg(self):
     self._expect_strict_fail(
+      """def use(x):
+  pass
+
+def main():
+  use(new())
+""",
+      "S0307",
+    )
+
+  def test_s0103_allows_new_in_call_arg_with_param_ann(self):
+    self._translate(
       """class Box:
   n: int = 0
 
@@ -408,8 +419,17 @@ def use(b: Box) -> int:
 
 def main():
   return use(new(n=1))
-""",
-      "S0307",
+"""
+    )
+
+  def test_s0103_allows_empty_new_in_call_arg(self):
+    self._translate(
+      """def noop(action: Callable[[], None]) -> None:
+  action()
+
+def main():
+  noop(new())
+"""
     )
 
   def test_s0103_allows_cls_in_call_arg(self):
@@ -3505,8 +3525,38 @@ def main():
 """
     )
 
-  def test_s0405_rejects_class_default_and_init_assign(self):
+  def test_s0405_rejects_same_literal_top_level(self):
     self._expect_strict_fail(
+      """class Box:
+  n: int = 0
+
+  def __init__(self):
+    self.n = 0
+
+def main():
+  b: Box = new()
+  return b.n
+""",
+      "S0405",
+    )
+
+  def test_s0405_rejects_different_literal_top_level(self):
+    self._expect_strict_fail(
+      """class Box:
+  flag: bool = False
+
+  def __init__(self):
+    self.flag = True
+
+def main():
+  b: Box = new()
+  return 1 if b.flag else 0
+""",
+      "S0405",
+    )
+
+  def test_s0405_allows_param_assign_with_class_default(self):
+    self._translate(
       """class Box:
   n: int = 0
 
@@ -3516,8 +3566,7 @@ def main():
 def main():
   b: Box = new(1)
   return b.n
-""",
-      "S0405",
+"""
     )
 
   def test_s0405_rejects_augassign_in_init(self):
@@ -3535,8 +3584,24 @@ def main():
       "S0405",
     )
 
-  def test_s0405_rejects_conditional_assign_in_init(self):
+  def test_s0405_rejects_augassign_in_while(self):
     self._expect_strict_fail(
+      """class Box:
+  n: int = 1
+
+  def __init__(self):
+    while self.n < 4:
+      self.n *= 2
+
+def main():
+  b: Box = new()
+  return b.n
+""",
+      "S0405",
+    )
+
+  def test_s0405_allows_conditional_assign_in_init(self):
+    self._translate(
       """class Box:
   n: int = 0
 
@@ -3547,12 +3612,11 @@ def main():
 def main():
   b: Box = new(1)
   return b.n
-""",
-      "S0405",
+"""
     )
 
-  def test_s0405_rejects_subclass_assign_of_base_default(self):
-    self._expect_strict_fail(
+  def test_s0405_allows_subclass_assign_of_base_default(self):
+    self._translate(
       """class Base:
   n: int = 0
 
@@ -3562,6 +3626,21 @@ class Derived(Base):
 
 def main():
   d: Derived = new(1)
+  return d.n
+"""
+    )
+
+  def test_s0405_rejects_subclass_literal_top_level(self):
+    self._expect_strict_fail(
+      """class Base:
+  n: int = 0
+
+class Derived(Base):
+  def __init__(self):
+    self.n = 1
+
+def main():
+  d: Derived = new()
   return d.n
 """,
       "S0405",
@@ -3603,6 +3682,68 @@ def main():
 
 def main():
   b: Box = new(1)
+  return b.n
+"""
+    )
+
+  def test_s0406_rejects_literal_assign_in_init(self):
+    self._expect_strict_fail(
+      """class Box:
+  n: int
+
+  def __init__(self):
+    self.n = 0
+
+def main():
+  b: Box = new()
+  return b.n
+""",
+      "S0406",
+    )
+
+  def test_s0406_rejects_literal_assign_in_init_helper(self):
+    self._expect_strict_fail(
+      """class Box:
+  n: int
+
+  def __init__(self):
+    self._initFields()
+
+  def _initFields(self) -> None:
+    self.n = 0
+
+def main():
+  b: Box = new()
+  return b.n
+""",
+      "S0406",
+    )
+
+  def test_s0406_allows_class_body_default(self):
+    self._translate(
+      """class Box:
+  n: int = 0
+
+  def __init__(self):
+    pass
+
+def main():
+  b: Box = new()
+  return b.n
+"""
+    )
+
+  def test_s0406_allows_conditional_literal_assign(self):
+    self._translate(
+      """class Box:
+  n: int
+
+  def __init__(self, flag: bool):
+    if flag:
+      self.n = 0
+
+def main():
+  b: Box = new(True)
   return b.n
 """
     )

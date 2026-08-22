@@ -79,6 +79,25 @@ def is_s0101_init_forward_call(node: ast.Call, *, in_class_init: bool) -> bool:
   return isinstance(val, ast.Name) and val.id in ("self", "super")
 
 
+def parse_self_init_forward_body(method: ast.FunctionDef) -> ast.Call | None:
+  """``__init__`` 体仅 ``self.__init__(...)`` 时返回该调用（用于 C++ 委托构造）。"""
+  if method.name != "__init__":
+    return None
+  if len(method.body) != 1:
+    return None
+  stmt = method.body[0]
+  if not isinstance(stmt, ast.Expr):
+    return None
+  call = stmt.value
+  if not isinstance(call, ast.Call):
+    return None
+  if not is_s0101_init_forward_call(call, in_class_init=True):
+    return None
+  if not isinstance(call.func.value, ast.Name) or call.func.value.id != "self":
+    return None
+  return call
+
+
 def reject_super_call_with_args(node: ast.Call) -> None:
   """``super(type, obj)`` / 带参 ``super.__call__(...)`` → ``NotImplementedError``。"""
   match node.func:

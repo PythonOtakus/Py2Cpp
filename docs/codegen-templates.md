@@ -590,7 +590,7 @@ explicit PY2CPP_ECHO(ctx_Cls)(const PY2CPP_TYPE(PyStr)& msg) : PY2CPP_ECHO(ctx_B
 | ``text/~str_array_by_value.inl`` | （同上合并） | ``PyStr(PyArray<PyChar>&&`` |
 | ``text/~str_span.inl`` | （同上合并） | ``fromArray`` |
 | ``~operators/scalar_format.inl`` | ``+operators.inl``（format 段） | 与 divmod/pow/repr 等合并于同一 ``+operators.inl`` |
-| ``io/~text_io_wrapper.inl`` | ``+io.inl`` | ``TextIOWrapper`` 等写入 ``io.inl`` 尾部 |
+| ``io/~text_io_wrapper.inl`` | ``+io.inl`` | ``TextIO`` 等写入 ``io.inl`` 尾部 |
 | ``web/~socket_tcp.inl`` | ``web/+socket.inl`` | ``TcpSocket`` 写入 ``web/socket.inl`` 尾部 |
 | ``exceptions_cpp`` ``Exception`` / convert ctor | ``core/+exceptions.h`` + ``~exception_convert_ctor_decls.inl`` | 类头 inject；声明循环 INCLUDE |
 | ``exceptions_cpp`` convert ctor impl | ``core/+exceptions.inl`` | paste_after → ``core/exceptions.inl`` |

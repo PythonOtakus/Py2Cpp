@@ -1,6 +1,6 @@
 """``console.render``：表格、日志 MemorySink、Progress、paint。"""
 from py2cpp import *
-from py2cpp.console import setColorEnabled, supportsColor, terminalSize
+from py2cpp.console import Console
 from py2cpp.console.render import (
   AnsiColorEnum,
   LogLevelEnum,
@@ -70,16 +70,16 @@ class PaintNoColorTests(TestCaseMixin):
 
   @override
   def test(self):
-    setColorEnabled(False)
+    Console.colorful = False
     style: Style = new(fg=AnsiColorEnum.Red, bold=True)
     text: str = paint("x", style)
     self.assertEqual(text, "x")
-    self.assertFalse(supportsColor())
-    size: (int, int) = terminalSize()
+    self.assertFalse(Console.colorful)
+    size: (int, int) = Console.terminalSize()
     self.assertTrue(size[0] >= 1)
     self.assertTrue(size[1] >= 1)
-    setColorEnabled(True)
-    setColorEnabled(False)
+    Console.colorful = True
+    Console.colorful = False
 
 
 def main():

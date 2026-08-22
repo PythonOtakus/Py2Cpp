@@ -296,7 +296,7 @@ class JsonDocument[T]:
 
 | 阶段 | 内容 |
 |------|------|
-| **P0** | `TextIOWrapper.read(-1)` EOF；`DocumentType` 协议 + `JsonDocument.open` + `load()` ≡ `loads` |
+| **P0** | `TextIO.read(-1)` EOF；`DocumentType` 协议 + `JsonDocument.open` + `load()` ≡ `loads` |
 | **P1** | 只读字段链（`View` + `@serializable` codegen）；`dump()` |
 | **P2** | `r+` 增删改 + `commit` / `with` |
 | **P3** | sidecar 索引、perf |

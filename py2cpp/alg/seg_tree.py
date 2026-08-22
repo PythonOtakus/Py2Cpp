@@ -18,14 +18,17 @@ from ..util.mixins import ContainerMixin
 class SegTree(ContainerMixin):
   """迭代线段树；下标 0-based。"""
 
+  _size: int
+
   def __init__(self, n: int, mode: AggModeEnum):
     if n < 0:
       raise ValueError("n must be non-negative")
     self._n: int = n
     self._mode: AggModeEnum = mode
-    self._size: int = 1
-    while self._size < n:
-      self._size *= 2
+    capSize: int = 1
+    while capSize < n:
+      capSize *= 2
+    self._size = capSize
     cap: int = self._size * 2
     self._tree: int[:] = new(cap)
     sentinel: int = 0

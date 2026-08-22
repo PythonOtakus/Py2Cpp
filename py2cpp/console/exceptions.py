@@ -30,7 +30,7 @@ class TaskTimeoutError(TaskError):
 
 @dataclass
 class TaskExitError(TaskError):
-  """``check=True`` 且退出码非零；字段与 ``CompletedTask`` 对齐（避免 ``task`` 循环导入）。"""
+  """``check=True`` 且退出码非零；字段与 ``ProcessResult`` 对齐（避免 ``console`` 循环导入）。"""
 
   args: list[str]
   returnCode: int = 0

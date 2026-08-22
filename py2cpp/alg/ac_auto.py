@@ -24,12 +24,13 @@ from ..util.mixins import ContainerMixin
 class ACAuto(ContainerMixin):
   """Trie 图 + ``fail`` 链；独立实现，不继承 ``Trie``。"""
 
+  _count: int = 0
+  _flushed: bool = False
+
   def __init__(self):
     self._next: list[dict[char, int]] = []
     self._end: list[int] = []
     self._fail: list[int] = []
-    self._count: int = 0
-    self._flushed: bool = False
     self._newNode()
 
   def __copy__(self, other: Self):

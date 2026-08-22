@@ -46,6 +46,7 @@ S0402 = 'S0402'
 S0403 = 'S0403'
 S0404 = 'S0404'
 S0405 = 'S0405'
+S0406 = 'S0406'
 S0501 = 'S0501'
 S0502 = 'S0502'
 S0601 = 'S0601'
@@ -552,6 +553,28 @@ _TESTCASE_BASES = frozenset({'TestCase', 'TestCaseMixin'})
 
 def _is_testcase_host(info: ClassInfo) -> bool:
     return bool(_TESTCASE_BASES.intersection(info.bases))
+
+def _s0307_call_arg_allows_new(cpp_type: str | None) -> bool:
+    if not cpp_type:
+        return False
+    bare = cpp_type.strip()
+    if bare in ('T0', 'T1', 'T2', 'T3', 'void*', 'void'):
+        return False
+    if len(bare) >= 2 and bare[0] == 'T' and bare[1:].isdigit():
+        return False
+    return True
+
+def _strict_func_param_has_annotation(func_def: ast.FunctionDef | ast.AsyncFunctionDef, index: int) -> bool:
+    args = list(func_def.args.posonlyargs) + list(func_def.args.args)
+    if index < 0 or index >= len(args):
+        return False
+    return args[index].annotation is not None
+
+def _strict_init_param_has_annotation(init: ast.FunctionDef, index: int) -> bool:
+    params = [a for a in init.args.args if a.arg not in ('self', 'cls')]
+    if index < 0 or index >= len(params):
+        return False
+    return params[index].annotation is not None
 
 def _is_new_call(node: ast.expr) -> bool:
     return isinstance(node, ast.Call) and _call_target_name(node.func) == 'new'
@@ -2385,11 +2408,60 @@ def _s0405_defaulted_fields(tr: Translator, info: ClassInfo) -> set[str]:
 def _s0405_message(class_name: str, field: str) -> str:
     display = _s0405_display_field(field)
     return _strict_msg(
-        f'类体 `{display}: T = …` 且 `__init__` 内 `self.{display} = …`',
-        f'`{display}: T` 只在 `__init__` 赋值，或类体 `{display}: T = …` 且 `__init__` 不赋该字段',
+        f'`__init__` 顶层 `self.{display} = 字面量` / `+=` / `*=` 等',
+        f'类体 `{display}: T = …` 字段默认；参数/表达式赋值放 `if`/`for` 分支或去掉类体默认',
         f'类 `{class_name}` 的 `__init__`',
-        reason='类体默认已生成 C++ 成员初值，构造函数再赋值会使默认成为死代码',
-        example=f'`{display}: int` + `self.{display} = x`，或 `{display}: int = 0` 且 `__init__` 不写 `self.{display}`',
+        reason='类体默认已生成 C++ 成员初值，构造顶层再写字面量或增广赋值会使默认成为死代码',
+        example=f'`{display}: int = 0` 且 `__init__` 不写 `self.{display} = 0`；需 `self.{display} = x` 时去掉类体默认或写入 `if` 分支',
+    )
+
+_S0406_INIT_METHOD_PREFIX = '_init'
+
+def _s0406_init_method(method_name: str | None) -> bool:
+    if method_name is None:
+        return False
+    if method_name == '__init__':
+        return True
+    return method_name.startswith(_S0406_INIT_METHOD_PREFIX)
+
+def _s0406_skip_class(info: ClassInfo | None) -> bool:
+    if _s0405_skip_class(info):
+        return True
+    if info is not None and info.is_dataclass:
+        return True
+    return False
+
+def _is_field_default_literal_rhs(expr: ast.expr) -> bool:
+    if isinstance(expr, ast.Constant):
+        return True
+    if isinstance(expr, ast.UnaryOp) and isinstance(expr.op, ast.USub):
+        return isinstance(expr.operand, ast.Constant) and isinstance(expr.operand.value, (int, float))
+    return False
+
+def _s0406_skip_empty_container_rhs(rhs: ast.expr, field_ann: ast.expr | None) -> bool:
+    if field_ann is None:
+        return False
+    hint = _empty_literal_hint(field_ann)
+    if hint is None:
+        return False
+    if isinstance(rhs, ast.Constant) and rhs.value in ('', b''):
+        return True
+    if isinstance(rhs, ast.List) and not rhs.elts:
+        return True
+    if isinstance(rhs, ast.Dict) and not (rhs.keys or rhs.values):
+        return True
+    if isinstance(rhs, ast.Call) and isinstance(rhs.func, ast.Name) and rhs.func.id == 'set' and (not rhs.args) and (not rhs.keywords):
+        return True
+    return False
+
+def _s0406_message(class_name: str, field: str, method_name: str) -> str:
+    display = _s0405_display_field(field)
+    return _strict_msg(
+        f'`{method_name}` 内 `self.{display} = 字面量`',
+        f'类体 `{display}: T = …` 字段默认',
+        f'类 `{class_name}` 的 `{method_name}`',
+        reason='字面量/常量初值应生成 C++ 成员默认，初始化方法内再赋值为冗余',
+        example=f'`{display}: int = 0` 且 `{method_name}` 不写 `self.{display} = 0`',
     )
 
 def _s0405_iter_assign_targets(target: ast.expr):
@@ -2922,7 +2994,7 @@ def _s0201_forbidden_named_py2cpp_import_msg() -> str:
 def _s0201_forbidden_submodule_root_import_msg(module: str, sym: str) -> str:
     return _strict_msg(f'``from {module} import {sym}``', '``from py2cpp import *``', '用户/测试模块', reason='包根 star import 已提供的符号，勿从其它子模块路径导入', example='from py2cpp import *')
 _PY2CPP_ROOT_STAR_NAMES: frozenset[str] | None = None
-_IO_SUBMODULE_ROOT_OK = frozenset({'open', 'StringIO', 'TextIOWrapper'})
+_IO_SUBMODULE_ROOT_OK = frozenset({'open', 'StringIO', 'TextIO'})
 _UNITTEST_SUBMODULE_OK = frozenset({'TestCaseMixin', 'TestSuite', 'TextTestRunner'})
 
 def _py2cpp_root_star_names() -> frozenset[str]:
@@ -3480,6 +3552,8 @@ class _StrictStyleChecker(ast.NodeVisitor):
         self._in_async_def: bool = False
         self._current_func: ast.FunctionDef | ast.AsyncFunctionDef | None = None
         self._current_func_sig: FunctionSig | MethodSig | None = None
+        self._call_arg_cpp_type_stack: list[str | None] = []
+        self._call_arg_has_ann_stack: list[bool] = []
 
     def _context_has(self, kind: str) -> bool:
         return kind in self._context_stack
@@ -4027,6 +4101,75 @@ class _StrictStyleChecker(ast.NodeVisitor):
         if self._in_new_preferred_context() and _ann_is_self(self._type_context_ann) and (not self._in_self_literal_host_class()) and (node.value == '' or node.value == b''):
             self._add(S0304, node, _s0303_msg_prefer('""` / `b""`', 'new()', self._s0303_scene(), example='`return new()`（`StringMixin` 等）；`str`/`bytes` 类内仍写 `return ""`', reason='注解为 `Self` 且当前类非 str/bytes 具体宿主'))
 
+    def _strict_call_param_cpp_types(self, func: ast.expr, call: ast.Call) -> list[str] | None:
+        """strict 检查期解析形参 C++ 类型（勿 ``tr.visit``，避免 codegen 依赖）。"""
+        try:
+            tr = self.tr
+            mp = self.module_path.replace('\\', '/')
+            match func:
+                case ast.Name(id=name):
+                    from ..emit.call_emit import _module_function_param_cpp_types
+                    types = _module_function_param_cpp_types(tr, mp, name, call=call)
+                    if types:
+                        return types
+                case ast.Attribute(value=ast.Name(id='self'), attr=method):
+                    info = self._current_class_info()
+                    if info is not None and (method in info.methods or method in info.method_overloads):
+                        return tr._ordered_method_param_cpp_types(info, method, call=call)
+                case _:
+                    pass
+            if isinstance(func, ast.Name) and func.id == 'new' and self._type_context_ann is not None:
+                tparams = list(self._scope_type_params) if self._scope_type_params else tr._active_type_params()
+                info = self._current_class_info()
+                self_class = None
+                if info is not None:
+                    self_class = info.template_cpp_type() if info.is_template() else info.cpp_name()
+                try:
+                    cpp_type = tr.type_parser.parse_storage_type(
+                        self._type_context_ann,
+                        tparams,
+                        self_class=self_class,
+                    )
+                except NotImplementedError:
+                    cpp_type = ''
+                if _ann_is_self(self._type_context_ann) and info is not None:
+                    cpp_type = self_class or info.cpp_name()
+                if not cpp_type:
+                    return None
+                from ..emit.literal_ctor_emit import new_ctor_param_cpp_types
+                return new_ctor_param_cpp_types(tr, cpp_type, call)
+        except (KeyError, TypeError, NotImplementedError):
+            return None
+        return None
+
+    def _strict_call_param_meta(
+        self,
+        func: ast.expr,
+        call: ast.Call,
+    ) -> tuple[list[str] | None, list[bool] | None]:
+        """返回 (形参 C++ 类型表, 对应位置是否有 Python 注解)。"""
+        types = self._strict_call_param_cpp_types(func, call)
+        if types is None:
+            return None, None
+        has_ann: list[bool] = [False] * len(types)
+        if isinstance(func, ast.Name) and func.id == 'new' and self._type_context_ann is not None:
+            for i in range(len(has_ann)):
+                has_ann[i] = True
+        elif isinstance(func, ast.Name):
+            func_def = self.tr._module_function_def_for_call(self.module_path.replace('\\', '/'), func.id, call)
+            if func_def is not None:
+                for i in range(len(has_ann)):
+                    has_ann[i] = _strict_func_param_has_annotation(func_def, i)
+        elif isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name) and func.value.id == 'self':
+            info = self._current_class_info()
+            if info is not None:
+                picked = self.tr._method_def_for_call(info, func.attr, call)
+                init = picked or (info.inits[0] if info.inits else None)
+                if init is not None:
+                    for i in range(len(has_ann)):
+                        has_ann[i] = _strict_init_param_has_annotation(init, i)
+        return types, has_ann
+
     def visit_Call(self, node: ast.Call):
         _s0805_check_optional_variant_ctor(self, node)
         if isinstance(node.func, ast.Name) and node.func.id == 'ord':
@@ -4058,7 +4201,10 @@ class _StrictStyleChecker(ast.NodeVisitor):
                 val = arg.value
                 self._add(S0302, node, _strict_msg(f"`str('{val}')`", f"`'{val}'`", '字符串初始化/表达式处', example=f"`msg: str = '{val}'` 勿 `msg = str('{val}')`", reason='字面量可直接译为 C++ 字符串'))
         if _is_new_call(node) and self._context_has('call_arg'):
-            self._add(S0307, node, _s0303_msg_prefer('new(...)', 'Cls(...) 或字面量', _s0303_scene_label(in_call_arg=True), example='`self.split(Self(), sep)`、`fn([])`；勿 `fn(new())`', reason='仅赋值处单个 new 调用可用 new，调用实参处不规范'))
+            expected = self._call_arg_cpp_type_stack[-1] if self._call_arg_cpp_type_stack else None
+            has_ann = self._call_arg_has_ann_stack[-1] if self._call_arg_has_ann_stack else False
+            if (not has_ann) or (not _s0307_call_arg_allows_new(expected)):
+                self._add(S0307, node, _s0303_msg_prefer('new(...)', 'Cls(...) 或字面量', _s0303_scene_label(in_call_arg=True), example='`fn(Box(n=1))`、为形参补注解后 `fn(new())`；无类型上下文勿 `fn(new())`', reason='调用实参处 ``new`` 须由形参注解或外层 ``new`` 目标类型推导'))
         if _is_new_call(node) and (self._context_has('aug_assign') or self._context_has('binop')):
             scene = self._s0303_scene()
             if self._context_has('binop'):
@@ -4090,11 +4236,43 @@ class _StrictStyleChecker(ast.NodeVisitor):
             bad = _delegate_ctor_display(node.func)
             ann_text = ast.unparse(self._type_context_ann) if self._type_context_ann is not None else deleg.name
             self._add(S0303, node, _s0303_msg_prefer(bad, 'new(...)', self._s0303_scene(), example=f'`d: {ann_text} = new()` 勿 `{bad}`', reason='`@delegate` 空实例须 `new`，勿显式委托类型构造'))
+        param_cpp_types, param_has_ann = self._strict_call_param_meta(node.func, node)
+        param_names: list[str] | None = None
+        if node.keywords and param_cpp_types:
+            if isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name) and node.func.value.id == 'self':
+                info = self._current_class_info()
+                if info is not None:
+                    picked = self.tr._method_def_for_call(info, node.func.attr, node)
+                    init = picked or (info.inits[0] if info.inits else None)
+                    if init is not None:
+                        param_names = [a.arg for a in init.args.args if a.arg not in ('self', 'cls')]
+            elif isinstance(node.func, ast.Name):
+                func_def = self.tr._module_function_def_for_call(self.module_path.replace('\\', '/'), node.func.id, node)
+                if func_def is not None:
+                    param_names = [a.arg for a in func_def.args.args]
         self.visit(node.func)
-        for arg in node.args:
+        for i, arg in enumerate(node.args):
+            pt = param_cpp_types[i] if param_cpp_types and i < len(param_cpp_types) else None
+            ha = param_has_ann[i] if param_has_ann and i < len(param_has_ann) else False
+            self._call_arg_cpp_type_stack.append(pt if pt else None)
+            self._call_arg_has_ann_stack.append(ha)
             self._visit_in_context('call_arg', arg)
+            self._call_arg_cpp_type_stack.pop()
+            self._call_arg_has_ann_stack.pop()
         for kw in node.keywords:
+            kw_pt = None
+            kw_ha = False
+            if param_names and kw.arg and kw.arg in param_names:
+                idx = param_names.index(kw.arg)
+                if param_cpp_types and idx < len(param_cpp_types):
+                    kw_pt = param_cpp_types[idx]
+                if param_has_ann and idx < len(param_has_ann):
+                    kw_ha = param_has_ann[idx]
+            self._call_arg_cpp_type_stack.append(kw_pt if kw_pt else None)
+            self._call_arg_has_ann_stack.append(kw_ha)
             self._visit_in_context('call_arg', kw.value)
+            self._call_arg_cpp_type_stack.pop()
+            self._call_arg_has_ann_stack.pop()
 
     def _s0405_generated_iterator_names(self) -> set[str]:
         cached = getattr(self, '_s0405_iter_names', None)
@@ -4104,7 +4282,14 @@ class _StrictStyleChecker(ast.NodeVisitor):
         self._s0405_iter_names = names
         return names
 
-    def _s0405_check_target(self, target: ast.expr, node: ast.AST) -> None:
+    def _s0405_check_target(
+        self,
+        target: ast.expr,
+        node: ast.AST,
+        rhs: ast.expr | None = None,
+        *,
+        is_aug: bool = False,
+    ) -> None:
         if self._current_method != '__init__' or not self._class_stack:
             return
         if self._s0303_in_desugar_host():
@@ -4119,7 +4304,38 @@ class _StrictStyleChecker(ast.NodeVisitor):
         field = target.attr
         if field not in _s0405_defaulted_fields(self.tr, info):
             return
+        if is_aug:
+            self._add(S0405, node, _s0405_message(info.name, field))
+            return
+        if self._context_has('control_flow'):
+            return
+        if rhs is None or not _is_field_default_literal_rhs(rhs):
+            return
         self._add(S0405, node, _s0405_message(info.name, field))
+
+    def _s0406_check_target(self, target: ast.expr, rhs: ast.expr, node: ast.AST) -> None:
+        if not _s0406_init_method(self._current_method) or not self._class_stack:
+            return
+        if self._context_has('control_flow'):
+            return
+        if self._s0303_in_desugar_host():
+            return
+        if not _is_self_field_ann_assign(target):
+            return
+        if not _is_field_default_literal_rhs(rhs):
+            return
+        info = self._current_class_info()
+        if info is None or _s0406_skip_class(info):
+            return
+        if info.name in self._s0405_generated_iterator_names():
+            return
+        field = target.attr
+        if field in _s0405_defaulted_fields(self.tr, info):
+            return
+        field_ann = _field_annotation_from_class_info(info, field)
+        if _s0406_skip_empty_container_rhs(rhs, field_ann):
+            return
+        self._add(S0406, node, _s0406_message(info.name, field, self._current_method or '__init__'))
 
     def visit_AnnAssign(self, node: ast.AnnAssign):
         if self._class_stack and self._current_method is None:
@@ -4130,7 +4346,8 @@ class _StrictStyleChecker(ast.NodeVisitor):
             field = _field_name_from_ann_target(node.target) or 'field'
             self._add(S0601, node, _strict_msg(f'`self.{field}: T = …`', f'`self.{field} = …`', f'非 `__init__` 方法 `{self._current_method}` 内', example=f'类体或 `__init__` 写 `{field}: T`；方法内写 `self.{field} = v`', reason='实例字段类型注解仅允许在类体或 `__init__`'))
         if node.value is not None:
-            self._s0405_check_target(node.target, node)
+            self._s0405_check_target(node.target, node, node.value)
+            self._s0406_check_target(node.target, node.value, node)
         self._check_s0602_annotation(node.annotation, node)
         self._check_s0603_tuple_annotation(node.annotation, node)
         _s0903_check_primitive_convert_temp(self, node)
@@ -4143,7 +4360,8 @@ class _StrictStyleChecker(ast.NodeVisitor):
     def visit_Assign(self, node: ast.Assign):
         for target in node.targets:
             for tgt in _s0405_iter_assign_targets(target):
-                self._s0405_check_target(tgt, node)
+                self._s0405_check_target(tgt, node, node.value)
+                self._s0406_check_target(tgt, node.value, node)
         self._note_kwargs_opts_ctor(node)
         if isinstance(node.value, ast.BinOp) and type(node.value.op) in _AUG_BINOPS:
             for target in node.targets:
@@ -4167,7 +4385,7 @@ class _StrictStyleChecker(ast.NodeVisitor):
             self.visit(node.value)
 
     def visit_AugAssign(self, node: ast.AugAssign):
-        self._s0405_check_target(node.target, node)
+        self._s0405_check_target(node.target, node, is_aug=True)
         prev_aug = self._current_aug_op
         self._current_aug_op = _aug_op_text(node.op)
         self.visit(node.target)
@@ -4266,16 +4484,65 @@ class _StrictStyleChecker(ast.NodeVisitor):
             for elt in node.elts:
                 self.visit(elt)
 
+    def visit_If(self, node: ast.If):
+        self.visit(node.test)
+        self._push('control_flow')
+        for stmt in node.body:
+            self.visit(stmt)
+        for stmt in node.orelse:
+            self.visit(stmt)
+        self._pop()
+
+    def visit_With(self, node: ast.With):
+        for item in node.items:
+            self.visit(item.context_expr)
+            if item.optional_vars is not None:
+                self.visit(item.optional_vars)
+        self._push('control_flow')
+        for stmt in node.body:
+            self.visit(stmt)
+        self._pop()
+
+    def visit_Try(self, node: ast.Try):
+        self._push('control_flow')
+        for stmt in node.body:
+            self.visit(stmt)
+        for handler in node.handlers:
+            if handler.type is not None:
+                self.visit(handler.type)
+            if handler.name is not None:
+                self.visit(handler.name)
+            for stmt in handler.body:
+                self.visit(stmt)
+        for stmt in node.orelse:
+            self.visit(stmt)
+        for stmt in node.finalbody:
+            self.visit(stmt)
+        self._pop()
+
     def visit_For(self, node: ast.For):
         if not (self._class_stack and _is_desugar_generated_name(self._class_stack[-1])) and isinstance(self._current_func, ast.FunctionDef):
             _s1201_record_for_violation(self.violations, self.module_path, node, in_async=self._in_async_def)
-        self.generic_visit(node)
+        self.visit(node.target)
+        self.visit(node.iter)
+        self._push('control_flow')
+        for stmt in node.body:
+            self.visit(stmt)
+        for stmt in node.orelse:
+            self.visit(stmt)
+        self._pop()
 
     def visit_While(self, node: ast.While):
         msg = _s0705_try_index_while_range(node)
         if msg is not None:
             self._add(S0705, node, msg)
-        self.generic_visit(node)
+        self.visit(node.test)
+        self._push('control_flow')
+        for stmt in node.body:
+            self.visit(stmt)
+        for stmt in node.orelse:
+            self.visit(stmt)
+        self._pop()
 
     def visit_BoolOp(self, node: ast.BoolOp):
         _s0802_check_compare_chain(self, node)
@@ -4298,8 +4565,10 @@ class _StrictStyleChecker(ast.NodeVisitor):
             self._push('match_guard')
             self.visit(node.guard)
             self._pop()
+        self._push('control_flow')
         for stmt in node.body:
             self.visit(stmt)
+        self._pop()
 
     def visit_Compare(self, node: ast.Compare):
         _s0901_check_char_literal_compare(self, node)

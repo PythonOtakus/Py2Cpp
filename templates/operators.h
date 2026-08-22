@@ -374,7 +374,7 @@ format(E v, PyUtf8Ptr format_spec = "")
 {
   return format((PyInt)v, format_spec);
 }
-/// C ``FILE*`` stdout（避免 ``using`` 绑到 ``py2cpp::console::stdout`` / ``PyTextIOWrapper``）。
+/// C ``FILE*`` stdout（避免 ``using`` 绑到 ``py2cpp::console::stdout`` / ``PyTextIO``）。
 inline FILE* _py2cpp_c_stdout()
 {
 #if defined(_MSC_VER)

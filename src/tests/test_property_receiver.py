@@ -191,3 +191,35 @@ class Owner:
       self.assertIn("PyHandle direct", header)
       self.assertIn("PyHandle* handle", header)
       self.assertNotRegex(header, r"(?m)^\s+Handle(?:\*|\s+direct)")
+
+
+  def test_module_function_return_property_uses_getter(self):
+    src = """
+from py2cpp import *
+
+@copyable
+class Box:
+  @property
+  def flag(self) -> bool:
+    return True
+
+def make() -> Box:
+  return new()
+
+def use() -> bool:
+  return make().flag
+"""
+    with tempfile.TemporaryDirectory() as tmp:
+      out = Path(tmp)
+      py = out / "mod.py"
+      py.write_text(src, encoding="utf-8")
+      _, cpp_path = Translator.translate_file(
+        str(py), output_dir=str(out), include_stdlib=False, strict=False,
+      )
+      cpp = cpp_path.read_text(encoding="utf-8")
+      self.assertIn("flag__get()", cpp)
+      self.assertNotRegex(cpp, r"make\(\)\.flag[^_]")
+
+
+if __name__ == "__main__":
+  unittest.main()

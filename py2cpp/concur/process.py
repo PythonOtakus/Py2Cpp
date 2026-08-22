@@ -111,7 +111,7 @@ class Process:
   _target: Callable[[], None]
   _name: str
   _phase: int
-  _daemon: bool
+  _daemon: bool = False
 
   def __init__(
     self,
@@ -125,7 +125,6 @@ class Process:
     self._target = target
     self._name = name
     self._phase = int(_ProcessPhaseEnum.Initial)
-    self._daemon = False
 
   def start(self) -> None:
     if self._phase != int(_ProcessPhaseEnum.Initial):

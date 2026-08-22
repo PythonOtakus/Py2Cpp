@@ -29,13 +29,14 @@ class RoundingModeEnum:
 class Context:
   """算术上下文（``prec`` / ``rounding``）。"""
 
+  Emin: int = -999999
+  Emax: int = 999999
+  traps: int = 0
+  flags: int = 0
+
   def __init__(self, prec: int = 28, rounding: int = 2):
     self.prec: int = prec
     self.rounding: int = rounding
-    self.Emin: int = -999999
-    self.Emax: int = 999999
-    self.traps: int = 0
-    self.flags: int = 0
 
   def __copy__(self, other: Self):
     self.prec = other.prec
@@ -67,46 +68,37 @@ def setContext(ctx: Context) -> None:
 class Decimal:
   """符号 + 系数 × 10^指数；特殊值 ``NaN`` / ``Inf``。"""
 
-  _sign: bool
+  _sign: bool = False
   _coeff: long
-  _exp: int
-  _special: int
+  _exp: int = 0
+  _special: int = 0
 
   @staticmethod
   @immutable
   def _pow10(n: int) -> long:
     return new.pow10(n)
 
+  def _initCoeffZero(self) -> None:
+    zero: long = 0
+    self._coeff = zero
+
   @overload
   def __init__(self):
-    zero: long = 0
-    self._sign = False
-    self._coeff = zero
-    self._exp = 0
-    self._special = 0
+    self._initCoeffZero()
 
   @overload
   def __init__(self, text: str):
-    zero: long = 0
-    self._sign = False
-    self._coeff = zero
-    self._exp = 0
-    self._special = 0
+    self._initCoeffZero()
     self._initFromStr(text)
 
   @overload
   def __init__(self, value: int):
-    zero: long = 0
-    self._sign = False
-    self._coeff = zero
-    self._exp = 0
-    self._special = 0
+    self._initCoeffZero()
     if value < 0:
       self._sign = True
       self._coeff = long(str(-value))
     else:
       self._coeff = long(str(value))
-    self._exp = 0
     self._normalizeCoeff()
 
   def __copy__(self, other: Self):

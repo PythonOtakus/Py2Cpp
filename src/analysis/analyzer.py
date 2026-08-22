@@ -2086,7 +2086,7 @@ class SignatureBuilder:
     {
       "TestResult",
       "TestSuite",
-      cpp_ident("TextIOWrapper"),
+      cpp_ident("TextIO"),
       cpp_ident("StringIO"),
     },
   )

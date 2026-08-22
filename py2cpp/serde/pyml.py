@@ -1,7 +1,7 @@
 """PyML 配置模板展开器。"""
 from ..builtins import *
 from ..core.exceptions import Exception, ValueError
-from ..io import StringIO, TextIOWrapper
+from ..io import StringIO, TextIO
 from ..io.path import Path
 from .json import JsonEncoder
 from .yaml import Yaml
@@ -214,9 +214,9 @@ class _PymlExpander:
   sourceName: str
   lines: list[_PymlLine]
   symbols: dict[str, _PymlValueUnion]
-  returned: bool
+  returned: bool = False
   resultValue: _PymlValueUnion
-  runKind: int
+  runKind: int = 0
   callStack: list[str]
   context: PymlContext
   # Cache source text, never callable indexes tied to an importing line table.
@@ -227,9 +227,7 @@ class _PymlExpander:
   def __init__(self, source: str, context: PymlContext):
     self.lines = []
     self.symbols = {}
-    self.returned = False
     self.resultValue = self._literal("null")
-    self.runKind = 0
     self.callStack = []
     self.context = context
     self.moduleCache = {}
@@ -318,7 +316,7 @@ class _PymlExpander:
     if name in self.moduleCache:
       source = self.moduleCache[name]
     else:
-      fp: TextIOWrapper = path.open()
+      fp: TextIO = path.open()
       source = fp.read()
       fp.close()
       self.moduleCache[name] = source
@@ -1439,7 +1437,7 @@ class Pyml:
     return Yaml.loads[T](Self.expand(s, context))
 
   @staticmethod
-  def load[T](fp: TextIOWrapper, context: PymlContext = new()) -> T:
+  def load[T](fp: TextIO, context: PymlContext = new()) -> T:
     return Self.loads[T](fp.read(), context)
 
   @staticmethod

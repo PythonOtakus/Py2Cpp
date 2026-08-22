@@ -7,7 +7,7 @@ from .core import *
 from .numeric import complex, complex128, long
 from .util import *
 from .text import *
-from .io import StringIO, TextIOWrapper, open
+from .io import StringIO, TextIO, open
 
 __all__ = [
   "ArithmeticType",
@@ -56,7 +56,7 @@ __all__ = [
   "RangeVar",
   "LenRangeVar",
   "StringIO",
-  "TextIOWrapper",
+  "TextIO",
   "open",
   "char",
   "utf8ptr",

@@ -233,10 +233,11 @@ class SetReverseIterator[Element: DictKeyType]:
 
 
 class SetIterator[Element: DictKeyType](FrozenSetIteratorMixin[Element]):
+  _bucket: int = 0
+  _skip: int = 0
+
   def __init__(self, owner: set[Element]):
     self._owner: set[Element] = owner
-    self._bucket: int = 0
-    self._skip: int = 0
 
 
 class set[Element: DictKeyType](
@@ -245,10 +246,10 @@ class set[Element: DictKeyType](
   friends=(SetIterator,),
 ):
   __repr__ = __str__
+  _capacity: int = 8
+  _size: int = 0
 
   def __init__(self):
-    self._capacity: int = 8
-    self._size: int = 0
     self._buckets: FrozenSetEntryUnsafe[Element][:] = new(self._capacity)
 
   @immutable
@@ -419,10 +420,11 @@ class set[Element: DictKeyType](
 
 
 class FrozenSetIterator[Element: DictKeyType](FrozenSetIteratorMixin[Element]):
+  _bucket: int = 0
+  _skip: int = 0
+
   def __init__(self, fs: frozenset[Element]):
     self._owner: frozenset[Element] = fs
-    self._bucket: int = 0
-    self._skip: int = 0
 
 
 @native_name("PyFrozenSet")
@@ -432,10 +434,10 @@ class frozenset[Element: DictKeyType](
   friends=(FrozenSetIterator,),
 ):
   __repr__ = __str__
+  _capacity: int = 8
+  _size: int = 0
 
   def __init__(self):
-    self._capacity: int = 8
-    self._size: int = 0
     self._buckets: FrozenSetEntryUnsafe[Element][:] = new(self._capacity)
 
   @immutable

@@ -6,7 +6,7 @@ Python 3.13 标准库没有 ``yaml`` 模块；本模块提供 Py2Cpp 自有的 Y
 """
 from ..builtins import *
 from ..core.exceptions import Exception
-from ..io import StringIO, TextIOWrapper
+from ..io import StringIO, TextIO
 from ..serde.json import Json, JsonEncoder
 
 
@@ -186,7 +186,7 @@ def _splitFlowParts(body: str) -> list[str]:
   return parts
 class _YamlParser:
   lines: list[str]
-  pos: int
+  pos: int = 0
   anchorNames: list[str]
   anchorValues: list[str]
 
@@ -199,7 +199,6 @@ class _YamlParser:
       if line.strip() in {"", "---", "..."} or line.strip().startsWith("%"):
         continue
       self.lines.append(line)
-    self.pos = 0
 
   @immutable
   def _indent(self, line: str) -> int:
@@ -527,11 +526,11 @@ class Yaml:
     return Json.dumps(obj, 0)
 
   @staticmethod
-  def load[T](fp: TextIOWrapper) -> T:
+  def load[T](fp: TextIO) -> T:
     return Self.loads[T](fp.read())
 
   @staticmethod
-  def loadAll[T](fp: TextIOWrapper) -> list[T]:
+  def loadAll[T](fp: TextIO) -> list[T]:
     return Self.loadsAll[T](fp.read())
 
   @staticmethod
@@ -543,7 +542,7 @@ class Yaml:
     return Self.loads[T](fp.read())
 
   @staticmethod
-  def dump[T](obj: T, fp: TextIOWrapper, indent: int = 2) -> None:
+  def dump[T](obj: T, fp: TextIO, indent: int = 2) -> None:
     fp.write(Self.dumps[T](obj, indent))
 
   @staticmethod

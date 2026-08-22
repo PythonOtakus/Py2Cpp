@@ -151,6 +151,18 @@ def _emit_arg_expr(pname: str, ann: _Ann, *, c_name: str) -> tuple[list[str], st
       return [], f"reinterpret_cast<wchar_t*>({pname})"
     if c_name == "ReleaseSemaphore" and pname == "lpPreviousCount":
       return [], f"reinterpret_cast<LONG*>({pname})"
+    if c_name == "CreatePipe" and pname in {"hReadPipe", "hWritePipe"}:
+      return [], f"reinterpret_cast<PHANDLE>({pname})"
+    if c_name in {"GetExitCodeProcess", "PeekNamedPipe", "ReadFile", "WriteFile"} and pname.startswith("lp"):
+      if pname in {
+        "lpExitCode",
+        "lpBytesRead",
+        "lpTotalBytesAvail",
+        "lpBytesLeftThisMessage",
+        "lpNumberOfBytesRead",
+        "lpNumberOfBytesWritten",
+      }:
+        return [], f"reinterpret_cast<LPDWORD>({pname})"
     return [], pname
   if ann.kind == "ptr_cstr":
     # ``utf8ptr*`` ≈ ``const char**``；个别 API（如 ``sqlite3_exec`` errmsg）要 ``char**``

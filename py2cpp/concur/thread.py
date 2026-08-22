@@ -35,11 +35,6 @@ class _FutureStateEnum:
   Exception = 4
 
 
-@native
-def _barrierNoAction() -> None:
-  ...
-
-
 class EmptyError(Exception):
   """``Queue.getNoWait()`` 或非阻塞/超时 ``get`` 在无元素时抛出。"""
 
@@ -462,48 +457,13 @@ class Barrier:
   _count: atomic[int]
   _state: atomic[int]
   _timeout: float64
-  _hasAction: bool
 
   @overload
-  def __init__(self, parties: int):
-    if parties < 1:
-      raise ValueError("parties must be >= 1")
-    self._cond = new()
-    self._action = _barrierNoAction
-    self._parties = parties
-    self._count = new(0)
-    self._state = new(int(_BarrierStateEnum.Filling))
-    self._timeout = float.Inf
-    self._hasAction = False
+  def __init__(self, parties: int, timeout: float64 = float64.Inf):
+    self.__init__(parties, new(), timeout)
 
   @overload
-  def __init__(self, parties: int, timeout: float64):
-    if parties < 1:
-      raise ValueError("parties must be >= 1")
-    if timeout < 0.0:
-      raise ValueError("timeout value must be non-negative")
-    self._cond = new()
-    self._action = _barrierNoAction
-    self._parties = parties
-    self._count = new(0)
-    self._state = new(int(_BarrierStateEnum.Filling))
-    self._timeout = timeout
-    self._hasAction = False
-
-  @overload
-  def __init__(self, parties: int, action: Callable[[], None]):
-    if parties < 1:
-      raise ValueError("parties must be >= 1")
-    self._cond = new()
-    self._action = action
-    self._parties = parties
-    self._count = new(0)
-    self._state = new(int(_BarrierStateEnum.Filling))
-    self._timeout = float.Inf
-    self._hasAction = True
-
-  @overload
-  def __init__(self, parties: int, action: Callable[[], None], timeout: float64):
+  def __init__(self, parties: int, action: Callable[[], None], timeout: float64 = float64.Inf):
     if parties < 1:
       raise ValueError("parties must be >= 1")
     if timeout < 0.0:
@@ -514,7 +474,6 @@ class Barrier:
     self._count = new(0)
     self._state = new(int(_BarrierStateEnum.Filling))
     self._timeout = timeout
-    self._hasAction = True
 
   def _enter(self) -> None:
     while self._state.load() in {int(_BarrierStateEnum.Draining), int(_BarrierStateEnum.Resetting)}:
@@ -524,8 +483,7 @@ class Barrier:
 
   def _release(self) -> None:
     try:
-      if self._hasAction:
-        self._action()
+      self._action()
       self._state.store(int(_BarrierStateEnum.Draining))
       self._cond.notifyAll()
     except:
@@ -552,10 +510,10 @@ class Barrier:
     self._state.store(int(_BarrierStateEnum.Broken))
     self._cond.notifyAll()
 
-  def wait(self, timeout: float64 = float.Inf) -> int:
+  def wait(self, timeout: float64 = float64.Inf) -> int:
     """等待一轮 barrier 完成，并返回本轮 ``0..parties-1`` 的 index。"""
     actualTimeout: float64 = timeout
-    if actualTimeout == float.Inf:
+    if actualTimeout == float64.Inf:
       actualTimeout = self._timeout
     self._cond.acquire()
     try:
@@ -873,7 +831,7 @@ class Thread:
   _target: Callable[[], None]
   _name: str
   _phase: int
-  _daemon: bool
+  _daemon: bool = False
 
   def __init__(
     self,
@@ -887,11 +845,10 @@ class Thread:
     self._target = target
     self._name = name
     self._phase = int(_ThreadPhaseEnum.Initial)
-    self._daemon = False
 
   @staticmethod
   def fromHandle(handle: _ThreadHandle) -> Self:
-    thread: Self = new(_barrierNoAction)
+    thread: Self = new(new())
     thread._handle = handle
     thread._name = handle.name
     thread._phase = int(_ThreadPhaseEnum.Started)

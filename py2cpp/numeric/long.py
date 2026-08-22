@@ -14,14 +14,12 @@ class long:
   _HashBits: int @const = 61
   _HashModulus: int64 @const = 2305843009213693951
 
-  _hash: int
-  _hashOk: bool
+  _neg: bool = False
+  _hash: int = 0
+  _hashOk: bool = False
 
   def __init__(self, value: str = ""):
-    self._neg: bool = False
     self._digits: list[int] = []
-    self._hash = 0
-    self._hashOk = False
     self._parseDecimal(value)
 
   def __copy__(self, other: Self):

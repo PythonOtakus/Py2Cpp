@@ -1,13 +1,12 @@
 """``console.render``：样式、进度、日志与输出协调（``docs/console.md`` §5）。"""
 from ..builtins import *
-from ..io import TextIOWrapper, wrapStd
-from ..system.environ import environ
+from ..io import TextIO
 from ..system.time import monotonic, time
 from ..text import str
 from ..util.list import list
 
 from .exceptions import RenderError
-from . import _colorOverrideGet
+from .core import Console
 
 
 @enum
@@ -55,22 +54,13 @@ class LogRecord:
   fields: str
 
 
-def _ansiEnabledFor(stream: TextIOWrapper) -> bool:
-  ov: int = _colorOverrideGet()
-  if ov == 0:
-    return False
-  if ov == 1:
-    return True
-  if "NO_COLOR" in environ:
-    return False
-  if "FORCE_COLOR" in environ:
-    return True
-  return stream.isAtty
+def _ansiEnabledFor(stream: TextIO) -> bool:
+  return Console.colorfulFor(stream.isAtty)
 
 
 def paint(text: str, style: Style) -> str:
   """在不支持颜色的流上返回纯文本（默认 stdout）。"""
-  stream: TextIOWrapper = wrapStd(1)
+  stream: TextIO = Console.stdout
   if not _ansiEnabledFor(stream):
     return text
   codes: list[str] = []
@@ -110,7 +100,7 @@ class _StreamCoordinator:
   def clearDynamic(self) -> None:
     self._dynamic = ""
 
-  def writeLine(self, stream: TextIOWrapper, line: str) -> None:
+  def writeLine(self, stream: TextIO, line: str) -> None:
     if self._dynamic:
       stream.write("\r\x1b[2K")
     stream.write(line)
@@ -120,7 +110,7 @@ class _StreamCoordinator:
       stream.write(self._dynamic)
     stream.flush()
 
-  def refresh(self, stream: TextIOWrapper) -> None:
+  def refresh(self, stream: TextIO) -> None:
     if self._dynamic:
       stream.write("\r\x1b[2K")
       stream.write(self._dynamic)
@@ -130,7 +120,7 @@ class _StreamCoordinator:
 _stdoutCoord: _StreamCoordinator = new()
 
 
-def _coordFor(_stream: TextIOWrapper) -> _StreamCoordinator:
+def _coordFor(_stream: TextIO) -> _StreamCoordinator:
   return _stdoutCoord
 
 
@@ -146,14 +136,13 @@ class Progress:
   """多任务进度；TTY 原地刷新，非 TTY 降级；无隐藏刷新线程。"""
 
   _tasks: list[_ProgressTask]
-  _active: bool
+  _active: bool = False
 
   def __init__(self):
     self._tasks = []
-    self._active = False
 
-  def _out(self) -> TextIOWrapper:
-    return wrapStd(1)
+  def _out(self) -> TextIO:
+    return Console.stdout
 
   def __enter__(self) -> Self:
     self._active = True
@@ -161,7 +150,7 @@ class Progress:
 
   def __exit__(self) -> None:
     self._active = False
-    stream: TextIOWrapper = self._out()
+    stream: TextIO = self._out()
     _coordFor(stream).clearDynamic()
     if _ansiEnabledFor(stream):
       stream.write("\r\x1b[2K")
@@ -211,7 +200,7 @@ class Progress:
         line += t.name + " " + str(t.nDone) + "/" + str(t.total) + " (" + str(pct) + "%)"
       else:
         line += t.name + " " + str(t.nDone)
-    stream: TextIOWrapper = self._out()
+    stream: TextIO = self._out()
     if _ansiEnabledFor(stream):
       _coordFor(stream).setDynamic(line)
       _coordFor(stream).refresh(stream)
@@ -224,16 +213,15 @@ class Progress:
 @uncopyable
 class Spinner:
   _frames: list[str]
-  _index: int
+  _index: int = 0
   _label: str
 
   def __init__(self, label: str = ""):
     self._label = label
     self._frames = ["|", "/", "-", "\\"]
-    self._index = 0
 
-  def _out(self) -> TextIOWrapper:
-    return wrapStd(1)
+  def _out(self) -> TextIO:
+    return Console.stdout
 
   def tick(self) -> None:
     self._index = (self._index + 1) % len(self._frames)
@@ -242,7 +230,7 @@ class Spinner:
   def refresh(self) -> None:
     frame: str = self._frames[self._index]
     text: str = frame + " " + self._label
-    stream: TextIOWrapper = self._out()
+    stream: TextIO = self._out()
     if _ansiEnabledFor(stream):
       _coordFor(stream).setDynamic(text)
       _coordFor(stream).refresh(stream)
@@ -259,15 +247,15 @@ class Status:
   def __init__(self, text: str = ""):
     self._text = text
 
-  def _out(self) -> TextIOWrapper:
-    return wrapStd(1)
+  def _out(self) -> TextIO:
+    return Console.stdout
 
   def update(self, text: str) -> None:
     self._text = text
     self.refresh()
 
   def refresh(self) -> None:
-    stream: TextIOWrapper = self._out()
+    stream: TextIO = self._out()
     if _ansiEnabledFor(stream):
       _coordFor(stream).setDynamic(self._text)
       _coordFor(stream).refresh(stream)
@@ -333,14 +321,14 @@ class ConsoleSink:
     self._minLevel = level
     self._formatter = new()
 
-  def _out(self) -> TextIOWrapper:
-    return wrapStd(1)
+  def _out(self) -> TextIO:
+    return Console.stdout
 
   def emit(self, record: LogRecord) -> None:
     if record.level < self._minLevel:
       return
     line: str = self._formatter.formatLine(record)
-    stream: TextIOWrapper = self._out()
+    stream: TextIO = self._out()
     _coordFor(stream).writeLine(stream, line)
 
   def flush(self) -> None:
@@ -352,7 +340,7 @@ class ConsoleSink:
 
 @uncopyable
 class FileSink:
-  """追加写文件；每次 emit 打开—写入—关闭（避免持有不可赋值的 ``TextIOWrapper``）。"""
+  """追加写文件；每次 emit 打开—写入—关闭（避免持有不可赋值的 ``TextIO``）。"""
 
   _path: str
   _formatter: TextFormatter
@@ -367,7 +355,7 @@ class FileSink:
     if record.level < self._minLevel:
       return
     line: str = self._formatter.formatLine(record)
-    fp: TextIOWrapper = new(self._path, "a")
+    fp: TextIO = new(self._path, "a")
     fp.write(line)
     fp.write("\n")
     fp.flush()

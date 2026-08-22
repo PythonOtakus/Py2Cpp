@@ -249,9 +249,10 @@ class Counter[Key: DictKeyType, Count: IntegralType = int](dict[Key, Count]):
 class CounterElementsIterator[Key: DictKeyType, Count: IntegralType]:
   """``Counter.elements()``：按插入序展开，``count <= 0`` 的键跳过。"""
 
+  _keyI: int = 0
+
   def __init__(self, ctr: Counter[Key, Count]):
     self._ctr: Counter[Key, Count] = ctr
-    self._keyI: int = 0
     z: int = 0
     self._left: Count = z
     self._cur: Key = new()

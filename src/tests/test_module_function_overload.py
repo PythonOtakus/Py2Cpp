@@ -34,7 +34,7 @@ class JsonClassSerializeOverloadTest(unittest.TestCase):
         text,
       )
       self.assertIn(
-        "static void dump(PyBool obj, PyTextIOWrapper& fp, PyInt indent = 0);",
+        "static void dump(PyBool obj, PyTextIO& fp, PyInt indent = 0);",
         text,
       )
       self.assertNotIn("_json_dumps(", text)

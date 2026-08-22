@@ -17,9 +17,10 @@ from ffi.crt.stdio import pyiSnprintf, pyiSscanf
 from .mixins import StringMixin
 
 class StrIterator:
+  _index: int = 0
+
   def __init__(self, view: span[char]):
     self._view: span[char] = view
-    self._index: int = 0
 
   def __iter__(self):
     return self
@@ -55,8 +56,8 @@ class str(StringMixin[char]):
 
   _DeleteChar: int @const = 0xFFFF
 
-  _hash: int
-  _hashOk: bool
+  _hash: int = 0
+  _hashOk: bool = False
 
   def _didChangeData(self) -> None:
     self._hash = 0
@@ -260,12 +261,10 @@ class str(StringMixin[char]):
     # 空 C 串不可再走 fromUtf8→fromSpanUtf8→`return ""`→本构造，否则栈溢出
     view: span[byte] = text.view
     if not view:
-      self._hash = 0
       self._hashOk = True
       self._data = new(0)
       return
     decoded: Self = Self.fromSpanUtf8(view)
-    self._hash = 0
     self._hashOk = not decoded
     self._data: array[char, _SsoCap] = decoded._data
 
@@ -273,19 +272,15 @@ class str(StringMixin[char]):
   def __init__(self, text: utf16ptr):
     view: span[uint16] = text.view
     if not view:
-      self._hash = 0
       self._hashOk = True
       self._data = new(0)
       return
     decoded: Self = Self.fromSpanUtf16(view)
-    self._hash = 0
     self._hashOk = not decoded
     self._data = decoded._data
 
   @overload
   def __init__(self, data: char[:]):
-    self._hash = 0
-    self._hashOk = False
     n: int = len(data)
     self._data = new(n)
     for i in range(n):
@@ -294,8 +289,6 @@ class str(StringMixin[char]):
 
   @overload
   def __init__(self, value: char):
-    self._hash = 0
-    self._hashOk = False
     self._data = [value]
 
   @staticmethod

@@ -208,6 +208,8 @@ class FrozenListReverseIteratorMixin[Element]:
 
 
 class ListIterator[Element](FrozenListIteratorMixin[Element]):
+  _index: int = 0
+
   @overload
   def __init__(self):
     pass
@@ -215,7 +217,6 @@ class ListIterator[Element](FrozenListIteratorMixin[Element]):
   @overload
   def __init__(self, owner: list[Element]):
     self._owner: list[Element] = owner
-    self._index: int = 0
 
 
 class ListReverseIterator[Element](FrozenListReverseIteratorMixin[Element]):
@@ -230,6 +231,8 @@ class ListReverseIterator[Element](FrozenListReverseIteratorMixin[Element]):
 
 
 class FrozenListIterator[Element](FrozenListIteratorMixin[Element]):
+  _index: int = 0
+
   @overload
   def __init__(self):
     pass
@@ -237,7 +240,6 @@ class FrozenListIterator[Element](FrozenListIteratorMixin[Element]):
   @overload
   def __init__(self, owner: frozenlist[Element]):
     self._owner: frozenlist[Element] = owner
-    self._index: int = 0
 
 
 class list[Element, StackLength: int = 0](
@@ -246,10 +248,10 @@ class list[Element, StackLength: int = 0](
   friends=(ListIterator, ListReverseIterator),
 ):
   __repr__ = __str__
+  _length: int = 0
+  _capacity: int = 0
 
   def __init__(self):
-    self._length: int = 0
-    self._capacity: int = 0
     self._data: array[Element, StackLength] = new()
 
   @immutable
@@ -625,10 +627,10 @@ class frozenlist[Element, StackLength: int = 0](
   friends=(FrozenListIterator,),
 ):
   __repr__ = __str__
+  _length: int = 0
+  _capacity: int = 0
 
   def __init__(self):
-    self._length: int = 0
-    self._capacity: int = 0
     self._data: array[Element, StackLength] = new()
 
   @immutable

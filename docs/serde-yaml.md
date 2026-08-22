@@ -16,7 +16,7 @@ items: list[dict[str, int]] = Yaml.loadAll[dict[str, int]](file)
 Yaml.dump(config, file)
 ```
 
-没有模块级 `load` / `dump` 函数；所有入口均属于 `Yaml`。`load` / `loadAll` / `dump` 接受 `TextIOWrapper`，`loadString` / `loadAllString` / `dumpString` 接受 `StringIO`。
+没有模块级 `load` / `dump` 函数；所有入口均属于 `Yaml`。`load` / `loadAll` / `dump` 接受 `TextIO`，`loadString` / `loadAllString` / `dumpString` 接受 `StringIO`。
 
 ## 已支持的 YAML 输入
 

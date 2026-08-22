@@ -6,10 +6,10 @@
 ``getFieldType`` / ``getFieldDefault`` 译期展开。首版不含子命令。
 """
 from ..builtins import *
-from ..io import TextIOWrapper, wrapStd
+from ..io import TextIO
 from ..util.list import list
 
-from . import argv, exit
+from .core import Console
 
 
 @annotation
@@ -42,12 +42,12 @@ class FlagArgMeta:
 
 @copyable
 class ArgParserIO:
-  """供 mixin ``parse`` 调用的 IO 叶子；类名全局可解析，避免宿主模块看不到 ``exit``。"""
+  """供 mixin ``parse`` 调用的 IO 叶子；类名全局可解析，避免宿主模块看不到 ``Console.exit``。"""
 
   @staticmethod
   def resolveArgv(args: list[str] | None = None) -> list[str]:
     if args is None:
-      full: list[str] = argv()
+      full: list[str] = Console.argv
       if len(full) <= 1:
         empty: list[str] = []
         return empty
@@ -56,22 +56,22 @@ class ArgParserIO:
 
   @staticmethod
   def fail(msg: str, usage: str) -> None:
-    err: TextIOWrapper = wrapStd(2)
+    err: TextIO = Console.stderr
     err.write("error: ")
     err.write(msg)
     err.write("\n")
     err.write(usage)
     err.write("\n")
     err.flush()
-    exit(2)
+    Console.exit(2)
 
   @staticmethod
   def showHelp(usage: str) -> None:
-    err: TextIOWrapper = wrapStd(2)
+    err: TextIO = Console.stderr
     err.write(usage)
     err.write("\n")
     err.flush()
-    exit(0)
+    Console.exit(0)
 
 
 @mixin

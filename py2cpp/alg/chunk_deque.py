@@ -10,16 +10,18 @@ from ..util.mixins import ContainerMixin
 
 @boxing
 class _ChunkNodeUnsafe[Element](friends=(ChunkDeque,)):
+  prev: Self = None
+  next: Self = None
+
   def __init__(self):
     self._data: list[Element] = []
-    self.prev: Self = None
-    self.next: Self = None
 
 
 class ChunkDequeIterator[Element]:
+  _index: int = 0
+
   def __init__(self, dq: ChunkDeque[Element]):
     self._dq: ChunkDeque[Element] = dq
-    self._index: int = 0
 
   def __iter__(self) -> Self:
     return self
@@ -52,14 +54,14 @@ class ChunkDeque[Element](ContainerMixin):
   """分块双端队列；``splice`` / ``extend`` / ``insert`` 提供可拼接序列（rope）语义。"""
 
   DefaultBlockSize: int @const = 512
+  _head: _ChunkNodeUnsafe[Element] = None
+  _tail: _ChunkNodeUnsafe[Element] = None
+  _len: int = 0
 
   def __init__(self, blockSize: int = 512):
     if blockSize <= 0:
       raise ValueError("blockSize must be positive")
     self._blockSize: int = blockSize
-    self._head: _ChunkNodeUnsafe[Element] = None
-    self._tail: _ChunkNodeUnsafe[Element] = None
-    self._len: int = 0
 
   def __del__(self):
     self.clear()
@@ -306,18 +308,7 @@ class ChunkDeque[Element](ContainerMixin):
     self.extend(right)
     right.clear()
 
-  @overload
-  def pop(self) -> Element:
-    if not self:
-      raise IndexError("pop from empty ChunkDeque")
-    value: Element = self._tail._data.pop()
-    if not self._tail._data:
-      self._unlinkNode(self._tail)
-    self._len -= 1
-    return value
-
-  @overload
-  def pop(self, index: int) -> Element:
+  def pop(self, index: int = -1) -> Element:
     if not self:
       raise IndexError("pop from empty ChunkDeque")
     if index < 0:
@@ -325,7 +316,11 @@ class ChunkDeque[Element](ContainerMixin):
     if index < 0 or index >= self._len:
       raise IndexError("pop index out of range")
     if index == self._len - 1:
-      return self.pop()
+      value: Element = self._tail._data.pop()
+      if not self._tail._data:
+        self._unlinkNode(self._tail)
+      self._len -= 1
+      return value
     if index == 0:
       return self.popLeft()
     value: Element = self[index]

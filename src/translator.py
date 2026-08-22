@@ -1345,8 +1345,17 @@ class Translator(ast.NodeVisitor):
             if node.func.id == 'Self' and self._self_type_class:
                 return self._self_type_class
             binding = self._effective_import_bindings().get(node.func.id)
-            sym = binding.symbol if binding and binding.kind == 'class' else node.func.id
-            return self.classes.get(sym)
+            if binding and binding.kind == 'class':
+                return self.classes.get(binding.symbol)
+            if node.func.id in self.classes:
+                return self.classes[node.func.id]
+            # 模块/导入函数：按返回类型解析（如 ``_stdio(1).isAtty`` → ``TextIO``）
+            fsig = self._function_sig_for_name(node.func.id)
+            if fsig is not None:
+                ret = self._sig_return_storage(fsig) or self._sig_return_full(fsig)
+                if ret:
+                    return self._class_info_for_type(ret)
+            return None
         if not isinstance(node.func, ast.Attribute):
             return None
         recv_info = self._class_info_for_attr_value(node.func.value)
@@ -1356,6 +1365,9 @@ class Translator(ast.NodeVisitor):
             prop = recv_info.properties.get(node.func.attr)
             if prop and prop.getter_sig:
                 return self._class_info_for_type(self._sig_return_storage(prop.getter_sig))
+            sp = recv_info.static_properties.get(node.func.attr)
+            if sp and sp.getter_sig:
+                return self._class_info_for_type(self._sig_return_storage(sp.getter_sig))
         return None
 
     def _class_info_for_attr_value(self, node: ast.expr) -> ClassInfo | None:
@@ -2773,6 +2785,8 @@ class Translator(ast.NodeVisitor):
             recv, sep = self._receiver_access(receiver)
             return f"{recv}{sep}{property_getter_method_for('value')}()"
         info = self._class_info_for_receiver(receiver)
+        if info is None and recv_t:
+            info = self._class_info_for_type(recv_t)
         if info:
             if info.is_union and attr == '__enum__':
                 recv, sep = self._receiver_access(receiver)
@@ -6086,6 +6100,9 @@ class Translator(ast.NodeVisitor):
                     out = self._emit_union_variant_ctor(cls, node.func.attr, node, context_cpp=cpp_type, type_args_slice=sl)
                     if out is not None:
                         return out
+        if isinstance(node, ast.Call) and self._is_new_call(node):
+            from .emit.literal_ctor_emit import _emit_new_ctor_expr
+            return _emit_new_ctor_expr(self, cpp_type, node)
         from .emit.complex_literal_emit import try_emit_complex_literal_expr
         complex_lit = try_emit_complex_literal_expr(node, cpp_type)
         if complex_lit is not None:

@@ -9,15 +9,40 @@ from src.translator import Translator
 
 
 class ExplicitCtorEmitTests(unittest.TestCase):
-  def _translate(self, src: str) -> str:
+  def _translate(self, src: str, *, with_import: bool = False) -> str:
     with tempfile.TemporaryDirectory() as tmp:
       out = Path(tmp)
       py = out / "mod.py"
-      py.write_text(src, encoding="utf-8")
-      h_path, _cpp_path = Translator.translate_file(
+      body = f"from py2cpp import *\n\n{src}" if with_import else src
+      py.write_text(body, encoding="utf-8")
+      h_path, cpp_path = Translator.translate_file(
         str(py), output_dir=str(out), include_stdlib=False, strict=False,
       )
-      return h_path.read_text(encoding="utf-8")
+      return h_path.read_text(encoding="utf-8") + cpp_path.read_text(encoding="utf-8")
+
+  def test_init_overload_self_forward_delegate_ctor(self):
+    cpp = self._translate(
+      '''class Pair:
+  a: int
+  b: int
+
+  @overload
+  def __init__(self, a: int):
+    self.__init__(a, 0)
+
+  @overload
+  def __init__(self, a: int, b: int):
+    self.a = a
+    self.b = b
+
+
+def main():
+  p: Pair = new(1)
+  return p.a + p.b
+''',
+      with_import=True,
+    )
+    self.assertIn("PyPair::PyPair(PyInt a) : PyPair(a, 0)", cpp)
 
   def test_init_and_default_ctor_explicit(self):
     h = self._translate(
@@ -32,8 +57,8 @@ class Empty:
     pass
 ''',
     )
-    self.assertIn("explicit Box(PyInt x);", h)
-    self.assertIn("explicit Empty();", h)
+    self.assertIn("explicit PyBox(PyInt x);", h)
+    self.assertIn("explicit PyEmpty();", h)
 
   def test_conversion_operators_explicit(self):
     h = self._translate(

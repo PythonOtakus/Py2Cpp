@@ -235,9 +235,10 @@ class FrozenDictKeysViewMixin[Key: DictKeyType, Value]:
 
 
 class FrozenDictKeyIterator[Key: DictKeyType, Value](FrozenDictKeyIteratorMixin[Key, Value]):
+  _index: int = 0
+
   def __init__(self, dct: frozendict[Key, Value]):
     self._dct: frozendict[Key, Value] = dct
-    self._index: int = 0
 
 
 class FrozenDictKeyReverseIterator[Key: DictKeyType, Value](FrozenDictKeyReverseIteratorMixin[Key, Value]):
@@ -247,15 +248,17 @@ class FrozenDictKeyReverseIterator[Key: DictKeyType, Value](FrozenDictKeyReverse
 
 
 class FrozenDictValuesIterator[Key: DictKeyType, Value](FrozenDictValuesIteratorMixin[Key, Value]):
+  _index: int = 0
+
   def __init__(self, dct: frozendict[Key, Value]):
     self._dct: frozendict[Key, Value] = dct
-    self._index: int = 0
 
 
 class FrozenDictItemsIterator[Key: DictKeyType, Value](FrozenDictItemsIteratorMixin[Key, Value]):
+  _index: int = 0
+
   def __init__(self, dct: frozendict[Key, Value]):
     self._dct: frozendict[Key, Value] = dct
-    self._index: int = 0
 
 
 class FrozenDictKeysView[Key: DictKeyType, Value](FrozenDictKeysViewMixin[Key, Value]):
@@ -300,10 +303,10 @@ class frozendict[Key: DictKeyType, Value](
   ),
 ):
   __repr__ = __str__
+  _capacity: int = 8
+  _size: int = 0
 
   def __init__(self):
-    self._capacity: int = 8
-    self._size: int = 0
     self._order: list[Key] = []
     self._values: list[Value] = []
     self._buckets: DictEntryUnsafe[Key, Value][:] = new(self._capacity)
@@ -367,9 +370,10 @@ class frozendict[Key: DictKeyType, Value](
 
 
 class DictKeyIterator[Key: DictKeyType, Value](FrozenDictKeyIteratorMixin[Key, Value]):
+  _index: int = 0
+
   def __init__(self, dct: dict[Key, Value]):
     self._dct: dict[Key, Value] = dct.copy()
-    self._index: int = 0
 
 
 class DictKeyReverseIterator[Key: DictKeyType, Value](FrozenDictKeyReverseIteratorMixin[Key, Value]):
@@ -379,15 +383,17 @@ class DictKeyReverseIterator[Key: DictKeyType, Value](FrozenDictKeyReverseIterat
 
 
 class DictValuesIterator[Key: DictKeyType, Value](FrozenDictValuesIteratorMixin[Key, Value]):
+  _index: int = 0
+
   def __init__(self, dct: dict[Key, Value]):
     self._dct: dict[Key, Value] = dct.copy()
-    self._index: int = 0
 
 
 class DictItemsIterator[Key: DictKeyType, Value](FrozenDictItemsIteratorMixin[Key, Value]):
+  _index: int = 0
+
   def __init__(self, dct: dict[Key, Value]):
     self._dct: dict[Key, Value] = dct.copy()
-    self._index: int = 0
 
 
 class DictKeysView[Key: DictKeyType, Value](FrozenDictKeysViewMixin[Key, Value]):
@@ -432,6 +438,8 @@ class dict[Key: DictKeyType, Value](
   ),
 ):
   __repr__ = __str__
+  _capacity: int = 8
+  _size: int = 0
 
   @staticmethod
   def fromKeys(keys: list[Key], value: Value) -> Self:
@@ -441,8 +449,6 @@ class dict[Key: DictKeyType, Value](
     return d
 
   def __init__(self):
-    self._capacity: int = 8
-    self._size: int = 0
     self._order: list[Key] = []
     self._values: list[Value] = []
     self._buckets: DictEntryUnsafe[Key, Value][:] = new(self._capacity)

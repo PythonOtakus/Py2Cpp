@@ -605,24 +605,19 @@ class _ClientStreamResponseState(
 ):
   """``ClientStreamResponse`` 共享状态；返回/复制响应对象时不复制底层流。"""
 
-  status: int
+  status: int = 0
   headers: dict[str, str]
   _reader: StreamReader
-  _chunked: bool
-  _closed: bool
-  _done: bool
+  _chunked: bool = False
+  _closed: bool = False
+  _done: bool = False
   _chunk: bytes
-  _chunkPos: int
+  _chunkPos: int = 0
 
   def __init__(self):
-    self.status = 0
     self.headers = {}
     self._reader = StreamReader()
-    self._chunked = False
-    self._closed = False
-    self._done = False
     self._chunk = b""
-    self._chunkPos = 0
 
 
 @copyable
@@ -717,26 +712,21 @@ class ClientStreamResponse:
 class AsyncClientStreamResponse:
   """异步客户端流式 HTTP 响应；响应头已读，body 保持 non-blocking 增量读取。"""
 
-  status: int
+  status: int = 0
   headers: dict[str, str]
   _reader: AsyncStreamReader
   _writer: AsyncStreamWriter
-  _chunked: bool
-  _closed: bool
-  _done: bool
+  _chunked: bool = False
+  _closed: bool = False
+  _done: bool = False
   _chunk: bytes
-  _chunkPos: int
+  _chunkPos: int = 0
 
   def __init__(self):
-    self.status = 0
     self.headers = {}
     self._reader = new()
     self._writer = new()
-    self._chunked = False
-    self._closed = False
-    self._done = False
     self._chunk = b""
-    self._chunkPos = 0
 
   @staticmethod
   async def fromStreams(reader: AsyncStreamReader @ref, writer: AsyncStreamWriter @ref) -> Self:

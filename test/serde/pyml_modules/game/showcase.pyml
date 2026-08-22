@@ -1,0 +1,95 @@
+# 综合样例：覆盖变量/表达式/增强赋值、动态 key、条件、循环、
+# @def/@inline/@expand、相对/绝对/@from as / import*、父级相对导入。
+@from .ui.button import $button, $button_style as $primary_style, $twice as $double, $grade
+@from .ui.theme import $theme_dark
+@from .ui.widgets import $chip
+@from .shared.colors import $accent
+@from .defaults import $window_defaults, $base_plugins
+@from game.config import *
+
+$scale: 2
+$count: 1
+$count: += 2
+$count: *= 3
+$count: -= 1
+$count: /= 2
+$count: %= 3
+$label: "ui"
+$label: += "_main"
+$mods: ["core"]
+$mods: += ["net"]
+
+$tier: "high"
+$presets:
+  low: 512
+  high: 2048
+
+@def $sum_to($n):
+  $s: 0
+  @for $i in range($n + 1):
+    $s: += $i
+  @return $s
+
+@inline $enabled_plugins($want_debug):
+  $base: [core, input]
+  @for $plugin in $base:
+    - = $plugin
+  @if $want_debug:
+    - diagnostics
+  @else:
+    - release_metrics
+
+meta:
+  title: = $title
+  accent: = $accent
+  label: = $label
+  count: = $count
+  sum: = $sum_to(4)
+  doubled: = $double(3)
+  grade: = $grade(true)
+  icon: = f"{$title}/{$label}.png"
+visible: = $debug
+mode: = "dev" if $debug else "prod"
+  mods: = $mods
+  preset: = $presets[$tier]
+
+window:
+  @expand $window_defaults
+  width: = 160 * $scale
+  height: = 300 / $scale
+
+ui:
+  start:
+    @expand $button($title, $color: $accent)
+    @expand $primary_style
+    id: start_button
+  badge:
+    @expand $chip("NEW")
+  theme:
+    @expand $theme_dark()
+
+builds:
+  @for $name, $size in $presets.items():
+    = $name:
+      limit: = $size
+      tag: = f"{$name}_{$scale}"
+
+plugins:
+  - bootstrap
+  @expand $base_plugins()
+  @expand $enabled_plugins($debug)
+  - editor
+
+$scaled: true
+
+flags:
+  @if not $debug:
+    - release
+  @elif $scaled:
+    - scaled
+  @else:
+    - plain
+
+dynamic:
+  = f"build_{$tier}":
+    value: = $presets[$tier]

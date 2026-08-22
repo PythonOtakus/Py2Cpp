@@ -1,16 +1,24 @@
-"""外部子进程生命周期（Python ``subprocess.Popen`` 的受限子集）。
+"""子进程（Python ``multiprocessing.Process`` / ``ProcessPoolExecutor`` 受限子集）。
 
-``Process`` 只启动明确的 ``list[str]`` 参数，不隐式经过 shell。``ProcessPool``
-并发调度外部命令；跨进程执行 py2cpp callable 和 worker IPC 不在本模块范围内。
+``Process`` 运行零参数 ``Callable[[], None]``（与 ``Thread`` 同构）。
+POSIX 用 ``fork``；Windows 用同映像 ``CreateProcess`` + 函数 RVA（仅无捕获自由函数）。
+跨进程同步见 ``ProcessEvent`` / ``SharedMemory`` / ``ProcessChannel``。
+外部命令见 ``py2cpp.console.popen``。
 """
 from ..builtins import *
 from ..core.exceptions import OSError, RuntimeError, ValueError
-from ..util.dict import dict
-from ..util.list import list
+from ..text import str
 from ..util.span import span
-from ffi.crt.stdio import pyiFgets, pyiPclose, pyiPopen
-from ffi.crt.stdlib import pyiSystem
-from .thread import Future, ThreadPool, TimeoutError
+from .thread import (
+  EmptyError,
+  Future,
+  Lock,
+  Queue,
+  ShutDownError,
+  Thread,
+  TimeoutError,
+  atomic,
+)
 from ffi.windows import (
   PyiErrorAlreadyExists,
   PyiFileMapWrite,
@@ -32,203 +40,259 @@ from ffi.windows import (
   pyiWaitForSingleObject,
 )
 
-Pipe: int = -1
-DevNull: int = -2
 
+@enum
+class _ProcessPhaseEnum:
+  Initial = 0
+  Started = 1
+  Stopped = 2
 
-@copyable
-class CompletedProcess:
-  """已结束子进程的参数、退出码和已捕获输出。"""
-
-  args: list[str]
-  returnCode: int
-  stdout: str
-  stderr: str
-
-  @overload
-  def __init__(self):
-    self.args = []
-    self.returnCode = 0
-    self.stdout = ""
-    self.stderr = ""
-
-  @overload
-  def __init__(self, args: list[str], returnCode: int, stdout: str, stderr: str):
-    self.args = args
-    self.returnCode = returnCode
-    self.stdout = stdout
-    self.stderr = stderr
 
 @native
-@uncopyable
-class Process:
-  """外部子进程句柄。
+def tryWorker(argc: int, argv: uintptr) -> int:
+  """识别 ``--py2cpp-process-exec=`` 时在子进程执行目标并返回退出码；否则返回 ``-1``。"""
+  ...
 
-  ``args`` 不经 shell 解析；``stdout`` / ``stderr`` 可使用 ``Pipe`` 或 ``DevNull``。
-  进程实例不可复制，必须由创建者显式 ``wait``、``communicate`` 或终止。
-  """
+
+@native
+def _processInvoke[Value](fn: Callable[[], Value]) -> Value:
+  """在独立子进程中调用 ``fn`` 并回传可平凡拷贝的 ``Value``（含 ``None``）。"""
+  ...
+
+
+@native
+@copyable
+class _ProcessHandle:
+  """OS 子进程句柄（``Process`` 的 native 叶子）。"""
 
   _state: uintptr = 0
 
-  def __init__(
-    self,
-    args: list[str],
-    cwd: str = "",
-    env: dict[str, str] | None = None,
-    stdin: int = 0,
-    stdout: int = 0,
-    stderr: int = 0,
-  ):
-    ...
+  def __init__(self): ...
 
   def __del__(self): ...
 
-  def start(self) -> None: ...
+  def __copy__(self, other: Self): ...
 
-  def poll(self) -> int:
-    """返回退出码；尚未结束或未启动时返回 ``-1``。"""
-    ...
+  def start(self, target: Callable[[], None], name: str) -> None: ...
 
-  def wait(self, timeout: float64 = float.Inf) -> int:
-    """等待退出并返回退出码；超时抛 ``RuntimeError``。"""
-    ...
+  def join(self, timeout: float64 = float.Inf) -> bool: ...
 
   def terminate(self) -> None: ...
 
   def kill(self) -> None: ...
 
-  def communicate(self, input: str = "", timeout: float64 = float.Inf) -> CompletedProcess: ...
+  def close(self) -> None: ...
 
   @property
   @immutable
-  def returnCode(self) -> int:
-    """已结束时的退出码，否则为 ``-1``。"""
-    ...
+  def alive(self) -> bool: ...
 
   @property
   @immutable
-  def pid(self) -> int:
-    """已启动进程的 ID，否则为 ``-1``。"""
-    ...
+  def pid(self) -> int: ...
+
   @property
   @immutable
-  def running(self) -> bool:
-    """进程是否已启动且尚未退出。"""
-    ...
-
-  def __enter__(self) -> Self: ...
-
-  def __exit__(self): ...
-
-@overload
-def run(args: list[str]) -> CompletedProcess:
-  """同步运行一个命令，并默认捕获 stdout/stderr。"""
-  env: dict[str, str] = {}
-  return _runWithEnv(args, "", env, 0, -1, -1, "", -1.0)
+  def exitCode(self) -> int: ...
 
 
-def _runWithEnv(
-  args: list[str],
-  cwd: str,
-  env: dict[str, str],
-  stdin: int,
-  stdout: int,
-  stderr: int,
-  input: str,
-  timeout: float64,
-) -> CompletedProcess:
-  """同步运行一个外部命令并返回已收集结果。"""
-  process: Process = new(args, cwd, env, stdin, stdout, stderr)
-  process.start()
-  return process.communicate(input, timeout)
+@copyable
+class Process:
+  """抢占式 OS 子进程（对齐 ``multiprocessing.Process`` + 本仓 ``Thread``）。
 
-def _shellSystem(command: str) -> int:
-  """通过系统 shell 运行命令并返回退出码。"""
-  with command.useUtf8() as ccommand:
-    return pyiSystem(ccommand)
-
-
-def _shellPopenRead(command: str) -> CompletedProcess:
-  """通过系统 shell 运行命令，读取 stdout，并保留真实退出码。"""
-  out: str = ""
-  code: int = 0
-  with command.useUtf8() as ccommand:
-    stream = pyiPopen(ccommand, "r")
-    if stream is None:
-      raise OSError()
-    data: byte[:] = new(4096)
-    raw: Pointer[byte] = data.view.at()
-    carray: utf8ptr = cast(raw)
-    while pyiFgets(carray, len(data), stream) is not None:
-      out += str(raw)
-    code = pyiPclose(stream)
-  args: list[str] = []
-  return new(args, code, out, "")
-
-
-def _runShell(command: str, captureOutput: bool = False) -> CompletedProcess:
-  """运行显式 shell 命令；仅供上层兼容 API 复用。"""
-  if captureOutput:
-    return _shellPopenRead(command)
-  args: list[str] = []
-  return new(args, _shellSystem(command), "", "")
-
-@uncopyable
-class ProcessPool:
-  """受限并发的外部命令池。
-
-  pool worker 仅调度，实际工作仍由独立 OS 子进程完成。任务参数为明确的
-  ``list[str]``，不支持将 py2cpp callable 序列化到子进程。
+  首版边界：
+  - target 必须是 ``Callable[[], None]``；
+  - ``daemon=True`` 显式拒绝；
+  - Windows 上仅无捕获自由函数可 ``start``；捕获态抛 ``RuntimeError``；
+  - ``join(timeout)`` 返回 ``None``，超时后用 ``alive`` 判断。
   """
 
-  _pool: ThreadPool[CompletedProcess]
+  _handle: _ProcessHandle
+  _target: Callable[[], None]
+  _name: str
+  _phase: int
+  _daemon: bool
 
-  def __init__(self, maxWorkers: int = 4):
+  def __init__(
+    self,
+    target: Callable[[], None],
+    name: str = "",
+    daemon: bool = False,
+  ):
+    if daemon:
+      raise RuntimeError("daemon processes are not supported yet")
+    self._handle = new()
+    self._target = target
+    self._name = name
+    self._phase = int(_ProcessPhaseEnum.Initial)
+    self._daemon = False
+
+  def start(self) -> None:
+    if self._phase != int(_ProcessPhaseEnum.Initial):
+      raise RuntimeError("processes can only be started once")
+    self._handle.start(self._target, self._name)
+    self._phase = int(_ProcessPhaseEnum.Started)
+
+  def run(self) -> None:
+    self._target()
+
+  def join(self, timeout: float64 = float.Inf) -> None:
+    if self._phase == int(_ProcessPhaseEnum.Initial):
+      raise RuntimeError("cannot join process before it is started")
+    if timeout < 0.0:
+      raise ValueError("timeout value must be non-negative")
+    finished: bool = self._handle.join(timeout)
+    if finished:
+      self._phase = int(_ProcessPhaseEnum.Stopped)
+
+  def terminate(self) -> None:
+    self._handle.terminate()
+
+  def kill(self) -> None:
+    self._handle.kill()
+
+  def close(self) -> None:
+    self._handle.close()
+
+  @property
+  def name(self) -> str:
+    return self._name
+
+  @property
+  def daemon(self) -> bool:
+    return self._daemon
+
+  @property
+  def alive(self) -> bool:
+    if self._phase == int(_ProcessPhaseEnum.Initial):
+      return False
+    return self._handle.alive
+
+  @property
+  def pid(self) -> int:
+    return self._handle.pid
+
+  @property
+  def exitCode(self) -> int:
+    return self._handle.exitCode
+
+
+@copyable
+class _ProcessWorkItem[Value]:
+  future: Future[Value]
+  fn: Callable[[], Value]
+
+  @overload
+  def __init__(self):
+    self.future = new()
+
+  @overload
+  def __init__(self, future: Future[Value], fn: Callable[[], Value]):
+    self.future = future
+    self.fn = fn
+
+
+@refcount
+class ProcessPool[Value]:
+  """静态类型进程池：每任务新建一个 ``Process``（``max_tasks_per_child=1``）。
+
+  用 ``ThreadPool`` 作 launcher 限流；``Value`` 首版限平凡可拷贝标量与 ``None``。
+  """
+
+  lock: Lock = new()
+  workQueue: Queue[_ProcessWorkItem[Value]] = new()
+  launchers: list[Thread] = []
+  maxWorkers: int
+  threadNamePrefix: str
+  shutdownFlag: atomic[bool] = new(False)
+  broken: atomic[bool] = new(False)
+  threadCounter: atomic[int] = new(0)
+
+  def __init__(self, maxWorkers: int = 4, threadNamePrefix: str = "ProcessPool"):
     if maxWorkers <= 0:
       raise ValueError("maxWorkers must be positive")
-    self._pool = new(maxWorkers, "ProcessPool")
+    self.maxWorkers = maxWorkers
+    self.threadNamePrefix = threadNamePrefix
 
-  def submit(
-    self,
-    args: list[str],
-    cwd: str = "",
-    env: dict[str, str] | None = None,
-    stdin: int = 0,
-    stdout: int = -1,
-    stderr: int = -1,
-    input: str = "",
-    timeout: float64 = float.Inf,
-  ) -> Future[CompletedProcess]:
-    """提交一个外部命令；默认捕获 stdout/stderr。"""
-    actualEnv: dict[str, str] = {}
-    if env is not None:
-      actualEnv = env
-    return self._pool.submit(
-      lambda: _runWithEnv(args, cwd, actualEnv, stdin, stdout, stderr, input, timeout),
-    )
+  def submit(self, fn: Callable[[], Value]) -> Future[Value]:
+    future: Future[Value] = new()
+    self.lock.acquire()
+    try:
+      if self.broken.load():
+        raise RuntimeError("cannot schedule new futures after pool is broken")
+      if self.shutdownFlag.load():
+        raise RuntimeError("cannot schedule new futures after shutdown")
+      self.workQueue.put(_ProcessWorkItem[Value](future, fn))
+      self._adjustLauncherCount()
+    finally:
+      self.lock.release()
+    return future
 
-  def map(
-    self,
-    commands: list[list[str]],
-    timeout: float64 = float.Inf,
-  ) -> list[CompletedProcess]:
-    """并发运行命令并按输入顺序返回结果。"""
-    futures: list[Future[CompletedProcess]] = []
-    for i in range(len(commands)):
-      futures.append(self.submit(commands[i], timeout=timeout))
-    out: list[CompletedProcess] = []
+  def map(self, fns: list[Callable[[], Value]]) -> list[Value]:
+    futures: list[Future[Value]] = []
+    for i in range(len(fns)):
+      futures.append(self.submit(fns[i]))
+    out: list[Value] = []
     for i in range(len(futures)):
       out.append(futures[i].result(timeout=float.Inf))
     return out
 
   def shutdown(self, wait: bool = True, cancelFutures: bool = False) -> None:
-    """停止接受新任务，并可选等待已提交任务完成。"""
-    self._pool.shutdown(wait, cancelFutures)
+    threads: list[Thread] = []
+    self.lock.acquire()
+    try:
+      self.shutdownFlag.store(True)
+      if cancelFutures:
+        while True:
+          try:
+            item: _ProcessWorkItem[Value] = self.workQueue.getNoWait()
+            item.future.cancel()
+            self.workQueue.taskDone()
+          except EmptyError:
+            break
+      self.workQueue.shutdown()
+      for i in range(len(self.launchers)):
+        threads.append(self.launchers[i])
+    finally:
+      self.lock.release()
+    if wait:
+      for i in range(len(threads)):
+        threads[i].join()
+
   def __enter__(self) -> Self:
     return self
 
   def __exit__(self):
     self.shutdown()
+
+  def _adjustLauncherCount(self) -> None:
+    if len(self.launchers) >= self.maxWorkers:
+      return
+    index: int = self.threadCounter.fetchAdd(1)
+    name: str = self.threadNamePrefix + "_" + str(index)
+    worker: Thread = new(lambda: self._worker(), name)
+    worker.start()
+    self.launchers.append(worker)
+
+  def _worker(self) -> None:
+    while True:
+      try:
+        item: _ProcessWorkItem[Value] = self.workQueue.get()
+        self._runItem(item)
+      except ShutDownError:
+        return
+
+  def _runItem(self, item: _ProcessWorkItem[Value]) -> None:
+    try:
+      if item.future.setRunningOrNotifyCancel():
+        try:
+          result: Value = _processInvoke[Value](item.fn)
+          item.future.setResult(result)
+        except:
+          item.future.setException()
+    finally:
+      self.workQueue.taskDone()
+
 
 _WaitObject0: uint = 0
 _WaitAbandoned: uint = 128
@@ -378,6 +442,7 @@ class ProcessSemaphore:
   def __exit__(self):
     self.release()
 
+
 @uncopyable
 class SharedMemory:
   """Windows 命名共享内存；同名参与者须传入相同的 ``size``。"""
@@ -434,6 +499,7 @@ class SharedMemory:
       raise RuntimeError("shared memory is closed")
     data: Pointer[byte] = cast(self._address)
     return new(data, self.size)
+
 
 _ChannelHeaderSize: int = 4
 

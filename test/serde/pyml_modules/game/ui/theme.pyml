@@ -1,0 +1,9 @@
+@inline $theme_dark():
+  background: "#111827"
+  foreground: "#f9fafb"
+  contrast: high
+
+@inline $theme_light():
+  background: "#ffffff"
+  foreground: "#111827"
+  contrast: low

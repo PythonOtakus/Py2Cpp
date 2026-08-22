@@ -2,5 +2,18 @@
   text: = $text
   color: = $color
 
+@inline $button_style($pad: 8):
+  padding: = [$pad, $pad]
+  font:
+    size: 16
+
 @def $twice($value):
   @return $value * 2
+
+@def $grade($high):
+  @if $high:
+    @return "S"
+  @elif false:
+    @return "A"
+  @else:
+    @return "B"

@@ -1,0 +1,63 @@
+{
+  "name": "py2cpp-pyml",
+  "displayName": "Py2Cpp PyML",
+  "description": "PyML（.pyml）语法高亮、悬停提示、跳转定义与缩进折叠",
+  "version": "0.1.2",
+  "publisher": "PythonOtakus",
+  "author": "PythonOtakus",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0",
+    "node": ">=18"
+  },
+  "categories": [
+    "Programming Languages",
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:pyml"
+  ],
+  "main": "./out/extension.js",
+  "private": true,
+  "scripts": {
+    "package": "python package.py",
+    "vscode:prepublish": "node -e \"process.exit(0)\""
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "pyml",
+        "aliases": [
+          "PyML",
+          "pyml"
+        ],
+        "extensions": [
+          ".pyml"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "pyml",
+        "scopeName": "source.pyml",
+        "path": "./syntaxes/pyml.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "Py2Cpp PyML",
+      "properties": {
+        "py2cpp-pyml.moduleRoot": {
+          "type": "string",
+          "default": "",
+          "description": "绝对模块路径（无前导点）解析根目录；留空则自当前 .pyml 向上探测含同名包路径的目录"
+        },
+        "py2cpp-pyml.enableFolding": {
+          "type": "boolean",
+          "default": true,
+          "description": "为 @def / @inline / @if / @for 等指令块提供折叠（另含 YAML 缩进折叠）"
+        }
+      }
+    }
+  }
+}

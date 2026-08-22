@@ -1,6 +1,6 @@
-"""``console.task``：``Console.system`` / ``popen`` / ``run``。"""
+"""``console.task`` / ``console.popen``：``Console`` 与 ``Popen``。"""
 from py2cpp import *
-from py2cpp.concur.process import CompletedProcess, Pipe, Process
+from py2cpp.console.popen import CompletedProcess, Pipe, Popen
 from py2cpp.console.task import Console
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
@@ -41,6 +41,7 @@ class ConsoleRunShellExitCodeTests(TestCaseMixin):
     result: CompletedProcess = Console.run("cmd.exe /c exit /b 7", captureOutput=True, shell=True)
     self.assertEqual(result.returnCode, 7)
 
+
 class ConsoleRunListTests(TestCaseMixin):
   _testTag = 40
 
@@ -80,17 +81,33 @@ class ConsoleRunTimeoutTests(TestCaseMixin):
     self.assertTrue(caught)
 
 
-class TaskPipeTests(TestCaseMixin):
+class PopenPipeTests(TestCaseMixin):
   _testTag = 70
 
   @override
   def test(self):
     args: list[str] = ["cmd.exe", "/c", "echo", "pipe_ok"]
-    task: Process = new(args, "", None, 0, Pipe, Pipe)
+    task: Popen = new(args, "", None, 0, Pipe, Pipe)
     task.start()
     done: CompletedProcess = task.communicate()
     self.assertEqual(done.returnCode, 0)
     self.assertTrue("pipe_ok" in done.stdout)
+
+
+class PopenLifecycleTests(TestCaseMixin):
+  _testTag = 80
+
+  @override
+  def test(self):
+    args: list[str] = ["cmd.exe", "/c", "exit /b 7"]
+    process: Popen = new(args)
+    process.start()
+    self.assertTrue(process.pid > 0)
+    self.assertTrue(process.running)
+    self.assertEqual(process.wait(), 7)
+    self.assertFalse(process.running)
+    self.assertEqual(process.returnCode, 7)
+    self.assertEqual(process.poll(), 7)
 
 
 def main():

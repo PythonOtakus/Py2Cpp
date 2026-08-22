@@ -1,0 +1,10 @@
+.vscode/**
+.vscode-test/**
+.gitignore
+package.py
+package.bat
+_smoke.js
+**/*.vsix
+**/__pycache__/**
+**/*.pyc
+node_modules/**

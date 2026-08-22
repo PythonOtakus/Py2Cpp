@@ -1,0 +1,452 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "PyML",
+  "scopeName": "source.pyml",
+  "patterns": [
+    { "include": "#comment" },
+    { "include": "#from-directive" },
+    { "include": "#def-directive" },
+    { "include": "#inline-directive" },
+    { "include": "#if-directive" },
+    { "include": "#for-directive" },
+    { "include": "#expand-directive" },
+    { "include": "#return-directive" },
+    { "include": "#dynamic-key" },
+    { "include": "#variable-assign" },
+    { "include": "#aug-assign" },
+    { "include": "#expr-value" },
+    { "include": "#list-item" },
+    { "include": "#yaml-key" },
+    { "include": "#string" },
+    { "include": "#fstring" },
+    { "include": "#number" },
+    { "include": "#boolean" },
+    { "include": "#null" },
+    { "include": "#callable-ref" },
+    { "include": "#variable-ref" }
+  ],
+  "repository": {
+    "comment": {
+      "name": "comment.line.number-sign.pyml",
+      "match": "#.*$"
+    },
+    "expr-atoms": {
+      "patterns": [
+        { "include": "#fstring" },
+        { "include": "#string" },
+        { "include": "#number" },
+        { "include": "#boolean" },
+        { "include": "#null" },
+        { "include": "#expr-operators" },
+        { "include": "#builtin-call" },
+        { "include": "#kwarg-ref" },
+        { "include": "#callable-ref" },
+        { "include": "#variable-ref" },
+        { "include": "#flow-collection" },
+        { "include": "#comment" }
+      ]
+    },
+    "from-directive": {
+      "name": "meta.directive.from.pyml",
+      "begin": "^(\\s*)(@from)\\b",
+      "beginCaptures": {
+        "2": { "name": "keyword.control.import.pyml" }
+      },
+      "end": "$",
+      "patterns": [
+        {
+          "match": "\\b(import)\\b",
+          "name": "keyword.control.import.pyml"
+        },
+        {
+          "match": "\\b(as)\\b",
+          "name": "keyword.control.as.pyml"
+        },
+        {
+          "match": "\\*",
+          "name": "keyword.operator.star.pyml"
+        },
+        {
+          "match": "(\\.+[\\w]+(?:\\.[\\w]+)*)|([\\w]+(?:\\.[\\w]+)*)",
+          "captures": {
+            "1": { "name": "entity.name.namespace.relative.pyml" },
+            "2": { "name": "entity.name.namespace.absolute.pyml" }
+          }
+        },
+        {
+          "match": "(\\$[A-Za-z_][A-Za-z0-9_]*)",
+          "name": "variable.other.import.pyml"
+        },
+        { "include": "#comment" }
+      ]
+    },
+    "def-directive": {
+      "name": "meta.directive.def.pyml",
+      "begin": "^(\\s*)(@def)\\b\\s*(\\$[A-Za-z_][A-Za-z0-9_]*)\\s*(\\()",
+      "beginCaptures": {
+        "2": { "name": "storage.type.function.pyml" },
+        "3": { "name": "entity.name.function.definition.pyml" },
+        "4": { "name": "punctuation.definition.parameters.begin.pyml" }
+      },
+      "end": "(\\)\\s*)(:\\s*(?:#.*)?)?$",
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.parameters.end.pyml" },
+        "2": { "name": "punctuation.separator.key-value.pyml" }
+      },
+      "patterns": [
+        { "include": "#signature-body" }
+      ]
+    },
+    "inline-directive": {
+      "name": "meta.directive.inline.pyml",
+      "begin": "^(\\s*)(@inline)\\b\\s*(\\$[A-Za-z_][A-Za-z0-9_]*)\\s*(\\()",
+      "beginCaptures": {
+        "2": { "name": "storage.type.inline.pyml" },
+        "3": { "name": "entity.name.function.inline.definition.pyml" },
+        "4": { "name": "punctuation.definition.parameters.begin.pyml" }
+      },
+      "end": "(\\)\\s*)(:\\s*(?:#.*)?)?$",
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.parameters.end.pyml" },
+        "2": { "name": "punctuation.separator.key-value.pyml" }
+      },
+      "patterns": [
+        { "include": "#signature-body" }
+      ]
+    },
+    "signature-body": {
+      "patterns": [
+        {
+          "match": "(\\$[A-Za-z_][A-Za-z0-9_]*)",
+          "name": "variable.parameter.pyml"
+        },
+        {
+          "match": ":",
+          "name": "punctuation.separator.key-value.pyml"
+        },
+        {
+          "match": ",",
+          "name": "punctuation.separator.parameters.pyml"
+        },
+        { "include": "#fstring" },
+        { "include": "#string" },
+        { "include": "#number" },
+        { "include": "#boolean" },
+        { "include": "#null" },
+        { "include": "#expr-operators" },
+        { "include": "#builtin-call" },
+        { "include": "#flow-collection" },
+        { "include": "#comment" }
+      ]
+    },
+    "if-directive": {
+      "name": "meta.directive.conditional.pyml",
+      "begin": "^(\\s*)(@(?:if|elif|else))\\b",
+      "beginCaptures": {
+        "2": { "name": "keyword.control.conditional.pyml" }
+      },
+      "end": ":\\s*(?:#.*)?$",
+      "endCaptures": {
+        "0": { "name": "punctuation.separator.key-value.pyml" }
+      },
+      "patterns": [
+        { "include": "#expr-atoms" }
+      ]
+    },
+    "for-directive": {
+      "name": "meta.directive.for.pyml",
+      "begin": "^(\\s*)(@for)\\b",
+      "beginCaptures": {
+        "2": { "name": "keyword.control.loop.pyml" }
+      },
+      "end": ":\\s*(?:#.*)?$",
+      "endCaptures": {
+        "0": { "name": "punctuation.separator.key-value.pyml" }
+      },
+      "patterns": [
+        {
+          "match": "(\\$[A-Za-z_][A-Za-z0-9_]*)(?=\\s*(?:,|\\bin\\b))",
+          "name": "variable.parameter.loop.pyml"
+        },
+        {
+          "match": ",",
+          "name": "punctuation.separator.parameters.pyml"
+        },
+        {
+          "match": "\\b(in)\\b",
+          "name": "keyword.control.in.pyml"
+        },
+        { "include": "#expr-atoms" }
+      ]
+    },
+    "expand-directive": {
+      "name": "meta.directive.expand.pyml",
+      "begin": "^(\\s*)(@expand)\\b",
+      "beginCaptures": {
+        "2": { "name": "keyword.control.expand.pyml" }
+      },
+      "end": "$",
+      "patterns": [
+        {
+          "match": "(\\$[A-Za-z_][A-Za-z0-9_]*)(?=\\s*\\()",
+          "name": "entity.name.function.inline.call.pyml"
+        },
+        { "include": "#expr-atoms" }
+      ]
+    },
+    "return-directive": {
+      "name": "meta.directive.return.pyml",
+      "begin": "^(\\s*)(@return)\\b",
+      "beginCaptures": {
+        "2": { "name": "keyword.control.flow.return.pyml" }
+      },
+      "end": "$",
+      "patterns": [
+        { "include": "#expr-atoms" }
+      ]
+    },
+    "dynamic-key": {
+      "name": "meta.mapping.dynamic-key.pyml",
+      "begin": "^(\\s*)(=)\\s*",
+      "beginCaptures": {
+        "2": { "name": "keyword.operator.template-expr.pyml" }
+      },
+      "end": ":\\s*(?:#.*)?$",
+      "patterns": [
+        { "include": "#expr-atoms" }
+      ]
+    },
+    "variable-assign": {
+      "name": "meta.mapping.variable.pyml",
+      "begin": "^(\\s*)(\\$[A-Za-z_][A-Za-z0-9_]*)\\s*(:)",
+      "beginCaptures": {
+        "2": { "name": "variable.other.definition.pyml" },
+        "3": { "name": "punctuation.separator.key-value.pyml" }
+      },
+      "end": "$",
+      "patterns": [
+        { "include": "#aug-assign-op" },
+        { "include": "#expr-marker" },
+        { "include": "#expr-atoms" }
+      ]
+    },
+    "aug-assign": {
+      "match": "^(\\s*)(\\$[A-Za-z_][A-Za-z0-9_]*)\\s*(:)\\s*((?:\\+|\\-|\\*|\\/|%)=)\\s*",
+      "captures": {
+        "2": { "name": "variable.other.definition.pyml" },
+        "3": { "name": "punctuation.separator.key-value.pyml" },
+        "4": { "name": "keyword.operator.assignment.augmented.pyml" }
+      }
+    },
+    "aug-assign-op": {
+      "match": "((?:\\+|\\-|\\*|\\/|%)=)",
+      "name": "keyword.operator.assignment.augmented.pyml"
+    },
+    "expr-marker": {
+      "match": "(?<![\\w$])(=)(?![=~])",
+      "name": "keyword.operator.template-expr.pyml"
+    },
+    "expr-value": {
+      "name": "meta.mapping.expr-value.pyml",
+      "begin": "^(\\s*)((?:[A-Za-z_][\\w.-]*|\"[^\"]*\"|'[^']*'))\\s*(:)\\s*(=)\\s*",
+      "beginCaptures": {
+        "2": { "name": "entity.name.tag.yaml.pyml" },
+        "3": { "name": "punctuation.separator.key-value.pyml" },
+        "4": { "name": "keyword.operator.template-expr.pyml" }
+      },
+      "end": "$",
+      "patterns": [
+        { "include": "#expr-atoms" }
+      ]
+    },
+    "list-item": {
+      "name": "meta.sequence.item.pyml",
+      "begin": "^(\\s*)(-)\\s*",
+      "beginCaptures": {
+        "2": { "name": "punctuation.definition.list.begin.pyml" }
+      },
+      "end": "$",
+      "patterns": [
+        { "include": "#expr-marker" },
+        { "include": "#expr-atoms" }
+      ]
+    },
+    "yaml-key": {
+      "match": "^(\\s*)((?:[A-Za-z_][\\w.-]*|\"[^\"]*\"|'[^']*'))\\s*(:)",
+      "captures": {
+        "2": { "name": "entity.name.tag.yaml.pyml" },
+        "3": { "name": "punctuation.separator.key-value.pyml" }
+      }
+    },
+    "kwarg-ref": {
+      "match": "(?<=[(,])\\s*(\\$[A-Za-z_][A-Za-z0-9_]*)\\s*(:)(?!=)",
+      "captures": {
+        "1": { "name": "variable.parameter.pyml" },
+        "2": { "name": "punctuation.separator.key-value.pyml" }
+      }
+    },
+    "callable-ref": {
+      "match": "(\\$[A-Za-z_][A-Za-z0-9_]*)(?=\\s*\\()",
+      "name": "entity.name.function.call.pyml"
+    },
+    "variable-ref": {
+      "match": "(\\$[A-Za-z_][A-Za-z0-9_]*)",
+      "name": "variable.other.read.pyml"
+    },
+    "builtin-call": {
+      "match": "\\b(len|range|items|keys|values)\\b",
+      "name": "support.function.builtin.pyml"
+    },
+    "expr-operators": {
+      "patterns": [
+        {
+          "match": "\\b(and|or|not)\\b",
+          "name": "keyword.operator.logical.pyml"
+        },
+        {
+          "match": "\\b(if|else)\\b",
+          "name": "keyword.control.conditional.expression.pyml"
+        },
+        {
+          "match": "\\b(in)\\b",
+          "name": "keyword.operator.logical.in.pyml"
+        },
+        {
+          "match": "==|!=|<=|>=|<|>",
+          "name": "keyword.operator.comparison.pyml"
+        },
+        {
+          "match": "[+\\-*/%]",
+          "name": "keyword.operator.arithmetic.pyml"
+        }
+      ]
+    },
+    "fstring": {
+      "patterns": [
+        {
+          "name": "string.quoted.fstring.double.pyml",
+          "begin": "f\"",
+          "beginCaptures": {
+            "0": { "name": "punctuation.definition.string.begin.pyml" }
+          },
+          "end": "\"",
+          "endCaptures": {
+            "0": { "name": "punctuation.definition.string.end.pyml" }
+          },
+          "patterns": [
+            { "include": "#fstring-interp" },
+            {
+              "match": "\\\\.",
+              "name": "constant.character.escape.pyml"
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.fstring.single.pyml",
+          "begin": "f'",
+          "beginCaptures": {
+            "0": { "name": "punctuation.definition.string.begin.pyml" }
+          },
+          "end": "'",
+          "endCaptures": {
+            "0": { "name": "punctuation.definition.string.end.pyml" }
+          },
+          "patterns": [
+            { "include": "#fstring-interp" },
+            {
+              "match": "\\\\.",
+              "name": "constant.character.escape.pyml"
+            }
+          ]
+        }
+      ]
+    },
+    "fstring-interp": {
+      "name": "meta.interpolation.pyml",
+      "begin": "\\{",
+      "beginCaptures": {
+        "0": { "name": "punctuation.definition.interpolation.begin.pyml" }
+      },
+      "end": "\\}",
+      "endCaptures": {
+        "0": { "name": "punctuation.definition.interpolation.end.pyml" }
+      },
+      "patterns": [
+        { "include": "#kwarg-ref" },
+        { "include": "#callable-ref" },
+        { "include": "#variable-ref" },
+        { "include": "#expr-operators" },
+        { "include": "#builtin-call" },
+        { "include": "#number" }
+      ]
+    },
+    "string": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.pyml",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "match": "\\\\.",
+              "name": "constant.character.escape.pyml"
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.single.pyml",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            {
+              "match": "\\\\.",
+              "name": "constant.character.escape.pyml"
+            }
+          ]
+        }
+      ]
+    },
+    "number": {
+      "match": "(?<![\\w$])[-+]?\\d+(?:\\.\\d+)?(?:[eE][-+]?\\d+)?(?![\\w$])",
+      "name": "constant.numeric.pyml"
+    },
+    "boolean": {
+      "match": "(?<![\\w$])(true|false|True|False|yes|no|Yes|No|YES|NO|on|off|On|Off|ON|OFF)(?![\\w$])",
+      "name": "constant.language.boolean.pyml"
+    },
+    "null": {
+      "match": "(?<![\\w$])(null|Null|NULL|~)(?![\\w$])",
+      "name": "constant.language.null.pyml"
+    },
+    "flow-collection": {
+      "patterns": [
+        {
+          "begin": "\\[",
+          "beginCaptures": {
+            "0": { "name": "punctuation.definition.sequence.begin.pyml" }
+          },
+          "end": "\\]",
+          "endCaptures": {
+            "0": { "name": "punctuation.definition.sequence.end.pyml" }
+          },
+          "patterns": [
+            { "include": "#expr-atoms" }
+          ]
+        },
+        {
+          "begin": "\\{",
+          "beginCaptures": {
+            "0": { "name": "punctuation.definition.mapping.begin.pyml" }
+          },
+          "end": "\\}",
+          "endCaptures": {
+            "0": { "name": "punctuation.definition.mapping.end.pyml" }
+          },
+          "patterns": [
+            { "include": "#expr-atoms" }
+          ]
+        }
+      ]
+    }
+  }
+}

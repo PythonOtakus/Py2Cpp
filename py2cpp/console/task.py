@@ -1,12 +1,13 @@
-"""``console.task``：基于 ``concur.process`` 的命令行同步包装（``docs/console.md`` §6）。"""
+"""``console.task``：基于 ``console.popen`` 的命令行同步包装（``docs/console.md`` §6）。"""
 from ..builtins import *
-from ..concur.process import CompletedProcess, DevNull, Pipe, _runShell, _runWithEnv, _shellPopenRead, _shellSystem
 from ..io import StringIO
 from ..text import str
 from ..util.dict import dict
 from ..util.list import list
-
 from .exceptions import TaskExitError, TaskStartError
+from .popen import CompletedProcess, DevNull, Pipe, Popen, _runShell, _runWithEnv, _shellPopenRead, _shellSystem
+
+
 class Console:
   """一站式进程 API；``run`` / ``system`` / ``popen`` 均为静态方法。"""
 

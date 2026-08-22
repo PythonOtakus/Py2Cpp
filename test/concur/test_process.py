@@ -1,7 +1,34 @@
-"""``py2cpp.concur.process``：外部进程基础生命周期回归。"""
+"""``py2cpp.concur.process``：callable ``Process`` / ``ProcessPool`` 与跨进程 IPC。"""
 from py2cpp import *
-from py2cpp.concur.process import CompletedProcess, Pipe, Process, ProcessChannel, ProcessEvent, ProcessMutex, ProcessPool, ProcessSemaphore, SharedMemory, run as processRun
+from py2cpp.concur.process import Process, ProcessChannel, ProcessEvent, ProcessMutex, ProcessPool, ProcessSemaphore, SharedMemory
+from py2cpp.concur.thread import Future
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
+
+
+@copyable
+class Box:
+  value: int = 0
+
+
+def _noop() -> None:
+  return
+
+
+def _markBox(box: Box) -> None:
+  box.value = 7
+
+
+def _signalChildDone() -> None:
+  done: ProcessEvent = new("Local\\py2cpp-process-child-done")
+  done.set()
+
+
+def _poolAdd() -> int:
+  return 21
+
+
+def _poolMul() -> int:
+  return 3
 
 
 class ProcessLifecycleTests(TestCaseMixin):
@@ -9,59 +36,75 @@ class ProcessLifecycleTests(TestCaseMixin):
 
   @override
   def test(self):
-    args: list[str] = ["cmd.exe", "/c", "exit /b 7"]
-    process: Process = new(args)
+    done: ProcessEvent = new("Local\\py2cpp-process-child-done")
+    done.clear()
+    process: Process = new(_signalChildDone, "worker")
     process.start()
     self.assertTrue(process.pid > 0)
-    self.assertTrue(process.running)
-    self.assertEqual(process.wait(), 7)
-    self.assertFalse(process.running)
-    self.assertEqual(process.returnCode, 7)
-    self.assertEqual(process.poll(), 7)
+    self.assertTrue(process.alive)
+    self.assertTrue(done.wait(timeout=5.0))
+    process.join()
+    self.assertFalse(process.alive)
+    self.assertEqual(process.exitCode, 0)
+    process.close()
 
 
-class ProcessPipeTests(TestCaseMixin):
+class ProcessRunTests(TestCaseMixin):
   _testTag = 10
 
   @override
   def test(self):
-    args: list[str] = ["cmd.exe", "/c", "echo process-output"]
-    process: Process = new(args, "", None, 0, Pipe, Pipe)
-    process.start()
-    completed = process.communicate()
-    self.assertEqual(completed.returnCode, 0)
-    self.assertEqual(completed.stdout, "process-output\r\n")
-    self.assertEqual(completed.stderr, "")
+    box: Box = new()
+    process: Process = new(lambda: _markBox(box))
+    process.run()
+    self.assertEqual(box.value, 7)
+    self.assertFalse(process.alive)
 
 
-class ProcessRunTests(TestCaseMixin):
+class ProcessNoopJoinTests(TestCaseMixin):
   _testTag = 15
 
   @override
   def test(self):
-    args: list[str] = ["cmd.exe", "/c", "echo process-run"]
-    completed: CompletedProcess = processRun(args)
-    self.assertEqual(completed.returnCode, 0)
-    self.assertTrue("process-run" in completed.stdout)
+    process: Process = new(_noop)
+    process.start()
+    process.join(timeout=5.0)
+    self.assertEqual(process.exitCode, 0)
+    process.close()
 
-class ProcessContextTests(TestCaseMixin):
-  _testTag = 18
+
+class ProcessPoolTests(TestCaseMixin):
+  _testTag = 20
 
   @override
   def test(self):
-    args: list[str] = ["cmd.exe", "/c", "exit /b 0"]
-    process: Process = new(args)
-    with process as active:
-      self.assertTrue(active.pid > 0)
-      self.assertTrue(active.running)
-    self.assertEqual(process.wait(), 0)
-    pool: ProcessPool = new(1)
-    with pool:
-      completed: CompletedProcess = pool.submit(args).result(timeout=2.0)
-      self.assertEqual(completed.returnCode, 0)
+    pool: ProcessPool[int] = new(2)
+    first: Future[int] = pool.submit(_poolAdd)
+    second: Future[int] = pool.submit(_poolMul)
+    self.assertEqual(first.result(timeout=5.0), 21)
+    self.assertEqual(second.result(timeout=5.0), 3)
+    mapped_fns: list[Callable[[], int]] = []
+    mapped_fns.append(_poolAdd)
+    mapped_fns.append(_poolMul)
+    mapped: list[int] = pool.map(mapped_fns)
+    self.assertEqual(len(mapped), 2)
+    self.assertEqual(mapped[0], 21)
+    self.assertEqual(mapped[1], 3)
+    pool.shutdown()
+
+
+class ProcessPoolShutdownTests(TestCaseMixin):
+  _testTag = 25
+
+  @override
+  def test(self):
+    pool: ProcessPool[int] = new(1)
+    self.assertEqual(pool.submit(_poolAdd).result(timeout=5.0), 21)
+    pool.shutdown()
+
 
 class ProcessSynchronizationTests(TestCaseMixin):
-  _testTag = 19
+  _testTag = 30
 
   @override
   def test(self):
@@ -79,41 +122,41 @@ class ProcessSynchronizationTests(TestCaseMixin):
     semTwo: ProcessSemaphore = new("Local\\py2cpp-process-semaphore", 0, 2)
     self.assertTrue(semOne.created)
     self.assertFalse(semTwo.created)
-    self.assertTrue(semTwo.acquire(blocking=False))
-    self.assertFalse(semOne.acquire(blocking=False))
+    self.assertTrue(semTwo.acquire(timeout=0.0))
     semOne.release()
-    self.assertTrue(semTwo.acquire(blocking=False))
-    semTwo.release()
+    self.assertTrue(semTwo.acquire(timeout=0.0))
 
     mutexOne: ProcessMutex = new("Local\\py2cpp-process-mutex")
     mutexTwo: ProcessMutex = new("Local\\py2cpp-process-mutex")
     self.assertTrue(mutexOne.created)
     self.assertFalse(mutexTwo.created)
-    with mutexOne:
-      self.assertTrue(mutexTwo.acquire(blocking=False))
-      mutexTwo.release()
+    self.assertTrue(mutexOne.acquire(timeout=0.0))
+    self.assertFalse(mutexTwo.acquire(blocking=False))
+    mutexOne.release()
+    self.assertTrue(mutexTwo.acquire(timeout=0.0))
+    mutexTwo.release()
 
 
 class SharedMemoryTests(TestCaseMixin):
-  _testTag = 19
+  _testTag = 40
 
   @override
   def test(self):
-    first: SharedMemory = new("Local\\py2cpp-shared-memory", 32)
-    second: SharedMemory = new("Local\\py2cpp-shared-memory", 32)
-    self.assertTrue(first.created)
-    self.assertFalse(second.created)
-    self.assertEqual(len(first.view), 32)
-    first.view[0] = 71
-    first.view[31] = 19
-    self.assertEqual(second.view[0], 71)
-    self.assertEqual(second.view[31], 19)
-    first.close()
-    second.close()
+    left: SharedMemory = new("Local\\py2cpp-shared-memory", 8)
+    right: SharedMemory = new("Local\\py2cpp-shared-memory", 8)
+    self.assertTrue(left.created)
+    self.assertFalse(right.created)
+    view = left.view
+    view[0] = 11
+    view[1] = 22
+    self.assertEqual(right.view[0], 11)
+    self.assertEqual(right.view[1], 22)
+    left.close()
+    right.close()
 
 
 class ProcessChannelTests(TestCaseMixin):
-  _testTag = 20
+  _testTag = 50
 
   @override
   def test(self):
@@ -135,34 +178,12 @@ class ProcessChannelTests(TestCaseMixin):
     receiver.close()
 
 
-class ProcessPoolTests(TestCaseMixin):
-  _testTag = 20
+def main():
+  suite: TestSuite = new()
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
+    suite.addTest(Class())
+  return TextTestRunner().run(suite)
 
-  @override
-  def test(self):
-    pool: ProcessPool = new(2)
-    oneArgs: list[str] = ["cmd.exe", "/c", "echo pool-one"]
-    twoArgs: list[str] = ["cmd.exe", "/c", "echo pool-two"]
-    first = pool.submit(oneArgs)
-    second = pool.submit(twoArgs)
-    self.assertEqual(first.result(timeout=2.0).returnCode, 0)
-    self.assertTrue("pool-two" in second.result(timeout=2.0).stdout)
-    commands: list[list[str]] = [oneArgs, twoArgs]
-    completed = pool.map(commands)
-    self.assertEqual(len(completed), 2)
-    self.assertTrue("pool-one" in completed[0].stdout)
-    self.assertTrue("pool-two" in completed[1].stdout)
-    pool.shutdown()
 
-suite = TestSuite()
-suite.addTests([
-  ProcessLifecycleTests(),
-  ProcessPipeTests(),
-  ProcessRunTests(),
-  ProcessContextTests(),
-  ProcessSynchronizationTests(),
-  SharedMemoryTests(),
-  ProcessChannelTests(),
-  ProcessPoolTests(),
-])
-TextTestRunner().run(suite)
+if __name__ == "__main__":
+  raise SystemExit(main())

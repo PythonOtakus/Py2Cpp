@@ -46,6 +46,9 @@ def _module_header_deps(
     for other in module_set:
       if other.startswith("console/"):
         deps.add(other)
+  # ``task`` 依赖 ``popen``（``CompletedProcess`` / ``Popen``）；类型 include 图常漏边。
+  if rel_mod == "console/task" and "console/popen" in module_set:
+    deps.add("console/popen")
   return frozenset(deps)
 
 
@@ -100,6 +103,12 @@ def order_stdlib_modules_by_header_deps(
     if not tier_mods:
       continue
     ordered.extend(_topo_sort_tier(tier_mods, must_before, base_rank))
+  # 环回退时 base_rank 可能仍把 task 排在 popen 前；编译期 using 需要 popen 先完整可见。
+  if "console/popen" in ordered and "console/task" in ordered:
+    popen_at = ordered.index("console/popen")
+    task_at = ordered.index("console/task")
+    if popen_at > task_at:
+      ordered.insert(task_at, ordered.pop(popen_at))
   return tuple(ordered)
 
 

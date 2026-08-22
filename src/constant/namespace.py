@@ -18,4 +18,5 @@ BUILTIN_NAMESPACE_SEGMENT_OVERRIDES: dict[str, str] = {
   "long": "py_long",
   "set": "py_set",
   "environ": "py_environ",
+  "popen": "py_popen",
 }

@@ -104,7 +104,7 @@ Python 源码负责参数校验、状态机、格式化与组合；C++ / 模板�
 - `render` 的公开更新操作可跨线程调用，最终写终端始终串行；
 - 异步日志使用 `concur.thread.Queue[LogRecord]`；
 - 同步 `Console.run()` 阻塞调用线程；
-- 未来异步子进程必须建立在真实 non-blocking pipe 与 `Task` readiness 上，不能用 `Task.runThread()` 伪装非阻塞 I/O。
+- 未来异步子进程必须建立在真实 non-blocking pipe 与 readiness 上，不能用 `Task.runThread()` 伪装非阻塞 I/O。
 
 ## 4. `console.parse`：命令行解析
 
@@ -243,33 +243,36 @@ stdout.write(result.stdout)
 
 ```python
 @dataclass(frozen=True)
-class CompletedTask:
+class CompletedProcess:
   args: list[str]
   returnCode: int
   stdout: str
   stderr: str
 ```
 
-`check=True` 且退出码非零时抛出 `TaskExitError`，异常持有 `CompletedTask`，调用者可继续读取 stdout/stderr 作诊断。
+`check=True` 且退出码非零时抛出 `TaskExitError`，异常持有 `CompletedProcess`，调用者可继续读取 stdout/stderr 作诊断。
 
-### 6.2 Task 与兼容接口
+### 6.2 Popen 与兼容接口
 
 ```python
-from py2cpp.console.task import Console, Task, Pipe
+from py2cpp.console.popen import CompletedProcess, Pipe, Popen
+from py2cpp.console.task import Console
 
 code: int = Console.system("git status")
 reader = Console.popen("git rev-parse --show-toplevel")
 root: str = reader.read()
 
-task = Task(["tool", "--watch"], stdout=Pipe, stderr=Pipe)
+task = Popen(["tool", "--watch"], stdout=Pipe, stderr=Pipe)
 task.start()
 code = task.wait(timeout=10.0)
 ```
 
-- `Task`：推荐的低层进程对象，接收 `list[str]`；
+- `Popen`（`py2cpp.console.popen`）：推荐的低层外部命令对象，接收 `list[str]`（对齐 ``subprocess.Popen`` 子集）；
 - `Console.run`：推荐的一站式同步接口；
 - `Console.system(command: str) -> int`：显式 shell 兼容入口，返回规范化退出码；
 - `Console.popen(command: str, mode: str = "r")`：显式 shell 单向文本管道，首版仅 `"r"` / `"w"`。
+
+callable 子进程（``multiprocessing.Process``）见 ``py2cpp.concur.process.Process``，与外部命令 ``Popen`` 分离。
 
 `Console` 定义在 `py2cpp.console.task`。`run`、`system`、`popen` 仅作为该类的静态方法存在，不保留模块级函数，也不从 `py2cpp.system` 或 `py2cpp.console` 包根导出；shell 语义因此在调用点可见。
 
@@ -280,7 +283,7 @@ code = task.wait(timeout=10.0)
 - 支持 `cwd`、明确 `env`、UTF-8 文本解码与可配置错误策略；
 - stdin/stdout/stderr 支持继承、丢弃、`Pipe` 或文件；
 - 支持 `poll()`、`wait(timeout)`、`terminate()`、`kill()`；
-- `Task.communicate()` 与 `Console.run(capture_output=True)` 必须并发排空 stdout/stderr，避免 pipe 缓冲区写满死锁；
+- `Popen.communicate()` 与 `Console.run(capture_output=True)` 必须并发排空 stdout/stderr，避免 pipe 缓冲区写满死锁；
 - 区分启动失败、超时、外部终止和非零退出。
 
 首版不支持进程组、PTY、Windows Job Object、进程树杀死和任意二进制 stdin 流。后续异步版本在 `concur.task` 已支持真实 pipe readiness 后增加；它必须是真正的 non-blocking pipe，不能用 `Task.runThread()` 包装同步读取。
@@ -311,7 +314,7 @@ ConsoleError
 |---|---|---|---|
 | P0a | 包根标准流、TTY/尺寸、样式 | `io`、`system.environ` | TTY、重定向和无色输出均正确 |
 | P0b | `parse` | 最小 `system.sys.argv` | 参数、flag、子命令、help、错误码通过测试 |
-| P0c | `Console.run/system/popen`、`Task` | Windows/POSIX 进程模板叶子 | 参数列表安全、shell 边界明确、超时、双 pipe 捕获稳定 |
+| P0c | `Console.run/system/popen`、`Popen` | Windows/POSIX `console/-popen.inl` | 参数列表安全、shell 边界明确、超时、双 pipe 捕获稳定 |
 | P1a | `render` 日志 sink | 包根流、样式 | 日志和动态区域不会相互破坏 |
 | P1b | Progress / Spinner / Status / Table | `concur.thread.Queue` | 多任务、无 TTY 降级、异常恢复光标 |
 | P1c | AsyncSink | `concur.thread.Queue` | 多线程压测无交错，可 flush 和关闭 |

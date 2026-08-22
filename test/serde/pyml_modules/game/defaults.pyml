@@ -1,0 +1,7 @@
+$window_defaults:
+  title: "Game"
+  resizable: true
+
+@inline $base_plugins():
+  - core
+  - input

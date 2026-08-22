@@ -1,0 +1,5 @@
+@from ..shared.colors import $accent
+
+@inline $chip($text):
+  text: = $text
+  color: = $accent

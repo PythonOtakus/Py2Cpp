@@ -1,8 +1,7 @@
 """``py2cpp.serde.pyml`` 的已实现语法回归测试。
 
-完整目标覆盖由 ``docs/serde-pyml.md`` §10 定义。随着解释器阶段推进，本文件
-依次补充 ``@elif``/``@else``、dict 迭代、``@def``、``@inline``、``@expand``
-和 ``@from`` 的可执行回归；在对应语法尚未落地前不把未实现行为伪装成绿测。
+完整目标覆盖由 ``docs/serde-pyml.md`` §10 定义。模块样例见
+``test/serde/pyml_modules/game/``（``showcase.pyml`` 覆盖现有语法全集）。
 """
 from py2cpp import *
 from py2cpp.serde.pyml import Pyml, PymlContext, PymlError
@@ -17,9 +16,13 @@ class PymlVariablesAndExpressionsTests(TestCaseMixin):
     source: str = """
     $asset_root: "assets/ui"
     $scale: 2
+    $enabled: true
     $count: 3
     $count: += 4
     $count: *= 2
+    $count: -= 4
+    $count: /= 5
+    $count: %= 4
     $name: "button"
     $name: += "_primary"
     window:
@@ -27,6 +30,8 @@ class PymlVariablesAndExpressionsTests(TestCaseMixin):
       height: = 300 / $scale
       count: = $count
       title: = f"{$asset_root}/{$name}.png"
+      visible: = $enabled
+      mode: = "hi" if $enabled else "lo"
       = f"build_{$scale}": = $count % 5
     """.stripLines()
     expanded: str = ""
@@ -42,9 +47,11 @@ class PymlVariablesAndExpressionsTests(TestCaseMixin):
       window:
         width: 320
         height: 150
-        count: 14
+        count: 2
         title: "assets/ui/button_primary.png"
-        build_2: 4
+        visible: true
+        mode: "hi"
+        build_2: 2
       """.stripLines() + "\n",
     )
 
@@ -172,6 +179,36 @@ class PymlControlFlowTests(TestCaseMixin):
     )
     self.assertEqual(scoped, "result: true\n")
 
+    branches: str = Pyml.expand(
+      """
+      $pick_one: false
+      $pick_two: true
+      pick:
+        @if $pick_one:
+          - one
+        @elif $pick_two:
+          - two
+        @else:
+          - other
+      skip:
+        @if false:
+          - never
+        @elif false:
+          - also_never
+        @else:
+          - fallback
+      """.stripLines(),
+    )
+    self.assertEqual(
+      branches,
+      """
+      pick:
+        - two
+      skip:
+        - fallback
+      """.stripLines() + "\n",
+    )
+
 
 class PymlCallablesTests(TestCaseMixin):
   _testTag = 15
@@ -184,6 +221,11 @@ class PymlCallablesTests(TestCaseMixin):
         @for $i in range($n + 1):
           $s: += $i
         @return $s
+      @def $grade($high):
+        @if $high:
+          @return "S"
+        @else:
+          @return "B"
       @inline $button($text, $color: \"#3b82f6\"):
         text: = $text
         color: = $color
@@ -191,28 +233,42 @@ class PymlCallablesTests(TestCaseMixin):
       @inline $base_plugins():
         - core
         - input
+      @inline $enabled_plugins($want_debug):
+        $base: [core, input]
+        @for $plugin in $base:
+          - = $plugin
+        @if $want_debug:
+          - diagnostics
+        @else:
+          - release_metrics
       total: = $sum_to(4)
+      rank: = $grade(true)
       ui:
         start:
-          @expand $button(\"开始\")
+          @expand $button(\"开始\", $color: \"red\")
       plugins:
         @expand $base_plugins()
-        - diagnostics
+        @expand $enabled_plugins(true)
+        - editor
     """.stripLines()
     expanded: str = Pyml.expand(source)
     self.assertEqual(
       expanded,
       """
         total: 10
+        rank: "S"
         ui:
           start:
             text: "开始"
-            color: "#3b82f6"
+            color: "red"
             padding: [12, 8]
         plugins:
           - core
           - input
+          - "core"
+          - "input"
           - diagnostics
+          - editor
       """.stripLines() + "\n",
     )
 
@@ -297,6 +353,13 @@ class PymlErrorTests(TestCaseMixin):
     except PymlError:
       invalidKey = True
     self.assertTrue(invalidKey)
+
+    orphanElse: bool = False
+    try:
+      Pyml.expand("@else:\n  - x\n")
+    except PymlError:
+      orphanElse = True
+    self.assertTrue(orphanElse)
 
 
 class PymlPathAccessTests(TestCaseMixin):
@@ -410,10 +473,34 @@ class PymlModulesTests(TestCaseMixin):
       """
         @from game.config import *
         title: = $title
+        debug: = $debug
       """.stripLines(),
       context,
     )
-    self.assertEqual(importedAll, "title: \"PyML\"\n")
+    self.assertEqual(
+      importedAll,
+      """
+      title: "PyML"
+      debug: true
+      """.stripLines() + "\n",
+    )
+
+    parentRelative: str = Pyml.expand(
+      """
+        @from .ui.widgets import $chip
+        badge:
+          @expand $chip("OK")
+      """.stripLines(),
+      context,
+    )
+    self.assertEqual(
+      parentRelative,
+      """
+      badge:
+        text: "OK"
+        color: "#3b82f6"
+      """.stripLines() + "\n",
+    )
 
     cyclic: bool = False
     cycleContext: PymlContext = new(
@@ -440,6 +527,47 @@ class PymlModulesTests(TestCaseMixin):
     self.assertTrue(collision)
 
 
+class PymlShowcaseTests(TestCaseMixin):
+  _testTag = 30
+
+  @override
+  def test(self):
+    # 模块组合冒烟；完整语法样例见 game/showcase.pyml（插件/手工验收）。
+    context: PymlContext = new(
+      moduleName="game.main",
+      moduleRoot="test/serde/pyml_modules",
+    )
+    expanded: str = Pyml.expand(
+      """
+        @from .ui.button import $button, $grade
+        @from .defaults import $base_plugins
+        @from game.config import $title, $debug
+        ui:
+          start:
+            @expand $button($title)
+        plugins:
+          @expand $base_plugins()
+        rank: = $grade(true)
+        mode: = "dev" if $debug else "prod"
+      """.stripLines(),
+      context,
+    )
+    self.assertEqual(
+      expanded,
+      """
+      ui:
+        start:
+          text: "PyML"
+          color: "blue"
+      plugins:
+        - core
+        - input
+      rank: "S"
+      mode: "dev"
+      """.stripLines() + "\n",
+    )
+
+
 def main():
   suite: TestSuite = new()
   suite.addTest(PymlVariablesAndExpressionsTests())
@@ -448,6 +576,7 @@ def main():
   suite.addTest(PymlErrorTests())
   suite.addTest(PymlPathAccessTests())
   suite.addTest(PymlModulesTests())
+  suite.addTest(PymlShowcaseTests())
   runner: TextTestRunner = new()
   return runner.run(suite)
 

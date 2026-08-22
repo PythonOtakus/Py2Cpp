@@ -7,7 +7,9 @@
         "**/plugins/py2cpp-template",
         "**/plugins/py2cpp-template/**",
         "**/plugins/py2cpp-nav",
-        "**/plugins/py2cpp-nav/**"
+        "**/plugins/py2cpp-nav/**",
+        "**/plugins/py2cpp-pyml",
+        "**/plugins/py2cpp-pyml/**"
     ],
     "clangd.arguments": [
         "--compile-commands-dir=${workspaceFolder}",

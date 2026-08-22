@@ -128,7 +128,10 @@ _S0101_GLOBAL_DUNDERS = frozenset({'__await__'})
 _AUG_BINOPS = (ast.Add, ast.Sub, ast.Mult, ast.MatMult, ast.FloorDiv, ast.Mod, ast.BitOr, ast.BitAnd, ast.BitXor, ast.LShift, ast.RShift)
 _CPP_STYLE_METHOD_ALLOWLIST = frozenset({'reserve', 'reshape', 'capacity', 'clear', 'insert', 'remove', 'discard', 'update', 'get', 'find', 'index', 'rfind', 'rindex', 'startswith', 'endswith', 'startsWith', 'endsWith', 'split', 'strip', 'append', 'extend', 'pop', 'popLeft', 'appendLeft', 'add', 'copy', 'move', 'items', 'keys', 'values', 'getstate', 'setstate', 'getState', 'setState', 'getsize', 'getSize', 'getmtime', 'getMtime', 'getctime', 'getCtime', 'getatime', 'getAtime', 'join', 'replace', 'format', 'encode', 'decode'})
 # 类限定 S0102 豁免：空间矩形允许 ``contains`` / ``size``（非容器 ``len`` 语义）
-_S0102_CLASS_METHOD_ALLOW: dict[str, frozenset[str]] = {'Rect': frozenset({'contains', 'size'})}
+_S0102_CLASS_METHOD_ALLOW: dict[str, frozenset[str]] = {
+  'Rect': frozenset({'contains', 'size'}),
+  'UIWindow': frozenset({'resize'}),
+}
 _CPP_STYLE_METHOD_ALIASES: dict[str, str] = {'push_back': 'append', 'push_copy': 'append', 'pop_back': 'pop', 'emplace_back': 'append', 'emplace': 'append', 'assign_copy': 'copy_from(other)', 'subgroup_len': 'len(container) 或 __len__', 'push_front': 'insert(0, item) 或 deque.appendLeft', 'pop_front': 'popLeft', 'shrink_to_fit': '勿引入；用容器/缓冲自有扩容语义', 'substr': '切片 s[i:j]', 'erase': 'pop / del / remove', 'is_empty': 'not container', 'isempty': 'not container', 'get_size': 'len(container)', 'contains': 'item in container', 'front': 'seq[0]', 'back': 'seq[-1]', 'size': 'len(container)', 'empty': 'not container 或 if not container', 'length': 'len(container)', 'pushback': 'append', 'popback': 'pop', 'emplaceback': 'append', 'resize': 'reshape'}
 _CAMEL_CASE_BOUNDARY = re.compile('(?<!^)(?=[A-Z])')
 _BUILTIN_CTORS = frozenset({'int', 'float', 'bool', 'new', 'range', 'print', 'len', 'min', 'max', 'abs', 'enumerate', 'zip', 'super', 'type', 'isinstance', 'hasattr', 'getattr', 'setattr', 'ord', 'chr', 'hex', 'oct', 'bin', 'repr', 'str', 'bytes'})

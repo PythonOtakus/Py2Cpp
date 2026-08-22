@@ -6713,9 +6713,15 @@ class Translator(ast.NodeVisitor):
                     from .analysis.variadic_template import typevar_tuple_names_for_emit
                     if fsig.func_ft.template_names or typevar_tuple_names_for_emit(fsig.func_ft, fsig.variadic_template):
                         self._emit_function_template_prefix(fsig.func_ft, variadic_template=fsig.variadic_template)
-                    self.write_line(format_fn_sig(self._sig_return_storage(fsig), fsig.ret_trail, func.name, fsig.params) + fn_noexcept_suffix(fsig.is_noexcept) + ';')
+                    if func.name == 'main' and self._needs_process_worker_hook():
+                        self.write_line('int main(int argc, char** argv)' + fn_noexcept_suffix(fsig.is_noexcept) + ';')
+                    else:
+                        self.write_line(format_fn_sig(self._sig_return_storage(fsig), fsig.ret_trail, func.name, fsig.params) + fn_noexcept_suffix(fsig.is_noexcept) + ';')
                 if self.emit_main and (not any((f.name == 'main' for f in self._entry_functions()))):
-                    self.write_line('int main();')
+                    if self._needs_process_worker_hook():
+                        self.write_line('int main(int argc, char** argv);')
+                    else:
+                        self.write_line('int main();')
                 self.write_line()
         from .emit.enum_mro_emit import emit_user_module_mro_inl
         emit_user_module_mro_inl(self)
@@ -7119,21 +7125,45 @@ class Translator(ast.NodeVisitor):
                             emit_lazy_param_prologue(self, fsig.lazy_params)
                         self._emit_generic_body_or_type_if(func, fsig, type_if_plan=type_if_plan, type_if_pick=type_if_pick)
 
+    def _needs_process_worker_hook(self) -> bool:
+        """入口依赖 ``concur.process`` 时，为 Windows RVA 子进程注入 ``tryWorker``。"""
+        return any(
+            mp.replace('\\', '/').rstrip('/') == 'py2cpp/concur/process'
+            for mp in self.module_order
+        )
+
     def _emit_module_functions(self):
         with self._use_source(), self._use_import_bindings(self.entry_module_path):
             entry_ns = namespace_qualifier_for_module(self.entry_module_path)
             if entry_ns:
                 self.write_line(f'using namespace {entry_ns};')
                 self.write_line()
+            need_process_worker = self._needs_process_worker_hook()
             mains = [f for f in self._entry_functions() if f.name == 'main' and self.emit_main]
             for func in mains:
                 fsig = self.function_sigs[self.entry_module_path, func.name]
-                sig = format_fn_sig(self._sig_return_storage(fsig), fsig.ret_trail, func.name, self._function_sig_params_impl(fsig.params)) + fn_noexcept_suffix(fsig.is_noexcept)
+                if need_process_worker:
+                    sig = 'int main(int argc, char** argv)' + fn_noexcept_suffix(fsig.is_noexcept)
+                else:
+                    sig = format_fn_sig(self._sig_return_storage(fsig), fsig.ret_trail, func.name, self._function_sig_params_impl(fsig.params)) + fn_noexcept_suffix(fsig.is_noexcept)
                 with self._use_scope(func) as scope:
                     with self._use_block(sig):
+                        if need_process_worker:
+                            self.write_line('{')
+                            self.write_line('  int __py2cpp_worker = ::py2cpp::concur::process::tryWorker(argc, (PyUIntPtr)(uintptr_t)argv);')
+                            self.write_line('  if (__py2cpp_worker >= 0) return __py2cpp_worker;')
+                            self.write_line('}')
                         self._emit_body(func.body)
                         if not self._function_has_return(func):
                             self.write_line('return 0;')
             if self.emit_main and (not mains):
-                with self._use_block('int main()'):
-                    self.write_line('return 0;')
+                if need_process_worker:
+                    with self._use_block('int main(int argc, char** argv)'):
+                        self.write_line('{')
+                        self.write_line('  int __py2cpp_worker = ::py2cpp::concur::process::tryWorker(argc, (PyUIntPtr)(uintptr_t)argv);')
+                        self.write_line('  if (__py2cpp_worker >= 0) return __py2cpp_worker;')
+                        self.write_line('}')
+                        self.write_line('return 0;')
+                else:
+                    with self._use_block('int main()'):
+                        self.write_line('return 0;')

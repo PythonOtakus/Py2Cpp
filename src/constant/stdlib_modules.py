@@ -47,6 +47,7 @@ UMBRELLA_PRIORITY_MODULES: tuple[str, ...] = (
   "console/exceptions",
   "console/parse",
   "console/render",
+  "console/popen",
   "console/task",
   "ui/meta",
   "ui/style",
@@ -118,6 +119,8 @@ UMBRELLA_MSVC_UNDEF_MACROS: tuple[str, ...] = (
   "stdin",
   "stdout",
   "stderr",
+  # stdio.h：``popen`` → ``_popen``，会弄坏 ``console::popen`` 命名空间与 ``Console.popen``
+  "popen",
   "Yield",
   "Return",
 )

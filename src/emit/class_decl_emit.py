@@ -59,6 +59,18 @@ from ..analysis.stubs.class_stubs import load_stdlib_exception_types
 _EXCEPTION_REPR_DECL_SKIP = frozenset({"ExcTypeUnion"})
 
 
+def _is_exception_subclass(info: "ClassInfo") -> bool:
+  """``core/exceptions`` 内类型，或直接继承 ``Exception`` / 标准库异常的用户错误类。"""
+  mp = info.module_path.replace("\\", "/")
+  if mp.endswith("core/exceptions"):
+    return True
+  std = load_stdlib_exception_types()
+  for base in info.bases:
+    if base == "Exception" or base in std:
+      return True
+  return False
+
+
 def _emit_exception_repr_decl(tr: "Translator", info: ClassInfo) -> None:
   mp = info.module_path.replace("\\", "/")
   if not mp.endswith("core/exceptions"):
@@ -687,8 +699,12 @@ def _emit_class_declaration(tr: 'Translator', info: ClassInfo):
                     if info.is_template():
                         line = tr._rewrite_template_args_to_cpp_params(line, info)
                     tr.write_line(line)
-                if info.module_path.replace('\\', '/').endswith('core/exceptions'):
-                    pystr_ctor = expand_exception_pystr_ctor(info.cpp_name())
+                if _is_exception_subclass(info):
+                    base_py = info.bases[0] if info.bases else "Exception"
+                    pystr_ctor = expand_exception_pystr_ctor(
+                      info.cpp_name(),
+                      base=base_py,
+                    )
                     if pystr_ctor:
                         for line in pystr_ctor.strip().splitlines():
                             tr.write_line(line)

@@ -246,7 +246,14 @@ class _PymlExpander:
       self.lines.append(_PymlLine(_pymlIndent(clean), clean.strip(), len(self.lines) + 1))
 
   def _fail(self, line: _PymlLine, message: str):
-    raise PymlError()
+    detail: str = self.sourceName + ":" + str(line.number) + ": " + message
+    if line.text:
+      detail = detail + "\n  " + line.text
+    if self.callStack:
+      detail = detail + "\n  call: " + " → ".join(self.callStack)
+    if self.importStack:
+      detail = detail + "\n  import: " + " → ".join(self.importStack)
+    raise PymlError(detail)
 
   def _subtreeEnd(self, start: int, indent: int, end: int) -> int:
     i: int = start
@@ -417,7 +424,7 @@ class _PymlExpander:
         for part in _pymlSplit(body):
           at: int = _pymlFindColon(part)
           if at < 0:
-            raise PymlError()
+            raise PymlError("invalid flow mapping entry")
           keys.append(part[:at].strip())
           values.append(part[at + 1:].strip())
       return new.Mapping(keys, values)

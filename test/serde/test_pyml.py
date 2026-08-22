@@ -16,7 +16,6 @@ class PymlVariablesAndExpressionsTests(TestCaseMixin):
     source: str = """
     $asset_root: "assets/ui"
     $scale: 2
-    $enabled: true
     $count: 3
     $count: += 4
     $count: *= 2
@@ -30,8 +29,8 @@ class PymlVariablesAndExpressionsTests(TestCaseMixin):
       height: = 300 / $scale
       count: = $count
       title: = f"{$asset_root}/{$name}.png"
-      visible: = $enabled
-      mode: = "hi" if $enabled else "lo"
+      visible: = $scale > 0 and true
+      mode: = "hi" if $scale > 1 else "lo"
       = f"build_{$scale}": = $count % 5
     """.stripLines()
     expanded: str = ""
@@ -52,6 +51,29 @@ class PymlVariablesAndExpressionsTests(TestCaseMixin):
         visible: true
         mode: "hi"
         build_2: 2
+      """.stripLines() + "\n",
+    )
+
+    compares: str = Pyml.expand(
+      """
+      $scale: 2
+      a: = $scale > 0
+      b: = $scale > 3
+      c: = $scale == 2
+      d: = $scale == 1
+      e: = $scale >= 2
+      f: = $scale < 1
+      """.stripLines(),
+    )
+    self.assertEqual(
+      compares,
+      """
+      a: true
+      b: false
+      c: true
+      d: false
+      e: true
+      f: false
       """.stripLines() + "\n",
     )
 
@@ -181,12 +203,11 @@ class PymlControlFlowTests(TestCaseMixin):
 
     branches: str = Pyml.expand(
       """
-      $pick_one: false
-      $pick_two: true
+      $level: 2
       pick:
-        @if $pick_one:
+        @if $level == 1:
           - one
-        @elif $pick_two:
+        @elif $level == 2:
           - two
         @else:
           - other

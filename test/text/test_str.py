@@ -25,6 +25,11 @@ class StrSequenceTests(TestCaseMixin):
     self.assertTrue("ll" in s)
     self.assertEqual(s * 2, "hellohello")
     self.assertEqual("x" * 3, "xxx")
+    # ``PyFloat`` 为 C float，``str.__float__`` 须 ``%f``（非 ``%lf``）
+    self.assertEqual(float("2"), 2.0)
+    self.assertEqual(float("1.5"), 1.5)
+    self.assertTrue(float("2") > float("0"))
+    self.assertFalse(float("2") == float("1"))
 
 
 class StrCaseTests(TestCaseMixin):

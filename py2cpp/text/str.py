@@ -625,9 +625,10 @@ class str(StringMixin[char]):
 
   @immutable
   def __float__(self) -> float:
+    # ``PyFloat`` 为 C ``float``；须用 ``%f``。``%lf`` 按 ``double`` 写入会破坏比较/解析。
     value: float = 0.0
     with self.useUtf8() as ptr:
-      if pyiSscanf(ptr, "%lf", id(value)) != 1:
+      if pyiSscanf(ptr, "%f", id(value)) != 1:
         raise ValueError
     return value
   def __str__(self) -> Self:

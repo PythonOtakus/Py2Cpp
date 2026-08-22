@@ -80,12 +80,10 @@ plugins:
   @expand $enabled_plugins($debug)
   - editor
 
-$scaled: true
-
 flags:
   @if not $debug:
     - release
-  @elif $scaled:
+  @elif $scale > 1:
     - scaled
   @else:
     - plain

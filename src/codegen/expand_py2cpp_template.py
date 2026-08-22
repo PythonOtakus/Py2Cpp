@@ -1186,7 +1186,17 @@ def expand_mirror_to_generated(
   return written
 
 
-def expand_exception_pystr_ctor(name: str, *, apply_allman: bool = False) -> str | None:
+def expand_exception_pystr_ctor(
+  name: str,
+  *,
+  base: str | None = None,
+  apply_allman: bool = False,
+) -> str | None:
+  """生成 ``Cls(const PyStr& msg) : Base(msg)``。
+
+  ``base`` 为 Python 基类名（如 ``ValueError`` / ``RuntimeError``）；缺省时用
+  ``exception_pystr_ctor_base`` 的硬编码特例表（仅覆盖 ``core/exceptions``）。
+  """
   from ..constant.language import default_py_class_cpp_name
 
   cpp = default_py_class_cpp_name(name) if not (
@@ -1194,9 +1204,15 @@ def expand_exception_pystr_ctor(name: str, *, apply_allman: bool = False) -> str
   ) else name
   if name in _EXCEPTION_PYSTR_CTOR_SKIP or cpp in _EXCEPTION_PYSTR_CTOR_SKIP:
     return None
+  if base:
+    base_cpp = default_py_class_cpp_name(base) if not (
+      base.startswith("Py") and len(base) > 2 and base[2].isupper()
+    ) else base
+  else:
+    base_cpp = exception_pystr_ctor_base(cpp)
   return expand_template(
     "core/~exception_pystr_ctor.inl",
-    {"ctx_Cls": cpp, "ctx_Base": exception_pystr_ctor_base(cpp)},
+    {"ctx_Cls": cpp, "ctx_Base": base_cpp},
     apply_allman=apply_allman,
   )
 

@@ -60,6 +60,10 @@ def invokeSlot(slot: Callable[[int], int], x: int) -> int:
   return slot(x)
 
 
+def callVoidAction(action: Callable[[], None]) -> None:
+  action()
+
+
 class HandlerBox:
   handler: FuncDelegate[int] = new()
 
@@ -258,6 +262,22 @@ class CallableLifetimeTests(TestCaseMixin):
     self.assertEqual(slot(3), 13)
     factory.v = 20
     self.assertEqual(slot(3), 23)
+
+
+class EmptyCallableTests(TestCaseMixin):
+  _testTag = 75
+
+  @override
+  def test(self):
+    voidAction: Callable[[], None] = new()
+    self.assertFalse(voidAction)
+    callVoidAction(voidAction)
+    intSlot: Callable[[int], int] = new()
+    self.assertFalse(intSlot)
+    self.assertEqual(intSlot(5), 0)
+    text: TextSlotHolder = new()
+    self.assertFalse(text.slot)
+    self.assertEqual(text.call("ok"), "")
 
 
 def main():

@@ -170,8 +170,17 @@ struct PyCallable
     py_callable_owner_release(_self);
   }
 
+  explicit operator bool() const
+  {
+    return _func != nullptr;
+  }
+
   Ret __call__(Args... args) const
   {
+    if (!_func)
+    {
+      return Ret();
+    }
     return _func(_closure, args...);
   }
 
@@ -266,8 +275,17 @@ struct PyCallable<Ret>
     py_callable_owner_release(_self);
   }
 
+  explicit operator bool() const
+  {
+    return _func != nullptr;
+  }
+
   Ret __call__() const
   {
+    if (!_func)
+    {
+      return Ret();
+    }
     return _func(_closure);
   }
 
@@ -362,8 +380,17 @@ struct PyCallable<void>
     py_callable_owner_release(_self);
   }
 
+  explicit operator bool() const
+  {
+    return _func != nullptr;
+  }
+
   void __call__() const
   {
+    if (!_func)
+    {
+      return;
+    }
     _func(_closure);
   }
 
@@ -458,8 +485,17 @@ struct PyCallable<void, Args...>
     py_callable_owner_release(_self);
   }
 
+  explicit operator bool() const
+  {
+    return _func != nullptr;
+  }
+
   void __call__(Args... args) const
   {
+    if (!_func)
+    {
+      return;
+    }
     _func(_closure, args...);
   }
 

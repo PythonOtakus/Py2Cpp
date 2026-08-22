@@ -114,6 +114,41 @@ def _ctor_init_for_call(tr: 'Translator', info: ClassInfo, call: ast.Call) -> as
         return info.inits[0]
     return None
 
+def _init_param_cpp_type(tr: 'Translator', info: ClassInfo, init: ast.FunctionDef, param: ast.arg) -> str:
+    sig = info.method_sig_for(init)
+    if sig is not None:
+        from ..analysis.type_emit import method_param_storage_cpp
+        pt = method_param_storage_cpp(sig, param.arg, fallback='')
+        if pt:
+            return pt
+    if param.annotation is not None:
+        tparams = list(info.type_params) if info.type_params else tr._active_type_params()
+        self_class = info.template_cpp_type() if info.is_template() else info.cpp_name()
+        return tr.type_parser.parse_storage_type(
+            param.annotation,
+            tparams,
+            self_class=self_class,
+        )
+    return ''
+
+def _new_ctor_emit_params(tr: 'Translator', info: ClassInfo, init: ast.FunctionDef, call: ast.Call) -> tuple[list[ast.arg], list[ast.expr]]:
+    params = [a for a in init.args.args if a.arg not in ('self', 'cls')]
+    if call.keywords:
+        from ..passes.kwargs_options import new_ctor_arg_exprs_from_init
+        return params, list(new_ctor_arg_exprs_from_init(call, init))
+    return params[:len(call.args)], list(call.args)
+
+def new_ctor_param_cpp_types(tr: 'Translator', cpp_type: str, call: ast.Call) -> list[str] | None:
+    """``new(...)`` 在已知目标 C++ 类型时的形参类型表（与 ``_emit_new_class_ctor_expr`` 对齐）。"""
+    info = class_info_for_cpp_type(cpp_type, tr.classes)
+    if info is None or not info.inits:
+        return None
+    init = _ctor_init_for_call(tr, info, call)
+    if init is None:
+        return None
+    emit_params, _ = _new_ctor_emit_params(tr, info, init, call)
+    return [_init_param_cpp_type(tr, info, init, param) for param in emit_params]
+
 def _emit_new_class_ctor_expr(tr: 'Translator', cpp_type: str, call: ast.Call) -> str | None:
     info = class_info_for_cpp_type(cpp_type, tr.classes)
     if info is None or not info.inits:
@@ -121,25 +156,12 @@ def _emit_new_class_ctor_expr(tr: 'Translator', cpp_type: str, call: ast.Call) -
     init = _ctor_init_for_call(tr, info, call)
     if init is None:
         return None
-    params = [a for a in init.args.args if a.arg not in ('self', 'cls')]
-    if call.keywords:
-        from ..passes.kwargs_options import new_ctor_arg_exprs_from_init
-        exprs = new_ctor_arg_exprs_from_init(call, init)
-        emit_params = params
-    else:
-        exprs = list(call.args)
-        emit_params = params[:len(exprs)]
-    sig = info.method_sig_for(init)
+    emit_params, exprs = _new_ctor_emit_params(tr, info, init, call)
     parts: list[str] = []
     for i, expr in enumerate(exprs):
         pt = ''
         if i < len(emit_params):
-            param = emit_params[i]
-            if sig is not None:
-                from ..analysis.type_emit import method_param_storage_cpp
-                pt = method_param_storage_cpp(sig, param.arg, fallback='')
-            elif param.annotation is not None:
-                pt = tr._parse_storage_type(param.annotation, tr._active_type_params())
+            pt = _init_param_cpp_type(tr, info, init, emit_params[i])
         if pt:
             parts.append(tr._visit_value_for_type(expr, pt))
         else:
@@ -156,6 +178,20 @@ def _emit_new_ctor_expr(tr: 'Translator', cpp_type: str, call: ast.Call) -> str:
     opt_inner = optional_inner_type(cpp_type.strip(), classes=tr.classes)
     if opt_inner is not None:
         return _emit_new_ctor_expr(tr, opt_inner, call)
+    iter_ctor = _emit_new_iterator_view_ctor(tr, cpp_type, call)
+    if iter_ctor is not None:
+        return iter_ctor
+    from ..analysis.type_extract import refcount_inner_type
+    from ..analysis.type_pred import is_refcount_type
+    rc_inner = refcount_inner_type(cpp_type.strip(), classes=tr.classes)
+    if rc_inner is not None and is_refcount_type(cpp_type.strip(), classes=tr.classes):
+        if not call.args and (not call.keywords):
+            return f'makeRefCount<{rc_inner}>()'
+        args = ', '.join((tr._visit_value_expr(a) for a in call.args))
+        return f'makeRefCount<{rc_inner}>({args})'
+    class_ctor = _emit_new_class_ctor_expr(tr, cpp_type, call)
+    if class_ctor is not None:
+        return class_ctor
     if tr._is_self_class_cpp_type(cpp_type):
         args = ', '.join((tr._visit_value_expr(a) for a in call.args))
         if cpp_type.strip() == cpp_ident('str'):
@@ -205,9 +241,6 @@ def _emit_new_ctor_expr(tr: 'Translator', cpp_type: str, call: ast.Call) -> str:
         if len(call.args) == 1 and (not call.keywords):
             return _frozendict_new_from_arg_expr(tr, fd_inner, call.args[0])
         raise NotImplementedError('frozendict new() 仅支持 new()、new(dict) 或 new(frozendict)')
-    iter_ctor = _emit_new_iterator_view_ctor(tr, cpp_type, call)
-    if iter_ctor is not None:
-        return iter_ctor
     if is_stack_array_type(cpp_type):
         if call.args:
             raise NotImplementedError('T[:N] 栈定长数组不支持 new(大小)；请写 ``buf: T[:N]`` 或 ``new()``')
@@ -219,20 +252,9 @@ def _emit_new_ctor_expr(tr: 'Translator', cpp_type: str, call: ast.Call) -> str:
     boxing_ctor = _emit_boxing_new_ctor(tr, cpp_type, call)
     if boxing_ctor is not None:
         return boxing_ctor
-    from ..analysis.type_extract import refcount_inner_type
-    from ..analysis.type_pred import is_refcount_type
     if cpp_type.strip() == cpp_ident('str'):
         inner = ', '.join((tr._cpp_str_ctor_arg(a) for a in call.args))
         return f"{cpp_ident('str')}({inner})" if inner else f"{cpp_ident('str')}()"
-    rc_inner = refcount_inner_type(cpp_type.strip())
-    if rc_inner is not None and is_refcount_type(cpp_type.strip()):
-        if not call.args:
-            return f'makeRefCount<{rc_inner}>()'
-        args = ', '.join((tr._visit_value_expr(a) for a in call.args))
-        return f'makeRefCount<{rc_inner}>({args})'
-    class_ctor = _emit_new_class_ctor_expr(tr, cpp_type, call)
-    if class_ctor is not None:
-        return class_ctor
     args = ', '.join((tr._visit_value_expr(a) for a in call.args))
     return f'{cpp_type}({args})' if args else f'{cpp_type}()'
 

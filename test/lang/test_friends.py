@@ -13,8 +13,7 @@ class VaultReader:
 
 
 class Vault(friends=(VaultReader,)):
-  def __init__(self):
-    self._code: int = 99
+  _code: int = 99
 
   @immutable
   def tag(self) -> int:

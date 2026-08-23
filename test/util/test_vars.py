@@ -21,8 +21,7 @@ class RangeVarIntTests(TestCaseMixin):
 
   @override
   def test(self):
-    row: HostRange = new()
-    row.level = 7
+    row: HostRange = new(level=7)
     self.assertEqual(row.level, 7)
     row.level = 0
     self.assertEqual(row.level, 0)
@@ -37,8 +36,7 @@ class RangeVarFloatTests(TestCaseMixin):
 
   @override
   def test(self):
-    row: HostRange = new()
-    row.rate = 1.0
+    row: HostRange = new(rate=1.0)
     self.assertEqual(row.rate, 1.0)
 
 
@@ -47,8 +45,7 @@ class LenRangeVarStrTests(TestCaseMixin):
 
   @override
   def test(self):
-    box: HostLen = new()
-    box.name = "hello"
+    box: HostLen = new(name="hello")
     self.assertEqual(box.name, "hello")
     box.name = "ab"
     self.assertEqual(len(box.name), 2)

@@ -71,24 +71,13 @@ def _parsePinKind(name: str) -> FlowPinEnum:
 def graphToJson(graph: FlowGraph @ref) -> str:
   wire: FlowGraphWire = new()
   for node in graph.nodes:
-    nw: FlowNodeWire = new()
-    nw.id = node.id
-    nw.kindId = node.kindId
-    nw.title = node.title
-    nw.x = node.x
-    nw.y = node.y
+    nw: FlowNodeWire = new(id=node.id, kindId=node.kindId, title=node.title, x=node.x, y=node.y)
     for pin in node.pins:
-      pw: FlowPinWire = new()
-      pw.id = pin.id
-      pw.name = pin.name
-      pw.kind = _pinKindName(pin.kind)
-      pw.typeId = pin.typeId
+      pw: FlowPinWire = new(id=pin.id, name=pin.name, kind=_pinKindName(pin.kind), typeId=pin.typeId)
       nw.pins.append(pw)
     wire.nodes.append(nw)
   for edge in graph.edges:
-    ew: FlowEdgeWire = new()
-    ew.fromPin = edge.fromPin
-    ew.toPin = edge.toPin
+    ew: FlowEdgeWire = new(fromPin=edge.fromPin, toPin=edge.toPin)
     wire.edges.append(ew)
   return Json.dumps(wire)
 
@@ -98,30 +87,17 @@ def graphFromJson(graph: FlowGraph @ref, text: str) -> None:
   wire: FlowGraphWire = Json.loads[FlowGraphWire](text)
   maxId: int = 0
   for nw in wire.nodes:
-    node: FlowNode = new()
-    node.id = nw.id
-    node.kindId = nw.kindId
-    node.title = nw.title
-    node.x = nw.x
-    node.y = nw.y
+    node: FlowNode = new(id=nw.id, kindId=nw.kindId, title=nw.title, x=nw.x, y=nw.y)
     if nw.id > maxId:
       maxId = nw.id
     for pw in nw.pins:
-      pin: FlowPin = new()
-      pin.id = pw.id
-      pin.nodeId = nw.id
-      pin.name = pw.name
-      pin.kind = _parsePinKind(pw.kind)
-      pin.typeId = pw.typeId
+      pin: FlowPin = new(id=pw.id, nodeId=nw.id, name=pw.name, kind=_parsePinKind(pw.kind), typeId=pw.typeId)
       node.pins.append(pin)
       if pw.id > maxId:
         maxId = pw.id
     graph.nodes.append(node)
   for ew in wire.edges:
-    edge: FlowEdge = new()
-    edge.id = graph.allocId()
-    edge.fromPin = ew.fromPin
-    edge.toPin = ew.toPin
+    edge: FlowEdge = new(id=graph.allocId(), fromPin=ew.fromPin, toPin=ew.toPin)
     graph.edges.append(edge)
   graph.setNextId(maxId + 1)
 
@@ -136,10 +112,7 @@ def _nodeIdSelected(nodeId: int, nodeIds: list[int, 0]) -> bool:
 def _wirePinsFromNode(nw: FlowNodeWire @ref) -> list[FlowPin, 0]:
   pins: list[FlowPin, 0] = []
   for pw in nw.pins:
-    pin: FlowPin = new()
-    pin.name = pw.name
-    pin.kind = _parsePinKind(pw.kind)
-    pin.typeId = pw.typeId
+    pin: FlowPin = new(name=pw.name, kind=_parsePinKind(pw.kind), typeId=pw.typeId)
     pins.append(pin)
   return pins
 
@@ -149,27 +122,16 @@ def subgraphToJson(graph: FlowGraph @ref, nodeIds: list[int, 0]) -> str:
   for node in graph.nodes:
     if not _nodeIdSelected(node.id, nodeIds):
       continue
-    nw: FlowNodeWire = new()
-    nw.id = node.id
-    nw.kindId = node.kindId
-    nw.title = node.title
-    nw.x = node.x
-    nw.y = node.y
+    nw: FlowNodeWire = new(id=node.id, kindId=node.kindId, title=node.title, x=node.x, y=node.y)
     for pin in node.pins:
-      pw: FlowPinWire = new()
-      pw.id = pin.id
-      pw.name = pin.name
-      pw.kind = _pinKindName(pin.kind)
-      pw.typeId = pin.typeId
+      pw: FlowPinWire = new(id=pin.id, name=pin.name, kind=_pinKindName(pin.kind), typeId=pin.typeId)
       nw.pins.append(pw)
     wire.nodes.append(nw)
   for edge in graph.edges:
     srcNid: int = graph.pinNodeId(edge.fromPin)
     dstNid: int = graph.pinNodeId(edge.toPin)
     if _nodeIdSelected(srcNid, nodeIds) and _nodeIdSelected(dstNid, nodeIds):
-      ew: FlowEdgeWire = new()
-      ew.fromPin = edge.fromPin
-      ew.toPin = edge.toPin
+      ew: FlowEdgeWire = new(fromPin=edge.fromPin, toPin=edge.toPin)
       wire.edges.append(ew)
   return Json.dumps(wire)
 

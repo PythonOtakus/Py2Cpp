@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from ..analysis.type_emit import field_ann_ast, bind_scope_var
 from ..analysis.type_pred import is_char_type, is_int_type, is_optional_type, is_str_type
 from ..analysis.ir import ClassInfo, class_info_for_cpp_type, cpp_ident, cpp_template_inner_args, format_cpp_int, is_const_type_annotation, is_optional_type_annotation, is_ref_type_annotation, primary_field_annotation_class, quote_cpp_string, split_cpp_template_args, str_cpp_from_literal, _TYPE_ANNOTATION_METADATA_MARKERS
-from ..analysis.patterns import property_getter_method_for
+from ..analysis.patterns import property_getter_method_for, temp_name
 from .kwargs_options import _matchable_member_names, _skip_class, _validate_match_field_names
 from .static_reflect import StaticReflectFolder, static_field_name, _const_compare_result
 from .union_expand import parse_union_case_pattern, union_info_from_subject_cpp
@@ -1106,8 +1106,9 @@ def is_simple_match(node: ast.Match, subject_cpp: str) -> bool:
 def emit_simple_match(tr: Translator, node: ast.Match, subject_cpp: str) -> None:
     subject_expr = tr.visit(node.subject)
     if _needs_subject_temp(node.subject, subject_cpp):
-        tr.write_line(f'{subject_cpp} __match_subj = {subject_expr};')
-        subject_expr = '__match_subj'
+        subj_var = temp_name("match_subj")
+        tr.write_line(f'{subject_cpp} {subj_var} = {subject_expr};')
+        subject_expr = subj_var
     with tr._use_block(f'switch ({subject_expr})'):
         for case in node.cases:
             if is_wildcard_pattern(case.pattern):
@@ -1389,8 +1390,9 @@ def emit_union_match(tr: Translator, node: ast.Match, info: ClassInfo, subject_c
     tag_enum = _union_tag_enum_expr(info, subject_cpp)
     subject_expr = tr.visit(node.subject)
     if _needs_subject_temp(node.subject, subject_cpp):
-        tr.write_line(f'{subject_cpp} __match_subj = {subject_expr};')
-        subject_expr = '__match_subj'
+        subj_var = temp_name("match_subj")
+        tr.write_line(f'{subject_cpp} {subj_var} = {subject_expr};')
+        subject_expr = subj_var
     emitted = False
     for arm in arms:
         cond = _union_arm_entry_cond(tr, info, arm, subject_expr, tag_enum)
@@ -1420,9 +1422,10 @@ def emit_match(tr: Translator, node: ast.Match) -> None:
         return
     subject_expr = tr.visit(node.subject)
     if _needs_subject_temp(node.subject, subject_cpp):
-        tr.write_line(f'{subject_cpp} __match_subj = {subject_expr};')
-        subject_expr = '__match_subj'
-        subject_for_bind = ast.Name(id='__match_subj', ctx=ast.Load())
+        subj_var = temp_name("match_subj")
+        tr.write_line(f'{subject_cpp} {subj_var} = {subject_expr};')
+        subject_expr = subj_var
+        subject_for_bind = ast.Name(id=subj_var, ctx=ast.Load())
     else:
         subject_for_bind = node.subject
     wildcard_body: list[ast.stmt] | None = None
@@ -1439,6 +1442,7 @@ def emit_match(tr: Translator, node: ast.Match) -> None:
     if optional_match:
         check_optional_match_exhaustive(node, wildcard_body is not None)
     has_guard = any((case.guard is not None for case, _ in armed))
+    done_var = temp_name("match_done") if has_guard else None
 
     def _emit_case_body(case: ast.match_case, pm: PatternMatch) -> None:
         for line in pm.prelude_lines:
@@ -1448,20 +1452,20 @@ def emit_match(tr: Translator, node: ast.Match) -> None:
         if case.guard is not None:
             with tr._use_block(f'if ({tr.visit(case.guard)})'):
                 tr._emit_body(case.body)
-                if has_guard:
-                    tr.write_line('__match_done = true;')
+                if done_var is not None:
+                    tr.write_line(f'{done_var} = true;')
         else:
             tr._emit_body(case.body)
-            if has_guard:
-                tr.write_line('__match_done = true;')
+            if done_var is not None:
+                tr.write_line(f'{done_var} = true;')
     if has_guard:
-        tr.write_line('bool __match_done = false;')
+        tr.write_line(f'bool {done_var} = false;')
         for case, pm in armed:
             cond = pm.condition or 'true'
-            with tr._use_block(f'if (!__match_done && ({cond}))'):
+            with tr._use_block(f'if (!{done_var} && ({cond}))'):
                 _emit_case_body(case, pm)
         if wildcard_body is not None:
-            with tr._use_block('if (!__match_done)'):
+            with tr._use_block(f'if (!{done_var})'):
                 tr._emit_body(wildcard_body)
     else:
         emitted = False

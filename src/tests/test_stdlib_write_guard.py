@@ -35,6 +35,24 @@ class StdlibWriteGuardTests(unittest.TestCase):
     self.assertTrue(tr._can_write_stdlib_artifact(mod))
     self.assertFalse(tr._can_write_stdlib_artifact(f"{RUNTIME_PKG}/util/list"))
 
+  def test_user_entry_should_not_emit_stdlib_modules(self):
+    tr = _tr("test/misc/test_containers")
+    tr.entry_module_path = "test/misc/test_containers"
+    self.assertFalse(tr._should_emit_module(f"{RUNTIME_PKG}/util/list"))
+    self.assertTrue(tr._should_emit_module("test/misc/test_containers"))
+
+  def test_mirror_modules_skip_stub_header_write(self):
+    from src.codegen.stdlib_mirror_codegen import (
+      write_stdlib_codegen_header,
+      write_stdlib_codegen_inl,
+    )
+
+    tr = _tr(RUNTIME_PKG)
+    coro = f"{RUNTIME_PKG}/core/coroutine"
+    self.assertTrue(write_stdlib_codegen_header(tr, coro))
+    self.assertTrue(write_stdlib_codegen_inl(tr, coro))
+    self.assertFalse(write_stdlib_codegen_header(tr, f"{RUNTIME_PKG}/util/list"))
+
 
 if __name__ == "__main__":
   unittest.main()

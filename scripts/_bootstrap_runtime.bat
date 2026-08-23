@@ -48,6 +48,17 @@ if /I not "%PY2CPP_HEADER_ONLY%"=="1" (
   call "%~dp0_build_timing.bat" end compile "bootstrap py2cpp_runtime.lib"
 )
 
+if /I "%PY2CPP_USE_PCH%"=="1" (
+  echo === bootstrap: minimal.pch ^(experimental^) ===
+  call "%~dp0_build_timing.bat" start
+  %PY% -c "from pathlib import Path; from src.compile import ensure_msvc_minimal_pch; r=ensure_msvc_minimal_pch(Path('generated/runtime')); print(r.stderr or r.stdout or ('ok: '+str(r.artifact))); raise SystemExit(0 if r.ok else 1)"
+  if errorlevel 1 (
+    echo ERROR: failed to build minimal.pch
+    exit /b 1
+  )
+  call "%~dp0_build_timing.bat" end compile "bootstrap minimal.pch"
+)
+
 call "%~dp0_clean_obj.bat" "%CD%\generated\runtime" "py2cpp" --global-py2cpp
 echo.
 set "PY2CPP_RUNTIME_BOOTSTRAPPED=1"

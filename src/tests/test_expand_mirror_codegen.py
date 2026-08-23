@@ -42,9 +42,12 @@ class ExpandMirrorCodegenTests(unittest.TestCase):
         "util/stack_array.inl",
         "core/refcount.h",
         "core/delegate.h",
+        "core/coroutine.h",
         "weak/ref.h",
       ):
         self.assertIn(rel, rels)
+      coro_h = (root / "core/coroutine.h").read_text(encoding="utf-8")
+      self.assertIn("class PyCoroutine", coro_h)
       stack_h = (root / "util/stack_array.h").read_text(encoding="utf-8")
       self.assertIn("class PyStackArray", stack_h)
       self.assertIn("#include \"py2cpp/util/stack_array.inl\"", stack_h)

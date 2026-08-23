@@ -12,10 +12,10 @@ _temp_id = 0
 
 
 def temp_name(prefix: str = "tmp") -> str:
-  """译器生成的 C++ 临时局部名（``__`` 前缀 + 单调编号，避免与用户局部名冲突）。"""
+  """译器生成的 C++ 临时局部名（``__py2cpp_{leaf}{N}``，避免与用户局部名冲突）。"""
   global _temp_id
   leaf = prefix.lstrip("_") or "tmp"
-  name = f"__{leaf}{_temp_id}"
+  name = f"__py2cpp_{leaf}{_temp_id}"
   _temp_id += 1
   return name
 

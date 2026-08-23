@@ -2,6 +2,7 @@
 from __future__ import annotations
 from contextlib import nullcontext
 from typing import TYPE_CHECKING
+from ..analysis.patterns import temp_name
 from ..analysis.type_pred import is_array_type, is_container_type, is_stack_array_type
 from ..analysis.ir import ClassInfo, cpp_array_ndim, cpp_ident, cpp_stack_array_size
 from ..analysis.type_emit import field_storage_cpp
@@ -63,8 +64,9 @@ def emit_auto_copy(tr: Translator, info: ClassInfo) -> None:
                         if n is not None:
                             with tr._use_block(f'if ((other.{field} != nullptr))'):
                                 tr.write_line(f'this->{field} = allocArray<{elem}>({n});')
-                                with tr._use_block(f'for (int __i = 0; __i < {n}; __i = __i + 1)'):
-                                    tr.write_line(f'this->{field}[__i] = other.{field}[__i];')
+                                idx_var = temp_name("i")
+                                with tr._use_block(f'for (int {idx_var} = 0; {idx_var} < {n}; {idx_var} = {idx_var} + 1)'):
+                                    tr.write_line(f'this->{field}[{idx_var}] = other.{field}[{idx_var}];')
                             with tr._use_block('else'):
                                 tr.write_line(f'this->{field} = nullptr;')
                         else:
@@ -125,9 +127,10 @@ def emit_auto_copy_move(tr: Translator, info: ClassInfo) -> None:
 def _emit_array_clone_from(tr: Translator, info: ClassInfo, qual: str, cpp: str, *, dest: str) -> None:
     """把 ``other`` 的缓冲克隆到 ``dest``（``dest`` 为 ``this`` 或已置空的成员）。"""
     tr.write_line(f'{dest}->_shape = other._shape;')
-    tr.write_line('int __n = other._shape.__getitem__(0);')
-    with tr._use_block('if ((__n > 0) && ((other.view__get()).at(0) != nullptr))'):
-        tr.write_line(f'{dest}->copyFromPtr((other.view__get()).at(0), __n, __n);')
+    n_var = temp_name("n")
+    tr.write_line(f'int {n_var} = other._shape.__getitem__(0);')
+    with tr._use_block(f'if (({n_var} > 0) && ((other.view__get()).at(0) != nullptr))'):
+        tr.write_line(f'{dest}->copyFromPtr((other.view__get()).at(0), {n_var}, {n_var});')
 
 def _emit_array_copy_ctor(tr: Translator, info: ClassInfo, qual: str, cpp: str) -> None:
     """``array`` 须在已置空状态下按元素 ``init``，不能对未构造的 ``this`` 调 ``__copy__``。"""

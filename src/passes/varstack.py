@@ -377,7 +377,7 @@ class _VarStackState:
   def _alloc_temp(self, stack: str) -> str:
     idx = self.next_idx[stack]
     self.next_idx[stack] = idx + 1
-    return f"__vs_{stack}{idx}"
+    return f"__py2cpp_vs_{stack}{idx}"
 
   def push_assign(
     self,
@@ -542,7 +542,7 @@ def _transform_varstack_in_body(
 
 
 class _StarredExpander(ast.NodeTransformer):
-  """展开 ``*stack`` / ``top()``；表达式内 ``pop`` 仅缩短逻辑栈，不回收 ``__vs_*`` 编号。"""
+  """展开 ``*stack`` / ``top()``；表达式内 ``pop`` 仅缩短逻辑栈，不回收 ``__py2cpp_vs_*`` 编号。"""
 
   def __init__(self, state: _VarStackState) -> None:
     self.state = state

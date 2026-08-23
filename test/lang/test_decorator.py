@@ -47,8 +47,7 @@ def func6():
 
 
 class A:
-  def __init__(self):
-    self.x = 0
+  x: int = 0
 
   @repeat(3)
   def inc(self):

@@ -138,7 +138,7 @@ class VarStack:
   """
 
   def push(self, value) -> None:
-    """``vs.push(expr)`` → 译器记录 ``__vs_{栈名}{序号} = expr``。"""
+    """``vs.push(expr)`` → 译器记录 ``__py2cpp_vs_{栈名}{序号} = expr``。"""
     pass
 
   def pop(self):

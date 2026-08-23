@@ -34,30 +34,16 @@ class UIFlowMixin:
       return "object"
 
   def _flowPinExecIn(self) -> FlowPinSpec:
-    p: FlowPinSpec = new()
-    p.name = "execute"
-    p.kind = FlowPinEnum.ExecIn
-    return p
+    return new(name="execute", kind=FlowPinEnum.ExecIn)
 
   def _flowPinExecOut(self) -> FlowPinSpec:
-    p: FlowPinSpec = new()
-    p.name = "then"
-    p.kind = FlowPinEnum.ExecOut
-    return p
+    return new(name="then", kind=FlowPinEnum.ExecOut)
 
   def _flowPinDataIn(self, name: str, typeId: str) -> FlowPinSpec:
-    p: FlowPinSpec = new()
-    p.name = name
-    p.kind = FlowPinEnum.DataIn
-    p.typeId = typeId
-    return p
+    return new(name=name, kind=FlowPinEnum.DataIn, typeId=typeId)
 
   def _flowPinDataOut(self, name: str, typeId: str) -> FlowPinSpec:
-    p: FlowPinSpec = new()
-    p.name = name
-    p.kind = FlowPinEnum.DataOut
-    p.typeId = typeId
-    return p
+    return new(name=name, kind=FlowPinEnum.DataOut, typeId=typeId)
 
   def _registerFlowNode(
     self,

@@ -108,12 +108,7 @@ class UIPaintContext:
     cmd.fontBold = self.font.bold
 
   def fillRect(self, x: int, y: int, w: int, h: int, color: (int, int, int)) -> None:
-    cmd: DrawCmd = new()
-    cmd.kind = DrawCmdEnum.FillRect
-    cmd.x = x
-    cmd.y = y
-    cmd.w = w
-    cmd.h = h
+    cmd: DrawCmd = new(kind=DrawCmdEnum.FillRect, x=x, y=y, w=w, h=h)
     self._pushColor(cmd, color)
     self._cmds.append(cmd)
 
@@ -126,13 +121,7 @@ class UIPaintContext:
     color: (int, int, int),
     width: int = 1,
   ) -> None:
-    cmd: DrawCmd = new()
-    cmd.kind = DrawCmdEnum.StrokeRect
-    cmd.x = x
-    cmd.y = y
-    cmd.w = w
-    cmd.h = h
-    cmd.penW = width
+    cmd: DrawCmd = new(kind=DrawCmdEnum.StrokeRect, x=x, y=y, w=w, h=h, penW=width)
     self._pushColor(cmd, color)
     self._cmds.append(cmd)
 
@@ -145,13 +134,7 @@ class UIPaintContext:
     color: (int, int, int),
     width: int = 1,
   ) -> None:
-    cmd: DrawCmd = new()
-    cmd.kind = DrawCmdEnum.DrawLine
-    cmd.x = x1
-    cmd.y = y1
-    cmd.x2 = x2
-    cmd.y2 = y2
-    cmd.penW = width
+    cmd: DrawCmd = new(kind=DrawCmdEnum.DrawLine, x=x1, y=y1, x2=x2, y2=y2, penW=width)
     self._pushColor(cmd, color)
     self._cmds.append(cmd)
 
@@ -164,13 +147,7 @@ class UIPaintContext:
     color: (int, int, int),
     width: int = 2,
   ) -> None:
-    cmd: DrawCmd = new()
-    cmd.kind = DrawCmdEnum.DrawBezier
-    cmd.x = x1
-    cmd.y = y1
-    cmd.x2 = x2
-    cmd.y2 = y2
-    cmd.penW = width
+    cmd: DrawCmd = new(kind=DrawCmdEnum.DrawBezier, x=x1, y=y1, x2=x2, y2=y2, penW=width)
     self._pushColor(cmd, color)
     self._cmds.append(cmd)
 
@@ -184,25 +161,13 @@ class UIPaintContext:
     color: (int, int, int),
     align: int = 0,
   ) -> None:
-    cmd: DrawCmd = new()
-    cmd.kind = DrawCmdEnum.DrawText
-    cmd.x = x
-    cmd.y = y
-    cmd.w = w
-    cmd.h = h
-    cmd.text = text
-    cmd.textAlign = align
+    cmd: DrawCmd = new(kind=DrawCmdEnum.DrawText, x=x, y=y, w=w, h=h, text=text, textAlign=align)
     self._pushColor(cmd, color)
     self._pushFont(cmd)
     self._cmds.append(cmd)
 
   def fillEllipse(self, x1: int, y1: int, x2: int, y2: int, color: (int, int, int)) -> None:
-    cmd: DrawCmd = new()
-    cmd.kind = DrawCmdEnum.FillEllipse
-    cmd.x = x1
-    cmd.y = y1
-    cmd.x2 = x2
-    cmd.y2 = y2
+    cmd: DrawCmd = new(kind=DrawCmdEnum.FillEllipse, x=x1, y=y1, x2=x2, y2=y2)
     self._pushColor(cmd, color)
     self._cmds.append(cmd)
 
@@ -215,13 +180,7 @@ class UIPaintContext:
     radius: int,
     color: (int, int, int),
   ) -> None:
-    cmd: DrawCmd = new()
-    cmd.kind = DrawCmdEnum.FillRoundRect
-    cmd.x = x
-    cmd.y = y
-    cmd.w = w
-    cmd.h = h
-    cmd.radius = radius
+    cmd: DrawCmd = new(kind=DrawCmdEnum.FillRoundRect, x=x, y=y, w=w, h=h, radius=radius)
     self._pushColor(cmd, color)
     self._cmds.append(cmd)
 
@@ -235,14 +194,7 @@ class UIPaintContext:
     color: (int, int, int),
     width: int = 1,
   ) -> None:
-    cmd: DrawCmd = new()
-    cmd.kind = DrawCmdEnum.StrokeRoundRect
-    cmd.x = x
-    cmd.y = y
-    cmd.w = w
-    cmd.h = h
-    cmd.radius = radius
-    cmd.penW = width
+    cmd: DrawCmd = new(kind=DrawCmdEnum.StrokeRoundRect, x=x, y=y, w=w, h=h, radius=radius, penW=width)
     self._pushColor(cmd, color)
     self._cmds.append(cmd)
 
@@ -258,15 +210,7 @@ class UIPaintContext:
     color: (int, int, int),
   ) -> None:
     """在 ``(x,y,roundW,roundH)`` 圆角区域内填充 ``(x,y,w,h)``（节点标题栏）。"""
-    cmd: DrawCmd = new()
-    cmd.kind = DrawCmdEnum.FillRectInRoundClip
-    cmd.x = x
-    cmd.y = y
-    cmd.w = w
-    cmd.h = h
-    cmd.x2 = roundW
-    cmd.y2 = roundH
-    cmd.radius = radius
+    cmd: DrawCmd = new(kind=DrawCmdEnum.FillRectInRoundClip, x=x, y=y, w=w, h=h, x2=roundW, y2=roundH, radius=radius)
     self._pushColor(cmd, color)
     self._cmds.append(cmd)
 

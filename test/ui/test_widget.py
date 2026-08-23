@@ -18,8 +18,7 @@ class UICheckBoxNoWindowTests(TestCaseMixin):
 
   @override
   def test(self):
-    cb: UICheckBox = new()
-    cb.checked = True
+    cb: UICheckBox = new(checked=True)
     self.assertTrue(cb.checked)
 
 
@@ -28,8 +27,7 @@ class UILineEditNoWindowTests(TestCaseMixin):
 
   @override
   def test(self):
-    le: UILineEdit = new()
-    le.text = "hero"
+    le: UILineEdit = new(text="hero")
     self.assertEqual(le.text, "hero")
 
 
@@ -38,8 +36,7 @@ class UIIntEditNoWindowTests(TestCaseMixin):
 
   @override
   def test(self):
-    ie: UIIntEdit = new()
-    ie.value = 42
+    ie: UIIntEdit = new(value=42)
     self.assertEqual(ie.value, 42)
 
 
@@ -48,8 +45,7 @@ class UIFloatEditNoWindowTests(TestCaseMixin):
 
   @override
   def test(self):
-    fe: UIFloatEdit = new()
-    fe.value = 3.5
+    fe: UIFloatEdit = new(value=3.5)
     self.assertTrue(fe.value > 3.4)
     self.assertTrue(fe.value < 3.6)
 
@@ -59,10 +55,7 @@ class UISliderNoWindowTests(TestCaseMixin):
 
   @override
   def test(self):
-    sl: UISlider = new()
-    sl.value = 42
-    sl.lo = 0
-    sl.hi = 100
+    sl: UISlider = new(value=42, lo=0, hi=100)
     self.assertEqual(sl.value, 42)
 
 
@@ -71,8 +64,7 @@ class UIButtonNoWindowTests(TestCaseMixin):
 
   @override
   def test(self):
-    btn: UIPushButton = new()
-    btn.text = "Ok"
+    btn: UIPushButton = new(text="Ok")
     self.assertEqual(btn.text, "Ok")
 
 

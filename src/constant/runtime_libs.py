@@ -33,6 +33,12 @@ FAT_LIB_NAME = "py2cpp_runtime.lib"
 FAT_LIB_SUBDIR = "lib"
 LIBRARY_TU_MACRO = "PY2CPP_LIBRARY_TU"
 
+# MSVC PCH（``minimal.h``）；``PY2CPP_NO_PCH=1`` 关闭
+PCH_HEADER_REL = "minimal_pch.h"
+PCH_SUBDIR = "pch"
+PCH_FILE_NAME = "minimal.pch"
+FAT_LIB_LOCK_NAME = ".fat_lib.lock"
+
 
 def header_only_mode() -> bool:
   """纯 header-only（不生成库 TU / 不链胖库）。

@@ -18,6 +18,7 @@ from ..analysis.ir import (
   format_fn_sig,
   has_named_decorator,
 )
+from ..analysis.patterns import temp_name
 from ..analysis.module_namespace import namespace_qualifier_for_module
 from ..constant.ffi_layout import (
   ffi_c_header_include,
@@ -313,10 +314,11 @@ def emit_ffi_module_glue(tr: Translator, module_path: str) -> None:
       for ln in post:
         lines.append(f"  {ln}")
     elif post:
-      lines.append(f"  {store} __ffi_r = {_wrap_c_call_as_ret(c_call, ret_ann, store)};")
+      ret_var = temp_name("ffi_r")
+      lines.append(f"  {store} {ret_var} = {_wrap_c_call_as_ret(c_call, ret_ann, store)};")
       for ln in post:
         lines.append(f"  {ln}")
-      lines.append("  return __ffi_r;")
+      lines.append(f"  return {ret_var};")
     else:
       lines.append(f"  return {_wrap_c_call_as_ret(c_call, ret_ann, store)};")
     lines.append("}")

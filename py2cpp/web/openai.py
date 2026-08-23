@@ -715,11 +715,12 @@ class OpenAI:
     maxHistoryChars: int = 12000,
     compressTargetChars: int = 4000,
   ) -> Conversation:
-    conv: Conversation = new()
-    conv.apiKey = self.apiKey
-    conv.baseUrl = self.baseUrl
-    conv.timeout = self.timeout
-    conv.defaultHeaders = {}
+    conv: Conversation = new(
+      apiKey=self.apiKey,
+      baseUrl=self.baseUrl,
+      timeout=self.timeout,
+      defaultHeaders={},
+    )
     for k in self.defaultHeaders:
       conv.defaultHeaders[k] = self.defaultHeaders[k]
     conv.useState(self._state)

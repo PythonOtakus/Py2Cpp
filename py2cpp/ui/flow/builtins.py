@@ -10,24 +10,17 @@ BuiltinCategory: str = "Flow Control"
 
 
 def _execIn() -> FlowPinSpec:
-  p: FlowPinSpec = new()
-  p.name = "execute"
-  p.kind = FlowPinEnum.ExecIn
+  p: FlowPinSpec = new(name="execute", kind=FlowPinEnum.ExecIn)
   return p
 
 
 def _execOut(name: str) -> FlowPinSpec:
-  p: FlowPinSpec = new()
-  p.name = name
-  p.kind = FlowPinEnum.ExecOut
+  p: FlowPinSpec = new(name=name, kind=FlowPinEnum.ExecOut)
   return p
 
 
 def _dataIn(name: str, typeId: str) -> FlowPinSpec:
-  p: FlowPinSpec = new()
-  p.name = name
-  p.kind = FlowPinEnum.DataIn
-  p.typeId = typeId
+  p: FlowPinSpec = new(name=name, kind=FlowPinEnum.DataIn, typeId=typeId)
   return p
 
 

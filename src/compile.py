@@ -11,13 +11,19 @@ import os
 import shutil
 import subprocess
 import sys
+import time
+import contextlib
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 
 from .constant.runtime_libs import (
+  FAT_LIB_LOCK_NAME,
   FAT_LIB_NAME,
   FAT_LIB_SUBDIR,
+  PCH_FILE_NAME,
+  PCH_HEADER_REL,
+  PCH_SUBDIR,
   header_only_mode,
   library_module_paths,
 )
@@ -178,6 +184,171 @@ def fat_lib_path(runtime_dir: Path) -> Path:
   return runtime_dir / FAT_LIB_SUBDIR / FAT_LIB_NAME
 
 
+def minimal_pch_header_file(runtime_dir: Path) -> Path:
+  return runtime_dir / PCH_SUBDIR / PCH_HEADER_REL
+
+
+def minimal_pch_file(runtime_dir: Path) -> Path:
+  return runtime_dir / PCH_SUBDIR / PCH_FILE_NAME
+
+
+def minimal_pch_include_dir(runtime_dir: Path) -> Path:
+  return runtime_dir / PCH_SUBDIR
+
+
+def pch_disabled() -> bool:
+  """默认关闭；``PY2CPP_USE_PCH=1`` 开启（实验性）。``PY2CPP_NO_PCH=1`` 强制关闭。"""
+  v = os.environ.get("PY2CPP_NO_PCH", "").strip().lower()
+  if v in ("1", "true", "yes", "on"):
+    return True
+  use = os.environ.get("PY2CPP_USE_PCH", "").strip().lower()
+  return use not in ("1", "true", "yes", "on")
+
+
+def _write_minimal_pch_header(runtime_dir: Path) -> Path:
+  """写出 PCH 包装头（内容固定，mtime 随 ``minimal.h`` 刷新）。"""
+  path = minimal_pch_header_file(runtime_dir)
+  umbrella = runtime_dir / Path(UMBRELLA_HEADER)
+  body = (
+    "// PCH 入口：由 compile.py 生成，勿手改\n"
+    "#ifndef PY2CPP_MINIMAL_PCH_H\n"
+    "#define PY2CPP_MINIMAL_PCH_H\n"
+    '#include "py2cpp/minimal.h"\n'
+    "#endif\n"
+  )
+  pch_dir = minimal_pch_include_dir(runtime_dir)
+  path = minimal_pch_header_file(runtime_dir)
+  pch_dir.mkdir(parents=True, exist_ok=True)
+  try:
+    if path.is_file() and path.read_text(encoding="utf-8") == body:
+      if umbrella.is_file():
+        os.utime(path, (umbrella.stat().st_mtime, umbrella.stat().st_mtime))
+      return path
+  except OSError:
+    pass
+  path.write_text(body, encoding="utf-8")
+  if umbrella.is_file():
+    try:
+      os.utime(path, (umbrella.stat().st_mtime, umbrella.stat().st_mtime))
+    except OSError:
+      pass
+  return path
+
+
+def ensure_msvc_minimal_pch(
+  runtime_dir: Path,
+  *,
+  compiler: str = "cl",
+  std: str = "c++14",
+) -> CompileResult:
+  """预编译 ``minimal.h``（仅 MSVC / Windows）。"""
+  if pch_disabled() or sys.platform != "win32":
+    return CompileResult(ok=True, compiler=compiler, artifact=None, stdout="", stderr="")
+  umbrella = runtime_dir / Path(UMBRELLA_HEADER)
+  if not umbrella.is_file():
+    return CompileResult(ok=True, compiler=compiler, artifact=None, stdout="", stderr="no minimal.h")
+  _write_minimal_pch_header(runtime_dir)
+  pch = minimal_pch_file(runtime_dir)
+  pch.parent.mkdir(parents=True, exist_ok=True)
+  newest = umbrella.stat().st_mtime
+  if pch.is_file() and pch.stat().st_mtime >= newest:
+    return CompileResult(
+      ok=True,
+      compiler=compiler,
+      artifact=pch,
+      stdout="",
+      stderr="pch up-to-date",
+    )
+  if compiler in ("auto", "msvc", "cl") and _which("cl"):
+    tool = "cl"
+  elif _which("cl"):
+    tool = "cl"
+  else:
+    return CompileResult(ok=True, compiler=compiler, artifact=None, stdout="", stderr="no cl for pch")
+  stub = pch.parent / "build_minimal_pch.cpp"
+  stub.write_text(f'#include "{PCH_HEADER_REL}"\n', encoding="utf-8")
+  std_flag = _msvc_std_flag(std)
+  obj = pch.parent / "build_minimal_pch.obj"
+  inc_dirs = [str(runtime_dir.resolve()), str(minimal_pch_include_dir(runtime_dir).resolve())]
+  if SQLITE_INCLUDE_DIR.is_dir():
+    inc_dirs.append(str(SQLITE_INCLUDE_DIR.resolve()))
+  cmd = [
+    tool,
+    "/nologo",
+    "/EHsc",
+    "/utf-8",
+    std_flag,
+    "/c",
+    "/DSQLITE_THREADSAFE=1",
+    "/DSQLITE_OMIT_LOAD_EXTENSION=1",
+  ]
+  for inc in inc_dirs:
+    cmd.append(f"/I{inc}")
+  cmd.extend([
+    f"/Yc{PCH_HEADER_REL}",
+    f"/Fp{pch}",
+    f"/Fo{obj}",
+    str(stub),
+  ])
+  r = _run(cmd)
+  if r.returncode != 0:
+    return CompileResult(
+      ok=False,
+      compiler=tool,
+      artifact=None,
+      stdout=r.stdout or "",
+      stderr=r.stderr or "minimal.pch build failed",
+    )
+  return CompileResult(ok=pch.is_file(), compiler=tool, artifact=pch, stdout="", stderr="")
+
+
+def _msvc_pch_use_flags(runtime_dir: Path) -> list[str]:
+  pch = minimal_pch_file(runtime_dir)
+  if pch_disabled() or not pch.is_file():
+    return []
+  pch_inc = minimal_pch_include_dir(runtime_dir)
+  return [
+    f"/I{pch_inc.resolve()}",
+    f"/FI{PCH_HEADER_REL}",
+    f"/Yu{PCH_HEADER_REL}",
+    f"/Fp{pch}",
+  ]
+
+
+def _source_may_use_msvc_pch(source: Path) -> bool:
+  parts = source.resolve().parts
+  return "test" in parts or "examples" in parts
+
+
+@contextlib.contextmanager
+def _fat_lib_build_lock(runtime_dir: Path):
+  """并行 ``build_all`` 时串行化胖库构建。"""
+  lock = runtime_dir / FAT_LIB_SUBDIR / FAT_LIB_LOCK_NAME
+  lock.parent.mkdir(parents=True, exist_ok=True)
+  acquired = False
+  try:
+    for _ in range(600):
+      try:
+        fd = os.open(str(lock), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        os.close(fd)
+        acquired = True
+        break
+      except FileExistsError:
+        lib = fat_lib_path(runtime_dir)
+        if lib.is_file():
+          time.sleep(0.1)
+          yield False
+          return
+        time.sleep(0.1)
+    yield True
+  finally:
+    if acquired:
+      try:
+        lock.unlink()
+      except OSError:
+        pass
+
+
 def _run(cmd: list[str], *, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
   # ``cl /utf-8`` 的诊断为 UTF-8；Windows 默认用系统 ANSI 解码会得到 ``?``
   encoding: str | None = None
@@ -291,109 +462,130 @@ def ensure_runtime_fat_lib(
         stderr="fat lib up-to-date",
       )
 
-  if compiler in ("auto", "msvc", "cl") and _which("cl"):
-    tool = "cl"
-  elif compiler in ("auto", "g++") and _which("g++"):
-    tool = "g++"
-  elif compiler in ("auto", "clang++") and _which("clang++"):
-    tool = "clang++"
-  elif _which("cl"):
-    tool = "cl"
-  else:
-    return CompileResult(
-      ok=False,
-      compiler=compiler,
-      artifact=None,
-      stdout="",
-      stderr="未找到编译器以构建 py2cpp_runtime.lib",
-    )
+  with _fat_lib_build_lock(runtime_dir) as should_build:
+    if not should_build:
+      if out_lib.is_file():
+        return CompileResult(
+          ok=True,
+          compiler=compiler,
+          artifact=out_lib,
+          stdout="",
+          stderr="fat lib up-to-date (peer build)",
+        )
+    if out_lib.is_file() and out_lib.stat().st_mtime >= newest_src:
+      objs = [_library_obj_path(s, obj_dir) for s in sources]
+      if all(o.is_file() and o.stat().st_mtime >= newest_src for o in objs):
+        return CompileResult(
+          ok=True,
+          compiler=compiler,
+          artifact=out_lib,
+          stdout="",
+          stderr="fat lib up-to-date",
+        )
 
-  workers = jobs
-  if workers is None:
-    env = os.environ.get("PY2CPP_BUILD_JOBS")
-    try:
-      workers = max(1, int(env)) if env else min(8, (os.cpu_count() or 4))
-    except ValueError:
-      workers = 8
-
-  def compile_one(cpp: Path) -> tuple[Path, subprocess.CompletedProcess[str]]:
-    obj = _library_obj_path(cpp, obj_dir)
-    if obj.is_file() and obj.stat().st_mtime >= max(cpp.stat().st_mtime, newest_src):
-      return obj, subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
-    if tool == "cl":
-      std_flag = _msvc_std_flag(std)
-      cmd = [
-        "cl",
-        "/nologo",
-        "/EHsc",
-        "/utf-8",
-        std_flag,
-        "/c",
-        "/DSQLITE_THREADSAFE=1",
-        "/DSQLITE_OMIT_LOAD_EXTENSION=1",
-      ]
-      for inc in inc_dirs:
-        cmd.append(f"/I{inc}")
-      cmd.extend([f"/Fo{obj}", str(cpp)])
+    if compiler in ("auto", "msvc", "cl") and _which("cl"):
+      tool = "cl"
+    elif compiler in ("auto", "g++") and _which("g++"):
+      tool = "g++"
+    elif compiler in ("auto", "clang++") and _which("clang++"):
+      tool = "clang++"
+    elif _which("cl"):
+      tool = "cl"
     else:
-      cmd = [
-        tool,
-        f"-std={std if std != 'c++11' else 'c++14'}",
-        "-Wall",
-        "-c",
-      ]
-      for inc in inc_dirs:
-        cmd.append(f"-I{inc}")
-      cmd.extend(["-o", str(obj), str(cpp)])
-    return obj, _run(cmd)
+      return CompileResult(
+        ok=False,
+        compiler=compiler,
+        artifact=None,
+        stdout="",
+        stderr="未找到编译器以构建 py2cpp_runtime.lib",
+      )
 
-  objs: list[Path] = []
-  logs: list[str] = []
-  failed = False
-  with ThreadPoolExecutor(max_workers=workers) as pool:
-    futs = {pool.submit(compile_one, s): s for s in sources}
-    for fut in as_completed(futs):
-      cpp = futs[fut]
-      obj, proc = fut.result()
-      if proc.returncode != 0:
-        failed = True
-        logs.append(f"FAIL {cpp}:\n{proc.stdout}\n{proc.stderr}")
+    workers = jobs
+    if workers is None:
+      env = os.environ.get("PY2CPP_BUILD_JOBS")
+      try:
+        workers = max(1, int(env)) if env else min(8, (os.cpu_count() or 4))
+      except ValueError:
+        workers = 8
+
+    def compile_one(cpp: Path) -> tuple[Path, subprocess.CompletedProcess[str]]:
+      obj = _library_obj_path(cpp, obj_dir)
+      if obj.is_file() and obj.stat().st_mtime >= max(cpp.stat().st_mtime, newest_src):
+        return obj, subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
+      if tool == "cl":
+        std_flag = _msvc_std_flag(std)
+        cmd = [
+          "cl",
+          "/nologo",
+          "/EHsc",
+          "/utf-8",
+          std_flag,
+          "/c",
+          "/DSQLITE_THREADSAFE=1",
+          "/DSQLITE_OMIT_LOAD_EXTENSION=1",
+        ]
+        for inc in inc_dirs:
+          cmd.append(f"/I{inc}")
+        cmd.extend([f"/Fo{obj}", str(cpp)])
       else:
-        objs.append(obj)
+        cmd = [
+          tool,
+          f"-std={std if std != 'c++11' else 'c++14'}",
+          "-Wall",
+          "-c",
+        ]
+        for inc in inc_dirs:
+          cmd.append(f"-I{inc}")
+        cmd.extend(["-o", str(obj), str(cpp)])
+      return obj, _run(cmd)
 
-  if failed:
-    joined = "\n".join(logs)
-    return CompileResult(
-      ok=False,
-      compiler=tool,
-      artifact=None,
-      stdout=joined,
-      stderr="py2cpp_runtime.lib: object compile failed\n" + joined,
-    )
+    objs: list[Path] = []
+    logs: list[str] = []
+    failed = False
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+      futs = {pool.submit(compile_one, s): s for s in sources}
+      for fut in as_completed(futs):
+        cpp = futs[fut]
+        obj, proc = fut.result()
+        if proc.returncode != 0:
+          failed = True
+          logs.append(f"FAIL {cpp}:\n{proc.stdout}\n{proc.stderr}")
+        else:
+          objs.append(obj)
 
-  objs = [_library_obj_path(s, obj_dir) for s in sources]
-  if tool == "cl":
-    if not _which("lib"):
+    if failed:
+      joined = "\n".join(logs)
       return CompileResult(
         ok=False,
         compiler=tool,
         artifact=None,
-        stdout="",
-        stderr="未找到 lib.exe（MSVC 库管理器）",
+        stdout=joined,
+        stderr="py2cpp_runtime.lib: object compile failed\n" + joined,
       )
-    cmd = ["lib", "/nologo", f"/OUT:{out_lib}", *[str(o) for o in objs]]
-    r = _run(cmd)
-  else:
-    cmd = ["ar", "rcs", str(out_lib), *[str(o) for o in objs]]
-    r = _run(cmd)
 
-  return CompileResult(
-    ok=r.returncode == 0 and out_lib.is_file(),
-    compiler=tool,
-    artifact=out_lib if out_lib.is_file() else None,
-    stdout=r.stdout or "",
-    stderr=r.stderr or "",
-  )
+    objs = [_library_obj_path(s, obj_dir) for s in sources]
+    if tool == "cl":
+      if not _which("lib"):
+        return CompileResult(
+          ok=False,
+          compiler=tool,
+          artifact=None,
+          stdout="",
+          stderr="未找到 lib.exe（MSVC 库管理器）",
+        )
+      cmd = ["lib", "/nologo", f"/OUT:{out_lib}", *[str(o) for o in objs]]
+      r = _run(cmd)
+    else:
+      cmd = ["ar", "rcs", str(out_lib), *[str(o) for o in objs]]
+      r = _run(cmd)
+
+    return CompileResult(
+      ok=r.returncode == 0 and out_lib.is_file(),
+      compiler=tool,
+      artifact=out_lib if out_lib.is_file() else None,
+      stdout=r.stdout or "",
+      stderr=r.stderr or "",
+    )
 
 
 def _links_runtime_cpp(source: Path) -> bool:
@@ -663,7 +855,17 @@ def _cmd_msvc_cl(
   std_flag = _msvc_std_flag(std)
   # ``/utf-8``：源文件与执行字符集均为 UTF-8（编译期中文 static_assert 等）
   cmd = ["cl", "/nologo", "/EHsc", "/utf-8", std_flag]
-  if any(needs_sqlite_build(s) for s in sources) or link_objs:
+  merged_link_objs: list[Path] = list(link_objs or [])
+  if sources and _source_may_use_msvc_pch(sources[0]):
+    rt = find_runtime_dir(sources[0])
+    if rt is not None:
+      pch_flags = _msvc_pch_use_flags(rt)
+      if pch_flags:
+        cmd.extend(pch_flags)
+        pch_obj = minimal_pch_include_dir(rt) / "build_minimal_pch.obj"
+        if pch_obj.is_file() and pch_obj not in merged_link_objs:
+          merged_link_objs.insert(0, pch_obj)
+  if any(needs_sqlite_build(s) for s in sources) or merged_link_objs:
     cmd.append("/DSQLITE_THREADSAFE=1")
     cmd.append("/DSQLITE_OMIT_LOAD_EXTENSION=1")
   if use_openmp:
@@ -672,8 +874,8 @@ def _cmd_msvc_cl(
     cmd.append(f"/I{inc}")
   cmd.extend(_msvc_object_file_flags(sources))
   cmd.extend(str(s) for s in sources)
-  if link_objs:
-    cmd.extend(str(p) for p in link_objs)
+  if merged_link_objs:
+    cmd.extend(str(p) for p in merged_link_objs)
   if obj_only:
     cmd.append("/c")
     return cmd
@@ -724,9 +926,11 @@ def compile_cpp(
   if not obj_only and _should_link_fat_lib(source) and not header_only_mode():
     rt = find_runtime_dir(source)
     if rt is not None and discover_library_cpp_sources(rt):
-      lib_res = ensure_runtime_fat_lib(rt, compiler=compiler, std="c++14")
-      if not lib_res.ok:
-        return lib_res
+      libp = fat_lib_path(rt)
+      if not libp.is_file():
+        lib_res = ensure_runtime_fat_lib(rt, compiler=compiler, std="c++14")
+        if not lib_res.ok:
+          return lib_res
 
   tried: list[str] = []
   order = [compiler] if compiler != "auto" else ["g++", "clang++", "cl"]

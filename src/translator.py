@@ -438,6 +438,11 @@ class Translator(ast.NodeVisitor):
                   f'  incremental: full={plan.full} reason={plan.reason} dirty={n_dirty}',
                   file=sys.stderr,
                 )
+        elif emit_user_entry:
+            from .codegen.bootstrap_incremental import attach_user_entry_cache_to_translator
+            if attach_user_entry_cache_to_translator(translator) and prof.enabled:
+                n = len(translator.cached_analysis_modules)
+                print(f'  user_entry_cache: cached_stdlib_modules={n}', file=sys.stderr)
         prof.mark('incremental_plan')
         if include_stdlib and entry_is_runtime_init:
             from .codegen.template_conventions import check_template_conventions
@@ -1096,7 +1101,12 @@ class Translator(ast.NodeVisitor):
         return module_path.replace('\\', '/') in cached
 
     def _should_emit_module(self, module_path: str) -> bool:
-        """增量 bootstrap：仅重生成脏模块的 ``.h`` / ``.inl``。"""
+        """增量 bootstrap：仅重生成脏模块的 ``.h`` / ``.inl``。
+
+        用户 ``test/`` / ``examples/`` 入口永不写出标准库产物（见 ``_can_write_stdlib_artifact``）。
+        """
+        if self._is_stdlib_module(module_path) and not self._can_write_stdlib_artifact(module_path):
+            return False
         filt = self.emit_module_filter
         return filt is None or module_path in filt
 

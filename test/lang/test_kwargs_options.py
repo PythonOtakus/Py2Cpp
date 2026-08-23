@@ -80,6 +80,7 @@ class KwargsCtorAssignTests(TestCaseMixin):
     self.assertEqual(fromOpts.title, "O")
 
     patched: Window = new()
+    self.assertEqual(patched.width, 0)
     patched.assign(width=99, title="A")
     self.assertEqual(patched.width, 99)
     self.assertEqual(patched.title, "A")

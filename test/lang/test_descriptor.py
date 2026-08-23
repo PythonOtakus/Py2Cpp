@@ -69,8 +69,7 @@ class ClampedDescriptorTests(TestCaseMixin):
   @override
   def test(self):
     # ClampedIntVar(0,10)：界内读写；边界 0 / 10
-    row: HostClamped = new()
-    row.level = 7
+    row: HostClamped = new(level=7)
     self.assertEqual(row.level, 7)
     row.level = 0
     self.assertEqual(row.level, 0)

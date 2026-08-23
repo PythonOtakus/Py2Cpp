@@ -2,7 +2,8 @@
 
 译器 / ``templates/`` / ``ffi/`` / ``__init__.py`` / ``@mixin`` / ``@protocol``
 变更仍全量。叶子脏时清洁模块跳过 import / 部分 expand / checks，签名缓存
-``generated/runtime/.cache/analyze_sigs.pkl``。``PY2CPP_FORCE_BOOTSTRAP=1`` 强制全量。
+``generated/runtime/.cache/analyze_sigs.pkl``。用户 ``test/`` / ``examples/`` 入口
+亦复用该缓存中的 ``py2cpp/*`` 模块（P1.6）。``PY2CPP_FORCE_BOOTSTRAP=1`` 强制全量。
 """
 from __future__ import annotations
 
@@ -207,6 +208,86 @@ def apply_class_payload(info: ClassInfo, payload: dict[str, Any]) -> None:
     prop.getter_sig, prop.setter_sig, prop.postsetter_sig = sigs
 
 
+def _modules_with_cache_entries(cache: dict[str, Any]) -> set[str]:
+  """缓存中出现过的模块路径（规范化 ``/``）。"""
+  out: set[str] = set()
+  for mp in (cache.get("modules") or {}):
+    out.add(str(mp).replace("\\", "/"))
+  for key in (cache.get("classes") or {}):
+    if isinstance(key, tuple) and len(key) == 2:
+      out.add(str(key[0]).replace("\\", "/"))
+  for key in (cache.get("function_sigs") or {}):
+    if isinstance(key, tuple) and len(key) == 2:
+      out.add(str(key[0]).replace("\\", "/"))
+  for mp in (cache.get("import_bindings") or {}):
+    out.add(str(mp).replace("\\", "/"))
+  return out
+
+
+def _hydrate_translator_from_cache(
+  tr: Translator,
+  cache: dict[str, Any],
+  *,
+  cached_ok: set[str],
+  emit_filter: set[str] | None,
+) -> None:
+  """从 ``analyze_sigs.pkl`` 恢复清洁模块签名（bootstrap 增量或用户测例）。"""
+  tr.emit_module_filter = emit_filter
+  tr.cached_analysis_modules = {m.replace("\\", "/") for m in cached_ok}
+  classes = cache.get("classes") or {}
+  payloads: dict[tuple[str, str], dict[str, Any]] = {}
+  for k, v in classes.items():
+    if not isinstance(k, tuple) or len(k) != 2:
+      continue
+    mp = k[0].replace("\\", "/")
+    if mp in tr.cached_analysis_modules:
+      payloads[(mp, k[1])] = v
+  tr._cached_class_payloads = payloads
+  fn_sigs: dict[tuple[str, str], FunctionSig] = {}
+  for key, sig in (cache.get("function_sigs") or {}).items():
+    if not isinstance(key, tuple) or len(key) != 2:
+      continue
+    mp = key[0].replace("\\", "/")
+    if mp in tr.cached_analysis_modules:
+      fn_sigs[(mp, key[1])] = sig
+  tr._cached_function_sigs = fn_sigs
+  ov_sigs: dict[tuple[str, str], list[FunctionSig]] = {}
+  for key, sigs in (cache.get("overload_sigs") or {}).items():
+    if not isinstance(key, tuple) or len(key) != 2:
+      continue
+    mp = key[0].replace("\\", "/")
+    if mp in tr.cached_analysis_modules:
+      ov_sigs[(mp, key[1])] = sigs
+  tr._cached_overload_sigs = ov_sigs
+  ma_map: dict[str, dict[str, list[str]]] = {}
+  for mp, ma in (cache.get("module_analysis") or {}).items():
+    norm = mp.replace("\\", "/")
+    if norm in tr.cached_analysis_modules:
+      ma_map[norm] = ma
+  tr._cached_module_analysis = ma_map
+  ib_map: dict[str, Any] = {}
+  iu_map: dict[str, Any] = {}
+  for mp, binds in (cache.get("import_bindings") or {}).items():
+    norm = str(mp).replace("\\", "/")
+    if norm in tr.cached_analysis_modules:
+      ib_map[norm] = binds
+  for mp, usings in (cache.get("import_usings") or {}).items():
+    norm = str(mp).replace("\\", "/")
+    if norm in tr.cached_analysis_modules:
+      iu_map[norm] = usings
+  tr._cached_import_bindings = ib_map
+  tr._cached_import_usings = iu_map
+  if os.environ.get("PY2CPP_PROFILE", "").strip().lower() in ("1", "true", "yes", "on"):
+    import sys
+
+    print(
+      f"    attach modules={len(cache.get('modules') or {})} classes={len(classes)} "
+      f"cached_ok={len(tr.cached_analysis_modules)} payloads={len(payloads)} "
+      f"emit_filter={len(emit_filter) if emit_filter else 0}",
+      file=sys.stderr,
+    )
+
+
 def attach_incremental_to_translator(tr: Translator, plan: BootstrapPlan) -> None:
   """设置 emit 过滤并从磁盘恢复清洁模块签名。"""
   tr.emit_module_filter = None
@@ -225,74 +306,69 @@ def attach_incremental_to_translator(tr: Translator, plan: BootstrapPlan) -> Non
     tr.emit_module_filter = set(plan.dirty_modules)
     return
   dirty = {m.replace("\\", "/") for m in plan.dirty_modules}
-  classes = cache.get("classes") or {}
-  cached_ok: set[str] = set()
-  payloads: dict[tuple[str, str], dict[str, Any]] = {}
-  for k, v in classes.items():
-    if not isinstance(k, tuple) or len(k) != 2:
-      continue
-    mp = k[0].replace("\\", "/")
-    payloads[(mp, k[1])] = v
-    if mp not in dirty:
-      cached_ok.add(mp)
-  modules_meta: dict[str, dict[str, Any]] = cache.get("modules") or {}
-  for mp in modules_meta:
-    norm = mp.replace("\\", "/")
-    if norm not in dirty:
-      cached_ok.add(norm)
-  for key in (cache.get("function_sigs") or {}):
-    if isinstance(key, tuple) and len(key) == 2:
-      mp = key[0].replace("\\", "/")
-      if mp not in dirty:
-        cached_ok.add(mp)
-  for mp in (cache.get("import_bindings") or {}):
-    norm = str(mp).replace("\\", "/")
-    if norm not in dirty:
-      cached_ok.add(norm)
-  tr.emit_module_filter = set(plan.dirty_modules)
-  tr.cached_analysis_modules = cached_ok
-  tr._cached_class_payloads = payloads
-  import os
-  import sys
+  cache_modules = _modules_with_cache_entries(cache)
+  cached_ok = {mp for mp in cache_modules if mp not in dirty}
+  _hydrate_translator_from_cache(
+    tr,
+    cache,
+    cached_ok=cached_ok,
+    emit_filter=set(plan.dirty_modules),
+  )
+
+
+def _user_entry_cache_disabled() -> bool:
+  v = os.environ.get("PY2CPP_NO_TEST_CACHE", "").strip().lower()
+  return v in ("1", "true", "yes", "on")
+
+
+def _profile_log(msg: str) -> None:
   if os.environ.get("PY2CPP_PROFILE", "").strip().lower() in ("1", "true", "yes", "on"):
-    print(
-      f"    attach modules={len(modules_meta)} classes={len(classes)} "
-      f"cached_ok={len(cached_ok)} payloads={len(payloads)} dirty={len(dirty)}",
-      file=sys.stderr,
+    import sys
+
+    print(f"  {msg}", file=sys.stderr)
+
+
+def _user_entry_cacheable_closure_modules(tr: Translator) -> set[str]:
+  """用户入口 import 闭包内可由 bootstrap 缓存跳过的模块（``py2cpp/*`` + ``ffi/*``）。"""
+  return {
+    mp.replace("\\", "/")
+    for mp in tr.module_order
+    if mp.replace("\\", "/").startswith(("py2cpp/", "ffi/"))
+  }
+
+
+def attach_user_entry_cache_to_translator(tr: Translator) -> bool:
+  """用户 ``test/`` / ``examples/`` 入口：复用 bootstrap 写入的 ``analyze_sigs.pkl``。"""
+  if _user_entry_cache_disabled():
+    _profile_log("user_entry_cache: skipped (PY2CPP_NO_TEST_CACHE)")
+    return False
+  if tr._is_runtime_bootstrap():
+    return False
+  entry = tr.entry_module_path.replace("\\", "/")
+  if tr._is_stdlib_module(entry):
+    return False
+  cache = load_analysis_cache()
+  fp = translator_fingerprint()
+  if cache is None or cache.get("translator_fp") != fp:
+    reason = (
+      "no analyze_sigs.pkl — run bootstrap first"
+      if cache is None
+      else "translator_fp mismatch — re-bootstrap after src/ changes"
     )
-  fn_sigs: dict[tuple[str, str], FunctionSig] = {}
-  for key, sig in (cache.get("function_sigs") or {}).items():
-    if not isinstance(key, tuple) or len(key) != 2:
-      continue
-    mp = key[0].replace("\\", "/")
-    if mp in cached_ok:
-      fn_sigs[(mp, key[1])] = sig
-  tr._cached_function_sigs = fn_sigs
-  ov_sigs: dict[tuple[str, str], list[FunctionSig]] = {}
-  for key, sigs in (cache.get("overload_sigs") or {}).items():
-    if not isinstance(key, tuple) or len(key) != 2:
-      continue
-    mp = key[0].replace("\\", "/")
-    if mp in cached_ok:
-      ov_sigs[(mp, key[1])] = sigs
-  tr._cached_overload_sigs = ov_sigs
-  ma_map: dict[str, dict[str, list[str]]] = {}
-  for mp, ma in (cache.get("module_analysis") or {}).items():
-    if mp.replace("\\", "/") in cached_ok:
-      ma_map[mp.replace("\\", "/")] = ma
-  tr._cached_module_analysis = ma_map
-  ib_map: dict[str, Any] = {}
-  iu_map: dict[str, Any] = {}
-  for mp, binds in (cache.get("import_bindings") or {}).items():
-    norm = str(mp).replace("\\", "/")
-    if norm in cached_ok:
-      ib_map[norm] = binds
-  for mp, usings in (cache.get("import_usings") or {}).items():
-    norm = str(mp).replace("\\", "/")
-    if norm in cached_ok:
-      iu_map[norm] = usings
-  tr._cached_import_bindings = ib_map
-  tr._cached_import_usings = iu_map
+    _profile_log(f"user_entry_cache: skipped ({reason})")
+    return False
+  cache_modules = _modules_with_cache_entries(cache)
+  cached_ok = _user_entry_cacheable_closure_modules(tr) & cache_modules
+  if not cached_ok:
+    _profile_log("user_entry_cache: skipped (no closure modules in cache)")
+    return False
+  _hydrate_translator_from_cache(
+    tr,
+    cache,
+    cached_ok=cached_ok,
+    emit_filter=None,
+  )
+  return True
 
 
 def store_analysis_cache(tr: Translator, *, full: bool) -> None:

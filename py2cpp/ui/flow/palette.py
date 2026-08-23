@@ -34,9 +34,7 @@ class UIFlowPalette(UICanvas):
     for i in range(len(self.groups) - 1, -1, -1):
       self.groups.pop(i)
     for cat in self.catalog.categories():
-      gv: PaletteGroupView = new()
-      gv.name = cat
-      gv.collapsed = False
+      gv: PaletteGroupView = new(name=cat, collapsed=False)
       for tpl in self.catalog.entriesIn(cat):
         gv.kindIds.append(tpl.kindId)
       self.groups.append(gv)

@@ -448,10 +448,7 @@ class Response:
 
   @staticmethod
   def textResponse(text: str, status: StatusCodeEnum) -> Self:
-    out: Self = new()
-    out.status = int(status)
-    out.headers = {}
-    out.body = text.encode()
+    out: Self = new(status=int(status), headers={}, body=text.encode())
     out.headers["Content-Type"] = "text/plain; charset=utf-8"
     out.headers["Content-Length"] = f"{len(out.body)}"
     return out
@@ -735,9 +732,7 @@ class AsyncClientStreamResponse:
 
   @staticmethod
   def fromHead(reader: AsyncStreamReader @ref, writer: AsyncStreamWriter @ref, head: ClientResponse) -> Self:
-    out: Self = new()
-    out.status = head.status
-    out.headers = head.headers
+    out: Self = new(status=head.status, headers=head.headers)
     out._reader = reader
     out._writer = writer
     out._chunked = _headerIsChunked(out.headers)

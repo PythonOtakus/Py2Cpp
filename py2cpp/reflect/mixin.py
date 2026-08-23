@@ -6,7 +6,7 @@
 翻译期辅助（由 ``passes/`` 展开，**非** CPython 运行时语义）：
 
 - ``Self.iterFields()`` / ``Self.iterFields[Ann]()`` / ``enumFields(publicOnly=…)`` / ``getFieldAnnotation(...)`` / ``getFieldAnnotations(...)`` / ``getFieldType(...)`` / ``getFieldDefault(...)``（``glob=`` 粗筛字段名）
-- ``VarStack`` + ``s: VarStack = new()`` + ``s.push(…)`` / ``s.pop()`` / ``s.top()`` + ``new(*s)`` / ``fn(*s)`` / ``(*s,)``（译期展开为 ``__vs_{name}N``；``pop`` 不回收编号，``*s`` 仅含逻辑栈剩余项；``top()`` 可读栈顶且可跨内层作用域；声明与 ``push``/``pop``/``*s`` 须同块作用域，``Self.iterFields`` / ``enumFields`` 循环体除外）
+- ``VarStack`` + ``s: VarStack = new()`` + ``s.push(…)`` / ``s.pop()`` / ``s.top()`` + ``new(*s)`` / ``fn(*s)`` / ``(*s,)``（译期展开为 ``__py2cpp_vs_{name}N``；``pop`` 不回收编号，``*s`` 仅含逻辑栈剩余项；``top()`` 可读栈顶且可跨内层作用域；声明与 ``push``/``pop``/``*s`` 须同块作用域，``Self.iterFields`` / ``enumFields`` 循环体除外）
 - ``Self.iterMethods()`` / ``Self.iterMethods[Ann]()`` / ``getMethodAnnotation[AnnMeta](method)``（``glob=`` 粗筛方法名）
 - ``Self.getFieldAnnotation[AnnMeta](field)`` → 字段上该 ``@`` 标记（无则 ``None``）；``.text`` / ``.lo`` 等译期折叠
 - ``Mixin.iterSubclasses()`` / ``iterSubclasses(sortConst="_testTag")`` → 入口 ``main`` 内 ``suite.addTest(Host())``（``expand_test_discovery``）

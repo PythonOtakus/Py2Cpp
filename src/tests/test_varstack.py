@@ -40,8 +40,8 @@ class ExpandVarStackTests(unittest.TestCase):
     self.assertIsNotNone(expanded)
     assert expanded is not None
     dump = ast.dump(expanded, include_attributes=False)
-    self.assertIn("__vs_vs0", dump)
-    self.assertIn("__vs_vs1", dump)
+    self.assertIn("__py2cpp_vs_vs0", dump)
+    self.assertIn("__py2cpp_vs_vs1", dump)
     self.assertNotIn("VarStack", dump)
     self.assertNotIn("push", dump)
     self.assertNotIn("iter_fields", dump)
@@ -69,9 +69,9 @@ class ExpandVarStackTests(unittest.TestCase):
     self.assertIsNotNone(expanded)
     assert expanded is not None
     dump = ast.dump(expanded, include_attributes=False)
-    self.assertIn("__vs_vs0", dump)
-    self.assertIn("__vs_vs1", dump)
-    self.assertIn("__vs_vs2", dump)
+    self.assertIn("__py2cpp_vs_vs0", dump)
+    self.assertIn("__py2cpp_vs_vs1", dump)
+    self.assertIn("__py2cpp_vs_vs2", dump)
     self.assertIn("attr='x'", dump)
     self.assertIn("attr='z'", dump)
 
@@ -99,10 +99,10 @@ class ExpandVarStackTests(unittest.TestCase):
     self.assertIsNotNone(expanded)
     assert expanded is not None
     dump = ast.dump(expanded, include_attributes=False)
-    self.assertIn("__vs_a0", dump)
-    self.assertIn("__vs_a1", dump)
-    self.assertIn("__vs_b0", dump)
-    self.assertIn("__vs_b1", dump)
+    self.assertIn("__py2cpp_vs_a0", dump)
+    self.assertIn("__py2cpp_vs_a1", dump)
+    self.assertIn("__py2cpp_vs_b0", dump)
+    self.assertIn("__py2cpp_vs_b1", dump)
 
   def test_func_unpack(self):
     method = self._method(
@@ -126,8 +126,8 @@ class ExpandVarStackTests(unittest.TestCase):
     self.assertIsNotNone(expanded)
     assert expanded is not None
     dump = ast.dump(expanded, include_attributes=False)
-    self.assertIn("__vs_vs0", dump)
-    self.assertIn("__vs_vs1", dump)
+    self.assertIn("__py2cpp_vs_vs0", dump)
+    self.assertIn("__py2cpp_vs_vs1", dump)
     self.assertNotIn("Starred", dump)
 
   def test_pop_then_new(self):
@@ -154,14 +154,14 @@ class ExpandVarStackTests(unittest.TestCase):
     self.assertIsNotNone(expanded)
     assert expanded is not None
     dump = ast.dump(expanded, include_attributes=False)
-    self.assertIn("__vs_vs0", dump)
-    self.assertIn("__vs_vs1", dump)
-    self.assertIn("__vs_vs2", dump)
+    self.assertIn("__py2cpp_vs_vs0", dump)
+    self.assertIn("__py2cpp_vs_vs1", dump)
+    self.assertIn("__py2cpp_vs_vs2", dump)
     self.assertNotIn("pop", dump)
     self.assertNotIn("Starred", dump)
     self.assertRegex(
       dump,
-      r"Call\(func=Name\(id='new'.*Name\(id='__vs_vs0'.*Name\(id='__vs_vs1'",
+      r"Call\(func=Name\(id='new'.*Name\(id='__py2cpp_vs_vs0'.*Name\(id='__py2cpp_vs_vs1'",
     )
 
   def test_pop_push_allocates_new_index(self):
@@ -188,12 +188,12 @@ class ExpandVarStackTests(unittest.TestCase):
     self.assertIsNotNone(expanded)
     assert expanded is not None
     dump = ast.dump(expanded, include_attributes=False)
-    self.assertIn("__vs_vs0", dump)
-    self.assertIn("__vs_vs1", dump)
-    self.assertIn("__vs_vs2", dump)
+    self.assertIn("__py2cpp_vs_vs0", dump)
+    self.assertIn("__py2cpp_vs_vs1", dump)
+    self.assertIn("__py2cpp_vs_vs2", dump)
     self.assertRegex(
       dump,
-      r"Call\(func=Name\(id='new'.*Name\(id='__vs_vs0'.*Name\(id='__vs_vs2'",
+      r"Call\(func=Name\(id='new'.*Name\(id='__py2cpp_vs_vs0'.*Name\(id='__py2cpp_vs_vs2'",
     )
 
   def test_scope_if_use_rejected(self):
@@ -265,7 +265,7 @@ class ExpandVarStackTests(unittest.TestCase):
     self.assertIsNotNone(expanded)
     assert expanded is not None
     dump = ast.dump(expanded, include_attributes=False)
-    self.assertIn("__vs_vs1", dump)
+    self.assertIn("__py2cpp_vs_vs1", dump)
     self.assertNotIn("attr='top'", dump)
 
   def test_top_expansion(self):
@@ -292,7 +292,7 @@ class ExpandVarStackTests(unittest.TestCase):
     dump = ast.dump(expanded, include_attributes=False)
     self.assertRegex(
       dump,
-      r"Return\(value=Name\(id='__vs_vs1'",
+      r"Return\(value=Name\(id='__py2cpp_vs_vs1'",
     )
 
   def test_iter_fields_field_eq_inlined(self):

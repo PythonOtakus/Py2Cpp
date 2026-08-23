@@ -175,9 +175,7 @@ class _ThreadSlot[Value](_SlotBase):
     if self._future.done():
       self.markDone()
       return new.Return(None)
-    h: LoopHandle = new()
-    h.kind = LoopTaskPoll
-    h.targetId = self.slotId
+    h: LoopHandle = new(kind=LoopTaskPoll, targetId=self.slotId)
     return new.Yield(h)
 
   @override
@@ -198,7 +196,7 @@ def _gatherSlotSetup[Item](slot: _SlotBase, results: list[Item], pending: int64)
 
 def _gatherListResult[Item](slot: _SlotBase) -> list[Item]:
   gs: _GatherSlot[Item] @ref = cast(slot)
-  return gs.result.copy()
+  return gs.result
 
 
 def _slotResult[Value](slot: _SlotBase) -> Value:
@@ -213,7 +211,7 @@ def _slotResult[Value](slot: _SlotBase) -> Value:
     if slot.kind == TaskGather:
       return _gatherListResult[Value.Element](slot)
     cs: _CoroSlot[Value] @ref = cast(slot)
-    return cs.result.copy()
+    return cs.result
   else:
     cs: _CoroSlot[Value] @ref = cast(slot)
     return cs.result
@@ -260,16 +258,12 @@ class _TaskAwaitIter[Value]:
   def __next__(self) -> IterResult[LoopHandle, Value]:
     if not self.sent:
       self.sent = True
-      h: LoopHandle = new()
-      h.kind = LoopTaskWait
-      h.targetId = self.targetId
+      h: LoopHandle = new(kind=LoopTaskWait, targetId=self.targetId)
       return new.Yield(h)
     sched: Scheduler @ref = _requireScheduler()
     slot: _SlotBase = sched.slotById(self.targetId)
     if not slot.isDone():
-      h: LoopHandle = new()
-      h.kind = LoopTaskWait
-      h.targetId = self.targetId
+      h: LoopHandle = new(kind=LoopTaskWait, targetId=self.targetId)
       return new.Yield(h)
     return new.Return(_slotResult[Value](slot))
 
@@ -328,18 +322,14 @@ class Scheduler(friends=(Task, _TaskAwaitIter)):
     self._slots.append(slot)
 
   def _addWait(self, waiterId: int64, targetId: int64) -> None:
-    link: _WaitLink = new()
-    link.targetId = targetId
-    link.waiterId = waiterId
+    link: _WaitLink = new(targetId=targetId, waiterId=waiterId)
     self._waitLinks.append(link)
     target: _SlotBase = self.slotById(targetId)
     if target.isDone():
       self._enqueue(waiterId)
 
   def _registerTimer(self, taskId: int64, wakeupPeriod: int64) -> None:
-    entry: _TimerEntry = new()
-    entry.wakeupPeriod = wakeupPeriod
-    entry.taskId = taskId
+    entry: _TimerEntry = new(wakeupPeriod=wakeupPeriod, taskId=taskId)
     self._timers.append(entry)
     if wakeupPeriod <= self.periodCount:
       t: _SlotBase = self.slotById(taskId)
@@ -350,10 +340,7 @@ class Scheduler(friends=(Task, _TaskAwaitIter)):
         self._enqueue(taskId)
 
   def _registerIo(self, taskId: int64, handle: int64, events: int) -> None:
-    entry: _IoWaitEntry = new()
-    entry.taskId = taskId
-    entry.handle = handle
-    entry.events = events
+    entry: _IoWaitEntry = new(taskId=taskId, handle=handle, events=events)
     self._ioWaits.append(entry)
     if _ioReady(handle, events):
       t: _SlotBase = self.slotById(taskId)
@@ -367,10 +354,7 @@ class Scheduler(friends=(Task, _TaskAwaitIter)):
     childIndex: int64,
     childId: int64,
   ) -> None:
-    link: _GatherChildLink = new()
-    link.gatherSlotId = gatherSlotId
-    link.childIndex = childIndex
-    link.childId = childId
+    link: _GatherChildLink = new(gatherSlotId=gatherSlotId, childIndex=childIndex, childId=childId)
     self._gatherLinks.append(link)
 
   def _wakeWaiters(self, targetId: int64) -> None:
@@ -570,9 +554,7 @@ class Task[Value](friends=(Scheduler,)):
     slot.slotId = tid
     sched._registerSlot(slot)
     sched._enqueue(tid)
-    t: Task[Result] = new()
-    t.taskId = tid
-    return t
+    return new(taskId=tid)
 
   @staticmethod
   def runThread(fn: Callable[[], Value]) -> Self:
@@ -586,9 +568,7 @@ class Task[Value](friends=(Scheduler,)):
     slot.kind = TaskThread
     sched._registerSlot(slot)
     sched._enqueue(tid)
-    t: Self = new()
-    t.taskId = tid
-    return t
+    return new(taskId=tid)
 
   @staticmethod
   def waitRead(handle: int64) -> Task[None]:
@@ -599,9 +579,7 @@ class Task[Value](friends=(Scheduler,)):
     slot.kind = TaskIo
     sched._registerSlot(slot)
     sched._registerIo(tid, handle, IoRead)
-    t: Task[None] = new()
-    t.taskId = tid
-    return t
+    return new(taskId=tid)
 
   @staticmethod
   def waitWrite(handle: int64) -> Task[None]:
@@ -612,9 +590,7 @@ class Task[Value](friends=(Scheduler,)):
     slot.kind = TaskIo
     sched._registerSlot(slot)
     sched._registerIo(tid, handle, IoWrite)
-    t: Task[None] = new()
-    t.taskId = tid
-    return t
+    return new(taskId=tid)
 
   @staticmethod
   def sleep(secs: float64) -> Task[None]:
@@ -626,9 +602,7 @@ class Task[Value](friends=(Scheduler,)):
     sched._registerSlot(slot)
     wakeup: int64 = Self._wakeupPeriod(secs)
     sched._registerTimer(tid, wakeup)
-    t: Task[None] = new()
-    t.taskId = tid
-    return t
+    return new(taskId=tid)
 
   @staticmethod
   def gather[Item](*tasks: Task[Item][:]) -> Task[list[Item]]:
@@ -654,9 +628,7 @@ class Task[Value](friends=(Scheduler,)):
     for i in range(n):
       child: Task[Item] = tasks[i]
       sched._registerGatherChild(gid, i, child.taskId)
-    t: Task[list[Item]] = new()
-    t.taskId = gid
-    return t
+    return new(taskId=gid)
 
   @staticproperty
   @immutable

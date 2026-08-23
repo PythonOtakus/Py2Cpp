@@ -21,8 +21,7 @@ class StaticReflectTests(TestCaseMixin):
 
   @override
   def test(self):
-    h: Holder = new()
-    h.x = 3
+    h: Holder = new(x=3)
     self.assertEqual(readX(h), 3)
     writeY(h)
     self.assertEqual(h.y, 9)

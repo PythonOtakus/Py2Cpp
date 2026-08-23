@@ -204,10 +204,9 @@ class ListAlgebraTests(TestCaseMixin):
 class ThreeInts:
   """仅有 ``__len__`` + ``__getitem__(int)``；翻译期注入 ``ThreeInts_iterator`` 与 ``__iter__``。"""
 
-  def __init__(self):
-    self._a: int = 10
-    self._b: int = 20
-    self._c: int = 30
+  _a: int = 10
+  _b: int = 20
+  _c: int = 30
 
   @immutable
   def __len__(self) -> int:

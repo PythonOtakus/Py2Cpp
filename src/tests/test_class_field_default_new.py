@@ -62,7 +62,7 @@ class Opts:
       text,
       re.compile(r"PyDict<PyStr,\s*PyStr>\s+headers\s*=\s*PyDict<PyStr,\s*PyStr>\(\)"),
     )
-    self.assertNotIn("__dict_lit", text)
+    self.assertNotIn("__py2cpp_dict_lit", text)
 
 
 if __name__ == "__main__":

@@ -14,6 +14,8 @@
 | **P0.5** 写盘去重 | ✅ | 生成 `.h`/`.inl`/`.cpp` 时忽略 `// 生成时间:` 再比正文，相同则不刷新 mtime |
 | **P1** 胖库 | ✅ | 白名单非模板模块进 `py2cpp_runtime.lib`；模板/`Queue[T]` 仍 header-only；库增量看 `py2cpp/**/*.{h,inl,cpp}` mtime |
 | **P1.5** bootstrap 加速 | ✅ | `ClassInfo`/`type_node` 查表；nav shard 按 `.h`/`.inl` mtime 跳过；叶子 `.py` 脏则只重分析/生成该模块，清洁模块跳过 import/expand/checks（mixin/`__init__.py`/译器/`templates/` 仍全量）。改一文件目标 **&lt;30s**；译器自身变更仍全量 |
+| **P1.6** 测例 analyze 缓存 | ✅ | `test/` / `examples/` 翻译时复用 `analyze_sigs.pkl` 中闭包内 ``py2cpp/*`` 与 ``ffi/*`` 签名（须先 bootstrap）；``PY2CPP_NO_TEST_CACHE=1`` 关闭 |
+| **P1.7** MSVC PCH | 实验性 | ``PY2CPP_USE_PCH=1`` 时 bootstrap 生成 ``pch/minimal.pch`` 且测例 ``cl`` 使用 ``/FI``+``/Yu`` |
 | **P2** 域库 | 未做 | |
 | **P3** 链接期 DLL | 未做 | 同 TU 出 `py2cpp_*.dll` + import lib，测例 **dllimport**；**不是**进程内热更（见 [hot-reload.md](./hot-reload.md)） |
 
@@ -256,6 +258,18 @@ cl /EHsc /std:c++14 /utf-8 /I generated\runtime ^
 | 改 `library` 标准库模块 | 重编对应 `.lib` + 重链，而非 N×全量 inl |
 | 改 `header_only` 模板（`list`/`str`…） | 仍可能大面积重编（头依赖未变） |
 | `build_all` 冷启动 | 仍要编齐库 + 各 exe；热路径与增量改测例受益最大 |
+
+### 8.1 实测（P1.6 后，Windows / VS 2022，bootstrap 已完成）
+
+| 用例 | 翻译 | 翻译+编译 | 备注 |
+|------|------|-----------|------|
+| `test/misc/test_print.py` | ~8s | **~13s** | 闭包 47 模块（41×`py2cpp` + 6×`ffi`）命中 `analyze_sigs.pkl` |
+| `test/lang/test_kwargs_options.py` | — | **~16s** | 较重 lang 测例 |
+| 同上（exe 已新于源） | skip | **~0s** | P0 mtime 跳过 |
+
+优化前（无 P1.6 / 未缓存 FFI）：`test_print` 翻译 ~33s、翻译+编译 ~44–60s；`func_sigs` 单独 ~22s（重复构建 ~3800 条 `ffi/*` 签名）。
+
+**注意**：改 `src/` 后 `translator_fp` 变化，须重跑 bootstrap 写入 `analyze_sigs.pkl`，否则 P1.6 静默失效（analyze 回退全量）。
 
 ---
 

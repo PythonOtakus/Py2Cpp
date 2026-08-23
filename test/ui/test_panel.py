@@ -30,8 +30,7 @@ class PanelSliderTests(TestCaseMixin):
 
     @override
     def test(self):
-        cfg: PlayerConfig = new()
-        cfg.hp = 99
+        cfg: PlayerConfig = new(hp=99)
         cfg.drawPanel(UIWindow())
         self.assertEqual(cfg.hp, 99)
         cfg.hp = 200
@@ -42,8 +41,7 @@ class PanelFloatTests(TestCaseMixin):
 
     @override
     def test(self):
-        cfg: PlayerConfig = new()
-        cfg.speed = 2.5
+        cfg: PlayerConfig = new(speed=2.5)
         cfg.drawPanel(UIWindow())
         self.assertTrue(cfg.speed > 2.4)
         self.assertTrue(cfg.speed < 2.6)

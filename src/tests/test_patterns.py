@@ -1,6 +1,7 @@
 """``analysis.patterns``：译器命名约定。"""
 from __future__ import annotations
 
+import re
 import unittest
 
 from src.analysis.patterns import (
@@ -10,22 +11,26 @@ from src.analysis.patterns import (
 )
 
 
-class TempNameTests(unittest.TestCase):
-  def test_double_underscore_prefix_and_monotonic(self):
-    import re
+def _temp_serial(name: str) -> int:
+  m = re.search(r"\d+$", name)
+  assert m is not None
+  return int(m.group())
 
+
+class TempNameTests(unittest.TestCase):
+  def test_py2cpp_prefix_and_monotonic(self):
     a = temp_name("tmp")
     b = temp_name("seq")
     c = temp_name("_x")
-    pat = re.compile(r"^__[a-z]+\d+$")
+    pat = re.compile(r"^__py2cpp_[a-z]+\d+$")
     self.assertRegex(a, pat)
     self.assertRegex(b, pat)
     self.assertRegex(c, pat)
-    self.assertTrue(a.startswith("__tmp"))
-    self.assertTrue(b.startswith("__seq"))
-    self.assertTrue(c.startswith("__x"))
-    self.assertLess(int(a[5:]), int(b[5:]))
-    self.assertLess(int(b[5:]), int(c[3:]))
+    self.assertTrue(a.startswith("__py2cpp_tmp"))
+    self.assertTrue(b.startswith("__py2cpp_seq"))
+    self.assertTrue(c.startswith("__py2cpp_x"))
+    self.assertLess(_temp_serial(a), _temp_serial(b))
+    self.assertLess(_temp_serial(b), _temp_serial(c))
 
 
 class EmitSymbolTests(unittest.TestCase):

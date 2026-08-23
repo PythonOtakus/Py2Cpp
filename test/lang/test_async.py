@@ -32,10 +32,7 @@ async def sumAsyncFor() -> int:
 
 
 class SimpleAsyncCM:
-  entered: int
-
-  def __init__(self):
-    self.entered = 0
+  entered: int = 0
 
   async def __aenter__(self) -> int:
     self.entered = 1
@@ -276,10 +273,7 @@ async def asyncMegaNestedControl() -> list[int]:
 
 
 class ClosableAsyncResource(AsyncCloseMixin):
-  closed: bool
-
-  def __init__(self):
-    self.closed = False
+  closed: bool = False
 
   async def close(self) -> None:
     await asyncVal(0)

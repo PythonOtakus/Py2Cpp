@@ -126,10 +126,7 @@ class FlowGraph:
       raise ValueError("flow connect: self loop")
     self._removeEdgesOnPin(toPin)
     eid: int = self.allocId()
-    edge: FlowEdge = new()
-    edge.id = eid
-    edge.fromPin = fromPin
-    edge.toPin = toPin
+    edge: FlowEdge = new(id=eid, fromPin=fromPin, toPin=toPin)
     self.edges.append(edge)
     return eid
 
@@ -154,19 +151,15 @@ class FlowGraph:
 
   def addNode(self, kindId: str, title: str, x: float64, y: float64, pins: list[FlowPin, 0]) -> int:
     nid: int = self.allocId()
-    node: FlowNode = new()
-    node.id = nid
-    node.kindId = kindId
-    node.title = title
-    node.x = x
-    node.y = y
+    node: FlowNode = new(id=nid, kindId=kindId, title=title, x=x, y=y)
     for p in pins:
-      pin: FlowPin = new()
-      pin.id = self.allocId()
-      pin.nodeId = nid
-      pin.name = p.name
-      pin.kind = p.kind
-      pin.typeId = p.typeId
+      pin: FlowPin = new(
+        id=self.allocId(),
+        nodeId=nid,
+        name=p.name,
+        kind=p.kind,
+        typeId=p.typeId,
+      )
       node.pins.append(pin)
     self.nodes.append(node)
     return nid

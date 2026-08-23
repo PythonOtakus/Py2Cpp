@@ -136,8 +136,7 @@ class NestedMakeDefaultTests(TestCaseMixin):
   def test(self):
     wn: WithNested = new()
     self.assertEqual(wn.inner.v, 0)
-    custom: InnerBox = new()
-    custom.v = 9
+    custom: InnerBox = new(v=9)
     wn2: WithNested = new(custom)
     self.assertEqual(wn2.inner.v, 9)
 

@@ -41,6 +41,7 @@ S0307 = 'S0307'
 S0308 = 'S0308'
 S0309 = 'S0309'
 S0310 = 'S0310'
+S0311 = 'S0311'
 S0401 = 'S0401'
 S0402 = 'S0402'
 S0403 = 'S0403'
@@ -591,6 +592,9 @@ def _is_new_ctor_expr(node: ast.expr | None) -> bool:
     if isinstance(node, ast.Call) and _is_new_receiver_attribute(node.func):
         return True
     return _is_new_receiver_attribute(node)
+
+def _is_empty_new_call(node: ast.expr | None) -> bool:
+    return isinstance(node, ast.Call) and _is_new_call(node) and (not node.args) and (not node.keywords)
 
 def _ann_root_name(ann: ast.expr | None) -> str | None:
     if ann is None:
@@ -1730,6 +1734,101 @@ def _s0310_check_new_type_context_temp(checker: _StrictStyleChecker, node: ast.A
         new_text = 'new(...)'
     ann_text = _s0903_ann_text(node.annotation) or 'Cls'
     checker._add(S0310, node, _s0310_new_temp_msg(name, ann_text, new_text))
+
+def _s0311_class_info_from_ann(checker: _StrictStyleChecker, ann: ast.expr | None) -> ClassInfo | None:
+    root = _ann_root_name(ann)
+    if root == 'Self':
+        return checker._current_class_info()
+    if root is None:
+        return None
+    info = checker.tr.classes.get(root)
+    if info is None:
+        return None
+    if _is_testcase_host(info) or _is_desugar_generated_name(info.name):
+        return None
+    if info.is_union:
+        return None
+    return info
+
+def _s0311_writable_fields(checker: _StrictStyleChecker, info: ClassInfo) -> frozenset[str] | None:
+    from .kwargs_options import _class_fields
+    return _class_fields(checker.tr, info.name, for_assign=True)
+
+def _s0311_try_field_assign(stmt: ast.stmt, var_name: str) -> tuple[str, ast.expr] | None:
+    if not isinstance(stmt, ast.Assign) or len(stmt.targets) != 1:
+        return None
+    tgt = stmt.targets[0]
+    if not isinstance(tgt, ast.Attribute):
+        return None
+    if not isinstance(tgt.value, ast.Name) or tgt.value.id != var_name:
+        return None
+    if tgt.attr.startswith('_'):
+        return None
+    return tgt.attr, stmt.value
+
+def _s0311_collect_consecutive_field_assigns(stmts: list[ast.stmt], start_idx: int, var_name: str, writable: frozenset[str]) -> list[tuple[str, ast.expr]]:
+    assigns: list[tuple[str, ast.expr]] = []
+    for stmt in stmts[start_idx:]:
+        hit = _s0311_try_field_assign(stmt, var_name)
+        if hit is None:
+            break
+        field, rhs = hit
+        if field not in writable:
+            break
+        assigns.append((field, rhs))
+    return assigns
+
+def _s0311_format_new_ctor(var_name: str, ann_text: str, assigns: list[tuple[str, ast.expr]]) -> str:
+    try:
+        kws = ', '.join((f'{field}={ast.unparse(rhs)}' for field, rhs in assigns))
+    except Exception:
+        kws = 'field=...'
+    return f'{var_name}: {ann_text} = new({kws})'
+
+def _s0311_message(var_name: str, ann_text: str, assigns: list[tuple[str, ast.expr]]) -> str:
+    good = _s0311_format_new_ctor(var_name, ann_text, assigns)
+    return _strict_msg(
+        f'`{var_name}: {ann_text} = new(); {var_name}.field = …`（{len(assigns)} 处连续字段赋值）',
+        f'`{good}`',
+        '局部变量初始化用户类/结构体',
+        reason='空 ``new()`` 后连续同变量字段赋值应合并为关键字 ``new(field=…)``（与 §2.2、§7.4 一致）',
+        example=good,
+    )
+
+def _s0311_check_new_then_field_assigns(checker: _StrictStyleChecker, node: ast.AnnAssign) -> None:
+    """S0311：勿 ``x: T = new(); x.f = …``，改用 ``x: T = new(f=…)``。"""
+    if checker._s0303_in_desugar_host():
+        return
+    if node.value is None or not _is_empty_new_call(node.value):
+        return
+    if not isinstance(node.target, ast.Name):
+        return
+    ann_root = _ann_root_name(node.annotation)
+    if ann_root is not None and ann_root in checker._scope_type_params:
+        return
+    func = checker._current_func
+    if func is None:
+        return
+    info = _s0311_class_info_from_ann(checker, node.annotation)
+    if info is None:
+        return
+    if info.is_refcount:
+        return
+    if info.is_copyable:
+        return
+    writable = _s0311_writable_fields(checker, info)
+    if not writable:
+        return
+    var_name = node.target.id
+    located = _s0310_find_stmt_list(func.body, node)
+    if located is None:
+        return
+    stmts, idx = located
+    assigns = _s0311_collect_consecutive_field_assigns(stmts, idx + 1, var_name, writable)
+    if not assigns:
+        return
+    ann_text = _s0903_ann_text(node.annotation) or info.name
+    checker._add(S0311, node, _s0311_message(var_name, ann_text, assigns))
 
 def _s1202_is_discard_of_name(stmt: ast.stmt, name: str) -> bool:
     if not isinstance(stmt, ast.Assign) or len(stmt.targets) != 1:
@@ -3559,7 +3658,15 @@ class _StrictStyleChecker(ast.NodeVisitor):
         return kind in self._context_stack
 
     def _in_new_preferred_context(self) -> bool:
-        return self._context_has('new_preferred') and (not self._context_has('call_arg'))
+        return self._context_has('new_preferred') and (not self._context_has('call_arg')) and (not self._context_has('ctor_call_arg'))
+
+    def _is_explicit_class_ctor_callee(self, func: ast.expr) -> bool:
+        name = _call_target_name(func)
+        if name is None:
+            return False
+        if name == 'Self':
+            return bool(self._class_stack)
+        return name in self.tr.classes
 
     def _in_self_literal_host_class(self) -> bool:
         return bool(self._class_stack) and self._class_stack[-1] in _SELF_LITERAL_HOST_CLASSES
@@ -3880,13 +3987,21 @@ class _StrictStyleChecker(ast.NodeVisitor):
         self.generic_visit(node)
         self._scope_type_params = prev_scope
 
-    def _note_kwargs_opts_ctor(self, node: ast.Assign) -> None:
-        if len(node.targets) != 1 or not isinstance(node.targets[0], ast.Name):
+    def _note_kwargs_opts_ctor(self, node: ast.Assign | ast.AnnAssign) -> None:
+        target: ast.expr | None = None
+        value: ast.expr | None = None
+        if isinstance(node, ast.Assign) and len(node.targets) == 1:
+            target = node.targets[0]
+            value = node.value
+        elif isinstance(node, ast.AnnAssign):
+            target = node.target
+            value = node.value
+        if target is None or value is None or not isinstance(target, ast.Name):
             return
-        if not node.targets[0].id.startswith('_opts'):
+        if not target.id.startswith("__py2cpp_opts"):
             return
-        if isinstance(node.value, ast.Call):
-            self._kwargs_opts_ctor_ids.add(id(node.value))
+        if isinstance(value, ast.Call):
+            self._kwargs_opts_ctor_ids.add(id(value))
 
     def _current_class_info(self) -> ClassInfo | None:
         if not self._class_stack:
@@ -4044,6 +4159,8 @@ class _StrictStyleChecker(ast.NodeVisitor):
         return False
 
     def _check_s0303_construct_priority(self, node: ast.Call) -> None:
+        if id(node) in self._kwargs_opts_ctor_ids:
+            return
         if not self._in_new_preferred_context():
             return
         if self._check_s0303_new_str_bytes_literal(node):
@@ -4201,10 +4318,15 @@ class _StrictStyleChecker(ast.NodeVisitor):
                 val = arg.value
                 self._add(S0302, node, _strict_msg(f"`str('{val}')`", f"`'{val}'`", '字符串初始化/表达式处', example=f"`msg: str = '{val}'` 勿 `msg = str('{val}')`", reason='字面量可直接译为 C++ 字符串'))
         if _is_new_call(node) and self._context_has('call_arg'):
-            expected = self._call_arg_cpp_type_stack[-1] if self._call_arg_cpp_type_stack else None
-            has_ann = self._call_arg_has_ann_stack[-1] if self._call_arg_has_ann_stack else False
-            if (not has_ann) or (not _s0307_call_arg_allows_new(expected)):
-                self._add(S0307, node, _s0303_msg_prefer('new(...)', 'Cls(...) 或字面量', _s0303_scene_label(in_call_arg=True), example='`fn(Box(n=1))`、为形参补注解后 `fn(new())`；无类型上下文勿 `fn(new())`', reason='调用实参处 ``new`` 须由形参注解或外层 ``new`` 目标类型推导'))
+            if id(node) in self._kwargs_opts_ctor_ids:
+                pass
+            elif self._type_context_ann is not None:
+                pass
+            else:
+                expected = self._call_arg_cpp_type_stack[-1] if self._call_arg_cpp_type_stack else None
+                has_ann = self._call_arg_has_ann_stack[-1] if self._call_arg_has_ann_stack else False
+                if (not has_ann) or (not _s0307_call_arg_allows_new(expected)):
+                    self._add(S0307, node, _s0303_msg_prefer('new(...)', 'Cls(...) 或字面量', _s0303_scene_label(in_call_arg=True), example='`fn(Box(n=1))`、为形参补注解后 `fn(new())`；无类型上下文勿 `fn(new())`', reason='调用实参处 ``new`` 须由形参注解或外层 ``new`` 目标类型推导'))
         if _is_new_call(node) and (self._context_has('aug_assign') or self._context_has('binop')):
             scene = self._s0303_scene()
             if self._context_has('binop'):
@@ -4251,12 +4373,14 @@ class _StrictStyleChecker(ast.NodeVisitor):
                 if func_def is not None:
                     param_names = [a.arg for a in func_def.args.args]
         self.visit(node.func)
+        is_ctor = self._is_explicit_class_ctor_callee(node.func)
+        arg_ctx = 'ctor_call_arg' if is_ctor else 'call_arg'
         for i, arg in enumerate(node.args):
             pt = param_cpp_types[i] if param_cpp_types and i < len(param_cpp_types) else None
             ha = param_has_ann[i] if param_has_ann and i < len(param_has_ann) else False
             self._call_arg_cpp_type_stack.append(pt if pt else None)
             self._call_arg_has_ann_stack.append(ha)
-            self._visit_in_context('call_arg', arg)
+            self._visit_in_context(arg_ctx, arg)
             self._call_arg_cpp_type_stack.pop()
             self._call_arg_has_ann_stack.pop()
         for kw in node.keywords:
@@ -4270,7 +4394,7 @@ class _StrictStyleChecker(ast.NodeVisitor):
                     kw_ha = param_has_ann[idx]
             self._call_arg_cpp_type_stack.append(kw_pt if kw_pt else None)
             self._call_arg_has_ann_stack.append(kw_ha)
-            self._visit_in_context('call_arg', kw.value)
+            self._visit_in_context(arg_ctx, kw.value)
             self._call_arg_cpp_type_stack.pop()
             self._call_arg_has_ann_stack.pop()
 
@@ -4352,6 +4476,9 @@ class _StrictStyleChecker(ast.NodeVisitor):
         self._check_s0603_tuple_annotation(node.annotation, node)
         _s0903_check_primitive_convert_temp(self, node)
         _s0310_check_new_type_context_temp(self, node)
+        _s0311_check_new_then_field_assigns(self, node)
+        if isinstance(node.value, ast.Call):
+            self._note_kwargs_opts_ctor(node)
         prev_ann = self._type_context_ann
         self._type_context_ann = node.annotation
         self._visit_in_context('new_preferred', node.value)
@@ -4510,8 +4637,6 @@ class _StrictStyleChecker(ast.NodeVisitor):
         for handler in node.handlers:
             if handler.type is not None:
                 self.visit(handler.type)
-            if handler.name is not None:
-                self.visit(handler.name)
             for stmt in handler.body:
                 self.visit(stmt)
         for stmt in node.orelse:

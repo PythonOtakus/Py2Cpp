@@ -34,7 +34,7 @@ def probe() -> int:
       "  return n\n",
     )
     self.assertIn("try\n    {", cpp)
-    self.assertIn("catch (const py2cpp::core::exceptions::ValueError&", cpp)
+    self.assertIn("catch (const py2cpp::core::exceptions::PyValueError&", cpp)
     self.assertIn("      n = 1;", cpp)
     self.assertIn("throw;", cpp)
 
@@ -49,8 +49,8 @@ def probe() -> int:
       "    ok = true\n"
       "  return ok\n",
     )
-    self.assertIn("__try_ok", cpp)
-    self.assertIn("if (__try_ok", cpp)
+    self.assertIn("__py2cpp_try_ok", cpp)
+    self.assertIn("if (__py2cpp_try_ok", cpp)
 
   def test_try_finally_always(self):
     cpp = self._translate(
@@ -100,8 +100,8 @@ def probe() -> int:
       "  return n\n",
     )
     self.assertIn("catch (...)\n    {", cpp)
-    self.assertIn("__try_ok", cpp)
-    self.assertIn("if (__try_ok", cpp)
+    self.assertIn("__py2cpp_try_ok", cpp)
+    self.assertIn("if (__py2cpp_try_ok", cpp)
 
   def test_return_finally_emitted_once(self):
     cpp = self._translate(
@@ -136,7 +136,7 @@ def probe() -> int:
       "    n = 1 if e else 0\n"
       "  return n\n",
     )
-    self.assertIn("auto& e = __exc", cpp)
+    self.assertIn("auto& e = __py2cpp_exc", cpp)
     self.assertIn("(e ? 1 : 0)", cpp)
 
   def test_except_star_emits_group_catch(self):
@@ -148,7 +148,7 @@ def probe() -> int:
       "    n = 1\n"
       "  return n\n",
     )
-    self.assertIn("catch (const py2cpp::core::exceptions::ExceptionGroup& __eg_in)", cpp)
+    self.assertIn("catch (const py2cpp::core::exceptions::PyExceptionGroup& __py2cpp_eg_in", cpp)
     self.assertIn("exception_group_from_single", cpp)
     self.assertIn("exception_group_split_except_star", cpp)
     self.assertIn("static_cast<PyBool>", cpp)
@@ -163,8 +163,8 @@ def probe() -> int:
       "  return 0\n",
     )
     self.assertIn("__cause__ = &e;", cpp)
-    self.assertIn("auto __raised", cpp)
-    self.assertIn("throw __raised", cpp)
+    self.assertIn("auto __py2cpp_raised", cpp)
+    self.assertIn("throw __py2cpp_raised", cpp)
 
   def test_raise_from_with_args(self):
     cpp = self._translate(
@@ -176,8 +176,8 @@ def probe() -> int:
     )
     self.assertIn("KeyError", cpp)
     self.assertIn("__cause__ = &e;", cpp)
-    self.assertIn("auto __raised", cpp)
-    self.assertIn("throw __raised", cpp)
+    self.assertIn("auto __py2cpp_raised", cpp)
+    self.assertIn("throw __py2cpp_raised", cpp)
 
   def test_raise_bound_exception_instance(self):
     cpp = self._translate(

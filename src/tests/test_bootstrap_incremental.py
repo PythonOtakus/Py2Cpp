@@ -103,5 +103,123 @@ class SkipCachedAnalysisModuleTests(unittest.TestCase):
     self.assertFalse(tr.skip_cached_analysis_module("py2cpp/io/path"))
 
 
+class UserEntryCacheTests(unittest.TestCase):
+  def test_attach_skips_without_cache_file(self):
+    from src.translator import Translator
+    from src.codegen import bootstrap_incremental as bi
+    from src.codegen.bootstrap_incremental import attach_user_entry_cache_to_translator
+
+    tr = Translator("test/misc/test_print", "test/misc/test_print.py")
+    tr.entry_module_path = "test/misc/test_print"
+    tr.module_order = ["py2cpp/test/unittest", "test/misc/test_print"]
+    old = bi.load_analysis_cache
+    bi.load_analysis_cache = lambda root=None: None
+    try:
+      self.assertFalse(attach_user_entry_cache_to_translator(tr))
+    finally:
+      bi.load_analysis_cache = old
+
+  def test_attach_populates_stdlib_cache(self):
+    import pickle
+    from src.translator import Translator
+    from src.codegen.bootstrap_incremental import (
+      CACHE_REL,
+      attach_user_entry_cache_to_translator,
+      translator_fingerprint,
+    )
+
+    with TemporaryDirectory() as td:
+      root = Path(td)
+      cache_dir = root / CACHE_REL.parent
+      cache_dir.mkdir(parents=True)
+      fp = translator_fingerprint(root)
+      data = {
+        "translator_fp": fp,
+        "modules": {"py2cpp/test/unittest": {"src_sig": "1:1"}},
+        "classes": {},
+        "function_sigs": {},
+        "overload_sigs": {},
+        "module_analysis": {},
+        "import_bindings": {"py2cpp/test/unittest": {}},
+        "import_usings": {"py2cpp/test/unittest": []},
+      }
+      with (cache_dir / CACHE_REL.name).open("wb") as fh:
+        pickle.dump(data, fh)
+      tr = Translator("test/misc/test_print", str(root / "test/misc/test_print.py"))
+      tr.entry_module_path = "test/misc/test_print"
+      tr.module_order = ["py2cpp/test/unittest", "test/misc/test_print"]
+      # monkeypatch repo_root via loading cache with explicit root — use load path
+      from src.codegen import bootstrap_incremental as bi
+
+      old_cache_path = bi.cache_path
+      bi.cache_path = lambda r=None: cache_dir / CACHE_REL.name
+      old_fp = bi.translator_fingerprint
+      bi.translator_fingerprint = lambda r=None: fp
+      try:
+        ok = attach_user_entry_cache_to_translator(tr)
+      finally:
+        bi.cache_path = old_cache_path
+        bi.translator_fingerprint = old_fp
+      self.assertTrue(ok)
+      self.assertIn("py2cpp/test/unittest", tr.cached_analysis_modules)
+      self.assertNotIn("test/misc/test_print", tr.cached_analysis_modules)
+
+  def test_attach_includes_ffi_closure(self):
+    import pickle
+    from src.translator import Translator
+    from src.codegen.bootstrap_incremental import (
+      CACHE_REL,
+      attach_user_entry_cache_to_translator,
+      translator_fingerprint,
+    )
+
+    with TemporaryDirectory() as td:
+      root = Path(td)
+      cache_dir = root / CACHE_REL.parent
+      cache_dir.mkdir(parents=True)
+      fp = translator_fingerprint(root)
+      data = {
+        "translator_fp": fp,
+        "modules": {
+          "py2cpp/test/unittest": {"src_sig": "1:1"},
+          "ffi/crt/stdio": {"src_sig": "1:1"},
+        },
+        "classes": {},
+        "function_sigs": {},
+        "overload_sigs": {},
+        "module_analysis": {},
+        "import_bindings": {
+          "py2cpp/test/unittest": {},
+          "ffi/crt/stdio": {},
+        },
+        "import_usings": {
+          "py2cpp/test/unittest": [],
+          "ffi/crt/stdio": [],
+        },
+      }
+      with (cache_dir / CACHE_REL.name).open("wb") as fh:
+        pickle.dump(data, fh)
+      tr = Translator("test/misc/test_print", str(root / "test/misc/test_print.py"))
+      tr.entry_module_path = "test/misc/test_print"
+      tr.module_order = [
+        "py2cpp/test/unittest",
+        "ffi/crt/stdio",
+        "test/misc/test_print",
+      ]
+      from src.codegen import bootstrap_incremental as bi
+
+      old_cache_path = bi.cache_path
+      bi.cache_path = lambda r=None: cache_dir / CACHE_REL.name
+      old_fp = bi.translator_fingerprint
+      bi.translator_fingerprint = lambda r=None: fp
+      try:
+        ok = attach_user_entry_cache_to_translator(tr)
+      finally:
+        bi.cache_path = old_cache_path
+        bi.translator_fingerprint = old_fp
+      self.assertTrue(ok)
+      self.assertIn("ffi/crt/stdio", tr.cached_analysis_modules)
+
+
 if __name__ == "__main__":
   unittest.main()

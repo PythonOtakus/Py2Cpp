@@ -38,17 +38,15 @@ class FlowNodeCatalog:
     methodName: str,
     pins: list[FlowPinSpec, 0],
   ) -> None:
-    tpl: FlowNodeTemplate = new()
-    tpl.kindId = kindId
-    tpl.title = title
-    tpl.category = category
-    tpl.nodeKind = nodeKind
-    tpl.methodName = methodName
+    tpl: FlowNodeTemplate = new(
+      kindId=kindId,
+      title=title,
+      category=category,
+      nodeKind=nodeKind,
+      methodName=methodName,
+    )
     for spec in pins:
-      ps: FlowPinSpec = new()
-      ps.name = spec.name
-      ps.kind = spec.kind
-      ps.typeId = spec.typeId
+      ps: FlowPinSpec = new(name=spec.name, kind=spec.kind, typeId=spec.typeId)
       tpl.pins.append(ps)
     self.templates.append(tpl)
 
@@ -62,10 +60,7 @@ class FlowNodeCatalog:
     tpl: FlowNodeTemplate = self.find(kindId)
     out: list[FlowPin, 0] = []
     for spec in tpl.pins:
-      p: FlowPin = new()
-      p.name = spec.name
-      p.kind = spec.kind
-      p.typeId = spec.typeId
+      p: FlowPin = new(name=spec.name, kind=spec.kind, typeId=spec.typeId)
       out.append(p)
     return out
 

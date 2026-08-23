@@ -54,6 +54,7 @@ class ChunkDeque[Element](ContainerMixin):
   """分块双端队列；``splice`` / ``extend`` / ``insert`` 提供可拼接序列（rope）语义。"""
 
   DefaultBlockSize: int @const = 512
+  _blockSize: int = DefaultBlockSize
   _head: _ChunkNodeUnsafe[Element] = None
   _tail: _ChunkNodeUnsafe[Element] = None
   _len: int = 0

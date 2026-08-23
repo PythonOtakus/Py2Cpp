@@ -51,7 +51,8 @@ class DualInit:
   @overload
   def __init__(self, a: int):
     self.a = a
-    self.b = 0
+    zero: int = 0
+    self.b = zero
 
   @overload
   def __init__(self, a: int, b: int):

@@ -265,15 +265,27 @@ def stdlib_codegen_rel(module_path: str) -> str | None:
   return None
 
 
+def _stdlib_module_rel(module_path: str) -> str | None:
+  from ..constant.stdlib_layout import RUNTIME_PKG
+
+  norm = module_path.replace("\\", "/")
+  prefix = f"{RUNTIME_PKG}/"
+  if not norm.startswith(prefix):
+    return None
+  return norm[len(prefix) :]
+
+
 def write_stdlib_codegen_header(tr, module_path: str) -> bool:
-  rel = stdlib_codegen_rel(module_path)
-  if rel is None or rel in STDLIB_MIRROR_CODEGEN_RELS:
-    return False
+  """``True``：本模块 ``.h`` 已由 mirror 写盘，跳过 stub 头。"""
+  rel = _stdlib_module_rel(module_path)
+  if rel is not None and rel in STDLIB_MIRROR_CODEGEN_RELS:
+    return True
   return False
 
 
 def write_stdlib_codegen_inl(tr, module_path: str) -> bool:
-  rel = stdlib_codegen_rel(module_path)
-  if rel is None or rel in STDLIB_MIRROR_CODEGEN_RELS:
-    return False
+  """``True``：本模块 ``.inl`` 已由 mirror 写盘，跳过 stub 实现。"""
+  rel = _stdlib_module_rel(module_path)
+  if rel is not None and rel in STDLIB_MIRROR_CODEGEN_RELS:
+    return True
   return False

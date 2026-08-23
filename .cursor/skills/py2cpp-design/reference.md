@@ -174,7 +174,7 @@ Py2Cpp/
 
 | API | 规则 |
 |-----|------|
-| `patterns.temp_name(prefix)` | 函数体临时局部：``__{prefix}{N}``；模块级单调计数 |
+| `patterns.temp_name(prefix)` | 函数体临时局部：``__py2cpp_{prefix}{N}``；模块级单调计数 |
 | `patterns.auto_template_type_param_name(leaf)` | 自动模板形参：``__T0``、``__Ts``…（用户 PEP 695 ``Ts`` 等**不变**） |
 | `patterns.py2cpp_emit_symbol(*parts)` | 命名空间级辅助符号：``__py2cpp_vt_loop_*``（``__call__`` 展开包）、``__py2cpp_type_if_*``、``member_access`` 中 ``__py2cpp_get_*_no_match`` 等 |
 | 用户 Python 局部/形参 | **不**加 ``__``；经 ``cpp_param`` / ``escape_cpp_param`` |
@@ -564,6 +564,8 @@ python main.py <input.py> [-o DIR] [--no-stdlib] [--no-main] [--debug]
 | `--debug` | 插入 `fprintf` 调用跟踪；``__debug__`` → ``true`` |
 | `PY2CPP_FORCE_BOOTSTRAP=1` | `_bootstrap_runtime.bat` 忽略 `.bootstrap.stamp`，强制全量翻译 |
 | `PY2CPP_PROFILE=1` | `translate_file` 向 stderr 打印 discover/parse/expand/analyze/emit/write/nav_index 分段 |
+| `PY2CPP_NO_TEST_CACHE=1` | 关闭 P1.6：`test/` / `examples/` 不复用 `analyze_sigs.pkl`（仍走全量 analyze） |
+| `PY2CPP_USE_PCH=1` | 实验性 MSVC PCH（`pch/minimal.pch`）；默认关，见 [runtime-libs.md §P1.7](../../../docs/runtime-libs.md) |
 | `--openmp` / `--no-openmp` | ``prange`` 是否发射 OpenMP（默认开；``--no-openmp`` 降级为 ``range``） |
 | `-c` | 翻译后编译 |
 | `--compiler cl` | Windows 推荐 MSVC |
@@ -576,6 +578,8 @@ python main.py <input.py> [-o DIR] [--no-stdlib] [--no-main] [--debug]
 ## 10. 测试矩阵
 
 ### 10.1 集成测试（`test/`）
+
+最近一次全量回归记录：[docs/test-report-2026-08-23.md](../../../docs/test-report-2026-08-23.md)（`build-all.bat` + `run.bat *`）。
 
 | 文件 | 脚本 | 覆盖重点 |
 |------|------|----------|

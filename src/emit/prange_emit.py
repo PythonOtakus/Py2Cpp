@@ -228,7 +228,7 @@ def _reduction_clause(reductions: tuple[tuple[str, str], ...]) -> str:
     return ""
   by_op: dict[str, list[str]] = {}
   for name, op in reductions:
-    by_op.setdefault(op, []).append(cpp_ident(name))
+    by_op.setdefault(op, []).append(name)
   parts: list[str] = []
   for op in sorted(by_op):
     names = ", ".join(sorted(by_op[op]))

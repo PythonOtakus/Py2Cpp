@@ -4,6 +4,7 @@ import ast
 import copy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
+from ..analysis.patterns import temp_name
 from ..passes.descriptors import property_getter_method_for
 from ..analysis.type_pred import is_bytes_type, is_counter_type, is_dict_type, is_deque_type, is_frozendict_type, is_frozenlist_type, is_list_type, is_str_type, is_tuple_type
 from ..analysis.type_extract import dict_type_args, frozendict_type_args
@@ -95,9 +96,10 @@ def _emit_deque_star_bind(name: str, subject_expr: str, subject_cpp: str, *, pre
     else:
         start = prefix_len
         end_expr = f'({subject_expr}{sep}__len__() - {suffix_len})'
-    lines.append(f'for (int __si = {start}; __si < {end_expr}; ++__si)')
+    si_var = temp_name("si")
+    lines.append(f'for (int {si_var} = {start}; {si_var} < {end_expr}; ++{si_var})')
     lines.append('{')
-    lines.append(f'  {name}.append({subject_expr}{sep}__getitem__(__si));')
+    lines.append(f'  {name}.append({subject_expr}{sep}__getitem__({si_var}));')
     lines.append('}')
     return lines
 
@@ -139,7 +141,7 @@ def _subpattern_match(tr: Translator, pat: ast.pattern, *, elem_cpp: str, elem_e
     if isinstance(pat, ast.MatchAs) and pat.name and (pat.name != '_'):
         capture_name = pat.name
         inner_pat = pat.pattern if pat.pattern is not None else ast.MatchAs(name='_')
-    dummy = ast.Name(id='__match_elem', ctx=ast.Load())
+    dummy = ast.Name(id=temp_name("match_elem"), ctx=ast.Load())
     pm = pattern_to_match(tr, inner_pat, subject_cpp=elem_cpp, subject=dummy, subject_expr=elem_expr, classes=classes)
     if capture_name:
         pm.prelude_lines.insert(0, f'auto {capture_name} = {elem_expr};')
@@ -259,15 +261,17 @@ def _mapping_empty_ctor(subject_cpp: str) -> str:
 def _mapping_rest_prelude_lines(tr: Translator, *, rest_name: str, subject_expr: str, subject_cpp: str, key_cpp: str, matched_key_exprs: list[str]) -> list[str]:
     sep = _member_sep(subject_expr)
     rest_ty = _mapping_rest_type(subject_cpp)
-    k = '__mk_k'
+    k = temp_name("mk_k")
+    it_var = temp_name("mk_it")
+    r_var = temp_name("mk_r")
     lines = [f'{rest_ty} {rest_name} = {_mapping_empty_ctor(subject_cpp)};']
     lines.append(f'{{')
-    lines.append(f'  auto& __mk_it = {subject_expr}{sep}__iter__();')
+    lines.append(f'  auto& {it_var} = {subject_expr}{sep}__iter__();')
     lines.append('  while (true)')
     lines.append('  {')
-    lines.append('    auto __mk_r = __mk_it.__next__();')
-    lines.append(f"    if (__mk_r.{property_getter_method_for('done')}()) break;")
-    lines.append(f"    auto {k} = __mk_r.{property_getter_method_for('value')}();")
+    lines.append(f'    auto {r_var} = {it_var}.__next__();')
+    lines.append(f"    if ({r_var}.{property_getter_method_for('done')}()) break;")
+    lines.append(f"    auto {k} = {r_var}.{property_getter_method_for('value')}();")
     val_k = k
     if matched_key_exprs:
         skip = ' && '.join((f'({val_k} != {ke})' for ke in matched_key_exprs))

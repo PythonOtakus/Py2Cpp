@@ -48,8 +48,7 @@ class CppAttrDispatchTests(TestCaseMixin):
 
   @override
   def test(self):
-    row: HasField = new()
-    row.x = 3
+    row: HasField = new(x=3)
     self.assertEqual(exerciseTemplates(row), 3)
 
 

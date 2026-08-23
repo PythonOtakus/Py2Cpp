@@ -5,8 +5,7 @@
   from py2cpp.ui.app import UIApp
 
   if UIApp.isAvailable():
-    win: UIWindow = new()
-    win.title = "Title"
+    win: UIWindow = new(title="Title")
     win.show(480, 360)
     obj.drawPanel(win)
     UIApp.run()

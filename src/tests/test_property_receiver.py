@@ -119,8 +119,8 @@ def use() -> None:
         str(py), output_dir=str(out), include_stdlib=False, strict=False,
       )
       cpp = cpp_path.read_text(encoding="utf-8")
-      self.assertRegex(cpp, r"auto& __with_mgr\d+ = handle;")
-      self.assertRegex(cpp, r"PyHandle& entered = __with_ent\d+;")
+      self.assertRegex(cpp, r"auto& __py2cpp_with_mgr\d+ = handle;")
+      self.assertRegex(cpp, r"PyHandle& entered = __py2cpp_with_ent\d+;")
   def test_with_instance_method_uses_enter_return_type(self):
     src = """
 from py2cpp import *
@@ -162,8 +162,8 @@ def use() -> None:
         str(py), output_dir=str(out), include_stdlib=False, strict=False,
       )
       cpp = cpp_path.read_text(encoding="utf-8")
-      self.assertRegex(cpp, r"PyInt value = __with_ent\d+;")
-      self.assertRegex(cpp, r"PyUtf8Ptr cvalue = __with_ent\d+;")
+      self.assertRegex(cpp, r"PyInt value = __py2cpp_with_ent\d+;")
+      self.assertRegex(cpp, r"PyUtf8Ptr cvalue = __py2cpp_with_ent\d+;")
   def test_pointer_to_local_class_uses_cpp_class_name(self):
     src = """
 from py2cpp import *

@@ -2507,7 +2507,7 @@ def bad() -> Point:
     )
 
   def test_s0310_allows_new_temp_with_mutation(self):
-    self._translate(
+    self._expect_strict_fail(
       """@copyable
 class Point:
   x: int = 0
@@ -2516,7 +2516,56 @@ def ok() -> Point:
   p: Point = new()
   p.x = 1
   return p
+""",
+      "S0311",
+    )
+
+  def test_s0311_allows_keyword_new_ctor(self):
+    self._translate(
+      """@dataclass
+class Point:
+  x: int = 0
+  y: int = 0
+
+def ok() -> Point:
+  p: Point = new(x=1, y=2)
+  return p
 """
+    )
+
+  def test_s0311_allows_new_then_field_assign_with_gap(self):
+    self._translate(
+      """@dataclass
+class Point:
+  x: int = 0
+  y: int = 0
+
+def other() -> None:
+  pass
+
+def ok() -> Point:
+  p: Point = new()
+  other()
+  p.x = 1
+  p.y = 2
+  return p
+"""
+    )
+
+  def test_s0311_rejects_empty_new_then_field_assigns(self):
+    self._expect_strict_fail(
+      """@dataclass
+class Point:
+  x: int = 0
+  y: int = 0
+
+def bad() -> Point:
+  p: Point = new()
+  p.x = 1
+  p.y = 2
+  return p
+""",
+      "S0311",
     )
 
   def test_s0310_allows_direct_field_new(self):

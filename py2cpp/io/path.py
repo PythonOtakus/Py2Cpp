@@ -433,14 +433,7 @@ class Path:
   @staticmethod
   @immutable
   def _fromNativeStat(st: PyiStat64I32) -> PathStat:
-    out: PathStat = new()
-    out.stMode = int(st.stMode)
-    out.stSize = int(st.stSize)
-    out.stMtime = float64(st.stMtime)
-    out.stAtime = float64(st.stAtime)
-    out.stCtime = float64(st.stCtime)
-    out.stDev = int(st.stDev)
-    out.stIno = int(st.stIno)
+    out: PathStat = new(stMode=int(st.stMode), stSize=int(st.stSize), stMtime=float64(st.stMtime), stAtime=float64(st.stAtime), stCtime=float64(st.stCtime), stDev=int(st.stDev), stIno=int(st.stIno))
     return out
 
   @staticmethod

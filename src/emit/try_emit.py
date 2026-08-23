@@ -223,15 +223,16 @@ def emit_try_star(tr: Translator, node: ast.TryStar) -> None:
   active = temp_name("eg_active")
   matched = temp_name("eg_match")
   rest = temp_name("eg_rest")
+  eg_in = temp_name("eg_in")
 
   tr._try_stack.append(frame)
   tr._try_star_depth += 1
   try:
     with tr._use_block("try"):
       tr._emit_body(node.body)
-    with tr._use_block(f"catch (const {_GROUP_TY}& __eg_in)"):
+    with tr._use_block(f"catch (const {_GROUP_TY}& {eg_in})"):
       tr.write_line(f"{_GROUP_TY} {active};")
-      tr.write_line(f"{active}.copyFrom(__eg_in);")
+      tr.write_line(f"{active}.copyFrom({eg_in});")
       tr.write_line(f"{_GROUP_TY} {matched};")
       tr.write_line(f"{_GROUP_TY} {rest};")
       for handler in node.handlers:

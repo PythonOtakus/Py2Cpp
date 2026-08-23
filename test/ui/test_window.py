@@ -28,8 +28,7 @@ class UIWindowBeginDrawTests(TestCaseMixin):
 
   @override
   def test(self):
-    win: UIWindow = new()
-    win.title = "Py2Cpp Panel"
+    win: UIWindow = new(title="Py2Cpp Panel")
     win.show(480, 320)
     self.assertTrue(win.handle != 0)
     cfg: DemoConfig = new()
@@ -43,8 +42,7 @@ class UIWindowTitlePropertyTests(TestCaseMixin):
 
   @override
   def test(self):
-    win: UIWindow = new()
-    win.title = "Before"
+    win: UIWindow = new(title="Before")
     win.show(320, 240)
     self.assertEqual(win.title, "Before")
     win.title = "After"
@@ -57,8 +55,7 @@ class UIWindowResizeTests(TestCaseMixin):
 
   @override
   def test(self):
-    win: UIWindow = new()
-    win.title = "Resize"
+    win: UIWindow = new(title="Resize")
     win.show(-1, -1)
     self.assertTrue(win.handle != 0)
     cfg: DemoConfig = new()

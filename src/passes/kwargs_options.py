@@ -22,7 +22,8 @@ if TYPE_CHECKING:
 else:
   import ast
 
-_OPTS_SERIAL = 0
+from ..analysis.patterns import temp_name
+
 _ASSIGN_NAME = "assign"
 # 仅翻译期识别；不注入类体、不生成 C++ 声明/定义（与容器迭代器 ``.copy_from`` 无关）
 TRANSLATOR_ONLY_METHODS = frozenset({_ASSIGN_NAME, "select", "build"})
@@ -216,10 +217,7 @@ def _init_kwargs_sig(info: ClassInfo) -> KwargsOptionsSig | None:
 
 
 def _fresh_opts_var() -> str:
-  global _OPTS_SERIAL
-  n = _OPTS_SERIAL
-  _OPTS_SERIAL += 1
-  return f"_opts{n}"
+  return temp_name("opts")
 
 
 def _param_options_sig(
@@ -301,6 +299,27 @@ def _build_options_from_keywords(
   return stmts, ast.Name(id=var, ctx=ast.Load())
 
 
+def _ann_ctor_func(ann: ast.expr | None) -> ast.expr | None:
+  """注解类型对应的显式构造 ``Callee``（保留 ``T[Args]`` 泛型实参）。"""
+  match ann:
+    case ast.Name(id=name):
+      return ast.Name(id=name, ctx=ast.Load())
+    case ast.Subscript():
+      return copy.deepcopy(ann)
+    case _:
+      return None
+
+
+def _ann_type_root_name(ann: ast.expr | None) -> str | None:
+  match ann:
+    case ast.Name(id=name):
+      return name
+    case ast.Subscript(value=ast.Name(id=name)):
+      return name
+    case _:
+      return None
+
+
 def _placeholder_expr_for_annotation(ann: ast.expr | None) -> ast.expr:
   """无 ``__init__`` 形参默认时，用于 ``Cls(…)`` 占位的字面量。"""
   match ann:
@@ -319,7 +338,28 @@ def _placeholder_expr_for_annotation(ann: ast.expr | None) -> ast.expr:
         keywords=[],
       )
     case _:
+      ctor = _ann_ctor_func(ann)
+      if ctor is not None:
+        return ast.Call(func=ctor, args=[], keywords=[])
       return ast.Constant(value=0)
+
+
+def _sanitize_ctor_arg_expr(expr: ast.expr, ann: ast.expr | None) -> ast.expr:
+  """``Cls(…)`` 实参位勿嵌套 ``new()``（codegen 无类型上下文）；改为显式 ``Ann()``。"""
+  if not (
+    isinstance(expr, ast.Call)
+    and isinstance(expr.func, ast.Name)
+    and expr.func.id == "new"
+  ):
+    return copy.deepcopy(expr)
+  ctor = _ann_ctor_func(ann)
+  if ctor is None:
+    return _placeholder_expr_for_annotation(ann)
+  return ast.Call(
+    func=ctor,
+    args=[copy.deepcopy(a) for a in expr.args],
+    keywords=[copy.deepcopy(kw) for kw in expr.keywords],
+  )
 
 
 def new_ctor_arg_exprs_from_init(call: ast.Call, init: ast.FunctionDef) -> list[ast.expr]:
@@ -333,7 +373,9 @@ def new_ctor_arg_exprs_from_init(call: ast.Call, init: ast.FunctionDef) -> list[
   resolved: list[ast.expr] = []
   for i, param in enumerate(params):
     if i >= n_pad:
-      resolved.append(copy.deepcopy(defaults[i - n_pad]))
+      resolved.append(
+        _sanitize_ctor_arg_expr(defaults[i - n_pad], param.annotation)
+      )
     else:
       resolved.append(_placeholder_expr_for_annotation(param.annotation))
   for i, arg in enumerate(call.args):
@@ -360,10 +402,27 @@ def _default_ctor_args(tr: Translator, class_name: str) -> list[ast.expr]:
   out: list[ast.expr] = []
   for i, param in enumerate(params):
     if i >= n_pad:
-      out.append(copy.deepcopy(defaults[i - n_pad]))
+      out.append(_sanitize_ctor_arg_expr(defaults[i - n_pad], param.annotation))
     else:
       out.append(_placeholder_expr_for_annotation(param.annotation))
   return out
+
+
+def _bind_opts_var(
+  var: str,
+  value: ast.expr,
+  *,
+  annotation: ast.expr | None = None,
+) -> ast.stmt:
+  target = ast.Name(id=var, ctx=ast.Store())
+  if annotation is not None:
+    return ast.AnnAssign(
+      target=target,
+      annotation=copy.deepcopy(annotation),
+      value=value,
+      simple=0,
+    )
+  return ast.Assign(targets=[target], value=value)
 
 
 def _build_instance_ctor_field_keywords(
@@ -375,6 +434,7 @@ def _build_instance_ctor_field_keywords(
   *,
   use_self: bool = False,
   at: ast.AST | None = None,
+  var_annotation: ast.expr | None = None,
 ) -> tuple[list[ast.stmt], ast.Name]:
   """``Cls(…)`` / ``Self(…)`` 后对实例字段（或 property）赋值（非空构造实参见 ``_default_ctor_args``）。
 
@@ -403,9 +463,10 @@ def _build_instance_ctor_field_keywords(
     )
     ctor_args = new_ctor_arg_exprs_from_init(fake, info.inits[0])
     stmts: list[ast.stmt] = [
-      ast.Assign(
-        targets=[ast.Name(id=var, ctx=ast.Store())],
-        value=ast.Call(func=ctor, args=ctor_args, keywords=[]),
+      _bind_opts_var(
+        var,
+        ast.Call(func=ctor, args=ctor_args, keywords=[]),
+        annotation=var_annotation,
       ),
     ]
     for s in stmts:
@@ -414,13 +475,22 @@ def _build_instance_ctor_field_keywords(
   ctor_args = [copy.deepcopy(a) for a in positional]
   if not ctor_args:
     ctor_args = _default_ctor_args(tr, class_name)
+  if var_annotation is not None:
+    init_value: ast.expr = ast.Call(
+      func=ast.Name(id="new", ctx=ast.Load()),
+      args=[],
+      keywords=[],
+    )
+  else:
+    init_value = ast.Call(
+      func=ctor,
+      args=ctor_args,
+    )
   stmts = [
-    ast.Assign(
-      targets=[ast.Name(id=var, ctx=ast.Store())],
-      value=ast.Call(
-        func=ctor,
-        args=ctor_args,
-      ),
+    _bind_opts_var(
+      var,
+      init_value,
+      annotation=var_annotation,
     ),
   ]
   target = ast.Name(id=var, ctx=ast.Load())
@@ -459,9 +529,7 @@ class _CallExpander:
     self._method = method
 
   def _ann_type_name(self, ann: ast.expr | None) -> str | None:
-    if isinstance(ann, ast.Name):
-      return ann.id
-    return None
+    return _ann_type_root_name(ann)
 
   def _local_var_class(self, name: str) -> str | None:
     if self._method is None:
@@ -527,6 +595,8 @@ class _CallExpander:
 
   def _try_rewrite_typed_ctor(
     self, node: ast.Call, cls: str,
+    *,
+    var_annotation: ast.expr | None = None,
   ) -> tuple[list[ast.stmt], ast.Name] | None:
     if not node.keywords:
       return None
@@ -554,6 +624,7 @@ class _CallExpander:
       fields,
       use_self=use_self,
       at=node,
+      var_annotation=var_annotation,
     )
 
   def _try_rewrite_kwargs_forward(
@@ -845,8 +916,11 @@ class _CallExpander:
         ]
       case ast.Return(value=value) if value is not None:
         cls = self._method_return_class()
+        ret_ann = self._method.returns if self._method is not None else None
         if cls is not None and isinstance(value, ast.Call):
-          got = self._try_rewrite_typed_ctor(value, cls)
+          got = self._try_rewrite_typed_ctor(
+            value, cls, var_annotation=ret_ann,
+          )
           if got is not None:
             pre, new_val = got
             return pre + [ast.Return(value=new_val)]
@@ -1082,8 +1156,6 @@ def _expand_all_call_sites(
 
 
 def expand_kwargs_options(tr: Translator) -> None:
-  global _OPTS_SERIAL
-  _OPTS_SERIAL = 0
   func_sigs = _collect_func_sigs(tr)
   init_sigs = _collect_init_sigs(tr)
   _expand_defs(tr, func_sigs)

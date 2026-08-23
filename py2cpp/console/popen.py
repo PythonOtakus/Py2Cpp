@@ -94,10 +94,11 @@ def _closeHandle(h: uintptr) -> None:
 
 @immutable
 def _inheritSecurityAttributes() -> PyiSecurityAttributes:
-  sa: PyiSecurityAttributes = new()
-  sa.nLength = _SecurityAttributesSize
-  sa.lpSecurityDescriptor = uintptr(0)
-  sa.bInheritHandle = 1
+  sa: PyiSecurityAttributes = new(
+    nLength=_SecurityAttributesSize,
+    lpSecurityDescriptor=uintptr(0),
+    bInheritHandle=1,
+  )
   return sa
 
 
@@ -400,9 +401,7 @@ class Popen:
 
   def _startWithCwd(self, wcwd: utf16ptr) -> None:
     cmdline: uint16[:] = _buildCmdline(self._args)
-    si: PyiStartupinfoW = new()
-    si.cb = _StartupinfoWSize
-    si.dwFlags = PyiStartfUsestdhandles
+    si: PyiStartupinfoW = new(cb=_StartupinfoWSize, dwFlags=PyiStartfUsestdhandles)
     nulIn: uintptr = 0
     nulOut: uintptr = 0
     nulErr: uintptr = 0

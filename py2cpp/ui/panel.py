@@ -51,10 +51,7 @@ class UIPanelMixin:
     hi: int,
     value: int,
   ) -> None:
-    w: UISlider = new()
-    w.value = value
-    w.lo = lo
-    w.hi = hi
+    w: UISlider = new(value=value, lo=lo, hi=hi)
     w.valueChanged += self.panelOnIntChanged
     form.addSlider(label, w)
 
@@ -62,8 +59,7 @@ class UIPanelMixin:
   def _formAddValue(
     self, form: UIFormLayout @ref, field: str, label: str, value: bool
   ) -> None:
-    cb: UICheckBox = new()
-    cb.checked = value
+    cb: UICheckBox = new(checked=value)
     cb.stateChanged += self.panelOnBoolChanged
     form.addCheckbox(label, cb)
 
@@ -71,8 +67,7 @@ class UIPanelMixin:
   def _formAddValue(
     self, form: UIFormLayout @ref, field: str, label: str, value: str
   ) -> None:
-    le: UILineEdit = new()
-    le.text = value
+    le: UILineEdit = new(text=value)
     le.textChanged += self.panelOnStrChanged
     form.addLineEdit(label, le)
 
@@ -80,8 +75,7 @@ class UIPanelMixin:
   def _formAddValue(
     self, form: UIFormLayout @ref, field: str, label: str, value: int
   ) -> None:
-    ie: UIIntEdit = new()
-    ie.value = value
+    ie: UIIntEdit = new(value=value)
     ie.valueChanged += self.panelOnIntChanged
     form.addIntEdit(label, ie)
 
@@ -89,8 +83,7 @@ class UIPanelMixin:
   def _formAddValue(
     self, form: UIFormLayout @ref, field: str, label: str, value: float64
   ) -> None:
-    fe: UIFloatEdit = new()
-    fe.value = value
+    fe: UIFloatEdit = new(value=value)
     fe.valueChanged += self.panelOnFloatChanged
     form.addFloatEdit(label, fe)
 
@@ -171,9 +164,8 @@ class UIPanelMixin:
       uiBtn = Self.getMethodAnnotation[UIButtonMeta](method)
       if uiBtn is not None and uiBtn.label:
         label = uiBtn.label
-      btn: UIPushButton = new()
+      btn: UIPushButton = new(text=label)
       btn.id = btnId
-      btn.text = label
       btn.clicked += self.panelSyncFromForm
       btn.clicked += getattr(self, method)
       btn.clicked += self.panelSyncToForm

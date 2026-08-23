@@ -8,13 +8,7 @@ class DrawCmdTests(TestCaseMixin):
 
     @override
     def test(self):
-        cmd: DrawCmd = new()
-        cmd.kind = DrawCmdEnum.FillRect
-        cmd.x = 1
-        cmd.y = 2
-        cmd.w = 10
-        cmd.h = 20
-        cmd.r = 30
+        cmd: DrawCmd = new(kind=DrawCmdEnum.FillRect, x=1, y=2, w=10, h=20, r=30)
         self.assertEqual(cmd.kind, DrawCmdEnum.FillRect)
         self.assertEqual(cmd.w, 10)
 
@@ -23,10 +17,7 @@ class CanvasViewportTests(TestCaseMixin):
 
     @override
     def test(self):
-        c: UICanvas = new()
-        c.panX = 10.0
-        c.panY = 20.0
-        c.zoom = 2.0
+        c: UICanvas = new(panX=10.0, panY=20.0, zoom=2.0)
         sx, sy = c.worldToScreen(5.0, 5.0)
         self.assertEqual(sx, 30.0)
         self.assertEqual(sy, 50.0)
@@ -39,10 +30,7 @@ class CanvasWheelZoomTests(TestCaseMixin):
 
     @override
     def test(self):
-        c: UICanvas = new()
-        c.zoom = 1.0
-        c.panX = 0.0
-        c.panY = 0.0
+        c: UICanvas = new(zoom=1.0, panX=0.0, panY=0.0)
         wantIn: float64 = 1.1
         c.onWheel(120, 100, 100)
         self.assertEqual(c.zoom, wantIn)
@@ -59,8 +47,7 @@ class CanvasFontScaleTests(TestCaseMixin):
     @override
     def test(self):
         ctx: UIPaintContext = new()
-        font: UICanvasFont = new()
-        font.size = 11
+        font: UICanvasFont = new(size=11)
         ctx.beginFrame(0, 640, 480, font, 2.0)
         self.assertEqual(ctx.scaledFontSize(), 22)
         ctx.beginFrame(0, 640, 480, font, 0.5)
@@ -72,9 +59,7 @@ class PaintContextTests(TestCaseMixin):
     @override
     def test(self):
         ctx: UIPaintContext = new()
-        font: UICanvasFont = new()
-        font.name = 'Arial'
-        font.size = 12
+        font: UICanvasFont = new(name='Arial', size=12)
         ctx.beginFrame(0, 640, 480, font)
         ctx.fillRect(0, 0, 100, 50, (255, 0, 0))
         ctx.drawLine(0, 0, 10, 10, (0, 255, 0), 2)

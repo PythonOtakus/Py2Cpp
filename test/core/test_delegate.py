@@ -198,8 +198,7 @@ class CallableFieldTests(TestCaseMixin):
     self.assertEqual(d(5), 6)
     d -= holder.slot
     self.assertFalse(d)
-    text: TextSlotHolder = new()
-    text.slot = lambda s: "lam:" + s
+    text: TextSlotHolder = new(slot=lambda s: "lam:" + s)
     self.assertEqual(text.call("ok"), "lam:ok")
     text.slot = _prefixText
     self.assertEqual(text.call("ok"), "fn:ok")
@@ -219,8 +218,7 @@ class CopyableInheritanceCallableTests(TestCaseMixin):
     items: list[CopyChild] = []
     items.append(child)
     self.assertEqual(items[0].label, "base")
-    box: CopyCallableBox = new()
-    box.slot = lambda s: "copy:" + s
+    box: CopyCallableBox = new(slot=lambda s: "copy:" + s)
     copiedBox: CopyCallableBox = box
     self.assertEqual(copiedBox.call("ok"), "copy:ok")
 
@@ -256,8 +254,7 @@ class CallableLifetimeTests(TestCaseMixin):
 
   @override
   def test(self):
-    factory: SlotFactory = new()
-    factory.v = 10
+    factory: SlotFactory = new(v=10)
     slot: Callable[[int], int] = factory.makeSlot()
     self.assertEqual(slot(3), 13)
     factory.v = 20

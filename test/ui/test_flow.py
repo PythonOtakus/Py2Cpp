@@ -23,23 +23,13 @@ class FlowGraphConnectTests(TestCaseMixin):
     def test(self):
         g: FlowGraph = new()
         pins: list[FlowPin, 0] = []
-        execIn: FlowPin = new()
-        execIn.name = 'execute'
-        execIn.kind = FlowPinEnum.ExecIn
+        execIn: FlowPin = new(name='execute', kind=FlowPinEnum.ExecIn)
         pins.append(execIn)
-        execOut: FlowPin = new()
-        execOut.name = 'then'
-        execOut.kind = FlowPinEnum.ExecOut
+        execOut: FlowPin = new(name='then', kind=FlowPinEnum.ExecOut)
         pins.append(execOut)
-        dataIn: FlowPin = new()
-        dataIn.name = 'x'
-        dataIn.kind = FlowPinEnum.DataIn
-        dataIn.typeId = 'int'
+        dataIn: FlowPin = new(name='x', kind=FlowPinEnum.DataIn, typeId='int')
         pins.append(dataIn)
-        dataOut: FlowPin = new()
-        dataOut.name = 'Return Value'
-        dataOut.kind = FlowPinEnum.DataOut
-        dataOut.typeId = 'int'
+        dataOut: FlowPin = new(name='Return Value', kind=FlowPinEnum.DataOut, typeId='int')
         pins.append(dataOut)
         n1: int = g.addNode('A.call', 'Call', 0.0, 0.0, pins)
         n2: int = g.addNode('B.call', 'Call', 200.0, 0.0, pins)
@@ -89,9 +79,7 @@ class FlowGraphMoveNodeTests(TestCaseMixin):
     def test(self):
         g: FlowGraph = new()
         pins: list[FlowPin, 0] = []
-        execOut: FlowPin = new()
-        execOut.name = 'then'
-        execOut.kind = FlowPinEnum.ExecOut
+        execOut: FlowPin = new(name='then', kind=FlowPinEnum.ExecOut)
         pins.append(execOut)
         nid: int = g.addNode('T.evt', 'Evt', 10.0, 20.0, pins)
         g.moveNode(nid, 5.0, -3.0)
@@ -120,7 +108,6 @@ class FlowPanDragTests(TestCaseMixin):
     @override
     def test(self):
         c: UIFlowCanvas = new()
-        c.zoom = 1.0
         c.onPointerDown(2, 100, 100)
         for i in range(2000):
             c.onPointerMove(2, 100 + i, 100 + i)
@@ -135,9 +122,7 @@ class FlowSerializeTests(TestCaseMixin):
     def test(self):
         g: FlowGraph = new()
         pins: list[FlowPin, 0] = []
-        execOut: FlowPin = new()
-        execOut.name = 'then'
-        execOut.kind = FlowPinEnum.ExecOut
+        execOut: FlowPin = new(name='then', kind=FlowPinEnum.ExecOut)
         pins.append(execOut)
         nid: int = g.addNode('T.evt', 'Evt', 10.0, 20.0, pins)
         text: str = graphToJson(g)
@@ -156,9 +141,7 @@ class FlowMarqueeTests(TestCaseMixin):
     def test(self):
         g: FlowGraph = new()
         pins: list[FlowPin, 0] = []
-        execOut: FlowPin = new()
-        execOut.name = 'then'
-        execOut.kind = FlowPinEnum.ExecOut
+        execOut: FlowPin = new(name='then', kind=FlowPinEnum.ExecOut)
         pins.append(execOut)
         n1: int = g.addNode('A.e', 'A', 10.0, 10.0, pins)
         n2: int = g.addNode('B.e', 'B', 300.0, 10.0, pins)
@@ -177,13 +160,9 @@ class FlowClipboardTests(TestCaseMixin):
     def test(self):
         g: FlowGraph = new()
         pins: list[FlowPin, 0] = []
-        execIn: FlowPin = new()
-        execIn.name = 'execute'
-        execIn.kind = FlowPinEnum.ExecIn
+        execIn: FlowPin = new(name='execute', kind=FlowPinEnum.ExecIn)
         pins.append(execIn)
-        execOut: FlowPin = new()
-        execOut.name = 'then'
-        execOut.kind = FlowPinEnum.ExecOut
+        execOut: FlowPin = new(name='then', kind=FlowPinEnum.ExecOut)
         pins.append(execOut)
         n1: int = g.addNode('A.c', 'A', 0.0, 0.0, pins)
         n2: int = g.addNode('B.c', 'B', 200.0, 0.0, pins)
@@ -207,9 +186,7 @@ class FlowHistoryTests(TestCaseMixin):
         hist: FlowGraphHistory = new()
         g: FlowGraph = new()
         pins: list[FlowPin, 0] = []
-        execOut: FlowPin = new()
-        execOut.name = 'then'
-        execOut.kind = FlowPinEnum.ExecOut
+        execOut: FlowPin = new(name='then', kind=FlowPinEnum.ExecOut)
         pins.append(execOut)
         hist.push(g)
         g.addNode('T.e', 'One', 1.0, 2.0, pins)
@@ -228,9 +205,7 @@ class FlowShellMenuTests(TestCaseMixin):
         shell: UIFlowShell = new()
         shell.bindCanvas(UIWindow(), cv)
         pins: list[FlowPin, 0] = []
-        execOut: FlowPin = new()
-        execOut.name = 'then'
-        execOut.kind = FlowPinEnum.ExecOut
+        execOut: FlowPin = new(name='then', kind=FlowPinEnum.ExecOut)
         pins.append(execOut)
         n1: int = cv.graph.addNode('A.e', 'A', 0.0, 0.0, pins)
         n2: int = cv.graph.addNode('B.e', 'B', 200.0, 0.0, pins)
@@ -347,10 +322,7 @@ class FlowRuntimeHost:
     graph: FlowGraph = new()
 
     def _pin(self, name: str, kind: FlowPinEnum, typeId: str='') -> FlowPinSpec:
-        p: FlowPinSpec = new()
-        p.name = name
-        p.kind = kind
-        p.typeId = typeId
+        p: FlowPinSpec = new(name=name, kind=kind, typeId=typeId)
         return p
 
     def prepare(self) -> None:

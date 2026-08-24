@@ -9,7 +9,7 @@ from ..analysis.build_types import build_result_cpp_type, walk_build_plan
 from ..analysis.type_emit import field_ann_ast, field_storage_cpp, bind_scope_var
 from ..analysis.type_pred import is_list_type
 from ..analysis.type_extract import list_elem_type
-from ..analysis.ir import ClassInfo, cpp_inferred_type_matches_ann, cpp_ident, cpp_template_type, strip_cpp_ref
+from ..analysis.ir import ClassInfo, cpp_inferred_type_matches_ann, cpp_ident, cpp_param, cpp_template_type, strip_cpp_ref
 from ..analysis.module_namespace import qualify_symbol_in_module
 from ..passes.build_parse import BUILD_INDEX_PREFIX, AssignSegment, BuildBody, BuildPlan, BuildValue, BuildParseError, ExprValue, IndexRefValue, ListDescentSegment, ListRootPlan, LiteralValue, StructDescentSegment, StructRootPlan, parse_build_literal
 from ..translation_error import raise_translation_error
@@ -233,9 +233,9 @@ def try_emit_build_ann_assign(tr: Translator, node: ast.AnnAssign) -> bool:
     val = _emit_build_expr(tr, target_cpp, target_info, list_root, plan, result_ann, node=node)
     name = node.target.id
     if tr._try_declare(name):
-        tr.write_line(f'{result_ann} {cpp_ident(name)} = {val};')
+        tr.write_line(f'{result_ann} {cpp_param(name)} = {val};')
     else:
-        tr.write_line(f'{cpp_ident(name)} = {val};')
+        tr.write_line(f'{cpp_param(name)} = {val};')
     if tr.scope:
         bind_scope_var(tr.scope, name, result_ann, classes=tr.classes)
     return True

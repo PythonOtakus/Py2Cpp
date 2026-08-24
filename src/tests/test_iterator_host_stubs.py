@@ -53,6 +53,7 @@ class IteratorHostStubTests(unittest.TestCase):
     self.assertEqual(iterator_ctor_self_expr("dict"), "*this")
     self.assertEqual(iterator_ctor_self_expr("list"), "this")
     self.assertEqual(iterator_ctor_self_expr("frozenset"), "*this")
+    self.assertEqual(iterator_ctor_self_expr("frozendict"), "*this")
     self.assertEqual(iterator_ctor_self_expr("ChunkDeque"), "this")
 
   def test_dict_like_host_py_name(self):

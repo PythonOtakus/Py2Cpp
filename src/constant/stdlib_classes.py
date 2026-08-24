@@ -29,7 +29,6 @@ ITERATOR_CTOR_SELF_AS_THIS: frozenset[str] = frozenset({
   "set",
   "py_set",
   "frozenlist",
-  "frozendict",
   "ECSComponentTable",
   "ChunkDeque",
 })

@@ -194,7 +194,7 @@ def emit_copy_move_special_members(tr: Translator, info: ClassInfo) -> None:
                 with tr._use_block():
                     tr.write_line('__copy__(other);')
             elif info.name == 'ChunkDeque':
-                tr.write_line(f'{qual}::{cpp}(const {cpp}& other) : _block_size(512), _head(nullptr), _tail(nullptr), _len(0), __moved__(false)')
+                tr.write_line(f'{qual}::{cpp}(const {cpp}& other) : _blockSize(512), _head(nullptr), _tail(nullptr), _len(0), __moved__(false)')
                 with tr._use_block():
                     tr.write_line('__copy__(other);')
             elif cpp == 'PyTcpSocket':
@@ -252,7 +252,7 @@ def emit_copy_move_special_members(tr: Translator, info: ClassInfo) -> None:
                 with tr._use_block():
                     tr.write_line('__move__(other);')
             elif info.name == 'ChunkDeque':
-                tr.write_line(f'{qual}::{cpp}({cpp}&& other) : _block_size(512), _head(nullptr), _tail(nullptr), _len(0), __moved__(false)')
+                tr.write_line(f'{qual}::{cpp}({cpp}&& other) : _blockSize(512), _head(nullptr), _tail(nullptr), _len(0), __moved__(false)')
                 with tr._use_block():
                     tr.write_line('__move__(other);')
             else:

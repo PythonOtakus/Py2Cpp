@@ -15,7 +15,7 @@ if TYPE_CHECKING:
   from ..translator import Translator, _TryFrame
 
 _GROUP_TY = cpp_exception_type('ExceptionGroup')
-_KIND_TY = f"{EXCEPTIONS_NS}::ExcTypeUnion::Enum"
+_KIND_TY = f"{cpp_exception_type('ExcTypeUnion')}::Enum"
 _FORBIDDEN_STAR_TYPES = frozenset({"BaseExceptionGroup", "ExceptionGroup"})
 
 

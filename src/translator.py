@@ -1441,8 +1441,13 @@ class Translator(ast.NodeVisitor):
         if is_delegate_type(t, delegate_names=frozenset(self.delegates.keys())):
             pb = cpp_ident('PyBool')
             return f'(static_cast<{pb}>({cpp}))'
-        from .analysis.type_pred import is_frozenlist_type, is_list_type
+        from .analysis.type_pred import is_frozenlist_type, is_list_type, is_str_type, is_bytes_type
         if is_list_type(t, classes=self.classes) or is_frozenlist_type(t, classes=self.classes):
+            pb = cpp_ident('PyBool')
+            if cpp == 'this':
+                return f'(static_cast<{pb}>(*this))'
+            return f'(static_cast<{pb}>({cpp}))'
+        if is_str_type(t, classes=self.classes) or is_bytes_type(t, classes=self.classes):
             pb = cpp_ident('PyBool')
             if cpp == 'this':
                 return f'(static_cast<{pb}>(*this))'
@@ -1525,13 +1530,34 @@ class Translator(ast.NodeVisitor):
                 return '*this'
         return self.visit(node)
 
+    def _static_property_owner(self, info: ClassInfo, attr: str) -> ClassInfo | None:
+        """宿主或其 ``@mixin`` 基类上声明 ``@staticproperty`` 的 ClassInfo。"""
+        if attr in info.static_properties:
+            return info
+        for base in info.node.bases:
+            if not isinstance(base, (ast.Name, ast.Subscript)):
+                continue
+            base_name = base.id if isinstance(base, ast.Name) else (
+                base.value.id if isinstance(base.value, ast.Name) else None
+            )
+            if not base_name:
+                continue
+            mixin = self.classes.get(base_name)
+            if mixin is not None and attr in mixin.static_properties:
+                # 生成调用仍挂在宿主 C++ 类上（mixin 已内联进宿主声明）
+                return info
+        return None
+
     def _static_property_read(self, class_name: str, attr: str) -> str | None:
         info = self.classes.get(class_name)
-        if not info or attr not in info.static_properties:
+        if not info:
             return None
-        getter = self._property_getter_cpp_name(info, attr)
+        owner = self._static_property_owner(info, attr)
+        if owner is None:
+            return None
+        getter = self._property_getter_cpp_name(owner, attr)
         from .analysis.ir import qualified_class_static_callee
-        return f'{qualified_class_static_callee(info, getter)}()'
+        return f'{qualified_class_static_callee(owner, getter)}()'
 
     def _binop_dunder(self, op: ast.operator) -> str | None:
         match op:
@@ -1845,17 +1871,22 @@ class Translator(ast.NodeVisitor):
 
     def _method_def_for_call(self, info: ClassInfo, method_name: str, call: ast.Call | None) -> ast.FunctionDef | None:
         method = info.methods.get(method_name)
+        owner = info
         if method is None and info.class_type_if_specs:
             from .passes.class_type_if import class_type_if_method_def
             method = class_type_if_method_def(info, method_name)
+        if method is None:
+            inherited = _resolve_inherited_method(self, info, method_name)
+            if inherited is not None:
+                owner, method = inherited
         if method is not None:
             return method
-        overloads = info.method_overloads.get(method_name)
+        overloads = owner.method_overloads.get(method_name) or info.method_overloads.get(method_name)
         if not overloads:
             return None
         if call is None:
             return overloads[-1]
-        picked = self._pick_method_overload_for_call(info, overloads, call)
+        picked = self._pick_method_overload_for_call(owner, overloads, call)
         if picked is not None:
             return picked
         return overloads[-1]
@@ -1915,7 +1946,13 @@ class Translator(ast.NodeVisitor):
         method = self._method_def_for_call(info, method_name, call)
         if method is None:
             return []
-        sig = info.method_sig_for(method)
+        owner = info
+        inherited = _resolve_inherited_method(self, info, method_name)
+        if inherited is not None and method is inherited[1]:
+            owner = inherited[0]
+        sig = owner.method_sig_for(method)
+        if sig is None:
+            sig = info.method_sig_for(method)
         if sig is None:
             return []
         out: list[str] = []
@@ -2080,7 +2117,7 @@ class Translator(ast.NodeVisitor):
             left_info = self._class_info_for_type(strip_cpp_ref(left_t))
         if left_info is None and is_str_type(left_t):
             left_info = self.classes.get('str')
-        if left_info and self._class_info_has_method(left_info, dunder):
+        if left_info and self._class_info_has_method_resolved(left_info, dunder):
             return self._emit_dunder_call(node.left, dunder, node.right)
         if is_long_type(left_t):
             return self._emit_dunder_call(node.left, dunder, node.right)
@@ -2092,7 +2129,7 @@ class Translator(ast.NodeVisitor):
                 right_info = self._class_info_for_type(strip_cpp_ref(right_t))
             if right_info is None and is_str_type(right_t):
                 right_info = self.classes.get('str')
-            if right_info and self._class_info_has_method(right_info, rdunder):
+            if right_info and self._class_info_has_method_resolved(right_info, rdunder):
                 return self._emit_dunder_call(node.right, rdunder, node.left)
             if is_long_type(right_t):
                 return self._emit_dunder_call(node.right, rdunder, node.left)
@@ -2138,7 +2175,14 @@ class Translator(ast.NodeVisitor):
 
     @staticmethod
     def _class_info_has_method(info: ClassInfo, name: str) -> bool:
-        return name in info.methods or name in info.method_overloads
+        if name in info.methods or name in info.method_overloads:
+            return True
+        return False
+
+    def _class_info_has_method_resolved(self, info: ClassInfo, name: str) -> bool:
+        if self._class_info_has_method(info, name):
+            return True
+        return _resolve_inherited_method(self, info, name) is not None
 
     def _class_info_for_receiver(self, node: ast.expr) -> ClassInfo | None:
         """属性读/``@property`` 派发：推断接收者 ``ClassInfo``（含 ``self`` 与构造调用）。"""
@@ -2180,6 +2224,17 @@ class Translator(ast.NodeVisitor):
                     if info is not None:
                         return info
         if isinstance(node, ast.Attribute):
+            base_info = self._class_info_for_receiver(node.value)
+            if base_info is not None:
+                resolved = base_info.resolve_instance_property(node.attr, self.classes)
+                if resolved is not None:
+                    _owner, prop = resolved
+                    if prop.getter_sig is not None:
+                        ret = self._sig_return_storage(prop.getter_sig) or self._sig_return_full(prop.getter_sig)
+                        if ret:
+                            info = self._class_info_for_type(ret)
+                            if info is not None:
+                                return info
             ft = self._field_cpp_type_for_attribute(node.value, node.attr)
             if ft:
                 info = self._class_info_for_type(ft)
@@ -2523,12 +2578,43 @@ class Translator(ast.NodeVisitor):
                 for name, cpp_arg in zip(info.type_params, args):
                     subst[name] = self._cpp_type_arg_annotation(cpp_arg)
         self_ann = self._self_annotation_for_receiver(info, receiver)
+        mixin_subst: dict[str, ast.expr] = {}
+        from .passes.mixins import _mixin_type_subst_map_for_host
+        seen_mixins: set[str] = set()
+        for base in info.node.bases:
+            if not isinstance(base, ast.Subscript) or not isinstance(base.value, ast.Name):
+                continue
+            mixin_name = base.value.id
+            if mixin_name in seen_mixins:
+                continue
+            seen_mixins.add(mixin_name)
+            mixin_info = self.classes.get(mixin_name)
+            if mixin_info is None:
+                continue
+            raw = _mixin_type_subst_map_for_host(info, mixin_info)
+            if raw is None:
+                continue
+            for key, bound in raw.items():
+                if key in mixin_subst:
+                    continue
+                if isinstance(bound, ast.expr):
+                    mixin_subst[key] = bound
+                else:
+                    try:
+                        parsed = ast.parse(bound, mode='eval').body
+                        if isinstance(parsed, ast.expr):
+                            mixin_subst[key] = parsed
+                    except SyntaxError:
+                        mixin_subst[key] = ast.Name(id=bound, ctx=ast.Load())
 
         class _Subst(ast.NodeTransformer):
             def visit_Name(self, node: ast.Name) -> ast.expr:
                 if node.id == 'Self':
                     return copy.deepcopy(self_ann)
                 repl = subst.get(node.id)
+                if repl is not None:
+                    return copy.deepcopy(repl)
+                repl = mixin_subst.get(node.id)
                 if repl is not None:
                     return copy.deepcopy(repl)
                 return node
@@ -3847,7 +3933,7 @@ class Translator(ast.NodeVisitor):
         t = self._infer_expr_cpp_type(arg)
         if self._is_ptr_type(t):
             return v
-        if is_set_type(t) or is_frozenset_type(t) or is_frozenlist_type(t) or is_frozendict_type(t):
+        if is_set_type(t) or is_frozenset_type(t) or is_frozenlist_type(t):
             return f'&{v}'
         if is_list_type(t) or is_deque_type(t) or is_frozenlist_type(t):
             return f'&{v}'
@@ -4591,6 +4677,9 @@ class Translator(ast.NodeVisitor):
                                 self._bind_scope_var(name, cpp_template_type('frozendict', fd_inner))
                             return
                 t = self._parse_storage_type(node.annotation, tparams)
+                if node.value is not None:
+                    from .emit.call_emit import specialize_typed_storage_from_rhs_call
+                    t = specialize_typed_storage_from_rhs_call(self, t, node.value)
                 if node.value is not None and self._expr_is_list_element_ref(node.value):
                     if not t.endswith('&'):
                         t = f'{t}&'
@@ -5101,7 +5190,7 @@ class Translator(ast.NodeVisitor):
         match node.target:
             case ast.Name() as target:
                 info = self._class_info_for_expr(target)
-                if not info or iform not in info.methods:
+                if not info or not self._class_info_has_method_resolved(info, iform):
                     return False
                 self.write_line(f'{self._member_call_with_arg(target, iform, node.value)};')
                 return True
@@ -5816,10 +5905,14 @@ class Translator(ast.NodeVisitor):
             union_enum = try_emit_union_mro_enum_member(self, node)
             if union_enum is not None:
                 return union_enum
-        if isinstance(node.value, ast.Name) and node.value.id in self.classes:
-            if not (node.value.id == 'Self' and self._active_class_info()):
-                from .analysis.ir import qualified_class_static_callee
+        if isinstance(node.value, ast.Name):
+            cls = None
+            if node.value.id in self.classes:
                 cls = self.classes[node.value.id]
+            elif self._name_refers_to_class(node.value.id):
+                cls = self._class_info_for_ref(node.value.id)
+            if cls is not None and not (node.value.id == 'Self' and self._active_class_info()):
+                from .analysis.ir import qualified_class_static_callee
                 if cls.is_enum and node.attr in enum_member_names(cls):
                     return f'{cls.cpp_name()}::{node.attr}'
                 if node.attr in cls.static_class_fields:
@@ -5830,9 +5923,22 @@ class Translator(ast.NodeVisitor):
                     return qualified_class_static_callee(cls, cpp)
                 if cls.inject_type_id and node.attr == '__id__':
                     return f"{cls.cpp_name()}::{property_getter_method_for('__id__')}()"
-                sp_read = self._static_property_read(node.value.id, node.attr)
+                sp_read = self._static_property_read(cls.name, node.attr)
                 if sp_read is not None:
                     return sp_read
+                if cls.type_params and self._static_property_owner(cls, node.attr) is not None:
+                    from .analysis.module_namespace import qualify_symbol_in_module
+                    getter = self._property_getter_cpp_name(cls, node.attr)
+                    default_args = []
+                    for tp in cls.type_params:
+                        dv = cls.type_param_defaults.get(tp)
+                        if dv is not None:
+                            default_args.append(self._parse_type(dv, self._active_type_params()))
+                        else:
+                            default_args.append(tp)
+                    if default_args:
+                        qbase = qualify_symbol_in_module(cls.module_path, cls.cpp_name())
+                        return f'{qbase}<{", ".join(default_args)}>::{getter}()'
         if isinstance(node.value, ast.Subscript) and isinstance(node.value.value, ast.Name) and node.value.value.id in self.classes:
             cls = self.classes[node.value.value.id]
             if node.attr in cls.static_properties:
@@ -5882,6 +5988,25 @@ class Translator(ast.NodeVisitor):
                     attr = storage_field_for(attr)
                 return f'this->{self._attr_cpp_name(node.value, attr)}'
             case ast.Name(id=name):
+                if self._name_refers_to_class(name):
+                    info = self._class_info_for_ref(name)
+                    if info is not None and self._static_property_owner(info, node.attr) is not None:
+                        sp_read = self._static_property_read(info.name, node.attr)
+                        if sp_read is not None:
+                            return sp_read
+                        if info.type_params:
+                            from .analysis.module_namespace import qualify_symbol_in_module
+                            getter = self._property_getter_cpp_name(info, node.attr)
+                            default_args: list[str] = []
+                            for tp in info.type_params:
+                                dv = info.type_param_defaults.get(tp)
+                                if dv is not None:
+                                    default_args.append(self._parse_type(dv, self._active_type_params()))
+                                else:
+                                    default_args.append(tp)
+                            if default_args:
+                                qbase = qualify_symbol_in_module(info.module_path, info.cpp_name())
+                                return f'{qbase}<{", ".join(default_args)}>::{getter}()'
                 t = ''
                 if self.scope:
                     t = self._scope_storage(name)
@@ -6488,6 +6613,15 @@ class Translator(ast.NodeVisitor):
                     ret = self._receiver_method_return_cpp_type(info, method, recv, node.args)
                     if ret:
                         return ret
+                    owner = info
+                    method_node = info.methods.get(method)
+                    if method_node is None:
+                        inherited = _resolve_inherited_method(self, info, method)
+                        if inherited is not None:
+                            owner, method_node = inherited
+                    if isinstance(method_node, ast.AsyncFunctionDef):
+                        from .passes.generators import COROUTINE_SUFFIX
+                        return f'{owner.cpp_name()}_{method}{COROUTINE_SUFFIX}'
                 if isinstance(recv, ast.Name) and self.scope:
                     vt = self._scope_storage(recv.id)
                     if method == 'data' and is_span_type(vt):
@@ -7113,9 +7247,11 @@ class Translator(ast.NodeVisitor):
                         self._emit_stdlib_module_function_body(mp, func, qualified_name=qname)
             emit_stdlib_module_paste_after(self, mp)
             return
+        non_tpl_entry_classes = [c for c in entry_classes if not c.is_template()]
+        tpl_entry_classes = [c for c in entry_classes if c.is_template()]
         with self._use_source(), self._use_import_bindings(self.entry_module_path), self._use_module_namespace(self.entry_module_path):
             self._emit_module_import_usings(self.entry_module_path)
-            for info in entry_classes:
+            for info in non_tpl_entry_classes:
                 _emit_class_methods_body(self, info)
             for func in all_funcs:
                 fsig = self.function_sigs[self.entry_module_path, func.name]
@@ -7151,6 +7287,10 @@ class Translator(ast.NodeVisitor):
                             from .emit.lazy_param_emit import emit_lazy_param_prologue
                             emit_lazy_param_prologue(self, fsig.lazy_params)
                         self._emit_generic_body_or_type_if(func, fsig, type_if_plan=type_if_plan, type_if_pick=type_if_pick)
+        if tpl_entry_classes:
+            with self._use_module_inl(self.entry_module_path), self._use_import_bindings(self.entry_module_path), self._use_inl_namespace(self.entry_module_path):
+                for info in tpl_entry_classes:
+                    _emit_class_methods_body(self, info)
 
     def _needs_process_worker_hook(self) -> bool:
         """入口依赖 ``concur.process`` 时，为 Windows RVA 子进程注入 ``tryWorker``。"""

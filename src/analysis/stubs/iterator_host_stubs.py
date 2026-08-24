@@ -54,9 +54,7 @@ def load_frozendict_host_bound_class_names() -> frozenset[str]:
 
 def iterator_ctor_self_expr(host_class: str) -> str:
   """宿主 ``new(self)`` / ``__iter__`` 时传给迭代器构造的 ``self`` 表达式。"""
-  if host_class in ITERATOR_CTOR_SELF_AS_THIS or host_class.startswith(
-    ("frozendict", "FrozenDict")
-  ):
+  if host_class in ITERATOR_CTOR_SELF_AS_THIS:
     return "this"
   return "*this"
 

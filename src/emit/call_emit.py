@@ -139,6 +139,11 @@ def class_info_from_receiver(tr: Translator, receiver: ast.expr) -> ClassInfo | 
     if isinstance(receiver, ast.Constant) and isinstance(receiver.value, bytes):
         return tr.classes.get('bytes')
     if isinstance(receiver, ast.Call):
+        ctor = tr._constructor_type(receiver)
+        if ctor and is_str_type(ctor):
+            hit = tr.classes.get('str')
+            if hit is not None:
+                return hit
         recv_cpp = tr.visit(receiver)
         if 'bytes_from_literal' in recv_cpp:
             return tr.classes.get('bytes')
@@ -180,17 +185,23 @@ def call_param_names(tr: Translator, func: ast.expr, *, call: ast.Call | None=No
     match func:
         case ast.Attribute(value=val, attr=method):
             info = class_info_from_receiver(tr, val)
-            if info is not None and (method in info.methods or method in info.method_overloads):
-                method_def = tr._method_def_for_call(info, method, call)
-                if method_def is None:
-                    return None
-                names = [a.arg for a in method_def.args.args if a.arg not in ('self', 'cls')]
-                sig = info.method_sig_for(method_def)
-                if sig is not None and sig.variadic_template is not None:
-                    names.append(sig.variadic_template.param_name)
-                elif sig is not None and sig.vararg_pack is not None:
-                    names.append(sig.vararg_pack.param_name)
-                return names
+            if info is None:
+                return None
+            method_def = tr._method_def_for_call(info, method, call)
+            if method_def is None:
+                return None
+            names = [a.arg for a in method_def.args.args if a.arg not in ('self', 'cls')]
+            sig = info.method_sig_for(method_def)
+            if sig is None:
+                from ..passes.strict_style import _resolve_inherited_method
+                inherited = _resolve_inherited_method(tr, info, method)
+                if inherited is not None:
+                    sig = inherited[0].method_sig_for(method_def)
+            if sig is not None and sig.variadic_template is not None:
+                names.append(sig.variadic_template.param_name)
+            elif sig is not None and sig.vararg_pack is not None:
+                names.append(sig.vararg_pack.param_name)
+            return names
         case ast.Name(id=name):
             if tr.class_info and (name in tr.class_info.methods or name in tr.class_info.method_overloads):
                 method_def = tr._method_def_for_call(tr.class_info, name, call)
@@ -314,7 +325,7 @@ def call_param_cpp_types(tr: Translator, func: ast.expr, *, call: ast.Call | Non
     match func:
         case ast.Attribute(value=val, attr=method):
             info = class_info_from_receiver(tr, val)
-            if info is not None and (method in info.methods or method in info.method_overloads):
+            if info is not None:
                 return tr._ordered_method_param_cpp_types(info, method, call=call)
             imported = _imported_function_param_cpp_types(tr, func, call=call)
             if imported is not None:
@@ -790,6 +801,10 @@ def _emit_instance_invokable_member_call(tr: 'Translator', receiver: ast.expr, a
         return f'{recv}{sep}{mcpp}()'
     return None
 
+def _class_info_with_static_property(tr: 'Translator', info: ClassInfo, attr: str) -> ClassInfo | None:
+    owner = tr._static_property_owner(info, attr)
+    return owner
+
 def try_emit_new_staticproperty_ref(tr: 'Translator', node: ast.Attribute, *, field_cpp_type: str | None=None) -> str | None:
     """``x: Vector2 = new.zero`` / ``self._p = new.zero``（按注解或字段 C++ 类型）。"""
     if not is_new_staticproperty_ref(node):
@@ -810,16 +825,27 @@ def try_emit_new_staticproperty_ref(tr: 'Translator', node: ast.Attribute, *, fi
     if not cpp_type:
         return None
     info = tr._class_info_for_type(cpp_type)
-    if info is None or attr not in info.static_properties:
+    if info is None and isinstance(ann, ast.Name) and tr._name_refers_to_class(ann.id):
+        info = tr._class_info_for_ref(ann.id)
+    if info is None or _class_info_with_static_property(tr, info, attr) is None:
         return None
     if info.type_params:
         from ..analysis.ir import cpp_template_base_and_args
         parsed = cpp_template_base_and_args(ClassInfo.unwrap_refcount_type(strip_cpp_ref(cpp_type)))
+        getter = tr._property_getter_cpp_name(info, attr)
+        qbase = qualify_symbol_in_module(info.module_path, info.cpp_name())
         if parsed is not None:
             _base, args = parsed
-            getter = tr._property_getter_cpp_name(info, attr)
-            qbase = qualify_symbol_in_module(info.module_path, info.cpp_name())
             return f'{qbase}<{", ".join(args)}>::{getter}()'
+        default_args: list[str] = []
+        for tp in info.type_params:
+            dv = info.type_param_defaults.get(tp)
+            if dv is not None:
+                default_args.append(tr._parse_type(dv, tr._active_type_params()))
+            else:
+                default_args.append(tp)
+        if default_args:
+            return f'{qbase}<{", ".join(default_args)}>::{getter}()'
     return tr._static_property_read(info.name, attr)
 
 def _coroutine_class_name_for_call(tr: 'Translator', func_name: str) -> str | None:
@@ -945,13 +971,23 @@ def emit_class_static_method_call(tr: 'Translator', info: ClassInfo, method: str
         return None
     type_arg = ''
     if info.type_params:
+        inferred_elem: str | None = None
+        if node.args:
+            inferred_elem = _iterable_element_cpp_type(tr, node.args[0])
         if slice_node is None:
             defaults = info.type_param_defaults
             if not defaults or len(defaults) != len(info.type_params):
-                return None
-            args = [copy.deepcopy(defaults[p]) for p in info.type_params]
-            slice_node = args[0] if len(args) == 1 else ast.Tuple(elts=args, ctx=ast.Load())
-        type_arg = tr._parse_type_args(slice_node, tr._active_type_params())
+                if inferred_elem and len(info.type_params) == 1:
+                    type_arg = inferred_elem
+                else:
+                    return None
+            else:
+                args = [copy.deepcopy(defaults[p]) for p in info.type_params]
+                slice_node = args[0] if len(args) == 1 else ast.Tuple(elts=args, ctx=ast.Load())
+        if not type_arg:
+            type_arg = tr._parse_type_args(slice_node, tr._active_type_params())
+            if inferred_elem and len(info.type_params) == 1 and type_arg and type_arg != inferred_elem:
+                type_arg = inferred_elem
         if not type_arg:
             return None
     arg_str = emit_call_args(tr, node, param_cpp_types=tr._ordered_method_param_cpp_types(info, method, call=node))
@@ -963,6 +999,18 @@ def emit_class_static_method_call(tr: 'Translator', info: ClassInfo, method: str
         callee = f'{base}<{type_arg}>::{member}'
     else:
         callee = f'{base}::{member}'
+    method_def = info.methods.get(method)
+    if method_def is None:
+        overloads = info.method_overloads.get(method)
+        if overloads:
+            method_def = overloads[0]
+    if method_def is not None:
+        from ..analysis.ir import FuncTypeParams
+        mft = FuncTypeParams.collect(method_def)
+        if mft.template_names and node.args:
+            arg0_t = strip_cpp_ref(tr._infer_expr_cpp_type(node.args[0]) or '')
+            if arg0_t:
+                callee = f'{callee}<{arg0_t}>'
     if arg_str:
         return f'{callee}({arg_str})'
     return f'{callee}()'
@@ -977,6 +1025,46 @@ def try_emit_class_subscript_static_call(tr: Translator, node: ast.Call) -> str 
             if info is None or not info.type_params:
                 return None
             return emit_class_static_method_call(tr, info, method, sl, node)
+    return None
+
+def _resolve_mixin_type_param_ann(tr: 'Translator', name: str) -> ast.expr | None:
+    """``TransformMixin`` 形参 ``Rot`` → ``Quaternion[Scalar]`` 等宿主绑定类型。"""
+    from ..passes.mixins import _mixin_type_subst_map_for_host
+    host = tr._active_class_info()
+    if host is None:
+        for stack_node in reversed(tr._ast_node_stack):
+            if isinstance(stack_node, ast.Assign) and len(stack_node.targets) == 1:
+                tgt = stack_node.targets[0]
+                if isinstance(tgt, ast.Attribute):
+                    host = tr._class_info_for_receiver(tgt.value)
+                    if host is not None:
+                        break
+    if host is None:
+        return None
+    seen_mixins: set[str] = set()
+    for base in host.node.bases:
+        if not isinstance(base, ast.Subscript) or not isinstance(base.value, ast.Name):
+            continue
+        mixin_name = base.value.id
+        if mixin_name in seen_mixins:
+            continue
+        seen_mixins.add(mixin_name)
+        mixin = tr.classes.get(mixin_name)
+        if mixin is None:
+            continue
+        subst = _mixin_type_subst_map_for_host(host, mixin)
+        if subst is None or name not in subst:
+            continue
+        bound = subst[name]
+        if isinstance(bound, ast.expr):
+            return bound
+        try:
+            parsed = ast.parse(bound, mode='eval').body
+            if isinstance(parsed, ast.expr):
+                return parsed
+        except SyntaxError:
+            pass
+        return ast.Name(id=bound, ctx=ast.Load())
     return None
 
 def try_emit_new_receiver_static_call(tr: Translator, node: ast.Call) -> str | None:
@@ -996,6 +1084,23 @@ def try_emit_new_receiver_static_call(tr: Translator, node: ast.Call) -> str | N
             slice_node: ast.expr | None = sl
         case ast.Name(id=cls_name):
             slice_node = None
+            mixin_ann = _resolve_mixin_type_param_ann(tr, cls_name)
+            if mixin_ann is not None:
+                ann = mixin_ann
+                match ann:
+                    case ast.Subscript(value=ast.Name(id=cls_name), slice=sl):
+                        slice_node = sl
+                    case ast.Name(id=cls_name):
+                        slice_node = None
+                    case _:
+                        context_cpp = tr._parse_storage_type(ann, tr._active_type_params())
+                        info = tr._class_info_for_type(context_cpp)
+                        if info is None:
+                            raise NotImplementedError(f'new.{method}(...) 的注解类 {cls_name!r} 不可解析')
+                        out = emit_class_static_method_call(tr, info, method, None, node)
+                        if out is None:
+                            raise NotImplementedError(f'new.{method}(...) 须对应 {info.name} 的 ``@staticmethod`` 方法或 ``@union`` 变体')
+                        return out
         case _:
             raise NotImplementedError('new.方法(...) 的类型上下文须为具体类或 ``Cls[T]`` 注解')
     context_cpp = tr._parse_storage_type(ann, tr._active_type_params())
@@ -1131,39 +1236,101 @@ def try_emit_json_document_load_call(tr: Translator, node: ast.Call) -> str | No
             return f'{cpp_param(root)}.load()'
     return None
 
+def _iterable_element_cpp_type(tr: 'Translator', arg: ast.expr) -> str | None:
+    from ..analysis.type_extract import deque_elem_type, list_elem_type
+    from ..analysis.ir import parse_cpp_span2d_type, parse_cpp_span_type, strip_cpp_ref
+    arg_t = strip_cpp_ref(tr._infer_expr_cpp_type(arg) or '')
+    if not arg_t:
+        return None
+    for getter in (list_elem_type, deque_elem_type):
+        elem = getter(arg_t)
+        if elem:
+            return elem
+    for parser in (parse_cpp_span2d_type, parse_cpp_span_type):
+        elem = parser(arg_t)
+        if elem:
+            return elem
+    return None
+
 def _template_deduction_param_indices(func_def: ast.FunctionDef, func_ft: 'FuncTypeParams') -> set[int]:
     """形参注解为同名 ``TypeVar`` 时仅用于 C++ 模板推导，不传实参。"""
-    tnames = set(func_ft.template_names)
+    from ..analysis.variadic_template import parse_function_type_params
+    header_regular, _, _ = parse_function_type_params(func_def)
+    tnames = set(header_regular) or set(func_ft.template_names)
     if not tnames:
         return set()
     out: set[int] = set()
     for i, arg in enumerate(func_def.args.args):
-        if isinstance(arg.annotation, ast.Name) and arg.annotation.id in tnames:
+        ann = arg.annotation
+        if isinstance(ann, ast.Name) and ann.id in tnames:
+            out.add(i)
+            continue
+        if isinstance(ann, ast.Subscript) and isinstance(ann.slice, ast.Name) and ann.slice.id in tnames:
             out.add(i)
     return out
 
 def _module_function_template_angle(tr: 'Translator', func_def: ast.FunctionDef, func_ft: 'FuncTypeParams', node: ast.Call, *, explicit_type_arg: str | None) -> str:
+    from ..analysis.ir import strip_cpp_ref
+    from ..analysis.variadic_template import parse_function_type_params
     if explicit_type_arg:
         return f'<{explicit_type_arg}>'
-    deduction = _template_deduction_param_indices(func_def, func_ft)
-    if len(func_ft.template_names) != 1 or not deduction:
+    header_regular, _, _ = parse_function_type_params(func_def)
+    if len(header_regular) != 1:
         return ''
-    for idx in sorted(deduction):
-        if idx >= len(node.args):
-            continue
-        arg = node.args[idx]
-        coro_t = _concrete_coroutine_cpp_type(tr, arg)
-        if coro_t:
-            return f'<{coro_t}>'
-        arg_t = strip_cpp_ref(tr._infer_expr_cpp_type(arg) or '')
-        if arg_t and arg_t not in func_ft.template_names:
-            return f'<{arg_t}>'
+    tname = header_regular[0]
+    deduction = _template_deduction_param_indices(func_def, func_ft)
+    if deduction:
+        for idx in sorted(deduction):
+            if idx >= len(node.args):
+                continue
+            arg = node.args[idx]
+            coro_t = _concrete_coroutine_cpp_type(tr, arg)
+            if coro_t:
+                return f'<{coro_t}>'
+            arg_t = strip_cpp_ref(tr._infer_expr_cpp_type(arg) or '')
+            if arg_t and arg_t != tname:
+                return f'<{elem}>' if (elem := _iterable_element_cpp_type(tr, arg)) else f'<{arg_t}>'
+    elif node.args:
+        elem = _iterable_element_cpp_type(tr, node.args[0])
+        if elem:
+            return f'<{elem}>'
     for tp in getattr(func_def, 'type_params', None) or ():
-        if isinstance(tp, ast.TypeVar) and tp.name in func_ft.template_names:
+        if isinstance(tp, ast.TypeVar) and tp.name == tname:
             default = getattr(tp, 'default_value', None)
             if default is not None:
                 return f'<{tr._parse_type(default, tr._active_type_params())}>'
     return ''
+
+def specialize_typed_storage_from_rhs_call(tr: 'Translator', storage_type: str, value: ast.expr | None) -> str:
+    """``lr: LinearRegression = linearRegression(xs)`` → 与 RHS 模板实参一致的存储类型。"""
+    if value is None or not isinstance(value, ast.Call):
+        return storage_type
+    from ..analysis.ir import FuncTypeParams, cpp_template_base_and_args, strip_cpp_ref
+    parsed = cpp_template_base_and_args(strip_cpp_ref(storage_type))
+    if parsed is None:
+        return storage_type
+    base, old_args = parsed
+    if len(old_args) != 1:
+        return storage_type
+    func_def = None
+    if isinstance(value.func, ast.Name):
+        binding = tr._effective_import_bindings().get(value.func.id)
+        if binding is not None and binding.kind == 'function':
+            func_def = tr._module_function_def_for_call(binding.module_path, binding.symbol, call=value)
+        if func_def is None:
+            mp = tr._active_module_path()
+            if mp:
+                func_def = tr._module_function_def_for_call(mp, value.func.id, call=value)
+    if func_def is None:
+        return storage_type
+    func_ft = FuncTypeParams.collect(func_def)
+    angle = _module_function_template_angle(tr, func_def, func_ft, value, explicit_type_arg=None)
+    if not angle:
+        return storage_type
+    inner = angle.strip('<>')
+    if inner and inner != old_args[0]:
+        return f'{base}<{inner}>'
+    return storage_type
 
 def _emit_module_function_call(tr: 'Translator', mp: str, func_def: ast.FunctionDef, node: ast.Call, *, explicit_type_arg: str | None=None) -> str:
     from ..analysis.ir import FuncTypeParams, has_named_decorator, is_native_function_body
@@ -1828,6 +1995,15 @@ def emit_call_expr(tr: Translator, node: ast.Call):
                     return emit_str_format_call(tr, node)
                 if isinstance(val, ast.Constant) and isinstance(val.value, str):
                     return emit_format_expr(tr, plan_format_literal(tr, val.value, list(node.args)))
+            if attr in ('center', 'ljust', 'rjust') and len(node.args) == 2:
+                fill = node.args[1]
+                if isinstance(fill, ast.Constant) and isinstance(fill.value, int):
+                    recv = tr._paren_expr(tr.visit(val))
+                    sep = tr._member_access_sep(val, recv)
+                    mcpp = tr._attr_cpp_name(val, attr)
+                    width = tr._visit_value_for_type(node.args[0], cpp_ident('int'))
+                    ch = f'PyChar({fill.value})'
+                    return f'{recv}{sep}{mcpp}({width}, {ch})'
             arg_str = emit_call_args(tr, node, param_cpp_types=call_param_cpp_types(tr, node.func, call=node))
             if tr._use_member_dispatch_macro(val):
                 mcpp = tr._attr_cpp_name(val, attr)

@@ -356,6 +356,23 @@ def _iterable_cpp_type(tr: Translator, iter_expr: ast.expr) -> str:
         case ast.Attribute(value=val, attr=attr) if isinstance(val, ast.Name):
             if tr.scope:
                 return scope_storage_cpp(tr, val.id)
+        case ast.Call(func=ast.Attribute(value=recv, attr=method)) as await_call:
+            if method == '__await__' and (not await_call.args) and (not await_call.keywords):
+                recv_t = strip_cpp_ref(tr._infer_expr_cpp_type(recv) or '')
+                if recv_t and recv_t != cpp_ident('int'):
+                    return recv_t
+                from ..passes.generators import COROUTINE_SUFFIX, _infer_iter_type
+                it_ann = _infer_iter_type(await_call, tr, [])
+                if isinstance(it_ann, ast.Name) and it_ann.id.endswith(COROUTINE_SUFFIX):
+                    return tr._parse_type(it_ann.id, tr._active_type_params())
+            lt = _neighbors_call_list_cpp_type(tr, await_call)
+            if lt:
+                return lt
+            inferred_raw = tr._infer_expr_cpp_type(await_call)
+            inferred = inferred_raw.strip().rstrip('&') if inferred_raw else ''
+            if inferred and inferred != cpp_ident('int'):
+                return inferred
+            return ''
         case ast.Call() as call:
             lt = _neighbors_call_list_cpp_type(tr, call)
             if lt:

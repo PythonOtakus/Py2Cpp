@@ -15,12 +15,23 @@ from ..analysis.stubs.class_stubs import load_host_bound_iterator_view_cpp_bases
 if TYPE_CHECKING:
     from ..translator import Translator
 
+def _emit_new_ctor_arg_expr(tr: 'Translator', expr: ast.expr, param_cpp_type: str = '') -> str:
+    """``new(self)`` 在 const 成员中传引用形参时用 ``*this``。"""
+    pt = param_cpp_type.strip()
+    if isinstance(expr, ast.Name) and expr.id == 'self' and pt.endswith('&') and (not pt.endswith('&&')):
+        return '*this'
+    if pt:
+        return tr._visit_value_for_type(expr, pt)
+    return tr._visit_value_expr(expr)
+
 def _emit_new_iterator_view_ctor(tr: 'Translator', cpp_type: str, call: ast.Call) -> str | None:
     bare = strip_cpp_type_qualifiers(cpp_type).strip()
     for base in load_host_bound_iterator_view_cpp_bases():
         if bare.startswith(f'{base}<') or bare == base:
             inner = tr._emit_list_iterator_ctor_inner(call)
-            return f'{cpp_type}({inner})'
+            info = class_info_for_cpp_type(cpp_type, tr.classes)
+            cpp_emit = tr._rewrite_template_args_to_cpp_params(cpp_type, info) if info is not None and info.is_template() else cpp_type
+            return f'{cpp_emit}({inner})'
     return None
 
 def _frozendict_new_from_arg_expr(tr: 'Translator', inner: str, arg: ast.expr) -> str:
@@ -162,12 +173,10 @@ def _emit_new_class_ctor_expr(tr: 'Translator', cpp_type: str, call: ast.Call) -
         pt = ''
         if i < len(emit_params):
             pt = _init_param_cpp_type(tr, info, init, emit_params[i])
-        if pt:
-            parts.append(tr._visit_value_for_type(expr, pt))
-        else:
-            parts.append(tr._visit_value_expr(expr))
+        parts.append(_emit_new_ctor_arg_expr(tr, expr, pt))
     args = ', '.join(parts)
-    return f'{cpp_type}({args})' if args else f'{cpp_type}()'
+    cpp_emit = tr._rewrite_template_args_to_cpp_params(cpp_type, info) if info.is_template() else cpp_type
+    return f'{cpp_emit}({args})' if args else f'{cpp_emit}()'
 
 def _emit_new_ctor_expr(tr: 'Translator', cpp_type: str, call: ast.Call) -> str:
     """``new(args...)`` + 已知 C++ 类型 → ``Type(args...)``；与所在类相同时 → ``Self(...)``。"""
@@ -189,6 +198,9 @@ def _emit_new_ctor_expr(tr: 'Translator', cpp_type: str, call: ast.Call) -> str:
             return f'makeRefCount<{rc_inner}>()'
         args = ', '.join((tr._visit_value_expr(a) for a in call.args))
         return f'makeRefCount<{rc_inner}>({args})'
+    boxing_ctor = _emit_boxing_new_ctor(tr, cpp_type, call)
+    if boxing_ctor is not None:
+        return boxing_ctor
     class_ctor = _emit_new_class_ctor_expr(tr, cpp_type, call)
     if class_ctor is not None:
         return class_ctor
@@ -249,9 +261,6 @@ def _emit_new_ctor_expr(tr: 'Translator', cpp_type: str, call: ast.Call) -> str:
     if bare.startswith(f"{cpp_ident('ECSComponentTableQuery')}<") and call.args:
         inner = tr._emit_ecs_query_ctor_inner(call)
         return f'{bare}({inner})'
-    boxing_ctor = _emit_boxing_new_ctor(tr, cpp_type, call)
-    if boxing_ctor is not None:
-        return boxing_ctor
     if cpp_type.strip() == cpp_ident('str'):
         inner = ', '.join((tr._cpp_str_ctor_arg(a) for a in call.args))
         return f"{cpp_ident('str')}({inner})" if inner else f"{cpp_ident('str')}()"

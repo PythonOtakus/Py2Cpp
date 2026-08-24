@@ -113,6 +113,7 @@ def try_emit_lazy_call_arg(tr: 'Translator', arg_expr: ast.expr, lazy_info: Lazy
 
 def callee_lazy_params_for_call(tr: 'Translator', func: ast.expr, *, call: ast.Call | None=None) -> dict[str, LazyParamInfo]:
     from ..emit.call_emit import call_param_names, class_info_from_receiver
+    from ..passes.strict_style import _resolve_inherited_method
     names = call_param_names(tr, func, call=call)
     if not names:
         return {}
@@ -125,7 +126,13 @@ def callee_lazy_params_for_call(tr: 'Translator', func: ast.expr, *, call: ast.C
             method_def = tr._method_def_for_call(info, method, call)
             if method_def is None:
                 return {}
-            sig = info.method_sig_for(method_def)
+            owner = info
+            inherited = _resolve_inherited_method(tr, info, method)
+            if inherited is not None and method_def is inherited[1]:
+                owner = inherited[0]
+            sig = owner.method_sig_for(method_def)
+            if sig is None:
+                sig = info.method_sig_for(method_def)
             if sig is None:
                 return {}
             for n in names:

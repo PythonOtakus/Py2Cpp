@@ -391,21 +391,33 @@ def new_ctor_arg_exprs_from_init(call: ast.Call, init: ast.FunctionDef) -> list[
 def _default_ctor_args(tr: Translator, class_name: str) -> list[ast.expr]:
   """``new(kw=…)`` 脱糖为 ``Cls(占位实参…)`` + 字段赋值；占位与 ``__init__`` 形参默认对齐。"""
   info = tr.classes.get(class_name)
-  if info is None or not info.inits:
+  if info is None:
     return []
-  init = info.inits[0]
-  raw = init.args.args
-  params = raw[1:] if raw and raw[0].arg == "self" else list(raw)
-  defaults = list(init.args.defaults)
-  n_def = len(defaults)
-  n_pad = len(params) - n_def
-  out: list[ast.expr] = []
-  for i, param in enumerate(params):
-    if i >= n_pad:
-      out.append(_sanitize_ctor_arg_expr(defaults[i - n_pad], param.annotation))
-    else:
-      out.append(_placeholder_expr_for_annotation(param.annotation))
-  return out
+  if info.inits:
+    init = info.inits[0]
+    raw = init.args.args
+    params = raw[1:] if raw and raw[0].arg == "self" else list(raw)
+    defaults = list(init.args.defaults)
+    n_def = len(defaults)
+    n_pad = len(params) - n_def
+    out: list[ast.expr] = []
+    for i, param in enumerate(params):
+      if i >= n_pad:
+        out.append(_sanitize_ctor_arg_expr(defaults[i - n_pad], param.annotation))
+      else:
+        out.append(_placeholder_expr_for_annotation(param.annotation))
+    return out
+  if info.is_dataclass:
+    from .dataclass_expand import _collect_dataclass_fields
+
+    specs = _collect_dataclass_fields(info.node)
+    out = []
+    for spec in specs:
+      if spec.optional or spec.body_init is not None:
+        continue
+      out.append(_placeholder_expr_for_annotation(spec.annotation))
+    return out
+  return []
 
 
 def _bind_opts_var(
@@ -455,6 +467,38 @@ def _build_instance_ctor_field_keywords(
     raw = info.inits[0].args.args
     params = raw[1:] if raw and raw[0].arg == "self" else list(raw)
     init_params = {p.arg for p in params}
+  if info is not None and info.inits and keywords:
+    init_kws = [kw for kw in keywords if kw.arg in init_params]
+    post_kws = [kw for kw in keywords if kw.arg not in init_params]
+    if init_kws and all(kw.arg in fields for kw in post_kws):
+      fake = ast.Call(
+        func=ctor,
+        args=[copy.deepcopy(a) for a in positional],
+        keywords=[copy.deepcopy(kw) for kw in init_kws],
+      )
+      ctor_args = new_ctor_arg_exprs_from_init(fake, info.inits[0])
+      stmts: list[ast.stmt] = [
+        _bind_opts_var(
+          var,
+          ast.Call(func=ctor, args=ctor_args, keywords=[]),
+          annotation=var_annotation,
+        ),
+      ]
+      target = ast.Name(id=var, ctx=ast.Load())
+      for kw in post_kws:
+        if kw.arg in final:
+          from ..translation_error import raise_translation_error
+
+          raise_translation_error(
+            tr,
+            at or kw,
+            f"{class_name}.{kw.arg}: frozen/final 字段不可在构造后赋值；"
+            "请将该关键字并入构造或勿与可写字段混用同一 Cls(kw=…) 调用",
+          )
+        stmts.append(_assign_member(target, kw.arg, kw.value))
+      for s in stmts:
+        ast.fix_missing_locations(s)
+      return stmts, ast.Name(id=var, ctx=ast.Load())
   if info is not None and info.inits and kw_names and kw_names <= init_params:
     fake = ast.Call(
       func=ctor,
@@ -475,6 +519,8 @@ def _build_instance_ctor_field_keywords(
   ctor_args = [copy.deepcopy(a) for a in positional]
   if not ctor_args:
     ctor_args = _default_ctor_args(tr, class_name)
+  if var_annotation is None and info is not None and info.is_dataclass and not ctor_args:
+    var_annotation = ast.Name(id="Self" if use_self else class_name)
   if var_annotation is not None:
     init_value: ast.expr = ast.Call(
       func=ast.Name(id="new", ctx=ast.Load()),

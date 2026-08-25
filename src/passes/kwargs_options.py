@@ -286,6 +286,30 @@ def _build_options_from_keywords(
     tr=tr, at=at or (keywords[0] if keywords else None),
   )
   var = _fresh_opts_var()
+  info = (
+    tr._class_info_for_ref(class_name) or tr.classes.get(class_name)
+    if tr is not None else None
+  )
+  dataclass_opts = getattr(info, "dataclass_options", None) if info is not None else None
+  is_frozen_dataclass = bool(getattr(dataclass_opts, "frozen", False))
+  if info is not None and (info.final_fields or is_frozen_dataclass):
+    values = {kw.arg: copy.deepcopy(kw.value) for kw in keywords if kw.arg is not None}
+    args: list[ast.expr] = []
+    for field in info.fields:
+      value = values.get(field)
+      if value is None:
+        default = info.field_defaults.get(field)
+        if default is None:
+          break
+        value = copy.deepcopy(default)
+      args.append(value)
+    else:
+      stmt = ast.Assign(
+        targets=[ast.Name(id=var, ctx=ast.Store())],
+        value=ast.Call(func=ast.Name(id=class_name, ctx=ast.Load()), args=args),
+      )
+      ast.fix_missing_locations(stmt)
+      return [stmt], ast.Name(id=var, ctx=ast.Load())
   stmts: list[ast.stmt] = [
     ast.Assign(
       targets=[ast.Name(id=var, ctx=ast.Store())],
@@ -459,15 +483,46 @@ def _build_instance_ctor_field_keywords(
   )
   ctor = ast.Name(id="Self" if use_self else class_name, ctx=ast.Load())
   var = _fresh_opts_var()
-  info = tr.classes.get(class_name)
+  info = tr._class_info_for_ref(class_name) or tr.classes.get(class_name)
   kw_names = {kw.arg for kw in keywords if kw.arg is not None}
   final = frozenset(info.final_fields) if info is not None else frozenset()
+  dataclass_opts = getattr(info, "dataclass_options", None) if info is not None else None
+  is_frozen_dataclass = bool(getattr(dataclass_opts, "frozen", False))
+  if info is not None and (final or is_frozen_dataclass) and keywords:
+    values: dict[str, ast.expr] = {}
+    for field, value in zip(info.fields, positional):
+      values[field] = copy.deepcopy(value)
+    for kw in keywords:
+      if kw.arg is not None:
+        values[kw.arg] = copy.deepcopy(kw.value)
+    args: list[ast.expr] = []
+    for field in info.fields:
+      value = values.get(field)
+      if value is None:
+        default = info.field_defaults.get(field)
+        if default is None:
+          break
+        value = copy.deepcopy(default)
+      args.append(value)
+    else:
+      stmt = _bind_opts_var(
+        var,
+        ast.Call(func=ctor, args=args, keywords=[]),
+        annotation=var_annotation,
+      )
+      ast.fix_missing_locations(stmt)
+      return [stmt], ast.Name(id=var, ctx=ast.Load())
+  init = (
+    info.inits[0]
+    if info is not None and info.inits
+    else info.methods.get("__init__") if info is not None else None
+  )
   init_params: set[str] = set()
-  if info is not None and info.inits:
-    raw = info.inits[0].args.args
+  if init is not None:
+    raw = init.args.args
     params = raw[1:] if raw and raw[0].arg == "self" else list(raw)
     init_params = {p.arg for p in params}
-  if info is not None and info.inits and keywords:
+  if init is not None and keywords:
     init_kws = [kw for kw in keywords if kw.arg in init_params]
     post_kws = [kw for kw in keywords if kw.arg not in init_params]
     if init_kws and all(kw.arg in fields for kw in post_kws):
@@ -476,7 +531,7 @@ def _build_instance_ctor_field_keywords(
         args=[copy.deepcopy(a) for a in positional],
         keywords=[copy.deepcopy(kw) for kw in init_kws],
       )
-      ctor_args = new_ctor_arg_exprs_from_init(fake, info.inits[0])
+      ctor_args = new_ctor_arg_exprs_from_init(fake, init)
       stmts: list[ast.stmt] = [
         _bind_opts_var(
           var,
@@ -499,13 +554,13 @@ def _build_instance_ctor_field_keywords(
       for s in stmts:
         ast.fix_missing_locations(s)
       return stmts, ast.Name(id=var, ctx=ast.Load())
-  if info is not None and info.inits and kw_names and kw_names <= init_params:
+  if init is not None and kw_names and kw_names <= init_params:
     fake = ast.Call(
       func=ctor,
       args=[copy.deepcopy(a) for a in positional],
       keywords=[copy.deepcopy(kw) for kw in keywords],
     )
-    ctor_args = new_ctor_arg_exprs_from_init(fake, info.inits[0])
+    ctor_args = new_ctor_arg_exprs_from_init(fake, init)
     stmts: list[ast.stmt] = [
       _bind_opts_var(
         var,

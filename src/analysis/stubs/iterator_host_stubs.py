@@ -81,10 +81,14 @@ def iterator_owner_host_py_name(class_name: str) -> str | None:
     return "ECSComponentTable"
   sn = pascal_to_snake_iter_name(class_name)
   if sn.endswith("_reverse_iterator"):
-    return _stem_to_host(sn[: -len("_reverse_iterator")])
-  if sn.endswith("_iterator"):
-    return _stem_to_host(sn[: -len("_iterator")])
-  return None
+    host = _stem_to_host(sn[: -len("_reverse_iterator")])
+  elif sn.endswith("_iterator"):
+    host = _stem_to_host(sn[: -len("_iterator")])
+  else:
+    return None
+  if host == "chunk_deque":
+    return "ChunkDeque"
+  return host
 
 
 def _dq_owner_host_classes() -> frozenset[str]:

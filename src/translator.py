@@ -2137,7 +2137,7 @@ class Translator(ast.NodeVisitor):
 
     def _receiver_method_return_cpp_type(self, info: ClassInfo, method: str, receiver: ast.expr | None=None, call_args: list[ast.expr] | None=None) -> str | None:
         """实例方法返回 C++ 类型（含仅 ``@overload`` 声明的方法）。"""
-        from .analysis.ir import cpp_template_base_and_args, specialize_cpp_template_placeholders
+        from .analysis.ir import cpp_stack_array_elem_type_any, cpp_template_base_and_args, specialize_cpp_template_placeholders
         from .analysis.variadic_template import parse_function_type_params
         sig = info.method_sigs.get(method)
         ret = self._sig_return_storage(sig) if sig is not None else None
@@ -2150,6 +2150,13 @@ class Translator(ast.NodeVisitor):
         recv_cpp = strip_cpp_ref(self._infer_expr_cpp_type(receiver) or '')
         if not recv_cpp:
             return ret
+
+        # 栈数组的长度可为类常量表达式，无法总以普通类模板参数列表解析；
+        # Element 仍应由接收者的第一个模板实参决定。
+        stack_elem = cpp_stack_array_elem_type_any(recv_cpp)
+        if stack_elem is not None:
+            import re
+            ret = re.sub(r'\bElement\b', stack_elem, ret)
 
         def _default_cpp(param: str) -> str | None:
             dv = info.type_param_defaults.get(param)
@@ -3050,7 +3057,8 @@ class Translator(ast.NodeVisitor):
         ci = info if info is not None else self.class_info
         if ci is None:
             return fallback
-        return field_storage_cpp(ci, field, fallback=fallback, classes=self.classes)
+        cpp = field_storage_cpp(ci, field, fallback=fallback, classes=self.classes)
+        return self._rewrite_current_class_type_params(cpp)
 
     def _field_type_node(self, field: str, *, info: ClassInfo | None=None):
         from .analysis.type_emit import field_type_node
@@ -3076,7 +3084,8 @@ class Translator(ast.NodeVisitor):
 
     def _scope_storage(self, name: str, *, fallback: str = '') -> str:
         from .analysis.type_emit import lookup_scope_storage_cpp
-        return lookup_scope_storage_cpp(self, name, fallback=fallback)
+        cpp = lookup_scope_storage_cpp(self, name, fallback=fallback)
+        return self._rewrite_current_class_type_params(cpp)
 
     def _scope_type_node(self, name: str):
         from .analysis.type_emit import lookup_scope_type_node
@@ -3751,12 +3760,20 @@ class Translator(ast.NodeVisitor):
         """类外成员定义 / 基类列表等：模板实参与 ``T::`` 依赖名须用 ``_T``。"""
         if not info.type_params:
             return cpp_type
+        import re
         out = cpp_type
         for p in sorted(info.type_params, key=len, reverse=True):
             unders = cpp_type_param_template_name(p)
-            for old, new in ((f'<{p}>', f'<{unders}>'), (f'<{p},', f'<{unders},'), (f', {p}>', f', {unders}>'), (f', {p},', f', {unders},'), (f'{p}::', f'{unders}::')):
-                out = out.replace(old, new)
+            # 类外成员定义只有 ``_T`` 这一模板形参可见。排除 ``Qual::T``，
+            # 后者是类内 ``using T = _T`` 别名的限定访问，不应改写别名名。
+            out = re.sub(rf'(?<!:)\b{re.escape(p)}\b', unders, out)
         return out
+
+    def _rewrite_current_class_type_params(self, cpp_type: str) -> str:
+        """类模板 ``.inl`` 方法体中的源类型参数改为 C++ 模板形参。"""
+        if self.in_header or self.class_info is None or not self.class_info.is_template():
+            return cpp_type
+        return self._rewrite_template_args_to_cpp_params(cpp_type, self.class_info)
 
     def _typename_member_alias_params(self, params: str, info: ClassInfo) -> str:
         if not params:
@@ -3890,7 +3907,8 @@ class Translator(ast.NodeVisitor):
                     args = self._parse_type(sl, type_params)
                 return f'{val}<{args}>'
         self_class = self._self_type_class.template_cpp_type() if self._self_type_class else None
-        return self.type_parser.parse_type(node, type_params, self_class=self_class, typevar_tuple_names=self._active_typevar_tuple_names())
+        cpp = self.type_parser.parse_type(node, type_params, self_class=self_class, typevar_tuple_names=self._active_typevar_tuple_names())
+        return self._rewrite_current_class_type_params(cpp)
 
     def _emit_ecs_query_ctor_inner(self, call: ast.Call) -> str:
         if len(call.args) != 2:
@@ -4516,7 +4534,8 @@ class Translator(ast.NodeVisitor):
                     dec.update(getattr(fsig.func_ft, 'decorator_constraints', {}))
         assert self.type_parser is not None
         cpp = self.type_parser.parse_storage_type(node, type_params, decorator_constraints=dec or None, self_class=self.class_info.template_cpp_type() if self.class_info else None)
-        return ClassInfo.apply_refcount_storage_cpp_type(cpp, self.classes)
+        cpp = ClassInfo.apply_refcount_storage_cpp_type(cpp, self.classes)
+        return self._rewrite_current_class_type_params(cpp)
 
     @staticmethod
     def _is_new_call(expr: ast.expr | None) -> bool:
@@ -5263,8 +5282,19 @@ class Translator(ast.NodeVisitor):
                     return
                 vtype = self._lookup_var_type(name) or None
                 if self._try_declare(name):
+                    rhs_type = self._infer_expr_cpp_type(rhs_node) if rhs_node else None
+                    if (
+                        name.startswith('__py2cpp_vs_')
+                        and
+                        type_hint
+                        and type_hint.isidentifier()
+                        and type_hint not in self._active_type_params()
+                        and rhs_type
+                        and rhs_type != type_hint
+                    ):
+                        type_hint = rhs_type
                     if not vtype:
-                        vtype = type_hint or (self._constructor_type(rhs_node) if rhs_node else None) or (self._infer_expr_cpp_type(rhs_node) if rhs_node else None) or self._type_from_rhs(value) or (cpp_ident('int') if self._looks_like_int_rhs(value) else 'auto')
+                        vtype = type_hint or (self._constructor_type(rhs_node) if rhs_node else None) or rhs_type or self._type_from_rhs(value) or (cpp_ident('int') if self._looks_like_int_rhs(value) else 'auto')
                     if '-> decltype' in vtype:
                         vtype = 'auto'
                     if self.scope:
@@ -6496,7 +6526,8 @@ class Translator(ast.NodeVisitor):
                 if fsig is not None:
                     ret = self._sig_return_full(fsig)
                     if ret:
-                        return ret
+                        from .emit.call_emit import specialize_typed_storage_from_rhs_call
+                        return specialize_typed_storage_from_rhs_call(self, ret, node)
                 ctor = resolve_ctor_cpp_type(self, name)
                 if ctor:
                     return ctor

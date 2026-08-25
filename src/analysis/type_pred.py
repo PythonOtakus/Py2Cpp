@@ -262,14 +262,14 @@ def array_elem_type(ty: TypeLike, *, classes: dict[str, ClassInfo] | None = None
     from .ir import (
       cpp_array_elem_type,
       cpp_span_elem_type,
-      parse_cpp_stack_array_type,
+      cpp_stack_array_elem_type_any,
       strip_cpp_type_qualifiers,
     )
 
     t = strip_cpp_type_qualifiers(ty)
-    parsed = parse_cpp_stack_array_type(t)
-    if parsed is not None:
-      return parsed[0]
+    stack_elem = cpp_stack_array_elem_type_any(t)
+    if stack_elem is not None:
+      return stack_elem
     span = cpp_span_elem_type(t)
     if span is not None:
       return span

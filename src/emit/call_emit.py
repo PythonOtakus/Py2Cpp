@@ -230,20 +230,27 @@ def call_param_names(tr: Translator, func: ast.expr, *, call: ast.Call | None=No
     return None
 
 def _infer_func_template_subst_from_call(tr: 'Translator', func_def: ast.FunctionDef, func_ft: 'FuncTypeParams', call: ast.Call) -> dict[str, str]:
-    """``astar[Node](nav, start, goal)`` 调用处用 ``start``/``goal`` 推断 ``Node`` 具体 C++ 类型。"""
-    import ast
-    from ..analysis.ir import strip_cpp_ref
+    """Infer each function type parameter from matching call arguments."""
     if not func_ft.template_names:
         return {}
     subst: dict[str, str] = {}
     params = [a for a in func_def.args.args if a.arg not in ('self', 'cls')]
-    for param, arg_node in zip(params, call.args):
-        ann = param.annotation
-        if not isinstance(ann, ast.Name) or ann.id not in func_ft.template_names:
-            continue
-        concrete = strip_cpp_ref(tr._infer_expr_cpp_type(arg_node) or '')
-        if concrete and concrete not in func_ft.template_names:
-            subst.setdefault(ann.id, concrete)
+    for type_param in func_ft.template_names:
+        indices = {
+            index for index, param in enumerate(params)
+            if _annotation_contains_type_param(param.annotation, type_param)
+        }
+        for index in _ordered_template_deduction_indices(func_def, indices, type_param):
+            if index >= len(call.args):
+                continue
+            param = params[index]
+            arg_node = call.args[index]
+            concrete = _template_type_param_from_argument(
+                tr, param.annotation, arg_node, type_param,
+            )
+            if concrete:
+                subst.setdefault(type_param, concrete)
+                break
     return subst
 
 def _specialize_func_param_cpp_types(tr: 'Translator', func_def: ast.FunctionDef, param_types: list[str], call: ast.Call | None) -> list[str]:
@@ -1252,8 +1259,61 @@ def _iterable_element_cpp_type(tr: 'Translator', arg: ast.expr) -> str | None:
             return elem
     return None
 
+def _annotation_contains_type_param(ann: ast.expr | None, type_param: str) -> bool:
+    return ann is not None and any(
+        isinstance(node, ast.Name) and node.id == type_param
+        for node in ast.walk(ann)
+    )
+
+def _unify_template_type_param(pattern: str, concrete: str, type_param: str) -> str | None:
+    """Extract a type parameter from structurally matching template types."""
+    from ..analysis.ir import cpp_template_base_and_args, strip_cpp_ref
+    pattern = strip_cpp_ref(pattern)
+    concrete = strip_cpp_ref(concrete)
+    if pattern == type_param:
+        return concrete
+    pattern_parts = cpp_template_base_and_args(pattern)
+    concrete_parts = cpp_template_base_and_args(concrete)
+    if pattern_parts is None or concrete_parts is None:
+        return None
+    pattern_base, pattern_args = pattern_parts
+    concrete_base, concrete_args = concrete_parts
+    if pattern_base != concrete_base or len(pattern_args) != len(concrete_args):
+        return None
+    for pattern_arg, concrete_arg in zip(pattern_args, concrete_args):
+        found = _unify_template_type_param(pattern_arg, concrete_arg, type_param)
+        if found is not None:
+            return found
+    return None
+
+def _template_type_param_from_argument(
+    tr: 'Translator', ann: ast.expr | None, arg: ast.expr, type_param: str,
+) -> str | None:
+    if ann is None or not _annotation_contains_type_param(ann, type_param):
+        return None
+    from ..analysis.ir import strip_cpp_ref
+    concrete = strip_cpp_ref(tr._infer_expr_cpp_type(arg) or '')
+    if not concrete or concrete == type_param:
+        return None
+    if isinstance(ann, ast.Name) and ann.id == type_param:
+        return concrete
+    pattern = strip_cpp_ref(tr._parse_type(ann, tr._active_type_params() | {type_param}))
+    return _unify_template_type_param(pattern, concrete, type_param)
+
+def _ordered_template_deduction_indices(
+    func_def: ast.FunctionDef, indices: set[int], type_param: str,
+) -> list[int]:
+    first_default = len(func_def.args.args) - len(func_def.args.defaults)
+    groups: tuple[list[int], list[int], list[int], list[int]] = ([], [], [], [])
+    for idx in sorted(indices):
+        ann = func_def.args.args[idx].annotation
+        direct = isinstance(ann, ast.Name) and ann.id == type_param
+        optional = idx >= first_default
+        groups[(2 if optional else 0) + (0 if direct else 1)].append(idx)
+    return [idx for group in groups for idx in group]
+
 def _template_deduction_param_indices(func_def: ast.FunctionDef, func_ft: 'FuncTypeParams') -> set[int]:
-    """形参注解为同名 ``TypeVar`` 时仅用于 C++ 模板推导，不传实参。"""
+    """Parameters containing a type parameter participate in C++ deduction."""
     from ..analysis.variadic_template import parse_function_type_params
     header_regular, _, _ = parse_function_type_params(func_def)
     tnames = set(header_regular) or set(func_ft.template_names)
@@ -1262,10 +1322,7 @@ def _template_deduction_param_indices(func_def: ast.FunctionDef, func_ft: 'FuncT
     out: set[int] = set()
     for i, arg in enumerate(func_def.args.args):
         ann = arg.annotation
-        if isinstance(ann, ast.Name) and ann.id in tnames:
-            out.add(i)
-            continue
-        if isinstance(ann, ast.Subscript) and isinstance(ann.slice, ast.Name) and ann.slice.id in tnames:
+        if any(_annotation_contains_type_param(ann, tname) for tname in tnames):
             out.add(i)
     return out
 
@@ -1280,16 +1337,18 @@ def _module_function_template_angle(tr: 'Translator', func_def: ast.FunctionDef,
     tname = header_regular[0]
     deduction = _template_deduction_param_indices(func_def, func_ft)
     if deduction:
-        for idx in sorted(deduction):
+        for idx in _ordered_template_deduction_indices(func_def, deduction, tname):
             if idx >= len(node.args):
                 continue
             arg = node.args[idx]
             coro_t = _concrete_coroutine_cpp_type(tr, arg)
             if coro_t:
                 return f'<{coro_t}>'
-            arg_t = strip_cpp_ref(tr._infer_expr_cpp_type(arg) or '')
-            if arg_t and arg_t != tname:
-                return f'<{elem}>' if (elem := _iterable_element_cpp_type(tr, arg)) else f'<{arg_t}>'
+            found = _template_type_param_from_argument(
+                tr, func_def.args.args[idx].annotation, arg, tname,
+            )
+            if found:
+                return f'<{found}>'
     elif node.args:
         elem = _iterable_element_cpp_type(tr, node.args[0])
         if elem:
@@ -1306,12 +1365,7 @@ def specialize_typed_storage_from_rhs_call(tr: 'Translator', storage_type: str, 
     if value is None or not isinstance(value, ast.Call):
         return storage_type
     from ..analysis.ir import FuncTypeParams, cpp_template_base_and_args, strip_cpp_ref
-    parsed = cpp_template_base_and_args(strip_cpp_ref(storage_type))
-    if parsed is None:
-        return storage_type
-    base, old_args = parsed
-    if len(old_args) != 1:
-        return storage_type
+    from ..analysis.variadic_template import parse_function_type_params
     func_def = None
     if isinstance(value.func, ast.Name):
         binding = tr._effective_import_bindings().get(value.func.id)
@@ -1327,7 +1381,16 @@ def specialize_typed_storage_from_rhs_call(tr: 'Translator', storage_type: str, 
     angle = _module_function_template_angle(tr, func_def, func_ft, value, explicit_type_arg=None)
     if not angle:
         return storage_type
+    header_regular, _, _ = parse_function_type_params(func_def)
     inner = angle.strip('<>')
+    if len(header_regular) == 1 and storage_type == header_regular[0]:
+        return inner
+    parsed = cpp_template_base_and_args(strip_cpp_ref(storage_type))
+    if parsed is None:
+        return storage_type
+    base, old_args = parsed
+    if len(old_args) != 1:
+        return storage_type
     if inner and inner != old_args[0]:
         return f'{base}<{inner}>'
     return storage_type
@@ -1359,6 +1422,19 @@ def _emit_module_function_call(tr: 'Translator', mp: str, func_def: ast.Function
         from ..analysis.type_emit import function_param_cpp_types
         param_types = function_param_cpp_types(fsig, func_def)
         param_types = _specialize_func_param_cpp_types(tr, func_def, param_types, node)
+        # A literal argument may not carry an independent expression type. In
+        # that case the template angle above can still resolve to the declared
+        # default, and its result must also provide the argument context.
+        from ..analysis.variadic_template import parse_function_type_params
+        header_regular, _, _ = parse_function_type_params(func_def)
+        if len(header_regular) == 1 and angle:
+            import re
+            name = header_regular[0]
+            concrete = angle[1:-1]
+            param_types = [
+                re.sub(f"\\b{re.escape(name)}\\b", concrete, pt)
+                for pt in param_types
+            ]
         if native_deduction_only:
             param_types = [t for i, t in enumerate(param_types) if i not in native_deduction_only]
     if param_types:

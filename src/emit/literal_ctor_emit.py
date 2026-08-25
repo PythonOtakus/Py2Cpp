@@ -175,7 +175,14 @@ def _emit_new_class_ctor_expr(tr: 'Translator', cpp_type: str, call: ast.Call) -
             pt = _init_param_cpp_type(tr, info, init, emit_params[i])
         parts.append(_emit_new_ctor_arg_expr(tr, expr, pt))
     args = ', '.join(parts)
-    cpp_emit = tr._rewrite_template_args_to_cpp_params(cpp_type, info) if info.is_template() else cpp_type
+    # A rewritten class template parameter is only valid while emitting that
+    # class's own out-of-line member. Other generic constructors retain the
+    # active function type parameter unchanged.
+    cpp_emit = (
+        tr._rewrite_template_args_to_cpp_params(cpp_type, info)
+        if info.is_template() and tr._is_self_class_cpp_type(cpp_type)
+        else cpp_type
+    )
     return f'{cpp_emit}({args})' if args else f'{cpp_emit}()'
 
 def _emit_new_ctor_expr(tr: 'Translator', cpp_type: str, call: ast.Call) -> str:
@@ -201,6 +208,10 @@ def _emit_new_ctor_expr(tr: 'Translator', cpp_type: str, call: ast.Call) -> str:
     boxing_ctor = _emit_boxing_new_ctor(tr, cpp_type, call)
     if boxing_ctor is not None:
         return boxing_ctor
+    bare = cpp_type.strip()
+    if bare.startswith(f"{cpp_ident('ECSComponentTableQuery')}<") and call.args:
+        inner = tr._emit_ecs_query_ctor_inner(call)
+        return f'{bare}({inner})'
     class_ctor = _emit_new_class_ctor_expr(tr, cpp_type, call)
     if class_ctor is not None:
         return class_ctor
@@ -257,10 +268,6 @@ def _emit_new_ctor_expr(tr: 'Translator', cpp_type: str, call: ast.Call) -> str:
         if call.args:
             raise NotImplementedError('T[:N] 栈定长数组不支持 new(大小)；请写 ``buf: T[:N]`` 或 ``new()``')
         return f'{cpp_type}()'
-    bare = cpp_type.strip()
-    if bare.startswith(f"{cpp_ident('ECSComponentTableQuery')}<") and call.args:
-        inner = tr._emit_ecs_query_ctor_inner(call)
-        return f'{bare}({inner})'
     if cpp_type.strip() == cpp_ident('str'):
         inner = ', '.join((tr._cpp_str_ctor_arg(a) for a in call.args))
         return f"{cpp_ident('str')}({inner})" if inner else f"{cpp_ident('str')}()"

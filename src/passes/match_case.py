@@ -1411,6 +1411,34 @@ def emit_union_match(tr: Translator, node: ast.Match, info: ClassInfo, subject_c
 def emit_match(tr: Translator, node: ast.Match) -> None:
     subject_cpp = tr._infer_expr_cpp_type(node.subject) or cpp_ident('int')
     union_info = union_info_from_subject_cpp(tr, subject_cpp)
+    if union_info is None:
+        variant_names: set[str] = set()
+        for case in node.cases:
+            patterns = (
+                case.pattern.patterns
+                if isinstance(case.pattern, ast.MatchOr)
+                else [case.pattern]
+            )
+            for pattern in patterns:
+                if (
+                    isinstance(pattern, ast.MatchClass)
+                    and isinstance(pattern.cls, ast.Attribute)
+                    and isinstance(pattern.cls.value, ast.Name)
+                    and pattern.cls.value.id == 'new'
+                ):
+                    variant_names.add(pattern.cls.attr)
+        if variant_names:
+            candidates = [
+                info for info in tr.classes.values()
+                if info.is_union and variant_names <= {v.name for v in info.union_variants}
+            ]
+            if len(candidates) == 1:
+                union_info = candidates[0]
+                subject_cpp = (
+                    union_info.template_cpp_type()
+                    if union_info.is_template()
+                    else union_info.cpp_name()
+                )
     if union_info is None and is_optional_type(subject_cpp):
         union_info = tr.classes.get('Optional')
     optional_match = union_info is not None and is_optional_union_info(union_info)

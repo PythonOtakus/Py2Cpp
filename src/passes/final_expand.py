@@ -49,6 +49,7 @@ def _extract_final_inits_for_init(
   class_defaults: dict[str, ast.expr],
 ) -> None:
   local = copy.deepcopy(class_defaults)
+  local_values: dict[str, ast.expr] = {}
   new_body: list[ast.stmt] = []
   for stmt in init.body:
     matched: str | None = None
@@ -60,6 +61,10 @@ def _extract_final_inits_for_init(
         expr = val
         break
     if matched is None:
+      if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name) and stmt.value is not None:
+        local_values[stmt.target.id] = copy.deepcopy(stmt.value)
+      elif isinstance(stmt, ast.Assign) and len(stmt.targets) == 1 and isinstance(stmt.targets[0], ast.Name):
+        local_values[stmt.targets[0].id] = copy.deepcopy(stmt.value)
       new_body.append(stmt)
       continue
     if matched in local:
@@ -68,7 +73,13 @@ def _extract_final_inits_for_init(
         stmt,
         f"{info.name}.{matched}: ``@final`` 字段不可重复赋值",
       )
-    local[matched] = copy.deepcopy(expr)
+    class _InlineLocalValues(ast.NodeTransformer):
+      def visit_Name(self, node: ast.Name):
+        if isinstance(node.ctx, ast.Load) and node.id in local_values:
+          return copy.deepcopy(local_values[node.id])
+        return node
+
+    local[matched] = _InlineLocalValues().visit(copy.deepcopy(expr))
   init.body = new_body
   missing = info.final_fields - set(local)
   if missing:

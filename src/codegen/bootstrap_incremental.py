@@ -27,6 +27,7 @@ if TYPE_CHECKING:
   from ..translator import Translator
 
 CACHE_REL = Path("generated") / "runtime" / ".cache" / "analyze_sigs.pkl"
+ANALYSIS_CACHE_SCHEMA = 2
 _DECORATOR_FORCE_FULL = re.compile(r"(?m)^@(mixin|protocol)\b")
 
 
@@ -132,6 +133,7 @@ def plan_bootstrap_incremental(
 
 def _empty_cache(fp: str) -> dict[str, Any]:
   return {
+    "schema": ANALYSIS_CACHE_SCHEMA,
     "translator_fp": fp,
     "modules": {},
     "function_sigs": {},
@@ -152,7 +154,11 @@ def load_analysis_cache(root: Path | None = None) -> dict[str, Any] | None:
       data = pickle.load(fh)
   except (OSError, pickle.PickleError, EOFError, AttributeError):
     return None
-  if not isinstance(data, dict) or "translator_fp" not in data:
+  if (
+    not isinstance(data, dict)
+    or data.get("schema") != ANALYSIS_CACHE_SCHEMA
+    or "translator_fp" not in data
+  ):
     return None
   return data
 
@@ -174,6 +180,11 @@ def snapshot_class_payload(info: ClassInfo) -> dict[str, Any]:
     "field_types": dict(info.field_types),
     "field_type_nodes": dict(info.field_type_nodes),
     "field_annotations": dict(info.field_annotations),
+    "fields": list(info.fields),
+    "field_defaults": dict(info.field_defaults),
+    "final_fields": set(info.final_fields),
+    "is_dataclass": info.is_dataclass,
+    "dataclass_options": info.dataclass_options,
     "owned_fields": dict(info.owned_fields),
     "owned_array_sizes": dict(info.owned_array_sizes),
     "property_sigs": {
@@ -194,6 +205,11 @@ def apply_class_payload(info: ClassInfo, payload: dict[str, Any]) -> None:
   info.field_types = dict(payload["field_types"])
   info.field_type_nodes = dict(payload["field_type_nodes"])
   info.field_annotations = dict(payload["field_annotations"])
+  info.fields = list(payload.get("fields", info.fields))
+  info.field_defaults = dict(payload.get("field_defaults", info.field_defaults))
+  info.final_fields = set(payload.get("final_fields", info.final_fields))
+  info.is_dataclass = bool(payload.get("is_dataclass", info.is_dataclass))
+  info.dataclass_options = payload.get("dataclass_options", info.dataclass_options)
   info.owned_fields = dict(payload["owned_fields"])
   info.owned_array_sizes = dict(payload["owned_array_sizes"])
   for name, sigs in payload.get("property_sigs", {}).items():

@@ -633,15 +633,16 @@ def expand_varstack(method: ast.FunctionDef, host: ClassInfo) -> ast.FunctionDef
       assert public_only is not None
       field_names = _host_iter_field_names(host, public_only=public_only)
       for field_name in field_names:
-        ann = field_ann_ast(host, field_name)
-        stripped = strip_type_annotation_markers(ann)
         new_body.extend(
           _transform_varstack_in_body(
             stmt.body,
             state,
             field_var=field_var,
             field_name=field_name,
-            field_ann=stripped,
+            # Static reflection replaces the field access before codegen, so
+            # expression inference is more accurate than a mixin-carried
+            # field annotation whose type variables may belong to another host.
+            field_ann=None,
             known_fields=known,
           ),
         )

@@ -25,7 +25,7 @@ package.bat
 或仓库根：
 
 ```bat
-pkg-tpl.bat
+pkg-temp.bat
 ```
 
 `package.py` 按 `.vscodeignore` 收集 `out/`、`python/`、`package.json` 等，生成 OPC 格式 `py2cpp-template-0.2.0.vsix`。在 VS Code / CursorType 中选择 **Extensions → … → Install from VSIX…** 安装。

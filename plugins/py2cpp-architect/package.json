@@ -1,0 +1,73 @@
+{
+  "name": "py2cpp-architect",
+  "displayName": "Py2Cpp Architect",
+  "description": "Py2Cpp 大规模重构：UE 式依赖图画布、*.arch.json RefactorPlan、Rename",
+  "version": "0.3.0",
+  "publisher": "PythonOtakus",
+  "author": "PythonOtakus",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0",
+    "node": ">=18"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "workspaceContains:main.py",
+    "onCommand:py2cpp-architect.showModuleGraph",
+    "onCommand:py2cpp-architect.applyRefactorPlan",
+    "onCommand:py2cpp-architect.renameSymbol"
+  ],
+  "main": "./out/extension.js",
+  "private": true,
+  "scripts": {
+    "package": "python package.py",
+    "vscode:prepublish": "node -e \"process.exit(0)\""
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "py2cpp-architect.showModuleGraph",
+        "title": "Py2Cpp Architect: Show Dependency Graph"
+      },
+      {
+        "command": "py2cpp-architect.applyRefactorPlan",
+        "title": "Py2Cpp Architect: Apply Refactor Plan"
+      },
+      {
+        "command": "py2cpp-architect.renameSymbol",
+        "title": "Py2Cpp Architect: Rename Symbol (Preview)"
+      }
+    ],
+    "configuration": {
+      "title": "Py2Cpp Architect",
+      "properties": {
+        "py2cpp-architect.pythonPath": {
+          "type": "string",
+          "default": "python",
+          "description": "运行 apply_refactor_plan.py 的 Python"
+        },
+        "py2cpp-architect.repoRoot": {
+          "type": "string",
+          "default": "",
+          "description": "Py2Cpp 仓库根；留空自动探测"
+        },
+        "py2cpp-architect.generatedDir": {
+          "type": "string",
+          "default": "generated",
+          "description": "生成物根目录（相对 repoRoot）"
+        },
+        "py2cpp-architect.autoValidate": {
+          "type": "string",
+          "enum": [
+            "onApply",
+            "off"
+          ],
+          "default": "onApply",
+          "description": "应用计划后是否自动翻译当前模块"
+        }
+      }
+    }
+  }
+}

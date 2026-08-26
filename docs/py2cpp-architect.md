@@ -1,10 +1,10 @@
 # Py2Cpp Architect（可视化大规模重构）设计方案
 
-> **状态**：**方案已定，未实现**（后续另开落地 PR）。  
+> **状态**：**P0 已落地** + **P1.5 UE 式依赖图画布** + **graph v2（symbols/refs）**；其余 P2 见 §9。  
 > **受众**：译器维护者、`py2cpp-nav` / 重构工具链、标准库大规模 API 演进。  
 > **相关**：[py2cpp-nav.md](./py2cpp-nav.md)（符号跳转与索引）、[selector.md](./selector.md)（路径查询 DSL）、[runtime-libs.md](./runtime-libs.md)（bootstrap 增量）、[编码规范.md](./编码规范.md)、[参考手册 §4 翻译流水线](./参考手册.md#4-翻译流水线)。
 
-本文是 **元信息、语义图、RefactorPlan、可视化重构** 的单一真相源；插件安装与日常使用见 [`plugins/py2cpp-architect/README.md`](../plugins/py2cpp-architect/README.md)（占位，待实现）。
+本文是 **元信息、语义图、RefactorPlan、可视化重构** 的单一真相源；插件安装与日常使用见 [`plugins/py2cpp-architect/README.md`](../plugins/py2cpp-architect/README.md)。
 
 ---
 
@@ -121,7 +121,7 @@ Py2Cpp **已具备一半基础设施**（见 §2）；Architect 补齐 **语义�
 ```text
 generated/.cache/architect/
   graph.json              # 全库语义图（§6）
-  plans/<id>.json         # RefactorPlan 草稿（§5）
+  plans/<id>.arch.json    # RefactorPlan 草稿（§5）
   plans/<id>.preview.diff # 应用前预览
 ```
 
@@ -129,7 +129,9 @@ generated/.cache/architect/
 
 ---
 
-## 5. RefactorPlan（重构计划 JSON）
+## 5. RefactorPlan（`*.arch.json`）
+
+重构计划文件统一使用 **``*.arch.json``** 后缀（侧车默认目录 ``generated/.cache/architect/plans/``）。
 
 ### 5.1 顶层结构
 
@@ -137,8 +139,15 @@ generated/.cache/architect/
 {
   "version": 1,
   "id": "rename-member-score-2026-08-26",
-  "description": "Member.score → points across dataclass + select paths",
-  "created_at": "2026-08-26T15:47:00+08:00",
+  "kind": "architect_refactor",
+  "description": "Member.score → points",
+  "visual": {
+    "view": "symbol",
+    "module": "py2cpp/alg/team",
+    "edges": [
+      { "from": "Member.score", "to": "Member.points", "kind": "rename" }
+    ]
+  },
   "ops": []
 }
 ```
@@ -147,6 +156,8 @@ generated/.cache/architect/
 |------|------|
 | `version` | Plan schema 版本；引擎不支持则拒绝应用 |
 | `id` | 唯一标识，用于日志与 CI |
+| `kind` | 固定 ``architect_refactor``（可选，供 UI 识别） |
+| `visual` | **仅 IDE**：画布视图、待执行连线预览；**不参与 codegen** |
 | `ops` | 有序操作列表；失败时 **整单回滚**（不写盘） |
 
 ### 5.2 操作类型（首版子集）
@@ -226,30 +237,36 @@ generated/.cache/architect/
 CLI 草案：
 
 ```bat
-python scripts/apply_refactor_plan.py plans/rename.json --check
-python scripts/apply_refactor_plan.py plans/rename.json --apply
+python scripts/apply_refactor_plan.py plans/rename.arch.json --check
+python scripts/apply_refactor_plan.py plans/rename.arch.json --apply
 ```
 
 ---
 
 ## 6. 语义图（graph.json）扩展
 
-在 [nav_index](./py2cpp-nav.md) shard 之外，bootstrap 或全量索引 pass 写出聚合图：
+``ARCHITECT_GRAPH_VERSION = 2``。在 [nav_index](./py2cpp-nav.md) shard 之外，bootstrap 或全量索引 pass 写出聚合图：
 
 ```json
 {
-  "version": 1,
+  "version": 2,
+  "planSuffix": ".arch.json",
   "modules": {
     "py2cpp/util/list": {
       "imports": ["py2cpp/core/protocols", "py2cpp/text/str"],
-      "exports": ["list", "PyList"]
+      "exports": ["list", "PyList"],
+      "symbols": [
+        { "kind": "class", "name": "PyList" },
+        { "kind": "field", "name": "items", "owner": "PyList" }
+      ]
     }
   },
   "refs": [
+    { "from": "py2cpp/util/list", "to": "py2cpp/text/str", "kind": "import" },
     {
-      "from": { "module": "test/misc/test_containers.py", "symbol": "ContainersTests.test_append" },
-      "to": { "module": "py2cpp/util/list.py", "symbol": "list.append" },
-      "kind": "call"
+      "from": { "module": "py2cpp/util/list", "symbol": "PyList", "kind": "class" },
+      "to": { "symbol": "Iterable", "kind": "class" },
+      "kind": "inherit"
     }
   ]
 }
@@ -257,9 +274,10 @@ python scripts/apply_refactor_plan.py plans/rename.json --apply
 
 | 边 `kind` | 用途 |
 |-----------|------|
-| `call` / `read` / `write` | Rename 影响分析 |
-| `inherit` / `mixin` | 提取 @mixin 预览 |
-| `select_path` | 字符串字面量引用字段名（静态扫描） |
+| `import` | 模块依赖（Content Browser 主图） |
+| `inherit` / `member_of` / `field_type` | 符号图（类/字段连线） |
+| `select_path` | 字符串字面量 select 路径 |
+| `call` / `read` / `write` | Rename 影响分析（P2） |
 
 **版本**：`ARCHITECT_GRAPH_VERSION`；与 `NAV_INDEX_VERSION` 独立，但 manifest 可互相引用路径。
 
@@ -267,18 +285,33 @@ python scripts/apply_refactor_plan.py plans/rename.json --apply
 
 ## 7. 可视化功能（py2cpp-architect 扩展）
 
-### 7.1 命令（草案）
+参考 **UE Content Browser 依赖图**：节点 + 有向边 + pan/zoom；双击模块进入 **符号图**（类/字段引脚）；字段引脚拖线生成 ``rename_symbol`` 并写入 ``*.arch.json``。
+
+### 7.1 命令
 
 | 命令 | 说明 |
 |------|------|
-| **Py2Cpp Architect: Show Module Graph** | Webview：模块 import 依赖 |
-| **Py2Cpp Architect: Rename Symbol** | 基于 nav + refs 重命名并预览 diff |
-| **Py2Cpp Architect: Find All References** | 符号引用列表（跳转 F12 仍走 nav） |
-| **Py2Cpp Architect: Edit Dataclass Schema** | 表格式编辑 `@dataclass` 字段（生成 rename/add 计划） |
-| **Py2Cpp Architect: Build Select Path** | 点选字段树 → 插入 `receiver.select("…")` 字面量 |
-| **Py2Cpp Architect: Apply Refactor Plan** | 加载 `plans/*.json` 并执行 §5.3 |
+| **Py2Cpp Architect: Show Dependency Graph** | Webview 画布：L1 模块 DAG + L2 符号图；计划栏预览/应用 | ✅ P1.5 |
+| **Py2Cpp Architect: Rename Symbol** | 生成 ``*.arch.json`` 并预览 diff | ✅ P0 |
+| **Py2Cpp Architect: Apply Refactor Plan** | 加载 ``*.arch.json`` 并执行 §5.3 | ✅ P0 |
+| **Py2Cpp Architect: Find All References** | 符号引用列表 | ⏳ P2 |
+| **Py2Cpp Architect: Edit Dataclass Schema** | 表格式编辑字段 | ⏳ P2 |
+| **Py2Cpp Architect: Build Select Path** | 点选字段树 → select 字面量 | ⏳ P2 |
 
-### 7.2 设置（草案）
+### 7.2 画布交互（P1.5）
+
+| 操作 | 行为 |
+|------|------|
+| 拖动画布 | pan |
+| 滚轮 | zoom |
+| 单击模块节点 | 选中 + 检视器 |
+| 双击模块 | 进入符号图 |
+| 字段引脚拖线 | 生成 rename 计划（橙色虚线预览） |
+| 保存 / 预览 / 应用 | 写 ``plans/<id>.arch.json`` → CLI ``--check`` / ``--apply`` |
+
+范围：**焦点 2-hop**（默认）/ **当前域** / **全部模块**（大库慎用）。
+
+### 7.3 设置（草案）
 
 | 键 | 默认 | 说明 |
 |----|------|------|
@@ -287,7 +320,7 @@ python scripts/apply_refactor_plan.py plans/rename.json --apply
 | `py2cpp-architect.pythonPath` | `python` | 运行 `apply_refactor_plan.py` / `main.py` |
 | `py2cpp-architect.autoValidate` | `onApply` | 应用后自动 translate 触达文件 |
 
-### 7.3 与 py2cpp-nav 协作
+### 7.4 与 py2cpp-nav 协作
 
 ```text
 py2cpp-nav          py2cpp-architect
@@ -318,26 +351,26 @@ nav 文档中的「Rename / Find All References / 补全 → 后续可选」**�
 
 ### P0 — 语义图 + 单模块 Rename（MVP）
 
-- [ ] `nav_index` 或 sibling `architect_graph.py` 写出 `generated/.cache/architect/graph.json`（import 边 + 基础 refs）
-- [ ] `scripts/apply_refactor_plan.py`：实现 `rename_symbol`（单模块 field/method/class）
-- [ ] `plugins/py2cpp-architect`：Rename 命令 + diff 预览；复用 nav 的 `translateRunner`
-- [ ] 文档与 `src/tests/test_architect_plan.py`（plan 解析与干跑）
+- [x] `src/codegen/architect_graph.py` 写出 `generated/.cache/architect/graph.json`（import / export）
+- [x] `scripts/apply_refactor_plan.py`：`rename_symbol`（单模块 field/method/class/function）
+- [x] `plugins/py2cpp-architect`：Apply Plan / Rename 命令 + diff 预览
+- [x] `src/tests/test_architect_plan.py`（plan 解析与干跑、graph 写入）
 
-**验收**：对 `test/misc/test_containers.py` 内局部重命名（测试分支）→ translate + `cl` 通过。
+**验收**：单测 `python -m unittest src.tests.test_architect_plan`；触达模块 `build.bat` + exe。
 
 ### P1 — 跨文件与 select 联动
 
-- [ ] `graph.refs` 跨模块引用
-- [ ] `update_select_path`、`rename_symbol.update_select_literals`
+- [x] **Show Dependency Graph** Webview（UE 式画布；模块 DAG + 符号图；``*.arch.json`` 计划栏）
+- [x] `graph.json` v2：`symbols` + `refs`（import / inherit / member_of / field_type / select_path）
+- [ ] `update_select_path`、`rename_symbol.update_select_literals`（跨模块）
 - [ ] Find All References 面板
-- [ ] Dataclass Schema 编辑器（只读 → 生成 plan）
+- [ ] Dataclass Schema 编辑器
 
 ### P2 — 模块图与批量迁移
 
-- [ ] `move_module`、Webview 模块依赖图
+- [ ] `move_module`、画布拖拽模块节点
 - [ ] Select 路径构建器
 - [ ] CI 钩子：`apply_refactor_plan.py --check` 于 PR
-- [ ] 与 `scripts/migrate_*.py` 统一 plan 格式（可选）
 
 ---
 
@@ -372,10 +405,13 @@ nav 文档中的「Rename / Find All References / 补全 → 后续可选」**�
 |------|------|
 | 本方案 | `docs/py2cpp-architect.md` |
 | 插件说明 | `plugins/py2cpp-architect/README.md` |
+| 打包 | `pkg-arch.bat` / `plugins/py2cpp-architect/package.bat` |
 | 导航索引（依赖） | `src/codegen/nav_index.py`、`docs/py2cpp-nav.md` |
 | 路径 DSL | `src/passes/selector_parse.py`、`docs/selector.md` |
 | Codemod 参考 | `scripts/migrate_type_pred.py` 等 |
-| Plan 应用（待建） | `scripts/apply_refactor_plan.py` |
+| Plan 应用 | `scripts/apply_refactor_plan.py` |
+| 计划引擎 | `src/tools/architect_plan.py` |
+| 语义图 | `src/codegen/architect_graph.py` |
 | 语义图缓存 | `generated/.cache/architect/graph.json` |
 | 验收 | `scripts/_bootstrap_runtime.bat`、`build_all.bat`、`run.bat` |
 
@@ -385,4 +421,8 @@ nav 文档中的「Rename / Find All References / 补全 → 后续可选」**�
 
 | 日期 | 说明 |
 |------|------|
-| 2026-08-26 | 初稿：架构、元信息、RefactorPlan、graph 扩展、路线 P0–P2、与 nav/Zeus 分工 |
+| 2026-08-26 | P0：architect_graph、apply_refactor_plan、扩展骨架、单测 |
+| 2026-08-27 | P1：Show Module Graph Webview（`graphStore` + `moduleGraphPanel`） |
+| 2026-08-27 | P1.1：星形三列布局，去掉邻居互连线团；侧栏搜索筛选 |
+| 2026-08-27 | P1.2：概览改 HTML 芯片布局 |
+| 2026-08-27 | **P1.5**：UE 式依赖图画布；graph v2；``*.arch.json`` 计划格式 |

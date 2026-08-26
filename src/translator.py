@@ -554,6 +554,9 @@ class Translator(ast.NodeVisitor):
         from .codegen.nav_index import write_nav_index
         write_nav_index(translator)
         prof.mark('nav_index')
+        from .codegen.architect_graph import write_architect_graph
+        write_architect_graph(translator)
+        prof.mark('architect_graph')
         prof.report()
         return (header_path, source_path)
 

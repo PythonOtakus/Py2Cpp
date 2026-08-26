@@ -5,6 +5,15 @@
 
 相关文档：[参考手册 §8 装饰器](./参考手册.md#8-装饰器与翻译期展开)、[编码规范 §4 / §6.2](./编码规范.md)、译器索引实现 `src/codegen/nav_index.py`。
 
+**VS Code / Cursor 扩展打包**（仓库根，无需 npm）：
+
+| 扩展 | 打包脚本 | 插件目录 `package.bat` |
+|------|----------|------------------------|
+| py2cpp-nav | `pkg-nav.bat` | `plugins/py2cpp-nav/package.bat` |
+| py2cpp-pyml | `pkg-pyml.bat` | `plugins/py2cpp-pyml/package.bat` |
+| py2cpp-template | `pkg-temp.bat` | `plugins/py2cpp-template/package.bat` |
+| py2cpp-architect | `pkg-arch.bat` | `plugins/py2cpp-architect/package.bat` |
+
 ---
 
 ## 1. 目标与非目标

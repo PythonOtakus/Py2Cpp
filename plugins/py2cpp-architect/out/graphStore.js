@@ -126,5 +126,112 @@ class GraphStore {
     toJson() {
         return this.graph ?? { version: 0, modules: {}, refs: [] };
     }
+    endpointModule(ep) {
+        if (typeof ep === "string") {
+            return ep;
+        }
+        if (ep && typeof ep === "object") {
+            return ep.module ?? "";
+        }
+        return "";
+    }
+    formatEndpoint(ep) {
+        if (typeof ep === "string") {
+            return ep;
+        }
+        if (!ep || typeof ep !== "object") {
+            return "";
+        }
+        if (typeof ep.path === "string") {
+            return ep.path;
+        }
+        const parts = [];
+        if (ep.owner) {
+            parts.push(ep.owner);
+        }
+        if (ep.symbol) {
+            parts.push(ep.symbol);
+        }
+        return parts.join(".") || ep.module || "";
+    }
+    endpointsEqual(a, b) {
+        if (typeof a === "string" || typeof b === "string") {
+            return typeof a === "string" && typeof b === "string" && a === b;
+        }
+        if (!a || !b || typeof a !== "object" || typeof b !== "object") {
+            return false;
+        }
+        return (a.module ?? "") === (b.module ?? "")
+            && (a.symbol ?? "") === (b.symbol ?? "")
+            && (a.kind ?? "") === (b.kind ?? "")
+            && (a.owner ?? "") === (b.owner ?? "");
+    }
+    refsForSymbol(moduleId, symbol, kind, owner) {
+        const target = { module: moduleId, symbol, kind };
+        if (owner) {
+            target.owner = owner;
+        }
+        const hits = [];
+        const seen = new Set();
+        const push = (item) => {
+            const key = `${item.moduleId}|${item.kind}|${item.detail}|${item.direction}`;
+            if (seen.has(key)) {
+                return;
+            }
+            seen.add(key);
+            hits.push(item);
+        };
+        for (const ref of this.refs()) {
+            const refKind = ref.kind ?? "ref";
+            if (this.endpointsEqual(ref.from, target)) {
+                push({
+                    direction: "out",
+                    kind: refKind,
+                    moduleId: this.endpointModule(ref.to),
+                    detail: this.formatEndpoint(ref.to),
+                    ref,
+                });
+            }
+            if (this.endpointsEqual(ref.to, target)) {
+                push({
+                    direction: "in",
+                    kind: refKind,
+                    moduleId: this.endpointModule(ref.from),
+                    detail: this.formatEndpoint(ref.from),
+                    ref,
+                });
+            }
+        }
+        if (kind === "field") {
+            for (const ref of this.refs()) {
+                if (ref.kind !== "select_path") {
+                    continue;
+                }
+                const path = ref.to?.path ?? "";
+                if (!path.includes(`.${symbol}`) && !path.includes(`{.${symbol}`)) {
+                    continue;
+                }
+                push({
+                    direction: "use",
+                    kind: "select_path",
+                    moduleId: ref.from?.module ?? "",
+                    detail: path,
+                    ref,
+                });
+            }
+        }
+        return hits;
+    }
+    symbolsMatchingName(moduleId, name) {
+        return this.moduleSymbols(moduleId).filter((s) => s.name === name);
+    }
+    dataclassClasses(moduleId) {
+        return this.moduleSymbols(moduleId).filter((s) => s.kind === "class" && s.role === "dataclass");
+    }
+    classFields(moduleId, className) {
+        return this.moduleSymbols(moduleId)
+            .filter((s) => s.kind === "field" && s.owner === className)
+            .sort((a, b) => a.name.localeCompare(b.name));
+    }
 }
 exports.GraphStore = GraphStore;

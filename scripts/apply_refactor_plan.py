@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""应用 RefactorPlan（``*.arch.json``；P0：``rename_symbol``）。"""
+"""应用 RefactorPlan（``*.arch.json``；``rename_symbol`` / ``update_select_path``）。"""
 from __future__ import annotations
 
 import argparse

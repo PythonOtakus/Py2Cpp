@@ -131,6 +131,77 @@ class Box:
       data = load_plan(path)
       self.assertEqual(data["version"], 1)
 
+  def test_update_select_path(self):
+    with tempfile.TemporaryDirectory() as tmp:
+      root = Path(tmp)
+      pkg = root / "test_pkg"
+      pkg.mkdir()
+      mod = pkg / "use_sel.py"
+      mod.write_text(
+        '''\
+class Team:
+  members: list
+
+  def hits(self) -> list:
+    return self.members.select('.members{.score > 0}')
+''',
+        encoding="utf-8",
+      )
+      plan = {
+        "version": 1,
+        "id": "t5",
+        "ops": [{
+          "op": "update_select_path",
+          "module": "test_pkg/use_sel",
+          "from": ".members{.score > 0}",
+          "to": ".members{.points > 0}",
+        }],
+      }
+      result = apply_plan(plan, root, write=True)
+      self.assertTrue(result.ok, result.errors)
+      out = mod.read_text(encoding="utf-8")
+      self.assertIn(".members{.points > 0}", out)
+      self.assertNotIn(".score", out)
+
+  def test_rename_field_updates_select_literals(self):
+    with tempfile.TemporaryDirectory() as tmp:
+      root = Path(tmp)
+      py2cpp = root / "py2cpp"
+      test_dir = root / "test"
+      py2cpp.mkdir()
+      test_dir.mkdir()
+      owner = py2cpp / "widget.py"
+      user = test_dir / "use_widget.py"
+      owner.write_text(_RENAME_FIELD_SRC, encoding="utf-8")
+      user.write_text(
+        '''\
+from py2cpp.widget import Widget
+
+def pick(w: Widget) -> int:
+  rows = w.select('.score')
+  return rows[0]
+''',
+        encoding="utf-8",
+      )
+      plan = {
+        "version": 1,
+        "id": "t6",
+        "ops": [{
+          "op": "rename_symbol",
+          "kind": "field",
+          "module": "py2cpp/widget",
+          "owner": "Widget",
+          "from": "score",
+          "to": "points",
+          "update_select_literals": True,
+        }],
+      }
+      result = apply_plan(plan, root, write=True)
+      self.assertTrue(result.ok, result.errors)
+      self.assertGreaterEqual(len(result.changes), 2)
+      self.assertIn("points: int", owner.read_text(encoding="utf-8"))
+      self.assertIn(".points", user.read_text(encoding="utf-8"))
+
 
 class ArchitectGraphTests(unittest.TestCase):
   def test_graph_written_on_translate(self):
@@ -159,6 +230,10 @@ class Item:
       self.assertIn("symbols", entry)
       self.assertIn("Item", entry["exports"])
       self.assertTrue(any(s.get("name") == "Item" for s in entry["symbols"]))
+      item_cls = next(s for s in entry["symbols"] if s.get("name") == "Item")
+      self.assertEqual(item_cls.get("role"), "dataclass")
+      item_field = next(s for s in entry["symbols"] if s.get("name") == "value")
+      self.assertEqual(item_field.get("typeAnn"), "int")
       self.assertIsInstance(graph.get("refs"), list)
 
 

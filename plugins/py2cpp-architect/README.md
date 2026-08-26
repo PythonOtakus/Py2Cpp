@@ -8,18 +8,19 @@
 
 命令面板：**Py2Cpp Architect: Show Dependency Graph**
 
-| 区域 | 内容 |
+| 能力 | 说明 |
 |------|------|
-| **画布** | L1 **模块 DAG**（import 有向边，pan/zoom，分层布局） |
-| **符号图** | 双击模块 → 类/字段节点 + inherit / field_type 边 |
-| **检视器** | 选中节点详情；字段可加入 rename 计划 |
-| **计划栏** | 待执行 `ops`；橙色虚线 = 可视化预览边 |
+| **模块 DAG** | import 边、pan/zoom、双击进符号图 |
+| **字段 rename** | 类内字段：右橙引脚 → 左蓝引脚拖线；右键「重命名」 |
+| **计划编辑** | 底部可折叠浮层：加载/保存 `*.arch.json`、单项移除、清空、预览 diff、应用 |
+| **select 路径** | 字段右键「追加路径」→ 工具栏芯片 + 复制 |
+| **Dataclass Schema** | 类节点右键或独立命令 |
 
 **重构文件**：``generated/.cache/architect/plans/<id>.arch.json``（含 `visual.edges` + `ops`）。
 
 符号图中：**从字段橙色引脚拖线**到另一引脚或空白处 → 生成 `rename_symbol` → 预览 diff → 应用。
 
-**范围**：工具栏可选「焦点 2-hop / 当前域 / 全部模块」。
+**范围**：顶部图标工具栏；符号图默认只显示类/字段（FFI 模块函数需点「≡」开启）；右键节点操作，无侧栏。
 
 **前置**：须已有 `generated/.cache/architect/graph.json`（bootstrap 或翻译任意 `.py` 后生成，**v2** 含 `symbols`/`refs`）。
 
@@ -54,6 +55,8 @@ pkg-arch.bat
 | **Py2Cpp Architect: Show Dependency Graph** | UE 式依赖图画布 |
 | **Py2Cpp Architect: Apply Refactor Plan** | 加载 `*.arch.json` → diff → 应用 |
 | **Py2Cpp Architect: Rename Symbol (Preview)** | 生成 `*.arch.json` 并预览 |
+| **Py2Cpp Architect: Find All References** | 基于 graph + 文本搜索列出引用 |
+| **Py2Cpp Architect: Edit Dataclass Schema** | 表格式编辑 @dataclass 字段并重命名 |
 
 ## CLI
 

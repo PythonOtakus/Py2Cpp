@@ -2,7 +2,7 @@
   "name": "py2cpp-architect",
   "displayName": "Py2Cpp Architect",
   "description": "Py2Cpp 大规模重构：UE 式依赖图画布、*.arch.json RefactorPlan、Rename",
-  "version": "0.3.0",
+  "version": "0.3.5",
   "publisher": "PythonOtakus",
   "author": "PythonOtakus",
   "license": "MIT",
@@ -17,7 +17,9 @@
     "workspaceContains:main.py",
     "onCommand:py2cpp-architect.showModuleGraph",
     "onCommand:py2cpp-architect.applyRefactorPlan",
-    "onCommand:py2cpp-architect.renameSymbol"
+    "onCommand:py2cpp-architect.renameSymbol",
+    "onCommand:py2cpp-architect.findAllReferences",
+    "onCommand:py2cpp-architect.editDataclassSchema"
   ],
   "main": "./out/extension.js",
   "private": true,
@@ -38,6 +40,14 @@
       {
         "command": "py2cpp-architect.renameSymbol",
         "title": "Py2Cpp Architect: Rename Symbol (Preview)"
+      },
+      {
+        "command": "py2cpp-architect.findAllReferences",
+        "title": "Py2Cpp Architect: Find All References"
+      },
+      {
+        "command": "py2cpp-architect.editDataclassSchema",
+        "title": "Py2Cpp Architect: Edit Dataclass Schema"
       }
     ],
     "configuration": {

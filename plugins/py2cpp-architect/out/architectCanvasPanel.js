@@ -5,6 +5,7 @@ const vscode = require("vscode");
 const fs = require("fs");
 const path = require("path");
 const planRunner_1 = require("./planRunner");
+const dataclassSchemaPanel_1 = require("./dataclassSchemaPanel");
 const util_1 = require("./util");
 const ARCH_PLAN_SUFFIX = ".arch.json";
 function shortName(moduleId) {
@@ -64,6 +65,33 @@ class ArchitectCanvasPanel {
         }
         if (msg.type === "applyPlan" && msg.plan) {
             await this.applyPlan(msg.plan);
+        }
+        if (msg.type === "editSchema" && msg.moduleId && msg.className) {
+            dataclassSchemaPanel_1.DataclassSchemaPanel.createOrShow(this.repoRoot, this.store, msg.moduleId, msg.className);
+        }
+        if (msg.type === "requestLoadPlan") {
+            await this.loadPlanIntoCanvas();
+        }
+        if (msg.type === "copyText" && typeof msg.text === "string") {
+            await vscode.env.clipboard.writeText(msg.text);
+            void vscode.window.showInformationMessage("已复制到剪贴板。");
+        }
+    }
+    async loadPlanIntoCanvas() {
+        const pick = await vscode.window.showOpenDialog({
+            canSelectMany: false,
+            filters: { "Architect Plan": ["arch.json"], JSON: ["json"] },
+            title: "加载 RefactorPlan 到画布",
+        });
+        if (!pick || pick.length === 0) {
+            return;
+        }
+        try {
+            const plan = JSON.parse(fs.readFileSync(pick[0].fsPath, "utf8"));
+            this.panel.webview.postMessage({ type: "loadPlan", plan });
+        }
+        catch (err) {
+            void vscode.window.showErrorMessage(String(err?.message ?? err));
         }
     }
     async openModule(moduleId) {
@@ -147,62 +175,146 @@ class ArchitectCanvasPanel {
 <meta charset="UTF-8" />
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';" />
 <style>
-  :root { --node-w: 200px; --node-h: 52px; --field-h: 36px; }
-  html, body { height: 100%; margin: 0; overflow: hidden; font-family: var(--vscode-font-family); font-size: 14px; color: var(--vscode-foreground); }
-  .shell { display: grid; grid-template-rows: auto 1fr auto; grid-template-columns: 1fr 300px; height: 100%; }
-  .toolbar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--vscode-panel-border); background: var(--vscode-editor-background); }
-  .toolbar button, .toolbar select, .toolbar input { font-size: 13px; padding: 5px 10px; background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border: 1px solid var(--vscode-panel-border); border-radius: 4px; cursor: pointer; }
-  .toolbar button:hover { background: var(--vscode-button-secondaryHoverBackground); }
-  .toolbar .primary { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
-  .toolbar .primary:hover { background: var(--vscode-button-hoverBackground); }
-  .toolbar .sep { width: 1px; height: 22px; background: var(--vscode-panel-border); margin: 0 4px; }
-  .canvas-wrap { position: relative; overflow: hidden; background: var(--vscode-editor-background); min-height: 0; }
+  :root {
+    --node-w: 200px; --class-hdr: 22px; --field-row: 24px;
+    --tb-h: 38px;
+    --accent: var(--vscode-textLink-foreground);
+    --node-bg: var(--vscode-editorWidget-background, var(--vscode-editor-inactiveSelectionBackground));
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; overflow: hidden; font-family: var(--vscode-font-family); font-size: 13px; color: var(--vscode-foreground); }
+  .shell { display: grid; grid-template-rows: var(--tb-h) 1fr; grid-template-columns: 1fr; height: 100%; }
+  .toolbar {
+    grid-column: 1 / -1; display: flex; align-items: center; gap: 2px; padding: 0 6px;
+    border-bottom: 1px solid var(--vscode-panel-border);
+    background: var(--vscode-titleBar-activeBackground, var(--vscode-editor-background));
+    min-height: var(--tb-h); user-select: none;
+  }
+  .tb-group { display: flex; align-items: center; gap: 2px; }
+  .tb-sep { width: 1px; height: 20px; background: var(--vscode-panel-border); margin: 0 6px; flex-shrink: 0; }
+  .icon-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; padding: 0; border: none; border-radius: 4px;
+    background: transparent; color: var(--vscode-foreground); cursor: pointer;
+  }
+  .icon-btn:hover { background: var(--vscode-toolbar-hoverBackground, rgba(127,127,127,.25)); }
+  .icon-btn.active { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
+  .icon-btn.primary { color: var(--vscode-textLink-activeForeground, var(--vscode-textLink-foreground)); }
+  .icon-btn svg { width: 16px; height: 16px; fill: currentColor; pointer-events: none; }
+  .tb-select {
+    height: 26px; font-size: 11px; padding: 0 6px; border-radius: 4px;
+    background: var(--vscode-input-background); color: var(--vscode-input-foreground);
+    border: 1px solid var(--vscode-input-border, transparent);
+  }
+  .tb-search {
+    width: 108px; height: 26px; font-size: 11px; padding: 0 8px; border-radius: 4px;
+    background: var(--vscode-input-background); color: var(--vscode-input-foreground);
+    border: 1px solid var(--vscode-input-border, transparent);
+  }
+  .tb-spacer { flex: 1; min-width: 8px; }
+  .select-chip {
+    font-family: var(--vscode-editor-font-family, monospace); font-size: 11px;
+    max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    padding: 2px 8px; border-radius: 4px;
+    background: var(--vscode-badge-background); color: var(--vscode-badge-foreground);
+  }
+  .canvas-wrap {
+    position: relative; overflow: hidden; min-height: 0;
+    background-color: var(--vscode-editor-background);
+    background-image: radial-gradient(circle, color-mix(in srgb, var(--vscode-foreground) 12%, transparent) 1px, transparent 1px);
+    background-size: 18px 18px;
+  }
   #viewport { width: 100%; height: 100%; display: block; cursor: grab; }
   #viewport.dragging { cursor: grabbing; }
-  .inspector { border-left: 1px solid var(--vscode-panel-border); padding: 10px 12px; overflow: auto; min-height: 0; background: var(--vscode-sideBar-background); }
-  .inspector h3 { margin: 0 0 8px; font-size: 14px; }
-  .inspector .path { font-size: 12px; color: var(--vscode-descriptionForeground); word-break: break-all; margin-bottom: 10px; }
-  .inspector label { display: block; font-size: 12px; margin: 8px 0 4px; color: var(--vscode-descriptionForeground); }
-  .inspector input, .inspector select { width: 100%; box-sizing: border-box; padding: 6px 8px; font-size: 13px; background: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border); border-radius: 4px; }
-  .plan-bar { grid-column: 1 / -1; border-top: 1px solid var(--vscode-panel-border); padding: 8px 12px; max-height: 140px; overflow: auto; background: var(--vscode-editor-background); font-size: 13px; }
-  .plan-bar h4 { margin: 0 0 6px; font-size: 13px; }
-  .plan-op { padding: 4px 0; border-bottom: 1px solid var(--vscode-panel-border); }
-  .muted { color: var(--vscode-descriptionForeground); }
-  .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); }
-  .stat { font-size: 12px; color: var(--vscode-descriptionForeground); }
+  .canvas-status {
+    position: absolute; left: 10px; top: 8px; z-index: 2; pointer-events: none;
+    font-size: 11px; color: var(--vscode-descriptionForeground);
+    padding: 4px 10px; border-radius: 4px;
+    background: color-mix(in srgb, var(--vscode-editor-background) 85%, transparent);
+    border: 1px solid var(--vscode-panel-border);
+  }
+  .plan-drawer {
+    position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 3;
+    max-height: 28px; overflow: hidden; transition: max-height .2s ease;
+    border-radius: 6px; border: 1px solid var(--vscode-panel-border);
+    background: color-mix(in srgb, var(--vscode-editor-background) 92%, transparent);
+    backdrop-filter: blur(4px);
+  }
+  .plan-drawer.expanded { max-height: 132px; }
+  .plan-drawer.has-ops:not(.expanded) { border-color: var(--vscode-charts-orange); }
+  .plan-header {
+    display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px;
+    cursor: pointer; font-size: 11px; color: var(--vscode-descriptionForeground);
+  }
+  .plan-header .badge {
+    padding: 1px 6px; border-radius: 8px; font-size: 10px;
+    background: var(--vscode-badge-background); color: var(--vscode-badge-foreground);
+  }
+  .plan-header .chev { margin-left: auto; opacity: .7; }
+  .plan-body { padding: 0 8px 8px; max-height: 96px; overflow: auto; font-size: 11px; }
+  .plan-op { padding: 3px 0; border-bottom: 1px solid var(--vscode-panel-border); display: flex; align-items: center; gap: 6px; }
+  .plan-op .rm { margin-left: auto; cursor: pointer; color: var(--vscode-errorForeground); border: none; background: transparent; font-size: 13px; line-height: 1; }
+  .ctx-menu {
+    position: fixed; z-index: 100; min-width: 168px; display: none;
+    background: var(--vscode-menu-background); color: var(--vscode-menu-foreground);
+    border: 1px solid var(--vscode-menu-border); border-radius: 4px;
+    padding: 4px 0; box-shadow: 0 4px 14px rgba(0,0,0,.35);
+  }
+  .ctx-menu.show { display: block; }
+  .ctx-item { padding: 5px 14px; font-size: 12px; cursor: pointer; white-space: nowrap; }
+  .ctx-item:hover { background: var(--vscode-list-hoverBackground); }
+  .ctx-item.disabled { opacity: .45; pointer-events: none; }
+  .ctx-sep { height: 1px; margin: 4px 0; background: var(--vscode-menu-separatorBackground); }
+  .muted { color: var(--vscode-descriptionForeground); font-size: 11px; line-height: 1.45; }
+  .ghost .field-row { opacity: .75; }
+  .pin-hot { filter: brightness(1.35); }
 </style>
 </head>
 <body>
-<div class="shell">
+<div class="shell" id="shell">
   <div class="toolbar">
-    <button id="btnBack" title="返回模块图">← 模块</button>
-    <button id="btnDrill" title="展开符号图">符号图 ↗</button>
-    <span class="sep"></span>
-    <button id="btnZoomIn">＋</button>
-    <button id="btnZoomOut">－</button>
-    <button id="btnFit">适配</button>
-    <span class="sep"></span>
-    <select id="scope">
-      <option value="focus">焦点 2-hop</option>
-      <option value="domain">当前域</option>
-      <option value="all">全部模块</option>
+    <div class="tb-group">
+      <button class="icon-btn" id="btnBack" title="模块图 (Module DAG)"><svg viewBox="0 0 16 16"><path d="M2 3h5v5H2V3zm7 0h5v5H9V3zM2 9h5v5H2V9zm7 0h5v5H9V9z"/></svg></button>
+      <button class="icon-btn" id="btnDrill" title="符号图 (Symbol Graph)"><svg viewBox="0 0 16 16"><circle cx="4" cy="8" r="2.5"/><circle cx="12" cy="4" r="2"/><circle cx="12" cy="12" r="2"/><path d="M6.2 7.2L10 5M6.2 8.8L10 11" stroke="currentColor" fill="none" stroke-width="1.2"/></svg></button>
+    </div>
+    <span class="tb-sep"></span>
+    <div class="tb-group">
+      <button class="icon-btn" id="btnZoomIn" title="放大"><svg viewBox="0 0 16 16"><path d="M7 3v10M3 7h8" stroke="currentColor" stroke-width="1.5" fill="none"/></svg></button>
+      <button class="icon-btn" id="btnZoomOut" title="缩小"><svg viewBox="0 0 16 16"><path d="M3 7h8" stroke="currentColor" stroke-width="1.5" fill="none"/></svg></button>
+      <button class="icon-btn" id="btnFit" title="适配视图"><svg viewBox="0 0 16 16"><path d="M2 5V2h3M11 2h3v3M14 11v3h-3M5 14H2v-3" stroke="currentColor" fill="none" stroke-width="1.3"/></svg></button>
+    </div>
+    <span class="tb-sep"></span>
+    <select class="tb-select" id="scope" title="显示范围">
+      <option value="focus">2-hop</option>
+      <option value="domain">域</option>
+      <option value="all">全部</option>
     </select>
-    <input id="filter" type="search" placeholder="筛选节点…" style="min-width:160px" />
-    <span class="stat" id="stat"></span>
-    <span style="flex:1"></span>
-    <button id="btnPreview" class="primary">预览 diff</button>
-    <button id="btnSave">保存 .arch.json</button>
-    <button id="btnApply" class="primary">应用计划</button>
+    <input class="tb-search" id="filter" type="search" placeholder="筛选…" title="筛选节点" />
+    <button class="icon-btn" id="btnToggleFns" title="显示模块函数（默认隐藏）"><svg viewBox="0 0 16 16"><path d="M3 4h10M3 8h10M3 12h6" stroke="currentColor" fill="none"/></svg></button>
+    <span class="tb-spacer"></span>
+    <div class="tb-group">
+      <button class="icon-btn" id="btnPreview" title="预览 diff"><svg viewBox="0 0 16 16"><path d="M2 8s2.5-4 6-4 6 4 6 4-2.5 4-6 4-6-4-6-4z" stroke="currentColor" fill="none"/><circle cx="8" cy="8" r="2"/></svg></button>
+      <button class="icon-btn" id="btnLoad" title="加载计划"><svg viewBox="0 0 16 16"><path d="M3 2h7l3 3v9H3V2z" stroke="currentColor" fill="none"/><path d="M10 2v3h3M6 9l2 2 3-3" stroke="currentColor" fill="none"/></svg></button>
+      <button class="icon-btn" id="btnSave" title="保存 .arch.json"><svg viewBox="0 0 16 16"><path d="M3 2h8l3 3v9H3V2z" stroke="currentColor" fill="none"/><rect x="5" y="2" width="5" height="4" stroke="currentColor" fill="none"/><rect x="5" y="10" width="6" height="4" fill="currentColor" opacity=".5"/></svg></button>
+      <button class="icon-btn primary" id="btnApply" title="应用计划"><svg viewBox="0 0 16 16"><path d="M3 8.5l3.5 3.5L13 4" stroke="currentColor" fill="none" stroke-width="1.8"/></svg></button>
+    </div>
+    <span class="tb-sep"></span>
+    <span class="select-chip" id="selectPath" title="select 路径">—</span>
+    <button class="icon-btn" id="btnCopySelect" title="复制 select 路径"><svg viewBox="0 0 16 16"><rect x="5" y="5" width="8" height="9" rx="1" stroke="currentColor" fill="none"/><path d="M3 11V3h8" stroke="currentColor" fill="none"/></svg></button>
+    <button class="icon-btn" id="btnClearSelect" title="清空路径"><svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.4"/></svg></button>
   </div>
   <div class="canvas-wrap">
     <svg id="viewport"></svg>
-  </div>
-  <div class="inspector" id="inspector">
-    <div class="muted">选择节点查看详情；符号图中拖线连接两个字段引脚可加入重命名计划。</div>
-  </div>
-  <div class="plan-bar">
-    <h4>重构计划 <span class="badge" id="planCount">0</span></h4>
-    <div id="planList" class="muted">暂无操作。在符号图中将字段引脚拖到目标引脚，或在检视器中添加 rename。</div>
+    <div class="canvas-status" id="stat"></div>
+    <div id="ctxMenu" class="ctx-menu"></div>
+    <div class="plan-drawer" id="planDrawer">
+      <div class="plan-header" id="planToggle">
+        <span>重构计划</span><span class="badge" id="planCount">0</span>
+        <button class="icon-btn" id="btnClearPlan" title="清空计划" style="width:22px;height:22px;margin-left:4px"><svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.3"/></svg></button>
+        <span class="chev" id="planChev">▲</span>
+      </div>
+      <div class="plan-body" id="planList"><span class="muted">从字段右侧引脚拖到左侧引脚以 rename；右键节点打开菜单</span></div>
+    </div>
   </div>
 </div>
 <script>
@@ -210,7 +322,10 @@ class ArchitectCanvasPanel {
   const vscode = acquireVsCodeApi();
   const DATA = ${payload};
   const NS = "http://www.w3.org/2000/svg";
-  const NODE_W = 200, NODE_H = 52, FIELD_H = 34, GAP_X = 80, GAP_Y = 24;
+  const NODE_W = 200, NODE_H = 48, GAP_X = 100, GAP_Y = 28;
+  const CLASS_HDR = 22, FIELD_ROW = 24, CLASS_PAD = 6, CLASS_GAP = 40, FN_H = 26, HDR_H = 18;
+  let showFunctions = false;
+  let symbolLayout = null;
 
   let view = DATA.state.view || "module";
   let focus = DATA.state.focus || "";
@@ -221,6 +336,22 @@ class ArchitectCanvasPanel {
   let dragPin = null;
   let dragLine = null;
   let draft = { version: 1, id: "draft-" + Date.now(), kind: "architect_refactor", visual: { view: "module", edges: [] }, ops: [] };
+  let selectPathParts = [];
+
+  window.addEventListener("message", (event) => {
+    const msg = event.data;
+    if (!msg || msg.type !== "loadPlan" || !msg.plan) return;
+    draft = msg.plan;
+    if (!draft.visual) draft.visual = { view: "module", edges: [] };
+    if (draft.visual.module) {
+      focus = draft.visual.module;
+      view = draft.visual.view === "symbol" ? "symbol" : "module";
+    }
+    fitPending = true;
+    if (draft.ops.length) expandPlanDrawer();
+    renderPlanBar();
+    render();
+  });
 
   const modules = DATA.graph.modules || {};
   const allRefs = DATA.graph.refs || [];
@@ -277,25 +408,61 @@ class ArchitectCanvasPanel {
     const o = ep.owner ? ep.owner + "." : "";
     return (ep.module || "") + ":" + o + ep.symbol;
   }
-  function symbolNodes(modId) {
+  function classBoxHeight(fieldCount) { return CLASS_HDR + CLASS_PAD + fieldCount * FIELD_ROW + CLASS_PAD; }
+  function fieldKey(owner, name) { return owner + "." + name; }
+
+  function buildSymbolLayout(modId) {
     const syms = (modules[modId] && modules[modId].symbols) || [];
-    const nodes = [];
-    const classes = syms.filter(s => s.kind === "class");
-    for (const cls of classes) {
-      nodes.push({ id: symKey({ module: modId, symbol: cls.name, kind: "class" }), module: modId, kind: "class", name: cls.name, owner: null, w: NODE_W, h: NODE_H });
-      const fields = syms.filter(s => s.kind === "field" && s.owner === cls.name);
-      fields.forEach((f, i) => {
-        nodes.push({
-          id: symKey({ module: modId, owner: cls.name, symbol: f.name, kind: "field" }),
-          module: modId, kind: "field", name: f.name, owner: cls.name,
-          w: NODE_W - 20, h: FIELD_H, parentClass: cls.name, pinIndex: i
+    const classBoxes = [];
+    const fnNodes = [];
+    const fieldPins = new Map();
+    const classByName = new Map();
+    let yTop = 0;
+
+    for (const cls of syms.filter(s => s.kind === "class")) {
+      const fields = syms.filter(s => s.kind === "field" && s.owner === cls.name).map(f => ({
+        name: f.name, typeAnn: f.typeAnn || "", ghost: false
+      }));
+      for (const op of draft.ops) {
+        if (op.op !== "rename_symbol" || op.kind !== "field" || op.module !== modId || op.owner !== cls.name) continue;
+        if (!fields.some(f => f.name === op.to)) fields.push({ name: op.to, typeAnn: "", ghost: true });
+      }
+      const h = classBoxHeight(fields.length);
+      const box = {
+        id: symKey({ module: modId, symbol: cls.name, kind: "class" }),
+        module: modId, name: cls.name, role: cls.role || "", fields,
+        x: 0, y: yTop, w: NODE_W, h
+      };
+      classBoxes.push(box);
+      classByName.set(cls.name, box);
+      fields.forEach((f, fi) => {
+        const rowY = yTop + CLASS_HDR + CLASS_PAD + fi * FIELD_ROW + FIELD_ROW / 2;
+        fieldPins.set(fieldKey(cls.name, f.name), {
+          inX: 0, inY: rowY, outX: NODE_W, outY: rowY,
+          module: modId, owner: cls.name, field: f.name
+        });
+      });
+      yTop += h + CLASS_GAP;
+    }
+
+    if (showFunctions) {
+      const fns = syms.filter(s => s.kind === "function");
+      if (fns.length) yTop += 12;
+      fns.forEach((fn, i) => {
+        fnNodes.push({
+          id: symKey({ module: modId, symbol: fn.name, kind: "function" }),
+          module: modId, name: fn.name, kind: "function",
+          x: 0, y: yTop + i * (FN_H + 8), w: NODE_W, h: FN_H
         });
       });
     }
-    for (const fn of syms.filter(s => s.kind === "function")) {
-      nodes.push({ id: symKey({ module: modId, symbol: fn.name, kind: "function" }), module: modId, kind: "function", name: fn.name, owner: null, w: NODE_W, h: FIELD_H });
-    }
-    return nodes;
+    return { classBoxes, fnNodes, fieldPins, classByName, fnCount: syms.filter(s => s.kind === "function").length };
+  }
+
+  function isFieldPlanned(owner, name) {
+    return draft.ops.some((op) =>
+      op.op === "rename_symbol" && op.kind === "field" && op.owner === owner
+      && (op.from === name || op.to === name));
   }
   function symbolEdges(modId) {
     return allRefs.filter(r => {
@@ -305,6 +472,32 @@ class ArchitectCanvasPanel {
       const tm = typeof t === "object" ? t.module : null;
       return fm === modId || tm === modId;
     });
+  }
+  function refAnchor(ep, layout, side) {
+    if (!ep || typeof ep !== "object") return null;
+    if (ep.kind === "field" && ep.owner) {
+      const pin = layout.fieldPins.get(fieldKey(ep.owner, ep.symbol));
+      if (!pin) return null;
+      return side === "in" ? { x: pin.inX, y: pin.inY } : { x: pin.outX, y: pin.outY };
+    }
+    if (ep.kind === "class") {
+      const box = layout.classByName.get(ep.symbol);
+      if (!box) return null;
+      return side === "in"
+        ? { x: box.x, y: box.y + box.h / 2 }
+        : { x: box.x + box.w, y: box.y + box.h / 2 };
+    }
+    return null;
+  }
+  function smoothEdge(x1, y1, x2, y2) {
+    const dx = Math.abs(x2 - x1);
+    const dy = Math.abs(y2 - y1);
+    if (dx > dy * 1.2) {
+      const c = Math.max(48, dx * 0.42);
+      return "M" + x1 + "," + y1 + " C" + (x1 + c) + "," + y1 + " " + (x2 - c) + "," + y2 + " " + x2 + "," + y2;
+    }
+    const c = Math.max(36, dy * 0.38);
+    return "M" + x1 + "," + y1 + " C" + x1 + "," + (y1 + c) + " " + x2 + "," + (y2 - c) + " " + x2 + "," + y2;
   }
 
   function layeredLayout(ids) {
@@ -344,21 +537,8 @@ class ArchitectCanvasPanel {
   }
 
   function layoutSymbolGraph(modId) {
-    const nodes = symbolNodes(modId);
-    const positions = new Map();
-    const classes = nodes.filter(n => n.kind === "class");
-    classes.forEach((c, i) => {
-      positions.set(c.id, { x: 0, y: i * (NODE_H + 80) });
-      const fields = nodes.filter(n => n.kind === "field" && n.owner === c.name);
-      fields.forEach((f, fi) => {
-        positions.set(f.id, { x: NODE_W + 40, y: i * (NODE_H + 80) + fi * (FIELD_H + 8) });
-      });
-    });
-    const fns = nodes.filter(n => n.kind === "function");
-    fns.forEach((f, i) => {
-      positions.set(f.id, { x: -NODE_W - 40, y: i * (FIELD_H + 12) });
-    });
-    return { nodes, positions };
+    symbolLayout = buildSymbolLayout(modId);
+    return symbolLayout;
   }
 
   const svg = document.getElementById("viewport");
@@ -407,27 +587,45 @@ class ArchitectCanvasPanel {
       if (!p) continue;
       drawModuleNode(id, p.x, p.y, id === focus);
     }
-    drawDraftEdges();
     fitIfNeeded();
     document.getElementById("stat").textContent = "模块 " + ids.length + " · graph v" + DATA.meta.version;
   }
 
   function drawModuleNode(id, x, y, isFocus) {
     const g = el("g", { class: "node", "data-id": id, transform: "translate(" + x + "," + (y - NODE_H/2) + ")" });
-    const rect = el("rect", {
-      width: NODE_W, height: NODE_H, rx: 8,
-      fill: isFocus ? "var(--vscode-button-background)" : "var(--vscode-editor-inactiveSelectionBackground)",
-      stroke: selected === id ? "var(--vscode-focusBorder)" : "var(--vscode-panel-border)",
-      "stroke-width": selected === id ? 2.5 : 1
+    const hdrFill = isFocus ? "var(--vscode-textLink-foreground)" : "var(--vscode-button-secondaryBackground)";
+    const body = el("rect", {
+      y: HDR_H - 1, width: NODE_W, height: NODE_H - HDR_H + 1, rx: 6,
+      fill: "var(--node-bg)",
+      stroke: (selected && selected.kind === "module" && selected.id === id) ? "var(--vscode-focusBorder)" : "var(--vscode-panel-border)",
+      "stroke-width": (selected && selected.kind === "module" && selected.id === id) ? 2 : 1
     });
-    const t1 = el("text", { x: 10, y: 22, fill: isFocus ? "var(--vscode-button-foreground)" : "var(--vscode-foreground)", "font-size": 13, "font-weight": 600 });
-    t1.textContent = shortName(id).slice(0, 24);
-    const t2 = el("text", { x: 10, y: 40, fill: "var(--vscode-descriptionForeground)", "font-size": 10 });
-    t2.textContent = id.length > 32 ? id.slice(0, 30) + "…" : id;
-    g.appendChild(rect);
+    const hdr = el("rect", { width: NODE_W, height: HDR_H, rx: 6, fill: hdrFill });
+    const t1 = el("text", {
+      x: 8, y: 13, fill: isFocus ? "var(--vscode-button-foreground)" : "var(--vscode-foreground)",
+      "font-size": 11, "font-weight": 600
+    });
+    t1.textContent = shortName(id).slice(0, 22);
+    const impN = outgoing(id).length;
+    if (impN) {
+      const badge = el("text", {
+        x: NODE_W - 8, y: 13, "text-anchor": "end",
+        fill: isFocus ? "var(--vscode-button-foreground)" : "var(--vscode-descriptionForeground)", "font-size": 9
+      });
+      badge.textContent = "↓" + impN;
+      g.appendChild(badge);
+    }
+    const t2 = el("text", { x: 8, y: HDR_H + 15, fill: "var(--vscode-descriptionForeground)", "font-size": 9 });
+    t2.textContent = id.length > 30 ? id.slice(0, 28) + "…" : id;
+    g.appendChild(body);
+    g.appendChild(hdr);
     g.appendChild(t1);
     g.appendChild(t2);
     g.onclick = (e) => { e.stopPropagation(); selectModule(id); };
+    g.oncontextmenu = (e) => {
+      e.preventDefault(); e.stopPropagation();
+      showContextMenu(e.clientX, e.clientY, moduleMenuItems(id));
+    };
     g.ondblclick = (e) => { e.stopPropagation(); focus = id; view = "symbol"; render(); };
     gNodes.appendChild(g);
   }
@@ -435,139 +633,284 @@ class ArchitectCanvasPanel {
   function drawSymbolGraph() {
     clearG(gEdges); clearG(gNodes); clearG(gDraft);
     if (!focus) { drawModuleGraph(); return; }
-    const { nodes, positions } = layoutSymbolGraph(focus);
+    const layout = layoutSymbolGraph(focus);
     const edges = symbolEdges(focus);
     for (const r of edges) {
-      const fk = symKey(r.from), tk = symKey(r.to);
-      const p1 = positions.get(fk), p2 = positions.get(tk);
-      if (!p1 || !p2) continue;
+      if (r.kind === "select_path") continue;
+      const a = refAnchor(r.from, layout, "out");
+      const b = refAnchor(r.to, layout, "in");
+      if (!a || !b) continue;
       const color = r.kind === "inherit" ? "var(--vscode-charts-purple)"
         : r.kind === "field_type" ? "var(--vscode-charts-blue)"
         : "var(--vscode-descriptionForeground)";
-      const dash = r.kind === "field_type" ? "4 3" : "";
       const path = el("path", {
-        d: edgePath(p1.x + (nodes.find(n=>n.id===fk)?.w||NODE_W), p1.y, p2.x, p2.y),
-        fill: "none", stroke: color, "stroke-width": 1.2, "stroke-dasharray": dash, opacity: 0.85
+        d: smoothEdge(a.x, a.y, b.x, b.y),
+        fill: "none", stroke: color, "stroke-width": 1.4,
+        "stroke-dasharray": r.kind === "field_type" ? "5 4" : "",
+        opacity: 0.8
       });
       gEdges.appendChild(path);
     }
-    for (const n of nodes) {
-      const p = positions.get(n.id);
-      if (!p) continue;
-      drawSymbolNode(n, p.x, p.y - n.h/2);
+    for (const box of layout.classBoxes) drawClassBox(box);
+    if (showFunctions) {
+      for (const fn of layout.fnNodes) drawFunctionNode(fn);
+      if (layout.fnNodes.length) {
+        const labelY = layout.fnNodes[0].y - 10;
+        const t = el("text", { x: 0, y: labelY, fill: "var(--vscode-descriptionForeground)", "font-size": 10 });
+        t.textContent = "模块函数";
+        gNodes.appendChild(t);
+      }
     }
-    drawDraftEdges();
-    document.getElementById("stat").textContent = "符号图 " + focus + " · " + nodes.length + " 节点";
+    drawDraftEdges(layout);
+    let stat = "符号图 " + focus + " · " + layout.classBoxes.length + " 类";
+    if (layout.fnCount && !showFunctions) stat += " · " + layout.fnCount + " 函数已隐藏";
+    document.getElementById("stat").textContent = stat;
   }
 
-  function edgePath(x1, y1, x2, y2) {
-    const mx = (x1 + x2) / 2;
-    return "M" + x1 + "," + y1 + " C" + mx + "," + y1 + " " + mx + "," + y2 + " " + x2 + "," + y2;
-  }
-
-  function drawSymbolNode(n, x, y) {
-    const sel = selected && selected.id === n.id;
-    const g = el("g", { class: "node", transform: "translate(" + x + "," + y + ")" });
-    const rect = el("rect", {
-      width: n.w, height: n.h, rx: 6,
-      fill: n.kind === "class" ? "var(--vscode-button-secondaryBackground)" : "var(--vscode-editor-inactiveSelectionBackground)",
+  function drawClassBox(box) {
+    const sel = selected && selected.kind === "class" && selected.name === box.name;
+    const g = el("g", { class: "node class-box", transform: "translate(" + box.x + "," + box.y + ")" });
+    const body = el("rect", {
+      width: box.w, height: box.h, rx: 6,
+      fill: "var(--node-bg)",
       stroke: sel ? "var(--vscode-focusBorder)" : "var(--vscode-panel-border)",
-      "stroke-width": sel ? 2.5 : 1
+      "stroke-width": sel ? 2 : 1
     });
-    const label = n.kind === "field" ? (n.owner + "." + n.name) : n.name;
-    const t = el("text", { x: 8, y: n.h/2 + 4, fill: "var(--vscode-foreground)", "font-size": 12 });
-    t.textContent = label.slice(0, 28);
-    g.appendChild(rect);
-    g.appendChild(t);
-    if (n.kind === "field") {
-      const pin = el("circle", { cx: n.w, cy: n.h/2, r: 5, fill: "var(--vscode-charts-orange)", stroke: "#fff", "stroke-width": 1, class: "pin", "data-pin-for": n.id });
-      pin.onmousedown = (e) => {
-        e.stopPropagation();
-        dragPin = { node: n, sx: x + n.w, sy: y + n.h/2 };
-        dragLine = el("line", { x1: dragPin.sx, y1: dragPin.sy, x2: dragPin.sx, y2: dragPin.sy, stroke: "var(--vscode-charts-orange)", "stroke-width": 2, "stroke-dasharray": "5 4" });
-        gDraft.appendChild(dragLine);
-      };
-      g.appendChild(pin);
+    const hdr = el("rect", { width: box.w, height: CLASS_HDR, rx: 6, fill: "var(--vscode-textLink-foreground)" });
+    const title = el("text", { x: 8, y: 15, fill: "var(--vscode-button-foreground)", "font-size": 11, "font-weight": 600 });
+    title.textContent = box.name.slice(0, 26);
+    g.appendChild(body);
+    g.appendChild(hdr);
+    g.appendChild(title);
+    if (box.role === "dataclass") {
+      const tag = el("text", { x: box.w - 6, y: 15, "text-anchor": "end", fill: "var(--vscode-button-foreground)", "font-size": 8 });
+      tag.textContent = "dc";
+      g.appendChild(tag);
     }
-    g.onclick = (e) => { e.stopPropagation(); selectSymbol(n); };
-    g.ondblclick = (e) => { e.stopPropagation(); if (n.kind !== "field") post("openModule", { moduleId: n.module }); };
+    box.fields.forEach((f, fi) => {
+      const rowY = CLASS_HDR + CLASS_PAD + fi * FIELD_ROW;
+      const row = el("g", { class: "field-row" + (f.ghost ? " ghost" : "") });
+      const planned = isFieldPlanned(box.name, f.name);
+      const fsel = selected && selected.kind === "field" && selected.owner === box.name && selected.name === f.name;
+      const rowBg = el("rect", {
+        x: 4, y: rowY, width: box.w - 8, height: FIELD_ROW - 2, rx: 3,
+        fill: f.ghost ? "var(--vscode-inputValidation-warningBackground)" : "transparent",
+        stroke: fsel ? "var(--vscode-focusBorder)" : planned ? "var(--vscode-charts-orange)" : "transparent",
+        "stroke-width": fsel || planned ? 1.5 : 0
+      });
+      const label = el("text", { x: 12, y: rowY + FIELD_ROW / 2 + 3, fill: "var(--vscode-foreground)", "font-size": 10 });
+      label.textContent = f.name.slice(0, 22);
+      const typeT = el("text", { x: box.w - 18, y: rowY + FIELD_ROW / 2 + 3, "text-anchor": "end", fill: "var(--vscode-descriptionForeground)", "font-size": 8 });
+      if (f.typeAnn) typeT.textContent = f.typeAnn.slice(0, 14);
+      const fk = fieldKey(box.name, f.name);
+      const pinIn = el("circle", {
+        cx: 0, cy: rowY + FIELD_ROW / 2, r: 4,
+        fill: "var(--vscode-charts-blue)", stroke: "#fff", "stroke-width": 1,
+        class: "pin pin-in", "data-pin-in": fk
+      });
+      const pinOut = el("circle", {
+        cx: box.w, cy: rowY + FIELD_ROW / 2, r: 4,
+        fill: "var(--vscode-charts-orange)", stroke: "#fff", "stroke-width": 1,
+        class: "pin pin-out", "data-pin-out": fk
+      });
+      pinOut.onmousedown = (e) => startPinDrag(e, box.module, box.name, f.name, box.x + box.w, box.y + rowY + FIELD_ROW / 2);
+      const fieldObj = { kind: "field", module: box.module, owner: box.name, name: f.name, id: symKey({ module: box.module, owner: box.name, symbol: f.name, kind: "field" }) };
+      row.onclick = (e) => { e.stopPropagation(); selectSymbol(fieldObj); };
+      row.oncontextmenu = (e) => {
+        e.preventDefault(); e.stopPropagation();
+        showContextMenu(e.clientX, e.clientY, fieldMenuItems(fieldObj));
+      };
+      row.appendChild(rowBg);
+      row.appendChild(label);
+      if (f.typeAnn) row.appendChild(typeT);
+      row.appendChild(pinIn);
+      row.appendChild(pinOut);
+      g.appendChild(row);
+    });
+    g.onclick = (e) => { e.stopPropagation(); selectSymbol({ kind: "class", module: box.module, name: box.name, role: box.role, id: box.id }); };
+    g.oncontextmenu = (e) => {
+      e.preventDefault(); e.stopPropagation();
+      showContextMenu(e.clientX, e.clientY, classMenuItems(box));
+    };
+    g.ondblclick = (e) => { e.stopPropagation(); post("openModule", { moduleId: box.module }); };
     gNodes.appendChild(g);
   }
 
-  function drawDraftEdges() {
-    clearG(gDraft);
-    for (const e of draft.visual.edges || []) {
-      if (!e.fromPos || !e.toPos) continue;
+  function drawFunctionNode(fn) {
+    const g = el("g", { class: "node fn-node", transform: "translate(" + fn.x + "," + fn.y + ")" });
+    const rect = el("rect", {
+      width: fn.w, height: fn.h, rx: 4,
+      fill: "var(--node-bg)", stroke: "var(--vscode-panel-border)", "stroke-width": 1
+    });
+    const t = el("text", { x: 8, y: fn.h / 2 + 3, fill: "var(--vscode-descriptionForeground)", "font-size": 10 });
+    t.textContent = fn.name.slice(0, 28);
+    g.appendChild(rect);
+    g.appendChild(t);
+    g.oncontextmenu = (e) => {
+      e.preventDefault(); e.stopPropagation();
+      showContextMenu(e.clientX, e.clientY, [
+        { label: "打开源文件", action: () => post("openModule", { moduleId: fn.module }) }
+      ]);
+    };
+    gNodes.appendChild(g);
+  }
+
+  function startPinDrag(e, moduleId, owner, field, sx, sy) {
+    e.stopPropagation();
+    dragPin = { module: moduleId, owner: owner, field: field, sx: sx, sy: sy };
+    dragLine = el("line", { x1: sx, y1: sy, x2: sx, y2: sy, stroke: "var(--vscode-charts-orange)", "stroke-width": 2, "stroke-dasharray": "5 4" });
+    gDraft.appendChild(dragLine);
+    document.querySelectorAll("[data-pin-in]").forEach((pin) => {
+      if (pin.getAttribute("data-pin-in").split(".")[0] === owner) pin.classList.add("pin-hot");
+    });
+  }
+
+  function drawDraftEdges(layout) {
+    if (!layout) return;
+    for (const op of draft.ops) {
+      if (op.op !== "rename_symbol" || op.kind !== "field") continue;
+      const fromPin = layout.fieldPins.get(fieldKey(op.owner, op.from));
+      const toPin = layout.fieldPins.get(fieldKey(op.owner, op.to));
+      if (!fromPin || !toPin) continue;
       const path = el("path", {
-        d: edgePath(e.fromPos.x, e.fromPos.y, e.toPos.x, e.toPos.y),
+        d: smoothEdge(fromPin.outX, fromPin.outY, toPin.inX, toPin.inY),
         fill: "none", stroke: "var(--vscode-charts-orange)", "stroke-width": 2.5, "stroke-dasharray": "6 4"
       });
       gDraft.appendChild(path);
     }
   }
 
+  function hideContextMenu() {
+    const menu = document.getElementById("ctxMenu");
+    if (menu) menu.classList.remove("show");
+  }
+  function showContextMenu(x, y, items) {
+    const menu = document.getElementById("ctxMenu");
+    if (!menu) return;
+    menu.innerHTML = items.map((it, i) => it.sep
+      ? '<div class="ctx-sep"></div>'
+      : '<div class="ctx-item' + (it.disabled ? " disabled" : "") + '" data-i="' + i + '">' + esc(it.label) + '</div>').join("");
+    menu.style.left = Math.min(x, window.innerWidth - 180) + "px";
+    menu.style.top = Math.min(y, window.innerHeight - items.length * 28) + "px";
+    menu.classList.add("show");
+    menu.querySelectorAll(".ctx-item").forEach((el) => {
+      const it = items[Number(el.getAttribute("data-i"))];
+      if (it.disabled) return;
+      el.onclick = () => { hideContextMenu(); it.action(); };
+    });
+  }
+  function moduleMenuItems(id) {
+    return [
+      { label: "进入符号图", action: () => { focus = id; view = "symbol"; render(); } },
+      { label: "打开源文件", action: () => post("openModule", { moduleId: id }) },
+      { sep: true },
+      { label: "imports " + outgoing(id).length + " · used by " + incoming(id).length, disabled: true }
+    ];
+  }
+  function classMenuItems(box) {
+    const items = [
+      { label: "打开源文件", action: () => post("openModule", { moduleId: box.module }) }
+    ];
+    if (box.role === "dataclass") {
+      items.push({ label: "编辑 Dataclass Schema", action: () => post("editSchema", { moduleId: box.module, className: box.name }) });
+    }
+    return items;
+  }
+  function fieldMenuItems(f) {
+    return [
+      { label: "重命名…", action: () => {
+        const to = prompt("重命名字段 " + f.owner + "." + f.name + " 为:");
+        if (to && to !== f.name) addRenameOp(f.module, f.owner, f.name, to);
+      }},
+      { label: "追加到 select 路径", action: () => { selectPathParts.push("." + f.name); updateSelectPathBar(); } },
+      { sep: true },
+      { label: "打开源文件", action: () => post("openModule", { moduleId: f.module }) }
+    ];
+  }
+
   function selectModule(id) {
-    selected = id;
+    selected = { kind: "module", id: id };
     focus = id;
-    renderInspectorModule(id);
     render();
   }
 
   function selectSymbol(n) {
     selected = n;
-    renderInspectorSymbol(n);
     render();
   }
 
-  function renderInspectorModule(id) {
-    const el = document.getElementById("inspector");
-    const imp = outgoing(id);
-    const dep = incoming(id);
-    el.innerHTML = '<h3>' + esc(shortName(id)) + '</h3><div class="path">' + esc(id) + '</div>'
-      + '<div class="stat">imports ' + imp.length + ' · used by ' + dep.length + '</div>'
-      + '<button class="primary" style="margin:8px 0;width:100%" id="inspOpen">打开源文件</button>'
-      + '<button style="margin:4px 0;width:100%" id="inspSym">进入符号图</button>';
-    document.getElementById("inspOpen").onclick = () => post("openModule", { moduleId: id });
-    document.getElementById("inspSym").onclick = () => { view = "symbol"; render(); };
+  function updateSelectPathBar() {
+    const chip = document.getElementById("selectPath");
+    if (!chip) return;
+    const path = selectPathParts.length ? selectPathParts.join("") : "—";
+    chip.textContent = path;
+    chip.title = selectPathParts.length ? path : "在符号图中追加字段到 select 路径";
   }
 
-  function renderInspectorSymbol(n) {
-    const el = document.getElementById("inspector");
-    let html = '<h3>' + esc(n.name) + '</h3><div class="path">' + esc(n.module) + ' · ' + esc(n.kind) + '</div>';
-    if (n.kind === "field") {
-      html += '<label>重命名为</label><input id="renameTo" placeholder="新字段名" />'
-        + '<button class="primary" style="margin-top:8px;width:100%" id="addRename">加入 rename 计划</button>';
-    }
-    html += '<button style="margin-top:8px;width:100%" id="inspOpen">打开源文件</button>';
-    el.innerHTML = html;
-    document.getElementById("inspOpen").onclick = () => post("openModule", { moduleId: n.module });
-    const btn = document.getElementById("addRename");
-    if (btn) btn.onclick = () => {
-      const to = document.getElementById("renameTo").value.trim();
-      if (!to || to === n.name) return;
-      addRenameOp(n.module, n.owner, n.name, to);
-    };
+  let planExpanded = false;
+
+  function removeRenameOp(index) {
+    draft.ops.splice(index, 1);
+    if (draft.visual.edges) draft.visual.edges.splice(index, 1);
+    renderPlanBar();
+    render();
+  }
+
+  function clearPlan() {
+    draft = { version: 1, id: "draft-" + Date.now(), kind: "architect_refactor", visual: { view, module: focus, edges: [] }, ops: [] };
+    planExpanded = false;
+    const drawer = document.getElementById("planDrawer");
+    if (drawer) drawer.classList.remove("expanded");
+    const chev = document.getElementById("planChev");
+    if (chev) chev.textContent = "▲";
+    renderPlanBar();
+    render();
+  }
+
+  function expandPlanDrawer() {
+    if (planExpanded) return;
+    planExpanded = true;
+    const drawer = document.getElementById("planDrawer");
+    if (drawer) drawer.classList.add("expanded");
+    const chev = document.getElementById("planChev");
+    if (chev) chev.textContent = "▼";
   }
 
   function addRenameOp(moduleId, owner, from, to) {
-    draft.ops.push({ op: "rename_symbol", kind: "field", module: moduleId, owner: owner, from: from, to: to });
+    draft.ops.push({ op: "rename_symbol", kind: "field", module: moduleId, owner: owner, from: from, to: to, update_select_literals: true });
     draft.visual.edges.push({ from: owner + "." + from, to: owner + "." + to, kind: "rename" });
     draft.visual.module = moduleId;
     draft.visual.view = view;
+    expandPlanDrawer();
     renderPlanBar();
     render();
   }
 
   function renderPlanBar() {
-    document.getElementById("planCount").textContent = String(draft.ops.length);
+    const drawer = document.getElementById("planDrawer");
+    const count = draft.ops.length;
+    document.getElementById("planCount").textContent = String(count);
+    if (drawer) {
+      drawer.classList.toggle("has-ops", count > 0);
+    }
     const list = document.getElementById("planList");
-    if (!draft.ops.length) {
-      list.innerHTML = '<span class="muted">暂无操作</span>';
+    if (!count) {
+      list.innerHTML = '<span class="muted">从字段右侧橙色引脚拖到左侧蓝色引脚以 rename；右键节点打开菜单</span>';
       return;
     }
-    list.innerHTML = draft.ops.map((op, i) =>
-      '<div class="plan-op">' + (i+1) + '. rename ' + esc(op.owner || "") + '.' + esc(op.from) + ' → ' + esc(op.to) + '</div>'
-    ).join("");
+    list.innerHTML = draft.ops.map((op, i) => {
+      let label = esc(op.op || "?");
+      if (op.op === "rename_symbol") {
+        label = "rename " + esc(op.owner || "") + "." + esc(op.from) + " → " + esc(op.to);
+      } else if (op.op === "update_select_path") {
+        label = "select " + esc(op.from) + " → " + esc(op.to);
+      }
+      return '<div class="plan-op">' + label
+        + '<button class="rm" data-i="' + i + '" title="移除">×</button></div>';
+    }).join("");
+    list.querySelectorAll(".rm").forEach((btn) => {
+      btn.onclick = (e) => { e.stopPropagation(); removeRenameOp(Number(btn.getAttribute("data-i"))); };
+    });
   }
 
   function esc(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
@@ -592,6 +935,9 @@ class ArchitectCanvasPanel {
 
   function render() {
     draft.visual.view = view;
+    document.getElementById("btnBack").classList.toggle("active", view === "module");
+    document.getElementById("btnDrill").classList.toggle("active", view === "symbol");
+    document.getElementById("btnToggleFns").classList.toggle("active", showFunctions);
     if (view === "symbol") drawSymbolGraph();
     else drawModuleGraph();
     applyTransform();
@@ -601,7 +947,8 @@ class ArchitectCanvasPanel {
   // pan zoom
   let dragging = false, dragSx = 0, dragSy = 0, dragPx = 0, dragPy = 0;
   svg.addEventListener("mousedown", (e) => {
-    if (e.target.classList && e.target.classList.contains("pin")) return;
+    if (e.target.classList && (e.target.classList.contains("pin") || e.target.classList.contains("pin-in") || e.target.classList.contains("pin-out"))) return;
+    hideContextMenu();
     dragging = true;
     dragSx = e.clientX; dragSy = e.clientY;
     dragPx = panX; dragPy = panY;
@@ -630,24 +977,20 @@ class ArchitectCanvasPanel {
   window.addEventListener("mouseup", (e) => {
     if (dragPin) {
       const target = document.elementFromPoint(e.clientX, e.clientY);
-      const pinEl = target && target.closest ? target.closest("[data-pin-for]") : null;
-      if (pinEl && dragPin.node.kind === "field") {
-        const toId = pinEl.getAttribute("data-pin-for");
-        const toNode = symbolNodes(focus).find(n => n.id === toId);
-        if (toNode && toNode.kind === "field" && toNode.owner === dragPin.node.owner && toNode.name !== dragPin.node.name) {
-          addRenameOp(dragPin.node.module, dragPin.node.owner, dragPin.node.name, toNode.name);
-        } else if (toNode && toNode.kind === "field" && toNode.name !== dragPin.node.name) {
-          const newName = prompt("重命名字段 " + dragPin.node.owner + "." + dragPin.node.name + " 为:", toNode.name);
-          if (newName && newName !== dragPin.node.name) {
-            addRenameOp(dragPin.node.module, dragPin.node.owner, dragPin.node.name, newName);
-          }
+      const pinIn = target && target.closest ? target.closest("[data-pin-in]") : null;
+      if (pinIn && dragPin.owner) {
+        const parts = pinIn.getAttribute("data-pin-in").split(".");
+        const toOwner = parts[0], toField = parts.slice(1).join(".");
+        if (toOwner === dragPin.owner && toField !== dragPin.field) {
+          addRenameOp(dragPin.module, dragPin.owner, dragPin.field, toField);
         }
-      } else if (dragPin.node.kind === "field") {
-        const newName = prompt("重命名字段 " + dragPin.node.owner + "." + dragPin.node.name + " 为:");
-        if (newName && newName !== dragPin.node.name) {
-          addRenameOp(dragPin.node.module, dragPin.node.owner, dragPin.node.name, newName);
+      } else if (dragPin.owner) {
+        const newName = prompt("重命名字段 " + dragPin.owner + "." + dragPin.field + " 为:");
+        if (newName && newName !== dragPin.field) {
+          addRenameOp(dragPin.module, dragPin.owner, dragPin.field, newName);
         }
       }
+      document.querySelectorAll(".pin-hot").forEach((p) => p.classList.remove("pin-hot"));
       if (dragLine && dragLine.parentNode) dragLine.parentNode.removeChild(dragLine);
       dragLine = null;
       dragPin = null;
@@ -673,8 +1016,22 @@ class ArchitectCanvasPanel {
   document.getElementById("btnSave").onclick = () => post("savePlan", { plan: draft });
   document.getElementById("btnPreview").onclick = () => post("checkPlan", { plan: draft });
   document.getElementById("btnApply").onclick = () => post("applyPlan", { plan: draft });
-
-  if (focus) renderInspectorModule(focus);
+  document.getElementById("btnLoad").onclick = () => post("requestLoadPlan");
+  document.getElementById("btnClearPlan").onclick = (e) => { e.stopPropagation(); clearPlan(); };
+  document.getElementById("planToggle").onclick = (e) => {
+    if (e.target.closest("#btnClearPlan")) return;
+    planExpanded = !planExpanded;
+    document.getElementById("planDrawer").classList.toggle("expanded", planExpanded);
+    document.getElementById("planChev").textContent = planExpanded ? "▼" : "▲";
+  };
+  window.addEventListener("click", () => hideContextMenu());
+  document.getElementById("btnToggleFns").onclick = () => { showFunctions = !showFunctions; fitPending = true; render(); };
+  document.getElementById("btnCopySelect").onclick = () => {
+    if (!selectPathParts.length) return;
+    post("copyText", { text: selectPathParts.join("") });
+  };
+  document.getElementById("btnClearSelect").onclick = () => { selectPathParts = []; updateSelectPathBar(); };
+  updateSelectPathBar();
   fitPending = true;
   render();
 })();

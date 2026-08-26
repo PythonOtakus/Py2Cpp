@@ -5,8 +5,10 @@ const vscode = require("vscode");
 const fs = require("fs");
 const path = require("path");
 const architectCanvasPanel_1 = require("./architectCanvasPanel");
+const dataclassSchemaPanel_1 = require("./dataclassSchemaPanel");
 const graphStore_1 = require("./graphStore");
 const planRunner_1 = require("./planRunner");
+const references_1 = require("./references");
 const util_1 = require("./util");
 const ARCH_PLAN_SUFFIX = ".arch.json";
 const graphStore = new graphStore_1.GraphStore();
@@ -150,6 +152,9 @@ function activate(context) {
         if (owner) {
             op.owner = owner;
         }
+        if (kind.label === "field") {
+            op.update_select_literals = true;
+        }
         const plan = {
             version: 1,
             id: `rename-${oldName}-${Date.now()}`,
@@ -179,6 +184,125 @@ function activate(context) {
         catch (err) {
             void vscode.window.showErrorMessage(String(err?.message ?? err));
         }
+    }));
+    context.subscriptions.push(vscode.commands.registerCommand("py2cpp-architect.findAllReferences", async () => {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor || !(0, util_1.isArchitectPythonDocument)(editor.document)) {
+            void vscode.window.showWarningMessage("请在 py2cpp/、test/ 或 examples/ 下的 .py 中选中标识符。");
+            return;
+        }
+        const repoRoot = (0, util_1.findRepoRoot)();
+        if (!repoRoot) {
+            void vscode.window.showWarningMessage("未找到 Py2Cpp 仓库根。");
+            return;
+        }
+        if (!reloadGraph(repoRoot)) {
+            void vscode.window.showWarningMessage("未找到 graph.json。请先运行 bootstrap 或翻译任意 .py。");
+            return;
+        }
+        const wordRange = editor.document.getWordRangeAtPosition(editor.selection.active, /[A-Za-z_][A-Za-z0-9_]*/);
+        if (!wordRange) {
+            void vscode.window.showWarningMessage("请将光标置于要查找的标识符上。");
+            return;
+        }
+        const symbol = editor.document.getText(wordRange);
+        const moduleId = (0, util_1.moduleIdFromPythonFile)(repoRoot, editor.document.uri.fsPath) ?? "";
+        const matches = graphStore.symbolsMatchingName(moduleId, symbol);
+        let kind;
+        let owner;
+        if (matches.length === 1) {
+            kind = matches[0].kind;
+            owner = matches[0].owner;
+        }
+        else if (matches.length > 1) {
+            const pick = await vscode.window.showQuickPick(matches.map((m) => ({
+                label: m.owner ? `${m.owner}.${m.name}` : m.name,
+                description: m.kind,
+                m,
+            })), { title: `选择符号：${symbol}` });
+            if (!pick) {
+                return;
+            }
+            kind = pick.m.kind;
+            owner = pick.m.owner;
+        }
+        else {
+            const kindPick = await vscode.window.showQuickPick([
+                { label: "field", description: "类字段" },
+                { label: "method", description: "类方法" },
+                { label: "class", description: "类名" },
+                { label: "function", description: "模块函数" },
+            ], { title: "符号种类" });
+            if (!kindPick) {
+                return;
+            }
+            kind = kindPick.label;
+            if (kind === "field" || kind === "method") {
+                owner = await vscode.window.showInputBox({
+                    prompt: "所属类名 (owner)",
+                    validateInput: (v) => (!v?.trim() ? "必填" : undefined),
+                });
+                if (!owner) {
+                    return;
+                }
+            }
+        }
+        const items = await (0, references_1.collectReferences)(repoRoot, graphStore, moduleId, symbol, kind, owner);
+        if (items.length === 0) {
+            void vscode.window.showInformationMessage(`未找到 ${symbol} 的引用。`);
+            return;
+        }
+        const pick = await vscode.window.showQuickPick(items, {
+            title: `引用：${owner ? `${owner}.` : ""}${symbol}（${items.length}）`,
+            matchOnDescription: true,
+            matchOnDetail: true,
+        });
+        if (!pick) {
+            return;
+        }
+        await (0, references_1.openReference)(repoRoot, graphStore, pick.hit);
+    }));
+    context.subscriptions.push(vscode.commands.registerCommand("py2cpp-architect.editDataclassSchema", async () => {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor || !(0, util_1.isArchitectPythonDocument)(editor.document)) {
+            void vscode.window.showWarningMessage("请在 py2cpp/、test/ 或 examples/ 下的 .py 中打开 @dataclass 类。");
+            return;
+        }
+        const repoRoot = (0, util_1.findRepoRoot)();
+        if (!repoRoot) {
+            void vscode.window.showWarningMessage("未找到 Py2Cpp 仓库根。");
+            return;
+        }
+        if (!reloadGraph(repoRoot)) {
+            void vscode.window.showWarningMessage("未找到 graph.json。请先 bootstrap 或翻译当前文件。");
+            return;
+        }
+        const moduleId = (0, util_1.moduleIdFromPythonFile)(repoRoot, editor.document.uri.fsPath) ?? "";
+        const wordRange = editor.document.getWordRangeAtPosition(editor.selection.active, /[A-Za-z_][A-Za-z0-9_]*/);
+        let className;
+        if (wordRange) {
+            const word = editor.document.getText(wordRange);
+            const hit = graphStore.dataclassClasses(moduleId).find((c) => c.name === word);
+            if (hit) {
+                className = hit.name;
+            }
+        }
+        const dataclasses = graphStore.dataclassClasses(moduleId);
+        if (!className) {
+            if (dataclasses.length === 0) {
+                void vscode.window.showWarningMessage(`模块 ${moduleId} 中未找到 @dataclass 类（请先翻译以刷新 graph）。`);
+                return;
+            }
+            const pick = await vscode.window.showQuickPick(dataclasses.map((c) => ({
+                label: c.name,
+                description: `${graphStore.classFields(moduleId, c.name).length} 字段`,
+            })), { title: "选择 @dataclass 类" });
+            if (!pick) {
+                return;
+            }
+            className = pick.label;
+        }
+        dataclassSchemaPanel_1.DataclassSchemaPanel.createOrShow(repoRoot, graphStore, moduleId, className);
     }));
 }
 exports.activate = activate;

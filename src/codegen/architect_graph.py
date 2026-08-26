@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from ..analysis.type_emit import field_ann_ast
+from ..analysis.type_emit import field_ann_ast
 from .nav_index import (
   build_module_shard,
   _should_update_module_shard,
@@ -74,7 +75,60 @@ def _compact_symbol(sym: dict[str, Any]) -> dict[str, Any]:
   role = sym.get("role")
   if isinstance(role, str) and role:
     out["role"] = role
+  type_ann = sym.get("typeAnn")
+  if isinstance(type_ann, str) and type_ann:
+    out["typeAnn"] = type_ann
   return out
+
+
+def _field_annotation_text(info: Any, field: str) -> str | None:
+  ann = field_ann_ast(info, field)
+  if ann is not None:
+    return ast.unparse(ann)
+  node = info.field_defaults.get(field)
+  if node is None:
+    for stmt in info.node.body:
+      if (
+        isinstance(stmt, ast.AnnAssign)
+        and isinstance(stmt.target, ast.Name)
+        and stmt.target.id == field
+      ):
+        node = stmt
+        break
+  if isinstance(node, ast.AnnAssign) and node.annotation is not None:
+    return ast.unparse(node.annotation)
+  return None
+
+
+def _enrich_module_symbols(
+  tr: Translator,
+  module_path: str,
+  symbols: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+  dataclass_names = {
+    info.name
+    for info in tr.classes.values()
+    if info.module_path == module_path and info.is_dataclass
+  }
+  field_types: dict[tuple[str, str], str] = {}
+  for info in tr.classes.values():
+    if info.module_path != module_path:
+      continue
+    for field in info.fields:
+      type_text = _field_annotation_text(info, field)
+      if type_text:
+        field_types[(info.name, field)] = type_text
+  for sym in symbols:
+    if sym.get("kind") == "class" and sym.get("name") in dataclass_names:
+      sym["role"] = "dataclass"
+    if sym.get("kind") == "field":
+      owner = sym.get("owner")
+      name = sym.get("name")
+      if isinstance(owner, str) and isinstance(name, str):
+        type_text = field_types.get((owner, name))
+        if type_text:
+          sym["typeAnn"] = type_text
+  return symbols
 
 
 def _module_symbols(tr: Translator, module_path: str) -> list[dict[str, Any]]:
@@ -88,7 +142,7 @@ def _module_symbols(tr: Translator, module_path: str) -> list[dict[str, Any]]:
     compact = _compact_symbol(sym)
     if compact:
       out.append(compact)
-  return out
+  return _enrich_module_symbols(tr, module_path, out)
 
 
 def _module_exports(tr: Translator, module_path: str) -> list[str]:

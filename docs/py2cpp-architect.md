@@ -294,9 +294,9 @@ python scripts/apply_refactor_plan.py plans/rename.arch.json --apply
 | **Py2Cpp Architect: Show Dependency Graph** | Webview 画布：L1 模块 DAG + L2 符号图；计划栏预览/应用 | ✅ P1.5 |
 | **Py2Cpp Architect: Rename Symbol** | 生成 ``*.arch.json`` 并预览 diff | ✅ P0 |
 | **Py2Cpp Architect: Apply Refactor Plan** | 加载 ``*.arch.json`` 并执行 §5.3 | ✅ P0 |
-| **Py2Cpp Architect: Find All References** | 符号引用列表 | ⏳ P2 |
-| **Py2Cpp Architect: Edit Dataclass Schema** | 表格式编辑字段 | ⏳ P2 |
-| **Py2Cpp Architect: Build Select Path** | 点选字段树 → select 字面量 | ⏳ P2 |
+| **Py2Cpp Architect: Find All References** | 符号引用列表 | ✅ P1 |
+| **Py2Cpp Architect: Edit Dataclass Schema** | 表格式编辑字段 | ✅ P1 |
+| **Py2Cpp Architect: Build Select Path** | 依赖图画布内点选字段拼接路径（工具栏复制） | ✅ P2 初版 |
 
 ### 7.2 画布交互（P1.5）
 
@@ -306,8 +306,9 @@ python scripts/apply_refactor_plan.py plans/rename.arch.json --apply
 | 滚轮 | zoom |
 | 单击模块节点 | 选中 + 检视器 |
 | 双击模块 | 进入符号图 |
-| 字段引脚拖线 | 生成 rename 计划（橙色虚线预览） |
-| 保存 / 预览 / 应用 | 写 ``plans/<id>.arch.json`` → CLI ``--check`` / ``--apply`` |
+| 字段引脚拖线 | 生成 rename 计划（橙色虚线预览边 + 目标幽灵节点） |
+| 计划栏 | 列出 ops、单项移除、清空、**加载** `*.arch.json`、预览/保存/应用 |
+| select 路径 | 符号图字段「追加路径」→ 工具栏显示/复制（P2 构建器初版） |
 
 范围：**焦点 2-hop**（默认）/ **当前域** / **全部模块**（大库慎用）。
 
@@ -362,9 +363,9 @@ nav 文档中的「Rename / Find All References / 补全 → 后续可选」**�
 
 - [x] **Show Dependency Graph** Webview（UE 式画布；模块 DAG + 符号图；``*.arch.json`` 计划栏）
 - [x] `graph.json` v2：`symbols` + `refs`（import / inherit / member_of / field_type / select_path）
-- [ ] `update_select_path`、`rename_symbol.update_select_literals`（跨模块）
-- [ ] Find All References 面板
-- [ ] Dataclass Schema 编辑器
+- [x] `update_select_path`、`rename_symbol.update_select_literals`（select 路径联动）
+- [x] Find All References 面板（QuickPick + graph/refs + 文本匹配）
+- [x] Dataclass Schema 编辑器（字段表 + 批量 rename + select 联动）
 
 ### P2 — 模块图与批量迁移
 

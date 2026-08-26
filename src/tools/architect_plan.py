@@ -1,4 +1,4 @@
-"""RefactorPlan 解析、校验与 AST 改写（P0：单模块 ``rename_symbol``）。"""
+"""RefactorPlan 解析、校验与 AST 改写（P0：单模块 ``rename_symbol``；P1：``update_select_path`` / select 联动）。"""
 from __future__ import annotations
 
 import ast
@@ -7,13 +7,16 @@ import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from ..passes.kwargs_options import TRANSLATOR_ONLY_METHODS
+from ..passes.selector_parse import SelectorParseError, parse_selector_path
 
 PLAN_VERSION = 1
 _IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _RENAME_KINDS = frozenset({"field", "method", "class", "function"})
+_SCAN_ROOTS = ("py2cpp", "test", "examples")
+_SELECT_RE = re.compile(r"""\.select\s*\(\s*(['"])(.+?)\1""")
 
 
 @dataclass
@@ -104,6 +107,8 @@ def validate_plan(plan: dict[str, Any], repo_root: Path) -> list[str]:
     kind = op.get("op")
     if kind == "rename_symbol":
       errors.extend(_validate_rename_op(op, repo_root, prefix=f"ops[{i}]"))
+    elif kind == "update_select_path":
+      errors.extend(_validate_update_select_path_op(op, repo_root, prefix=f"ops[{i}]"))
     else:
       errors.append(f"ops[{i}] 未知 op: {kind!r}")
   return errors
@@ -140,6 +145,143 @@ def _validate_rename_op(op: dict[str, Any], repo_root: Path, *, prefix: str) -> 
     elif not _IDENT_RE.match(owner):
       errors.append(f"{prefix}: owner 非法标识符: {owner!r}")
   return errors
+
+
+def _validate_selector_path(path: str, *, label: str) -> str | None:
+  try:
+    parse_selector_path(path)
+  except SelectorParseError as exc:
+    return f"{label} selector 无效: {exc}"
+  return None
+
+
+def _validate_update_select_path_op(op: dict[str, Any], repo_root: Path, *, prefix: str) -> list[str]:
+  errors: list[str] = []
+  module = op.get("module")
+  if not isinstance(module, str) or not module.strip():
+    errors.append(f"{prefix}: module 必填")
+  else:
+    path = _module_to_path(repo_root, module)
+    if not path.is_file():
+      errors.append(f"{prefix}: 模块文件不存在: {path}")
+  old = op.get("from")
+  new = op.get("to")
+  if not isinstance(old, str) or not isinstance(new, str):
+    errors.append(f"{prefix}: from/to 须为字符串")
+  else:
+    if old == new:
+      errors.append(f"{prefix}: from 与 to 相同")
+    else:
+      for label, value in (("from", old), ("to", new)):
+        msg = _validate_selector_path(value, label=f"{prefix}.{label}")
+        if msg:
+          errors.append(msg)
+  return errors
+
+
+def _rewrite_field_in_select_path(path: str, old: str, new: str) -> str:
+  if old == new or not old:
+    return path
+  updated = re.sub(
+    r"(\.)" + re.escape(old) + r"(?=[\s}.>\]:,@?&|)]|$)",
+    r"\1" + new,
+    path,
+  )
+  updated = re.sub(
+    r"(\{\s*\.)" + re.escape(old) + r"(?=[\s}>])",
+    r"\1" + new,
+    updated,
+  )
+  if updated == path:
+    return path
+  try:
+    parse_selector_path(updated)
+  except SelectorParseError:
+    return path
+  return updated
+
+
+def _map_select_literals(
+  source: str,
+  mapper: Callable[[str], str],
+) -> str:
+  def regex_repl(match: re.Match[str]) -> str:
+    quote, old_path = match.group(1), match.group(2)
+    new_path = mapper(old_path)
+    if new_path == old_path:
+      return match.group(0)
+    return f".select({quote}{new_path}{quote}"
+
+  return _SELECT_RE.sub(regex_repl, source)
+
+
+def _replace_select_path_literal(source: str, old_path: str, new_path: str) -> str:
+  if old_path == new_path:
+    return source
+  return _map_select_literals(
+    source,
+    lambda path: new_path if path == old_path else path,
+  )
+
+
+def _rewrite_field_in_select_literals(source: str, old_field: str, new_field: str) -> str:
+  return _map_select_literals(
+    source,
+    lambda path: _rewrite_field_in_select_path(path, old_field, new_field),
+  )
+
+
+def _iter_architect_python_files(repo_root: Path) -> list[Path]:
+  files: list[Path] = []
+  for rel in _SCAN_ROOTS:
+    root = repo_root / rel
+    if not root.is_dir():
+      continue
+    files.extend(sorted(root.rglob("*.py")))
+  return files
+
+
+def _select_literal_changes_for_field_rename(
+  repo_root: Path,
+  old_field: str,
+  new_field: str,
+) -> list[FileChange]:
+  changes: list[FileChange] = []
+  for path in _iter_architect_python_files(repo_root):
+    try:
+      old_text = path.read_text(encoding="utf-8")
+    except OSError:
+      continue
+    new_text = _rewrite_field_in_select_literals(old_text, old_field, new_field)
+    if new_text != old_text:
+      changes.append(FileChange(path=path, old_text=old_text, new_text=new_text))
+  return changes
+
+
+def _merge_change(pending: dict[Path, FileChange], change: FileChange) -> None:
+  if change.path in pending:
+    pending[change.path] = FileChange(
+      path=change.path,
+      old_text=pending[change.path].old_text,
+      new_text=change.new_text,
+    )
+  else:
+    pending[change.path] = change
+
+
+def _apply_update_select_path(repo_root: Path, op: dict[str, Any]) -> FileChange:
+  path = _module_to_path(repo_root, op["module"])
+  old_text = path.read_text(encoding="utf-8")
+  new_text = _replace_select_path_literal(old_text, op["from"], op["to"])
+  if new_text == old_text:
+    raise PlanError(
+      f"update_select_path 未产生变更: {path} ({op['from']!r})",
+    )
+  try:
+    ast.parse(new_text)
+  except SyntaxError as exc:
+    raise PlanError(f"改写后语法错误 {path}: {exc}") from exc
+  return FileChange(path=path, old_text=old_text, new_text=new_text)
 
 
 class _RenameFieldTransformer(ast.NodeTransformer):
@@ -291,18 +433,61 @@ def apply_plan(
   pending: dict[Path, FileChange] = {}
   try:
     for op in plan["ops"]:
-      if op.get("op") != "rename_symbol":
-        continue
-      change = _apply_rename_op(repo_root, op)
-      if change.path in pending:
-        merged = _rename_symbol_in_source(pending[change.path].new_text, op)
-        pending[change.path] = FileChange(
-          path=change.path,
-          old_text=pending[change.path].old_text,
-          new_text=merged,
-        )
-      else:
-        pending[change.path] = change
+      op_kind = op.get("op")
+      if op_kind == "rename_symbol":
+        change = _apply_rename_op(repo_root, op)
+        if change.path in pending:
+          merged = _rename_symbol_in_source(pending[change.path].new_text, op)
+          _merge_change(
+            pending,
+            FileChange(
+              path=change.path,
+              old_text=pending[change.path].old_text,
+              new_text=merged,
+            ),
+          )
+        else:
+          _merge_change(pending, change)
+        if op.get("kind") == "field" and op.get("update_select_literals", True):
+          for extra in _select_literal_changes_for_field_rename(
+            repo_root,
+            op["from"],
+            op["to"],
+          ):
+            if extra.path in pending:
+              merged = _rewrite_field_in_select_literals(
+                pending[extra.path].new_text,
+                op["from"],
+                op["to"],
+              )
+              _merge_change(
+                pending,
+                FileChange(
+                  path=extra.path,
+                  old_text=pending[extra.path].old_text,
+                  new_text=merged,
+                ),
+              )
+            else:
+              _merge_change(pending, extra)
+      elif op_kind == "update_select_path":
+        change = _apply_update_select_path(repo_root, op)
+        if change.path in pending:
+          merged = _replace_select_path_literal(
+            pending[change.path].new_text,
+            op["from"],
+            op["to"],
+          )
+          _merge_change(
+            pending,
+            FileChange(
+              path=change.path,
+              old_text=pending[change.path].old_text,
+              new_text=merged,
+            ),
+          )
+        else:
+          _merge_change(pending, change)
   except PlanError as exc:
     result.errors.append(str(exc))
     return result

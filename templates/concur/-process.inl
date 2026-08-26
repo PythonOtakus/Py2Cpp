@@ -135,9 +135,7 @@ namespace py2cpp_concur_process_detail
 
   static bool is_free_void(const ProcessTarget& target)
   {
-    return target._self == nullptr &&
-      target._func == &py_callable_free_invoke<void>::call &&
-      target._closure != nullptr;
+    return target._self == nullptr && target._closure != nullptr;
   }
 
   static void (*free_void_fn(const ProcessTarget& target))()
@@ -263,102 +261,22 @@ namespace py2cpp_concur_process_detail
     {
       return false;
     }
-    char cmdline_utf8[1024];
-    _snprintf_s(cmdline_utf8, sizeof(cmdline_utf8), _TRUNCATE, "\"ignored\" %s%s", flag, slot_name);
-    int wlen = MultiByteToWideChar(CP_UTF8, 0, cmdline_utf8, -1, nullptr, 0);
-    if (wlen <= 0)
-    {
-      return false;
-    }
-    wchar_t* cmdline = reinterpret_cast<wchar_t*>(
-      static_cast<uintptr_t>(::ffi::crt::stdlib::pyiMalloc((PyUInt64)wlen * sizeof(wchar_t)))
+    wchar_t cmdline[2048];
+    int written = _snwprintf_s(
+      cmdline, _countof(cmdline), _TRUNCATE, L"\"%s\" %S%s", exe, flag, slot_name
     );
-    if (!cmdline)
+    if (written < 0)
     {
       return false;
     }
-    MultiByteToWideChar(CP_UTF8, 0, cmdline_utf8, -1, cmdline, wlen);
     STARTUPINFOW si;
     memset(&si, 0, sizeof(si));
     si.cb = sizeof(si);
     memset(pi, 0, sizeof(*pi));
     BOOL ok = CreateProcessW(exe, cmdline, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, pi);
-    ::ffi::crt::stdlib::pyiFree(reinterpret_cast<uintptr_t>(cmdline));
     return ok != 0;
   }
 
-  static void boot_worker()
-  {
-    const wchar_t* cmd = GetCommandLineW();
-    if (!cmd)
-    {
-      return;
-    }
-    char buf[4096];
-    int n = WideCharToMultiByte(CP_UTF8, 0, cmd, -1, buf, (int)sizeof(buf), nullptr, nullptr);
-    if (n <= 0)
-    {
-      return;
-    }
-    const char* p = strstr(buf, k_exec_flag);
-    if (p)
-    {
-      const char* slot = p + strlen(k_exec_flag);
-      char name[256];
-      int i = 0;
-      while (slot[i] && slot[i] != ' ' && slot[i] != '"' && i < (int)sizeof(name) - 1)
-      {
-        name[i] = slot[i];
-        i++;
-      }
-      name[i] = 0;
-      int code = run_exec_slot(name);
-      ExitProcess((UINT)code);
-    }
-    p = strstr(buf, k_invoke_flag);
-    if (p)
-    {
-      const char* slot = p + strlen(k_invoke_flag);
-      char name[256];
-      int i = 0;
-      while (slot[i] && slot[i] != ' ' && slot[i] != '"' && i < (int)sizeof(name) - 1)
-      {
-        name[i] = slot[i];
-        i++;
-      }
-      name[i] = 0;
-      HANDLE h = OpenFileMappingA(FILE_MAP_ALL_ACCESS, FALSE, name);
-      if (!h)
-      {
-        ExitProcess(1);
-      }
-      void* view = MapViewOfFile(h, FILE_MAP_ALL_ACCESS, 0, 0, 0);
-      if (!view)
-      {
-        CloseHandle(h);
-        ExitProcess(1);
-      }
-      InvokeHdr* hdr = reinterpret_cast<InvokeHdr*>(view);
-      typedef void (*Tramp)(void*);
-      Tramp tramp = reinterpret_cast<Tramp>(from_rva(hdr->tramp_rva));
-      if (tramp)
-      {
-        tramp(view);
-      }
-      UnmapViewOfFile(view);
-      CloseHandle(h);
-      ExitProcess(0);
-    }
-  }
-
-  struct ProcessBoot
-  {
-    ProcessBoot()
-    {
-      boot_worker();
-    }
-  };
-  static ProcessBoot g_process_boot;
 #endif
 }
 

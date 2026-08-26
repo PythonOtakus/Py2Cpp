@@ -918,13 +918,15 @@ def cpp_fill_allocator_default_args(cpp_type: str) -> str:
 def cpp_fill_counter_default_args(cpp_type: str) -> str:
   """``PyCounter<K>`` 单实参 → 补默认计数类型 ``PyInt``。"""
   t = strip_cpp_type_qualifiers(strip_cpp_ref(cpp_type.strip()))
-  if not _type_pred().is_counter_type(t):
+  prefixes = (CPP_COUNTER_PREFIX, f"{cpp_ident('Counter')}<")
+  prefix = next((p for p in prefixes if t.startswith(p)), None)
+  if prefix is None or not t.endswith(">"):
     return cpp_type
-  inner = t[len(CPP_COUNTER_PREFIX) : -1].strip()
+  inner = t[len(prefix) : -1].strip()
   parts = split_cpp_template_args(inner)
   if len(parts) != 1:
     return cpp_type
-  return f"{CPP_COUNTER_PREFIX}{parts[0]}, {cpp_ident('int')}>"
+  return f"{prefix}{parts[0]}, {cpp_ident('int')}>"
 
 
 def cpp_normalize_type_for_compare(cpp_type: str) -> str:
@@ -2606,7 +2608,8 @@ class FuncTypeParams:
     from .variadic_template import parse_function_type_params
 
     header_regular, header_capture, header_tuple = parse_function_type_params(func)
-    used = set(reserved or ())
+    reserved_names = set(reserved or ())
+    used = set(reserved_names)
     template_names: list[str] = []
     arg_types: dict[str, str] = {}
     constraints: dict[str, FuncTypeConstraint] = {}
@@ -2636,7 +2639,7 @@ class FuncTypeParams:
         _merge_func_type_parametric_constraint(
           constraints, impl_tp, proto, bound_assoc,
         )
-        if assoc_tp in used and assoc_tp not in template_names:
+        if assoc_tp not in reserved_names and assoc_tp in used and assoc_tp not in template_names:
           template_names.append(assoc_tp)
         return
       if assoc_tp is None:
@@ -2694,7 +2697,7 @@ class FuncTypeParams:
               constraints, impl_tp, proto, bound_assoc,
             )
             arg_types[arg.arg] = impl_tp
-            if assoc_tp in used and assoc_tp not in template_names:
+            if assoc_tp not in reserved_names and assoc_tp in used and assoc_tp not in template_names:
               template_names.append(assoc_tp)
           else:
             impl_tp = assoc_tp if assoc_tp is not None else alloc_tparam()

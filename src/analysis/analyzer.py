@@ -522,17 +522,48 @@ class TypeParser:
         return self._parse_slice_type(node.slice, type_params, self_class=self_class)
       if isinstance(node.value, ast.Name) and node.value.id in self._type_aliases:
         ali = self._type_aliases[node.value.id]
-        if ali.is_conditional and self._tr is not None and not self._alias_use_cpp_name:
+        # 条件别名没有可保留的 C++ ``using`` 名；一旦提供实参就必须
+        # 求值，即使当前正在发射类体别名声明。
+        if ali.is_conditional and self._tr is not None:
           from ..passes.type_conditional import instantiate_conditional_alias_subscript
 
           return instantiate_conditional_alias_subscript(
-            self._tr, ali, node.slice, type_params,
+            self._tr,
+            ali,
+            node.slice,
+            type_params,
+            cpp_name=(
+              self._import_bindings[node.value.id].cpp_name
+              if node.value.id in self._import_bindings
+              and self._import_bindings[node.value.id].kind == "type_alias"
+              else ali.name
+            ),
           )
         if ali.type_params:
           args = self.parse_type_args(
             node.slice, type_params, self_class=self_class,
           )
           return f"{node.value.id}<{args}>"
+      if isinstance(node.value, ast.Name):
+        imp = self._import_bindings.get(node.value.id)
+        if imp is not None and imp.kind == "type_alias":
+          alias = None
+          if self._tr is not None:
+            ma = getattr(self._tr, "module_analysis", {}).get(imp.module_path)
+            if ma is not None:
+              alias = next(
+                (a for a in ma.type_aliases if a.name == imp.symbol), None,
+              )
+          if alias is not None and alias.is_conditional:
+            from ..passes.type_conditional import instantiate_conditional_alias_subscript
+
+            return instantiate_conditional_alias_subscript(
+              self._tr, alias, node.slice, type_params,
+            )
+          args = self.parse_type_args(
+            node.slice, type_params, self_class=self_class,
+          )
+          return f"{imp.cpp_name}<{args}>"
       if isinstance(node.value, ast.Name):
         spec = self._try_specialize_class_type(
           node.value.id,
@@ -868,7 +899,16 @@ class TypeParser:
           from ..passes.type_conditional import instantiate_conditional_alias_subscript
 
           cpp = instantiate_conditional_alias_subscript(
-            self._tr, ali, node.slice, type_params,
+            self._tr,
+            ali,
+            node.slice,
+            type_params,
+            cpp_name=(
+              self._import_bindings[node.value.id].cpp_name
+              if node.value.id in self._import_bindings
+              and self._import_bindings[node.value.id].kind == "type_alias"
+              else ali.name
+            ),
           )
           from .type_extract import is_never_cpp_type
 
@@ -3293,6 +3333,9 @@ class SemanticAnalyzer:
             ma.type_aliases.append(parse_type_alias_stmt(stmt))
       tr.module_analysis[module_path] = ma
 
+    # ``from package import *`` 需要在各模块 type alias 已登记后再解析一次；
+    # 否则包级重导出的条件别名不会进入导入绑定，签名会退化成 ``PyAlias``。
+    collect_all_imports(tr)
     self.types.set_import_bindings(tr.import_bindings)
     _amark("imports2")
     tr.function_sigs: dict[tuple[str, str], FunctionSig] = {}

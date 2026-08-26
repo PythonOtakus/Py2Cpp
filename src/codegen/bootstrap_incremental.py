@@ -27,7 +27,7 @@ if TYPE_CHECKING:
   from ..translator import Translator
 
 CACHE_REL = Path("generated") / "runtime" / ".cache" / "analyze_sigs.pkl"
-ANALYSIS_CACHE_SCHEMA = 2
+ANALYSIS_CACHE_SCHEMA = 3
 _DECORATOR_FORCE_FULL = re.compile(r"(?m)^@(mixin|protocol)\b")
 
 
@@ -185,6 +185,7 @@ def snapshot_class_payload(info: ClassInfo) -> dict[str, Any]:
     "final_fields": set(info.final_fields),
     "is_dataclass": info.is_dataclass,
     "dataclass_options": info.dataclass_options,
+    "dataclass_field_specs": info.dataclass_field_specs,
     "owned_fields": dict(info.owned_fields),
     "owned_array_sizes": dict(info.owned_array_sizes),
     "property_sigs": {
@@ -210,6 +211,7 @@ def apply_class_payload(info: ClassInfo, payload: dict[str, Any]) -> None:
   info.final_fields = set(payload.get("final_fields", info.final_fields))
   info.is_dataclass = bool(payload.get("is_dataclass", info.is_dataclass))
   info.dataclass_options = payload.get("dataclass_options", info.dataclass_options)
+  info.dataclass_field_specs = payload.get("dataclass_field_specs", info.dataclass_field_specs)
   info.owned_fields = dict(payload["owned_fields"])
   info.owned_array_sizes = dict(payload["owned_array_sizes"])
   for name, sigs in payload.get("property_sigs", {}).items():

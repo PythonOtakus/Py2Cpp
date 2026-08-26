@@ -35,6 +35,11 @@ def appendChars(buf: char[:], at: int, src: char[:], end: int = int.Max) -> int:
   """把 ``src[0:end]`` 写入 ``buf[at:]``，返回新尾下标（``copyArray`` + ``reshape``）。"""
   if end > len(src):
     end = len(src)
+  if end == len(src):
+    for i in range(end):
+      if src[i] == 0:
+        end = i
+        break
   if end <= 0:
     return at
   need: int = at + end

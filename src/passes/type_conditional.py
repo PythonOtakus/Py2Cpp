@@ -177,6 +177,8 @@ def instantiate_conditional_alias_subscript(
   alias: TypeAliasInfo,
   slice_node: ast.expr,
   type_params: set[str],
+  *,
+  cpp_name: str | None = None,
 ) -> str:
   validate_conditional_alias_call(alias, slice_node)
   plan = plan_conditional_alias(tr, alias)
@@ -193,7 +195,7 @@ def instantiate_conditional_alias_subscript(
     bindings[param] = tr._parse_type(node, type_params)
   if bindings.get(plan.subject) in type_params:
     args = ", ".join(bindings[p] for p in alias.call_params)
-    return f"{alias.name}<{args}>"
+    return f"{cpp_name or alias.name}<{args}>"
   cpp = evaluate_conditional_alias(tr, alias, plan, bindings, type_params)
   if is_never_cpp_type(cpp):
     raise ValueError(

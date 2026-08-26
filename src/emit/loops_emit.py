@@ -264,8 +264,36 @@ def _materialize_for_iterable(tr: Translator, iter_expr: ast.expr) -> tuple[str,
     iter_ty = _iterable_cpp_type(tr, iter_expr)
     if not iter_ty:
         iter_ty = strip_cpp_ref(tr._infer_expr_cpp_type(iter_expr)) or 'auto'
-    tr.write_line(f'{iter_ty} {bind} = {tr.visit(iter_expr)};')
+    storage_ty = _concrete_generator_call_cpp_type(tr, iter_expr, iter_ty) or iter_ty
+    tr.write_line(f'{storage_ty} {bind} = {tr.visit(iter_expr)};')
     return (bind, iter_expr)
+
+
+def _concrete_generator_call_cpp_type(
+    tr: Translator, iter_expr: ast.expr, inferred_type: str,
+) -> str | None:
+    """生成器函数调用以其状态机类型落地，避免擦除为抽象生成器。"""
+    from ..analysis.ir import cpp_ident
+    from ..analysis.module_namespace import qualify_symbol_in_module
+    from ..analysis.type_pred import is_py_generator_type
+    from ..passes.generators import GENERATOR_SUFFIX
+
+    if not is_py_generator_type(strip_cpp_ref(inferred_type)):
+        return None
+    if not isinstance(iter_expr, ast.Call) or not isinstance(iter_expr.func, ast.Name):
+        return None
+    binding = tr._effective_import_bindings().get(iter_expr.func.id)
+    if binding is not None and binding.kind == 'function':
+        module_path = binding.module_path
+        func_name = binding.symbol
+    else:
+        module_path = tr._active_module_path()
+        func_name = iter_expr.func.id
+    if not module_path:
+        return None
+    return qualify_symbol_in_module(
+        module_path, cpp_ident(f'{func_name}{GENERATOR_SUFFIX}'),
+    )
 
 def _list_iter_owner_ref(iter_cpp: str) -> str:
     """``PyListIterator`` 构造实参：宿主须为可存活的 ``list`` 左值。"""

@@ -273,6 +273,58 @@ def _assign_member(target: ast.expr, field: str, value: ast.expr) -> ast.Assign:
   )
 
 
+def _dataclass_default(info: ClassInfo, field: str) -> ast.expr | None:
+  default = info.field_defaults.get(field)
+  if default is not None:
+    return default
+  for spec in info.dataclass_field_specs or ():
+    if spec.name == field:
+      return spec.default
+  return None
+
+
+@dataclass(frozen=True)
+class _CachedCtorClassInfo:
+  source: ClassInfo
+  fields: list[str]
+  inits: list[ast.FunctionDef]
+  final_fields: set[str]
+  field_defaults: dict[str, ast.expr]
+  dataclass_options: object | None
+  dataclass_field_specs: list | None
+
+  def __getattr__(self, name: str):
+    return getattr(self.source, name)
+
+
+def _ctor_class_info(tr: Translator, class_name: str) -> ClassInfo | _CachedCtorClassInfo | None:
+  info = (
+    tr._class_info_for_ref(class_name)
+    or tr._lookup_class_by_cpp_or_py_name(class_name)
+    or tr.classes.get(class_name)
+  )
+  if info is None:
+    return None
+  payloads = getattr(tr, "_cached_class_payloads", {})
+  module_path = info.module_path.replace("\\", "/")
+  payload = payloads.get((module_path, info.class_registry_key()))
+  if payload is None:
+    payload = payloads.get((module_path, info.name))
+  if payload is None:
+    return info
+  return _CachedCtorClassInfo(
+    source=info,
+    fields=list(payload.get("fields", info.fields)),
+    inits=info.inits,
+    final_fields=set(payload.get("final_fields", info.final_fields)),
+    field_defaults=dict(payload.get("field_defaults", info.field_defaults)),
+    dataclass_options=payload.get("dataclass_options", info.dataclass_options),
+    dataclass_field_specs=payload.get(
+      "dataclass_field_specs", info.dataclass_field_specs,
+    ),
+  )
+
+
 def _build_options_from_keywords(
   class_name: str,
   keywords: list[ast.keyword],
@@ -286,10 +338,7 @@ def _build_options_from_keywords(
     tr=tr, at=at or (keywords[0] if keywords else None),
   )
   var = _fresh_opts_var()
-  info = (
-    tr._class_info_for_ref(class_name) or tr.classes.get(class_name)
-    if tr is not None else None
-  )
+  info = _ctor_class_info(tr, class_name) if tr is not None else None
   dataclass_opts = getattr(info, "dataclass_options", None) if info is not None else None
   is_frozen_dataclass = bool(getattr(dataclass_opts, "frozen", False))
   if info is not None and (info.final_fields or is_frozen_dataclass):
@@ -298,7 +347,7 @@ def _build_options_from_keywords(
     for field in info.fields:
       value = values.get(field)
       if value is None:
-        default = info.field_defaults.get(field)
+        default = _dataclass_default(info, field)
         if default is None:
           break
         value = copy.deepcopy(default)
@@ -483,7 +532,7 @@ def _build_instance_ctor_field_keywords(
   )
   ctor = ast.Name(id="Self" if use_self else class_name, ctx=ast.Load())
   var = _fresh_opts_var()
-  info = tr._class_info_for_ref(class_name) or tr.classes.get(class_name)
+  info = _ctor_class_info(tr, class_name)
   kw_names = {kw.arg for kw in keywords if kw.arg is not None}
   final = frozenset(info.final_fields) if info is not None else frozenset()
   dataclass_opts = getattr(info, "dataclass_options", None) if info is not None else None
@@ -499,7 +548,7 @@ def _build_instance_ctor_field_keywords(
     for field in info.fields:
       value = values.get(field)
       if value is None:
-        default = info.field_defaults.get(field)
+        default = _dataclass_default(info, field)
         if default is None:
           break
         value = copy.deepcopy(default)
@@ -993,7 +1042,9 @@ class _CallExpander:
           return [stmt]
         cls = self._resolve_class_name(self._ann_type_name(annotation))
         if cls is not None and isinstance(value, ast.Call):
-          got = self._try_rewrite_typed_ctor(value, cls)
+          got = self._try_rewrite_typed_ctor(
+            value, cls, var_annotation=annotation,
+          )
           if got is not None:
             pre, new_val = got
             return pre + [

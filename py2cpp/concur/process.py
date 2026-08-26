@@ -121,7 +121,6 @@ class Process:
   ):
     if daemon:
       raise RuntimeError("daemon processes are not supported yet")
-    self._handle = new()
     self._target = target
     self._name = name
     self._phase = int(_ProcessPhaseEnum.Initial)

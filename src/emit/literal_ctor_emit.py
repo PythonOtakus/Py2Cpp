@@ -16,10 +16,12 @@ if TYPE_CHECKING:
     from ..translator import Translator
 
 def _emit_new_ctor_arg_expr(tr: 'Translator', expr: ast.expr, param_cpp_type: str = '') -> str:
-    """``new(self)`` 在 const 成员中传引用形参时用 ``*this``。"""
+    """``new(self)`` 按目标形参传引用或指针。"""
     pt = param_cpp_type.strip()
     if isinstance(expr, ast.Name) and expr.id == 'self' and pt.endswith('&') and (not pt.endswith('&&')):
         return '*this'
+    if isinstance(expr, ast.Name) and expr.id == 'self' and pt.endswith('*'):
+        return 'this'
     if pt:
         return tr._visit_value_for_type(expr, pt)
     return tr._visit_value_expr(expr)
@@ -275,12 +277,28 @@ def _emit_new_ctor_expr(tr: 'Translator', cpp_type: str, call: ast.Call) -> str:
     return f'{cpp_type}({args})' if args else f'{cpp_type}()'
 
 def _try_emit_new_ann_assign(tr: 'Translator', node: ast.AnnAssign) -> bool:
-    if not node.annotation or not tr._is_new_call(node.value):
+    from .call_emit import is_new_receiver_attr_call, specialize_typed_storage_from_rhs_call
+    if not node.annotation or not (tr._is_new_call(node.value) or is_new_receiver_attr_call(node.value)):
         return False
     tparams = tr._active_type_params()
     call = node.value
     match node.target:
         case ast.Name(id=name):
+            # ``new.factory(...)`` 可由实参收窄左侧默认模板实参，例如
+            # ``x: NormalDist = new.fromSamples(list[float64])``。
+            if is_new_receiver_attr_call(call):
+                t = tr._parse_storage_type(node.annotation, tparams)
+                if isinstance(node.annotation, ast.Name):
+                    t = specialize_typed_storage_from_rhs_call(tr, t, call)
+                val = tr.visit(call)
+                pname = cpp_param(name)
+                if tr._try_declare(name):
+                    if tr.scope:
+                        bind_scope_var(tr.scope, name, t, classes=tr.classes)
+                    tr.write_line(f'{t} {pname} = {val};')
+                else:
+                    tr.write_line(f'{pname} = {val};')
+                return True
             appendable = tr._appendable_init_from_ann(node.annotation)
             if appendable is not None:
                 container, elem_t = appendable

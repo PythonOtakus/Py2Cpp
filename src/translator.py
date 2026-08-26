@@ -1342,6 +1342,11 @@ class Translator(ast.NodeVisitor):
         return ret
 
     def _function_sig_for_name(self, name: str) -> FunctionSig | None:
+        binding = self._effective_import_bindings().get(name)
+        if binding is not None and binding.kind == 'function':
+            fsig = self.function_sigs.get((binding.module_path, binding.symbol))
+            if fsig is not None:
+                return fsig
         for mp in (self.source_target, self.entry_module_path, *reversed(self.module_order)):
             if not mp:
                 continue
@@ -1810,6 +1815,11 @@ class Translator(ast.NodeVisitor):
             return 0
         if pt == at:
             return 100
+        from .analysis.ir import cpp_template_base_and_args
+        pattern = cpp_template_base_and_args(pt)
+        actual = cpp_template_base_and_args(at)
+        if pattern is not None and actual is not None and pattern[0] == actual[0]:
+            return 50
         if is_list_type(pt) and is_list_type(at):
             pe = list_elem_type(pt) or ''
             ae = list_elem_type(at) or ''
@@ -2144,7 +2154,29 @@ class Translator(ast.NodeVisitor):
         if ret is None:
             ov_sigs = info.method_overload_sigs.get(method)
             if ov_sigs:
-                ret = self._sig_return_storage(ov_sigs[0])
+                # 缓存模块没有 mixin 展开后的 overload AST；按实参选中
+                # 签名即可，返回类型仍需在下方按接收者实例化。
+                picked = ov_sigs[0]
+                if call_args:
+                    actual = self._infer_expr_cpp_type(call_args[0]) or ''
+                    scored = [
+                        (
+                            self._overload_param_match_score(
+                                self._msig_param_storage(
+                                    candidate,
+                                    next(iter(candidate.param_types), ''),
+                                    fallback='',
+                                ),
+                                actual,
+                            ),
+                            candidate,
+                        )
+                        for candidate in ov_sigs
+                    ]
+                    scored.sort(key=lambda item: item[0], reverse=True)
+                    if scored and scored[0][0] > 0:
+                        picked = scored[0][1]
+                ret = self._sig_return_storage(picked)
         if ret is None or receiver is None:
             return ret
         recv_cpp = strip_cpp_ref(self._infer_expr_cpp_type(receiver) or '')
@@ -2182,7 +2214,15 @@ class Translator(ast.NodeVisitor):
 
     @staticmethod
     def _class_info_has_method(info: ClassInfo, name: str) -> bool:
-        if name in info.methods or name in info.method_overloads:
+        # 用户入口会复用 runtime bootstrap 的签名缓存。缓存模块保留原始
+        # AST，而 mixin 展开后的成员仅存在于签名表中；二者都属于类的
+        # 可调用接口，不能只检查未展开的 ``methods``。
+        if (
+            name in info.methods
+            or name in info.method_overloads
+            or name in info.method_sigs
+            or name in info.method_overload_sigs
+        ):
             return True
         return False
 
@@ -2711,6 +2751,9 @@ class Translator(ast.NodeVisitor):
         if owner is None:
             return None
         ft = self._field_storage(attr, info=owner)
+        if ft and owner.type_params:
+            from .emit.call_emit import specialize_param_cpp_types_from_context
+            ft = specialize_param_cpp_types_from_context(self, owner, [ft], inner_t)[0]
         return ft if ft else None
 
     def _member_access_sep(self, receiver_expr: ast.expr, recv_cpp: str | None=None) -> str:
@@ -2934,7 +2977,7 @@ class Translator(ast.NodeVisitor):
             from .emit.call_emit import specialize_param_cpp_types_from_context
             recv_t = self._infer_expr_cpp_type(receiver)
             if recv_t:
-                pt = specialize_param_cpp_types_from_context(info, [pt], recv_t)[0]
+                pt = specialize_param_cpp_types_from_context(self, info, [pt], recv_t)[0]
         return self._coerce_expr_to_cpp_type(value, pt, rhs_node=rhs_node)
 
     def _emit_property_set(self, receiver: ast.expr, attr: str, value: str, *, rhs_node: ast.expr | None=None) -> bool:
@@ -3701,7 +3744,9 @@ class Translator(ast.NodeVisitor):
         if alias.is_conditional:
             from .passes.type_conditional import conditional_alias_rhs_cpp
             return conditional_alias_rhs_cpp(alias)
-        others = {n: a for n, a in info.type_aliases.items() if n != alias.name}
+        others = self._module_type_alias_map()
+        others.update(info.type_aliases)
+        others.pop(alias.name, None)
         self.type_parser.set_type_aliases(others, use_as_cpp_name=True)
         tparams = set(info.type_params) | set(alias.type_params)
         return self._parse_type(alias.value, tparams)
@@ -3803,35 +3848,37 @@ class Translator(ast.NodeVisitor):
         if not ma or not ma.type_aliases:
             return
         assert self.type_parser is not None
+        from .analysis.imports import effective_module_type_aliases
         ffi_symbols = ffi_header_symbol_allowlist(module_path) if self._is_ffi_module(module_path) else None
         from .passes.type_conditional import emit_conditional_type_alias, plan_conditional_alias
         prev_deferred = self.deferred_header_target
         if not use_deferred:
             self.deferred_header_target = None
         try:
-            for alias in ma.type_aliases:
-                if ffi_symbols is not None and alias.name not in ffi_symbols:
-                    continue
-                if conditional_only is True and (not alias.is_conditional):
-                    continue
-                if conditional_only is False and alias.is_conditional:
-                    continue
-                if alias.is_conditional:
-                    others = {a.name: a for a in ma.type_aliases if a.name != alias.name}
+            with self._use_import_bindings(module_path):
+                aliases = effective_module_type_aliases(self, module_path)
+                for alias in ma.type_aliases:
+                    if ffi_symbols is not None and alias.name not in ffi_symbols:
+                        continue
+                    if conditional_only is True and (not alias.is_conditional):
+                        continue
+                    if conditional_only is False and alias.is_conditional:
+                        continue
+                    others = dict(aliases)
+                    others.pop(alias.name, None)
                     self.type_parser.set_type_aliases(others, use_as_cpp_name=False)
-                    plan = plan_conditional_alias(self, alias)
-                    emit_conditional_type_alias(self, alias, plan)
-                    continue
-                others = {a.name: a for a in ma.type_aliases if a.name != alias.name}
-                self.type_parser.set_type_aliases(others, use_as_cpp_name=False)
-                rhs = self.type_parser.parse_type(alias.value, set(alias.type_params))
-                # Some generated SDK declarations preserve redundant typedefs
-                # such as ``type PyiFoo = PyiFoo``.  They must not become a
-                # self-referential C++ ``using`` declaration.
-                if rhs == alias.name:
-                    continue
-                rhs = self._qualify_module_type_alias_rhs(module_path, rhs)
-                self._emit_type_alias_using(alias, rhs)
+                    if alias.is_conditional:
+                        plan = plan_conditional_alias(self, alias)
+                        emit_conditional_type_alias(self, alias, plan)
+                        continue
+                    rhs = self.type_parser.parse_type(alias.value, set(alias.type_params))
+                    # Some generated SDK declarations preserve redundant typedefs
+                    # such as ``type PyiFoo = PyiFoo``.  They must not become a
+                    # self-referential C++ ``using`` declaration.
+                    if rhs == alias.name:
+                        continue
+                    rhs = self._qualify_module_type_alias_rhs(module_path, rhs)
+                    self._emit_type_alias_using(alias, rhs)
             self.write_line()
         finally:
             self.deferred_header_target = prev_deferred
@@ -4063,7 +4110,10 @@ class Translator(ast.NodeVisitor):
             if not bound:
                 continue
             if isinstance(bound, FuncTypeParametricBound):
-                req = f'{bound.protocol}_requires<{p}, {bound.assoc_type_param}>'
+                assoc = bound.assoc_type_param
+                if info is not None and assoc in info.type_params:
+                    assoc = cpp_type_param_template_name(assoc)
+                req = f'{bound.protocol}_requires<{p}, {assoc}>'
                 parts.append(f'{req} = 0' if default_constraint else req)
                 continue
             bounds = (bound,) if isinstance(bound, str) else bound
@@ -5801,6 +5851,8 @@ class Translator(ast.NodeVisitor):
                 return ''
 
     def _debug_call_is_void(self, node: ast.Call) -> bool:
+        if (self._infer_expr_cpp_type(node) or '').strip() == 'void':
+            return True
         match node.func:
             case ast.Name(id=name):
                 return name in ('destroy', 'free', 'freeArray', 'init')
@@ -6194,6 +6246,8 @@ class Translator(ast.NodeVisitor):
         return cpp_union_static_call(cls_cpp, variant)
 
     def _visit_value_for_type(self, node: ast.expr, cpp_type: str) -> str:
+        if isinstance(node, ast.Name) and node.id == 'self' and cpp_type.strip().endswith('*'):
+            return 'this'
         if isinstance(node, ast.Name):
             from .emit.delegate_emit import py_callable_type_to_delegate_params
             parsed = py_callable_type_to_delegate_params(cpp_type)
@@ -6218,8 +6272,7 @@ class Translator(ast.NodeVisitor):
                         node=func,
                     )
                     fn_cpp = qualify_symbol_in_module(mp, self._module_function_cpp_name(mp, func))
-                    thunk = self._py_callable_inline_free_function_thunk(fn_cpp, info)
-                    return f'{cpp_type}{{ nullptr, {thunk} }}'
+                    return f'{cpp_type}({fn_cpp})'
         if isinstance(node, ast.Lambda):
             from .analysis.delegates import DelegateInfo
             from .emit.delegate_emit import py_callable_owned_lambda_expr, py_callable_type_to_delegate_params
@@ -6507,6 +6560,13 @@ class Translator(ast.NodeVisitor):
                     t = self._scope_storage(name)
                     if t:
                         return t
+                binding = self._effective_import_bindings().get(name)
+                if binding is not None and binding.kind == 'constant':
+                    mod_t = self._module_constant_cpp_type(
+                        binding.symbol, module_path=binding.module_path,
+                    )
+                    if mod_t:
+                        return mod_t
                 mod_t = self._module_constant_cpp_type(name)
                 if mod_t:
                     return mod_t
@@ -6515,6 +6575,20 @@ class Translator(ast.NodeVisitor):
                 dunder_ret = self._infer_dunder_forward_call_return_type(name, node)
                 if dunder_ret:
                     return dunder_ret
+                binding = self._effective_import_bindings().get(name)
+                if binding is not None and binding.kind == 'function':
+                    func = self._module_function_def_for_call(
+                        binding.module_path, binding.symbol, call=node,
+                    )
+                    if func is not None and func.returns is not None:
+                        from .analysis.variadic_template import parse_function_type_params
+                        from .emit.call_emit import specialize_typed_storage_from_rhs_call
+                        regular, _, _ = parse_function_type_params(func)
+                        ret = self._parse_type(
+                            func.returns,
+                            self._active_type_params() | set(regular),
+                        )
+                        return specialize_typed_storage_from_rhs_call(self, ret, node)
                 if name == 'next' and len(node.args) == 1 and (not node.keywords):
                     recv_info = self._class_info_for_expr(node.args[0])
                     if recv_info and '__next__' in recv_info.method_sigs:
@@ -6586,9 +6660,18 @@ class Translator(ast.NodeVisitor):
                 if info:
                     p = info.properties.get(attr)
                     if p and p.getter_sig:
-                        return self._sig_return_storage(p.getter_sig)
+                        ret = self._sig_return_storage(p.getter_sig)
+                        recv_t = self._infer_expr_cpp_type(val)
+                        if ret and recv_t and info.type_params:
+                            from .emit.call_emit import specialize_param_cpp_types_from_context
+                            ret = specialize_param_cpp_types_from_context(self, info, [ret], recv_t)[0]
+                        return ret
                     ft = self._field_storage(attr, info=info)
                     if ft:
+                        recv_t = self._infer_expr_cpp_type(val)
+                        if recv_t and info.type_params:
+                            from .emit.call_emit import specialize_param_cpp_types_from_context
+                            ft = specialize_param_cpp_types_from_context(self, info, [ft], recv_t)[0]
                         return ft
                     if not self._is_resolved_instance_member(info, attr) and '__getattr__' in info.methods:
                         sig = info.method_sigs.get('__getattr__')
@@ -6605,6 +6688,17 @@ class Translator(ast.NodeVisitor):
                         sig = info.method_sigs.get('__getattr__')
                         if sig:
                             return self._sig_return_full(sig)
+                if info:
+                    resolved = info.resolve_instance_property(attr, self.classes)
+                    if resolved is not None:
+                        owner, prop = resolved
+                        ret = self._sig_return_storage(prop.getter_sig)
+                        recv_t = self._infer_expr_cpp_type(val)
+                        if ret and recv_t and owner.type_params:
+                            from .emit.call_emit import specialize_param_cpp_types_from_context
+                            ret = specialize_param_cpp_types_from_context(self, owner, [ret], recv_t)[0]
+                        if ret:
+                            return ret
                 ft = self._field_cpp_type_for_attribute(val, attr)
                 if ft:
                     return ft
@@ -6706,6 +6800,17 @@ class Translator(ast.NodeVisitor):
                 return cpp_pointer_type_for_object(self._infer_expr_cpp_type(arg))
             case ast.JoinedStr():
                 return cpp_ident('str')
+            case ast.Dict(keys=keys, values=values):
+                key_t = cpp_ident('int')
+                value_t = cpp_ident('int')
+                for key, value in zip(keys, values):
+                    if key is not None:
+                        key_t = self._infer_expr_cpp_type(key)
+                    if value is not None:
+                        value_t = self._infer_expr_cpp_type(value)
+                    if key is not None and value is not None:
+                        break
+                return cpp_template_type('dict', f'{key_t}, {value_t}')
             case ast.List(elts=elts):
                 inner = self._infer_list_elem_type(elts)
                 return cpp_template_type('list', inner)

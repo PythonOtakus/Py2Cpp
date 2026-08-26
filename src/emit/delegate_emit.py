@@ -105,8 +105,8 @@ def _module_function_cpp_name(tr: 'Translator', name: str) -> str:
     return qualify_symbol_in_module(tr._active_module_path(), cpp_param(name))
 
 def _emit_free_function_callable(tr: 'Translator', info: DelegateInfo, fn_cpp: str) -> str:
-    invoke = tr._ensure_py_callable_free_function_thunk(fn_cpp, info)
-    return _emit_callable_slot(info, 'nullptr', f'&{invoke}')
+    slot_type = delegate_py_callable_type(info)
+    return f'{slot_type}({fn_cpp})'
 
 def _class_info_for_type_receiver(tr: 'Translator', node: ast.expr) -> 'ClassInfo | None':
     match node:

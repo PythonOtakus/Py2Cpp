@@ -103,7 +103,7 @@ def emit_abs_call(tr: Translator, arg: ast.expr) -> str:
     if is_long_type(arg_t):
         return emit_instance_dunder_call(tr, '__abs__', arg)
     info = tr._class_info_for_expr(arg)
-    if info and '__abs__' in info.methods:
+    if info and tr._class_info_has_method_resolved(info, '__abs__'):
         return emit_instance_dunder_call(tr, '__abs__', arg)
     return f'::py2cpp::py_abs({tr._visit_value_expr(arg)})'
 

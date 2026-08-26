@@ -368,7 +368,7 @@ class FileSink:
     return
 
 
-@copyable
+@refcount
 class MemorySink:
   records: list[LogRecord]
   _minLevel: int
@@ -411,7 +411,7 @@ class Logger:
   def _emit(self, level: int, message: str, fields: str) -> None:
     if level < self.level:
       return
-    # 先构造记录再分发；``MemorySink`` 为 ``@copyable``：``list`` 下标取拷贝，须写回。
+    # 先构造记录再分发；``list`` 下标返回可变元素引用。
     rec: LogRecord = new(
       monotonic(),
       time(),
@@ -425,9 +425,7 @@ class Logger:
     )
     n: int = len(self._memory)
     for i in range(n):
-      m: MemorySink = self._memory[i]
-      m.emit(rec)
-      self._memory[i] = m
+      self._memory[i].emit(rec)
 
   def debug(self, message: str, fields: str = "") -> None:
     self._emit(10, message, fields)

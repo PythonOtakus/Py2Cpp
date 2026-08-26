@@ -1066,9 +1066,8 @@ def expand_mixins(tr: Translator) -> None:
   for host in tr.classes.values():
     if host.is_annotation or host.is_mixin:
       continue
-    skip = getattr(tr, "skip_cached_analysis_module", None)
-    if skip is not None and skip(host.module_path):
-      continue
+    # 签名缓存不保存 mixin 展开后的 AST；即使模块的签名可复用，也必须
+    # 在当前翻译单元重建这些成员，供属性链、重载选择与静态工厂解析。
     for base_name in host.bases:
       mixin = tr.classes.get(base_name)
       if mixin is None or not mixin.is_mixin:

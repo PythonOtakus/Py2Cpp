@@ -1799,6 +1799,8 @@ def _s0311_check_new_then_field_assigns(checker: _StrictStyleChecker, node: ast.
     """S0311：勿 ``x: T = new(); x.f = …``，改用 ``x: T = new(f=…)``。"""
     if checker._s0303_in_desugar_host():
         return
+    if isinstance(node.target, ast.Name) and node.target.id.startswith('__py2cpp_opts'):
+        return
     if node.value is None or not _is_empty_new_call(node.value):
         return
     if not isinstance(node.target, ast.Name):

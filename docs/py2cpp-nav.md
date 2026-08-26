@@ -26,7 +26,8 @@
 |----|------|
 | 函数体内任意语句行映射 | 调试轨迹用 `--debug`，不属于 nav |
 | `templates/**` 编辑与跳转 | 归 [py2cpp-template](../plugins/py2cpp-template/README.md) |
-| Rename / Find All References / 补全 | 后续可选 |
+| Rename / Find All References / 大规模重构 | 归 [py2cpp-architect](./py2cpp-architect.md) |
+| 补全 | 后续可选 |
 | 手改 `generated/` 作为索引源 | 索引仅由译器在翻译结束时写入 |
 
 ### 1.3 设计原则
@@ -287,6 +288,7 @@ python main.py py2cpp\__init__.py -o generated --no-main
 | 扩展实现 | `plugins/py2cpp-nav/out/` |
 | 打包 | `pkg-nav.bat` |
 | 缓存 | `generated/.cache/nav/` |
+| 重构方案（Rename/Refs） | `docs/py2cpp-architect.md` |
 
 ---
 
@@ -296,3 +298,4 @@ python main.py py2cpp\__init__.py -o generated --no-main
 |------|------|
 | 2026-07-20 | 初稿：架构、格式、覆盖矩阵、缺陷、迭代 A–G、开放问题 |
 | 2026-07-20 | v3：落地 A–G；决议 Q1–Q5；kind 扩展；扩展限定名/setter 优先 |
+| 2026-08-26 | 交叉引用 py2cpp-architect（Rename/Refs/大规模重构归属） |

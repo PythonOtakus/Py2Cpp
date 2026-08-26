@@ -120,7 +120,7 @@ out/extension.js  →  translateRunner.js  →  python main.py（仓库根）
 ## 范围与限制
 
 - **含**：`generated/runtime` 标准库、`test/`、`examples/`、`py2cpp/` 用户可见符号
-- **不含**：`templates/**`（请用 [py2cpp-template](../py2cpp-template/)）、函数体内任意行级映射、Rename/Reference
+- **不含**：`templates/**`（请用 [py2cpp-template](../py2cpp-template/)）、函数体内任意行级映射、Rename/Reference（归 [py2cpp-architect](../../docs/py2cpp-architect.md)）
 - 索引随翻译增量更新；未翻译过的模块无法跳转
 
 译器索引实现见仓库根 `src/codegen/nav_index.py`。

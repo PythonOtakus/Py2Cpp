@@ -29,11 +29,11 @@
     "commands": [
       {
         "command": "py2cpp-template.lintCurrentFile",
-        "title": "Py2Cpp: Lint Current Template File"
+        "title": "Py2Cpp Template Linter: Lint Current Template File"
       },
       {
         "command": "py2cpp-template.lintWorkspace",
-        "title": "Py2Cpp: Lint All Templates"
+        "title": "Py2Cpp Template Linter: Lint All Templates"
       }
     ],
     "configuration": {

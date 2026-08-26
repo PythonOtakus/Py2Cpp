@@ -44,8 +44,8 @@ pkg-temp.bat
 
 | 命令 | 说明 |
 |------|------|
-| **Py2Cpp: Lint Current Template File** | 仅检查当前打开的模板 |
-| **Py2Cpp: Lint All Templates** | 全量 T* 扫描；已打开模板文件的诊断会更新 |
+| **Py2Cpp Template Linter: Lint Current Template File** | 仅检查当前打开的模板 |
+| **Py2Cpp Template Linter: Lint All Templates** | 全量 T* 扫描；已打开模板文件的诊断会更新 |
 
 保存文件、编辑时（500ms 防抖）也会自动 lint 当前文件。
 

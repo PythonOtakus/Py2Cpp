@@ -81,8 +81,8 @@ python main.py test\concur\test_task.py -o generated
 
 | 命令 | 说明 |
 |------|------|
-| **Py2Cpp: Translate Current File** | 对当前 `.py` 运行 `main.py` 并刷新导航索引 |
-| **Py2Cpp: Rebuild Navigation Index** | 同上（需打开可翻译的 Python 源文件） |
+| **Py2Cpp Navigation: Translate Current File** | 对当前 `.py` 运行 `main.py` 并刷新导航索引 |
+| **Py2Cpp Navigation: Rebuild Navigation Index** | 同上（需打开可翻译的 Python 源文件） |
 
 ## 设置
 

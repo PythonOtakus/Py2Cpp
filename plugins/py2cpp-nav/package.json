@@ -29,11 +29,11 @@
     "commands": [
       {
         "command": "py2cpp-nav.rebuildIndex",
-        "title": "Py2Cpp: Rebuild Navigation Index"
+        "title": "Py2Cpp Navigation: Rebuild Navigation Index"
       },
       {
         "command": "py2cpp-nav.translateCurrentFile",
-        "title": "Py2Cpp: Translate Current File"
+        "title": "Py2Cpp Navigation: Translate Current File"
       }
     ],
     "configuration": {

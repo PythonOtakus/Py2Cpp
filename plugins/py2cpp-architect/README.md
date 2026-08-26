@@ -51,9 +51,9 @@ pkg-arch.bat
 
 | 命令 | 说明 |
 |------|------|
-| **Show Dependency Graph** | UE 式依赖图画布 |
-| **Apply Refactor Plan** | 加载 `*.arch.json` → diff → 应用 |
-| **Rename Symbol (Preview)** | 生成 `*.arch.json` 并预览 |
+| **Py2Cpp Architect: Show Dependency Graph** | UE 式依赖图画布 |
+| **Py2Cpp Architect: Apply Refactor Plan** | 加载 `*.arch.json` → diff → 应用 |
+| **Py2Cpp Architect: Rename Symbol (Preview)** | 生成 `*.arch.json` 并预览 |
 
 ## CLI
 

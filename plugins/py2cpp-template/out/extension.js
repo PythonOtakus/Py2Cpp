@@ -137,7 +137,7 @@ async function lintAllTemplates(showSummary) {
     }
     await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
-        title: "Py2Cpp: 正在检查 templates/ …",
+        title: "Py2Cpp Template Linter: 正在检查 templates/ …",
         cancellable: false,
     }, async () => {
         try {

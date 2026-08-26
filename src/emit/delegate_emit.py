@@ -104,8 +104,25 @@ def _module_function_cpp_name(tr: 'Translator', name: str) -> str:
         return bound
     return qualify_symbol_in_module(tr._active_module_path(), cpp_param(name))
 
+def _free_fn_needs_abi_trampoline(info: DelegateInfo) -> bool:
+    """自由函数对 ``str``/容器等用 ``const T&``，与 ``Callable`` 按值 Args 不一致时需蹦床。"""
+    from ..analysis.type_pred import (
+        is_container_type,
+        is_str_type,
+    )
+
+    for p in info.params:
+        t = p.cpp_type.strip()
+        if is_str_type(t) or is_container_type(t):
+            return True
+    return False
+
 def _emit_free_function_callable(tr: 'Translator', info: DelegateInfo, fn_cpp: str) -> str:
     slot_type = delegate_py_callable_type(info)
+    if _free_fn_needs_abi_trampoline(info):
+        # 经按值 ABI 蹦床后再 ``PyCallable(tramp)``，保留 ``py_callable_free_invoke`` / Process RVA。
+        tramp = tr._ensure_py_callable_free_abi_trampoline(fn_cpp, info)
+        return f'{slot_type}({tramp})'
     return f'{slot_type}({fn_cpp})'
 
 def _class_info_for_type_receiver(tr: 'Translator', node: ast.expr) -> 'ClassInfo | None':

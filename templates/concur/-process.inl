@@ -36,6 +36,7 @@ namespace py2cpp_concur_process_detail
     std::atomic<int> refs;
 #if defined(_WIN32)
     PROCESS_INFORMATION pi;
+    HANDLE exec_map;
     DWORD exit_code;
     BOOL started;
     BOOL done;
@@ -53,6 +54,7 @@ namespace py2cpp_concur_process_detail
     ProcessState()
       : refs(1),
 #if defined(_WIN32)
+        exec_map(nullptr),
         exit_code(0),
         started(FALSE),
         done(FALSE),
@@ -237,6 +239,35 @@ namespace py2cpp_concur_process_detail
     return 0;
   }
 
+  static int run_invoke_slot(const char* name)
+  {
+    HANDLE h = OpenFileMappingA(FILE_MAP_READ | FILE_MAP_WRITE, FALSE, name);
+    if (!h)
+    {
+      return 1;
+    }
+    void* view = MapViewOfFile(h, FILE_MAP_WRITE, 0, 0, 0);
+    if (!view)
+    {
+      CloseHandle(h);
+      return 1;
+    }
+    InvokeHdr* hdr = reinterpret_cast<InvokeHdr*>(view);
+    if (!hdr->tramp_rva)
+    {
+      UnmapViewOfFile(view);
+      CloseHandle(h);
+      return 1;
+    }
+    typedef void (*InvokeTrampFn)(void*);
+    InvokeTrampFn tramp = reinterpret_cast<InvokeTrampFn>(from_rva(hdr->tramp_rva));
+    tramp(view);
+    int status = hdr->status;
+    UnmapViewOfFile(view);
+    CloseHandle(h);
+    return status == 1 ? 0 : 1;
+  }
+
   template<typename Value>
   struct InvokeLayout
   {
@@ -263,7 +294,7 @@ namespace py2cpp_concur_process_detail
     }
     wchar_t cmdline[2048];
     int written = _snwprintf_s(
-      cmdline, _countof(cmdline), _TRUNCATE, L"\"%s\" %S%s", exe, flag, slot_name
+      cmdline, _countof(cmdline), _TRUNCATE, L"\"%s\" %S%S", exe, flag, slot_name
     );
     if (written < 0)
     {
@@ -307,6 +338,18 @@ PyInt tryWorker(PyInt argc, PyUIntPtr argv_addr)
       return (PyInt)py2cpp_concur_process_detail::run_exec_slot(slot);
 #else
       (void)slot;
+      return 1;
+#endif
+    }
+    const char* invoke_slot = py2cpp_concur_process_detail::match_flag(
+      arg, py2cpp_concur_process_detail::k_invoke_flag
+    );
+    if (invoke_slot)
+    {
+#if defined(_WIN32)
+      return (PyInt)py2cpp_concur_process_detail::run_invoke_slot(invoke_slot);
+#else
+      (void)invoke_slot;
       return 1;
 #endif
     }
@@ -383,7 +426,7 @@ void _PyProcessHandle::start(py2cpp_concur_process_detail::ProcessTarget target,
     CloseHandle(map);
     throw PY2CPP_TYPE(PyOSError)();
   }
-  CloseHandle(map);
+  st->exec_map = map;
   st->started = TRUE;
   st->done = FALSE;
 #else
@@ -442,6 +485,11 @@ PyBool _PyProcessHandle::join(PyFloat64 timeout)
   }
   st->exit_code = code;
   st->done = TRUE;
+  if (st->exec_map)
+  {
+    CloseHandle(st->exec_map);
+    st->exec_map = nullptr;
+  }
   return true;
 #else
   if (timeout == PY2CPP_FLOAT64_INF)
@@ -522,6 +570,11 @@ void _PyProcessHandle::close()
   {
     CloseHandle(st->pi.hProcess);
     st->pi.hProcess = nullptr;
+  }
+  if (st->exec_map)
+  {
+    CloseHandle(st->exec_map);
+    st->exec_map = nullptr;
   }
   st->closed = TRUE;
 #else

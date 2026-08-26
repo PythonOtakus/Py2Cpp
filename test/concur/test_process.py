@@ -1,7 +1,8 @@
 """``py2cpp.concur.process``：callable ``Process`` / ``ProcessPool`` 与跨进程 IPC。"""
 from py2cpp import *
 from py2cpp.concur.process import Process, ProcessChannel, ProcessEvent, ProcessMutex, ProcessPool, ProcessSemaphore, SharedMemory
-from py2cpp.concur.thread import Future
+from py2cpp.concur.thread import Future, Thread
+from py2cpp.system.time import perfCounter, sleep
 from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 
@@ -29,6 +30,13 @@ def _poolAdd() -> int:
 
 def _poolMul() -> int:
   return 3
+
+
+def _tryMutexPeer(name: str, peer: Box) -> None:
+  mutex: ProcessMutex = new(name)
+  if mutex.acquire(timeout=1.0):
+    peer.value = 1
+    mutex.release()
 
 
 class ProcessLifecycleTests(TestCaseMixin):
@@ -108,8 +116,9 @@ class ProcessSynchronizationTests(TestCaseMixin):
 
   @override
   def test(self):
-    eventOne: ProcessEvent = new("Local\\py2cpp-process-event")
-    eventTwo: ProcessEvent = new("Local\\py2cpp-process-event")
+    syncKey: str = "Local\\py2cpp-process-sync-" + str(int(perfCounter() * 1000000.0))
+    eventOne: ProcessEvent = new(syncKey + "-event")
+    eventTwo: ProcessEvent = new(syncKey + "-event")
     self.assertTrue(eventOne.created)
     self.assertFalse(eventTwo.created)
     self.assertFalse(eventTwo.wait(timeout=0.0))
@@ -118,23 +127,28 @@ class ProcessSynchronizationTests(TestCaseMixin):
     eventTwo.clear()
     self.assertFalse(eventOne.isSet())
 
-    semOne: ProcessSemaphore = new("Local\\py2cpp-process-semaphore", 1, 2)
-    semTwo: ProcessSemaphore = new("Local\\py2cpp-process-semaphore", 0, 2)
+    semOne: ProcessSemaphore = new(syncKey + "-semaphore", 1, 2)
+    semTwo: ProcessSemaphore = new(syncKey + "-semaphore", 0, 2)
     self.assertTrue(semOne.created)
     self.assertFalse(semTwo.created)
     self.assertTrue(semTwo.acquire(timeout=0.0))
     semOne.release()
     self.assertTrue(semTwo.acquire(timeout=0.0))
 
-    mutexOne: ProcessMutex = new("Local\\py2cpp-process-mutex")
-    mutexTwo: ProcessMutex = new("Local\\py2cpp-process-mutex")
+    mutexOne: ProcessMutex = new(syncKey + "-mutex")
+    mutexTwo: ProcessMutex = new(syncKey + "-mutex")
     self.assertTrue(mutexOne.created)
     self.assertFalse(mutexTwo.created)
     self.assertTrue(mutexOne.acquire(timeout=0.0))
-    self.assertFalse(mutexTwo.acquire(blocking=False))
+    peer: Box = new()
+    mutexName: str = syncKey + "-mutex"
+    waiter: Thread = new(lambda: _tryMutexPeer(mutexName, peer))
+    waiter.start()
+    sleep(0.02)
+    self.assertEqual(peer.value, 0)
     mutexOne.release()
-    self.assertTrue(mutexTwo.acquire(timeout=0.0))
-    mutexTwo.release()
+    waiter.join(timeout=1.0)
+    self.assertEqual(peer.value, 1)
 
 
 class SharedMemoryTests(TestCaseMixin):

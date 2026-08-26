@@ -5181,6 +5181,38 @@ class Translator(ast.NodeVisitor):
         self._py_callable_thunk_names[key] = thunk_name
         return thunk_name
 
+    def _ensure_py_callable_free_abi_trampoline(self, fn_cpp: str, delegate_info) -> str:
+        """按值 ``Args...`` 蹦床，供 ``PyCallable(fn)`` / Process RVA 使用。
+
+        自由函数常为 ``const T&``（如 ``str``），与 ``Callable`` 模板按值 ``Args`` 不一致；
+        蹦床签名与 ``PyCallable`` 一致，体内再调原函数（``T`` 可绑到 ``const T&``）。
+        """
+        slot_type = delegate_py_callable_type(delegate_info)
+        key = ('__free_abi__', fn_cpp, slot_type)
+        existing = self._py_callable_thunk_names.get(key)
+        if existing is not None:
+            return existing
+        ret = delegate_info.ret_cpp
+        params = tuple(delegate_info.params)
+        param_decls = ', '.join((f'{p.cpp_type} {p.name}' for p in params))
+        param_args = ', '.join((p.name for p in params))
+        idx = len(self._py_callable_thunk_names)
+        safe = ''.join((ch if ch.isalnum() else '_' for ch in fn_cpp)).strip('_') or 'call'
+        tramp_name = f'py_callable_free_abi_{idx}_{safe}'
+        body_lines: list[str] = [
+            f'static {ret} {tramp_name}({param_decls}) {{',
+        ]
+        call = f'{fn_cpp}({param_args})' if param_args else f'{fn_cpp}()'
+        if ret == 'void':
+            body_lines.append(f'  {call};')
+        else:
+            body_lines.append(f'  return {call};')
+        body_lines.append('}')
+        body_lines.append('')
+        self._py_callable_thunk_bodies.extend(body_lines)
+        self._py_callable_thunk_names[key] = tramp_name
+        return tramp_name
+
     @staticmethod
     def _py_callable_inline_free_function_thunk(fn_cpp: str, delegate_info) -> str:
         ret = delegate_info.ret_cpp
@@ -6249,29 +6281,31 @@ class Translator(ast.NodeVisitor):
         if isinstance(node, ast.Name) and node.id == 'self' and cpp_type.strip().endswith('*'):
             return 'this'
         if isinstance(node, ast.Name):
-            from .emit.delegate_emit import py_callable_type_to_delegate_params
+            from .emit.delegate_emit import (
+                _free_fn_needs_abi_trampoline,
+                py_callable_type_to_delegate_params,
+            )
             parsed = py_callable_type_to_delegate_params(cpp_type)
             if parsed is not None:
                 fn_info = self._module_function_info_for_name(node.id)
                 if fn_info is not None:
-                    from .analysis.delegates import DelegateInfo, DelegateParam
+                    from .analysis.delegates import DelegateInfo
                     from .analysis.module_namespace import qualify_symbol_in_module
                     mp, func = fn_info
-                    sig = self._function_sig_for(mp, func)
-                    params = tuple(
-                        DelegateParam(arg.arg, sig.param_types.get(arg.arg, 'void*'))
-                        for arg in func.args.args
-                    )
+                    ret_cpp, params = parsed
                     info = DelegateInfo(
                         name='Callable',
                         module_path=mp,
                         type_params=(),
                         func_template_names=(),
                         params=params,
-                        ret_cpp=sig.ret_lead,
+                        ret_cpp=ret_cpp,
                         node=func,
                     )
                     fn_cpp = qualify_symbol_in_module(mp, self._module_function_cpp_name(mp, func))
+                    if _free_fn_needs_abi_trampoline(info):
+                        tramp = self._ensure_py_callable_free_abi_trampoline(fn_cpp, info)
+                        return f'{cpp_type}({tramp})'
                     return f'{cpp_type}({fn_cpp})'
         if isinstance(node, ast.Lambda):
             from .analysis.delegates import DelegateInfo

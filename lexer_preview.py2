@@ -198,6 +198,15 @@ type MaybeFormatter = ((int) -> str)?  # Callable 本身可空。
 type FormatterFactory = () -> (int) -> str
 
 
+# 泛型实参边界：外层逗号增加实参；括号中的逗号构成一个元组类型实参。
+# A[T, U]       -> GenericApplyTypeSyntax(A, [T, U])
+# A[(T, U)]     -> GenericApplyTypeSyntax(A, [TupleTypeSyntax(T, U)])
+type TwoArgumentBox[T, U] = tuple[T, U]
+type OneTupleArgumentBox[Pair] = Pair
+type PreviewTwoGenericArguments = TwoArgumentBox[int, str]
+type PreviewOneTupleGenericArgument = OneTupleArgumentBox[(int, str)]
+
+
 def apply(fn: (int, float) -> str, a: int, b: float) -> str:
     return fn(a, b)
 
@@ -251,6 +260,16 @@ type EntryOf[T] = (K, V) if T is dict[type K, type V] else Never
 type PreviewElement = ElementOf[list[int]]      # int
 type PreviewFallback = ElementOf[str]          # str
 type PreviewNullable = ElementOf[list[Node?]]  # Node?，保留可空注解。
+
+
+# 类型匹配表达式：仅用于类型别名的右侧，按 case 顺序选择结果类型。
+type ElementOfMatch[T] = T match {
+    case list[type U]: U,
+    case dict[str, type V]: V,
+    case _: T,
+}
+
+type PreviewElementMatch = ElementOfMatch[list[int]]  # int
 
 
 def typeCapturePreview[T](value: T) -> int:

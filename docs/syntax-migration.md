@@ -4,7 +4,7 @@
 
 清单按源码语法族、编译器特殊入口、嵌入式 DSL 和模板语言枚举，普通标准库的每一个方法不算独立语法。表中“保持”表示保留当前表面写法及支持范围，不表示兼容全部 CPython 语义；“⏎”表示换行及相应缩进。表格用于查找映射，详细规则在各专节定义。
 
-迁移分为 A、B 两批：A 为 enum/type enum、final、const、ref class；B 为 record、frozen、ordered、字段 optional、其余声明关键字、lazy class 单例、ref/lazy、属性与缓存、箭头 lambda、Callable 类型简写、可空运算、inline 静态分支、match 表达式及显式类型捕获。type match 采用独立入口的推荐方案；call/from 记录用户提出的多行回调方案，as 结果接收和其他块 lambda 入口仍保留候选状态。
+迁移分为 A、B 两批：A 为 enum/type enum、final、const、ref class；B 为 record、frozen、ordered、字段 optional、其余声明关键字、lazy class 单例、ref/lazy、属性与缓存、箭头 lambda、Callable 类型简写、可空运算、inline 静态分支、match 表达式及显式类型捕获。type match 采用独立入口的推荐方案，并提供其类型表达式形式；call/from 记录用户提出的多行回调方案，as 结果接收和其他块 lambda 入口仍保留候选状态。
 
 迁移期通过旧方言入口接受旧写法；识别装饰器和标记须依据绑定身份，不能全局替换同名用户符号。重复的新旧标记诊断为重复声明。所有新增声明词及 inline/ref/lazy/call，和字段位置的 optional，都是上下文软关键字；普通赋值、属性访问和调用中的同名标识符保持可用。可空、缓存和 record 涉及新行为，不能视为纯文本替换。
 
@@ -49,7 +49,7 @@
 
 解析器在声明起始位置识别 `type enum NAME` / `type union NAME`，并与现有 `type Name = T` 别名规则区分。`type enum = T`、`type union = T` 仍可表示名为 enum/union 的类型别名，`type(...)` 仍按表达式解析；这只定义语法分派，不新增运行时 type 内建支持。
 
-本轮推荐的 `type match T:` 是另一条语句规则：`type match = T` 仍是名为 match 的类型别名；根据别名头的 `=` 或泛型形参列表与匹配语句的主体/冒号分派，不依赖符号表判断。具体类型模式文法见后文。
+本轮推荐的 `type match T:` 是另一条语句规则，`type A[T] = T match { case ...: R, ... }` 是类型别名右侧的专用表达式：`type match = T` 仍是名为 match 的类型别名；根据别名头的 `=` 或泛型形参列表与匹配语句的主体/冒号分派，不依赖符号表判断。具体类型模式文法见后文。
 
 `ref class A:` 是引用类型的规范声明，替代旧 `@refcount`：
 
@@ -461,6 +461,7 @@ lazy 声明修饰词不接配置参数，不再接受 `lazy(maxsize=...) def`。
 | 值模板参数 | `class ModInt[T: IntegralType, Mod: T]:` | 保持 | 当前类参数类型为前面泛型名或 int |
 | 常量模板默认值 | `class Buffer[T, N: int = 0]:` | 保持 | 不推定任意函数 NTTP 均支持 |
 | 值模板实参 | `ModInt[int, 1000000007]`、`array[int, 16]` | 保持 | 与普通类型实参分别建模 |
+| 泛型实参边界 | CPython AST 将 `A[T,U]`、`A[(T,U)]` 都表示为 tuple slice | B：两者保留为不同泛型应用 | 前者有两个外层实参 T/U；后者只有一个 `(T,U)` 元组类型实参，不能自动打包、解包或按声明形参数量猜测 |
 | 类型捕获声明 | `def f[T, _U = ...](x:T):`，模式中使用 `_U` | B：`def f[T](x:T):`，模式中使用 `list[type U]` 等 | 捕获在模式位置显式声明，不进入公开泛型实参表；旧捕获形参仅 legacy 兼容 |
 | 可变类型参数 | `def f[*Ts](*args: Ts):`、`class C[*Ts]:` | 保持 | 函数最多一个 TypeVarTuple |
 | 元组类型 | `(int, str)`、`(T,)`、`(*Ts,)` | 保持 | 顶层注解规范使用此形式；嵌套 tuple[A,B] 可用 |
@@ -476,6 +477,23 @@ lazy 声明修饰词不接配置参数，不再接受 `lazy(maxsize=...) def`。
 | 生成器/协程类型 | `GeneratorType[Y,S,R]`、`CoroutineType[Y,S,R]`、`AsyncGeneratorType[Y,S]` | 保持 | 参数意义按项目协议 |
 | 协议与关联类型引用 | `IteratorType[T]`、`AwaitableType[T]`、`T.Element`、`Optional[T].Value` 等 | 保持 | 不逐一给每个库类型新增语法 |
 | 引用计数/boxing 类的源码类型 | `Node`、`Node[T]` | 保持 | 由类模型决定包装；普通源码不再套 RefCount[Node]/Pointer[Node] |
+
+<a id="generic-argument-boundaries"></a>
+
+### 泛型实参边界
+
+方括号中的逗号只分隔当前泛型应用的外层实参；括号中的逗号先形成一个元组类型。因此 `A[T, U]` 是两个实参的应用，`A[(T, U)]` 是一个元组类型实参的应用，`A[T,]` 是一个 T 实参，而 `A[(T,)]` 是一个一元元组类型实参。后两种边界同样必须保留。若声明的形参数量或约束不接受相应形状，绑定器报告该应用非法；它不会为了通过检查把 `A[T, U]` 改写成 `A[(T, U)]`，也不会反向拆开元组。
+
+```text
+generic_type        := type_primary "[" generic_argument ("," generic_argument)* [","] "]"
+generic_argument    := type | compile_time_value_argument
+parenthesized_type  := "(" type ")"
+tuple_type          := "(" type "," [type ("," type)* [","]] ")"
+```
+
+原生 Syntax AST 为前者保存两个 `GenericApplyTypeSyntax.arguments`，为后者保存一个 `TupleTypeSyntax` 实参；绑定后的泛型 `TypeId` 也维持相同嵌套结构。纯分组 `(T)` 可以在绑定后归约为 T，但元组 `(T,)`、`(T,U)` 不能被擦除。`A[(T, U)]` 与显式 `A[tuple[T, U]]` 表示同一个单元组实参；这不改变其与 `A[T, U]` 的区别。
+
+旧 CPython AST 的 `Subscript(slice=Tuple(...))` 和 `ast.unparse` 无法单独恢复外层圆括号。legacy adapter 只能在保存原始源文本、token/trivia 和 span 时重建该原生形状；缺少这些信息的 AST 输入必须诊断无法保真迁移，不能凭实参数目或 C++ 模板字符串猜测。
 
 <a id="callable-types"></a>
 
@@ -514,7 +532,7 @@ type Transform[T, U] = (T) -> U
 callable_type := "(" [type ("," type)* [","]] ")" "->" type
 ```
 
-类型 parser 只在配对括号之后存在 -> 时把该组括号识别为参数类型表；否则沿用原分组/元组类型规则。因此 `(int, float)` 是元组类型，`(int, float) -> str` 是两个参数的 Callable 类型。返回侧递归调用类型 parser，`(A) -> (B) -> C` 等价 `(A) -> ((B) -> C)`；-> 比类型应用、后缀 ? 和返回侧 @ 标记绑定更弱，外围逗号、= 和声明冒号终止当前类型。`def make() -> (int) -> str:` 的第一个 -> 属于函数声明，余下部分是返回的 Callable 类型。
+类型 parser 只在配对括号之后存在 -> 时把该组括号识别为参数类型表；否则沿用原分组/元组类型规则。因此 `(int, float)` 是元组类型，`(int, float) -> str` 是两个参数的 Callable 类型。泛型实参表同样保留这一层边界：`A[int, float]` 有两个实参，`A[(int, float)]` 有一个元组类型实参。返回侧递归调用类型 parser，`(A) -> (B) -> C` 等价 `(A) -> ((B) -> C)`；-> 比类型应用、后缀 ? 和返回侧 @ 标记绑定更弱，外围逗号、= 和声明冒号终止当前类型。`def make() -> (int) -> str:` 的第一个 -> 属于函数声明，余下部分是返回的 Callable 类型。
 
 -> 不加入普通表达式二元运算符表。变量/字段/参数注解、函数返回和 type 别名 RHS 直接进入类型 parser；在已有显式泛型应用的类型实参位置也使用同一规则，外层名称是否确为泛型仍由绑定检查。`value = (int, float) -> str` 不创建运行时类型对象，应报告需要类型上下文；`value = (a,b) => ...` 才是 lambda 表达式。类型别名是该 Callable 类型的别名，不创建新的名义委托类型。
 
@@ -648,9 +666,10 @@ value = node!.x                # 只抑制诊断；node 真为空时仍会空引
 | 条件类型别名 | `type Elem[T, _U = ...] = _U if T is list[_U] else T` | B：`type Elem[T] = U if T is list[type U] else T` | type U 为该正向 is 模式的局部捕获，不是调用方传入的泛型参数 |
 | 条件别名链 | `A if T is P else B if T is Q else C` | 保持 | 当前语法必须有最终 else |
 | 不匹配拒绝 | `type Only[T, _U = ...] = _U if T is list[_U] else Never` | B：`type Only[T] = U if T is list[type U] else Never` | 显式 Never，不采用无 else 的假语法 |
+| 类型匹配表达式别名 | 无统一入口 | B：`type ElementOf[T] = T match { case list[type U]: U, case _: T }` | 花括号 case 按源码顺序选择一个结果类型；复用 `type match` 的类型模式、守卫与显式捕获 |
 | 宏条件 | `if "WIN32" in __macro__: ...`、`elif "X" not in __macro__:` | 保持 | 宏名常量字符串；独立宏分支链 |
 
-这些类型条件入口与新增 inline if 及推荐的 type match 分开保留；类型捕获改用显式 type 的同时不改变旧分派阶段。旧函数 type if 的具体类型优先/类型模式匹配、无 else 时的未覆盖诊断，以及类 type if 的位置/else 限制，不能通过加 inline 或改成 type match 机械迁移；宏条件的选择发生在 C++ 预处理阶段，也不等于前端已知的布尔常量。新静态分支的源序选择与实例剪枝规则见下文。
+这些类型条件入口与新增 inline if、推荐的 type match 及其类型表达式分开保留；类型捕获改用显式 type 的同时不改变旧分派阶段。旧函数 type if 的具体类型优先/类型模式匹配、无 else 时的未覆盖诊断，以及类 type if 的位置/else 限制，不能通过加 inline 或改成 type match 机械迁移；宏条件的选择发生在 C++ 预处理阶段，也不等于前端已知的布尔常量。新静态分支的源序选择与实例剪枝规则见下文。
 
 <a id="type-capture"></a>
 
@@ -673,9 +692,9 @@ type EntryOf[T] = (K, V) if T is dict[type K, type V] else Never
 | `dict[type K, type V]` | 捕获两个类型实参；K/V 各是单个类型 |
 | `dict[str, list[type U]]` | 固定实参精确比较，捕获可嵌套在已有固定参数数目的类型构造中 |
 | `list[U]`、`list[_U]` | 引用模式外已有类型参数/别名；名字不存在时报错，不按前缀或声明遗漏猜测捕获 |
-| `type U` | 捕获整个主体类型；在 type match 中可写 `case type U:` |
+| `type U` | 捕获整个主体类型；在 type match 语句或类型匹配表达式中可写 `case type U:` |
 
-type NAME 只在类型模式上下文中激活：条件类型别名的正向 is 右侧、已有函数类型分支的正向模式，以及 type match 的 case。普通注解 `value: list[type U]`、普通类型别名 `type X = list[type U]` 或值表达式不是捕获位置，应诊断；只有该名称已通过合法模式声明后，才能在对应成功分支的普通类型位置写 U。普通 match/inline match 的值捕获规则保持，inline if 的精确类型比较暂不因本项开放形状捕获。
+type NAME 只在类型模式上下文中激活：条件类型别名的正向 is 右侧、已有函数类型分支的正向模式，以及 type match 语句或类型匹配表达式的 case。普通注解 `value: list[type U]`、普通类型别名 `type X = list[type U]` 或值表达式不是捕获位置，应诊断；只有该名称已通过合法模式声明后，才能在对应成功分支的普通类型位置写 U。普通 match/inline match 的值捕获规则保持，inline if 的精确类型比较暂不因本项开放形状捕获。
 
 主体及模式中的裸类型名称先在外层环境绑定；每个 type U 为匹配成功后的分支建立独立类型绑定。因此捕获可在成功分支中遮蔽外层同名 U，但不改写外层；`dict[type U, U]` 的第二个 U 只引用外层 U，无外层声明则报错，不回指刚捕获的 U。同一个模式备选内重复写 type U 报重复声明；若需要两个实参类型相等，在 type match 中使用 `dict[type K, type V] if K is V`。不同 case 或 OR 的不同备选可以各自声明同名捕获。
 
@@ -903,6 +922,7 @@ result = sorted(
 | 显式编译期分支 | 局部常量 if 折叠 | B：`inline if cond: ... elif cond2: ... else: ...` | [静态分支规则](#static-branches) |
 | 显式编译期模式分支 | 专用 match/annotation 路径 | B：`inline match subject: ⏎ case pattern if guard: ...` | [inline match](#inline-match) |
 | 显式类型匹配 | 类型 if | B 推荐：`type match T: ⏎ case list[int]: ... ⏎ case list[type U]: ...` | [type match](#type-match) |
+| 类型匹配表达式 | 无统一入口 | B：`type A[T] = T match { case list[type U]: U, case _: T }` | [type match](#type-match) |
 | 条件表达式 | `a if cond else b` | 保持 | 与条件类型别名分开 |
 | 匹配表达式 | match 语句赋值/return | B：`x match { case 0: 1, case y if y > 0: 2, case _: 3 }` | [取值规则](#match-expression) |
 | while | `while cond:` | 保持 | 静态可发射表达式 |
@@ -976,7 +996,7 @@ inline 是语句起始处紧邻 for、if 或 match 才激活的软关键字：`i
 
 ## inline if 与静态分支共用规则
 
-inline if、inline match 和 type match 共用本节的静态求值、待特化依赖、分支隔离和声明规则；各 match 入口只补充自己的模式规则。新增 inline if 写法为：
+inline if、inline match、type match 语句和类型匹配表达式共用本节的静态求值、待特化依赖、分支隔离和声明规则；各 match 入口只补充自己的模式规则。新增 inline if 写法为：
 
 ```text
 inline if Self._dim == 2:
@@ -1221,7 +1241,7 @@ inline 作用于整个 match，内部仍写 `case pattern [if guard]:`，至少�
 
 <a id="type-match"></a>
 
-## type match
+## type match 与类型匹配表达式
 
 本轮类型匹配建议采用显式 `type match`。用户提出的两种形式都可在自有 parser 中实现，区别在于是否让同一个名称模式随主体类别改变含义。
 
@@ -1238,6 +1258,7 @@ inline 作用于整个 match，内部仍写 `case pattern [if guard]:`，至少�
 | `value match { case pattern: expression, ... }` | 运行时值匹配，选中分支提供表达式结果 | 所属 case 的局部值捕获 |
 | `inline match value:` | 编译期可求的值；保留此前 TypeId 元值 + guard 路径 | 编译期捕获 |
 | `type match T:` | 编译期类型身份及带显式捕获的类型形状 | 裸名称为已声明类型引用；type U 才声明类型捕获 |
+| `type A[T] = T match { case pattern: R, ... }` | 编译期类型身份及带显式捕获的类型形状，选择一个结果类型 | 裸名称为已声明类型引用；type U 仅在所属 case 声明类型捕获 |
 
 ```text
 def typeCode[T](value: T) -> int:
@@ -1252,9 +1273,41 @@ def typeCode[T](value: T) -> int:
             return 0
 ```
 
-type match 本身表示编译期选择，不必叠加 inline；首版只开放这一种顺序，不另加 inline type match/type inline match。T 在绑定时须代表类型，首版主体包括类型形参、已声明类型/别名及合法的已构造类型表达式；`type match value:` 若 value 是运行时对象则报错，不隐式执行 type(value) 或 isinstance。它不新增运行时动态类型检查。
+type match 语句本身表示编译期选择，不必叠加 inline；首版只开放这一种顺序，不另加 inline type match/type inline match。T 在绑定时须代表类型，首版主体包括类型形参、已声明类型/别名及合法的已构造类型表达式；`type match value:` 若 value 是运行时对象则报错，不隐式执行 type(value) 或 isinstance。它不新增运行时动态类型检查。
 
-显式类型捕获复用条件类型别名的 type U 规则，匹配成功后对该 case 的守卫和正文可见：
+类型匹配表达式是类型别名右侧的专用 TypeExpr；首版仅接受它作为 `type Name[...] =` 的完整右侧，不在注解、泛型实参、类关联类型或其他一般类型位置开放：
+
+```text
+type ElementOfMatch[T] = T match {
+    case list[type U]: U,
+    case dict[str, type V] if V is int: V,
+    case _: T,
+}
+
+type OnlyListElement[T] = T match {
+    case list[type U]: U,
+    case _: Never,
+}
+```
+
+其文法为：
+
+```text
+type_alias_rhs       := type_match_expr | type_expr
+type_match_expr      := type_match_subject "match" "{" type_match_expr_case ("," type_match_expr_case)* [","] "}"
+type_match_subject   := type_expr_without_top_level_match
+type_match_expr_case := "case" type_pattern ["if" static_bool_expr] ":" type_expr
+```
+
+最外层 `match {` 将类型别名右侧前面的完整 TypeExpr 作为主体；每个 case 的顶层 `:` 终止模式/守卫，顶层 `,` 分隔 case。括号、类型实参、Callable 的 `->` 和 case 结果中的普通 TypeExpr 各自消费内部标点，因此不会被外层 case 提前截断。解析器只在 `type Name[...] =` 的右侧读到完整主体之后的 `match {` 时建立该节点：`type A = match` 仍是类型名为 match 的普通别名，`type match = T` 仍是名为 match 的别名，`type match T:` 仍是语句；已开始的 `T match` 缺少 `{` 必须报错，不回退为其他类型或值 match。
+
+每次实例化按源码顺序尝试 case：完整类型模式成功后，在该 case 的捕获环境中求严格编译期 bool guard；guard 为 False 时丢弃捕获并继续下一 case，guard 成功后只解析和归约该 case 的结果 TypeExpr。`type U` 的作用域覆盖对应 guard 与结果类型，不泄漏到下一 case、别名外层或其他 OR 备选；OR 的捕获集合一致性、首个成功备选和 guard 不重试规则与 type match 语句完全相同。上述例中 `ElementOfMatch[list[int]]` 为 int，`ElementOfMatch[str]` 为 str，`OnlyListElement[str]` 则明确归约为 Never。
+
+类型匹配表达式必须在每个实际特化上得到一个结果类型。首版一律要求最后有无 guard 的 `case _:` 或 `case type U:`，不以已知闭集的穷尽推断代替该 arm。没有 case 命中是特化错误，不隐式产生 Never、None 或原主体；作者若要拒绝未覆盖的类型，须显式选择 `case _: Never`。所有 case 先做语法、模式轮廓、类型名和捕获冲突预检，之后只对选中结果做该特化的常规类型归约。
+
+主体、模式或 guard 仍为 Dependent 时保留整个类型匹配表达式，等待特化；不能因较早 case 尚未可判定而越过它选择后面的 case 或兜底。待依赖绑定后从第一条 case 重新按源序选择，结果类型再在已提交的捕获环境中归约；透明别名展开、循环检测、精确类型身份和可空限定继续沿用本节的统一规则。
+
+type match 语句的显式类型捕获复用条件类型别名的 type U 规则，匹配成功后对该 case 的守卫和正文可见：
 
 ```text
 def capturedTypeCode[T](value: T) -> int:
@@ -1278,6 +1331,7 @@ def capturedTypeCode[T](value: T) -> int:
 | `case list[U]:` | U 必须是外层已声明的类型参数/别名；未绑定实参则延迟匹配，不将 U 作为新捕获；未知 U 报错 |
 | `case list[type U]:`、`case dict[str, list[type U]]:` | 按构造类型结构匹配并捕获单个类型实参；U 保存完整类型用途，对本 case 的 guard/正文可见 |
 | `case dict[type K, type V]:` | 多个不同名的类型捕获，不是调用方额外提供的泛型参数 |
+| `case A[int, str]:` 与 `case A[(int, str)]:` | 前者匹配 A 的两个外层类型实参，后者匹配 A 的一个元组类型实参；括号内元组不得展平到 A 的实参表 |
 | `case type U:` | 捕获整个主体类型；无 guard 时不可反驳，必须最后 |
 | `case int \| float:` | case 顶层为类型模式 OR，任一精确匹配即可；匹配成功后 guard 只求一次 |
 | `case list[type U] \| set[type U]:` | OR 各备选独立匹配并提供相同捕获名集合；U 取首个成功备选的实际类型，守卫失败不重试该 OR |
@@ -1288,15 +1342,15 @@ def capturedTypeCode[T](value: T) -> int:
 | 后续类型形状 | 拟复用已有 `list[...]`、`dict[str, ...]` 的匿名形状含义，独立增量实现；不与 inline match 的运行时容器内容模式混淆 |
 | 捕获标记 | 必须写 type NAME；`list[U]`、`list[_U]` 和 `as U` 不声明类型捕获，旧 `_U = ...` 仅在旧源码兼容入口识别 |
 
-精确相等与“继承自某类”“满足某协议”“可转换成某类型”分别建模；`case Base:` 仅匹配 Base，`case SomeProtocol:` 不表示所有实现者。带捕获的 list[type U] 同样要求构造类型本身相同，不自动接受 list 的子类；固定子模式依原规则精确比较。泛型实参是否已绑定与名称是否存在分开诊断，前者可以是 Dependent，后者为 Error；即使后面有 _ 或 type U，也不能越过当前待特化的模式选择兜底。
+精确相等与“继承自某类”“满足某协议”“可转换成某类型”分别建模；`case Base:` 仅匹配 Base，`case SomeProtocol:` 不表示所有实现者。带捕获的 list[type U] 同样要求构造类型本身相同，不自动接受 list 的子类；固定子模式依原规则精确比较。泛型实参是否已绑定与名称是否存在分开诊断，前者可以是 Dependent，后者为 Error；无论是语句还是类型匹配表达式，即使后面有 _ 或 type U，也不能越过当前待特化的模式选择兜底。
 
-case 层的顶层 `|` 固定为 OR 分隔，括号/类型实参内部进入可识别 type NAME 的类型模式子规则；不含捕获的部分沿用类型文法。可空类型优先写 `case int?:`，不把 `case int | None:` 解读成可空类型整体。允许在明确类型括号内使用已支持的可空兼容拼法；不因类型匹配而新增一般 union type。Callable 的 -> 继续采用原类型优先级，参数括号与元组类型保留；case 头在顶层 if 或冒号处结束，不把 guard 当作条件类型别名 RHS。_ 仅在顶层类型模式位置特殊，`list[_]` 不成为匿名形状的新拼法。
+case 层的顶层 `|` 固定为 OR 分隔，括号/类型实参内部进入可识别 type NAME 的类型模式子规则；不含捕获的部分沿用类型文法。泛型应用沿用[泛型实参边界](#generic-argument-boundaries)：`A[T,U]` 与 `A[(T,U)]` 的模式结构不同，后者的元组不展平。可空类型优先写 `case int?:`，不把 `case int | None:` 解读成可空类型整体。允许在明确类型括号内使用已支持的可空兼容拼法；不因类型匹配而新增一般 union type。Callable 的 -> 继续采用原类型优先级，参数括号与元组类型保留；case 头在顶层 if 或冒号处结束，不把 guard 当作条件类型别名 RHS。_ 仅在顶层类型模式位置特殊，`list[_]` 不成为匿名形状的新拼法。
 
 每个 case/OR 备选用独立捕获环境，按完整模式匹配后提交；OR 备选必须显式声明相同的捕获名集合，名称绑定种类均为类型，实际被捕获的具体类型由成功备选决定。无 guard 的 _ 或 type U 必须作为最后一个 case；OR 内不可反驳备选也只能最后。guard 假则丢弃本 case 的绑定并尝试下一 case，不重试本 OR 的其他备选。重复声明、外层同名遮蔽和模式裸名解析均遵循前述显式类型捕获规则。
 
-type match 使用[静态分支共用规则](#static-branches)与 inline match 的源序选择流程：当前模式成功后才在捕获环境中求严格 bool guard，无匹配为空；当前依赖未绑定时等待特化，不提前选 _。完整函数仍检查选中路径的返回值与确定赋值，无命中不自动补默认返回。
+type match 语句与类型匹配表达式使用[静态分支共用规则](#static-branches)的源序选择和待特化规则：当前模式成功后才在捕获环境中求严格 bool guard，当前依赖未绑定时等待特化，不提前选 _。语句无匹配为空，完整函数仍检查选中路径的返回值与确定赋值；表达式无匹配按前述规则是特化错误。
 
-旧函数类型 if 先选具体类型、再选形状模式，而新 type match 始终按源序；`list[type U]` 在 `list[int]` 前时先命中。旧无 else 的未覆盖断言及类体位置限制也不机械迁入；迁移显式捕获拼法与改用 type match 是不同变更。
+旧函数类型 if 先选具体类型、再选形状模式，而新 type match 语句和类型匹配表达式始终按源序；`list[type U]` 在 `list[int]` 前时先命中。旧无 else 的未覆盖断言及类体位置限制也不机械迁入；迁移显式捕获拼法与改用 type match 是不同变更。
 
 ## 访问控制、继承与类型身份
 

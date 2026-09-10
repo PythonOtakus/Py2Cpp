@@ -1,0 +1,76 @@
+{
+  "name": "py2cpp-lexer",
+  "displayName": "Py2Cpp Lexer",
+  "description": "gpu-lexer 本地 WebGPU 语法高亮、Py2Cpp 编辑器语义着色与代码预览",
+  "version": "0.1.0",
+  "publisher": "PythonOtakus",
+  "author": "PythonOtakus",
+  "license": "MIT",
+  "engines": { "vscode": "^1.85.0", "node": ">=18" },
+  "categories": ["Programming Languages", "Other"],
+  "activationEvents": ["onLanguage:py2cpp"],
+  "main": "./out/extension.js",
+  "private": true,
+  "extensionKind": ["ui"],
+  "capabilities": { "untrustedWorkspaces": { "supported": true } },
+  "scripts": {
+    "package": "python package.py",
+    "test": "node --test tests/*.test.js",
+    "vscode:prepublish": "node -e \"process.exit(0)\""
+  },
+  "contributes": {
+    "languages": [{
+      "id": "py2cpp",
+      "aliases": ["Py2Cpp", "py2cpp"],
+      "extensions": [".py2"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "py2cpp",
+      "scopeName": "source.py2cpp",
+      "path": "./syntaxes/py2cpp.tmLanguage.json"
+    }],
+    "commands": [
+      { "command": "py2cpp-lexer.openPanel", "title": "Py2Cpp Lexer: Open GPU Highlight Preview" },
+      { "command": "py2cpp-lexer.enableForCurrentFile", "title": "Py2Cpp Lexer: Enable GPU Highlighting for Current File" },
+      { "command": "py2cpp-lexer.restoreLanguage", "title": "Py2Cpp Lexer: Restore Previous Language Mode" },
+      { "command": "py2cpp-lexer.refresh", "title": "Py2Cpp Lexer: Refresh Highlighting" },
+      { "command": "py2cpp-lexer.restartGpu", "title": "Py2Cpp Lexer: Restart GPU Session" }
+    ],
+    "configurationDefaults": { "[py2cpp]": { "editor.semanticHighlighting.enabled": true } },
+    "semanticTokenScopes": [{
+      "language": "py2cpp",
+      "scopes": {
+        "comment": ["comment.line.number-sign.py2cpp"],
+        "string": ["string.quoted.double.py2cpp"],
+        "number": ["constant.numeric.py2cpp"],
+        "keyword": ["keyword.control.py2cpp"],
+        "type": ["entity.name.type.py2cpp"],
+        "function": ["entity.name.function.py2cpp"],
+        "variable.readonly": ["constant.other.py2cpp"],
+        "operator": ["keyword.operator.py2cpp"]
+      }
+    }],
+    "configuration": {
+      "title": "Py2Cpp Lexer",
+      "properties": {
+        "py2cpp-lexer.enabled": {
+          "type": "boolean", "default": true,
+          "description": "启用 Py2Cpp 语言模式的 GPU 语义高亮；GPU 面板关闭或不可用时保留基础 TextMate 高亮。"
+        },
+        "py2cpp-lexer.debounceMs": {
+          "type": "number", "default": 250, "minimum": 50, "maximum": 3000,
+          "description": "编辑后重新高亮的等待时间（毫秒）。"
+        },
+        "py2cpp-lexer.maxDocumentCharacters": {
+          "type": "number", "default": 200000, "minimum": 1000, "maximum": 1000000,
+          "description": "允许送入 GPU 的文件大小上限（UTF-16 单元）；超限时使用基础高亮。"
+        },
+        "py2cpp-lexer.requestTimeoutMs": {
+          "type": "number", "default": 15000, "minimum": 1000, "maximum": 60000,
+          "description": "单次 GPU 高亮请求超时（毫秒）；初始化另有 30 秒上限。"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,94 @@
+:root {
+    color-scheme: light dark;
+}
+
+body {
+    margin: 0;
+    padding: 16px 20px;
+    color: var(--vscode-foreground);
+    background: var(--vscode-editor-background);
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+}
+
+header, .toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+#title {
+    margin: 0 0 8px;
+    font-size: 1.15em;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+#status {
+    font-weight: 600;
+}
+
+#status[data-state="error"] {
+    color: var(--vscode-errorForeground);
+}
+
+#status[data-state="busy"] {
+    color: var(--vscode-progressBar-background);
+}
+
+#details, #summary {
+    margin: 8px 0;
+    color: var(--vscode-descriptionForeground);
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+button {
+    border: 1px solid var(--vscode-button-border, transparent);
+    border-radius: 3px;
+    padding: 5px 10px;
+    color: var(--vscode-button-foreground);
+    background: var(--vscode-button-background);
+    font: inherit;
+    cursor: pointer;
+}
+
+button:hover {
+    background: var(--vscode-button-hoverBackground);
+}
+
+button:focus-visible {
+    outline: 1px solid var(--vscode-focusBorder);
+    outline-offset: 2px;
+}
+
+pre {
+    margin: 16px 0 0;
+    padding: 12px;
+    overflow: auto;
+    border: 1px solid var(--vscode-panel-border, transparent);
+    border-radius: 3px;
+    background: var(--vscode-textCodeBlock-background, var(--vscode-editor-background));
+}
+
+#code {
+    display: block;
+    white-space: pre;
+    tab-size: 4;
+    font-family: var(--vscode-editor-font-family, monospace);
+    font-size: var(--vscode-editor-font-size, 13px);
+    font-weight: var(--vscode-editor-font-weight, normal);
+    line-height: 1.5;
+    color: var(--vscode-editor-foreground);
+}
+
+.token-plain { color: var(--vscode-editor-foreground); }
+.token-comment { color: var(--vscode-descriptionForeground); font-style: italic; }
+.token-string { color: var(--vscode-symbolIcon-stringForeground, #ce9178); }
+.token-number { color: var(--vscode-symbolIcon-numberForeground, #b5cea8); }
+.token-keyword { color: var(--vscode-symbolIcon-keywordForeground, #c586c0); }
+.token-type { color: var(--vscode-symbolIcon-classForeground, #4ec9b0); }
+.token-function { color: var(--vscode-symbolIcon-functionForeground, #dcdcaa); }
+.token-constant { color: var(--vscode-symbolIcon-constantForeground, #4fc1ff); }
+.token-operator { color: var(--vscode-symbolIcon-operatorForeground, #d4d4d4); }

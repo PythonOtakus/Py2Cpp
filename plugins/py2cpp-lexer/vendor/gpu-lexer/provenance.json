@@ -1,0 +1,15 @@
+{
+  "name": "gpu-lexer",
+  "version": "0.0.2",
+  "homepage": "https://gpu-lexer.vercel.app/",
+  "tarball": "https://registry.npmjs.org/gpu-lexer/-/gpu-lexer-0.0.2.tgz",
+  "integrity": "sha512-Aa39PHOQrz6GoIOxhgQpWe3N2ci8yU1M9F8+7JoKhgcWOxydaMzrZJH3JVPR8j23v1tIDIykPH7wFfqaKOuCiw==",
+  "license": "MIT",
+  "retrieved": "2026-09-10",
+  "files": {
+    "index.d.ts": "424a0384ec3a1c70fd31b5409fb0118ac0bd85f46b84b0b66993b74004f54aca",
+    "index.mjs": "4d75642aada90f8100032c453d3d34d95ef43828ecf55b69a67a7b1ef7eed1ae",
+    "upstream-package.json": "9c2c00de91db6054f734233b7923e75f4d5ba13b54dcb84c0f1ac2013dbf2c3b"
+  },
+  "changes": "dist/index.js renamed to index.mjs; content unchanged. Package metadata retained as upstream-package.json."
+}

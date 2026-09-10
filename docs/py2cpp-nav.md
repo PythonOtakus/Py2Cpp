@@ -13,6 +13,7 @@
 | py2cpp-pyml | `pkg-pyml.bat` | `plugins/py2cpp-pyml/package.bat` |
 | py2cpp-template | `pkg-temp.bat` | `plugins/py2cpp-template/package.bat` |
 | py2cpp-architect | `pkg-arch.bat` | `plugins/py2cpp-architect/package.bat` |
+| py2cpp-lexer | `pkg-lexer.bat` | `plugins/py2cpp-lexer/package.bat` |
 
 ---
 

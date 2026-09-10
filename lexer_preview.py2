@@ -1,0 +1,256 @@
+"""Py2Cpp 拟定语法高亮预览。
+
+打开本文件，确认语言模式为 Py2Cpp，然后执行：
+Py2Cpp Lexer: Open GPU Highlight Preview
+
+用于人工检查 lexer 着色；新语法仍处于设计阶段，不作为当前编译器的运行测试。
+语法依据：docs/syntax-migration.md、docs/nullable-semantics.md。
+"""
+
+from py2cpp import *
+from py2cpp.core.exceptions import Exception
+
+
+# 01. enum / Flag / 继承 / type enum / type union
+enum ModeEnum:
+    Slow = 0
+    Fast = ...
+    Debug = ...
+
+
+enum AccessFlag(int64, flag=True):
+    Read = 1
+    Write = ...
+    Execute = ...
+
+
+class Animal:
+    virtual def sound(self) -> str:
+        return "animal"
+
+
+class Dog(Animal):
+    override final def sound(self) -> str:
+        return "woof"
+
+
+class Cat(Animal):
+    override def sound(self) -> str:
+        return "meow"
+
+
+type enum KindTypeEnum(base=Animal):
+    Other = -1
+
+
+class PreviewError(Exception):
+    pass
+
+
+type union ErrorTypeUnion(base=Exception):
+    variant Unknown:
+        pass
+
+
+# 02. union / variant / 泛型载荷
+union MessageUnion:
+    variant Move:
+        x: int
+        y: int
+
+    variant Text:
+        value: str
+
+    variant Quit:
+        pass
+
+
+union BoxUnion[Value]:
+    variant Some:
+        value: Value
+
+    variant Empty:
+        pass
+
+
+# 03. protocol / mixin / final / const / static / property
+protocol SizedType:
+    abstract def size(self) -> int:
+        ...
+
+    static abstract def zero() -> int:
+        ...
+
+
+mixin LabelMixin:
+    def label(self) -> str:
+        return "lexer preview"
+
+
+final class Counter(LabelMixin):
+    const limit: int = 64
+    final seed: int
+    _x: int = 0
+
+    def __init__(self, seed: int):
+        self.seed = seed
+
+    property x:
+        def __get__(self) -> int:
+            return self._x
+
+        def __set__(self, value: int):
+            self._x = value
+
+        def __post_set__(self, value: int):
+            print(f"x 已更新为 {value}")
+
+    static property title:
+        def __get__() -> str:
+            return "Py2Cpp Lexer"
+
+    static def clamp(value: int) -> int:
+        return max(0, min(value, 64))
+
+
+# 保留的装饰器与新声明可以同时出现。
+@dataclass
+@serializable
+class Point:
+    x: int = 0
+    y: int = 0
+
+
+# 04. T? / ?. / ?[] / ! / ?? / ??=
+@refcount
+class Node:
+    x: int = 0
+    label: str = "节点 😀"
+    memo: str? = None
+    next: Node? = None
+
+    def notify(self, text: str):
+        print(text)
+
+
+def nullablePreview(node: Node?, values: list[int]?) -> int:
+    count: int? = None
+    count ??= 0
+    stillNullable: int? = count!  # ! 只抑制诊断，不把 int? 解包成 int。
+    mixed: list[int?]? = [None, 0, 42]
+
+    value: int = node?.x ?? 0
+    first: int = values?[0] ?? -1
+    label: str = node?.next?.label ?? "没有下一个节点"
+
+    # node 使用引用模型；为空时跳过 RHS、调用实参及实际写入。
+    node?.x = value
+    node?.x += 1
+    node?.memo ??= "已访问"
+    node?.notify(f"当前值：{value}")
+
+    if node is not None:
+        print(node!.label)  # 后缀 !；普通不等比较仍写 !=。
+    if first != 0 and not (value < 0):
+        print(label)
+    return (stillNullable ?? 0) + first + value
+
+
+# 05. => 创建 lambda；-> 在类型位置表示 Callable。
+type Formatter = (int, float) -> str
+type Transform[T, U] = (T) -> U
+type MaybeText = (int) -> str?          # 返回值可空。
+type MaybeFormatter = ((int) -> str)?  # Callable 本身可空。
+type FormatterFactory = () -> (int) -> str
+
+
+def apply(fn: (int, float) -> str, a: int, b: float) -> str:
+    return fn(a, b)
+
+
+def lambdaPreview():
+    one: () -> int = () => 1
+    twice: (int) -> int = x => 2 * x
+    add: (int, int) -> int = (a, b) => a + b
+    formatter: Formatter = (a, b) => f"{a}:{b:.2f}"
+    choose: (int) -> str = x => "正数" if x > 0 else "非正数"
+    transforms: list[(int) -> int] = [x => x + 1, x => x * x]
+
+    optional: ((int) -> str)? = None
+    optional ??= x => str(x)
+    render: (int) -> str = optional ?? (x => f"默认值 {x}")
+
+    print(one(), twice(3), add(2, 5), choose(-1))
+    print(apply(formatter, 7, 2.5), render(42))
+
+
+# 06. inline for / inline if / inline match
+class CompileTimePreview:
+    def total(self) -> int:
+        result: int = 0
+        # 保持 inlineRange 的宿主要求，放在类方法内。
+        inline for i in range(3):
+            inline if i == 0:
+                result += 10
+            elif i == 1:
+                result += 20
+            else:
+                result += i
+        return result
+
+    def dimensionCode(self) -> int:
+        inline match 3:
+            case 0 | 1:
+                return 1
+            case n if n >= 3:
+                return n
+            case _:
+                return 0
+
+
+# 07. type match：case 内裸名称表示类型，具体语法采用文档推荐方案。
+def typeCode[T](value: T) -> int:
+    type match T:
+        case list[int]:
+            return 1
+        case str:
+            return 2
+        case int | float:
+            return 3
+        case int?:
+            return 4
+        case (int, float) -> str:
+            return 5
+        case _:
+            return 0
+
+
+# 普通 match 继续匹配值。
+def modeName(mode: ModeEnum) -> str:
+    match mode:
+        case ModeEnum.Fast | ModeEnum.Debug:
+            return "fast"
+        case _:
+            return "slow"
+
+
+# 08. 保留的 @ref / @lazy、普通表达式、字符串与数值字面量
+def increment(value: int @ref):
+    value += 1
+
+
+def lazyPreview(value: int @lazy = None) -> int:
+    return value + value
+
+
+def literalsPreview():
+    hexValue: int = 0x2A
+    bits: int = 0b1010
+    ratio: float = 1.25e2
+    path: str = r"C:\Py2Cpp\lexer_preview.py2"
+    text: str = "中文、emoji 😀、转义：\n\t\"quoted\""
+    squares: list[int] = [x * x for x in range(5) if x % 2 == 0]
+    labels: dict[str, int] = {"alpha": 1, "beta": 2}
+    message: MessageUnion = new.Move(10, 20)
+    print(f"hex={hexValue}, bits={bits}, ratio={ratio:.2f}")
+    print(path, text, squares, labels)

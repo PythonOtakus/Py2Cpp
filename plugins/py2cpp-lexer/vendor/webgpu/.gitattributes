@@ -1,0 +1,5 @@
+/index.js -text
+/package.json -text
+/LICENSE.md -text
+/README.md -text
+/dist/** -text

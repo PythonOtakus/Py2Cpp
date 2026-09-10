@@ -1,0 +1,26 @@
+{
+  "name": "Node.js",
+  "version": "v24.19.0",
+  "platform": "win32",
+  "arch": "x64",
+  "upstream": "https://nodejs.org/",
+  "artifacts": [
+    {
+      "path": "SHASUMS256.txt",
+      "url": "https://nodejs.org/dist/v24.19.0/SHASUMS256.txt",
+      "sha256": "be0629ee2bcd8e40bb856abdd3407f0762101b76bd60a36b8867f637733631c0"
+    },
+    {
+      "path": "win32-x64/node.exe",
+      "url": "https://nodejs.org/dist/v24.19.0/win-x64/node.exe",
+      "sha256": "3602f2bb1a10f2cbab4c36886218a33c1ab3db87290e73b033c46c77147d0237"
+    },
+    {
+      "path": "LICENSE",
+      "url": "https://raw.githubusercontent.com/nodejs/node/v24.19.0/LICENSE",
+      "sha256": "148eacf7863ef4329224a29398623077200a27194aa075569faf4a0a85566ca5"
+    }
+  ],
+  "verification": "The executable SHA-256 matches the pinned official SHASUMS256.txt entry. Sources are downloaded over HTTPS; this helper does not verify release PGP signatures.",
+  "maintenance": "python scripts/vendor-node.py; offline: python scripts/vendor-node.py --verify-only"
+}

@@ -1,0 +1,27 @@
+Node.js v24.19.0, Windows x64
+Copyright Node.js contributors. All rights reserved.
+
+This directory redistributes the unmodified official Node.js executable to run
+Py2Cpp Lexer's local WebGPU worker independently of the editor's Electron host.
+Only the Windows x64 executable is bundled; npm and developer tools are omitted.
+The complete official LICENSE includes Node.js and its bundled third-party notices.
+
+Official binary:
+https://nodejs.org/dist/v24.19.0/win-x64/node.exe
+
+Official SHA-256 manifest (retained as SHASUMS256.txt):
+https://nodejs.org/dist/v24.19.0/SHASUMS256.txt
+
+Official matching-tag LICENSE (retained without byte changes):
+https://raw.githubusercontent.com/nodejs/node/v24.19.0/LICENSE
+
+The executable SHA-256 is:
+3602f2bb1a10f2cbab4c36886218a33c1ab3db87290e73b033c46c77147d0237
+
+The version, source URLs and all artifact hashes are recorded in provenance.json.
+To reproduce the download explicitly, run from the plugin directory:
+    python scripts/vendor-node.py
+To verify the vendored artifacts without network access:
+    python scripts/vendor-node.py --verify-only
+
+Normal packaging and extension activation do not download this runtime.

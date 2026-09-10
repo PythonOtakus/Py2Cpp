@@ -1,0 +1,41 @@
+{
+  "package": "LunarG Vulkan Runtime Components",
+  "version": "1.4.357.0",
+  "repository": "https://github.com/KhronosGroup/Vulkan-Loader",
+  "source": "https://sdk.lunarg.com/sdk/download/1.4.357.0/windows/VulkanRT-X64-1.4.357.0-Components.zip",
+  "metadataSource": "https://vulkan.lunarg.com/sdk/files.json",
+  "archiveBytes": 18134567,
+  "archiveSha256": "a14672efed15aafc7f5a16572d35cd3a3416eadf670aeee3cdf50ee32d5fbf83",
+  "pathBase": "extension root",
+  "files": [
+    {
+      "path": "vendor/vulkan/NOTICE.md",
+      "archiveMember": null,
+      "source": null,
+      "bytes": 2505,
+      "sha256": "da1257d182fac769ebb652b333fe04bb58934f2c40f247cd4e136ddb68e83acb"
+    },
+    {
+      "path": "vendor/vulkan/licenses/Apache-2.0.txt",
+      "archiveMember": null,
+      "source": "https://www.apache.org/licenses/LICENSE-2.0.txt",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "vendor/vulkan/licenses/VulkanRT-License.txt",
+      "archiveMember": "VulkanRT-X64-1.4.357.0-Components/VulkanRT-License.txt",
+      "source": "https://sdk.lunarg.com/sdk/download/1.4.357.0/windows/VulkanRT-X64-1.4.357.0-Components.zip",
+      "bytes": 4008,
+      "sha256": "404deb98dabf3e54bf9070d59676b31d69a3da2f9f6e56bdf09ad315c04c718c"
+    },
+    {
+      "path": "vendor/webgpu/dist/win32-x64/vulkan-1.dll",
+      "archiveMember": "VulkanRT-X64-1.4.357.0-Components/x64/vulkan-1.dll",
+      "source": "https://sdk.lunarg.com/sdk/download/1.4.357.0/windows/VulkanRT-X64-1.4.357.0-Components.zip",
+      "bytes": 1685432,
+      "sha256": "cd862090370454630b31b174e3d4eb474fda38ea034998d1fe1767b0c99a8696"
+    }
+  ],
+  "notes": "Only the official x64 Vulkan loader is bundled beside Dawn. All archive licenses are preserved unchanged, with the complete Apache 2.0 text added from apache.org. NOTICE.md is generated locally. No installer, SDK, system DLL, or editor-private DLL is used."
+}

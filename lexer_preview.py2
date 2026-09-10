@@ -1,10 +1,12 @@
 """Py2Cpp 拟定语法高亮预览。
 
-打开本文件，确认语言模式为 Py2Cpp，然后执行：
+打开本文件，确认语言模式为 Py2Cpp；GPU 高亮自动在后台启动。
+查看推理结果时执行（关闭预览不影响编辑器高亮）：
 Py2Cpp Lexer: Open GPU Highlight Preview
 
 用于人工检查 lexer 着色；新语法仍处于设计阶段，不作为当前编译器的运行测试。
-语法依据：docs/syntax-migration.md、docs/nullable-semantics.md。
+语法依据：docs/syntax-migration.md。
+解析器与自举方案：docs/parser-self-hosting.md。
 """
 
 from py2cpp import *
@@ -113,17 +115,49 @@ final class Counter(LabelMixin):
         return max(0, min(value, 64))
 
 
-# 保留的装饰器与新声明可以同时出现。
-@dataclass
+# 仅含 getter 的属性：单行、多行和静态简写。
+class ReadOnlyPreview:
+    property def x(self): return 1
+
+    property def description(self) -> str:
+        return "只有 getter 的只读属性"
+
+    static property def version() -> str:
+        return "0.1.0"
+
+
+# 04. record / frozen / ordered / optional
+# record 固定生成 __init__、__eq__ 与 __repr__；手写 __str__ 和 __post_init__ 合法。
 @serializable
-class Point:
-    x: int = 0
-    y: int = 0
+ordered record User:
+    id: int
+    name: str = "anonymous"
+    optional label: str = ""
+
+    def __post_init__(self) -> None:
+        self.label = self.label or self.name
+
+    def __str__(self) -> str:
+        return f"User({self.id}, {self.name})"
 
 
-# 04. T? / ?. / ?[] / ! / ?? / ??=
-@refcount
-class Node:
+# frozen 冻结完整实例布局；因此这里的字段都在构造时确定。
+frozen ordered record Point:
+    x: int
+    y: int
+
+
+# ref 和 final 可以与 record 组合；ordered 仅适用于 record。
+ref record SharedHandle:
+    value: int
+
+
+final record BuildStamp:
+    revision: str
+
+
+# 05. ref class / T? / ?. / ?[] / ! / ?? / ??=
+ref class Node:
     x: int = 0
     label: str = "节点 😀"
     memo: str? = None
@@ -208,7 +242,30 @@ class CompileTimePreview:
                 return 0
 
 
-# 07. type match：case 内裸名称表示类型，具体语法采用文档推荐方案。
+# 07. 类型捕获：type U 声明捕获，裸 U 引用已有类型。
+type ElementOf[T] = U if T is list[type U] else T
+type ValueOf[T] = V if T is dict[str, type V] else Never
+type InnerOf[T] = U if T is list[list[type U]] else T
+type EntryOf[T] = (K, V) if T is dict[type K, type V] else Never
+
+type PreviewElement = ElementOf[list[int]]      # int
+type PreviewFallback = ElementOf[str]          # str
+type PreviewNullable = ElementOf[list[Node?]]  # Node?，保留可空注解。
+
+
+def typeCapturePreview[T](value: T) -> int:
+    # type U 显式捕获；两个 case 的 U 分别绑定，彼此不泄漏。
+    type match T:
+        case list[type U] if U is int:
+            return 1
+        case list[type U]:
+            return 2
+        case dict[type K, type V] if K is V:
+            return 3
+        case type Whole:
+            return 0
+
+
 def typeCode[T](value: T) -> int:
     type match T:
         case list[int]:
@@ -234,15 +291,140 @@ def modeName(mode: ModeEnum) -> str:
             return "slow"
 
 
-# 08. 保留的 @ref / @lazy、普通表达式、字符串与数值字面量
-def increment(value: int @ref):
+# 08. match 表达式：case 的结果是表达式，逗号分隔，允许尾逗号。
+def matchCode(x: int) -> int:
+    return x match { case 0: 1, case y if y > 0: 2, case _: 3 }
+
+
+def matchDescription(x: int) -> str:
+    return x match {
+        case 0: "zero",
+        case y if y > 0: f"positive: {y}",
+        case _: "negative",
+    }
+
+
+def matchOptional(x: int) -> int?:
+    return x match { case 0: None, case _: x }
+
+
+def matchExpressionPreview(x: int, mode: ModeEnum):
+    # match 位于 lambda 体内，只在调用 classify 时求值。
+    classify: (int) -> str = value => value match {
+        case 0: "zero",
+        case y if y > 0: "positive",
+        case _: "negative",
+    }
+    # 枚举 OR、嵌套 match 和嵌套字典的逗号/冒号。
+    label: str = mode match {
+        case ModeEnum.Fast | ModeEnum.Debug: "fast",
+        case _: x match { case 0: "idle", case _: "slow" },
+    }
+    data: dict[str, int] = x match {
+        case 0: {"code": 1, "value": 0},
+        case y if y > 0: {"code": 2, "value": y},
+        case _: {"code": 3, "value": x},
+    }
+    result: int = matchOptional(x) ?? 42
+    print(classify(x), label, data, result)
+
+
+# 09. ref / lazy 参数：前缀写法，保持每次调用内部的求值规则。
+def increment(value: ref int):
     value += 1
 
 
-def lazyPreview(value: int @lazy = None) -> int:
+def lazyPreview(value: lazy int = None) -> int:
     return value + value
 
 
+def f(x: lazy int, y: ref str):
+    y += str(x + x)
+
+
+def nameRef(name: ref str) -> ref str:
+    return name
+
+
+def localMemo(value: lazy ref int = 10) -> int:
+    slot: ref int = value  # 引用当前调用内部的 memo，不重绑定调用者变量。
+    slot += 1
+    return value
+
+
+# 10. lazy property / lazy def：跨读取或跨调用缓存结果。
+class CachedPreview:
+    source: str = "hello"
+
+    lazy property summary:
+        def __get__(self) -> str:
+            return self.source + "!"
+
+    lazy property def size(self) -> int:
+        return len(self.source)
+
+    lazy property def answer(self): return 42
+
+    static lazy property def title() -> str:
+        return "Py2Cpp Lexer"
+
+    lazy def scaledSize(self, factor: int) -> int:
+        return len(self.source) * factor
+
+    static lazy def square(value: int) -> int:
+        return value * value
+
+
+lazy def fibonacci(n: int) -> int:
+    if n < 2:
+        return n
+    return fibonacci(n - 1) + fibonacci(n - 2)
+
+
+@LazyCache(128)
+lazy def formatCached(value: int, prefix: str = "value=") -> str:
+    return prefix + str(value)
+
+
+def cachePreview():
+    report: CachedPreview = new()
+    print(report.summary, report.summary)
+    report.source = "updated"
+    del report.summary  # 不读取 getter；下次访问重算。
+    print(report.summary, report.scaledSize(2))
+    report.scaledSize.clearCache()
+    print(fibonacci(12), formatCached(42))
+    fibonacci.clearCache()
+
+
+# 10b. lazy class：拟定的惰性单例语法，只允许无参获取实例。
+lazy class Settings:
+    theme: str = "default"
+    accessCount: int = 0
+
+    def __init__(self) -> None:
+        print("首次获取 Settings，执行一次初始化")
+        self.theme = "light"
+
+
+def singletonPreview():
+    first = Settings()  # 首次调用创建并初始化单例。
+    second = Settings()  # 返回同一个对象，不再执行 __init__。
+    print(first is second)  # True：同一对象身份。
+
+    first.theme = "dark"
+    first.accessCount += 1
+    print(second.theme)  # "dark"：两个引用共享字段状态。
+    print(second.accessCount)
+
+    same: Settings = new()  # 由目标类型推导，也获取同一个单例。
+    print(same is first)  # True。
+
+    # Settings(1)                 # 错误：单例获取不接受位置参数。
+    # Settings(theme="dark")      # 错误：单例获取不接受关键字参数。
+
+
+# 11. 普通表达式、字符串与数值字面量
 def literalsPreview():
     hexValue: int = 0x2A
     bits: int = 0b1010
@@ -254,3 +436,42 @@ def literalsPreview():
     message: MessageUnion = new.Move(10, 20)
     print(f"hex={hexValue}, bits={bits}, ratio={ratio:.2f}")
     print(path, text, squares, labels)
+
+
+# 12. call / from / as：在调用现场定义回调，正文使用普通缩进块。
+def runCallback(callback: () -> None) -> None:
+    callback()
+
+
+def callFromPreview():
+    s: list[int] = [-120, 3, -8, 0, 42]
+
+    # 多行回调：f 仅在本次调用表达式和自身正文中可见。
+    call f(x: int) -> int from s.sort(key=f):
+        value: int = abs(x)
+        if value > 100:
+            return 100
+        return value
+    print(s)
+
+    # 单行回调：有值签名仍显式 return。
+    call descending(x: int) -> int from s.sort(key=descending): return -x
+
+    # as 接收 sorted 的列表结果；-> int 约束 key 回调。
+    call key(x: int) -> int from sorted(s, key=key) as result:
+        return abs(x)
+    print(result)
+
+    # 多参数、显式签名，与已有 Callable 类型的 apply 配合。
+    call formatPair(a: int, b: float) -> str from apply(formatPair, 7, 2.5) as text:
+        label: str = f"{a}:{b:.2f}"
+        return label
+    print(text)
+
+    # 零参数、无值回调；正文在 runCallback 调用 notify 时执行。
+    call notify() -> None from runCallback(notify):
+        print("回调开始")
+        print(text)
+
+    # pass 用于无值回调，避免与 -> int 的返回要求冲突。
+    call noop() -> None from runCallback(noop): pass

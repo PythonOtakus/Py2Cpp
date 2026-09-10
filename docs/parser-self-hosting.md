@@ -1,26 +1,14 @@
-**Py2Cpp 自有前端与自举编译器实现方案**
+# Py2Cpp 自有前端与自举编译器实现方案
 
-设计提案，初稿 2026-09-08，更新 2026-09-10。本文描述建议实施的工作；新语法、解析器和自举流程尚未实现。
+初稿 2026-09-08，更新 2026-09-10。本文是尚未实现的编译器迁移方案，集中描述架构、兼容桥、工程阶段和验收。所有旧新写法、语义及兼容限制统一定义在 [syntax-migration.md](./syntax-migration.md)，本文引用相应章节，不另维护一份语言规范。
 
-现有语法、拟定新写法及已知支持边界见配套[语法迁移对照表](./syntax-migration.md)。
-
-T?、?.、?[]、后缀 !、??、??= 的 C# 对应规则、流分析及兼容限制见[可空语义方案](./nullable-semantics.md)。该语法族纳入第二批，属于类型系统与运行时共同变更。
-
-箭头 lambda `() => 1`、`x => 2*x`、`(a,b) => a+b` 及 Callable 类型简写 `(int, float) -> str` 纳入第二批；分别表示匿名函数值与调用签名。参数、优先级、类型/捕获边界见语法迁移对照表，旧 lambda 和 Callable 写法继续接受。
-
-`for i in inlineRange(...)` 改为 `inline for i in range(...)`，纳入第二批；保留编译期完全展开及现有边界，迁移期接受旧拼法。
-
-第二批同时新增 inline if：以编译期 bool 按源码顺序选择 if/elif/else 分支，只保留选中体；泛型/宿主依赖在绑定后选择，未选分支不作常规语义检查。它有独立节点和求值规则，旧类型 if、宏条件及普通 if 保持各自语义。
-
-第二批新增 inline match：主体在编译期求值，按源码顺序选择首个模式匹配且 guard 为 True 的 case；未匹配则为空。与 inline if 共用受限静态求值、依赖特化和声明剪枝；首版覆盖标量、枚举及类型身份的静态分支，结构化值模式另行扩展，普通 match 保持原语义。
-
-本轮推荐在第二批增加 `type match T: case list[int]: ... case str: ...`，每个 case 实际换行并缩进。该前缀明确切换到类型模式，裸名称绑定已声明类型，不再是隐式捕获；类型匹配天然在编译期执行。普通/inline match 继续值模式规则，不根据主体或类型名称是否可见自动切换。
+## 1. 目标与现有基础
 
 建议固定 CPython 3.13 的词法与语法为参考基线，以当前 Py2Cpp 能编译的语言子集实现独立 Lexer、递归下降解析器及 Pratt 表达式解析器，建立自有 AST；将 enum、final 等提升为声明上下文中的软关键字。通过兼容适配层逐步复用现有 passes 和 C++11 后端，随后迁移编译器本体与模板执行器，完成 stage0 → stage1 → stage2 → stage3 自编译闭环。
 
 保留 C++11 后端和外部 MSVC/Clang 不影响转译器自举。自举要求编译器实现语言能编译自身，生成后的编译器能独立运行；不要求同时实现机器码后端。
 
-当前项目的事实基础如下。文件行号以本次审计时版本为准。
+前期审计的事实基础如下，文件行号和统计均对应当时快照，用于估算迁移范围。
 
 | 观察 | 实现证据 | 对方案的影响 |
 |---|---|---|
@@ -37,119 +25,7 @@ T?、?.、?[]、后缀 !、??、??= 的 C# 对应规则、流分析及兼容限�
 
 本机 Python 为 3.13.14。按当前模块加载器的 BOM 预处理方式进行语法扫描，148 个标准库文件、152 个非 fail 的 test_*.py、36 个负向测试、3 个 examples 文件和 33 个 FFI .pyi 均可通过 ast.parse。这里仅验证可解析性，没有执行全量翻译、C++ 编译或行为回归。负向测试也能通过 Python 语法解析，说明很多语言约束必须由语义层维护。
 
-现有语法应按以下维度整理，避免把所有装饰器机械合并成一组 flags。
-
-| 维度 | 当前形式及语义 | 自有 AST 的建议表示 |
-|---|---|---|
-| 基础语句/表达式 | 缩进块、函数、类、import、if/for/while、with、try/except*、match、yield、async/await、推导式、f-string、受限 lambda | 保留对应的 Stmt、Expr、Pattern 节点；解析支持与语义支持分别记录 |
-| 声明种类 | @enum、@union、@variant、@protocol、@mixin | EnumDecl、UnionDecl、VariantDecl、ProtocolDecl、MixinDecl |
-| MRO 派生声明 | @enum.mro、@union.mro；拟改 type enum/type union | EnumDecl/UnionDecl 的显式派生模式与根类型；区别普通底层类型/继承参数 |
-| 类与方法规则 | @final、@staticmethod、@virtual、@abstract、@override | ClassModifiers、MethodModifiers；协议静态要求与实体虚方法分别建模 |
-| 字段存储/可变性 | T @const、T @final、T @thread_local | FieldStorage、FieldMutability、Initializer；const 是类 static constexpr，final 是实例只读 |
-| 类型/参数规则 | T @ref、T @lazy、T @optional | 引用类型、惰性求值参数、字段参与自动构造的选项，分别归属；optional 字段标记与 Optional[T] 类型不同 |
-| 泛型及类型语法 | PEP 695/696、type 别名、T: Protocol、A & B、oneof[...]、NTTP、可变类型参数、T[:N]、T[:, :]、T \| None | TypeExpr、TypeParam、Constraint、ArrayType；需要名称解析才能决定的类别先保留未解析表示 |
-| C# 风格可空语法 | 新增 T?、?.、?[]、后缀 !、??、??=，包括 C# 14 条件赋值 | NullableTypeSyntax、ConditionalAccessChain、NullSuppressExpr、空合并节点；值可空、引用注解及流状态分开 |
-| 匿名函数 | 受限 lambda；拟增加 () => expr、x => expr、(a,b) => expr | 统一 LambdaExpr，记录源写法；支持上下文、目标类型与捕获生命周期单独验证 |
-| Callable 类型 | Callable[[A,B],R]；拟增加 (A,B) -> R | CallableTypeSyntax；绑定到现有 PyCallable 类型，与 Function 函数指针和多播 delegate 区分 |
-| 编译期循环展开 | for i in inlineRange(...)；拟改 inline for i in range(...) | ForStmt 的 InlineRange 展开模式；绑定宿主后生成 RangeBounds，保持原展开顺序 |
-| 显式编译期分支 | 新增 inline if / elif / else；旧入口只有特定常量折叠与类型/宏分支 | InlineIfStmt；静态 bool 求值、依赖特化和选中分支视图，不与旧分派混用 |
-| 显式编译期模式分支 | 新增 inline match / case / guard；旧 match 与 annotation 匹配保持 | InlineMatchStmt；共享 CompileTimeValue，源序匹配及 case 局部捕获，只保留选中体 |
-| 显式类型匹配（推荐） | type match T；case list[int] / str / _ | TypeMatchStmt、独立 TypePattern；类型引用按规范化身份比较，源序静态选择 |
-| 对象模型 | @refcount、@boxing、@copyable、@uncopyable | ObjectModel、CopyPolicy；即使表面保留属性，也必须进入类型与存储语义 |
-| 派生与开放属性 | @dataclass、@serializable、@annotation、用户 Meta(...)、@native_name | DeriveSpec、Attribute、ForeignBinding；允许不同维度组合 |
-| 访问器和效果 | @property、setter/postsetter 拟改类内 property 块，含 __get__/__set__/__post_set__；@immutable、@noexcept 保持 | PropertyDecl、AccessorDecl、MethodEffects；noexcept 现有 Result 改写不能简化成 C++ 关键字 |
-| 编译期结构 | 类型 if、宏 if、静态反射、new/new.Variant、select/build 字符串 DSL、@decorator/@context | 在规范化/语义阶段形成专用节点或展开计划；普通语法解析不查询类型表 |
-
-上述内容已经超过“Python 加几个装饰器”的规模。新 parser 的支持表应以真实源码、正反测试和经确认的语言规则为依据。CPython 可以解析的语法不等于 Py2Cpp 已经实现其运行语义，例如完整动态对象、Any、任意字典关键字解包、闭包逃逸等不能因为换 parser 就自动开放。
-
-建议首先引入下列新写法，所有示例均为拟议语法。
-
-```text
-enum ModeEnum(int64):
-    Off = 0
-    On = ...
-
-enum AccessFlag(flag=True):
-    Read = ...
-    Write = ...
-
-type enum KindTypeEnum(base=Animal):
-    pass
-
-final class Config:
-    const BufferSize: int = 4096
-    final mode: ModeEnum = ModeEnum.On
-
-class Handler:
-    final def value(self) -> int:
-        return 42
-```
-
-| 旧写法 | 新写法 | 保持的语义 |
-|---|---|---|
-| @enum + class E | enum E | 普通枚举；默认 int，可写 int64 或一个父枚举 |
-| @enum(flag=True) + class F | enum F(flag=True) | Flag 自动取下一 2 的幂；flag 是命名选项 |
-| @enum.mro + class KindTypeEnum(base=Animal) | type enum KindTypeEnum(base=Animal) | MRO 闭集派生枚举；保留手动成员和 of/create 能力 |
-| @enum.mro + class ChildTypeEnum(KindTypeEnum) | type enum ChildTypeEnum(KindTypeEnum) | 继承父派生枚举，子声明不再写 base= |
-| @final + class C | final class C | 禁止继承 |
-| @final + def f | final def f | 方法隐含 virtual，禁止覆盖；首版限原来允许的成员方法位置 |
-| x: T @final | final x: T | 实例只读字段及构造初始化规则；不同时新增局部 final 变量语义 |
-| x: T @const = v | const x: T = v | 类级编译期常量；不改成普通实例 const |
-| @union/@variant + class | union/variant 声明 | 保留带标签载荷的联合与变体字段 |
-| @union.mro + class ErrorTypeUnion(base=Exception) | type union ErrorTypeUnion(base=Exception) | 第二批加入；保留闭集、附加变体、嵌套 Enum 与转换能力 |
-| @protocol/@mixin + class | protocol/mixin 声明 | 保留结构约束/编译期混入，分别实施 |
-| @staticmethod/@virtual/@abstract/@override + def | static/virtual/abstract/override def | 第二批加入；先冻结组合矩阵 |
-| @property/@property.setter 的同名方法 | property x: 块内 __get__/__set__ | 第二批加入；同一属性的访问器收拢到独立作用域 |
-| @property.postsetter 方法或字段简写 | property x: 块内 __get__/__set__/__post_set__ | 原自动存储和写入显式展开；新 setter 正常返回后运行 hook |
-| @staticproperty 及 setter/postsetter | 配套建议 static property x: 块 | 访问器不接收 self/cls，沿用 Self 和静态存储语义 |
-| T\|None、显式判空分支 | T?、?.、?[]、??、??= | 第二批加入；采用 C# 对应规则，旧 Optional 的兼容转换不能只换拼法 |
-| 无纯静态后缀 | expr! | 第二批加入；仅抑制可空分析，不检查、不解包、不改变运行时值 |
-| lambda: e、lambda x: e、lambda a,b: e | () => e、x => e、(a,b) => e | 第二批加入；相同表达式体与受限 callable 语义，旧写法继续接受 |
-| Callable[[A,B],R] | (A,B) -> R | 第二批加入；固定参数签名，返回 None 表示无值；旧拼法继续接受 |
-| for i in inlineRange(...) | inline for i in range(...) | 第二批加入；相同编译期完全展开语义，旧拼法继续接受 |
-| 无统一显式入口 | inline if cond: ... elif cond2: ... else: ... | 第二批加入；按源序选择编译期分支，无匹配且无 else 时为空，旧类型/宏 if 不机械改写 |
-| 无统一静态模式入口 | inline match subject: ⏎ case pattern if guard: ... | 第二批加入；guard 可选，主体和所需守卫在编译期求值，首次命中后停止；无命中为空 |
-| 旧类型 if 的精确类型链 | type match T: ⏎ case list[int]: ... ⏎ case str: ... | 第二批推荐；裸名称为类型引用；源序与无匹配规则须逐例核对，不机械迁移旧形状/捕获分派 |
-
-首个可交付版本开放 enum（含 type enum）、final、const；type union 随 union 等第二批声明加入，property 块、箭头 lambda、Callable 类型简写、inline for/inline if/inline match、推荐的 type match 及可空语法族也放入第二批，以完成访问器、callable 类型传播、展开与静态分支、可空流分析、运行时支持及兼容桥。dataclass、serializable、native_name、自定义 annotation 等先保留属性写法。data class 可以是后续派生语法糖，但不能成为与 annotation/mixin 互斥的新类种类。MRO 派生采用 type enum/type union 前缀，复用已有 type 软关键字；迁移期仍接受原 @enum.mro/@union.mro + class 写法。
-
-这些词在特定语法位置具有关键字作用，Lexer 仍可把它们输出为 NAME。解析器在语句起始处看到 `final class`、`final def`、`final NAME :` 或 `enum NAME` 时进入对应规则；普通 `enum = value`、`obj.final`、`enum(...)` 和旧的 `from py2cpp import enum` 保持名称语义。识别出明确声明前缀后提交到该规则，不能在声明写错时回退成普通表达式并吞掉错误。`@final` 与 `final class` 同时出现、重复 modifier 和非法组合应定位到相应 token 报错。
-
-inline 同样按语句上下文识别，在 inline for/inline if/inline match 中激活循环展开或编译期分支规则；普通 inline 名称、成员和调用保留。循环头要求 `inline for NAME in range(...)`，range 在这个结构中表示固定的范围 intrinsic，不泛化为任意用户函数/iterable。保持 1–3 个位置参数、编译期边界、正负非零步长及简单目标；for-else 和整个循环体子树中的 break/continue 仍按原规则拒绝。循环边界运算沿用当前一元负号与 +、-、*、// 子集，不借新拼法扩展 constexpr 能力。
-
-inline if 的 inline 作用于整条链，后续使用普通 elif/else；允许多链和嵌套，无匹配且无 else 生成空序列。条件必须得到编译期 bool，不隐式调用 __bool__；由受限静态求值器处理常量/宿主常量/索引/NTTP、整数算术比较、布尔短路及 TypeId 精确比较，未绑定依赖延迟到实例化。实际运行时依赖或未支持的静态求值须报错，不回退为普通 if。全部分支先通过语法及必要结构检查，未选体不常规绑定/展开/类型检查，选中体在原作用域和运行时位置插入。
-
-inline match 的 inline 作用于全部 case，内部仍为 `case pattern [if guard]:`；主体编译期求值一次，模式成功后才以 case 捕获环境求严格 bool guard。guard 假继续下一 case，首个成功体选定后停止，无命中生成空序列。当前所需主体、模式或 guard 为 Dependent 时延迟选择，不能绕过它选择后续默认分支。允许嵌套并与 inline if/inline for 组合，不增加 inline case、match-else 或 match 表达式。
-
-inline match 的静态主体首版限定 None/bool/目标整数/str/enum/TypeId，以及独立可求的常量、宿主值、索引和整数 NTTP。模式支持字面量、枚举成员、_、capture、as、OR 及 guard；整数按主体类型检查范围，bool/int/str 分开，单字符字符串不变成整数码，enum 保留 TypeId，OR 不作为 Flag 位运算。该入口中裸 `case int:` 仍是捕获，此前 `case U if U is int:` 的类型元值判断保留；直接类型 case 推荐独立 type match。共享求值器补充同类别标量 ==/!= 和 is None/is not None，供 inline if 与 guard 同时使用；TypeId 继续精确 is/is not，不调用用户比较方法。序列、映射、new/union 载荷、annotation 及 Optional/Nullable 包装等结构化静态值需另外建模后开放，不能执行运行时 getter/构造函数代替。
-
-捕获保存完整主体与目标类型，仅在该 case 的 guard/正文可见，是不可变编译期局部符号；不泄漏、不修改外层同名变量，也不产生 case 后的运行时变量。所选正文的其他声明仍插入原作用域。OR 各备选捕获名集合与对应类型必须一致，首个匹配备选确定后 guard 只求一次，guard 假不重试同一 OR。捕获通过 SymbolId 绑定并物化为有类型的常量，保留嵌套参数遮蔽；类型捕获只用于类型/静态上下文，lambda 内的值捕获按常量处理。赋值、增量赋值或可写引用捕获须诊断。
-
-推荐的 type match 首版支持精确 TypeExpr、顶层 OR、_、严格编译期 bool guard：`case str` 和 `case list[int]` 比较类型身份，不作继承、协议满足或转换判断；`case list[U]` 引用已有 U，未知名报错，未绑定形参延迟，不创建隐式捕获。主体须为类型形参、别名或合法构造类型，运行时对象不自动转成 type(obj)。_ 是无绑定通配；首个模式/guard 成功后停止，无匹配为空，复用 inline if/match 的剪枝、声明视图和外层结构规则。无需再叠加 inline，暂不开放 inline type match/type inline match。匿名 list[...] 形状与显式具名解构列为后续工作，旧类型 if 捕获继续兼容。
-
-type match 模式按规范化 TypeId 比较并展开透明别名；泛型实参、数组维度、引用和 Callable 签名参与类型相等。值类型的 int/int? 不同，引用模型的 Node/Node? 仅注解不同，不能据此分派；不查询对象空状态。case 顶层 | 是 OR，内部类型语法继续原优先级，可空类型建议使用 ?，不将顶层 int | None 整体视为可空类型。case 类型在顶层 if 或冒号终止，guard 进入独立表达式规则；详细比较与迁移边界见语法对照表。
-
-对于 type 前缀，看到 `type enum NAME` / `type union NAME` 才提交到 MRO 派生声明规则，`type match T:` 进入独立的类型模式语句；`type Name = T`、`type enum = T`、`type union = T`、`type match = T` 仍走类型别名。前瞻别名头的 =/泛型形参或匹配主体后的冒号即可分派，不查询符号表；`type(...)` 仍走表达式解析，不据此新增运行时内建。派生声明上的其他属性继续保留；原 @enum.mro/@union.mro 与对应 type 前缀同写应报告重复声明。
-
-property 是类成员声明上下文中的软关键字，识别 `property NAME:`；静态对应形式建议为 `static property NAME:`。块内允许 docstring 和 __get__/__set__/__post_set__ 访问器，各至多一个；它们绑定到属性局部作用域，不产生普通嵌套函数，也不会覆盖宿主 descriptor 的同名方法。property 作为普通变量/成员名和旧装饰器的用途仍按原规则解析；同名新块与旧属性声明混用应报错。
-
-属性读取调用 __get__，属性写入调用 __set__，setter 正常返回后再调用一次可选的 __post_set__；仅 getter 为只读，仅 setter 为只写，单独 hook 无 setter 要求补全声明。setter 负责实际存储，不隐式猜测或额外写入 _x；接收者和 RHS 各求值一次，setter 提前正常 return 仍应进入 hook，抛错则不进入，hook 抛错不自动回滚。hook 接收该次赋值参数，按既有类型/所有权规则处理，不重读 getter。完整示例、旧字段简写及静态形式见语法迁移对照表。
-
-属性值类型先作为共同约束求解：已知 backing field、getter 返回注解/表达式、setter/hook 参数注解共同确定 T，再向未注解的 value 传播；不能把省略注解的访问器参数当作普通隐式泛型。set/post_set 默认返回 None。无法确定或冲突必须报错，不能沿用旧 getter 推断失败回落 void 的行为；引用返回与存储模型限定仍独立记录。
-
-可空类型先按声明处类型类别绑定：具体非可空值类型 T? 形成 NullableValue(T)，引用类型 T? 只增加注解且存储与 T 相同；泛型未约束 T? 遵循 C# 注解规则，不能到实例化时一律套 Optional。新方言默认开启可空分析，引用诊断为可配置警告；NullableValue 到 T 不隐式转换。后缀 ! 只改该表达式的流状态，`n: int?` 后 `x: int = n!` 仍须报类型错误。
-
-条件访问保存整个链及括号边界，接收者只求值一次，空分支跳过成员、索引和实参；非空分支的既有异常传播。??/??= 只检查空值，不能使用 and/or 真值逻辑。C# 14 条件写入在空接收者上连 RHS 和 property 的 setter/hook 都不执行；普通/复合属性写入以及 ??= 共享单次求值计划。引用 T/T? 或 expr! 之后的正常空解引用要有运行时异常路径，不能把 C++ 未定义行为作为 C# 兼容结果。
-
-箭头 lambda 首版支持普通名称参数与单表达式体：() 必须保留，单参数可省括号，多参数须括起；不增加默认值、参数注解/解构/参数包或缩进函数体。=> 与旧 lambda 同处最低表达式层，右结合，函数体包含条件表达式及 ??，但不吞掉外围逗号。`x => a?.x ?? 0` 的所有计算在调用体内；`fallback ?? (x => x)` 用括号明确高优先级操作数中的 lambda。两种写法共用类型与捕获规则，不能因新 parser 接受嵌套或立即调用就假定后端已有完整闭包支持。
-
-Callable 类型写作 `() -> R`、`(T) -> R`、`(A,B) -> R`，参数表括号始终保留，允许非空表尾逗号；无值返回写 None。例如 `f: (int, float) -> str = (a,b) => f"{a}:{b}"`，类型签名同时为 lambda 提供上下文。-> 只用于类型规则及已有 def 返回注解，不作为值表达式运算；与 => 独立分词。类型箭头右结合，`(A) -> (B) -> C` 返回 Callable，`((A) -> B) -> C` 接收 Callable；`(A) -> B?` 与 `((A) -> B)?` 分别修饰返回值和整个 callable。签名仍对应现有按值 PyCallable，不改变 Function、多播 delegate 或捕获生命期。
-
-普通枚举首项仍须显式值，后续 `...` 取前项加一；flag 可以从 `...` 开始；父枚举合并和 flag 继承规则保持现状。枚举值计算、类型检查、重复成员与继承解析属于语义阶段。普通 enum 的语法体应明确允许 docstring/成员声明，拒绝其他语句。当前 `enum_expand.py:68` 会跳过部分非成员语句，之后清空类体；这应作为独立缺陷修复并记录兼容影响，不能被当作新规范。
-
-type enum/type union 的声明体沿用原 MRO 派生规则，包括自动收集、手动附加成员/变体及既有空体形式。根声明中的 `base=Animal`/`base=Exception` 表示派生根类型，不是普通枚举底层类型或实体继承。type enum 子声明可单继承另一 type enum，此时继承根类型且禁止再次写 base=；type union 保持当前 base= 要求，不新增同类继承能力。TypeEnum/TypeUnion 命名后缀与 of/create 等现有接口保持。
-
-final 必须保留三个不同的语义域。尤其当前字段初始化仅提取构造函数顶层赋值（`src/passes/final_expand.py:54`），不是完整控制流上的确定赋值分析。首版保留现有限制；将“分支中的 final 初始化”“局部 final 变量”“初始化表达式的副作用/执行顺序”分别作为以后有专门测试的语义工作。
+## 2. Parser 选型与词法边界
 
 解析器选型建议如下。
 
@@ -168,12 +44,17 @@ Lexer 和 parser 的具体边界建议如下。
 
 1. SourceManager 负责 UTF-8 源文件、文件身份、行索引、BOM/换行策略；Span 统一用 `(FileId, start_byte, end_byte)` 半开区间。Token 保存种类、原始范围和必要的字面量信息，注释与空白保留为 trivia，供重构和格式化使用。
 2. Lexer 维护缩进栈、括号深度、显式续行和字符串/f-string 模式栈。实现 INDENT/DEDENT/NEWLINE、空白行、混合 Tab、CRLF、数字前缀/下划线、字符串前缀/拼接及 Unicode 标识符规则；采用固定版本 Unicode 分类/规范化表或明确公布的受限规则，不偷偷依赖 Python unicodedata。区分 ?.、?[、??、??=、!= 与单独 ?/!，f-string 转换分隔中的 ! 按模式处理；相邻 => 形成 ARROW token，与 =、==、>=、-> 独立。
-3. 递归下降处理模块、声明、语句、参数、类型形参、类型表达式和模式。inline for 进入带 InlineRange 模式的 ForStmt，inline if 及其 elif/else 链进入 InlineIfStmt；保存与 else 内嵌套 if 的区别。inline match 进入 InlineMatchStmt，保留有序 case、原始 Pattern 和 guard；type match 进入 TypeMatchStmt，主体及 case 中的类型进入 TypeExpr/TypePattern，不生成隐式 CapturePattern。parser 不提前求值或删除任何分支。Pratt 处理表达式主体；比较链、is not/not in、条件表达式、lambda/箭头 lambda、推导式以及赋值目标另设明确规则。条件访问/后缀 ! 在成员访问层；?? 低于 or、高于条件表达式且右结合，??= 在赋值层。两种 lambda 同处最低表达式层并右结合；前瞻 NAME => 或括号参数头后 =>，与普通分组/元组消歧，函数体不吞外围逗号。保存括号对条件链的截断。以 `-2**2`、`2**-1`、`a?.b.c`、`(a?.b).c`、`a ?? b ?? c`、`x => a ?? b`、`x => y => x+y`、`f(x => x, y)` 等检验优先级和结合性。
-4. 类型解析保存语法结构。配对括号后接 -> 时生成 CallableTypeSyntax，否则保留原分组/元组类型；返回侧递归解析并右结合，-> 比 ?/类型应用/返回侧 @ 标记绑定更弱。`def make() -> (int) -> str:` 中两个箭头分别由声明 parser 和类型 parser 消费。注解、别名和显式泛型应用的类型实参统一使用类型规则，外围名称仍由绑定检查。`T: SomeName` 是协议约束还是 NTTP，`Name[...]` 指代类型还是其他符号，由后续绑定决定。保留类型条件、oneof、切片数组、引用和现有开放字段注解；不能让通用表达式优先级意外改变标记归属。
+3. 递归下降处理声明、语句、参数和模式，Pratt 处理运算；比较链、lambda、推导式、赋值目标和 match arms 使用专门规则。值 Pattern、TypePattern 与普通 TypeExpr 分离，所有静态分支原样入树，不在 parser 中求值或剪枝。`record`、`frozen`、`ordered` 与既有 `ref`、`final`、`lazy` 仍由 lexer 作为 NAME 交给类头规则；该规则有限前瞻收集合法前缀，并以终结的 `class` 或 `record` 提交声明解析。`optional` 只在已确认的 record 实例字段位置识别。重复前缀、`ordered class`、`lazy record`、缺少 record 字段默认值等不能回退为普通表达式或普通成员；其他同名变量、成员和调用保持可用。优先级以 [语法规约](./syntax-migration.md#match-expression) 为唯一依据，保存括号截断条件链的边界。
+4. 类型 parser 保存 Callable、可空和引用的完整层级；参数 lazy 写入 ParameterEvaluationMode，函数/属性 lazy 写入 CachePolicy，lazy class 写入 ClassConstructionPolicy，不能生成任意 LazyType。ref class 写入 ClassDecl 的 ObjectModel，与注解 ref T 分开。类型模式只在规定上下文解析 type NAME，条件类型保留 condition 与 true/false 类型的独立节点；未知名称、NTTP/协议归属和特化依赖交给绑定器处理，不靠名称拼写猜测。
 5. f-string 采用状态栈与表达式 parser 协作，覆盖嵌套 replacement field、格式说明、同引号嵌套、转义和 `{x=}` 的原始文本。首批可支持编译器实现所需子集，替换旧前端前必须补齐项目已支持范围。
 6. Diagnostic 保存代码、主 Span、附加位置和简要说明。批量编译首错失败即可；IDE 模式再在换行、DEDENT、闭合符号处恢复，产出显式 Error 节点。损坏语法树不能进入正式 codegen。
 
 CPython AST 的列偏移是 UTF-8 字节位置，tokenize 的列号是字符位置，需通过 SourceManager 转换。例如 `中文 = 1` 的数字位置分别为字节列 9 和字符列 5。原生节点、旧节点适配和 IDE/LSP 的列单位必须明确定义；LSP 的 UTF-16 位置也在协议边界转换。初期不必逐字复制 CPython 错误文案，但错误位置、阶段和可理解性要纳入验收。
+
+
+call/from 使用普通 Python suite，参数/返回类型及 invocation 的嵌套冒号不截断声明；所有调用括号闭合后才进入正文，见 [回调语句](./syntax-migration.md#call-from)。A–D 类通用块 lambda 仍是 [候选](./syntax-migration.md#multiline-lambda-options)。如果采用表达式中的缩进块，还须增加局部布局 frame：保存物理换行、块头前导缩进和进入时括号深度，在该深度恢复语句换行/缩进，正文新括号仍按隐式续行处理；DEDENT 后把闭括号/外围逗号交还表达式 parser。保存 suite 结束行边界，使独立赋值/return 正常终止；不依赖空行或扫描正文有无 return 判断块的种类。
+
+## 3. 自有 AST、HIR 与存储
 
 统一前端的目标数据流：
 
@@ -189,7 +70,7 @@ native/legacy ─ 自有 Lexer + Parser ───────────┘
                                 现有 C++11 发射能力
 ```
 
-Syntax AST 表达“源码写了什么”，HIR 表达“它意味着什么”。类型 if、union 变体模式、new 的目标类型推断等在绑定/展开阶段成为明确语义节点。保留原始属性顺序、源位置和写法来源，以处理确实有顺序语义的用户 decorator；核心声明 modifier 的顺序则由语言规则明确规定。
+Syntax AST 表达“源码写了什么”，HIR 表达“它意味着什么”。类型 if、union 变体模式、new 的目标类型推断等在绑定/展开阶段成为明确语义节点。保留原始属性顺序、源位置和写法来源，以处理确实有顺序语义的用户 decorator；核心声明 modifier 的顺序则由语言规则明确规定。对象模型、类构造策略、CopyPolicy、引用限定、参数求值方式及声明缓存分别建模，不能收拢为一组无差别 flags。
 
 建议通过小型 schema 定义节点及字段，由宿主脚本生成初版节点定义、遍历、clone、dump、序列化和校验代码。生成出的代码也必须属于 bootstrap 子集；自举构建可以直接使用已提交的生成源码，若要求从 schema 完整再生成，则在最后迁移 schema 生成工具。节点 schema 只描述结构，不执行任意 Python 动作。
 
@@ -198,9 +79,20 @@ SyntaxModule(items)  // 声明和语句按统一源码顺序保存
 EnumDecl(name, base_syntax?, options, members, derivation?, attributes, span)
 UnionDecl(name, type_params, bases, variants, derivation?, attributes, span)
 MroDerivation(root_type?, span)  // type 前缀；子 type enum 从父声明继承根类型
-ClassDecl(name, type_params, bases, modifiers, members, attributes, span)
-FunctionDecl(name, type_params, parameters, return_type?, modifiers, body, attributes, span)
+ClassDecl(name, type_params, bases, object_model, construction_policy, copy_policy, modifiers, record_policy?, members, attributes, span)
+ObjectModel = Value / RefCount / Boxing
+ClassConstructionPolicy = PerConstruction / LazySingleton
+RecordPolicy = Record(ordered, span)
+FunctionDecl(name, type_params, parameters, return_type?, modifiers, cache_policy?, body, attributes, span)
+ParameterDecl(name, type_syntax, evaluation_mode, default?, attributes, span)
+ParameterEvaluationMode = Eager / LazyMemoPerCall
+ReferenceTypeSyntax(inner, span)
+CachePolicy(kind, capacity?, span)  // PropertySlot / FunctionMemo；函数容量来自绑定后的 @LazyCache，缺省无界
 LambdaExpr(parameters, expression_body, syntax_kind, span)  // legacy lambda / arrow
+CallWithCallbackStmt(callback_decl, invocation, result_target?, span)
+CallbackDecl(name, parameters, return_type?, body, span)
+MatchExpr(subject, arms, span)  // 运行时值匹配，结果为表达式
+MatchArm(pattern, guard?, result_expr, span)
 CallableTypeSyntax(parameter_types, return_type, span)
 ForStmt(target, iterable, body, else_body, expansion, span)  // 普通 / InlineRange
 InlineIfStmt(branches, else_body, span)
@@ -210,8 +102,13 @@ StaticMatchCase(pattern, guard?, body, span)
 TypeMatchStmt(subject_type, cases, span)
 TypeMatchCase(pattern, guard?, body, span)
 ExactTypePattern(type_syntax, span) / AnyTypePattern(span) / TypeOrPattern(items, span)
-FieldDecl(name, type_syntax, storage, mutability, initializer?, attributes, span)
-PropertyDecl(name, is_static, accessors, attributes, span)
+CaptureTypePattern(name, span)
+AppliedTypePattern(head_type, argument_patterns, span)
+TypePatternTest(subject_type, pattern, span)
+ConditionalTypeSyntax(true_type, condition, false_type, span)
+FieldDecl(name, type_syntax, storage, mutability, initializer?, record_constructor_mode, attributes, span)
+RecordConstructorMode = Included / OptionalPostInit
+PropertyDecl(name, is_static, accessors, cache_policy?, attributes, span)
 AccessorDecl(kind, parameters, return_type?, body, attributes, span)  // get / set / post_set
 NullableTypeSyntax(inner, span)
 ConditionalAccessChain(receiver, steps, span)  // 步骤记录条件/普通访问，保留链边界
@@ -224,24 +121,76 @@ TypeExpr / Expr / Stmt / Pattern
 NodeId -> NodeStore
 SymbolId -> SymbolTable
 TypeId -> TypeStore
+SymbolId -> CapturedTypeUse(type_use, identity)      // 保留可空/引用限定的模式局部类型
 NodeId -> SemanticInfo / ExpansionOrigin
+DeclId -> CachePlan(owner, specialization, key_plan, result_plan, invalidation)
+DeclId + TypeArguments -> SingletonPlan(constructor, storage_owner, accessor, lifetime)
+DeclId -> RecordPlan(effective_fields, constructor_fields, optional_post_init_fields, generated_members, comparison_fields, serialization_fields, frozen_layout)
 TypeId -> NullableValueType / NullabilityAnnotation  // 可空值与引用注解分离
 ExprId + FlowPoint -> NullState                     // 不挂到共享类型上
 ```
 
 NodeId 在一次编译内稳定，不能直接当作跨版本缓存身份。首版用整数 ID 与按节点种类存储的 list，子节点也用 ID，避免递归值类型、AST 环和容器扩容造成的引用失效。所有权归 Module/Compilation；禁止动态 setattr 挂载编译状态。新建节点保留 origin，克隆操作显式处理来源及语义信息失效。`py2cpp/util/arena.py` 目前是 char 临时缓冲池，不能直接作为已有 AST arena 使用。
 
-迁移期允许一个显式、单向的 `legacy_lowering`：自有 Syntax AST 投影成现有 passes 可消费的 CPython AST 和元数据，必要时合成旧标记。这使 enum/final 新语法可以先复用旧后端。新 parser 直接产出专有节点；旧节点仅存在于兼容边界，不能反向同步回原始树。语义模块迁移完成后删除该桥，原生编译器路径不得装载 CPython 对象。
+## 4. 兼容桥与语义实现
+
+迁移期允许一个显式、单向的 `legacy_lowering`：自有 Syntax AST 投影成现有 passes 可消费的 CPython AST 和元数据，必要时合成旧标记。这使 enum/final/ref class 等新语法可以先复用旧后端。新 parser 直接产出专有节点；旧节点仅存在于兼容边界，不能反向同步回原始树。语义模块迁移完成后删除该桥，原生编译器路径不得装载 CPython 对象。
 
 P2 的执行桥明确采用子进程协议：原生 parser 输出带 schema 版本的 Syntax AST/Span 序列化数据，宿主读取并构造旧 AST；初版可用 JSON，不额外引入 Python 扩展 ABI。桥必须在 `ClassInfo` 构建之前执行（当前 `src/translator.py:729`）：enum 投影为 ClassDef + @enum，flag 放装饰器选项，底层/父枚举放 bases；final/const 字段投影为 AnnAssign + MatMult 标记，再统一建立旧元数据。合成标记的位置映射到原始 keyword span，不伪造源码行；诊断与导航通过 SourceMap 读取原始源码。此时 Python 宿主仍参与后续编译，只有 parser 已能独立运行。
 
+### 4.1 声明与对象模型
+
+[ref class](./syntax-migration.md#declarations) 的新旧入口归一为 ClassDecl.object_model=RefCount，再投影成 ClassDef + @refcount，复用既有构造、共享所有权、容器存储、WeakRef 与类型检查。重复新旧标记及对象模型冲突在投影前诊断，引用限定和原约束符号按规范分别绑定。
+
+普通 enum 展开器目前会跳过部分非成员语句后清空类体，final 初始化仅提取构造函数顶层赋值。前者列为独立兼容缺陷，后者先保留现有限制；控制流确定赋值、局部 final 和初始化副作用顺序分别扩展。
+
 type enum 的兼容投影为 `ClassDef + @enum.mro`，type union 后续为 `ClassDef + @union.mro`；均不叠加普通 @enum/@union。派生根放 ClassDef 的 base= keyword，子 type enum 的父枚举放 bases，声明体和开放属性按原顺序保留。CPython adapter 也须把旧 mro 写法规范化到同一种 MroDerivation，保证新旧入口的派生语义一致。
 
-属性兼容桥先把旧字段属性、postsetter 简写和新 property 块规范化为明确的存储绑定与 get/set/post_set，再投影。新块无 hook 时可直接生成同名旧 getter/setter；有 hook 时生成普通 getter、setter 包装和按属性唯一命名的内部 setter-body/hook 方法，由包装依序调用，覆盖提前 return 的正常退出。绝不能把三种访问器机械映射成同时存在的 @property/@property.setter/@property.postsetter：ClassInfo 当前拒绝该组合，旧 emitter 还会自动赋值而忽略显式 setter。生成辅助方法受内部名称与来源管理，不成为公开反射成员。
+#### record、frozen、ordered 与 optional 的绑定
 
-旧 postsetter 入口在规范化时补出原隐含存储、getter 和赋值 setter，原回调放入 post_set；保持字段默认值、元数据、dataclass 构造参与及反射映射，不改成普通手写 _x 后丢失这些信息。self.__value__/Self.__value__ 作为旧存储兼容引用保留。S0502 等风格规则应基于源属性节点判断，对已归一化的新块不再建议退回旧 postsetter；不能用全局关闭 strict 来通过兼容桥。类型/访问权限/所有权检查仍作用于生成语义。
+类头解析只保存 `RecordPolicy` 和各修饰词的原始 Span；绑定器在解析实体基类、mixin、条件声明视图和类成员后验证组合。`ordered` 要求 `RecordPolicy`，`lazy record` 与 `ordered class` 直接诊断，`ref record`、`final record` 合法；record 至多有一个实体 record 基类，带实例字段的普通实体基类不能充当该基类。`optional` 不是类型标记：它只在 record 实例字段上形成 `OptionalPostInit`，且必须带默认表达式；其他字段为 `Included`。`frozen` 可用于普通 class 和 record，仍与禁止继承的 `final` 分开建模。
 
-可空语法的桥接还需先完成绑定/流分析及求值计划，再生成旧 AST 能表达的临时变量和分支，或扩展后端接收中立 IR。T? 不能在 parser 阶段统一变成旧 T|None；当前 refcount 分支会擦掉可空性，boxing 分支又可能形成 Optional<Pointer>。新 NullableValue 的强制转换、运算提升和引用空异常应有明确运行时入口；原 Optional→T 自动 value__get 不能被新语法意外继承。NullSuppressExpr 在诊断后仅投影其操作数，同时保留来源，绝不以 value__get 或非空断言代替。旧 Optional ADT 保留，通过显式边界适配其存储、模式及成员。
+完成成员选择、继承和 mixin 展开后，为每个 record 生成 `RecordPlan`。`effective_fields` 按实体 record 基类、展开的 mixin 和当前声明的源码顺序组成；`constructor_fields` 只含 Included 字段，`optional_post_init_fields` 排除在自动 `__init__` 形参外，但仍进入 `comparison_fields`、`serialization_fields`、反射和模式匹配。Plan 固定生成 `__init__`、`__eq__`、`__repr__`，缺少手写 `__str__` 时再生成转发到 `__repr__` 的 `__str__`；ordered record 生成 `__cmp__`。绑定阶段拒绝同名手写的固定生成成员（以及 ordered record 的 `__cmp__`），但允许 `__post_init__` 和手写 `__str__`。
+
+RecordPlan 同时显式保存构造顺序：自动构造先初始化所有逻辑字段并调用 `__post_init__`；`new(..., optional_field=value)` 的剩余 optional 写入在其后执行，`assign()` 使用同一字段可写性规则。这样不能把 optional 降格为“不可比较的构造外元数据”。`@serializable` 按绑定到内建声明的身份附着到 Plan，手写 `serialize` 或 `deserialize` 时先报冲突；反序列化缺字段只可取声明默认值，否则报缺字段诊断。
+
+`frozen_layout` 在 property/descriptor 的真实用户存储、实体基类字段、mixin 注入字段和当前字段均确定后计算，而不是只检查语法上出现的 FieldDecl。带实例字段的实体基类必须同为 frozen；可写 property、post-setter、descriptor setter 和 optional 字段均在此阶段拒绝。缓存、锁等编译器内部槽不写入 frozen_layout，也不进入记录的生成成员字段序列。
+
+#### RecordPlan 的兼容投影
+
+必须先完成绑定并生成 RecordPlan，随后才允许 `legacy_lowering` 合成旧 `@dataclass` 与字段 `@optional` 元数据，供尚未迁移的 pass 使用。这个投影不能是机械映射：旧路径没有完整 frozen 有效布局、record 的 `__str__` 回退、optional 参与排序/展示/序列化/反射，也不表达 `new` 在 `__post_init__` 后覆盖 optional 字段的顺序。兼容桥须显式生成这些行为，或把它们保留在中立 HIR；在两者均不可行的组合上报告尚未支持，不能静默改变新方言语义。`@serializable` 的冲突和缺字段规则同样必须在旧序列化 pass 前完成绑定，不能按装饰器名称文本猜测。
+
+#### lazy class 的构造策略
+
+[lazy class](./syntax-migration.md#lazy-class) 同时绑定 `ObjectModel.RefCount` 和 `ClassConstructionPolicy.LazySingleton`。它没有等价旧装饰器；只投影 @refcount 会丢失单例保证。绑定器在继承、mixin、record/legacy dataclass 和构造重载展开后验证无参契约，将隐式构造、直接类型调用、有类型上下文的 new()、泛型构造及其他已支持的构造入口统一交给 SingletonPlan；不允许序列化或复制生成器旁路分配第二个实例。基类初始化单独作用于当前 self，不误用基类的单例入口。
+
+SingletonPlan 以规范化类声明身份和闭合类型实参为键，别名不另建槽。每个键生成唯一的访问函数与强引用存储；多模块/翻译单元只引用同一所属模块的定义，不能用头文件中的 internal-linkage static 产生多份实例。入口在原表达式求值位置执行，返回既有 PyRefCount 包装，普通值赋值/容器传递继续共享身份。
+
+C++11 运行时增加独立 SingletonCell，状态为 Empty / Constructing(owner_thread) / Ready。首次竞争者登记 Constructing，在锁外执行完整构造，成功后以同步发布转为 Ready；其他线程等待已完成实例。构造失败销毁已经构造的部分、恢复 Empty 并唤醒等待者。初始化路径记录线程和依赖关系，检测同线程重入及跨线程等待环，避免依赖原生静态初始化的未定义重入行为或永久死锁。不得复用 MemoCache 的并发重复 miss、LRU 淘汰或清理 generation 协议。
+
+单例强根由运行时持有，进入关闭阶段后按约定释放，禁止析构过程触发重新创建；初始化时的外部副作用沿普通异常规则处理。访问函数不开放 clearCache/reset，原构造体保持内部专用入口。同步状态、异常清理、唯一链接身份和全部构造入口接通前，对 lazy class 明确报未支持，不能把一个静态可空指针当作完成实现。
+
+### 4.2 属性、引用与惰性参数
+
+属性兼容桥先把旧字段属性、postsetter 简写、新 property 块和只读 property def 规范化为明确的存储绑定与 get/set/post_set，再投影。parser 在类成员上下文依据 property 后的 NAME 或 def 分派；只读简写直接建立同一个 `PropertyDecl` 及唯一 `AccessorDecl(kind=get)`，保留属性名称、property/def、参数、可选返回注解和正文的源位置及写法来源，不先登记普通方法。省略注解继续使用属性共同类型推断；静态标记进入 is_static，不合成 self/cls。只读简写与等价完整块无 hook 时投影为同名旧 @property/@staticproperty getter，保留只读访问权限，不合成 setter 或隐含存储；完整块无 hook 时可直接生成同名旧 getter/setter。有 hook 时生成普通 getter、setter 包装和按属性唯一命名的内部 setter-body/hook 方法，由包装依序调用，覆盖提前 return 的正常退出。绝不能把三种访问器机械映射成同时存在的 @property/@property.setter/@property.postsetter：ClassInfo 当前拒绝该组合，旧 emitter 还会自动赋值而忽略显式 setter。生成辅助方法受内部名称与来源管理，不成为公开反射成员。
+
+旧 postsetter 入口在规范化时补出原隐含存储、getter 和赋值 setter，原回调放入 post_set；保持字段默认值、元数据、record/legacy dataclass 的构造参与及反射映射，不改成普通手写 _x 后丢失这些信息。self.__value__/Self.__value__ 作为旧存储兼容引用保留。S0502 等风格规则应基于源属性节点判断，对已归一化的新块不再建议退回旧 postsetter；不能用全局关闭 strict 来通过兼容桥。类型/访问权限/所有权检查仍作用于生成语义。
+
+参数 lazy 与 ref 前缀在规范化及合法位置检查后可以回投旧 @lazy/@ref 标记，保留 ReferenceTypeSyntax 和 ParameterEvaluationMode 的不同归属，并将 SourceMap 指向原前缀。旧标记也归一到相同节点；lazy ref 的 supplier 返回值类型仍为 T，本次调用的 memo 再以引用供正文使用，不得错误地让 supplier 返回调用者引用。可空与 Callable 层级在该桥中保持，重复新旧标记应在投影前报错。引用语义、合法位置与参数求值次序沿用原规则；现有后端没有完整引用逃逸分析，悬垂引用诊断需补齐。旧 emitter 仅在读取路径物化 memo，直接对 lazy ref 形参赋值/增量赋值还须把写目标接到本地 memo，未接通前明确诊断，不能以类型投影代替实现。
+
+### 4.3 声明缓存运行时
+
+声明缓存不能假装成已有 @lazy 装饰器。语法层只记录无参数的 lazy 修饰词；`@LazyCache(...)` 经普通装饰器语法入树，绑定到内建配置身份后校验目标、参数和重复配置，规范化为 CachePolicy 的容量。保留装饰器及容量表达式的 SourceMap；不得在 parser 中执行配置表达式或按文本名称劫持用户装饰器，具体默认值和容量规则只在 [声明缓存规范](./syntax-migration.md#declaration-cache) 定义。
+
+建立绑定到声明/重载/特化身份的 CachePlan，完成键/结果所有权、方法组合及失效操作检查，再由中立 IR 生成包装入口、未缓存正文入口和私有存储。所有正常调用及函数引用须落到包装入口，直接递归也经包装处理重入；参数绑定及求值仍按正常调用发生，键按绑定后的声明顺序取得。clearCache 在名称及声明绑定之后识别，del 在属性绑定后形成失效计划，不能仅按成员拼写拦截任意对象。缓存内部字段和 helper 不进入用户构造参数、相等/序列化/公开反射；值对象 copy/assign/move 的缓存清理由对象模型统一接通。隐藏槽以受控方式原位构造和发布结果，仅析构已经构造的对象，不额外要求结果类型可默认构造或可赋值。
+
+新增 runtime LazyCell 与 MemoCache，分别维护 Empty/Computing/Ready 单槽状态或按键值/LRU，以及重入标记、锁、generation、显式失效和析构。参数的每次调用 memo 可以共享底层安全持有机制，但存储范围和求值协议必须独立。锁内只保护缓存元数据，锁外运行正文；清除通过 generation 校验防止旧计算回填，不以取消本次调用代替失效。noexcept 的正文 Result 转换之后检查 Ok/Err 再决定发布结果；公共缓存入口还须将键构造、查找/重入、结果复制和发布等缓存操作的可表示异常转换为 Err，E 必须覆盖这些错误，并确保失败解除计算状态。入口转换未接通前拒绝 noexcept 组合，不能依赖正文转换处理外围缓存错误。运行时和 codegen 完成前应诊断缓存声明为未支持，不把生成一个普通 getter/函数当作缓存已实现。
+
+### 4.4 可空分析与求值
+
+可空语法的桥接还需先完成绑定/流分析及求值计划，再生成旧 AST 能表达的临时变量和分支，或扩展后端接收中立 IR。T? 不能在 parser 阶段统一变成旧 T|None；当前 refcount 分支会擦掉可空性，boxing 分支又可能形成 Optional<Pointer>。新 NullableValue 的强制转换、运算提升和引用空异常应有明确运行时入口；原 Optional→T 自动 value__get 不能被新语法意外继承。流分析覆盖判空、分支/循环合流、重新赋值、参数/返回和字段初始化；别名、重复 property 调用及副作用使相应流事实失效。NullSuppressExpr 在诊断后仅投影其操作数，同时保留来源，绝不以 value__get 或非空断言代替。普通引用访问还必须统一提供空引用失败路径，现有 refcount operator->/* 的未定义行为不能充当规定的异常。旧 Optional ADT 保留，通过显式边界适配其存储、模式及成员。
+
+### 4.5 Callable、lambda 与回调
 
 箭头形式和旧 lambda 都规范化为 LambdaExpr；当前受支持的简单形状可投影到 ast.Lambda，普通参数放 ast.arguments.args，显式拒绝旧验证漏查的 posonlyargs 等形式，保留源头和函数体位置。若函数体需可空分支/临时变量，应在该 lambda 内部 lowering，必要时用中立函数体 IR，禁止把计算提升到 callable 创建点。旧后端没有通用 visit_Lambda；Callable/委托/key 等专用路径的类型传播、参数和返回检查必须分别接通，不能只构造 AST 就宣布所有表达式位置可用。
 
@@ -249,13 +198,25 @@ type enum 的兼容投影为 `ClassDef + @enum.mro`，type union 后续为 `Clas
 
 CallableTypeSyntax 的固定签名递归投影为旧 `Callable[[参数类型...], 返回类型]` AST，保留 None 返回和各类型/箭头的 SourceMap，合成的内建 Callable 标记避免用户同名符号遮蔽。旧 Callable 入口经绑定确认后与箭头类型生成相同 `TypeNode.template("Callable", "PyCallable", ret, *args)`，不转换成 TypeNode.function_ptr；最终原生前端直接绑定该类型。泛型形参来自外层作用域，箭头类型本身不声明泛型；类型别名不产生新的名义委托。可空、引用及元组层级不得在桥接中丢失，Callable 目标签名须传入 lambda 参数与返回检查。
 
-现有 PyCallable 是按值槽位，有值的未绑定空槽与可空 Callable 的 None 不同。前者 bool 为 False，旧调用按返回类型返回默认值或空操作；后者由 NullableValue 表达，?? 只检查外层有无值，! 不解包。引用返回签名还需处理空槽 `Ret()` 对引用不成立的问题；不能把新写法的可解析性等同于所有签名的运行时可用性。
+Callable 桥接须保留 [可空规范](./syntax-migration.md#nullable) 中 NullableValue 与未绑定 PyCallable 空槽的两层表示。引用返回签名还需处理旧空槽路径的 `Ret()` 无法生成引用的问题；完成运行时适配前不开放该组合。
+
+call/from 为回调建立只覆盖 invocation 与 body 的临时符号层，参数与局部变量另有函数作用域；候选 as 目标属于外围赋值作用域。使用 DeclId/SymbolId 处理遮蔽和递归，递归绑定代码及当前环境，避免环境强持有自身 callable 形成引用环。函数体采用独立 HIR/控制流图，保留多路径返回和异常清理；不能把概念上的隐藏 def + 调用展开当成完整闭包实现。在原语句位置创建环境并执行 invocation，按需保存结果；拥有环境或借用证明决定保存后的回调寿命，异常路径释放已构造环境。
+
+### 4.6 运行时 match 表达式
+
+MatchExpr 在 CPython AST 中没有直接对应。兼容桥必须先完成值模式绑定、guard/结果类型检查、穷尽性和所有权检查，再通过中立表达式 IR 在原求值点 lowering 为源序分支及结果合流。主体绑定独立临时值，arm 捕获用独立 SymbolId；所选结果直接构造合流值，或按需构造尚未初始化的结果槽，不先默认构造全部分支结果，也不额外要求结果类型可默认构造。结果的移动、引用、借用和析构时机沿用目标类型规则。作用域局部不代表生命周期安全：返回 capture 的借用或 `() => capture` 必须有可证明的有效生命期或拥有捕获环境，未实现时明确拒绝。
+
+该 lowering 不得把主体、guard 或结果提升出 and/or、??、条件表达式的短路位置、lambda 的调用体或循环条件的每次求值位置。旧 ast.Match 是语句且存在分组/guard 行为差异，不能直接投影替代；通用闭包/IIFE 也不能作为默认桥接捷径，以免额外引入未实现的捕获、逃逸或移动语义。后端按运行时模式类别接通有序测试和绑定，保留失败与异常边；原位置插入和结果合流能力完成前，应报告未支持的表达式上下文。
+
+### 4.7 编译期展开与类型模式
 
 inline for 与旧 inlineRange 循环都规范化为 ForStmt 的 InlineRange 模式，绑定后形成 RangeBounds。兼容桥恢复 `ast.For(iter=Call(Name("inlineRange"), 原实参), ...)`，复用原展开器；不能只去掉 inline 而发射普通 range。原展开按范围顺序复制 body、替换索引读取并折叠已有静态 if，运行时副作用顺序保持。mixin 路径仍在宿主绑定及 iterFields/fixed-vararg 展开后处理，普通方法保留 ClassInfo 上下文，不扩大模块函数支持。现有索引替换不建立新作用域、不保留末次索引赋值，同名嵌套/遮蔽和索引再赋值的绑定缺口单列，不能在拼法迁移中悄悄改变。SourceMap 记录原循环头、循环体及克隆迭代来源。
 
-inline if/match 共用带目标类型的 CompileTimeValue，静态求值返回 KnownValue/Dependent/Error；InlineIfStmt 的 KnownBool 是 KnownValue 要求为 bool 的专用结果。已知条件按源序只展开首个命中的分支并投影为旧语句序列，必要时补 pass；Dependent 保留在自有树/中立 IR，等类型/值实参或宿主绑定后选择，不能直接变为普通 ast.If。两种静态分支的目标覆盖函数/方法语句、普通类成员和模块声明；先用不含条件分支成员的声明骨架/常量依赖图提供求值环境，再选择分支，最后建立完整的 ClassInfo、受控导入依赖、布局、dataclass/属性和反射集合。每个实例保存独立的有效声明视图。条件/主体/模式依赖它正在控制的声明或布局时报告循环，不先把未选声明注册进去求值。
+inline if/match 共用带目标类型的 CompileTimeValue，静态求值返回 KnownValue/Dependent/Error；InlineIfStmt 的 KnownBool 是 KnownValue 要求为 bool 的专用结果。已知条件按源序只展开首个命中的分支并投影为旧语句序列，必要时补 pass；Dependent 保留在自有树/中立 IR，等类型/值实参或宿主绑定后选择，不能直接变为普通 ast.If。两种静态分支的目标覆盖函数/方法语句、普通类成员和模块声明；先用不含条件分支成员的声明骨架/常量依赖图提供求值环境，再选择分支，最后建立完整的 ClassInfo、受控导入依赖、布局、record 生成/legacy dataclass、属性和反射集合。每个实例保存独立的有效声明视图。条件/主体/模式依赖它正在控制的声明或布局时报告循环，不先把未选声明注册进去求值。
 
-TypeMatchStmt 的主体和精确模式直接经类型绑定获得规范化 TypeId，OR 与通配由独立 TypePattern 处理，guard 使用同一静态求值器；选择结果进入共同的分支投影、特化和声明视图流程，保留语法来源。当前需要的类型尚依赖泛型实参则保留 Dependent；未知类型名或值主体报 Error。不能用“未找到类型就捕获”补救，也不能投影成普通 ast.Match。优先复用 type_node.py 的结构化相等/模式基础并补齐别名、可空身份和稳定 TypeId，避免沿用旧 type_if 的 C++ 字符串匹配。后续 list[...] 等匿名形状也须按源码顺序选择，不能先把精确模式提升到前面。
+TypeMatchStmt、ConditionalTypeSyntax 和已有函数类型 if 共用类型 matcher，返回 Matched(bindings)/NotMatched/Dependent/Error。主体、构造头及非捕获类型先按外层环境绑定，透明别名展开后按规范化身份及实参结构比较；CaptureTypePattern 仅收集对应完整 TypeUse，AppliedTypePattern 递归匹配固定类型槽。成功才创建局部 SymbolId 并绑定正向后继，失败即丢弃本次捕获，依赖未决则保留到特化，未知类型名或值主体报 Error；不能用“未找到类型就捕获”补救。OR 各备选独立求 bindings，预检同名集合、单备选重名及不可反驳位置，不合并失败备选的捕获。guard 使用已有静态求值器；条件类型先绑定条件，再向 true 类型传播成功 bindings，false 类型仍在外层环境绑定。正向 and 的后续条件使用前面已成功的捕获，不向失败/负向路径传播。
+
+选择结果进入共同的分支投影、特化和声明视图流程，保留语法来源；type match 始终按源码顺序，宽泛 `list[type U]` 可以先于 `list[int]` 命中，不能沿用旧 type_if 的精确模式优先排序。优先复用 type_node.py 的结构化相等/模式基础并补齐 TypeUse、别名、可空身份和稳定 TypeId，避免 C++ 字符串匹配；不能投影为普通 ast.Match，也不能把捕获伪装成新公开泛型形参。legacy adapter 根据 capture_params 与符号绑定把旧 `_U=...` 槽规范化为局部 CaptureTypePattern，迁移工具同步重写实际引用和删除捕获槽，检查显式使用原捕获实参的兼容边界，不凭名称前缀改写普通形参。已知条件类型先替换成功分支中的捕获类型再桥接，Dependent 节点保留到特化，不能为了旧 AST 可读而提前选 fallback；首轮未支持的捕获上下文明确报错。
 
 InlineMatchStmt 先求主体，再用纯静态 matcher 处理所需 Pattern，返回 Matched(bindings)/NotMatched/Dependent/Error；成功时建立 case 局部捕获环境、求 guard，guard 假丢弃绑定，真则展开正文。不按枚举/union 类型重排 case；OR 的备选也按源序保留。已知选择降低为语句序列并物化捕获，空结果按 suite 要求补 pass，依赖选择保留到特化；不能回退为 ast.Match。CompileTimeValue 使用显式值域和 TypeId，不继承宿主 Python 的 True==1 或枚举退化成整数行为；求值/匹配缓存依赖目标类型、特化实参和宿主常量，SourceMap 记录 case/guard/捕获及实例来源。
 
@@ -266,6 +227,8 @@ InlineMatchStmt 先求主体，再用纯静态 matcher 处理所需 Pattern，�
 旧 type if 具有具体类型优先及模式分派、无 else 时的未覆盖断言，不能机械恢复为该路径来实现新 inline if 的源序/no-op 规则；旧宏 if 会发射全部分支再由 C++ #ifdef 选择，首版新条件不接受 __macro__。需要符号类型/NTTP 的泛型分支时，在前端特化剪枝或生成经验证的 C++11 分派，不增加 C++17 if constexpr 依赖。hasattr 等静态反射只有在绑定接口提供可靠的已知结果后才能加入条件求值范围。
 
 现有 passes 的拆分以真实依赖为准：保留 dataclass、enum/union、descriptor、mixin、generator/coroutine、decorator、protocol、final 和语义分析的现有先后关系。逐个把隐含前置条件变成输入/输出契约、PassContext 和显式数据；TypeNode 先去掉 Python Enum/dataclass 运行时，再减少 C++ 字符串反解析。首期不引入新的 SSA/LLVM 层，以当前 C++ 发射器能消费的类型化 IR 为目标。
+
+## 5. 统一入口、bootstrap 子集与模板
 
 统一 API 可先落成以下边界，之后替换其内部实现：
 
@@ -313,21 +276,31 @@ parse_pattern(source_slice, dialect) -> PatternId
 
 缓存首期可以关闭；完整编译稳定后以带版本的显式格式替换 pickle（`src/codegen/bootstrap_incremental.py:154`、`:171`）。原生 CLI、路径/进程 API 和构建驱动随后迁移。libclang 的 FFI 声明生成器、IDE 打包等开发工具可以暂留宿主；应声明哪些产物作为已提交源码输入，避免把辅助开发工具的 Python 依赖混入正常编译闭包。
 
+## 6. 阶段与自举闭环
+
 建议按以下阶段实施，每阶段均有独立可验收结果。
 
 | 阶段 | 工作与交付 | 通过条件 |
 |---|---|---|
 | P0：冻结基线 | grammar/profile、语料清单、AST/API schema、依赖清单、可重复输出开关 | 确认语言支持与语义差异；记录现有有效输出、负例诊断和性能；已有失败单列 |
 | P1：统一前端入口 | SourceManager、parse API、CPython adapter、不可变模块解析缓存 | 模块发现/stubs/DSL 不再散落裸 ast.parse；旧程序结果等价 |
-| P2：原生前端纵向样例 | bootstrap 子集写 Lexer/Parser/NodeStore；接 legacy_lowering；实现 enum（含 type enum）/final/const | 现有编译器能编译并运行新 parser；新旧写法规范化 AST 相等；旧后端行为相同 |
-| P3：覆盖已有语法与第二批扩展 | 加入第二批声明、property 块、箭头 lambda/Callable 类型简写与共同类型检查、inline for 等价迁移和 inline if/inline match 静态选择、推荐的 type match 精确类型入口、可空语法及流分析/运行时支持；补齐泛型、模式、推导式、生成器/异步、f-string、FFI 语料 | 项目语料及负例预期覆盖；Python 交集与 CPython 差分、新旧 lambda/Callable 写法及循环展开等价、值/类型模式分离、静态分支源序/捕获/隔离与特化/声明剪枝、可空规则与 C# 参照用例对照；原生前端无 Python 回退 |
+| P2：原生前端纵向样例 | bootstrap 子集写 Lexer/Parser/NodeStore；接 legacy_lowering；实现 enum（含 type enum）/final/const/ref class | 现有编译器能编译并运行新 parser；新旧写法规范化 AST 相等；旧后端行为相同 |
+| P3：覆盖已有语法与第二批扩展 | 加入 record/frozen/ordered/optional 的类头和字段解析、RecordPlan 绑定、有效布局、生成成员、C++ 发射及遗留桥；加入 lazy class 单例构造、property 块及只读简写、ref/lazy 前缀等价迁移和声明缓存 runtime、箭头 lambda/Callable 类型简写与共同类型检查、call/from 回调 HIR 与闭包检查、inline for 等价迁移和 inline if/inline match 静态选择、type match/条件类型/函数类型 if 的显式 type 捕获与共同 matcher、运行时 MatchExpr 及结果合流、可空语法及流分析/运行时支持；补齐泛型、模式、推导式、生成器/异步、f-string、FFI 语料 | 项目语料及负例预期覆盖；Python 交集与 CPython 差分、旧新标记与循环展开等价；record、单例、缓存、可空、匹配和闭包分别通过第7节验证矩阵；原生前端无 Python 回退 |
 | P4：编译器内核迁移 | TypeNode、符号、analysis、passes、emit、模板 helper/evaluator 逐模块改写 | 编译器核心通过 bootstrap profile；宿主/原生结果对照；CPython AST 桥退出生产路径 |
 | P5：完整原生构建 | 原生 CLI/module loader/driver，重建 runtime、模板和代表项目；版本化缓存可后补 | 无 Python 环境下正常完整编译；无宿主模板执行、隐藏解析回退或 pickle 依赖 |
 | P6：自编译闭环 | 对固定编译器源码连续自编译，重跑全部回归 | C2/C3 生成结果及行为一致；保留 seed 与复现脚本 |
 
 P3 内的 inline if/inline match 共用求值与剪枝框架，分两步交付：先实现当前环境已知值的函数/方法分支、静态标量模式及 inline for 联动，再实现待特化条件/模式和模块/类声明剪枝。后一步完成前，对未支持的位置或依赖明确诊断；不能把常量 True/False 的词法样例当作完整编译期分支支持。inline match 的序列、映射、union 等结构化静态值模型独立增量交付，解析语法可共用不表示静态求值已经可用。
 
-推荐的 type match 同步接入上述选择/特化框架，先完成精确类型、OR、_ 和 guard，再扩展匿名形状及另行确定的具名解构捕获。list[int] 精确匹配读取类型结构，不要求 inline match 先能静态执行 list 对象的序列模式；二者能力分别验收。
+record 的 P3 纵向切片先交付 native `.py2` 的 class-head/field parser、RecordPlan 和负例诊断，再接通布局与 C++ 生成，最后接 legacy_lowering。桥接阶段必须运行 Plan 驱动的生成成员、optional 的构造后覆盖和 frozen 布局检查；只让旧 `@dataclass` pass 接收一个同形 ClassDef 不算交付。旧 `@dataclass` 与后置 `T @optional` 仍由旧方言入口保留，不能在这一阶段与新 record 语法混写。
+
+type match 同步接入上述选择/特化框架，交付精确类型、type U 显式捕获、固定形参构造模式、OR、_ 和 guard；条件类型与已有函数类型 if 复用 matcher 及成功绑定环境。list[int]/list[type U] 读取类型结构，不要求 inline match 先能静态执行 list 对象的序列模式；二者能力分别验收。匿名形状、NTTP/参数包/维度捕获及可空解构另行设计，不混入本轮 type NAME 的单类型槽语义。
+
+MatchExpr 独立接入 P3 的运行时表达式 HIR：先完成基本值模式的源序测试、局部捕获、目标类型传播和穷尽诊断，再逐类接通已有结构化运行时模式及其载荷覆盖证明。短路、lambda、循环条件中的原位 lowering 和非默认构造结果须与基本功能一同验收；不以静态 inline matcher 或仅赋值右侧样例代替完整表达式求值方案。
+
+ref/lazy 前缀迁移与声明缓存分两项交付：前者先通过旧 AST/HIR 与调用行为等价验证，后者必须同时交付 CachePlan、LazyCell/MemoCache、生命周期/结果保存检查及 del/clearCache 内建失效。声明缓存从同步有体的合法声明子集开始，容量配置/有限 LRU、实例/特化隔离、复制移动清理、异常/Result、重入和并发 generation 均作为开放语法前的验收条件；不以解析成功或单线程无副作用样例替代缓存语义。
+
+lazy class 依赖 ref class 对象模型，但作为 P3 的独立构造策略交付 SingletonPlan/SingletonCell，不混入参数 lazy 或函数缓存的等价迁移。严格无参、全部构造路径一致和线程安全发布与语法一起验收。
 
 自举流程可具体定义为：令 S 为可被 seed 接受的编译器源码，S 必须包含自己的 lexer/parser、语义分析、展开、模板执行与 C++ 发射实现。C0 是冻结版本的现有 Python 编译器；C1、C2、C3 是生成的原生编译器。
 
@@ -344,26 +317,29 @@ C1 能编译普通项目称为原生编译器；C1 能编译 S 才达到自编�
 
 首次 C0 → C1 在安装 CPython 的引导环境中执行；无 Python 的全量重建验收使用已经构建的 C1 或已发布 C2 作为原生 seed。该环境只保留原生 seed 可执行文件、声明的源码/生成源码、runtime 和模板输入，以及 C++ 工具链；让 Python 不可用并检查构建链仍成功。manifest 记录完整生成文件集合及内容摘要，包括 .cpp/.h/.inl、runtime 和模板展开结果，不能只比较入口 cpp。当前输出包含生成时间（`src/translator.py:525`），需固定或移除；同时规范化源路径、排序、换行和工具配置。比较前只排除约定的非语义元数据，不能宽泛清洗差异掩盖 bug；确定可复现构建后再要求二进制字节一致。
 
-验收需要三种互补的差分：普通 Python 语法交集比较 CPython adapter 与原生 parser 的规范化 AST；旧装饰器/新关键字等价用例比较同一 HIR；最终比较生成 C++、运行行为与负例错误阶段。名称 ID 和临时节点编号不直接全等比较，来源位置单独校验。加入异常缩进、嵌套 f-string、泛型默认值、非法 modifier、enum 成员、final 初始化和中文位置用例，并以有界随机生成/变异语料检测崩溃和非终止。
+call/from 的接口及候选 as、通用块 lambda 按 [规范状态](./syntax-migration.md#call-from) 逐项开放；语句入口可先复用普通 suite，表达式块入口仍需独立布局验收。
 
-property 块另外验收：多个属性的同名访问器互不冲突，省略注解的共同类型推断，只读/只写诊断，setter 提前 return/抛错与 hook 抛错，接收者/RHS 单次求值，assign/new 属性写入，以及旧字段默认值、postsetter 回调顺序、静态存储、dataclass 和反射结果等价。旧互斥规则与 S0502 的迁移必须纳入验证，避免新 parser 可读但旧语义层拒绝用户新写法。
+## 7. 验证矩阵与工具迁移
 
-可空语法另测：值/引用/泛型 T? 分类、! 不做运行时检查或值解包、空状态合流、?. 链和括号、索引/实参惰性求值、0/False 不触发 ??、??= 属性读写次数、条件写入 hook 次数、可空值运算真值表、运行时空异常，以及旧 Optional 跨方言转换。后端有实现前只声明为待实现能力，不以 CPython 不能解析的语法样例通过文档检查作为功能完成依据。
+三条差分路径同时保留：Python 交集的 CPython adapter/原生 parser 规范化 AST 对照；旧装饰器/新语法的同一 HIR 对照；生成 C++、运行行为和负例错误阶段对照。临时节点 ID 不直接作全等比较，SourceMap 独立验证。加入有界随机/变异语料检测异常缩进、Unicode、f-string、泛型默认值、非法 modifier、崩溃和非终止。
 
-箭头 lambda 另测：三种基本写法与旧 lambda 的 AST/HIR/行为等价，参数括号与元组消歧、非法参数/缺失函数体诊断、逗号边界与右结合，Callable/委托/key 的目标参数及返回检查，有效捕获的生命周期，以及可空函数体中副作用只在调用时发生。立即调用/直接返回/嵌套等形状的解析验收与语义支持分开；没有完成对应 lowering 前保持明确诊断。
+| 能力 | 验收重点 |
+|---|---|
+| record/frozen/ordered/optional | 类头和字段软关键字只在规定结构生效；固定生成成员及手写冲突、`__str__` 回退、`__post_init__` 后 optional 覆盖、optional 默认值与 assign/new 写入、ordered 的完整逻辑字段比较；frozen 的实体基类/mixin/property/descriptor 有效布局、拒绝项和内部缓存槽隔离；@serializable 冲突及反序列化缺字段默认值/诊断；新旧方言不混写，桥接结果与 RecordPlan 一致 |
+| ref class 与既有声明 | 旧 @refcount 的构造/赋值/身份/容器/WeakRef/继承等价；ref T 不混同；对象模型冲突、新旧重复及 enum/final 原约束 |
+| lazy class | 声明/注解不构造，A()/new()/别名同一身份，首次字段和 init 仅执行一次；无参及生成/继承构造检查，特化/派生类隔离，零外部引用后仍不重建；线程竞争、重入/等待环、失败重试和部分析构；跨模块唯一槽与绕过入口拒绝 |
+| 属性 | 简写/完整块归一，共同类型推断，setter 正常/异常/hook 顺序，单次求值，旧存储、record/legacy dataclass、反射及 S0502 兼容 |
+| ref/lazy 参数 | 类型/ABI/supplier/memo 等价，未使用/重复/默认/透传，lazy ref 写入与借用寿命，前缀层级和非法组合 |
+| 缓存 | @LazyCache 的绑定/常量参数/目标/重复诊断，缺省无界及有限 LRU/0/None；实例/声明/特化隔离、键规范化、clearCache 绑定/失效 generation、重入/并发、Result 外围错误，复制移动/安全持有/反射排除 |
+| 可空 | 值/引用/泛型分类，! 不解包，访问链/括号/短路，属性和 hook 次数、运算真值表、空解引用及旧 Optional 适配；用 C# 小程序核对对应语义 |
+| Callable/lambda/call | 新旧签名/ABI、目标传播、多路径返回、局部 f/外围结果作用域、零次/多次/延后回调、递归/异常/逃逸；通用块体另测局部布局 |
+| inline for | 新旧展开 AST/HIR 和运行副作用等价，嵌套宿主/索引依赖、结构预检、拒绝项及 clone 来源 |
+| 静态分支 | 源序、Dependent 不越过、guard/OR/捕获、未选体隔离，声明剪枝、循环依赖、特化隔离及原运行位置 |
+| type match/捕获 | 精确身份与完整 TypeUse、显式 binder/OR/外层同名、成功路径作用域，旧捕获槽迁移及类型/值模式分离 |
+| MatchExpr | 全 arm 类型检查、上下文传播/覆盖证明，guard/异常/副作用，短路和循环位置，非默认构造/移动结果及借用寿命 |
 
-Callable 类型另测：新旧签名类型及 ABI 等价、零/单/多参数、None 返回、元组参数/返回、高阶类型右结合、别名/泛型/容器、def 返回 Callable 的双箭头、lambda 目标签名传播、非法头/缺失返回类型及错误类型上下文；分别验证可空返回值、可空 callable、引用限定，以及有值空槽不会触发 ?? 的语义。
+P0 还应处理已发现的规范漂移：手册将宿主最低版本写成 3.10，而 PEP 695 需要 3.12、泛型默认值需要 3.13；union 模式现有测试使用 `case new.Variant(...)`，手册仍有 `case Msg.Variant(...)`。record 规则已经确定：新方言使用 `record`、`frozen`、`ordered` 和前置 `optional`，其生成成员、完整 frozen 布局、排序字段与构造后覆盖规则以 [迁移规范](./syntax-migration.md#records) 为准；旧 `@dataclass`、后置 `@optional` 仅作为 legacy 兼容路径并需单独回归，不再把它们的历史漂移当作新语法待定项。
 
-inline for 另测：三种 range 参数数量、正负步长/空范围/零步长、宿主常量、不同索引名的嵌套依赖、if 折叠和运行时副作用顺序；比较旧 inlineRange 的展开 AST/HIR 与生成行为，确认无对应运行时循环。保留动态边界、非法常量运算、for-else、非简单目标及 break/continue 的拒绝行为，并验证 inline 名称兼容及原始位置映射。
+文件兼容与工具链也需要进入交付范围。新关键字文件采用 `.py2`，旧 `.py` 与 `.pyi` 保持兼容入口；import resolver 同时认识两者，同名模块同时存在时明确报错，避免悄悄改变解析优先级。首个原型可用显式 dialect 参数接入测试，正式开放前同步文件发现、构建脚本、FFI 桩扫描、nav/architect、语法高亮、格式化与错误跳转。迁移工具用 token span 修改，保留注释；Python 的 ast.unparse 无法直接输出新语法。软关键字只解决名称兼容，新语法文件仍需要相应 IDE 支持。
 
-inline if 另测：源序首个命中、后续 elif 不求值、无 else 的空序列、严格 bool 与短路、嵌套/多链、宿主/索引/TypeId/NTTP 绑定、未选分支语义隔离但语法/结构检查保留、模块导入与类布局/成员不受未选声明污染、实例隔离和依赖循环。确认分支体副作用仍在运行时且无对应运行时 if；旧 type if 和宏 if 独立回归。
-
-inline match 另测：主体单次静态求值、None/bool/int/str/enum 分类与整数范围、类型主体及 TypeId 守卫、源序选择、带 guard 的通配、模式失败不求 guard、guard 假继续、OR 只求一次 guard、Dependent 不越过、无命中为空。覆盖捕获只读/不泄漏/遮蔽/有类型常量物化、未选体隔离及结构错误、inline for 的跳转预检、声明剪枝/实例隔离/循环依赖；最终不产生对应运行时分派，正文副作用留在原位置。旧普通、union/Optional 和 annotation match 单独回归，不将已有 wildcard guard 或字符码匹配行为误用为新规则。
-
-type match 另测：list[int]/str 精确匹配、别名/名义身份/泛型实参、引用可空注解不改变身份、值可空区别、数组/Callable/引用限定、未知类型名报错且不捕获、运行时值主体拒绝、外层类型参数与 Dependent、OR/guard/源序/no-op/返回检查，以及 type match 类型别名消歧和错误位置。共享静态分支的未选体隔离、声明视图和实例检查；后续形状模式补 list[...] 在 list[int] 前的源序例，旧 type_if 的精确优先结果不作为新语义预期。
-
-P0 还应处理已发现的规范漂移：手册将宿主最低版本写成 3.10，而 PEP 695 需要 3.12、泛型默认值需要 3.13；optional 字段是否参与 assign 的描述与实现不一致；dataclass 的 kwOnly/kw_only、frozen 和手写 init/post_init 说明有过时部分；union 模式现有测试使用 `case new.Variant(...)`，手册仍有 `case Msg.Variant(...)`。这些问题先形成决策与回归，不把某次实现的偶然行为直接冻结成永久语言规则。
-
-文件兼容与工具链也需要进入交付范围。建议新关键字文件使用独立扩展名 `.py2`（扩展名为提案），旧 `.py` 与 `.pyi` 保持兼容入口；import resolver 同时认识两者，同名模块同时存在时明确报错，避免悄悄改变解析优先级。首个原型可用显式 dialect 参数接入测试，正式开放前同步文件发现、构建脚本、FFI 桩扫描、nav/architect、语法高亮、格式化与错误跳转。迁移工具用 token span 修改，保留注释；Python 的 ast.unparse 无法直接输出新语法。软关键字只解决名称兼容，新语法文件仍需要相应 IDE 支持。
-
-建议第一批实现范围固定为 P0/P1 加 P2 的纵向样例：统一全部解析入口，定义 SourceSpan 和 enum（含 type enum）/final/const 的节点及规范化规则，用现有编译器编译一个可以读取这些声明的原生前端，再通过兼容桥驱动现有后端。此阶段同时证明语法、语义等价、源码位置和 bootstrap 数据模型可行，然后扩大覆盖与迁移本体。无需先一次重写 8 万行，也无需先更换成熟的 C++11 后端。
+当前 `plugins/py2cpp-lexer` 与根目录 `lexer_preview.py2` 用于高亮检查。GPU 模型分类和 TextMate grammar 不承担 compiler AST/语义验证；示例可展示的拼法不表示上述编译器阶段已经实现。

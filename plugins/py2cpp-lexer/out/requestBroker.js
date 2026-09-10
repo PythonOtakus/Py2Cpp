@@ -31,7 +31,7 @@ class RequestBroker {
         if (this.pending.has(id)) return this.send({ v: 1, type: "parse", id, source, document });
         return true;
       }).then((sent) => {
-        if (sent === false) this.finish(id, new Error("GPU panel is not available"));
+        if (sent === false) this.finish(id, new Error("GPU runtime is not available"));
       }, (error) => this.finish(id, error));
     });
   }

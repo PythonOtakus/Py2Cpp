@@ -1,0 +1,4 @@
+# Preserve the exact upstream bytes used for offline SHA-256 verification.
+LICENSE -text
+SHASUMS256.txt -text
+win32-x64/node.exe -text

@@ -1,0 +1,67 @@
+{
+  "package": "webgpu",
+  "version": "0.6.0",
+  "source": "https://registry.npmjs.org/webgpu/-/webgpu-0.6.0.tgz",
+  "repository": "git+https://github.com/dawn-gpu/node-webgpu.git",
+  "gitHead": "d92a1a3542352221c0d00f76e6962ff9b6a7f452",
+  "integrity": "sha512-z44ZU/+ypPELgQrv+um3/5Eqcq7gOtVZAmaRfwujJMwGMRSa6+CmjIAvEWw7O68Y95cnEsywhbYlcChQTX+IQg==",
+  "archiveSha256": "25786f44a7d5988da3555765ffa6bdcbb2a23f2bcf8e9adb0836a6b5365e6b91",
+  "files": [
+    {
+      "path": "dist/win32-arm64/d3dcompiler_47.dll",
+      "bytes": 8140752,
+      "sha256": "3cdd009ee909bb2e5123990f7d4ea690a1e968202c3adba861eda69f5e672752"
+    },
+    {
+      "path": "dist/win32-x64/d3dcompiler_47.dll",
+      "bytes": 4916728,
+      "sha256": "289767b49dc8525bce262ea06fee4ef9fced2e131a55b25654ce871c1f0498b2"
+    },
+    {
+      "path": "index.js",
+      "bytes": 652,
+      "sha256": "392208e96976f25fc19e572943f720a5793358810461f0ad127e2de49f55ff9f"
+    },
+    {
+      "path": "package.json",
+      "bytes": 1023,
+      "sha256": "7905425ae2b9256471369f7da98e9ff378fca5da558359298bf15676318608da"
+    },
+    {
+      "path": "LICENSE.md",
+      "bytes": 1488,
+      "sha256": "12b5a762d9f74ebc820c9ff13a79fd5108525c1fda37c5ab4fd924f89484aba2"
+    },
+    {
+      "path": "README.md",
+      "bytes": 6668,
+      "sha256": "9feae40e146fd7e9fee881b84e4bd6a08b37ec9355317a66e4102dbe5bab83c7"
+    },
+    {
+      "path": "dist/darwin-universal/dawn.node",
+      "bytes": 21293480,
+      "sha256": "d08455df6838d7ca8da7474fd05518fc1591e0765cd31b90b43aac5474ca36b2"
+    },
+    {
+      "path": "dist/linux-arm64/dawn.node",
+      "bytes": 17369160,
+      "sha256": "48252ad19c5b7fefde123646fc777d728e15a09d9d6a42b741b0829ab0172225"
+    },
+    {
+      "path": "dist/linux-x64/dawn.node",
+      "bytes": 19059304,
+      "sha256": "25933708b4eb2a7894c8386df69354d5fffbd93d0232cfe4163f3d6bd4d5d26b"
+    },
+    {
+      "path": "dist/win32-arm64/dawn.node",
+      "bytes": 12468224,
+      "sha256": "9eeeb3a7569dd68070aa91713a4bedc1ad724221c6f432e55be0217ddbf766c2"
+    },
+    {
+      "path": "dist/win32-x64/dawn.node",
+      "bytes": 11883520,
+      "sha256": "b815a6a331c0f450491bb5c0c70e190587de4ccb8e280889b426654c6019c52b"
+    }
+  ],
+  "notes": "Runtime files copied unchanged from the verified npm archive. Package install scripts were not run. Build tools and TypeScript declarations are not bundled."
+}

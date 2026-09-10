@@ -18,25 +18,30 @@ async function waitUntil(read, description, timeout = 45000) {
 async function run() {
   const reportDir = path.resolve(__dirname, "../../../.cache/py2cpp-lexer");
   fs.mkdirSync(reportDir, { recursive: true });
-  const report = { editor: vscode.version, checks: [] };
+  const report = { editor: vscode.version, scenario: "background-gpu-primary", startedAt: new Date().toISOString(), status: "running", checks: [] };
   let api;
-  try {
-    const extension = vscode.extensions.getExtension("PythonOtakus.py2cpp-lexer");
-    assert.ok(extension, "extension discovered");
-    api = await extension.activate();
-    const document = await vscode.workspace.openTextDocument({
-      language: "py2cpp",
-      content: '# 中文 😀\r\nclass Counter:\r\n    value: int = 42\r\n    def get(self):\r\n        return "hello"\r\n',
-    });
-    await vscode.window.showTextDocument(document);
-    await vscode.commands.executeCommand("py2cpp-lexer.openPanel");
+  const persist = () => {
+    report.runtime = api?.getStatus();
+    const output = JSON.stringify(report, null, 2);
+    fs.writeFileSync(path.join(reportDir, "extension-host-results.json"), output);
+    fs.writeFileSync(path.join(reportDir, "extension-host-background-results.json"), output);
+  };
+  const passed = (description) => { report.checks.push(description); persist(); };
+  const webviewTabs = () => vscode.window.tabGroups.all.flatMap((group) => group.tabs)
+    .filter((tab) => tab.input instanceof vscode.TabInputWebview);
+  const ready = (description) => waitUntil(() => {
+    const status = api.getStatus();
+    if (status.state === "unavailable") throw new Error(status.error);
+    return status.state === "ready";
+  }, description);
+  const tokensFor = async (document) => {
     await waitUntil(() => {
       const status = api.getStatus();
       if (status.state === "unavailable") throw new Error(status.error);
-      return status.state === "ready";
-    }, "real WebGPU initialization");
-    report.checks.push("real upstream parse() initialized WebGPU");
-    await waitUntil(() => api.getStatus().documents.some((item) => item.uri === document.uri.toString() && item.version === document.version && item.tokenCount > 0), "GPU token response");
+      const record = status.documents.find((item) => item.uri === document.uri.toString());
+      if (record?.error) throw new Error(record.error);
+      return record?.version === document.version && record.tokenCount > 0;
+    }, `GPU token response for ${path.basename(document.uri.path)} version ${document.version}`);
     let tokens;
     await waitUntil(async () => {
       tokens = await vscode.commands.executeCommand("vscode.provideDocumentSemanticTokens", document.uri);
@@ -52,46 +57,99 @@ async function run() {
       assert.ok(line < document.lineCount);
       assert.ok(column + tokens.data[i + 2] <= document.lineAt(line).text.length);
     }
-    report.checks.push(`native editor returned ${tokens.data.length / 5} correctly bounded semantic tokens`);
+    return Array.from(tokens.data);
+  };
+  persist();
+  try {
+    const extension = vscode.extensions.getExtension("PythonOtakus.py2cpp-lexer");
+    assert.ok(extension, `extension discovered in test host; available: ${vscode.extensions.all.map((item) => item.id).join(", ")}`);
+    report.extensionPath = extension.extensionPath;
+    if (process.env.PY2CPP_LEXER_EXPECT_EXTENSION_ROOT) {
+      assert.equal(path.resolve(extension.extensionPath).toLowerCase(), path.resolve(process.env.PY2CPP_LEXER_EXPECT_EXTENSION_ROOT).toLowerCase(),
+        "integration tests must run against the expected installed extension root");
+      report.artifact = "installed-vsix";
+    }
+    const file = path.join(reportDir, "background-main.py2");
+    fs.writeFileSync(file, '# 中文 😀\r\nclass Counter:\r\n    value: int = 42\r\n    def get(self):\r\n        return "hello"\r\n');
+    const document = await vscode.workspace.openTextDocument(vscode.Uri.file(file));
+    await vscode.window.showTextDocument(document, { preview: false });
+    assert.equal(document.languageId, "py2cpp", ".py2 filename selects the contributed language");
+    await waitUntil(() => extension.isActive && extension.exports, "automatic onLanguage extension activation");
+    api = extension.exports;
+    assert.equal(api.getStatus().previewOpen, false);
+    assert.equal(webviewTabs().length, 0, "startup must not create a hidden or visible Webview tab");
+    await ready("automatic background WebGPU initialization without openPanel");
+    const tokens = await tokensFor(document);
+    assert.equal(api.getStatus().previewOpen, false);
+    assert.equal(webviewTabs().length, 0);
+    assert.ok(api.getStatus().backend, "background runtime reports its real backend");
+    passed(`opening .py2 automatically produced ${tokens.length / 5} bounded native GPU tokens without any Webview tab`);
+
+    const secondFile = path.join(reportDir, "background-second.py2");
+    fs.writeFileSync(secondFile, "lazy def compute(value: int) -> int:\n    return value * 2\n");
+    const second = await vscode.workspace.openTextDocument(vscode.Uri.file(secondFile));
+    assert.equal(second.languageId, "py2cpp");
+    await tokensFor(second);
+    assert.deepEqual(await tokensFor(document), tokens);
+    passed("multiple open Py2Cpp documents receive GPU tokens, including a document never focused");
+
+    const session = api.getStatus().session;
+    await vscode.commands.executeCommand("py2cpp-lexer.openPanel");
+    await waitUntil(() => api.getStatus().previewOpen && webviewTabs().some((tab) => tab.label === "Py2Cpp Lexer"), "preview tab created");
+    assert.equal(api.getStatus().session, session);
+    assert.deepEqual(await tokensFor(document), tokens);
+    const panelTab = webviewTabs().find((tab) => tab.label === "Py2Cpp Lexer");
+    assert.ok(await vscode.window.tabGroups.close(panelTab), "preview tab closes");
+    await waitUntil(() => !api.getStatus().previewOpen, "preview-only disposal");
+    assert.equal(api.getStatus().state, "ready");
+    assert.equal(api.getStatus().session, session);
+    assert.deepEqual(await tokensFor(document), tokens);
+    assert.equal(webviewTabs().length, 0);
+    passed("opening and closing preview preserves the GPU session and byte-identical editor tokens");
+
     const edit = new vscode.WorkspaceEdit();
     edit.insert(document.uri, new vscode.Position(0, 0), "# edited\n");
-    await vscode.workspace.applyEdit(edit);
+    assert.ok(await vscode.workspace.applyEdit(edit));
     const version = document.version;
-    await waitUntil(() => api.getStatus().documents.some((item) => item.uri === document.uri.toString() && item.version === version && item.tokenCount > 0), "edited version token response");
-    report.checks.push("editing invalidated old version and produced new GPU tokens");
+    const editedTokens = await tokensFor(document);
+    assert.notDeepEqual(editedTokens, tokens);
+    assert.equal(api.getStatus().documents.find((item) => item.uri === document.uri.toString()).version, version);
+    assert.equal(api.getStatus().session, session);
+    assert.equal(api.getStatus().previewOpen, false);
+    await document.save();
+    passed("editing after preview closure produces fresh GPU tokens without restarting the session");
 
     const python = await vscode.workspace.openTextDocument({ language: "python", content: "answer = 42\n" });
-    await vscode.window.showTextDocument(python);
+    await vscode.window.showTextDocument(python, { preview: false });
     assert.equal(python.languageId, "python");
     await vscode.commands.executeCommand("py2cpp-lexer.enableForCurrentFile");
     assert.equal(vscode.window.activeTextEditor.document.languageId, "py2cpp");
+    await tokensFor(vscode.window.activeTextEditor.document);
+    assert.equal(api.getStatus().previewOpen, false);
     await vscode.commands.executeCommand("py2cpp-lexer.restoreLanguage");
     assert.equal(vscode.window.activeTextEditor.document.languageId, "python");
-    report.checks.push("explicit language enable and restore preserve Python default");
+    assert.equal(api.getStatus().previewOpen, false);
+    await tokensFor(document);
+    await tokensFor(second);
+    passed("explicit enable and restore preserve Python's original language without opening preview or interrupting other Py2Cpp documents");
 
+    const sessionBeforeRestart = api.getStatus().session;
     await vscode.commands.executeCommand("py2cpp-lexer.restartGpu");
-    await waitUntil(() => {
-      const status = api.getStatus();
-      if (status.state === "unavailable") throw new Error(status.error);
-      return status.state === "ready";
-    }, "GPU session restart");
-    report.checks.push("GPU session restarted successfully");
-    await waitUntil(() => api.getStatus().documents.some((item) => item.uri === python.uri.toString() && item.tokenCount > 0), "preview after language restore and GPU restart");
-    report.checks.push("restored Python document still previews after restart");
-    const panelTab = vscode.window.tabGroups.all.flatMap((group) => group.tabs).find((tab) => tab.input instanceof vscode.TabInputWebview && tab.label === "Py2Cpp Lexer");
-    assert.ok(panelTab, "GPU panel exists");
-    await vscode.window.tabGroups.close(panelTab);
-    await waitUntil(() => api.getStatus().state === "closed", "GPU panel disposal");
-    assert.ok(api.getStatus().documents.every((item) => item.tokenCount === 0));
-    report.checks.push("closing GPU panel clears cached semantic tokens and closes session");
+    await ready("background GPU session restart");
+    assert.notEqual(api.getStatus().session, sessionBeforeRestart);
+    await tokensFor(document);
+    await tokensFor(second);
+    assert.equal(api.getStatus().previewOpen, false);
+    assert.equal(webviewTabs().length, 0);
+    passed("restart creates a new background GPU session and refreshes all Py2Cpp documents without showing preview");
     report.status = "passed";
   } catch (error) {
     report.status = "failed";
     report.error = String(error.stack || error);
     throw error;
   } finally {
-    report.runtime = api?.getStatus();
-    fs.writeFileSync(path.join(reportDir, "extension-host-results.json"), JSON.stringify(report, null, 2));
+    report.completedAt = new Date().toISOString();
+    persist();
   }
 }
 

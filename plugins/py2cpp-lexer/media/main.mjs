@@ -1,5 +1,3 @@
-import { parse } from '../vendor/gpu-lexer/index.mjs';
-
 const vscode = acquireVsCodeApi();
 const session = document.body.dataset.session;
 const elements = Object.fromEntries(
@@ -7,19 +5,9 @@ const elements = Object.fromEntries(
         .map((id) => [id, document.getElementById(id)]),
 );
 const types = new Set(["plain", "comment", "string", "number", "keyword", "type", "function", "constant", "operator"]);
-const pending = new Map();
-const queue = [];
-let state = "starting";
-let failure = "";
-let running = false;
-let revision = 0;
 
 function send(message) {
     vscode.postMessage({ v: 1, ...message, session });
-}
-
-function errorText(error) {
-    return error instanceof Error ? error.message : String(error);
 }
 
 function showStatus(label, detail, kind = "ready") {
@@ -28,27 +16,32 @@ function showStatus(label, detail, kind = "ready") {
     elements.details.textContent = detail;
 }
 
-function showAvailability() {
-    if (state === "unavailable") {
-        showStatus("GPU 不可用", `${failure}。原编辑器的 TextMate 高亮可继续使用；可重启 GPU 后重试。`, "error");
-    } else if (state === "starting") {
-        showStatus("正在初始化 GPU", "正在本机执行探测推理，源码不会发送到远程服务器。", "busy");
+function showAvailability(snapshot) {
+    const failure = typeof snapshot.error === "string" ? snapshot.error : "";
+    const backend = typeof snapshot.backend === "string" && snapshot.backend ? `（${snapshot.backend}）` : "";
+    if (snapshot.enabled === false || snapshot.state === "disabled") {
+        showStatus("GPU 高亮已禁用", "在设置中启用 Py2Cpp Lexer 后，后台 GPU 将自动提供编辑器高亮。", "disabled");
+    } else if (snapshot.state === "unavailable") {
+        showStatus("GPU 不可用", `${failure ? `${failure}。` : ""}暂用 TextMate 基础高亮；可重启后台 GPU 后重试。`, "error");
+    } else if (snapshot.state === "starting") {
+        showStatus("正在初始化后台 GPU", "正在本机加载模型并执行探测推理；关闭预览不会中断初始化，源码仅在本地处理。", "busy");
+    } else if (snapshot.state === "busy" || snapshot.pending === true) {
+        showStatus("后台 GPU 正在推理", `推理在本机 GPU${backend} 上运行；关闭预览不影响编辑器高亮。`, "busy");
+    } else if (failure) {
+        showStatus("GPU 解析失败", `${failure}。后台会话保留，可刷新后重试。`, "error");
+    } else if (snapshot.state === "ready") {
+        showStatus("后台 GPU 已就绪", `编辑器使用本机 GPU${backend} 高亮；关闭预览后继续运行，源码仅在本地处理。`);
     } else {
-        showStatus("GPU 已就绪", "推理在本机 WebGPU 上运行。", "ready");
+        showStatus("正在连接后台 GPU", "此标签页仅显示后台高亮结果；关闭预览不影响编辑器高亮。", "busy");
     }
 }
 
 function showDocument(metadata, elapsedMs, note) {
     elements.title.textContent = typeof metadata?.name === "string" ? metadata.name : "未命名文档";
-    const version = Number.isInteger(metadata?.version) ? metadata.version : "—";
+    const version = Number.isSafeInteger(metadata?.version) && metadata.version >= 0 ? metadata.version : "—";
     const language = typeof metadata?.languageId === "string" ? metadata.languageId : "未知语言";
-    const elapsed = elapsedMs === undefined ? "—" : `${elapsedMs.toFixed(1)} ms`;
+    const elapsed = Number.isFinite(elapsedMs) && elapsedMs >= 0 ? `${elapsedMs.toFixed(1)} ms` : "—";
     elements.summary.textContent = `${language} · 版本 ${version} · 推理耗时 ${elapsed}${note ? ` · ${note}` : ""}`;
-}
-
-function showPlain(source, metadata, note) {
-    elements.code.textContent = source;
-    showDocument(metadata, undefined, note);
 }
 
 function validateSpans(source, spans) {
@@ -87,133 +80,41 @@ function showTokens(source, spans) {
     elements.code.replaceChildren(fragment);
 }
 
-async function drain() {
-    if (running || state !== "ready") {
+function showSnapshot(snapshot) {
+    showAvailability(snapshot);
+    if (typeof snapshot.source !== "string") {
+        elements.code.textContent = "";
+        elements.title.textContent = "打开代码文件以预览";
+        elements.summary.textContent = "";
         return;
     }
-    running = true;
-    try {
-        while (queue.length > 0) {
-            const task = queue.shift();
-            if (task.cancelled) {
-                continue;
-            }
-            const start = performance.now();
-            if (task.revision === revision) {
-                showStatus("正在推理", "请求依次执行；取消请求会丢弃结果，已提交的 GPU 工作仍会完成。", "busy");
-            }
-            try {
-                const spans = await parse(task.source);
-                if (task.cancelled) {
-                    continue;
-                }
-                validateSpans(task.source, spans);
-                const elapsedMs = performance.now() - start;
-                if (task.revision === revision) {
-                    showTokens(task.source, spans);
-                    showDocument(task.document, elapsedMs, `${spans.length} 个区间`);
-                    showAvailability();
-                }
-                send({ type: "result", id: task.id, spans, elapsedMs });
-            } catch (error) {
-                if (!task.cancelled) {
-                    const message = errorText(error);
-                    if (task.revision === revision) {
-                        showPlain(task.source, task.document, "解析失败");
-                        showStatus("GPU 解析失败", `${message}。原编辑器的 TextMate 高亮可继续使用。`, "error");
-                    }
-                    send({ type: "error", id: task.id, error: message });
-                }
-            } finally {
-                pending.delete(task.id);
-            }
-        }
-    } finally {
-        running = false;
+    const note = typeof snapshot.note === "string" ? snapshot.note : "";
+    elements.code.textContent = snapshot.source;
+    if (snapshot.spans === undefined) {
+        showDocument(snapshot.document, snapshot.elapsedMs, note || (snapshot.pending ? "等待解析" : "纯文本预览"));
+        return;
     }
-}
-
-function validId(id) {
-    return (typeof id === "string" && id.length > 0) || (Number.isSafeInteger(id) && id >= 0);
+    try {
+        validateSpans(snapshot.source, snapshot.spans);
+        showTokens(snapshot.source, snapshot.spans);
+        showDocument(snapshot.document, snapshot.elapsedMs, note || `${snapshot.spans.length} 个区间`);
+    } catch (error) {
+        showDocument(snapshot.document, undefined, "纯文本预览");
+        showStatus("GPU 结果无效", `${error.message}；仅显示原始源码，可刷新后台 GPU 后重试。`, "error");
+    }
 }
 
 window.addEventListener("message", ({ data }) => {
-    if (!data || data.v !== 1 || data.session !== session) {
+    if (!data || data.v !== 1 || data.session !== session || data.type !== "snapshot" ||
+        !data.snapshot || typeof data.snapshot !== "object" || Array.isArray(data.snapshot)) {
         return;
     }
-    if (data.type === "preview" && typeof data.source === "string") {
-        revision++;
-        showPlain(data.source, data.document, state === "unavailable" ? "纯文本预览" : "等待解析");
-        showAvailability();
-    } else if (data.type === "cancel" && validId(data.id)) {
-        const task = pending.get(data.id);
-        if (task) {
-            task.cancelled = true;
-            const index = queue.indexOf(task);
-            if (index !== -1) {
-                queue.splice(index, 1);
-                pending.delete(task.id);
-            }
-            if (task.revision === revision) {
-                showDocument(task.document, undefined, "已取消");
-                showStatus("请求已取消", "已提交的 GPU 工作完成后会丢弃结果。", "ready");
-            }
-        }
-    } else if (data.type === "parse" && validId(data.id)) {
-        if (typeof data.source !== "string" || pending.has(data.id)) {
-            send({ type: "error", id: data.id, error: "非法源码或重复请求 ID" });
-            return;
-        }
-        const preview = data.document?.preview !== false;
-        if (preview) {
-            revision++;
-            showPlain(data.source, data.document, "等待解析");
-        }
-        if (state === "unavailable") {
-            if (preview) {
-                showDocument(data.document, undefined, "纯文本预览");
-                showAvailability();
-            }
-            send({ type: "error", id: data.id, error: failure });
-            return;
-        }
-        const task = { ...data, revision: preview ? revision : -1, cancelled: false };
-        pending.set(task.id, task);
-        queue.push(task);
-        void drain();
-    }
+    showSnapshot(data.snapshot);
 });
 
 elements.refresh.addEventListener("click", () => send({ type: "refresh" }));
 elements.restart.addEventListener("click", () => send({ type: "restart" }));
 
-function finishInitialization(available, error) {
-    if (state !== "starting") {
-        return;
-    }
-    clearTimeout(initializationTimer);
-    state = available ? "ready" : "unavailable";
-    failure = available ? "" : errorText(error);
-    showAvailability();
-    send(available ? { type: "ready", available: true } : { type: "ready", available: false, error: failure });
-    if (available) {
-        void drain();
-    } else {
-        for (const task of queue.splice(0)) {
-            pending.delete(task.id);
-            if (!task.cancelled) {
-                send({ type: "error", id: task.id, error: failure });
-            }
-        }
-    }
-}
-
-showAvailability();
-const initializationTimer = setTimeout(() => {
-    finishInitialization(false, new Error("GPU 初始化超过 25 秒，请重启 GPU 后重试"));
-}, 25000);
-const probeSource = "const gpuLexerReady = 1;";
-Promise.resolve().then(() => parse(probeSource)).then((spans) => {
-    validateSpans(probeSource, spans);
-    finishInitialization(true);
-}).catch((error) => finishInitialization(false, error));
+// The extension owns inference. A ready handshake requests the latest snapshot,
+// including after a reload, instead of relying on messages sent before startup.
+send({ type: "ready" });

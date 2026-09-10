@@ -1,6 +1,25 @@
 {
   "name": "Py2Cpp",
   "scopeName": "source.py2cpp",
+  "injections": {
+    "L:source.py2cpp -comment -string": {
+      "patterns": [
+        {
+          "match": "^(\\s*)((?:(?:ref|final|frozen|ordered)\\s+)*record)(?=\\s+[\\p{L}_])",
+          "captures": { "2": { "name": "keyword.control.py2cpp" } }
+        },
+        {
+          "match": "^(\\s*)((?:(?:ref|final|frozen)\\s+)*class)\\b",
+          "captures": { "2": { "name": "keyword.control.py2cpp" } }
+        },
+        {
+          "match": "^(\\s*)(optional)\\b(?=\\s+[\\p{L}_][\\p{L}\\p{N}_]*\\s*:)",
+          "captures": { "2": { "name": "keyword.control.py2cpp" } }
+        },
+        { "name": "keyword.control.py2cpp", "match": "\\b(?:ref|lazy)\\b" }
+      ]
+    }
+  },
   "patterns": [
     { "name": "comment.line.number-sign.py2cpp", "match": "#.*$" },
     {
@@ -15,12 +34,25 @@
       "name": "string.quoted.single.py2cpp", "begin": "(?i:(?:r|u|b|f|br|rb|fr|rf)?)'", "end": "'|$",
       "patterns": [{ "name": "constant.character.escape.py2cpp", "match": "\\\\." }]
     },
+    {
+      "match": "^(\\s*)((?:(?:ref|final|frozen|ordered)\\s+)*record)(?=\\s+[\\p{L}_])",
+      "captures": { "2": { "name": "keyword.control.py2cpp" } }
+    },
+    {
+      "match": "^(\\s*)((?:(?:ref|final|frozen)\\s+)*class)\\b",
+      "captures": { "2": { "name": "keyword.control.py2cpp" } }
+    },
+    {
+      "match": "^(\\s*)(optional)\\b(?=\\s+[\\p{L}_][\\p{L}\\p{N}_]*\\s*:)",
+      "captures": { "2": { "name": "keyword.control.py2cpp" } }
+    },
     { "name": "entity.name.function.py2cpp", "match": "(?<=\\bdef\\s)[\\p{L}_][\\p{L}\\p{N}_]*" },
     { "name": "entity.name.type.py2cpp", "match": "(?<=\\bclass\\s)[\\p{L}_][\\p{L}\\p{N}_]*" },
+    { "name": "entity.name.type.py2cpp", "match": "(?<=\\brecord\\s)[\\p{L}_][\\p{L}\\p{N}_]*" },
     { "name": "entity.name.function.decorator.py2cpp", "match": "@[\\p{L}_][\\p{L}\\p{N}_.]*" },
     { "name": "constant.language.py2cpp", "match": "\\b(?:None|True|False)\\b|\\.\\.\\." },
     { "name": "constant.numeric.py2cpp", "match": "\\b(?:0[xX][0-9a-fA-F_]+|0[bB][01_]+|0[oO][0-7_]+|[0-9][0-9_]*(?:\\.[0-9_]*)?(?:[eE][+-]?[0-9_]+)?[jJ]?)\\b" },
-    { "name": "keyword.control.py2cpp", "match": "\\b(?:and|as|assert|async|await|break|case|class|continue|def|del|elif|else|except|finally|for|from|global|if|import|in|is|lambda|match|nonlocal|not|or|pass|raise|return|try|while|with|yield|type|enum|union|variant|protocol|mixin|final|const|static|virtual|abstract|override|property|inline)\\b" },
+    { "name": "keyword.control.py2cpp", "match": "\\b(?:and|as|assert|async|await|break|case|class|continue|def|del|elif|else|except|finally|for|from|global|if|import|in|is|lambda|match|nonlocal|not|or|pass|raise|return|try|while|with|yield|type|enum|union|variant|protocol|mixin|final|const|static|virtual|abstract|override|property|inline|ref|lazy)\\b" },
     { "name": "support.type.py2cpp", "match": "\\b(?:int|int64|float|float64|bool|str|char|list|dict|set|tuple|Callable|Optional|Result|Self|Super)\\b" },
     { "name": "keyword.operator.py2cpp", "match": "\\?\\?=?|\\?\\.|\\?\\[|=>|->|[+*/%@=!<>~^&|?-]+" },
     { "include": "source.python" }

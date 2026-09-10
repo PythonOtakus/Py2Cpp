@@ -1,8 +1,8 @@
 {
   "name": "py2cpp-lexer",
   "displayName": "Py2Cpp Lexer",
-  "description": "gpu-lexer 本地 WebGPU 语法高亮、Py2Cpp 编辑器语义着色与代码预览",
-  "version": "0.1.0",
+  "description": "gpu-lexer 后台 GPU 主高亮、Py2Cpp 编辑器语义着色与独立代码预览",
+  "version": "0.2.0",
   "publisher": "PythonOtakus",
   "author": "PythonOtakus",
   "license": "MIT",
@@ -56,7 +56,11 @@
       "properties": {
         "py2cpp-lexer.enabled": {
           "type": "boolean", "default": true,
-          "description": "启用 Py2Cpp 语言模式的 GPU 语义高亮；GPU 面板关闭或不可用时保留基础 TextMate 高亮。"
+          "description": "打开 Py2Cpp 文件时自动启用后台 GPU 主高亮；关闭预览不影响高亮。初始化、不可用或禁用时保留基础高亮。"
+        },
+        "py2cpp-lexer.nodePath": {
+          "type": "string", "default": "", "scope": "machine",
+          "description": "可选普通 Node.js 18+ 可执行文件路径。Windows x64 默认使用随包运行时，其他平台使用 PATH 中的 node。不能使用编辑器的 Electron 可执行文件。"
         },
         "py2cpp-lexer.debounceMs": {
           "type": "number", "default": 250, "minimum": 50, "maximum": 3000,

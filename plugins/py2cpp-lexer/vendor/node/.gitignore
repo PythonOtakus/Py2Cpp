@@ -1,0 +1,3 @@
+# This official runtime is an intentional redistributable, not a compiler output.
+!win32-x64/node.exe
+.download-node-*/

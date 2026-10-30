@@ -30,7 +30,7 @@ class HighlightController {
     this.disposed = false;
     this.changed = new vscode.EventEmitter();
     this.onDidChangeSemanticTokens = this.changed.event;
-    this.output = vscode.window.createOutputChannel("Py2Cpp Lexer");
+    this.output = vscode.window.createOutputChannel("Paw Lexer");
     this.status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 15);
     this.status.command = "py2cpp-lexer.openPanel";
     this.preview = new GpuPanel(context.extensionUri, () => this.refresh(), () => this.restartGpu(), () => this.onPreviewClosed());
@@ -50,7 +50,7 @@ class HighlightController {
   }
 
   interested(document) {
-    return !document.isClosed && (document.languageId === "py2cpp" || (this.preview.panel && document === this.focusedDocument));
+    return !document.isClosed && (document.languageId === "paw" || (this.preview.panel && document === this.focusedDocument));
   }
 
   consumers() {
@@ -173,7 +173,7 @@ class HighlightController {
   }
 
   provideDocumentSemanticTokens(document, cancellation) {
-    if (this.disposed || document.languageId !== "py2cpp" || cancellation.isCancellationRequested || !settings(document.uri).enabled) return undefined;
+    if (this.disposed || document.languageId !== "paw" || cancellation.isCancellationRequested || !settings(document.uri).enabled) return undefined;
     const record = this.record(document);
     if (record.version === document.version && record.data) return new vscode.SemanticTokens(record.data);
     if (!record.error && !record.timer && !record.promise && this.gpu.state === "ready") this.schedule(document);
@@ -199,16 +199,16 @@ class HighlightController {
   updateStatus() {
     if (this.disposed) return;
     const doc = this.focusedDocument;
-    if (!doc || (doc.languageId !== "py2cpp" && !this.preview.panel)) {
+    if (!doc || (doc.languageId !== "paw" && !this.preview.panel)) {
       this.status.hide();
       return;
     }
     const record = this.records.get(doc.uri.toString());
     const disabled = !settings(doc.uri).enabled;
     const ready = this.gpu.state === "ready" && !record?.error;
-    this.status.text = disabled ? "$(circle-slash) Py2Cpp GPU" : ready ? "$(symbol-color) Py2Cpp GPU" : "$(symbol-color) Py2Cpp Lexer";
+    this.status.text = disabled ? "$(circle-slash) Paw GPU" : ready ? "$(symbol-color) Paw GPU" : "$(symbol-color) Paw Lexer";
     this.status.tooltip = disabled ? "GPU 高亮已在设置中关闭" : record?.error || this.gpu.error || ({
-      closed: "打开 Py2Cpp 文件后自动启动 GPU 高亮；点击查看预览",
+      closed: "打开 Paw 文件后自动启动 GPU 高亮；点击查看预览",
       starting: "正在启动后台 GPU 高亮",
       ready: `GPU 在后台运行${this.gpu.backend ? ` · ${this.gpu.backend}` : ""}；关闭预览不影响高亮`,
       unavailable: "GPU 不可用，保留基础高亮；可重启 GPU 后重试",
@@ -246,7 +246,7 @@ class HighlightController {
     if (this.disposed || !editor) return;
     const previous = this.focusedDocument;
     this.focusedDocument = editor.document;
-    if (previous && previous !== editor.document && previous.languageId !== "py2cpp") {
+    if (previous && previous !== editor.document && previous.languageId !== "paw") {
       const old = this.records.get(previous.uri.toString());
       if (old) this.cancel(old);
       this.records.delete(previous.uri.toString());
@@ -274,7 +274,7 @@ class HighlightController {
     if (this.disposed) return;
     // GPU editor work belongs to documents, never to a preview tab.
     for (const [key, record] of this.records) {
-      if (record.document.languageId !== "py2cpp") {
+      if (record.document.languageId !== "paw") {
         this.cancel(record);
         this.records.delete(key);
       }
@@ -285,9 +285,9 @@ class HighlightController {
   async enableCurrent() {
     const document = vscode.window.activeTextEditor?.document;
     if (!document) return void vscode.window.showInformationMessage("请先打开代码文件。");
-    if (document.languageId !== "py2cpp") {
+    if (document.languageId !== "paw") {
       this.previousLanguages.set(document.uri.toString(), document.languageId);
-      this.focusedDocument = await vscode.languages.setTextDocumentLanguage(document, "py2cpp");
+      this.focusedDocument = await vscode.languages.setTextDocumentLanguage(document, "paw");
     } else this.focusedDocument = document;
     this.syncRuntime();
     this.schedule(this.focusedDocument, true);
@@ -298,7 +298,7 @@ class HighlightController {
     if (!document) return;
     const key = document.uri.toString();
     const language = this.previousLanguages.get(key);
-    if (!language) return void vscode.window.showInformationMessage("此文件没有由 Py2Cpp Lexer 保存的语言模式；可点击状态栏语言名称手动选择。");
+    if (!language) return void vscode.window.showInformationMessage("此文件没有由 Paw Lexer 保存的语言模式；可点击状态栏语言名称手动选择。");
     this.focusedDocument = await vscode.languages.setTextDocumentLanguage(document, language);
     this.previousLanguages.delete(key);
     this.syncRuntime();
@@ -363,7 +363,7 @@ function activate(context) {
   const command = (name, callback) => vscode.commands.registerCommand(`py2cpp-lexer.${name}`, callback);
   context.subscriptions.push(
     controller,
-    vscode.languages.registerDocumentSemanticTokensProvider({ language: "py2cpp" }, controller, new vscode.SemanticTokensLegend(TOKEN_TYPES, TOKEN_MODIFIERS)),
+    vscode.languages.registerDocumentSemanticTokensProvider({ language: "paw" }, controller, new vscode.SemanticTokensLegend(TOKEN_TYPES, TOKEN_MODIFIERS)),
     command("openPanel", () => controller.openPanel()),
     command("enableForCurrentFile", () => controller.enableCurrent()),
     command("restoreLanguage", () => controller.restoreLanguage()),

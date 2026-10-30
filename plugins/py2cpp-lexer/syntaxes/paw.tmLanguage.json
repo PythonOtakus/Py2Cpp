@@ -1,0 +1,60 @@
+{
+  "name": "Paw",
+  "scopeName": "source.paw",
+  "injections": {
+    "L:source.paw -comment -string": {
+      "patterns": [
+        {
+          "match": "^(\\s*)((?:(?:ref|final|frozen|ordered)\\s+)*record)(?=\\s+[\\p{L}_])",
+          "captures": { "2": { "name": "keyword.control.paw" } }
+        },
+        {
+          "match": "^(\\s*)((?:(?:ref|final|frozen)\\s+)*class)\\b",
+          "captures": { "2": { "name": "keyword.control.paw" } }
+        },
+        {
+          "match": "^(\\s*)(optional)\\b(?=\\s+[\\p{L}_][\\p{L}\\p{N}_]*\\s*:)",
+          "captures": { "2": { "name": "keyword.control.paw" } }
+        },
+        { "name": "keyword.control.paw", "match": "\\b(?:ref|lazy)\\b" }
+      ]
+    }
+  },
+  "patterns": [
+    { "name": "comment.line.number-sign.paw", "match": "#.*$" },
+    {
+      "name": "string.quoted.multi.paw", "begin": "(?i:(?:r|u|b|f|br|rb|fr|rf)?)('''|\"\"\")", "end": "\\1",
+      "patterns": [{ "name": "constant.character.escape.paw", "match": "\\\\." }]
+    },
+    {
+      "name": "string.quoted.double.paw", "begin": "(?i:(?:r|u|b|f|br|rb|fr|rf)?)\"", "end": "\"|$",
+      "patterns": [{ "name": "constant.character.escape.paw", "match": "\\\\." }]
+    },
+    {
+      "name": "string.quoted.single.paw", "begin": "(?i:(?:r|u|b|f|br|rb|fr|rf)?)'", "end": "'|$",
+      "patterns": [{ "name": "constant.character.escape.paw", "match": "\\\\." }]
+    },
+    {
+      "match": "^(\\s*)((?:(?:ref|final|frozen|ordered)\\s+)*record)(?=\\s+[\\p{L}_])",
+      "captures": { "2": { "name": "keyword.control.paw" } }
+    },
+    {
+      "match": "^(\\s*)((?:(?:ref|final|frozen)\\s+)*class)\\b",
+      "captures": { "2": { "name": "keyword.control.paw" } }
+    },
+    {
+      "match": "^(\\s*)(optional)\\b(?=\\s+[\\p{L}_][\\p{L}\\p{N}_]*\\s*:)",
+      "captures": { "2": { "name": "keyword.control.paw" } }
+    },
+    { "name": "entity.name.function.paw", "match": "(?<=\\bdef\\s)[\\p{L}_][\\p{L}\\p{N}_]*" },
+    { "name": "entity.name.type.paw", "match": "(?<=\\bclass\\s)[\\p{L}_][\\p{L}\\p{N}_]*" },
+    { "name": "entity.name.type.paw", "match": "(?<=\\brecord\\s)[\\p{L}_][\\p{L}\\p{N}_]*" },
+    { "name": "entity.name.function.decorator.paw", "match": "@[\\p{L}_][\\p{L}\\p{N}_.]*" },
+    { "name": "constant.language.paw", "match": "\\b(?:None|True|False)\\b|\\.\\.\\." },
+    { "name": "constant.numeric.paw", "match": "\\b(?:0[xX][0-9a-fA-F_]+|0[bB][01_]+|0[oO][0-7_]+|[0-9][0-9_]*(?:\\.[0-9_]*)?(?:[eE][+-]?[0-9_]+)?[jJ]?)\\b" },
+    { "name": "keyword.control.paw", "match": "\\b(?:and|as|assert|async|await|break|case|class|continue|def|del|elif|else|except|finally|for|from|global|if|import|in|is|lambda|match|nonlocal|not|or|pass|raise|return|try|while|with|yield|type|enum|union|variant|protocol|mixin|final|const|static|virtual|abstract|override|property|inline|ref|lazy)\\b" },
+    { "name": "support.type.paw", "match": "\\b(?:int|int64|float|float64|bool|str|char|list|dict|set|tuple|Callable|Optional|Result|Self|Super)\\b" },
+    { "name": "keyword.operator.paw", "match": "\\?\\?=?|\\?\\.|\\?\\[|=>|->|[+*/%@=!<>~^&|?-]+" },
+    { "include": "source.python" }
+  ]
+}

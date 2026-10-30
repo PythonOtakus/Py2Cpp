@@ -37,9 +37,12 @@ echo.
 echo(  PATTERN   Substring match on test path/name, or fnmatch if * ? present
 echo(  --jobs N  Parallel compile ^(default: 16, or PY2CPP_BUILD_JOBS^)
 echo(  --seq     Force serial compile
+echo(  --gpu     Enable GPU map / GpuDeviceMeta ^(pass-through to main.py^)
 echo(  Examples:
 echo(    build vararg
 echo(    build *vararg* --jobs 8
 echo(    build lang\test_variadic* --seq
+echo(    build gpu --gpu --seq
+echo(    build gpu --gpu --gpu-backend cuda --seq
 echo.
 exit /b 1

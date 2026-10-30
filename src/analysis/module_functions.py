@@ -47,6 +47,12 @@ def partition_module_functions_from_asts(
         and node.name in PRANGE_TRANSLATION_ONLY_FUNCS
       ):
         continue
+      from ..passes.decorators import is_context_definition, is_decorator_definition
+      from ..passes.gpu_common import is_gpu_device_meta_function
+      if is_gpu_device_meta_function(node):
+        continue
+      if is_context_definition(node) or is_decorator_definition(node):
+        continue
       if is_delegate_definition(node):
         continue
       if has_named_decorator(node, "overload"):

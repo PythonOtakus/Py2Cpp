@@ -20,7 +20,7 @@ function showAvailability(snapshot) {
     const failure = typeof snapshot.error === "string" ? snapshot.error : "";
     const backend = typeof snapshot.backend === "string" && snapshot.backend ? `（${snapshot.backend}）` : "";
     if (snapshot.enabled === false || snapshot.state === "disabled") {
-        showStatus("GPU 高亮已禁用", "在设置中启用 Py2Cpp Lexer 后，后台 GPU 将自动提供编辑器高亮。", "disabled");
+        showStatus("GPU 高亮已禁用", "在设置中启用 Paw Lexer 后，后台 GPU 将自动提供编辑器高亮。", "disabled");
     } else if (snapshot.state === "unavailable") {
         showStatus("GPU 不可用", `${failure ? `${failure}。` : ""}暂用 TextMate 基础高亮；可重启后台 GPU 后重试。`, "error");
     } else if (snapshot.state === "starting") {

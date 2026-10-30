@@ -1,0 +1,50 @@
+"""GPU：``@GpuDeviceMeta`` 在 ``run`` 内调用。"""
+from py2cpp import *
+from py2cpp.gpu import Field, GpuDeviceMeta, GpuKernelMixin, gpuSync
+from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
+
+
+@GpuDeviceMeta
+def clamp01(x: float) -> float:
+  if x < 0.0:
+    return 0.0
+  if x > 1.0:
+    return 1.0
+  return x
+
+
+@dataclass
+class Normalize(GpuKernelMixin):
+  offset: float = 0.0
+
+  def run(self, x: float) -> float:
+    return clamp01(x + self.offset)
+
+
+class GpuDeviceMetaTests(TestCaseMixin):
+  @override
+  def test(self):
+    n: int = 4
+    x: Field[float] = new.zeros(n)
+    out: Field[float] = new.zeros(n)
+    hostX: list[float] = []
+    hostX.append(-1.0)
+    hostX.append(0.5)
+    hostX.append(2.0)
+    hostX.append(1.0)
+    x.copyFromHost(hostX)
+    with gpuSync():
+      op: Normalize = new(offset=0.0)
+      op.map(x, out)
+    host: list[float] = out.toHost()
+    self.assertEqual(host[0], 0.0)
+    self.assertEqual(host[1], 0.5)
+    self.assertEqual(host[2], 1.0)
+    self.assertEqual(host[3], 1.0)
+
+
+def main() -> None:
+  suite: TestSuite = new()
+  suite.addTest(GpuDeviceMetaTests())
+  runner: TextTestRunner = new()
+  return runner.run(suite)

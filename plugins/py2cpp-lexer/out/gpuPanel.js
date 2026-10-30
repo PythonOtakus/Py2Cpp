@@ -24,7 +24,7 @@ class GpuPanel {
       this.panel.reveal(vscode.ViewColumn.Beside, true);
       return;
     }
-    const panel = vscode.window.createWebviewPanel("py2cppLexer", "Py2Cpp Lexer", {
+    const panel = vscode.window.createWebviewPanel("py2cppLexer", "Paw Lexer", {
       viewColumn: vscode.ViewColumn.Beside, preserveFocus: true,
     }, {
       enableScripts: true,
@@ -78,8 +78,8 @@ class GpuPanel {
     return `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src ${source} 'nonce-${nonce}'; style-src ${source}; connect-src 'none'; img-src ${source}; base-uri 'none'; form-action 'none';">
-<link rel="stylesheet" href="${escapeHtml(style)}"><title>Py2Cpp Lexer</title></head><body data-session="${this.generation}">
-<header><h1>Py2Cpp Lexer</h1><div class="actions"><button id="refresh" type="button">刷新</button><button id="restart" type="button">重启 GPU</button></div></header>
+<link rel="stylesheet" href="${escapeHtml(style)}"><title>Paw Lexer</title></head><body data-session="${this.generation}">
+<header><h1>Paw Lexer</h1><div class="actions"><button id="refresh" type="button">刷新</button><button id="restart" type="button">重启 GPU</button></div></header>
 <p id="status" role="status">正在连接后台 GPU…</p><p id="details">预览关闭后编辑器高亮继续运行 · 文件内容仅在本地处理</p>
 <h2 id="title">打开代码文件以预览</h2><p id="summary"></p><pre><code id="code"></code></pre>
 <script type="module" nonce="${nonce}" src="${escapeHtml(script)}"></script></body></html>`;

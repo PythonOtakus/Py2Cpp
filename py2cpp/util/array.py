@@ -270,6 +270,10 @@ class array[Element, StackLength: int = 0]:
       self._ptr[i] = value
 
   @immutable
+  def unsafePtr(self) -> Pointer[Element]:
+    """连续缓冲首地址（调用方保证已 ``initCapacity`` / 非空语义）。"""
+    return self._ptr
+
   def unsafeGet(self, index: int) -> Element:
     return self._ptr[index]
 

@@ -16,7 +16,7 @@ function deferred() {
   return { promise, resolve, reject };
 }
 
-function document(name, languageId = "py2cpp", source = "call f() from invoke(f): pass\n") {
+function document(name, languageId = "paw", source = "call f() from invoke(f): pass\n") {
   return {
     uri: { path: `/workspace/${name}`, toString: () => `file:///workspace/${name}` },
     languageId,
@@ -224,9 +224,9 @@ function boot(documents = [], options = {}) {
   };
 }
 
-test("activation highlights every existing Py2Cpp document without opening a preview", async (t) => {
-  const first = document("first.py2");
-  const second = document("second.py2", "py2cpp", "lazy def compute(): return 42\n");
+test("activation highlights every existing Paw document without opening a preview", async (t) => {
+  const first = document("first.paw");
+  const second = document("second.paw", "paw", "lazy def compute(): return 42\n");
   const app = boot([first, second], { focus: null });
   t.after(() => app.dispose());
   await app.flush();
@@ -241,7 +241,7 @@ test("activation highlights every existing Py2Cpp document without opening a pre
   assert.equal(app.api.getStatus().session, app.gpu.generation);
 });
 
-test("opening a Py2Cpp document starts GPU automatically; ordinary Python does not", async (t) => {
+test("opening a Paw document starts GPU automatically; ordinary Python does not", async (t) => {
   const python = document("plain.py", "python");
   const app = boot([python]);
   t.after(() => app.dispose());
@@ -249,7 +249,7 @@ test("opening a Py2Cpp document starts GPU automatically; ordinary Python does n
   app.focus(python);
   await app.flush();
   assert.equal(app.gpu.starts, 0);
-  const py2 = document("new.py2");
+  const py2 = document("new.paw");
   app.open(py2);
   await app.flush();
   assert.equal(app.gpu.starts, 1);
@@ -261,7 +261,7 @@ test("opening a Py2Cpp document starts GPU automatically; ordinary Python does n
 });
 
 test("opening and closing preview preserves the GPU session and cached semantic tokens", async (t) => {
-  const doc = document("preview.py2");
+  const doc = document("preview.paw");
   const app = boot([doc]);
   t.after(() => app.dispose());
   await app.flush();
@@ -291,7 +291,7 @@ test("opening and closing preview preserves the GPU session and cached semantic 
 
 test("closing preview does not cancel an in-flight editor inference", async (t) => {
   const result = deferred();
-  const doc = document("pending.py2");
+  const doc = document("pending.paw");
   const app = boot([doc], { parse: () => result.promise });
   t.after(() => app.dispose());
   await app.flush();
@@ -310,7 +310,7 @@ test("closing preview does not cancel an in-flight editor inference", async (t) 
 test("a newer edited version cannot be overwritten by a stale GPU response", async (t) => {
   const oldResult = deferred();
   const newResult = deferred();
-  const doc = document("editing.py2");
+  const doc = document("editing.paw");
   const app = boot([doc], { parse: (call) => call.metadata.version === 1 ? oldResult.promise : newResult.promise });
   t.after(() => app.dispose());
   await app.flush();
@@ -330,8 +330,8 @@ test("a newer edited version cannot be overwritten by a stale GPU response", asy
 });
 
 test("runtime stops only after its last document and preview consumer are closed", async (t) => {
-  const first = document("first.py2");
-  const second = document("second.py2");
+  const first = document("first.paw");
+  const second = document("second.paw");
   const app = boot([first, second]);
   t.after(() => app.dispose());
   await app.flush();
@@ -351,7 +351,7 @@ test("runtime stops only after its last document and preview consumer are closed
   assert.equal(app.gpu.stops, 1);
   assert.equal(app.api.getStatus().documents.length, 0);
 
-  const third = document("third.py2");
+  const third = document("third.paw");
   app.open(third);
   await app.flush();
   assert.equal(app.gpu.starts, 2);
@@ -361,7 +361,7 @@ test("runtime stops only after its last document and preview consumer are closed
 });
 
 test("disabling GPU releases runtime and tokens; enabling resumes without a preview", async (t) => {
-  const doc = document("enabled.py2");
+  const doc = document("enabled.paw");
   const app = boot([doc]);
   t.after(() => app.dispose());
   await app.flush();
@@ -385,7 +385,7 @@ test("disabling GPU releases runtime and tokens; enabling resumes without a prev
 });
 
 test("GPU startup failure falls back without retry loops or a surprise preview", async (t) => {
-  const doc = document("unavailable.py2");
+  const doc = document("unavailable.paw");
   const app = boot([doc]);
   t.after(() => app.dispose());
   await app.flush();
@@ -407,7 +407,7 @@ test("GPU startup failure falls back without retry loops or a surprise preview",
 });
 
 test("disabled settings prevent background startup and also release an open preview's runtime", async (t) => {
-  const doc = document("disabled.py2");
+  const doc = document("disabled.paw");
   const app = boot([doc], { config: { enabled: false } });
   t.after(() => app.dispose());
   await app.flush();

@@ -26,7 +26,7 @@
 | 高级平衡树 | 替罪羊、FHQ Treap、LCT、可持久化结构 |
 | 字符串进阶 | SAM、后缀数组/自动机 |
 | 3D 专用 | KD-Tree、八叉树（四叉树放 P4 可选） |
-| GPU / 多线程结构 | 超出 Py2Cpp 当前模型 |
+| GPU 计算 | 属独立 **`py2cpp/gpu/`** 域，见 [gpu-compute.md](./gpu-compute.md)；`alg` 不实现 GPU 结构 |
 
 ### 1.3 与现有标准库的分工
 

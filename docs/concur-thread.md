@@ -19,6 +19,7 @@ Py2Cpp 当前有两种并发相关能力，但都不能代替线程库：
 | `Task` | 单线程协作式 | 帧循环、异步状态机、非阻塞业务流程 |
 | `prange` | OpenMP 数据并行 | 独立迭代、数值计算、reduction |
 | `thread` | OS 抢占式线程 | 阻塞 I/O、长期后台任务、生产者/消费者、显式同步共享状态 |
+| `gpu`（计划） | `GpuKernelMixin.map` + 标量 `run` | 大规模数组/sim；见 [gpu-compute.md](./gpu-compute.md) |
 
 线程库不能只包装 `std::thread`。它必须同时解决：
 

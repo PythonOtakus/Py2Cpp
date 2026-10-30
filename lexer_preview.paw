@@ -1,8 +1,8 @@
-"""Py2Cpp 拟定语法高亮预览。
+"""Paw 拟定语法高亮预览（``*.paw``）。
 
-打开本文件，确认语言模式为 Py2Cpp；GPU 高亮自动在后台启动。
+打开本文件，确认语言模式为 Paw；GPU 高亮自动在后台启动。
 查看推理结果时执行（关闭预览不影响编辑器高亮）：
-Py2Cpp Lexer: Open GPU Highlight Preview
+Paw Lexer: Open GPU Highlight Preview
 
 用于人工检查 lexer 着色；新语法仍处于设计阶段，不作为当前编译器的运行测试。
 语法依据：docs/syntax-migration.md。
@@ -109,7 +109,7 @@ final class Counter(LabelMixin):
 
     static property title:
         def __get__() -> str:
-            return "Py2Cpp Lexer"
+            return "Paw Lexer"
 
     static def clamp(value: int) -> int:
         return max(0, min(value, 64))
@@ -385,7 +385,7 @@ class CachedPreview:
     lazy property def answer(self): return 42
 
     static lazy property def title() -> str:
-        return "Py2Cpp Lexer"
+        return "Paw Lexer"
 
     lazy def scaledSize(self, factor: int) -> int:
         return len(self.source) * factor
@@ -448,7 +448,7 @@ def literalsPreview():
     hexValue: int = 0x2A
     bits: int = 0b1010
     ratio: float = 1.25e2
-    path: str = r"C:\Py2Cpp\lexer_preview.py2"
+    path: str = r"C:\Py2Cpp\lexer_preview.paw"
     text: str = "中文、emoji 😀、转义：\n\t\"quoted\""
     squares: list[int] = [x * x for x in range(5) if x % 2 == 0]
     labels: dict[str, int] = {"alpha": 1, "beta": 2}

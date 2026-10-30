@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""将 Py2Cpp Lexer 扩展打包为 .vsix（纯 Python，无需 npm）。"""
+"""将 Paw Lexer（py2cpp-lexer）扩展打包为 .vsix（纯 Python，无需 npm）。"""
 from __future__ import annotations
 
 import argparse

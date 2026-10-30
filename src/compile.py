@@ -625,6 +625,100 @@ def source_uses_openmp(source: Path) -> bool:
   return "#pragma omp" in text
 
 
+def discover_cuda_cu(source: Path) -> Path | None:
+  """同目录旁路 ``.cu``（``--gpu-backend=cuda`` 产物）。"""
+  cu = source.with_suffix(".cu")
+  return cu if cu.is_file() else None
+
+
+def find_nvcc() -> str | None:
+  found = _which("nvcc")
+  if found:
+    return found
+  cuda_path = os.environ.get("CUDA_PATH")
+  if cuda_path:
+    cand = Path(cuda_path) / "bin" / "nvcc.exe"
+    if cand.is_file():
+      return str(cand)
+  for ver_dir in sorted(Path(r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA").glob("v*"), reverse=True):
+    cand = ver_dir / "bin" / "nvcc.exe"
+    if cand.is_file():
+      return str(cand)
+  return None
+
+
+def compile_cuda_cu(cu: Path) -> CompileResult:
+  """``nvcc -c`` → ``.cu.obj``。"""
+  nvcc = find_nvcc()
+  if nvcc is None:
+    return CompileResult(
+      ok=False,
+      compiler="nvcc",
+      artifact=None,
+      stdout="",
+      stderr=f"找到 {cu.name} 但本机无 nvcc（请安装 CUDA Toolkit 并加入 PATH）",
+    )
+  obj = cu.with_name(cu.name + ".obj")
+  cmd = [
+    nvcc,
+    "-c",
+    str(cu.resolve()),
+    "-o",
+    str(obj),
+    "-arch=native",
+    "-Xcompiler",
+    "/EHsc,/utf-8",
+  ]
+  r = _run(cmd, cwd=cu.parent)
+  return CompileResult(
+    ok=r.returncode == 0 and obj.is_file(),
+    compiler="nvcc",
+    artifact=obj if obj.is_file() else None,
+    stdout=r.stdout or "",
+    stderr=r.stderr or "",
+  )
+
+
+def discover_cuda_include_dirs() -> list[Path]:
+  """``cuda_runtime.h`` 所在 include 目录。"""
+  out: list[Path] = []
+  cuda_path = os.environ.get("CUDA_PATH")
+  if cuda_path:
+    inc = Path(cuda_path) / "include"
+    if inc.is_dir():
+      out.append(inc)
+  toolkit = Path(r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA")
+  if toolkit.is_dir():
+    for ver_dir in sorted(toolkit.glob("v*"), reverse=True):
+      inc = ver_dir / "include"
+      if inc.is_dir():
+        out.append(inc)
+        break
+  return out
+
+
+def discover_cuda_lib_dirs() -> list[Path]:
+  out: list[Path] = []
+  cuda_path = os.environ.get("CUDA_PATH")
+  if cuda_path:
+    for sub in ("lib/x64", "lib"):
+      lib = Path(cuda_path) / sub
+      if lib.is_dir():
+        out.append(lib)
+        break
+  toolkit = Path(r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA")
+  if toolkit.is_dir():
+    for ver_dir in sorted(toolkit.glob("v*"), reverse=True):
+      for sub in ("lib/x64", "lib"):
+        lib = ver_dir / sub
+        if lib.is_dir():
+          out.append(lib)
+          break
+      if out:
+        break
+  return out
+
+
 def compile_command(
   source: Path,
   *,
@@ -635,11 +729,17 @@ def compile_command(
   std: str = "c++11",
   extra_sources: list[Path] | None = None,
   openmp: bool | None = None,
+  cuda_link_objs: list[Path] | None = None,
 ) -> list[str] | list[list[str]] | None:
   """构造编译命令；无法识别编译器时返回 ``None``。"""
   all_sources = _all_sources(source, extra_sources)
   core, sqlite_srcs = _partition_sqlite_sources(all_sources)
   inc_dirs = [str(p) for p in discover_include_dirs(source, include_dir)]
+  if cuda_link_objs or discover_cuda_cu(source):
+    for p in discover_cuda_include_dirs():
+      s = str(p)
+      if s not in inc_dirs:
+        inc_dirs.append(s)
   inc_flags = [f"-I{d}" for d in inc_dirs]
   out_exe = (exe or default_exe_path(source)).resolve()
   use_openmp = openmp
@@ -672,6 +772,12 @@ def compile_command(
   def gpp_like(tool: str) -> list[str] | list[list[str]]:
     omp = ["-fopenmp"] if use_openmp else []
     lib_flags = [str(p) for p in link_libs]
+    cuda_objs = [str(p) for p in (cuda_link_objs or [])]
+    cuda_ld = []
+    if cuda_objs:
+      cuda_ld = ["-lcudart"]
+      for d in discover_cuda_lib_dirs():
+        cuda_ld.insert(0, f"-L{d}")
     if obj_only:
       cmds = [ [*([tool, f"-std={std}", "-Wall", "-Wextra", "-c", *omp, *inc_flags]), str(s)] for s in core ]
       if sqlite_obj is not None:
@@ -691,7 +797,9 @@ def compile_command(
           *inc_flags,
           *[str(s) for s in core],
           str(sqlite_obj),
+          *cuda_objs,
           *lib_flags,
+          *cuda_ld,
         ],
       ]
     return [
@@ -704,10 +812,16 @@ def compile_command(
       str(out_exe),
       *inc_flags,
       *[str(s) for s in core],
+      *cuda_objs,
       *lib_flags,
+      *cuda_ld,
     ]
 
-  cl_link_objs = [sqlite_obj] if sqlite_obj is not None and not obj_only else None
+  cl_link_objs: list[Path] = []
+  if sqlite_obj is not None and not obj_only:
+    cl_link_objs.append(sqlite_obj)
+  if cuda_link_objs:
+    cl_link_objs.extend(cuda_link_objs)
 
   if compiler == "g++":
     return gpp_like("g++") if _which("g++") else None
@@ -717,7 +831,10 @@ def compile_command(
     return (
       _cmd_msvc_cl(
         core, inc_dirs, out_exe, obj_only, std,
-        use_openmp=use_openmp, link_objs=cl_link_objs, link_libs=link_libs or None,
+        use_openmp=use_openmp,
+        link_objs=cl_link_objs or None,
+        link_libs=link_libs or None,
+        link_cuda=bool(cuda_link_objs),
       )
       if _which("cl")
       else None
@@ -726,7 +843,10 @@ def compile_command(
   if compiler == "msvc" or (compiler == "auto" and sys.platform == "win32"):
     cmd = _cmd_msvc_cl(
       core, inc_dirs, out_exe, obj_only, std,
-      use_openmp=use_openmp, link_objs=cl_link_objs, link_libs=link_libs or None,
+      use_openmp=use_openmp,
+      link_objs=cl_link_objs or None,
+      link_libs=link_libs or None,
+      link_cuda=bool(cuda_link_objs),
     )
     if cmd and _which("cl"):
       return cmd
@@ -741,7 +861,10 @@ def compile_command(
   if compiler == "auto":
     cmd = _cmd_msvc_cl(
       core, inc_dirs, out_exe, obj_only, std,
-      use_openmp=use_openmp, link_objs=cl_link_objs, link_libs=link_libs or None,
+      use_openmp=use_openmp,
+      link_objs=cl_link_objs or None,
+      link_libs=link_libs or None,
+      link_cuda=bool(cuda_link_objs),
     )
     if cmd and _which("cl"):
       return cmd
@@ -851,6 +974,7 @@ def _cmd_msvc_cl(
   use_openmp: bool = False,
   link_objs: list[Path] | None = None,
   link_libs: list[Path] | None = None,
+  link_cuda: bool = False,
 ) -> list[str]:
   std_flag = _msvc_std_flag(std)
   # ``/utf-8``：源文件与执行字符集均为 UTF-8（编译期中文 static_assert 等）
@@ -884,6 +1008,10 @@ def _cmd_msvc_cl(
   cmd.append("/STACK:8388608")
   if link_libs:
     cmd.extend(str(p) for p in link_libs)
+  if link_cuda:
+    for d in discover_cuda_lib_dirs():
+      cmd.append(f"/LIBPATH:{d}")
+    cmd.append("cudart.lib")
   return cmd
 
 
@@ -918,6 +1046,15 @@ def compile_cpp(
   """编译 ``source`` 指向的翻译产物；失败时 ``ok`` 为 ``False``。"""
   source = source.resolve()
   sources = _all_sources(source, extra_sources)
+  cuda_link_objs: list[Path] = []
+  cu = discover_cuda_cu(source)
+  if cu is not None:
+    cu_res = compile_cuda_cu(cu)
+    if not cu_res.ok:
+      return cu_res
+    if cu_res.artifact is not None:
+      cuda_link_objs.append(cu_res.artifact)
+
   if compiler in ("auto", "msvc"):
     bat_result = try_build_bat(source)
     if bat_result is not None:
@@ -938,12 +1075,13 @@ def compile_cpp(
     cmd = compile_command(
       source,
       include_dir=include_dir,
-      compiler=name,
+      compiler=name if name != "msvc" else "cl",
       exe=exe,
       obj_only=obj_only,
       std=std,
       extra_sources=extra_sources,
       openmp=openmp,
+      cuda_link_objs=cuda_link_objs or None,
     )
     if not cmd:
       continue

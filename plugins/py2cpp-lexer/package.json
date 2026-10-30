@@ -1,14 +1,14 @@
 {
   "name": "py2cpp-lexer",
-  "displayName": "Py2Cpp Lexer",
-  "description": "gpu-lexer 后台 GPU 主高亮、Py2Cpp 编辑器语义着色与独立代码预览",
-  "version": "0.2.0",
+  "displayName": "Paw Lexer",
+  "description": "gpu-lexer 后台 GPU 主高亮、Paw 编辑器语义着色与独立代码预览",
+  "version": "0.3.0",
   "publisher": "PythonOtakus",
   "author": "PythonOtakus",
   "license": "MIT",
   "engines": { "vscode": "^1.85.0", "node": ">=18" },
   "categories": ["Programming Languages", "Other"],
-  "activationEvents": ["onLanguage:py2cpp"],
+  "activationEvents": ["onLanguage:paw"],
   "main": "./out/extension.js",
   "private": true,
   "extensionKind": ["ui"],
@@ -20,43 +20,43 @@
   },
   "contributes": {
     "languages": [{
-      "id": "py2cpp",
-      "aliases": ["Py2Cpp", "py2cpp"],
-      "extensions": [".py2"],
+      "id": "paw",
+      "aliases": ["Paw", "paw"],
+      "extensions": [".paw"],
       "configuration": "./language-configuration.json"
     }],
     "grammars": [{
-      "language": "py2cpp",
-      "scopeName": "source.py2cpp",
-      "path": "./syntaxes/py2cpp.tmLanguage.json"
+      "language": "paw",
+      "scopeName": "source.paw",
+      "path": "./syntaxes/paw.tmLanguage.json"
     }],
     "commands": [
-      { "command": "py2cpp-lexer.openPanel", "title": "Py2Cpp Lexer: Open GPU Highlight Preview" },
-      { "command": "py2cpp-lexer.enableForCurrentFile", "title": "Py2Cpp Lexer: Enable GPU Highlighting for Current File" },
-      { "command": "py2cpp-lexer.restoreLanguage", "title": "Py2Cpp Lexer: Restore Previous Language Mode" },
-      { "command": "py2cpp-lexer.refresh", "title": "Py2Cpp Lexer: Refresh Highlighting" },
-      { "command": "py2cpp-lexer.restartGpu", "title": "Py2Cpp Lexer: Restart GPU Session" }
+      { "command": "py2cpp-lexer.openPanel", "title": "Paw Lexer: Open GPU Highlight Preview" },
+      { "command": "py2cpp-lexer.enableForCurrentFile", "title": "Paw Lexer: Enable GPU Highlighting for Current File" },
+      { "command": "py2cpp-lexer.restoreLanguage", "title": "Paw Lexer: Restore Previous Language Mode" },
+      { "command": "py2cpp-lexer.refresh", "title": "Paw Lexer: Refresh Highlighting" },
+      { "command": "py2cpp-lexer.restartGpu", "title": "Paw Lexer: Restart GPU Session" }
     ],
-    "configurationDefaults": { "[py2cpp]": { "editor.semanticHighlighting.enabled": true } },
+    "configurationDefaults": { "[paw]": { "editor.semanticHighlighting.enabled": true } },
     "semanticTokenScopes": [{
-      "language": "py2cpp",
+      "language": "paw",
       "scopes": {
-        "comment": ["comment.line.number-sign.py2cpp"],
-        "string": ["string.quoted.double.py2cpp"],
-        "number": ["constant.numeric.py2cpp"],
-        "keyword": ["keyword.control.py2cpp"],
-        "type": ["entity.name.type.py2cpp"],
-        "function": ["entity.name.function.py2cpp"],
-        "variable.readonly": ["constant.other.py2cpp"],
-        "operator": ["keyword.operator.py2cpp"]
+        "comment": ["comment.line.number-sign.paw"],
+        "string": ["string.quoted.double.paw"],
+        "number": ["constant.numeric.paw"],
+        "keyword": ["keyword.control.paw"],
+        "type": ["entity.name.type.paw"],
+        "function": ["entity.name.function.paw"],
+        "variable.readonly": ["constant.other.paw"],
+        "operator": ["keyword.operator.paw"]
       }
     }],
     "configuration": {
-      "title": "Py2Cpp Lexer",
+      "title": "Paw Lexer",
       "properties": {
         "py2cpp-lexer.enabled": {
           "type": "boolean", "default": true,
-          "description": "打开 Py2Cpp 文件时自动启用后台 GPU 主高亮；关闭预览不影响高亮。初始化、不可用或禁用时保留基础高亮。"
+          "description": "打开 Paw（*.paw）文件时自动启用后台 GPU 主高亮；关闭预览不影响高亮。初始化、不可用或禁用时保留基础高亮。"
         },
         "py2cpp-lexer.nodePath": {
           "type": "string", "default": "", "scope": "machine",

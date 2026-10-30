@@ -61,7 +61,7 @@ async function run() {
   };
   persist();
   try {
-    const extension = vscode.extensions.getExtension("PythonOtakus.py2cpp-lexer");
+    const extension = vscode.extensions.getExtension("PythonOtakus.pawcpp-lexer");
     assert.ok(extension, `extension discovered in test host; available: ${vscode.extensions.all.map((item) => item.id).join(", ")}`);
     report.extensionPath = extension.extensionPath;
     if (process.env.PY2CPP_LEXER_EXPECT_EXTENSION_ROOT) {
@@ -69,11 +69,11 @@ async function run() {
         "integration tests must run against the expected installed extension root");
       report.artifact = "installed-vsix";
     }
-    const file = path.join(reportDir, "background-main.py2");
+    const file = path.join(reportDir, "background-main.paw");
     fs.writeFileSync(file, '# 中文 😀\r\nclass Counter:\r\n    value: int = 42\r\n    def get(self):\r\n        return "hello"\r\n');
     const document = await vscode.workspace.openTextDocument(vscode.Uri.file(file));
     await vscode.window.showTextDocument(document, { preview: false });
-    assert.equal(document.languageId, "py2cpp", ".py2 filename selects the contributed language");
+    assert.equal(document.languageId, "paw", ".paw filename selects the contributed language");
     await waitUntil(() => extension.isActive && extension.exports, "automatic onLanguage extension activation");
     api = extension.exports;
     assert.equal(api.getStatus().previewOpen, false);
@@ -83,22 +83,22 @@ async function run() {
     assert.equal(api.getStatus().previewOpen, false);
     assert.equal(webviewTabs().length, 0);
     assert.ok(api.getStatus().backend, "background runtime reports its real backend");
-    passed(`opening .py2 automatically produced ${tokens.length / 5} bounded native GPU tokens without any Webview tab`);
+    passed(`opening .paw automatically produced ${tokens.length / 5} bounded native GPU tokens without any Webview tab`);
 
-    const secondFile = path.join(reportDir, "background-second.py2");
+    const secondFile = path.join(reportDir, "background-second.paw");
     fs.writeFileSync(secondFile, "lazy def compute(value: int) -> int:\n    return value * 2\n");
     const second = await vscode.workspace.openTextDocument(vscode.Uri.file(secondFile));
-    assert.equal(second.languageId, "py2cpp");
+    assert.equal(second.languageId, "paw");
     await tokensFor(second);
     assert.deepEqual(await tokensFor(document), tokens);
     passed("multiple open Py2Cpp documents receive GPU tokens, including a document never focused");
 
     const session = api.getStatus().session;
     await vscode.commands.executeCommand("py2cpp-lexer.openPanel");
-    await waitUntil(() => api.getStatus().previewOpen && webviewTabs().some((tab) => tab.label === "Py2Cpp Lexer"), "preview tab created");
+    await waitUntil(() => api.getStatus().previewOpen && webviewTabs().some((tab) => tab.label === "Paw Lexer"), "preview tab created");
     assert.equal(api.getStatus().session, session);
     assert.deepEqual(await tokensFor(document), tokens);
-    const panelTab = webviewTabs().find((tab) => tab.label === "Py2Cpp Lexer");
+    const panelTab = webviewTabs().find((tab) => tab.label === "Paw Lexer");
     assert.ok(await vscode.window.tabGroups.close(panelTab), "preview tab closes");
     await waitUntil(() => !api.getStatus().previewOpen, "preview-only disposal");
     assert.equal(api.getStatus().state, "ready");
@@ -123,7 +123,7 @@ async function run() {
     await vscode.window.showTextDocument(python, { preview: false });
     assert.equal(python.languageId, "python");
     await vscode.commands.executeCommand("py2cpp-lexer.enableForCurrentFile");
-    assert.equal(vscode.window.activeTextEditor.document.languageId, "py2cpp");
+    assert.equal(vscode.window.activeTextEditor.document.languageId, "paw");
     await tokensFor(vscode.window.activeTextEditor.document);
     assert.equal(api.getStatus().previewOpen, false);
     await vscode.commands.executeCommand("py2cpp-lexer.restoreLanguage");

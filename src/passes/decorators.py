@@ -620,7 +620,7 @@ def expand_decorators(tr: Translator) -> None:
   method_context_defs: dict[str, ast.FunctionDef] = {}
   to_remove: list[tuple[str, ast.FunctionDef]] = []
 
-  for mp, func in tr.module_functions:
+  def _register_factory(mp: str, func: ast.FunctionDef) -> None:
     if is_decorator_definition(func):
       _normalize_factory_func_names(func)
       decorator_defs[func.name] = func
@@ -630,8 +630,28 @@ def expand_decorators(tr: Translator) -> None:
       context_defs[func.name] = func
       to_remove.append((mp, func))
 
+  # ``partition_module_functions_from_asts``（``expand_generators`` 内）已跳过
+  # ``@context`` / ``@decorator``，故须同时扫 ``module_asts`` 与 ``module_functions``。
+  for mp, tree in tr.module_asts.items():
+    if tree is None:
+      continue
+    for node in tree.body:
+      if isinstance(node, ast.FunctionDef):
+        _register_factory(mp, node)
+
+  for mp, func in tr.module_functions:
+    if func.name in decorator_defs or func.name in context_defs:
+      to_remove.append((mp, func))
+      continue
+    _register_factory(mp, func)
+
+  seen_remove: set[int] = set()
   for item in to_remove:
-    tr.module_functions.remove(item)
+    if id(item[1]) in seen_remove:
+      continue
+    if item in tr.module_functions:
+      tr.module_functions.remove(item)
+      seen_remove.add(id(item[1]))
 
   for info in tr.classes.values():
     for name, method in list(info.methods.items()):

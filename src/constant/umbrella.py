@@ -135,8 +135,27 @@ def expand_umbrella_include_paths(
     if payload == "text/str" and "core/iter_result" in stdlib_set:
       paths.append(f"{runtime_prefix}/core/iter_result.inl")
 
-  for name in stdlib_modules:
-    if name in UMBRELLA_BULK_SKIP or name not in STDLIB_REL_PATH_SET:
+  bulk_modules = [
+    name
+    for name in stdlib_modules
+    if name in STDLIB_REL_PATH_SET and name not in UMBRELLA_BULK_SKIP
+  ]
+  mod_set = set(bulk_modules)
+  deferred_roots = {
+    name
+    for name in bulk_modules
+    if "/" not in name and any(m.startswith(f"{name}/") for m in mod_set)
+  }
+  last_sub_of: dict[str, str] = {}
+  for name in bulk_modules:
+    if "/" not in name:
+      continue
+    root = name.split("/", 1)[0]
+    if root in deferred_roots:
+      last_sub_of[root] = name
+  inserted_roots: set[str] = set()
+  for name in bulk_modules:
+    if name in deferred_roots:
       continue
     paths.append(stdlib_header_include(name))
     if (
@@ -144,6 +163,14 @@ def expand_umbrella_include_paths(
       and _umbrella_early_matches("if_any_protocols", "protocol_traits", stdlib_set)
     ):
       paths.append(f"{CORE_PKG}/protocol_erase_domain.h")
+    if "/" in name:
+      root = name.split("/", 1)[0]
+      if root in deferred_roots and last_sub_of.get(root) == name and root not in inserted_roots:
+        paths.append(stdlib_header_include(root))
+        inserted_roots.add(root)
+  for root in deferred_roots:
+    if root not in inserted_roots:
+      paths.append(stdlib_header_include(root))
 
   for mod in UMBRELLA_IO_LATE_IF_PRESENT:
     if mod in stdlib_set:

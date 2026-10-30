@@ -149,7 +149,7 @@ NodeId 在一次编译内稳定，不能直接当作跨版本缓存身份。首�
 
 P2 的执行桥明确采用子进程协议：原生 parser 输出带 schema 版本的 Syntax AST/Span 序列化数据，宿主读取并构造旧 AST；初版可用 JSON，不额外引入 Python 扩展 ABI。桥必须在 `ClassInfo` 构建之前执行（当前 `src/translator.py:729`）：enum 投影为 ClassDef + @enum，flag 放装饰器选项，底层/父枚举放 bases；final/const 字段投影为 AnnAssign + MatMult 标记，再统一建立旧元数据。合成标记的位置映射到原始 keyword span，不伪造源码行；诊断与导航通过 SourceMap 读取原始源码。此时 Python 宿主仍参与后续编译，只有 parser 已能独立运行。
 
-CPython adapter 不能把 `ast.Subscript` 当作泛型实参边界的唯一依据：CPython 对 `A[T, U]` 和 `A[(T, U)]` 给出同形的 `Subscript(slice=Tuple(...))`，`ast.dump` 与 `ast.unparse` 都不能保真区分。adapter 若要接收并保留后者，必须同时携带原始 `SourceManager`、token/trivia 与 span，用外层圆括号范围重建 `TupleTypeSyntax`；只有 CPython AST、或源片段已丢失时，必须诊断“无法保真迁移”，不能猜测为两个实参或自动展平。原生 `.py2` parser 始终直接保留这一区别；`legacy_lowering` 若目标 AST 无法承载来源，也须把原生节点/SourceMap 留在旁路元数据中。
+CPython adapter 不能把 `ast.Subscript` 当作泛型实参边界的唯一依据：CPython 对 `A[T, U]` 和 `A[(T, U)]` 给出同形的 `Subscript(slice=Tuple(...))`，`ast.dump` 与 `ast.unparse` 都不能保真区分。adapter 若要接收并保留后者，必须同时携带原始 `SourceManager`、token/trivia 与 span，用外层圆括号范围重建 `TupleTypeSyntax`；只有 CPython AST、或源片段已丢失时，必须诊断“无法保真迁移”，不能猜测为两个实参或自动展平。原生 `.paw` parser 始终直接保留这一区别；`legacy_lowering` 若目标 AST 无法承载来源，也须把原生节点/SourceMap 留在旁路元数据中。
 
 ### 4.1 声明与对象模型
 
@@ -311,7 +311,7 @@ parse_pattern(source_slice, dialect) -> PatternId
 
 P3 内的 inline if/inline match 共用求值与剪枝框架，分两步交付：先实现当前环境已知值的函数/方法分支、静态标量模式及 inline for 联动，再实现待特化条件/模式和模块/类声明剪枝。后一步完成前，对未支持的位置或依赖明确诊断；不能把常量 True/False 的词法样例当作完整编译期分支支持。inline match 的序列、映射、union 等结构化静态值模型独立增量交付，解析语法可共用不表示静态求值已经可用。
 
-record 的 P3 纵向切片先交付 native `.py2` 的 class-head/field parser、RecordPlan 和负例诊断，再接通布局与 C++ 生成，最后接 legacy_lowering。桥接阶段必须运行 Plan 驱动的生成成员、optional 的构造后覆盖和 frozen 布局检查；只让旧 `@dataclass` pass 接收一个同形 ClassDef 不算交付。旧 `@dataclass` 与后置 `T @optional` 仍由旧方言入口保留，不能在这一阶段与新 record 语法混写。
+record 的 P3 纵向切片先交付 native `.paw` 的 class-head/field parser、RecordPlan 和负例诊断，再接通布局与 C++ 生成，最后接 legacy_lowering。桥接阶段必须运行 Plan 驱动的生成成员、optional 的构造后覆盖和 frozen 布局检查；只让旧 `@dataclass` pass 接收一个同形 ClassDef 不算交付。旧 `@dataclass` 与后置 `T @optional` 仍由旧方言入口保留，不能在这一阶段与新 record 语法混写。
 
 泛型应用的 P3 切片先完成 native TypeExpr 的方括号实参表、`TupleTypeSyntax` 与 `ParenthesizedTypeSyntax`，让 `A[T, U]`、`A[(T, U)]`、`A[T,]`、`A[(T,)]` 在 Syntax AST、TypeId、诊断与 SourceMap 中保留不同的边界；随后才接类/别名的形参数量检查、类型模式和后端模板映射。CPython 输入的保真重建另测；只有 ast 本身时明确拒绝，不能让 `_parse_type_args_nodes` 一类旧式 tuple-slice 展平逻辑进入原生路径。
 
@@ -362,6 +362,6 @@ call/from 的接口及候选 as、通用块 lambda 按 [规范状态](./syntax-m
 
 P0 还应处理已发现的规范漂移：手册将宿主最低版本写成 3.10，而 PEP 695 需要 3.12、泛型默认值需要 3.13；union 模式现有测试使用 `case new.Variant(...)`，手册仍有 `case Msg.Variant(...)`。record 规则已经确定：新方言使用 `record`、`frozen`、`ordered` 和前置 `optional`，其生成成员、完整 frozen 布局、排序字段与构造后覆盖规则以 [迁移规范](./syntax-migration.md#records) 为准；旧 `@dataclass`、后置 `@optional` 仅作为 legacy 兼容路径并需单独回归，不再把它们的历史漂移当作新语法待定项。
 
-文件兼容与工具链也需要进入交付范围。新关键字文件采用 `.py2`，旧 `.py` 与 `.pyi` 保持兼容入口；import resolver 同时认识两者，同名模块同时存在时明确报错，避免悄悄改变解析优先级。首个原型可用显式 dialect 参数接入测试，正式开放前同步文件发现、构建脚本、FFI 桩扫描、nav/architect、语法高亮、格式化与错误跳转。迁移工具用 token span 修改，保留注释；Python 的 ast.unparse 无法直接输出新语法。软关键字只解决名称兼容，新语法文件仍需要相应 IDE 支持。
+文件兼容与工具链也需要进入交付范围。新方言源文件统一为 **`*.paw`（语言名 Paw）**，旧 `.py` 与 `.pyi` 保持兼容入口；import resolver 同时认识两者，同名模块同时存在时明确报错，避免悄悄改变解析优先级。不保留 `.py2` 等过渡扩展名。首个原型可用显式 dialect 参数接入测试，正式开放前同步文件发现、构建脚本、FFI 桩扫描、nav/architect、语法高亮、格式化与错误跳转。迁移工具用 token span 修改，保留注释；Python 的 ast.unparse 无法直接输出新语法。软关键字只解决名称兼容，Paw 源文件仍需要相应 IDE 支持。
 
-当前 `plugins/py2cpp-lexer` 与根目录 `lexer_preview.py2` 用于高亮检查。GPU 模型分类和 TextMate grammar 不承担 compiler AST/语义验证；示例可展示的拼法不表示上述编译器阶段已经实现。
+当前 `plugins/py2cpp-lexer` 与根目录 `lexer_preview.paw` 用于高亮检查。GPU 模型分类和 TextMate grammar 不承担 compiler AST/语义验证；示例可展示的拼法不表示上述编译器阶段已经实现。

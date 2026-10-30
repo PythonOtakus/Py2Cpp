@@ -1696,6 +1696,13 @@ def emit_call_expr(tr: Translator, node: ast.Call):
     from .builtin_aggregate_emit import try_emit_builtin_aggregate_call
     from .genexp_call_emit import try_emit_iterable_genexp_call
     from .selector_emit import try_emit_select_call
+    from ..constant.gpu import GPU_BACKEND_CUDA, GPU_DEVICE_SYNC
+    if (
+      isinstance(node.func, ast.Name)
+      and node.func.id == GPU_DEVICE_SYNC
+      and getattr(tr, "gpu_backend", "omp") == GPU_BACKEND_CUDA
+    ):
+      return "cudaDeviceSynchronize()"
     if isinstance(node.func, ast.Name) and node.func.id == '__macro__':
         raise NotImplementedError('"NAME" in __macro__ 仅可用于 if/elif 条件（译为 #ifdef / #elif），不可作普通表达式')
     agg_expr = try_emit_builtin_aggregate_call(tr, node)

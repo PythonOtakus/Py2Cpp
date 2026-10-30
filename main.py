@@ -69,6 +69,18 @@ def _build_parser() -> argparse.ArgumentParser:
     default=True,
     help="prange 发射 OpenMP pragma（--no-openmp 译期降级为 range）",
   )
+  parser.add_argument(
+    "--gpu",
+    action=argparse.BooleanOptionalAction,
+    default=False,
+    help="启用 GPU `.map` / `@GpuDeviceMeta` 翻译（默认关；--no-gpu 显式关闭）",
+  )
+  parser.add_argument(
+    "--gpu-backend",
+    choices=("omp", "cuda"),
+    default="omp",
+    help="GPU 后端：omp=Host OpenMP sim；cuda=生成 .cu + cudaMalloc launch（需 nvcc）",
+  )
   return parser
 
 
@@ -89,6 +101,8 @@ def main() -> int:
       debug=args.debug,
       strict=args.strict,
       openmp_enabled=args.openmp,
+      gpu_enabled=args.gpu,
+      gpu_backend=args.gpu_backend,
     )
   except Exception as e:
     print(format_translation_failure(e, entry_path=input_path), file=sys.stderr)

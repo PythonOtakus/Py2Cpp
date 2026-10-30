@@ -4,7 +4,7 @@
 
 与现有 `py2cpp.spatial`（`Vector*` / `Matrix*` / `Rotator` / `Quaternion` / `Transform2D`·`Transform3D`）配套，补齐游戏/UI 常用的矩形、颜色、**CPU 像素图**、空间随机与噪声、以及基于注解的异步属性动画。已落地的几何、矩形与颜色类型均为 `Scalar: RealType = float` 泛型类；省略类型参数时使用 `float`，需要旧双精度语义时显式写 `Vector2[float64]`、`Matrix3[float64]`、`Color[float64]` 等。风格参考仓库外 `tggame`（`rect` / `color` / `texture.Texture` / `random`·`Noise` / `action.LerpAssign`），写法遵守 [编码规范.md](./编码规范.md) 与 Py2Cpp 语法能力。
 
-相关文档：[zeus-engine.md](../zeus/docs/zeus-engine.md)（引擎将复用本扩展，不在 `zeus` 内重写；**GPU 纹理 / OpenGL upload** 仍属 Zeus/`render`，本模块只管 CPU 侧 `Image`）。
+相关文档：[zeus-engine.md](../zeus/docs/zeus-engine.md)（引擎将复用本扩展，不在 `zeus` 内重写；**GPU 纹理 / OpenGL upload** 仍属 Zeus/`render`，本模块只管 CPU 侧 `Image`）；通用 GPU 计算见 [gpu-compute.md](./gpu-compute.md)（`py2cpp/gpu/`，与 `spatial` 解耦）。
 
 ### 落地对照（Zeus 前置子集）
 

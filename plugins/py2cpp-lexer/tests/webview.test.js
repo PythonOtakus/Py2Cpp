@@ -7,7 +7,7 @@ const test = require("node:test");
 const vm = require("node:vm");
 
 const script = fs.readFileSync(path.join(__dirname, "../media/main.mjs"), "utf8");
-const metadata = { name: "example.py2", version: 2, languageId: "py2cpp" };
+const metadata = { name: "example.paw", version: 2, languageId: "paw" };
 const session = "17";
 
 function boot() {
@@ -98,7 +98,7 @@ test("snapshot rendering preserves gaps, UTF-16 text, whitespace and literal HTM
     const source = " <img>\n  😀  ";
     const app = boot();
     app.snapshot({
-        state: "ready", source, document: { ...metadata, name: "<script>", languageId: "<py2cpp>" },
+        state: "ready", source, document: { ...metadata, name: "<script>", languageId: "<paw>" },
         spans: [{ type: "string", start: 1, end: 6 }, { type: "plain", start: 6, end: 6 }],
         elapsedMs: 1.25, note: "<img onerror=alert(1)>",
     });
@@ -110,7 +110,7 @@ test("snapshot rendering preserves gaps, UTF-16 text, whitespace and literal HTM
     assert.equal(app.elements.code.children[1].textContent, "<img>");
     assert.match(app.elements.summary.textContent, /推理耗时 1.3 ms/);
     assert.match(app.elements.summary.textContent, /<img onerror=alert\(1\)>/);
-    assert.match(app.elements.summary.textContent, /<py2cpp>/);
+    assert.match(app.elements.summary.textContent, /<paw>/);
 });
 
 test("new snapshots replace previous tokens and clear stale content when no document is active", () => {

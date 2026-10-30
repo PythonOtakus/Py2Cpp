@@ -166,14 +166,18 @@ class Translator(ast.NodeVisitor):
   负责具体语句与表达式的降级规则。
   """
 
-    def __init__(self, module_name: str, source_path: str, *, debug: bool=False, strict: bool=True, openmp_enabled: bool=True):
+    def __init__(self, module_name: str, source_path: str, *, debug: bool=False, strict: bool=True, openmp_enabled: bool=True, gpu_enabled: bool=False, gpu_backend: str='omp'):
         super().__init__()
         self.module_name = module_name
         self.source_path = source_path
         self.debug = debug
         self.strict = strict
         self.openmp_enabled = openmp_enabled
+        self.gpu_enabled = gpu_enabled
+        self.gpu_backend = gpu_backend
         self.uses_openmp = False
+        self.uses_cuda = False
+        self.gpu_cuda_jobs: list = []
         self.header_lines: list[str] = []
         self.source_lines: list[str] = []
         self.in_header = True
@@ -358,7 +362,7 @@ class Translator(ast.NodeVisitor):
         return f'{RUNTIME_PREFIX}/{path.stem}'
 
     @classmethod
-    def translate_file(cls, input_path: str, output_dir: str | None=None, include_stdlib: bool=True, *, emit_main: bool=True, debug: bool=False, strict: bool=True, openmp_enabled: bool=True) -> tuple[Path, Path]:
+    def translate_file(cls, input_path: str, output_dir: str | None=None, include_stdlib: bool=True, *, emit_main: bool=True, debug: bool=False, strict: bool=True, openmp_enabled: bool=True, gpu_enabled: bool=False, gpu_backend: str='omp') -> tuple[Path, Path]:
         import os
         import sys
         import time
@@ -415,7 +419,7 @@ class Translator(ast.NodeVisitor):
         if entry_out != out_dir:
             entry_out.mkdir(parents=True, exist_ok=True)
         emit_user_entry = not cls._is_runtime_py(path)
-        translator = cls(out_stem, str(path), debug=debug, strict=strict, openmp_enabled=openmp_enabled)
+        translator = cls(out_stem, str(path), debug=debug, strict=strict, openmp_enabled=openmp_enabled, gpu_enabled=gpu_enabled, gpu_backend=gpu_backend)
         translator.base_output_dir = out_dir
         translator.runtime_output_dir = runtime_out
         translator.entry_output_dir = entry_out
@@ -484,6 +488,8 @@ class Translator(ast.NodeVisitor):
             expand_default_ne(translator)
             expand_test_discovery(translator)
             expand_kwargs_options(translator)
+            from .passes.expand_gpu_map import expand_gpu_map
+            expand_gpu_map(translator)
             expand_static_reflect(translator)
             check_yield_from_for_style(translator)
             check_yield_from_in_async_def(translator)
@@ -517,6 +523,8 @@ class Translator(ast.NodeVisitor):
             check_abstract_rules(translator)
             check_refcount_source_style(translator)
             check_pynone_source_style(translator)
+            from .passes.check_gpu_run import check_gpu_run
+            check_gpu_run(translator)
             check_strict_style(translator)
             check_static_virtual_override_s1002(translator)
             check_parallel_loops(translator)
@@ -544,9 +552,27 @@ class Translator(ast.NodeVisitor):
         if emit_user_entry:
             header_path = entry_out / f'{out_stem}.h'
             entry_cpp = entry_out / f'{out_stem}.cpp'
+            src_lines = list(translator.source_lines)
+            if getattr(translator, 'uses_cuda', False):
+                from .codegen.gpu_backend_cuda import cuda_extern_decl_lines
+                decls = cuda_extern_decl_lines(translator)
+                if decls:
+                    insert_at = 0
+                    for i, ln in enumerate(src_lines):
+                        if ln.startswith('#include') or ln.startswith('//') or not ln.strip():
+                            insert_at = i + 1
+                            continue
+                        break
+                    src_lines[insert_at:insert_at] = [''] + decls + ['']
             write_text_if_changed(header_path, '\n'.join(translator.header_lines) + '\n')
-            write_text_if_changed(entry_cpp, '\n'.join(translator.source_lines) + '\n')
+            write_text_if_changed(entry_cpp, '\n'.join(src_lines) + '\n')
             source_path = entry_cpp
+            if getattr(translator, 'gpu_backend', 'omp') == 'cuda' and getattr(translator, 'uses_cuda', False):
+                from .codegen.gpu_backend_cuda import build_cuda_source
+                cu_text = build_cuda_source(translator)
+                if cu_text is not None:
+                    cu_path = entry_out / f'{out_stem}.cu'
+                    write_text_if_changed(cu_path, cu_text)
         else:
             header_path = umbrella_header
             source_path = runtime_cpp if has_stdlib_body else umbrella_header
@@ -744,6 +770,9 @@ class Translator(ast.NodeVisitor):
                         continue
                     if module_path == CONCUR_PARALLEL_MODULE and node.name in PRANGE_TRANSLATION_ONLY_FUNCS:
                         continue
+                    from .passes.gpu_common import is_gpu_device_meta_function
+                    if is_gpu_device_meta_function(node):
+                        continue
                     if is_delegate_definition(node):
                         continue
                     if has_named_decorator(node, 'overload'):
@@ -755,9 +784,11 @@ class Translator(ast.NodeVisitor):
     def _is_decorator_impl(func: ast.FunctionDef) -> bool:
         return func.name.endswith('_impl')
 
-    @staticmethod
-    def _translator_only_skip_method(info: ClassInfo, method: ast.FunctionDef) -> bool:
+    def _translator_only_skip_method(self, info: ClassInfo, method: ast.FunctionDef) -> bool:
+        from .passes.gpu_common import is_gpu_kernel_run_method
         from .passes.kwargs_options import is_translator_only_method, is_varstack_translator_only_method
+        if is_gpu_kernel_run_method(info, method, self.classes):
+            return True
         if info.name == 'VarStack' and is_varstack_translator_only_method(method):
             return True
         return is_translator_only_method(method.name, method)
@@ -922,6 +953,8 @@ class Translator(ast.NodeVisitor):
             self.write_line('#include <string.h>')
             self.write_line('#include <math.h>')
             self.write_line('#include <new>')
+            if getattr(self, 'gpu_enabled', False) and getattr(self, 'gpu_backend', 'omp') == 'cuda':
+                self.write_line('#include <cuda_runtime.h>')
             self._emit_debug_helper()
             self.write_line()
 
@@ -5818,6 +5851,10 @@ class Translator(ast.NodeVisitor):
         emit_native_range_loop_from_call(self, name, iter_call, body)
 
     def visit_Expr(self, node: ast.Expr):
+        if isinstance(node.value, ast.Call):
+            from .emit.gpu_map_emit import emit_gpu_map_stmt
+            if emit_gpu_map_stmt(self, node.value):
+                return
         if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name):
             if node.value.func.id == 'print':
                 emit_print(self, node.value)
@@ -7069,6 +7106,11 @@ class Translator(ast.NodeVisitor):
         self._emit_user_module_class_methods()
         if self._should_emit_module(self.entry_module_path):
             self._emit_entry_module_implementations()
+        if getattr(self, 'gpu_enabled', False) and getattr(self, 'gpu_backend', 'omp') != 'cuda':
+            from .emit.gpu_device_emit import emit_gpu_device_functions
+            mp = self.entry_module_path
+            with self._use_module_inl(mp), self._use_source(), self._use_import_bindings(mp), self._use_inl_namespace(mp):
+                emit_gpu_device_functions(self, mp)
         self._emit_module_functions()
         self._inject_cpp_attr_dispatch_definitions()
         self._inject_py_callable_thunks()

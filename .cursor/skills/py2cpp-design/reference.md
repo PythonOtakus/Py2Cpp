@@ -357,8 +357,24 @@ Py2Cpp/
 
 约束（``parallel_loop_check.py``）：禁止嵌套 ``prange``、``break``。
 
+### 8.1.2 GPU kernel（`GpuKernelMixin`）
 
-`len`、`print`、`zip`、`enumerate`、`iter`、`next`、`aiter`、`anext`、`reversed`、`repr`、`new` 等在 `py2cpp/__init__.py` 声明；具体发射在 `translator` + `operators.h`。
+**状态**：P1 Host OpenMP sim 已落地，见 [gpu-compute.md](../../../docs/gpu-compute.md)。**P1**：``@dataclass`` + ``@mixin GpuKernelMixin`` + 标量 ``def run(...) -> T`` + 译期 **``.map``** + 模块级 **``@GpuDeviceMeta``** + **``with gpuSync():``**。
+
+| 写法 | 实现（P1） |
+|------|-----------------|
+| ``def run(self, a: float, b: float) -> float: return …`` | 标量返回值；**无** ``out`` 形参 |
+| ``op.map(a, b, out)`` | **末参 ``out`` 必须是 output ``Field``**；前若干为 input ``Field`` |
+| ``with gpuSync(): …`` | ``@context``；enter 空、exit 设备同步（P1 Host sim 为空）；**无 ``as``**；**无**自由函数 ``sync()`` |
+| ``@GpuDeviceMeta def clamp01(x: float) -> float: …`` | 仅 Device；``run`` 内可调用；Host 不可调 |
+| ``op: Add = new(c=1.0); op.map(…)`` | ``new(kw)``（**禁止** ``new(Add(...))``） |
+| ``Field[T]`` | ``copyFromHost``/``toHost`` |
+| P1 | 用户 **不写** ``prange``；grid 由 ``.map`` codegen 内部生成（当前 OpenMP） |
+| ``--gpu`` / ``--no-gpu`` / ``--gpu-backend=omp\|cuda`` | 启用 GPU；``cuda`` 生成旁路 ``.cu`` + Host launch |
+| 验收 | ``test/gpu/test_vector_add.py``、``test_gpu_device_meta.py``（须 ``--gpu``）；``test_gpu_backend_emit`` |
+| ``ffi/cuda`` | Toolkit 就绪后 ``ffi.bat``；**不进** ``minimal.h`` |
+| P2 | ``run`` 内显式 ``for i in prange(n)``（stencil 等） |
+
 
 | 内建 | 发射要点 |
 |------|----------|

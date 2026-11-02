@@ -1,2 +1,13 @@
 # Windows cmd 要求 .bat 使用 CRLF
 *.bat text eol=crlf
+
+# Paw 源（Linguist 尚未收录 Paw；先按 Python 计入语言条）
+*.paw linguist-language=Python
+
+# 译器 / 引擎生成物不计入语言统计
+paw/out/** linguist-generated=true
+paw/generated/** linguist-generated=true
+paw/templates/~macro/** linguist-generated=true
+zeus/out/** linguist-generated=true
+zeus/generated/** linguist-generated=true
+zeus/templates/~macro/** linguist-generated=true

@@ -2,15 +2,16 @@
 setlocal EnableExtensions
 chcp 65001 >nul
 set "ZEUS_ROOT=%~dp0"
-set "REPO_ROOT=%ZEUS_ROOT%.."
-cd /d "%REPO_ROOT%"
+set "PAW_ROOT=%ZEUS_ROOT%..\paw"
+set "MONOREPO_ROOT=%ZEUS_ROOT%.."
+cd /d "%PAW_ROOT%"
 
 set "PY=python"
-if not defined PY2CPP_RUNTIME_INC set "PY2CPP_RUNTIME_INC=%REPO_ROOT%\generated\runtime"
-set "SQLITE_INC=%REPO_ROOT%\third_party\sqlite"
+if not defined PY2CPP_RUNTIME_INC set "PY2CPP_RUNTIME_INC=%PAW_ROOT%\generated\runtime"
+set "SQLITE_INC=%PAW_ROOT%\third_party\sqlite"
 set "ZEUS_RUNTIME_INC=%ZEUS_ROOT%generated\runtime"
 
-call "%REPO_ROOT%\scripts\_init_msvc.bat"
+call "%PAW_ROOT%\scripts\_init_msvc.bat"
 if errorlevel 1 (
   echo NOTE: MSVC not auto-configured. Use x64 Native Tools Prompt if link fails.
 )
@@ -20,7 +21,7 @@ if errorlevel 1 exit /b 1
 
 if not exist "%PY2CPP_RUNTIME_INC%\py2cpp\minimal.h" (
   echo [zeus] bootstrapping repo generated\runtime ...
-  call "%REPO_ROOT%\scripts\_bootstrap_runtime.bat"
+  call "%PAW_ROOT%\scripts\_bootstrap_runtime.bat"
   if errorlevel 1 exit /b 1
 )
 
@@ -40,7 +41,7 @@ if not exist "%GLFW_LIB%\glfw3dll.lib" (
 mkdir "%ZEUS_ROOT%generated" 2>nul
 
 echo === [zeus] translate jump_demo ===
-%PY% main.py zeus\src\jump_demo.py -o zeus\generated
+%PY% main.py "%ZEUS_ROOT%src\jump_demo.py" -o "%ZEUS_ROOT%generated"
 if errorlevel 1 exit /b 1
 
 echo === [zeus] compile jump_demo ===
@@ -57,5 +58,5 @@ if exist "%GLFW_LIB%\glfw3.dll" (
 )
 
 echo === [zeus] launch jump_demo ===
-start "" /D "%REPO_ROOT%" "%ZEUS_ROOT%generated\zeus\src\jump_demo.exe"
+start "" /D "%MONOREPO_ROOT%" "%ZEUS_ROOT%generated\zeus\src\jump_demo.exe"
 exit /b 0

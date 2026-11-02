@@ -1,0 +1,114 @@
+"""HIR 节点 — 与 ``compiler/py/hir/nodes.py`` 字段对齐（enum 竖切已接线；其余供扩展）。
+
+nested c1_emit 落 ``c1_emit/hir/nodes.h``。
+"""
+from py2cpp import *
+from ..frontend.source import SourceSpan
+
+enum ObjectModel:
+  Value = 0
+  RefCount = 1
+
+class HirEnumMember:
+  name: str = ""
+  valueSource: str = ""
+  span: SourceSpan = new()
+
+class HirEnum:
+  declId: int = 0
+  name: str = ""
+  isTypeEnum: bool = False
+  flag: bool = False
+  members: list[HirEnumMember]
+  baseSource: str = ""
+  span: SourceSpan = new()
+
+  def __init__(self):
+    self.members = []
+
+class HirField:
+  name: str = ""
+  typeName: str = ""
+  valueSource: str = ""
+  span: SourceSpan = new()
+
+class HirFunction:
+  declId: int = 0
+  name: str = ""
+  decoratorsSource: str = ""
+  paramsSource: str = ""
+  returnSource: str = ""
+  bodySource: str = ""
+  isAsync: bool = False
+  span: SourceSpan = new()
+  isStatic: bool = False
+  isNative: bool = False
+  isOverride: bool = False
+  isFinal: bool = False
+  isAbstract: bool = False
+  isVirtual: bool = False
+  isDelegate: bool = False
+  isProperty: bool = False
+  typeParamsSource: str = ""
+
+class HirClass:
+  declId: int = 0
+  name: str = ""
+  objectModel: ObjectModel = ObjectModel.Value
+  isFinal: bool = False
+  isRecord: bool = False
+  isFrozen: bool = False
+  isOrdered: bool = False
+  isLazy: bool = False
+  isProtocol: bool = False
+  isMixin: bool = False
+  isUnion: bool = False
+  isVariant: bool = False
+  basesSource: str = ""
+  constFields: list[HirField]
+  fields: list[HirField]
+  opaqueMembers: list[str]
+  span: SourceSpan = new()
+  decoratorsSource: str = ""
+  isNative: bool = False
+  methods: list[HirFunction]
+  typeParamsSource: str = ""
+
+  def __init__(self):
+    self.constFields = []
+    self.fields = []
+    self.opaqueMembers = []
+    self.methods = []
+
+class HirImport:
+  source: str = ""
+  span: SourceSpan = new()
+
+class HirModuleConst:
+  name: str = ""
+  typeName: str = ""
+  valueSource: str = ""
+  span: SourceSpan = new()
+
+class HirOpaque:
+  source: str = ""
+  span: SourceSpan = new()
+
+class HirModule:
+  path: str = ""
+  enums: list[HirEnum]
+  classes: list[HirClass]
+  functions: list[HirFunction]
+  imports: list[HirImport]
+  consts: list[HirModuleConst]
+  opaques: list[HirOpaque]
+  diagnostics: list[str]
+
+  def __init__(self):
+    self.enums = []
+    self.classes = []
+    self.functions = []
+    self.imports = []
+    self.consts = []
+    self.opaques = []
+    self.diagnostics = []

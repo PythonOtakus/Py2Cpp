@@ -1,0 +1,80 @@
+"""``py2cpp.weak``：对齐 CPython 3.13 ``weakref`` 子集。"""
+from py2cpp import *
+from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
+from py2cpp.weak import WeakList, WeakRef, WeakValueDict
+
+ref record Node:
+  name: str = ""
+  value: int = 0
+
+ref class LinkNode:
+  name: str = ""
+  parent: WeakRef[Self] | None = None
+  children: list[Self] = []
+
+  def __init__(self, name: str = ""):
+    self.name = name
+
+  def bindParent(self, par: Self) -> None:
+    self.parent = new(par)
+
+class WeakRefTests(TestCaseMixin):
+  _testTag = 1
+
+  override def test(self):
+    n: Node = new("a", 1)
+    w: WeakRef[Node] = new(n)
+    self.assertTrue(w.alive)
+    live: Node = w.value
+    self.assertEqual(live.name, "a")
+    n = new()
+    live = new()
+    self.assertFalse(w.alive)
+
+class WeakValueDictTests(TestCaseMixin):
+  _testTag = 2
+
+  override def test(self):
+    cache: WeakValueDict[str, Node] = new()
+    n: Node = new("cached", 42)
+    cache["k"] = n
+    got: Node = cache["k"]
+    self.assertEqual(got.value, 42)
+    self.assertEqual(len(cache.keys()), 1)
+    self.assertEqual(len(cache.valuerefs()), 1)
+    pair: (str, Node) = cache.popItem()
+    n = new()
+    self.assertFalse("k" in cache)
+
+class WeakListTests(TestCaseMixin):
+  _testTag = 3
+
+  override def test(self):
+    lst: WeakList[Node] = new()
+    n: Node = new("y", 0)
+    lst.append(n)
+    self.assertEqual(len(lst), 1)
+    item: Node = lst[0]
+    self.assertEqual(item.name, "y")
+    item = new()
+    n = new()
+    self.assertEqual(len(lst), 0)
+
+class WeakRefNestedDestroyTests(TestCaseMixin):
+  _testTag = 4
+
+  override def test(self):
+    root: LinkNode = new("root")
+    child: LinkNode = new("child")
+    root.children.append(child)
+    child.bindParent(root)
+    self.assertEqual(len(root.children), 1)
+
+def main():
+  suite: TestSuite = new()
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
+    suite.addTest(Class())
+  return TextTestRunner().run(suite)
+
+if __name__ == "__main__":
+  raise SystemExit(main())

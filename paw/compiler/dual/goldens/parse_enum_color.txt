@@ -1,0 +1,3 @@
+enum:Color
+member:Red=1
+member:Blue=2

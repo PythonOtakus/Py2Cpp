@@ -1,0 +1,2 @@
+"""Package init — parity with ``compiler/py/hir/__init__.py``."""
+from py2cpp import *

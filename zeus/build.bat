@@ -2,15 +2,16 @@
 setlocal EnableExtensions
 chcp 65001 >nul
 set "ZEUS_ROOT=%~dp0"
-set "REPO_ROOT=%ZEUS_ROOT%.."
-cd /d "%REPO_ROOT%"
+set "PAW_ROOT=%ZEUS_ROOT%..\paw"
+set "MONOREPO_ROOT=%ZEUS_ROOT%.."
+cd /d "%PAW_ROOT%"
 
 set "PY=python"
-if not defined PY2CPP_RUNTIME_INC set "PY2CPP_RUNTIME_INC=%REPO_ROOT%\generated\runtime"
-set "SQLITE_INC=%REPO_ROOT%\third_party\sqlite"
+if not defined PY2CPP_RUNTIME_INC set "PY2CPP_RUNTIME_INC=%PAW_ROOT%\generated\runtime"
+set "SQLITE_INC=%PAW_ROOT%\third_party\sqlite"
 set "ZEUS_RUNTIME_INC=%ZEUS_ROOT%generated\runtime"
 
-call "%REPO_ROOT%\scripts\_init_msvc.bat"
+call "%PAW_ROOT%\scripts\_init_msvc.bat"
 if errorlevel 1 (
   echo NOTE: MSVC not auto-configured. Use x64 Native Tools Prompt if link fails.
 )
@@ -19,7 +20,7 @@ call "%ZEUS_ROOT%setup_deps.bat"
 if errorlevel 1 exit /b 1
 
 echo [zeus] bootstrapping repo generated\runtime ...
-call "%REPO_ROOT%\scripts\_bootstrap_runtime.bat"
+call "%PAW_ROOT%\scripts\_bootstrap_runtime.bat"
 if errorlevel 1 exit /b 1
 
 set "PY2CPP_RUNTIME_LINK="
@@ -47,7 +48,7 @@ if not exist "%GLFW_LIB%\glfw3dll.lib" (
 mkdir "%ZEUS_ROOT%generated" 2>nul
 
 echo === [zeus] translate test_runtime ===
-%PY% main.py zeus\src\test_runtime.py -o zeus\generated
+%PY% main.py "%ZEUS_ROOT%src\test_runtime.py" -o "%ZEUS_ROOT%generated"
 if errorlevel 1 exit /b 1
 
 echo === [zeus] compile test_runtime ===
@@ -64,7 +65,7 @@ echo === [zeus] run test_runtime ===
 if errorlevel 1 exit /b 1
 
 echo === [zeus] translate test_render ===
-%PY% main.py zeus\src\test_render.py -o zeus\generated
+%PY% main.py "%ZEUS_ROOT%src\test_render.py" -o "%ZEUS_ROOT%generated"
 if errorlevel 1 exit /b 1
 
 echo === [zeus] compile test_render ===
@@ -86,7 +87,7 @@ echo === [zeus] run test_render ===
 if errorlevel 1 exit /b 1
 
 echo === [zeus] translate test_editor_smoke ===
-%PY% main.py zeus\src\test_editor_smoke.py -o zeus\generated
+%PY% main.py "%ZEUS_ROOT%src\test_editor_smoke.py" -o "%ZEUS_ROOT%generated"
 if errorlevel 1 exit /b 1
 
 echo === [zeus] compile test_editor_smoke ===
@@ -107,7 +108,7 @@ echo === [zeus] run test_editor_smoke ===
 if errorlevel 1 exit /b 1
 
 echo === [zeus] translate test_commands ===
-%PY% main.py zeus\src\test_commands.py -o zeus\generated
+%PY% main.py "%ZEUS_ROOT%src\test_commands.py" -o "%ZEUS_ROOT%generated"
 if errorlevel 1 exit /b 1
 
 echo === [zeus] compile test_commands ===
@@ -125,7 +126,7 @@ echo === [zeus] run test_commands ===
 if errorlevel 1 exit /b 1
 
 echo === [zeus] translate test_jump ===
-%PY% main.py zeus\src\test_jump.py -o zeus\generated
+%PY% main.py "%ZEUS_ROOT%src\test_jump.py" -o "%ZEUS_ROOT%generated"
 if errorlevel 1 exit /b 1
 
 echo === [zeus] compile test_jump ===

@@ -1,0 +1,950 @@
+"""Bootstrap 种子：声明子集 parser（enum/class/record/import/def/const + Opaque）。
+
+完整宿主在 ``compiler/py/frontend/parser.py``；本文件只覆盖 C0 竖切可译子集。
+Paw 禁止 ``@override`` / ``@virtual`` 等已迁出装饰器；方法修饰用 ``override def`` 等关键字。
+"""
+from py2cpp import *
+from .source import FileId, SourceSpan
+from .tokens import Token, TokenKindEnum
+from .lexer import Lexer
+from .syntax_nodes import (
+  ClassBundle,
+  ConstField,
+  EnumBundle,
+  EnumMember,
+  FunctionBundle,
+  ItemKindEnum,
+  ModuleItem,
+  SyntaxModule,
+)
+
+@copyable
+class DeclTail:
+  name: str = ""
+  bodyStart: int = 0
+  endSpan: SourceSpan = new()
+  basesSource: str = ""
+
+@copyable
+class ParseAdvance:
+  ok: bool = False
+  endI: int = 0
+
+def parseSource(text: str, fileId: FileId) -> SyntaxModule:
+  lx: Lexer = new(text, fileId)
+  return parseTokens(lx.tokenize(), text)
+
+def parseTokens(tokens: list[Token], source: str) -> SyntaxModule:
+  mod: SyntaxModule = new()
+  i: int = 0
+  n: int = len(tokens)
+  while i < n and tokens[i].kind != TokenKindEnum.End:
+    i = _skipNl(tokens, i)
+    if i >= n or tokens[i].kind == TokenKindEnum.End:
+      break
+    startI: int = i
+    startSpan: SourceSpan = tokens[i].span
+    adv: ParseAdvance = new()
+    adv.ok = False
+    adv.endI = 0
+    match tokens[i].kind:
+      case TokenKindEnum.At:
+        adv = _tryDecoratedClass(mod, tokens, source, i, startSpan)
+      case TokenKindEnum.Name | TokenKindEnum.KwEnum | TokenKindEnum.KwUnion:
+        adv = _tryNamedDecl(mod, tokens, source, i, startSpan)
+      case _:
+        adv.ok = False
+        adv.endI = 0
+    if adv.ok:
+      i = adv.endI
+      continue
+
+    endI4: int = _findNextTopStmt(tokens, i + 1)
+    endTok: Token = tokens[i]
+    if endI4 > i:
+      endTok = tokens[endI4 - 1]
+    src: str = source[tokens[i].span.start : endTok.span.end]
+    opSpan: SourceSpan = new()
+    opSpan.fileId = tokens[i].span.fileId
+    opSpan.start = tokens[i].span.start
+    opSpan.end = endTok.span.end
+    mod.items.append(_opaqueItem(src, opSpan))
+    i = endI4
+    if i == startI:
+      i += 1
+  return mod
+
+def _opaqueItem(src: str, sourceSpan: SourceSpan) -> ModuleItem:
+  return new(
+    kind=ItemKindEnum.Opaque,
+    enumName="",
+    enumIsType=False,
+    enumFlag=False,
+    className="",
+    isRecord=False,
+    isRef=False,
+    isFinal=False,
+    isFrozen=False,
+    isOrdered=False,
+    functionName="",
+    opaqueSource=src,
+    span=sourceSpan,
+  )
+
+def _tryNamedDecl(
+  mod: SyntaxModule,
+  tokens: list[Token],
+  source: str,
+  i: int,
+  startSpan: SourceSpan,
+) -> ParseAdvance:
+  n: int = len(tokens)
+  fail: ParseAdvance = new(ok=False, endI=0)
+  text0: str = tokens[i].text
+  match text0:
+    case "type":
+      if i + 1 < n and tokens[i + 1].kind == TokenKindEnum.KwEnum:
+        tail: DeclTail = _parseDeclTail(tokens, source, i + 2)
+        endI: int = _skipBlock(tokens, tail.bodyStart)
+        blockEnd: int = _blockEnd(tokens, endI, tail.endSpan.end)
+        membersT: list[EnumMember] = _parseEnumMembers(tokens, source, tail.bodyStart)
+        spanT: SourceSpan = new()
+        spanT.fileId = startSpan.fileId
+        spanT.start = startSpan.start
+        spanT.end = blockEnd
+        _appendEnum(mod, tail.name, True, False, membersT, spanT)
+        return new(ok=True, endI=endI)
+    case "enum":
+      if i + 1 < n and tokens[i + 1].kind != TokenKindEnum.Name:
+        return fail
+      tail2: DeclTail = _parseDeclTail(tokens, source, i + 1)
+      endI2: int = _skipBlock(tokens, tail2.bodyStart)
+      blockEnd2: int = _blockEnd(tokens, endI2, tail2.endSpan.end)
+      header: str = source[startSpan.start : blockEnd2]
+      flagE: bool = "flag" in header
+      membersE: list[EnumMember] = _parseEnumMembers(tokens, source, tail2.bodyStart)
+      spanE: SourceSpan = new()
+      spanE.fileId = startSpan.fileId
+      spanE.start = startSpan.start
+      spanE.end = blockEnd2
+      _appendEnum(mod, tail2.name, False, flagE, membersE, spanE)
+      return new(ok=True, endI=endI2)
+    case "const":
+      if i + 1 < n and tokens[i + 1].kind == TokenKindEnum.Name:
+        return _parseModuleConst(mod, tokens, source, i, startSpan)
+    case "import" | "from":
+      return _parseImport(mod, tokens, source, i, startSpan)
+    case _:
+      pass
+
+  fnAdv: ParseAdvance = _tryParseFunction(mod, tokens, source, i, startSpan, True)
+  if fnAdv.ok:
+    return fnAdv
+
+  prefixes: list[str] = []
+  j: int = i
+  while (
+    j < n
+    and tokens[j].kind == TokenKindEnum.Name
+    and _isDeclPrefix(tokens[j].text)
+  ):
+    prefixes.append(tokens[j].text)
+    j += 1
+  if j < n and _isDeclHeadTok(tokens[j]):
+    head: str = tokens[j].text
+    tail3: DeclTail = _parseDeclTail(tokens, source, j + 1)
+    endI3: int = _skipBlock(tokens, tail3.bodyStart)
+    blockEnd3: int = _blockEnd(tokens, endI3, tail3.endSpan.end)
+    bodySrc: str = ""
+    if endI3 > tail3.bodyStart:
+      bodySrc = source[tokens[tail3.bodyStart].span.start : tokens[endI3 - 1].span.end]
+    clsSpan: SourceSpan = new()
+    clsSpan.fileId = startSpan.fileId
+    clsSpan.start = startSpan.start
+    clsSpan.end = blockEnd3
+    _appendClass(mod, tail3.name, head, prefixes, tail3.basesSource, bodySrc, "", clsSpan, tail3.bodyStart, endI3, tokens, source)
+    return new(ok=True, endI=endI3)
+  return fail
+
+def _parseImport(
+  mod: SyntaxModule,
+  tokens: list[Token],
+  source: str,
+  i: int,
+  startSpan: SourceSpan,
+) -> ParseAdvance:
+  endI: int = _findNextTopStmt(tokens, i + 1)
+  endTok: Token = tokens[i]
+  if endI > i:
+    endTok = tokens[endI - 1]
+  src: str = source[tokens[i].span.start : endTok.span.end]
+  mod.imports.append(src)
+  impSpan: SourceSpan = new()
+  impSpan.fileId = startSpan.fileId
+  impSpan.start = startSpan.start
+  impSpan.end = endTok.span.end
+  impIt: ModuleItem = new()
+  impIt.kind = ItemKindEnum.Import
+  impIt.enumName = ""
+  impIt.enumIsType = False
+  impIt.enumFlag = False
+  impIt.className = ""
+  impIt.isRecord = False
+  impIt.isRef = False
+  impIt.isFinal = False
+  impIt.isFrozen = False
+  impIt.isOrdered = False
+  impIt.functionName = ""
+  impIt.opaqueSource = src
+  impIt.span = impSpan
+  mod.items.append(impIt)
+  return new(ok=True, endI=endI)
+
+def _parseModuleConst(
+  mod: SyntaxModule,
+  tokens: list[Token],
+  source: str,
+  i: int,
+  startSpan: SourceSpan,
+) -> ParseAdvance:
+  n: int = len(tokens)
+  name: str = tokens[i + 1].text
+  j: int = i + 2
+  typeName: str = ""
+  if j < n and tokens[j].kind == TokenKindEnum.Colon:
+    j += 1
+    if j < n and tokens[j].kind == TokenKindEnum.Name:
+      typeName = tokens[j].text
+      j += 1
+  val: str = ""
+  if j < n and tokens[j].kind == TokenKindEnum.Eq:
+    j += 1
+    vs: int = j
+    while j < n and not _isLineStop(tokens[j].kind) and tokens[j].kind != TokenKindEnum.End:
+      j += 1
+    if j > vs:
+      val = source[tokens[vs].span.start : tokens[j - 1].span.end]
+  endPos: int = startSpan.end
+  if j > i:
+    endPos = tokens[j - 1].span.end
+  constSpan: SourceSpan = new()
+  constSpan.fileId = startSpan.fileId
+  constSpan.start = startSpan.start
+  constSpan.end = endPos
+  cf: ConstField = new()
+  cf.name = name
+  cf.typeName = typeName
+  cf.valueSource = val
+  cf.span = constSpan
+  mod.moduleConsts.append(cf)
+  mcIt: ModuleItem = new()
+  mcIt.kind = ItemKindEnum.ModuleConst
+  mcIt.enumName = ""
+  mcIt.enumIsType = False
+  mcIt.enumFlag = False
+  mcIt.className = ""
+  mcIt.isRecord = False
+  mcIt.isRef = False
+  mcIt.isFinal = False
+  mcIt.isFrozen = False
+  mcIt.isOrdered = False
+  mcIt.functionName = ""
+  mcIt.opaqueSource = name
+  mcIt.span = constSpan
+  mod.items.append(mcIt)
+  return new(ok=True, endI=j)
+
+def _tryParseFunction(
+  mod: SyntaxModule,
+  tokens: list[Token],
+  source: str,
+  i: int,
+  startSpan: SourceSpan,
+  asModuleItem: bool,
+) -> ParseAdvance:
+  n: int = len(tokens)
+  fail: ParseAdvance = new(ok=False, endI=0)
+  j: int = i
+  mods: list[str] = []
+  while (
+    j < n
+    and tokens[j].kind == TokenKindEnum.Name
+    and _isFnPrefix(tokens[j].text)
+    and tokens[j].text != "def"
+  ):
+    mods.append(tokens[j].text)
+    j += 1
+  if j >= n or tokens[j].kind != TokenKindEnum.Name or tokens[j].text != "def":
+    return fail
+  if "static" in mods and "async" in mods:
+    ai: int = -1
+    si: int = -1
+    for mi in range(len(mods)):
+      if mods[mi] == "async" and ai < 0:
+        ai = mi
+      if mods[mi] == "static" and si < 0:
+        si = mi
+    if ai >= 0 and si >= 0 and ai < si:
+      mod.unsupported.append("use static async (not async before static)")
+  fn: FunctionBundle = _extractFunction(tokens, source, i, startSpan, n)
+  if fn.name == "":
+    return fail
+  jj: int = i
+  while (
+    jj < n
+    and tokens[jj].kind == TokenKindEnum.Name
+    and _isFnPrefix(tokens[jj].text)
+    and tokens[jj].text != "def"
+  ):
+    jj += 1
+  if jj < n and tokens[jj].text == "def":
+    jj += 1
+  if jj < n and tokens[jj].kind == TokenKindEnum.Name:
+    jj += 1
+  if jj < n and tokens[jj].kind == TokenKindEnum.Lpar:
+    depth: int = 0
+    jj_p: int = jj
+    while jj_p < n:
+      jj = jj_p
+      if tokens[jj_p].kind == TokenKindEnum.Lpar:
+        depth += 1
+      elif tokens[jj_p].kind == TokenKindEnum.Rpar:
+        depth -= 1
+        if depth == 0:
+          jj = jj_p + 1
+          break
+      jj_p += 1
+  if jj < n and tokens[jj].kind == TokenKindEnum.Rarrow:
+    jj += 1
+    while jj < n and tokens[jj].kind not in {TokenKindEnum.Colon, TokenKindEnum.Newline, TokenKindEnum.End}:
+      jj += 1
+  if jj < n and tokens[jj].kind == TokenKindEnum.Colon:
+    jj += 1
+  while jj < n and tokens[jj].kind == TokenKindEnum.Newline:
+    jj += 1
+  bodyStart: int = jj
+  if jj < n and tokens[jj].kind == TokenKindEnum.Indent:
+    jj += 1
+    bodyStart = jj
+  endI: int = _skipBlock(tokens, bodyStart)
+  if asModuleItem:
+    mod.functions.append(fn)
+    fnIt: ModuleItem = new()
+    fnIt.kind = ItemKindEnum.Function
+    fnIt.enumName = ""
+    fnIt.enumIsType = False
+    fnIt.enumFlag = False
+    fnIt.className = ""
+    fnIt.isRecord = False
+    fnIt.isRef = False
+    fnIt.isFinal = False
+    fnIt.isFrozen = False
+    fnIt.isOrdered = False
+    fnIt.functionName = fn.name
+    fnIt.opaqueSource = ""
+    fnIt.span = fn.span
+    mod.items.append(fnIt)
+  return new(ok=True, endI=endI)
+
+def _extractFunction(
+  tokens: list[Token],
+  source: str,
+  i: int,
+  startSpan: SourceSpan,
+  limit: int,
+) -> FunctionBundle:
+  # Thin-emit friendly: while (not for-range), no set-in, field-assign return.
+  empty: FunctionBundle = new()
+  n: int = len(tokens)
+  j: int = i
+  mods: list[str] = []
+  while j < n and j < limit:
+    if tokens[j].kind != TokenKindEnum.Name:
+      break
+    if not _isFnPrefix(tokens[j].text):
+      break
+    if tokens[j].text == "def":
+      break
+    mods.append(tokens[j].text)
+    j += 1
+  if j >= n or j >= limit:
+    return empty
+  if tokens[j].kind != TokenKindEnum.Name or tokens[j].text != "def":
+    return empty
+  isAsync: bool = False
+  isStatic: bool = False
+  isNative: bool = False
+  isOverride: bool = False
+  isFinal: bool = False
+  isAbstract: bool = False
+  isVirtual: bool = False
+  mi: int = 0
+  while mi < len(mods):
+    if mods[mi] == "async":
+      isAsync = True
+    if mods[mi] == "static":
+      isStatic = True
+    if mods[mi] == "native":
+      isNative = True
+    if mods[mi] == "override":
+      isOverride = True
+    if mods[mi] == "final":
+      isFinal = True
+    if mods[mi] == "abstract":
+      isAbstract = True
+    if mods[mi] == "virtual":
+      isVirtual = True
+    mi += 1
+  j += 1
+  if j >= limit or tokens[j].kind != TokenKindEnum.Name:
+    return empty
+  name: str = tokens[j].text
+  j += 1
+  if j >= limit or tokens[j].kind != TokenKindEnum.Lpar:
+    return empty
+  depth: int = 0
+  ps: int = j + 1
+  jj: int = j
+  while jj < limit:
+    j = jj
+    if tokens[jj].kind == TokenKindEnum.Lpar:
+      depth += 1
+    if tokens[jj].kind == TokenKindEnum.Rpar:
+      depth -= 1
+      if depth == 0:
+        break
+    jj += 1
+  params: str = ""
+  if j > ps:
+    params = source[tokens[ps].span.start : tokens[j - 1].span.end]
+  if j < limit and tokens[j].kind == TokenKindEnum.Rpar:
+    j += 1
+  ret: str = ""
+  if j < limit and tokens[j].kind == TokenKindEnum.Rarrow:
+    j += 1
+    rs: int = j
+    while j < limit:
+      kindR: TokenKindEnum = tokens[j].kind
+      if kindR == TokenKindEnum.Colon or kindR == TokenKindEnum.Newline or kindR == TokenKindEnum.End:
+        break
+      j += 1
+    if j > rs:
+      ret = source[tokens[rs].span.start : tokens[j - 1].span.end]
+  if j < limit and tokens[j].kind == TokenKindEnum.Colon:
+    j += 1
+  while j < limit and tokens[j].kind == TokenKindEnum.Newline:
+    j += 1
+  bodyStart: int = j
+  if j < limit and tokens[j].kind == TokenKindEnum.Indent:
+    j += 1
+    bodyStart = j
+  endI: int = _skipBlock(tokens, bodyStart)
+  if endI > limit:
+    endI = limit
+  bodySrc: str = "pass"
+  if endI > bodyStart:
+    bodySrc = source[tokens[bodyStart].span.start : tokens[endI - 1].span.end]
+  spanEnd: int = startSpan.end
+  if endI > 0:
+    spanEnd = tokens[endI - 1].span.end
+  out: FunctionBundle = new()
+  out.name = name
+  out.paramsSource = params
+  out.returnSource = ret
+  out.bodySource = bodySrc
+  out.isAsync = isAsync
+  out.isStatic = isStatic
+  out.isNative = isNative
+  out.isOverride = isOverride
+  out.isFinal = isFinal
+  out.isAbstract = isAbstract
+  out.isVirtual = isVirtual
+  out.decoratorsSource = ""
+  out.span.fileId = startSpan.fileId
+  out.span.start = startSpan.start
+  out.span.end = spanEnd
+  return out
+
+def _tryDecoratedClass(
+  mod: SyntaxModule,
+  tokens: list[Token],
+  source: str,
+  i: int,
+  startSpan: SourceSpan,
+) -> ParseAdvance:
+  n: int = len(tokens)
+  decoStart: int = i
+  while i < n and tokens[i].kind == TokenKindEnum.At:
+    while i < n and tokens[i].kind != TokenKindEnum.Newline and tokens[i].kind != TokenKindEnum.End:
+      i += 1
+    while i < n and tokens[i].kind == TokenKindEnum.Newline:
+      i += 1
+  fail: ParseAdvance = new(ok=False, endI=0)
+  if decoStart >= i:
+    return fail
+  decoSrc: str = source[tokens[decoStart].span.start : tokens[i - 1].span.end]
+  if "@override" in decoSrc or "@virtual" in decoSrc or "@abstract" in decoSrc:
+    return fail
+  if "@staticmethod" in decoSrc or "@final" in decoSrc:
+    return fail
+  prefixes: list[str] = []
+  while (
+    i < n
+    and tokens[i].kind == TokenKindEnum.Name
+    and _isDeclPrefix(tokens[i].text)
+  ):
+    prefixes.append(tokens[i].text)
+    i += 1
+  if i >= n or not _isDeclHeadTok(tokens[i]):
+    return fail
+  head: str = tokens[i].text
+  tail: DeclTail = _parseDeclTail(tokens, source, i + 1)
+  endI: int = _skipBlock(tokens, tail.bodyStart)
+  blockEnd: int = _blockEnd(tokens, endI, tail.endSpan.end)
+  bodySrc: str = ""
+  if endI > tail.bodyStart:
+    bodySrc = source[tokens[tail.bodyStart].span.start : tokens[endI - 1].span.end]
+  decoSpan: SourceSpan = new()
+  decoSpan.fileId = startSpan.fileId
+  decoSpan.start = startSpan.start
+  decoSpan.end = blockEnd
+  _appendClass(mod, tail.name, head, prefixes, tail.basesSource, bodySrc, decoSrc, decoSpan, tail.bodyStart, endI, tokens, source)
+  return new(ok=True, endI=endI)
+
+def _isDeclPrefix(text: str) -> bool:
+  match text:
+    case "frozen" | "ordered" | "final" | "ref" | "lazy" | "native":
+      return True
+    case _:
+      return False
+
+def _isDeclHead(text: str) -> bool:
+  match text:
+    case "class" | "record" | "variant" | "protocol" | "mixin":
+      return True
+    case _:
+      return False
+
+def _isDeclHeadTok(tok: Token) -> bool:
+  if tok.kind in {TokenKindEnum.KwEnum, TokenKindEnum.KwUnion}:
+    return True
+  if tok.kind == TokenKindEnum.Name and _isDeclHead(tok.text):
+    return True
+  return False
+
+def _isFnPrefix(text: str) -> bool:
+  match text:
+    case "static" | "native" | "final" | "override" | "abstract" | "virtual" | "lazy" | "async":
+      return True
+    case _:
+      return False
+
+def _blockEnd(tokens: list[Token], endI: int, fallback: int) -> int:
+  if endI > 0:
+    return tokens[endI - 1].span.end
+  return fallback
+
+def _appendEnum(
+  mod: SyntaxModule,
+  name: str,
+  isType: bool,
+  flag: bool,
+  members: list[EnumMember],
+  sourceSpan: SourceSpan,
+) -> None:
+  it: ModuleItem = new(
+    kind=ItemKindEnum.Enum,
+    enumName=name,
+    enumIsType=isType,
+    enumFlag=flag,
+    className="",
+    isRecord=False,
+    isRef=False,
+    isFinal=False,
+    isFrozen=False,
+    isOrdered=False,
+    functionName="",
+    opaqueSource="",
+    span=sourceSpan,
+  )
+  mod.items.append(it)
+  bun: EnumBundle = new(
+    name=name,
+    isTypeEnum=isType,
+    flag=flag,
+    members=members,
+    span=sourceSpan,
+  )
+  mod.enums.append(bun)
+
+def _appendClass(
+  mod: SyntaxModule,
+  name: str,
+  head: str,
+  prefixes: list[str],
+  basesSource: str,
+  bodySource: str,
+  decoratorsSource: str,
+  sourceSpan: SourceSpan,
+  bodyStart: int,
+  bodyEnd: int,
+  tokens: list[Token],
+  source: str,
+) -> None:
+  isRecord: bool = head == "record"
+  isRef: bool = "ref" in prefixes
+  isFinal: bool = "final" in prefixes
+  isFrozen: bool = "frozen" in prefixes
+  isOrdered: bool = "ordered" in prefixes
+  isLazy: bool = "lazy" in prefixes
+  if isLazy:
+    mod.unsupported.append("lazy " + head + " " + name)
+  clIt: ModuleItem = new()
+  clIt.kind = ItemKindEnum.Class
+  clIt.enumName = ""
+  clIt.enumIsType = False
+  clIt.enumFlag = False
+  clIt.className = name
+  clIt.isRecord = isRecord
+  clIt.isRef = isRef
+  clIt.isFinal = isFinal
+  clIt.isFrozen = isFrozen
+  clIt.isOrdered = isOrdered
+  clIt.functionName = ""
+  clIt.opaqueSource = bodySource
+  clIt.span = sourceSpan
+  mod.items.append(clIt)
+  bun: ClassBundle = new()
+  bun.name = name
+  bun.isRecord = isRecord
+  bun.isRef = isRef
+  bun.isFinal = isFinal
+  bun.isFrozen = isFrozen
+  bun.isOrdered = isOrdered
+  bun.isLazy = isLazy
+  bun.isProtocol = head == "protocol"
+  bun.isMixin = head == "mixin"
+  bun.isUnion = head == "union"
+  bun.isVariant = head == "variant"
+  bun.isNative = "native" in prefixes
+  bun.basesSource = basesSource
+  bun.bodySource = bodySource
+  bun.decoratorsSource = decoratorsSource
+  bun.span = sourceSpan
+  _fillClassMembers(bun, tokens, source, bodyStart, bodyEnd)
+  mod.classes.append(bun)
+
+def _fillClassMembers(
+  bun: ClassBundle,
+  tokens: list[Token],
+  source: str,
+  bodyStart: int,
+  bodyEnd: int,
+) -> None:
+  i: int = bodyStart
+  while i < bodyEnd:
+    if _isNlKind(tokens[i].kind):
+      i += 1
+      continue
+    if (
+      tokens[i].kind == TokenKindEnum.Name
+      and tokens[i].text == "const"
+      and i + 1 < bodyEnd
+      and tokens[i + 1].kind == TokenKindEnum.Name
+    ):
+      cspan: SourceSpan = tokens[i].span
+      cname: str = tokens[i + 1].text
+      jc: int = i + 2
+      typeNameC: str = ""
+      if jc < bodyEnd and tokens[jc].kind == TokenKindEnum.Colon:
+        jc += 1
+        if jc < bodyEnd and tokens[jc].kind == TokenKindEnum.Name:
+          typeNameC = tokens[jc].text
+          jc += 1
+      valC: str = ""
+      if jc < bodyEnd and tokens[jc].kind == TokenKindEnum.Eq:
+        jc += 1
+        vsC: int = jc
+        while jc < bodyEnd and not _isLineStop(tokens[jc].kind):
+          jc += 1
+        if jc > vsC:
+          valC = source[tokens[vsC].span.start : tokens[jc - 1].span.end]
+      endPosC: int = cspan.end
+      if jc > i:
+        endPosC = tokens[jc - 1].span.end
+      fieldSpanC: SourceSpan = new()
+      fieldSpanC.fileId = cspan.fileId
+      fieldSpanC.start = cspan.start
+      fieldSpanC.end = endPosC
+      fieldC: ConstField = new()
+      fieldC.name = cname
+      fieldC.typeName = typeNameC
+      fieldC.valueSource = valC
+      fieldC.span = fieldSpanC
+      bun.constFields.append(fieldC)
+      i = jc
+      continue
+    if tokens[i].kind == TokenKindEnum.Name and (
+      _isFnPrefix(tokens[i].text) or tokens[i].text == "def"
+    ):
+      fnSpan: SourceSpan = tokens[i].span
+      fn: FunctionBundle = _extractFunction(tokens, source, i, fnSpan, bodyEnd)
+      if fn.name != "":
+        bun.methods.append(fn)
+        k: int = i
+        while k < bodyEnd and tokens[k].span.end < fn.span.end:
+          k += 1
+        while k < bodyEnd and tokens[k].span.end <= fn.span.end:
+          k += 1
+        if k <= i:
+          k = i + 1
+        i = k
+        continue
+    if (
+      tokens[i].kind == TokenKindEnum.Name
+      and i + 1 < bodyEnd
+      and tokens[i + 1].kind == TokenKindEnum.Colon
+    ):
+      fspan: SourceSpan = tokens[i].span
+      fname: str = tokens[i].text
+      jf: int = i + 2
+      typeNameF: str = ""
+      if jf < bodyEnd and tokens[jf].kind == TokenKindEnum.Name:
+        typeNameF = tokens[jf].text
+        jf += 1
+        while (
+          jf + 1 < bodyEnd
+          and tokens[jf].kind == TokenKindEnum.Dot
+          and tokens[jf + 1].kind == TokenKindEnum.Name
+        ):
+          typeNameF += "." + tokens[jf + 1].text
+          jf += 2
+        if jf < bodyEnd and tokens[jf].kind == TokenKindEnum.Lsqb:
+          brStart: int = tokens[jf].span.start
+          depthB: int = 0
+          while jf < bodyEnd:
+            if tokens[jf].kind == TokenKindEnum.Lsqb:
+              depthB += 1
+            elif tokens[jf].kind == TokenKindEnum.Rsqb:
+              depthB -= 1
+              if depthB == 0:
+                typeNameF += source[brStart : tokens[jf].span.end]
+                jf += 1
+                break
+            jf += 1
+      valF: str = ""
+      if jf < bodyEnd and tokens[jf].kind == TokenKindEnum.Eq:
+        jf += 1
+        vsF: int = jf
+        while jf < bodyEnd and not _isLineStop(tokens[jf].kind):
+          jf += 1
+        if jf > vsF:
+          valF = source[tokens[vsF].span.start : tokens[jf - 1].span.end]
+      endPosF: int = fspan.end
+      if jf > i:
+        endPosF = tokens[jf - 1].span.end
+      fieldSpanF: SourceSpan = new()
+      fieldSpanF.fileId = fspan.fileId
+      fieldSpanF.start = fspan.start
+      fieldSpanF.end = endPosF
+      fieldF: ConstField = new()
+      fieldF.name = fname
+      fieldF.typeName = typeNameF
+      fieldF.valueSource = valF
+      fieldF.span = fieldSpanF
+      bun.constFields.append(fieldF)
+      i = jf
+      continue
+    vs: int = i
+    while i < bodyEnd and not _isLineStop(tokens[i].kind):
+      i += 1
+    if i > vs:
+      bun.opaqueMembers.append(
+        source[tokens[vs].span.start : tokens[i - 1].span.end]
+      )
+    else:
+      i += 1
+
+def _isNlKind(k: TokenKindEnum) -> bool:
+  match k:
+    case TokenKindEnum.Newline | TokenKindEnum.Indent | TokenKindEnum.Dedent:
+      return True
+    case _:
+      return False
+
+def _isLineStop(k: TokenKindEnum) -> bool:
+  match k:
+    case TokenKindEnum.Newline | TokenKindEnum.Dedent:
+      return True
+    case _:
+      return False
+
+def _isBlockStop(k: TokenKindEnum) -> bool:
+  match k:
+    case TokenKindEnum.Newline | TokenKindEnum.End:
+      return True
+    case _:
+      return False
+
+def _isStmtHead(k: TokenKindEnum) -> bool:
+  match k:
+    case TokenKindEnum.Name | TokenKindEnum.At | TokenKindEnum.KwEnum | TokenKindEnum.KwUnion:
+      return True
+    case _:
+      return False
+
+def _skipNl(tokens: list[Token], i: int) -> int:
+  for j in range(i, len(tokens)):
+    if not _isNlKind(tokens[j].kind):
+      return j
+  return len(tokens)
+
+def _parseDeclTail(tokens: list[Token], source: str, i: int) -> DeclTail:
+  n: int = len(tokens)
+  out: DeclTail = new()
+  if i < n and tokens[i].kind == TokenKindEnum.Name:
+    out.name = tokens[i].text
+    i += 1
+  else:
+    out.name = "_"
+  basesStart: int = -1
+  doneBrackets: bool = False
+  while i < n and not doneBrackets:
+    k: TokenKindEnum = tokens[i].kind
+    if k == TokenKindEnum.Lsqb:
+      depth: int = 0
+      while i < n:
+        if tokens[i].kind == TokenKindEnum.Lsqb:
+          depth += 1
+        elif tokens[i].kind == TokenKindEnum.Rsqb:
+          depth -= 1
+          i += 1
+          if depth == 0:
+            break
+          continue
+        i += 1
+      continue
+    if k == TokenKindEnum.Lpar:
+      basesStart = i
+      depth2: int = 0
+      while i < n:
+        if tokens[i].kind == TokenKindEnum.Lpar:
+          depth2 += 1
+        elif tokens[i].kind == TokenKindEnum.Rpar:
+          depth2 -= 1
+          i += 1
+          if depth2 == 0:
+            break
+          continue
+        i += 1
+      if basesStart >= 0 and i > basesStart:
+        out.basesSource = source[
+          tokens[basesStart].span.start : tokens[i - 1].span.end
+        ]
+      continue
+    doneBrackets = True
+  for j in range(i, n):
+    if tokens[j].kind == TokenKindEnum.Colon:
+      i = j + 1
+      break
+    if tokens[j].kind == TokenKindEnum.End:
+      i = j
+      break
+    i = j + 1
+  for j2 in range(i, n):
+    if tokens[j2].kind != TokenKindEnum.Newline:
+      i = j2
+      break
+    i = j2 + 1
+  body: int = i
+  if i < n and tokens[i].kind == TokenKindEnum.Indent:
+    i += 1
+    body = i
+  out.bodyStart = body
+  if n > 0:
+    endIdx: int = i
+    if endIdx > n - 1:
+      endIdx = n - 1
+    out.endSpan = tokens[endIdx].span
+  return out
+
+def _skipBlock(tokens: list[Token], bodyStart: int) -> int:
+  n: int = len(tokens)
+  i: int = bodyStart
+  j: int = bodyStart
+  j -= 1
+  while j >= 0 and tokens[j].kind == TokenKindEnum.Newline:
+    j -= 1
+  if j >= 0 and tokens[j].kind == TokenKindEnum.Indent:
+    depth: int = 1
+    while i < n and depth > 0:
+      if tokens[i].kind == TokenKindEnum.Indent:
+        depth += 1
+      elif tokens[i].kind == TokenKindEnum.Dedent:
+        depth -= 1
+      i += 1
+    return i
+  for k in range(i, n):
+    if _isBlockStop(tokens[k].kind):
+      i = k
+      break
+    i = k + 1
+  if i < n and tokens[i].kind == TokenKindEnum.Newline:
+    i += 1
+  return i
+
+def _findNextTopStmt(tokens: list[Token], start: int) -> int:
+  n: int = len(tokens)
+  depth: int = 0
+  for i in range(start, n):
+    t: Token = tokens[i]
+    if t.kind == TokenKindEnum.Indent:
+      depth += 1
+    elif t.kind == TokenKindEnum.Dedent:
+      if depth > 0:
+        depth -= 1
+    elif t.kind == TokenKindEnum.End:
+      return i
+    elif depth == 0 and t.kind == TokenKindEnum.Newline:
+      j: int = i + 1
+      for j2 in range(i + 1, n):
+        if tokens[j2].kind != TokenKindEnum.Newline:
+          j = j2
+          break
+        j = j2 + 1
+      if j < n and _isStmtHead(tokens[j].kind):
+        return j
+  if n > 0:
+    return n - 1
+  return 0
+
+def _parseEnumMembers(
+  tokens: list[Token], source: str, bodyStart: int
+) -> list[EnumMember]:
+  members: list[EnumMember] = []
+  end: int = _skipBlock(tokens, bodyStart)
+  i: int = bodyStart
+  while i < end:
+    if tokens[i].kind != TokenKindEnum.Name:
+      i += 1
+      continue
+    name: str = tokens[i].text
+    sp: SourceSpan = tokens[i].span
+    i += 1
+    val: str = ""
+    if i < end and tokens[i].kind == TokenKindEnum.Eq:
+      i += 1
+      vs: int = i
+      for k in range(i, end):
+        if _isLineStop(tokens[k].kind):
+          i = k
+          break
+        i = k + 1
+      if i > vs:
+        val = source[tokens[vs].span.start : tokens[i - 1].span.end]
+    mem: EnumMember = new()
+    mem.name = name
+    mem.valueSource = val
+    mem.span = sp
+    members.append(mem)
+  return members

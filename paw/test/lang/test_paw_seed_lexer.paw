@@ -1,0 +1,33 @@
+"""C0 种子回归：``compiler.paw.frontend.lexer`` tokenize 竖切。"""
+from py2cpp import *
+from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
+from compiler.paw.frontend.source import FileId, SourceManager
+from compiler.paw.frontend.tokens import TokenKindEnum
+from compiler.paw.frontend.lexer import Lexer
+from compiler.paw.frontend.diagnostic import makeDiagnostic, formatDiagnostic
+
+class PawSeedLexerTests(TestCaseMixin):
+  _testTag = 1
+
+  override def test(self):
+    sm: SourceManager = new()
+    sf = sm.add("t.paw", "x = 1\n", "d0")
+    lx: Lexer = new(sf.text, sf.fileId)
+    toks = lx.tokenize()
+    self.assertTrue(len(toks) >= 4)
+    self.assertTrue(toks[0].kind == TokenKindEnum.Name)
+    self.assertTrue(toks[0].text == "x")
+    self.assertTrue(toks[1].kind == TokenKindEnum.Eq)
+    self.assertTrue(toks[2].kind == TokenKindEnum.Number)
+    self.assertTrue(toks[2].text == "1")
+    self.assertTrue(toks[-1].kind == TokenKindEnum.End)
+
+    d = makeDiagnostic("P0001", "boom", sm.spanOf(sf.fileId, 0, 1))
+    msg: str = formatDiagnostic(d)
+    self.assertTrue(msg[:11] == "P0001: boom")
+
+def main():
+  suite: TestSuite = new()
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
+    suite.addTest(Class())
+  return TextTestRunner().run(suite)

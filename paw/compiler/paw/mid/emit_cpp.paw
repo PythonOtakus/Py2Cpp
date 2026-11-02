@@ -1,0 +1,2290 @@
+from py2cpp import *
+from ..frontend.syntax_nodes import (
+  ClassBundle,
+  ConstField,
+  EnumBundle,
+  EnumMember,
+  FunctionBundle,
+  ItemKindEnum,
+  ModuleItem,
+  SyntaxModule,
+)
+
+class EnumEmitState:
+  enumTypes: list[str]
+  def __init__(self):
+    self.enumTypes = []
+  def clear(self) -> None:
+    while len(self.enumTypes) > 0:
+      self.enumTypes.pop()
+  def registerModule(self, stem: str, mod: SyntaxModule) -> None:
+    if len(stem) == 0 and len(mod.enums) == 0:
+      return
+    i: int = 0
+    while i < len(mod.enums):
+      nm: str = mod.enums[i].name
+      if nm not in self.enumTypes:
+        self.enumTypes.append(nm)
+      i += 1
+def makeEnumEmitState() -> EnumEmitState:
+  return new()
+
+def _isEnumTypeName(st: EnumEmitState, name: str) -> bool:
+  # Read field directly (host Mid passes EnumEmitState as const&; methods are non-const).
+  return name in st.enumTypes
+
+def _importRelPath(src: str) -> str:
+  s: str = src.strip()
+  if len(s) < 6 or s[:5] != "from ":
+    return ""
+  rest: str = s[5:].strip()
+  if rest == "" or rest[0] != ".":
+    return ""
+  dots: int = 0
+  while dots < len(rest) and rest[dots] == ".":
+    dots += 1
+  rem: str = rest[dots:]
+  sp: int = rem.find(" ")
+  mod: str = rem.strip() if sp < 0 else rem[:sp].strip()
+  if mod == "":
+    return ""
+  modPath: str = mod.replace(".", "/")
+  if dots <= 1:
+    return modPath
+  up: int = dots - 1
+  prefix: str = ""
+  ui: int = 0
+  while ui < up:
+    prefix = prefix + "../"
+    ui += 1
+  return prefix + modPath
+
+def listRelativeImportStems(mod: SyntaxModule) -> list[str]:
+  stems: list[str] = []
+  i: int = 0
+  while i < len(mod.imports):
+    st: str = _importRelPath(mod.imports[i])
+    if st != "" and st not in stems:
+      stems.append(st)
+    i += 1
+  return stems
+
+def _guardName(modulePath: str) -> str:
+  g: str = modulePath.replace("/", "_").replace(".", "_").replace("-", "_")
+  return g.upper() + "_H"
+
+def _cppType(src: str) -> str:
+  s: str = src.strip()
+  if s == "" or s == "None":
+    return "void"
+  if s == "str":
+    return "PyStr"
+  if s == "int":
+    return "PyInt"
+  if s == "bool":
+    return "bool"
+  if s == "float":
+    return "PyFloat"
+  if len(s) >= 5 and s[:5] == "list[" and s[len(s) - 1] == "]":
+    return "PyList<" + _cppType(s[5 : len(s) - 1]) + ", 0>"
+  if "." in s:
+    return "Py" + s[s.rfind(".") + 1 :]
+  return "Py" + s
+
+def _splitParams(src: str) -> list[str]:
+  parts: list[str] = []
+  if src.strip() == "":
+    return parts
+  cur: str = ""
+  depth: int = 0
+  i: int = 0
+  n: int = len(src)
+  inStr: bool = False
+  qCh: str = ""
+  while i < n:
+    ch: str = src[i]
+    if inStr:
+      cur = cur + ch
+      if ch == "\\" and i + 1 < n:
+        esc: str = src[i + 1 : i + 2]
+        cur = cur + esc
+        i += 2
+        continue
+      if ch == qCh:
+        inStr = False
+      i += 1
+      continue
+    if ch == "\"" or ch == "'":
+      inStr = True
+      qCh = ch
+      cur = cur + ch
+      i += 1
+      continue
+    if ch == "[" or ch == "(":
+      depth += 1
+      cur = cur + ch
+    elif ch == "]" or ch == ")":
+      if depth > 0:
+        depth -= 1
+      cur = cur + ch
+    elif ch == "," and depth == 0:
+      parts.append(cur.strip())
+      cur = ""
+    else:
+      cur = cur + ch
+    i += 1
+  if cur.strip() != "":
+    parts.append(cur.strip())
+  return parts
+
+def _bracketDepthDelta(s: str, start: int) -> int:
+  depth: int = 0
+  i: int = start
+  n: int = len(s)
+  inStr: bool = False
+  qCh: str = ""
+  while i < n:
+    ch: str = s[i]
+    if inStr:
+      if ch == "\\" and i + 1 < n:
+        i += 2
+        continue
+      if ch == qCh:
+        inStr = False
+      i += 1
+      continue
+    if ch == "\"" or ch == "'":
+      inStr = True
+      qCh = ch
+      i += 1
+      continue
+    if ch == "[":
+      depth += 1
+    elif ch == "]":
+      depth -= 1
+    i += 1
+  return depth
+
+def _parenDepthDelta(s: str, start: int) -> int:
+  depth: int = 0
+  i: int = start
+  n: int = len(s)
+  inStr: bool = False
+  qCh: str = ""
+  while i < n:
+    ch: str = s[i]
+    if inStr:
+      if ch == "\\" and i + 1 < n:
+        i += 2
+        continue
+      if ch == qCh:
+        inStr = False
+      i += 1
+      continue
+    if ch == "\"" or ch == "'":
+      inStr = True
+      qCh = ch
+      i += 1
+      continue
+    if ch == "(":
+      depth += 1
+    elif ch == ")":
+      depth -= 1
+    i += 1
+  return depth
+
+def _cppParams(src: str, withDefaults: bool) -> str:
+  parts: list[str] = _splitParams(src)
+  out: list[str] = []
+  i: int = 0
+  while i < len(parts):
+    p: str = parts[i]
+    if p == "" or p == "self":
+      i += 1
+      continue
+    name: str = p
+    tySrc: str = ""
+    colon: int = p.find(":")
+    if colon >= 0:
+      name = p[:colon].strip()
+      rest: str = p[colon + 1 :].strip()
+      eq: int = rest.find("=")
+      if eq >= 0:
+        tySrc = rest[:eq].strip()
+      else:
+        tySrc = rest
+    ty: str = _cppType(tySrc) if tySrc != "" else "PyInt"
+    if len(name) > 0 and name[:1] == "*":
+      i += 1
+      continue
+    defa: str = ""
+    if withDefaults and colon >= 0:
+      rest2: str = p[colon + 1 :].strip()
+      eq2: int = rest2.find("=")
+      if eq2 >= 0:
+        dsrc: str = rest2[eq2 + 1 :].strip()
+        if dsrc == "0" or _isIntLit(dsrc):
+          defa = " = " + dsrc
+        elif dsrc == "True":
+          defa = " = true"
+        elif dsrc == "False":
+          defa = " = false"
+    # Prefer early-continue (no multi-line elif) so thin/string emit stays faithful.
+    if ty == "PyStr":
+      out.append("const PyStr& " + name + defa)
+      i += 1
+      continue
+    if ty == "PyInt" or ty == "PyFloat" or ty == "bool" or ty == "PyChar" or ty == "PyFileId" or ty == "PySourceSpan" or ty == "PyToken":
+      out.append(ty + " " + name + defa)
+      i += 1
+      continue
+    if len(ty) >= 5 and ty[len(ty) - 4 :] == "Enum":
+      out.append(ty + " " + name + defa)
+      i += 1
+      continue
+    if len(ty) >= 2 and ty[:2] == "Py":
+      # Mutable aggregates (SyntaxModule / bundles / lists): non-const ref.
+      out.append(ty + "& " + name + defa)
+      i += 1
+      continue
+    out.append(ty + " " + name + defa)
+    i += 1
+  # join
+  if len(out) == 0:
+    return ""
+  joined: str = out[0]
+  j: int = 1
+  while j < len(out):
+    joined = joined + ", " + out[j]
+    j += 1
+  return joined
+
+def emitEnum(en: EnumBundle) -> str:
+  out: str = "enum class Py" + en.name + " : int {\n"
+  n: int = len(en.members)
+  i: int = 0
+  while i < n:
+    m: EnumMember = en.members[i]
+    line: str = "  " + m.name
+    vs: str = m.valueSource.strip()
+    # Host Mid skips Ellipsis / ``...`` (auto-increment).
+    if vs != "" and vs != "..." and vs != "Ellipsis":
+      line = line + " = " + vs
+    if i + 1 < n:
+      line = line + ","
+    out = out + line + "\n"
+    i += 1
+  out = out + "};\n"
+  return out
+
+def _enumMemberCpp(defaultSource: str, st: EnumEmitState) -> str:
+  d: str = defaultSource.strip()
+  dot: int = d.find(".")
+  if dot <= 0 or "(" in d or "[" in d:
+    return ""
+  left: str = d[:dot]
+  right: str = d[dot + 1 :]
+  if not _isIdent(left) or not _isIdent(right):
+    return ""
+  # Only rewrite when left is a parsed enum type name, not an instance attr like d.hasSpan.
+  if not _isEnumTypeName(st, left):
+    return ""
+  return "Py" + left + "::" + right
+
+def _fieldDefault(ty: str, valueSource: str, st: EnumEmitState) -> str:
+  d: str = valueSource.strip()
+  if d == "" or d == "None" or d == "none":
+    return ""
+  if d == "True":
+    return " = true"
+  if d == "False":
+    return " = false"
+  if d == "[]" or d == "{}":
+    return " = " + ty + "{}"
+  if (len(d) >= 2 and d[0] == '"' and d[len(d) - 1] == '"') or (
+    len(d) >= 2 and d[0] == "'" and d[len(d) - 1] == "'"
+  ):
+    if ty == "PyStr" or (len(ty) >= 2 and ty[:2] == "Py"):
+      return " = PyStr(" + d + ")"
+  if (len(d) >= 4 and d[:4] == "new(") or d == "new()":
+    return " = " + ty + "{}"
+  enumD: str = _enumMemberCpp(d, st)
+  if enumD != "":
+    return " = " + enumD
+  if _isIntLit(d) or _isIdent(d):
+    return " = " + d
+  return ""
+
+def _isIdent(s: str) -> bool:
+  if s == "":
+    return False
+  i: int = 0
+  while i < len(s):
+    ch: str = s[i]
+    if i == 0:
+      if not ((ch >= "a" and ch <= "z") or (ch >= "A" and ch <= "Z") or ch == "_"):
+        return False
+    else:
+      if not (
+        (ch >= "a" and ch <= "z")
+        or (ch >= "A" and ch <= "Z")
+        or (ch >= "0" and ch <= "9")
+        or ch == "_"
+      ):
+        return False
+    i += 1
+  return True
+
+def _isIntLit(s: str) -> bool:
+  if s == "":
+    return False
+  i: int = 0
+  if s[0] == "-" or s[0] == "+":
+    if len(s) == 1:
+      return False
+    i = 1
+  while i < len(s):
+    ch: str = s[i]
+    if not (ch >= "0" and ch <= "9"):
+      return False
+    i += 1
+  return True
+
+def _isAttrOrIdent(s: str) -> bool:
+  if s == "":
+    return False
+  parts: list[str] = s.split(".")
+  pi: int = 0
+  while pi < len(parts):
+    if parts[pi] == "" or not _isIdent(parts[pi]):
+      return False
+    pi += 1
+  return True
+
+def _findOutsideQuotes(s: str, needle: str) -> int:
+  if needle == "":
+    return -1
+  i: int = 0
+  n: int = len(s)
+  nn: int = len(needle)
+  inStr: bool = False
+  qCh: str = ""
+  while i < n:
+    ch: str = s[i]
+    if inStr:
+      if ch == "\\" and i + 1 < n:
+        i += 2
+        continue
+      if ch == qCh:
+        inStr = False
+      i += 1
+      continue
+    if ch == "\"" or ch == "'":
+      inStr = True
+      qCh = ch
+      i += 1
+      continue
+    if i + nn <= n and s[i : i + nn] == needle:
+      return i
+    i += 1
+  return -1
+
+def _rhsLooksBool(rhs: str) -> bool:
+  r: str = rhs.strip()
+  if "==" in r or "!=" in r:
+    return True
+  if _findOutsideQuotes(r, " in ") >= 0:
+    return True
+  if _findOutsideQuotes(r, " and ") >= 0:
+    return True
+  if _findOutsideQuotes(r, " or ") >= 0:
+    return True
+  return False
+
+def _clipHead(s: str, n: int) -> str:
+  if n <= 0:
+    return ""
+  if len(s) <= n:
+    return s
+  return s[0:n]
+
+def _isTypeCtorName(s: str) -> bool:
+  if not _isIdent(s):
+    return False
+  ch0: str = s[0]
+  return ch0 >= "A" and ch0 <= "Z"
+
+def _emitTypeCtorExpr(callee: str, inner: str, st: EnumEmitState) -> str:
+  ty: str = _cppType(callee)
+  parts: list[str] = _splitParams(inner)
+  if len(parts) == 0:
+    return "(" + ty + "{})"
+  allKw: bool = True
+  pi0: int = 0
+  while pi0 < len(parts):
+    p0: str = parts[pi0].strip()
+    eq0: int = p0.find("=")
+    if not (eq0 > 0 and _isIdent(p0[:eq0].strip())):
+      allKw = False
+      break
+    pi0 += 1
+  if not allKw:
+    return ""
+  out: str = "([&]() -> " + ty + " { " + ty + " __o{}; "
+  i: int = 0
+  while i < len(parts):
+    p: str = parts[i].strip()
+    eq: int = p.find("=")
+    field: str = p[:eq].strip()
+    val: str = p[eq + 1 :].strip()
+    termV: str = _emitSimpleTerm(val, st)
+    if termV == "":
+      return ""
+    out = out + "__o." + field + " = " + termV + "; "
+    i += 1
+  out = out + "return __o; })()"
+  return out
+
+def _emitCallArg(arg: str, st: EnumEmitState) -> str:
+  a: str = arg.strip()
+  if a == "":
+    return ""
+  eq: int = a.find("=")
+  if eq > 0:
+    left: str = a[:eq].strip()
+    right: str = a[eq + 1 :].strip()
+    if _isIdent(left):
+      return _emitSimpleTerm(right, st)
+  return _emitSimpleTerm(a, st)
+
+def _emitArithExpr(src: str) -> str:
+  s: str = src.strip()
+  out: str = ""
+  i: int = 0
+  n: int = len(s)
+  while i < n:
+    ch: str = s[i]
+    if ch == " " or ch == "\t":
+      i += 1
+      continue
+    if ch in "()+-*/":
+      out = out + ch
+      i += 1
+      continue
+    if (ch >= "0" and ch <= "9") or _isIdent(ch):
+      j: int = i + 1
+      while j < n:
+        cj: str = s[j]
+        if (cj >= "0" and cj <= "9") or _isIdent(cj):
+          j += 1
+        else:
+          break
+      tok: str = s[i:j]
+      if _isIntLit(tok):
+        out = out + tok
+      elif _isIdent(tok) or _isAttrOrIdent(tok):
+        out = out + _rewriteSelf(tok)
+      else:
+        return ""
+      i = j
+      continue
+    return ""
+  return out
+
+def _emitLenArithIndex(src: str, st: EnumEmitState) -> str:
+  s: str = src.strip()
+  out: str = ""
+  i: int = 0
+  n: int = len(s)
+  while i < n:
+    ch: str = s[i]
+    if ch == " " or ch == "\t":
+      i += 1
+      continue
+    if ch in "()+-*/":
+      out = out + ch
+      i += 1
+      continue
+    if i + 4 <= n and s[i : i + 4] == "len(":
+      depthL: int = 0
+      j: int = i + 3
+      while j < n:
+        cj: str = s[j]
+        if cj == "(":
+          depthL += 1
+        elif cj == ")":
+          depthL -= 1
+          if depthL == 0:
+            break
+        j += 1
+      if depthL != 0:
+        return ""
+      inner: str = s[i + 4 : j].strip()
+      term: str = _emitSimpleTerm(inner, st)
+      if term == "":
+        return ""
+      out = out + "(" + term + ").__len__()"
+      i = j + 1
+      continue
+    if (ch >= "0" and ch <= "9") or _isIdent(ch):
+      j2: int = i + 1
+      while j2 < n:
+        cj2: str = s[j2]
+        if (cj2 >= "0" and cj2 <= "9") or _isIdent(cj2):
+          j2 += 1
+        else:
+          break
+      tok: str = s[i:j2]
+      if _isIntLit(tok):
+        out = out + tok
+      elif _isIdent(tok) or _isAttrOrIdent(tok):
+        out = out + _rewriteSelf(tok)
+      else:
+        return ""
+      i = j2
+      continue
+    return ""
+  return out
+
+def _emitStrLitRaw(quoted: str) -> str:
+  if quoted == "\"\\ufeff\"" or quoted == "'\\ufeff'":
+    return "PyStr(PyChar(65279))"
+  if quoted == "\"\\n\"" or quoted == "'\\n'":
+    return "PyStr(\"\\n\")"
+  if quoted == "\"\\t\"" or quoted == "'\\t'":
+    return "PyStr(\"\\t\")"
+  if quoted == "\"\\r\"" or quoted == "'\\r'":
+    return "PyStr(\"\\r\")"
+  if quoted == "\"\\\\\"" or quoted == "'\\\\'":
+    return "PyStr(\"\\\\\")"
+  if quoted == "\"\\r\\n\"" or quoted == "'\\r\\n'":
+    return "PyStr(\"\\r\\n\")"
+  return "PyStr(" + quoted + ")"
+
+def _isQuotedStrTerm(t: str) -> bool:
+  if len(t) < 2:
+    return False
+  q: str = t[:1]
+  last: str = t[len(t) - 1 :]
+  # Prefer \"…\" form: bare '\'' / '\"' become PyChar in host Mid and break PyStr==.
+  dq: str = "\""
+  sq: str = "'"
+  if q == dq and last == dq:
+    i: int = 1
+    while i < len(t) - 1:
+      ch: str = t[i : i + 1]
+      if ch == "\\":
+        i += 2
+        continue
+      if ch == dq:
+        return False
+      i += 1
+    return True
+  if q == sq and last == sq:
+    i2: int = 1
+    while i2 < len(t) - 1:
+      ch2: str = t[i2 : i2 + 1]
+      if ch2 == "\\":
+        i2 += 2
+        continue
+      if ch2 == sq:
+        return False
+      i2 += 1
+    return True
+  return False
+
+def _emitMethodChainOn(baseCpp: str, rest: str, st: EnumEmitState) -> str:
+  chain: str = baseCpp
+  restC: str = rest.strip()
+  while len(restC) >= 2 and restC[0] == ".":
+    methPart: str = restC[1:]
+    lpM: int = methPart.find("(")
+    if lpM > 0:
+      depthM: int = 0
+      rpM: int = -1
+      km: int = lpM
+      inStrM: bool = False
+      qM: str = ""
+      while km < len(methPart):
+        chM: str = methPart[km]
+        if inStrM:
+          if chM == "\\" and km + 1 < len(methPart):
+            km += 2
+            continue
+          if chM == qM:
+            inStrM = False
+          km += 1
+          continue
+        if chM == "\"" or chM == "'":
+          inStrM = True
+          qM = chM
+          km += 1
+          continue
+        if chM == "(":
+          depthM += 1
+        elif chM == ")":
+          depthM -= 1
+          if depthM == 0:
+            rpM = km
+            break
+        km += 1
+      if rpM < 0:
+        return ""
+      methName: str = methPart[:lpM].strip()
+      if not _isIdent(methName):
+        return ""
+      argsM: str = methPart[lpM + 1 : rpM].strip()
+      callM: str = ""
+      if argsM == "":
+        callM = "(" + chain + ")." + methName + "()"
+      else:
+        apM: list[str] = _splitParams(argsM)
+        if len(apM) == 0:
+          return ""
+        jM: str = _emitCallArg(apM[0], st)
+        if jM == "":
+          return ""
+        ami: int = 1
+        while ami < len(apM):
+          axm: str = _emitCallArg(apM[ami], st)
+          if axm == "":
+            return ""
+          jM = jM + ", " + axm
+          ami += 1
+        callM = "(" + chain + ")." + methName + "(" + jM + ")"
+      chain = callM
+      restC = methPart[rpM + 1 :].strip()
+      continue
+    if _isAttrOrIdent(methPart):
+      return "(" + chain + ")" + restC
+    return ""
+  if restC == "":
+    return chain
+  return ""
+
+def _emitSimpleTerm(term: str, st: EnumEmitState) -> str:
+  t: str = term.strip()
+  if t == "True":
+    return "true"
+  if t == "False":
+    return "false"
+  if _isQuotedStrTerm(t):
+    return _emitStrLitRaw(t)
+  # ``"\n".join(xs)`` (thin stmt-seq suite flatten).
+  if ".join(" in t and t[len(t) - 1] == ")":
+    jpos: int = t.find(".join(")
+    if jpos > 0:
+      sepPart: str = t[:jpos].strip()
+      listPart: str = t[jpos + 6 : len(t) - 1].strip()
+      if _isQuotedStrTerm(sepPart) and (_isIdent(listPart) or _isAttrOrIdent(listPart)):
+        return _emitStrLitRaw(sepPart) + ".join(" + _rewriteSelf(listPart) + ")"
+  # ``a if cond else b`` (thin; depth-0 `` if `` / `` else ``).
+  elsePos: int = -1
+  ifPos: int = -1
+  depthT: int = 0
+  inStrT: bool = False
+  qT: str = ""
+  ti: int = 0
+  while ti < len(t):
+    chT: str = t[ti]
+    if inStrT:
+      if chT == "\\" and ti + 1 < len(t):
+        ti += 2
+        continue
+      if chT == qT:
+        inStrT = False
+      ti += 1
+      continue
+    if chT == "\"" or chT == "'":
+      inStrT = True
+      qT = chT
+      ti += 1
+      continue
+    if chT == "(" or chT == "[" or chT == "{":
+      depthT += 1
+      ti += 1
+      continue
+    if chT == ")" or chT == "]" or chT == "}":
+      if depthT > 0:
+        depthT -= 1
+      ti += 1
+      continue
+    if depthT == 0 and ti + 4 <= len(t) and t[ti : ti + 4] == " if ":
+      ifPos = ti
+      ti += 4
+      continue
+    if depthT == 0 and ti + 6 <= len(t) and t[ti : ti + 6] == " else ":
+      elsePos = ti
+      break
+    ti += 1
+  if ifPos > 0 and elsePos > ifPos:
+    thenT: str = t[:ifPos].strip()
+    condT: str = t[ifPos + 4 : elsePos].strip()
+    elseT: str = t[elsePos + 6 :].strip()
+    thenCpp: str = _emitSimpleTerm(thenT, st)
+    condCpp: str = _emitBoolCond(condT, st)
+    elseCpp: str = _emitSimpleTerm(elseT, st)
+    if thenCpp != "" and condCpp != "" and elseCpp != "":
+      return "((" + condCpp + ") ? (" + thenCpp + ") : (" + elseCpp + "))"
+  enumT: str = _enumMemberCpp(t, st)
+  if enumT != "":
+    return enumT
+  if len(t) >= 4 and t[:4] == "str(" and t[len(t) - 1] == ")":
+    inner: str = t[4 : len(t) - 1].strip()
+    callS: str = _emitSimpleTerm(inner, st)
+    if callS == "":
+      return ""
+    return "PyStr(" + callS + ")"
+  if len(t) >= 4 and t[:4] == "len(" and t[len(t) - 1] == ")":
+    innerL: str = t[4 : len(t) - 1].strip()
+    callL: str = _emitSimpleTerm(innerL, st)
+    if callL == "":
+      return ""
+    return "(" + callL + ").__len__()"
+  if len(t) >= 4 and t[:4] == "not ":
+    innerN: str = _emitBoolCond(t[4:], st)
+    if innerN == "":
+      innerN = _emitSimpleTerm(t[4:].strip(), st)
+    if innerN == "":
+      return ""
+    return "!(" + innerN + ")"
+  # Top-level plus via _emitPlusExpr (paren/quote aware; allow call fragments).
+  if " + " in t:
+    plusE: str = _emitPlusExpr(t, st)
+    if plusE != "":
+      return plusE
+  if " // " in t:
+    sp: int = t.find(" // ")
+    if sp > 0:
+      la: str = _emitSimpleTerm(t[:sp], st)
+      ra: str = _emitSimpleTerm(t[sp + 4 :], st)
+      if la != "" and ra != "":
+        return "(" + la + " / " + ra + ")"
+  if "(" in t and t[len(t) - 1] == ")":
+    lp0: int = t.find("(")
+    # Match the first call's closing paren; quote-aware depth walk below.
+    depthC: int = 0
+    rp0: int = -1
+    ki: int = lp0
+    inStrC: bool = False
+    qC: str = ""
+    while ki < len(t):
+      chC: str = t[ki]
+      if inStrC:
+        if chC == "\\" and ki + 1 < len(t):
+          ki += 2
+          continue
+        if chC == qC:
+          inStrC = False
+        ki += 1
+        continue
+      if chC == "\"" or chC == "'":
+        inStrC = True
+        qC = chC
+        ki += 1
+        continue
+      if chC == "(":
+        depthC += 1
+      elif chC == ")":
+        depthC -= 1
+        if depthC == 0:
+          rp0 = ki
+          break
+      ki += 1
+    if rp0 < 0:
+      return ""
+    callee0: str = t[:lp0].strip()
+    args0: str = t[lp0 + 1 : rp0].strip()
+    # ``SourceSpan(fileId=…, start=…, end=…)`` / ``ModuleItem(kind=…)`` as expr.
+    if _isTypeCtorName(callee0):
+      ctorE: str = _emitTypeCtorExpr(callee0, args0, st)
+      if ctorE != "":
+        restCtor: str = t[rp0 + 1 :].strip()
+        if restCtor == "":
+          return ctorE
+        chainedCtor: str = _emitMethodChainOn(ctorE, restCtor, st)
+        if chainedCtor != "":
+          return chainedCtor
+    if _isIdent(callee0) or _isAttrOrIdent(callee0):
+      cal: str = _rewriteSelf(callee0)
+      call1: str = ""
+      if args0 == "":
+        call1 = cal + "()"
+      else:
+        argParts: list[str] = _splitParams(args0)
+        if len(argParts) == 0:
+          return ""
+        joined: str = _emitCallArg(argParts[0], st)
+        if joined == "":
+          return ""
+        ai: int = 1
+        while ai < len(argParts):
+          ax: str = _emitCallArg(argParts[ai], st)
+          if ax == "":
+            return ""
+          joined = joined + ", " + ax
+          ai += 1
+        call1 = cal + "(" + joined + ")"
+      restC: str = t[rp0 + 1 :].strip()
+      if restC == "":
+        return call1
+      # Chain: ``call1.method(...).method2(...)`` / ``.attr``.
+      chained: str = _emitMethodChainOn(call1, restC, st)
+      if chained != "":
+        return chained
+      return ""
+  # ``names[i]`` / ``tokens[i].kind`` / slice ``a[i:j]`` / ``source[a:b]`` / ``s[5:].strip()``
+  lb1: int = t.find("[")
+  if lb1 > 0:
+    depthG: int = 0
+    rb1: int = -1
+    kg: int = lb1
+    while kg < len(t):
+      chG: str = t[kg]
+      if chG == "[":
+        depthG += 1
+      elif chG == "]":
+        depthG -= 1
+        if depthG == 0:
+          rb1 = kg
+          break
+      kg += 1
+    if rb1 > lb1:
+      base1: str = t[:lb1].strip()
+      idx1: str = t[lb1 + 1 : rb1].strip()
+      restG: str = t[rb1 + 1 :].strip()
+      if _isAttrOrIdent(base1) or _isIdent(base1):
+        baseCpp: str = _rewriteSelf(base1)
+        got: str = ""
+        if ":" in idx1:
+          colonS: int = idx1.find(":")
+          a0: str = idx1[:colonS].strip()
+          b0: str = idx1[colonS + 1 :].strip()
+          aCpp: str = "0"
+          bCpp: str = "-2000000002"
+          if a0 != "":
+            aCpp = _emitSimpleTerm(a0, st)
+          if b0 != "":
+            bCpp = _emitSimpleTerm(b0, st)
+          if aCpp != "" and bCpp != "":
+            got = baseCpp + ".__getitem__(PySlice<PyInt, PyInt>(" + aCpp + ", " + bCpp + ", 1))"
+        else:
+          idxCpp: str = _emitSimpleTerm(idx1, st)
+          if idxCpp == "":
+            idx2: str = idx1.replace(" // ", " / ").replace("//", "/")
+            if "len(" in idx2:
+              idxCpp = _emitLenArithIndex(idx2, st)
+            else:
+              idxCpp = _emitArithExpr(idx2)
+          if idxCpp != "":
+            got = baseCpp + ".__getitem__(" + idxCpp + ")"
+        if got != "":
+          if restG == "":
+            return got
+          chainedG: str = _emitMethodChainOn(got, restG, st)
+          if chainedG != "":
+            return chainedG
+  # ``len(x) - 1`` as whole term
+  if "len(" in t and (" - " in t or " + " in t):
+    la: str = _emitLenArithIndex(t.replace(" // ", " / ").replace("//", "/"), st)
+    if la != "":
+      return la
+  # ``n - 1`` / ``bodyStart - 1`` / ``i + 1`` (no calls/brackets)
+  if "(" not in t and "[" not in t and (" - " in t or " + " in t):
+    opM: str = " - "
+    if " - " not in t:
+      opM = " + "
+    spM: int = t.find(opM)
+    if spM > 0:
+      leftM: str = _emitSimpleTerm(t[:spM].strip(), st)
+      rightM: str = _emitSimpleTerm(t[spM + len(opM) :].strip(), st)
+      if leftM != "" and rightM != "":
+        if opM == " - ":
+          return "(" + leftM + " - " + rightM + ")"
+        return "(" + leftM + " + " + rightM + ")"
+  if _isIntLit(t) or _isIdent(t):
+    return t
+  if _isAttrOrIdent(t):
+    return _rewriteSelf(t)
+  return ""
+
+def _emitPlusExpr(src: str, st: EnumEmitState) -> str:
+  s: str = src.strip()
+  if len(s) >= 2 and s[0] == "(" and s[len(s) - 1] == ")":
+    s = s[1 : len(s) - 1].strip()
+  # Flatten newlines so ``a\n  + b`` still splits as plus-expr.
+  flat: str = ""
+  fi: int = 0
+  while fi < len(s):
+    chF: str = s[fi]
+    if chF == "\n" or chF == "\r" or chF == "\t":
+      flat = flat + " "
+    else:
+      flat = flat + chF
+    fi += 1
+  s = flat.strip()
+  while "  " in s:
+    s = s.replace("  ", " ")
+  if " + " not in s:
+    return ""
+  terms: list[str] = []
+  cur: str = ""
+  depth: int = 0
+  i: int = 0
+  inStr: bool = False
+  qCh: str = ""
+  while i < len(s):
+    ch: str = s[i]
+    if inStr:
+      cur = cur + ch
+      if ch == "\\" and i + 1 < len(s):
+        cur = cur + s[i + 1 : i + 2]
+        i += 2
+        continue
+      if ch == qCh:
+        inStr = False
+      i += 1
+      continue
+    if ch == "\"" or ch == "'":
+      inStr = True
+      qCh = ch
+      cur = cur + ch
+      i += 1
+      continue
+    if ch == "(" or ch == "[":
+      depth += 1
+      cur = cur + ch
+    elif ch == ")" or ch == "]":
+      if depth > 0:
+        depth -= 1
+      cur = cur + ch
+    elif depth == 0 and i + 3 <= len(s) and s[i : i + 3] == " + ":
+      terms.append(cur.strip())
+      cur = ""
+      i += 3
+      continue
+    else:
+      cur = cur + ch
+    i += 1
+  if cur.strip() != "":
+    terms.append(cur.strip())
+  if len(terms) < 2:
+    return ""
+  out: str = _emitSimpleTerm(terms[0], st)
+  if out == "":
+    return ""
+  ti: int = 1
+  while ti < len(terms):
+    piece: str = _emitSimpleTerm(terms[ti], st)
+    if piece == "":
+      return ""
+    out = "(" + out + " + " + piece + ")"
+    ti += 1
+  return out
+
+def _emitNewReturn(ret: str, inner: str, st: EnumEmitState) -> str:
+  parts: list[str] = _splitParams(inner)
+  out: str = "  " + ret + " __o{};\n"
+  i: int = 0
+  while i < len(parts):
+    p: str = parts[i].strip()
+    eq: int = p.find("=")
+    if eq <= 0:
+      i += 1
+      continue
+    name: str = p[:eq].strip()
+    val: str = p[eq + 1 :].strip()
+    if not _isIdent(name):
+      i += 1
+      continue
+    if val == "True":
+      out = out + "  __o." + name + " = true;\n"
+    elif val == "False":
+      out = out + "  __o." + name + " = false;\n"
+    elif val == "new()" or (len(val) >= 4 and val[:4] == "new("):
+      # ``__o`` already default-inits; skip (MSVC rejects ``field = {}``).
+      pass
+    else:
+      enumD: str = _enumMemberCpp(val, st)
+      if enumD != "":
+        out = out + "  __o." + name + " = " + enumD + ";\n"
+      elif len(val) >= 2 and val[0] == '"' and val[len(val) - 1] == '"':
+        out = out + "  __o." + name + " = PyStr(" + val + ");\n"
+      elif _isIdent(val) or _isIntLit(val):
+        out = out + "  __o." + name + " = " + val + ";\n"
+      elif "(" in val and val[len(val) - 1] == ")":
+        # ``makeSpan(...)`` / ``self._span(...)`` via simple-term (rewrites self).
+        termC: str = _emitSimpleTerm(val, st)
+        if termC != "":
+          out = out + "  __o." + name + " = " + termC + ";\n"
+      else:
+        term: str = _emitSimpleTerm(val, st)
+        if term != "":
+          out = out + "  __o." + name + " = " + term + ";\n"
+    i += 1
+  out = out + "  return __o;\n"
+  return out
+
+def _findElseReturn(src: str) -> int:
+  i: int = 0
+  n: int = len(src)
+  while i < n:
+    if src[i] == "\n":
+      j: int = i + 1
+      while j < n and (src[j] == " " or src[j] == "\t"):
+        j += 1
+      if j + 6 <= n and src[j : j + 6] == "return":
+        return j
+    i += 1
+  return -1
+
+def _wrapGetitemAsPyStr(cpp: str) -> str:
+  if ".__getitem__(" in cpp and "PySlice<" not in cpp:
+    if len(cpp) < 6 or cpp[:5] != "PyStr":
+      return "PyStr(" + cpp + ")"
+  return cpp
+
+def _emitInExpr(left: str, right: str, st: EnumEmitState) -> str:
+  lcpp: str = _emitSimpleTerm(left, st)
+  if lcpp == "":
+    return ""
+  r: str = right.strip()
+  if len(r) >= 2 and r[0] == "{" and r[len(r) - 1] == "}":
+    inner: str = r[1 : len(r) - 1].strip()
+    parts: list[str] = _splitParams(inner)
+    if len(parts) == 0:
+      return "false"
+    # Promote getitem→PyStr only for string-set membership (``ch in {"a"}``).
+    p0raw: str = parts[0].strip()
+    if p0raw != "" and _isQuotedStrTerm(p0raw):
+      lcpp = _wrapGetitemAsPyStr(lcpp)
+    p0t: str = _emitSimpleTerm(p0raw, st)
+    if p0t == "":
+      return ""
+    out: str = "(" + lcpp + " == " + p0t + ")"
+    pi: int = 1
+    while pi < len(parts):
+      part: str = parts[pi].strip()
+      if part == "":
+        pi += 1
+        continue
+      pc: str = _emitSimpleTerm(part, st)
+      if pc == "":
+        return ""
+      out = "(" + out + " || (" + lcpp + " == " + pc + "))"
+      pi += 1
+    return out
+  if (len(r) >= 2 and r[0] == '"' and r[len(r) - 1] == '"') or (
+    len(r) >= 2 and r[0] == "'" and r[len(r) - 1] == "'"
+  ):
+    lcpp = _wrapGetitemAsPyStr(lcpp)
+    return _emitStrLitRaw(r) + ".__contains__(" + lcpp + ")"
+  rcpp: str = _emitSimpleTerm(r, st)
+  if rcpp == "":
+    return ""
+  return "(" + rcpp + ").__contains__(" + lcpp + ")"
+
+def _emitCmpAtom(src: str, st: EnumEmitState) -> str:
+  s: str = src.strip()
+  # Strip one layer of grouping parens (``("a" <= ch <= "z")``).
+  if len(s) >= 2 and s[0] == "(" and s[len(s) - 1] == ")":
+    depthP: int = 0
+    balanced: bool = True
+    ip: int = 0
+    while ip < len(s):
+      chP: str = s[ip]
+      if chP == "(":
+        depthP += 1
+      elif chP == ")":
+        depthP -= 1
+        if depthP == 0 and ip != len(s) - 1:
+          balanced = False
+          break
+        if depthP < 0:
+          balanced = False
+          break
+      ip += 1
+    if balanced and depthP == 0:
+      s = s[1 : len(s) - 1].strip()
+  # ``a not in b`` / ``a in b`` (prefer ``not in``; quote-aware).
+  notInPos: int = _findOutsideQuotes(s, " not in ")
+  if notInPos > 0:
+    inE: str = _emitInExpr(s[:notInPos].strip(), s[notInPos + 8 :].strip(), st)
+    if inE == "":
+      return ""
+    return "!(" + inE + ")"
+  inPos: int = _findOutsideQuotes(s, " in ")
+  if inPos > 0:
+    return _emitInExpr(s[:inPos], s[inPos + 4 :], st)
+  # chained ``a <= b <= c``
+  ops: list[str] = ["<=", ">=", "==", "!=", "<", ">"]
+  oi: int = 0
+  while oi < len(ops):
+    op: str = ops[oi]
+    p: int = s.find(op)
+    if p > 0:
+      left: str = s[:p].strip()
+      right: str = s[p + len(op) :].strip()
+      # another op in right?
+      oj: int = 0
+      second: int = -1
+      op2: str = ""
+      while oj < len(ops):
+        p2: int = right.find(ops[oj])
+        if p2 > 0:
+          second = p2
+          op2 = ops[oj]
+          break
+        oj += 1
+      if second > 0:
+        mid: str = right[:second].strip()
+        right2: str = right[second + len(op2) :].strip()
+        a: str = _emitSimpleTerm(left, st)
+        b: str = _emitSimpleTerm(mid, st)
+        c: str = _emitSimpleTerm(right2, st)
+        if a != "" and b != "" and c != "":
+          return "((" + a + " " + op + " " + b + ") && (" + b + " " + op2 + " " + c + "))"
+      else:
+        a2: str = _emitSimpleTerm(left, st)
+        b2: str = _emitSimpleTerm(right, st)
+        if a2 != "" and b2 != "":
+          # ``s[i] == "x"`` / ``"x" == s[i]``: promote PyChar to PyStr.
+          if len(b2) >= 5 and b2[:5] == "PyStr":
+            a2 = _wrapGetitemAsPyStr(a2)
+          if len(a2) >= 5 and a2[:5] == "PyStr":
+            b2 = _wrapGetitemAsPyStr(b2)
+          return "(" + a2 + " " + op + " " + b2 + ")"
+    oi += 1
+  # truthiness: bare attr / call — PyList etc. need explicit PyBool cast
+  t: str = _emitSimpleTerm(s, st)
+  if t != "":
+    if t == "true" or t == "false":
+      return t
+    return "static_cast<PyBool>(" + t + ")"
+  return ""
+
+def _emitBoolCond(src: str, st: EnumEmitState, depth: int = 0) -> str:
+  s: str = src.strip()
+  # Guard: self-host thin-emit of emit_cpp.paw can recurse pathologically.
+  if depth > 64:
+    return ""
+  # ``not in`` is handled in ``_emitCmpAtom`` after ``and``/``or`` split
+  # (so ``a and x not in {…}`` does not swallow the ``and``).
+  if len(s) >= 4 and s[:4] == "not ":
+    innerN: str = _emitBoolCond(s[4:], st, depth + 1)
+    if innerN == "":
+      return ""
+    return "!(" + innerN + ")"
+  if len(s) >= 2 and s[0] == "(" and s[len(s) - 1] == ")":
+    depthU: int = 0
+    okU: bool = True
+    ui: int = 0
+    inStrU: bool = False
+    qU: str = ""
+    while ui < len(s):
+      chU: str = s[ui]
+      if inStrU:
+        if chU == "\\" and ui + 1 < len(s):
+          ui += 2
+          continue
+        if chU == qU:
+          inStrU = False
+        ui += 1
+        continue
+      if chU == "\"" or chU == "'":
+        inStrU = True
+        qU = chU
+        ui += 1
+        continue
+      if chU == "(":
+        depthU += 1
+      elif chU == ")":
+        depthU -= 1
+        if depthU == 0 and ui != len(s) - 1:
+          okU = False
+          break
+      ui += 1
+    if okU and depthU == 0:
+      innerP: str = s[1 : len(s) - 1].strip()
+      if innerP != s:
+        return _emitBoolCond(innerP, st, depth + 1)
+  parts: list[str] = []
+  opsJoin: list[str] = []
+  cur: str = ""
+  depthB: int = 0
+  i: int = 0
+  n: int = len(s)
+  inStr: bool = False
+  qCh: str = ""
+  while i < n:
+    ch: str = s[i]
+    if inStr:
+      cur = cur + ch
+      if ch == "\\" and i + 1 < n:
+        cur = cur + s[i + 1 : i + 2]
+        i += 2
+        continue
+      if ch == qCh:
+        inStr = False
+      i += 1
+      continue
+    if ch == "\"" or ch == "'":
+      inStr = True
+      qCh = ch
+      cur = cur + ch
+      i += 1
+      continue
+    if ch == "(" or ch == "[" or ch == "{":
+      depthB += 1
+      cur = cur + ch
+      i += 1
+      continue
+    if ch == ")" or ch == "]" or ch == "}":
+      if depthB > 0:
+        depthB -= 1
+      cur = cur + ch
+      i += 1
+      continue
+    if depthB == 0 and i + 4 <= n and s[i : i + 4] == " or ":
+      parts.append(cur.strip())
+      opsJoin.append("||")
+      cur = ""
+      i += 4
+      continue
+    if depthB == 0 and i + 5 <= n and s[i : i + 5] == " and ":
+      parts.append(cur.strip())
+      opsJoin.append("&&")
+      cur = ""
+      i += 5
+      continue
+    cur = cur + ch
+    i += 1
+  if cur.strip() != "":
+    parts.append(cur.strip())
+  if len(parts) == 0:
+    return ""
+  # Subexpressions may contain nested and/or inside parens — use boolCond, not cmpAtom only.
+  out: str = _emitCmpAtom(parts[0], st)
+  if out == "":
+    p0: str = parts[0]
+    if len(p0) >= 2 and p0[0] == "(" and p0 != s:
+      out = _emitBoolCond(p0, st, depth + 1)
+    if out == "":
+      return ""
+  ji: int = 0
+  while ji < len(opsJoin):
+    piece: str = _emitCmpAtom(parts[ji + 1], st)
+    if piece == "":
+      piece = _emitBoolCond(parts[ji + 1], st, depth + 1)
+    if piece == "":
+      return ""
+    out = "(" + out + " " + opsJoin[ji] + " " + piece + ")"
+    ji += 1
+  return out
+
+def _rewriteSelf(expr: str) -> str:
+  out: str = ""
+  i: int = 0
+  n: int = len(expr)
+  while i < n:
+    if i + 5 <= n and expr[i : i + 5] == "self.":
+      prevOk: bool = True
+      if i > 0:
+        pch: str = expr[i - 1]
+        if (pch >= "a" and pch <= "z") or (pch >= "A" and pch <= "Z") or (
+          pch >= "0" and pch <= "9"
+        ) or pch == "_":
+          prevOk = False
+      if prevOk:
+        out = out + "this->"
+        i += 5
+        continue
+    ch: str = expr[i]
+    out = out + ch
+    i += 1
+  return out
+
+def _emitRaise(stmt: str, st: EnumEmitState) -> str:
+  s: str = stmt.strip()
+  if len(s) < 6 or s[:5] != "raise":
+    return ""
+  rest: str = s[5:].strip()
+  if "(" not in rest or rest[len(rest) - 1] != ")":
+    return "  throw PyRuntimeError(PyStr(\"raise\"));\n"
+  lp: int = rest.find("(")
+  if lp <= 0:
+    return "  throw PyRuntimeError(PyStr(\"raise\"));\n"
+  name: str = rest[:lp].strip()
+  inner: str = rest[lp + 1 : len(rest) - 1].strip()
+  msg: str = "PyStr(\"\")"
+  if (len(inner) >= 2 and inner[0] == '"' and inner[len(inner) - 1] == '"') or (
+    len(inner) >= 2 and inner[0] == "'" and inner[len(inner) - 1] == "'"
+  ):
+    msg = "PyStr(" + inner + ")"
+  else:
+    termM: str = _emitSimpleTerm(inner, st)
+    if termM != "":
+      msg = termM
+  return "  throw Py" + name + "(" + msg + ");\n"
+
+def _emitLocalNew(name: str, ty: str, inner: str, st: EnumEmitState) -> str:
+  parts: list[str] = _splitParams(inner)
+  if len(parts) == 0:
+    return "  " + ty + " " + name + "{};\n"
+  allKw: bool = True
+  allPos: bool = True
+  pi0: int = 0
+  while pi0 < len(parts):
+    p0: str = parts[pi0].strip()
+    eq0: int = p0.find("=")
+    if eq0 > 0 and _isIdent(p0[:eq0].strip()):
+      allPos = False
+    else:
+      allKw = False
+    pi0 += 1
+  if allPos:
+    a0: str = _emitSimpleTerm(parts[0].strip(), st)
+    if a0 == "":
+      return ""
+    joined: str = a0
+    ai: int = 1
+    while ai < len(parts):
+      ax: str = _emitSimpleTerm(parts[ai].strip(), st)
+      if ax == "":
+        return ""
+      joined = joined + ", " + ax
+      ai += 1
+    return "  " + ty + " " + name + "(" + joined + ");\n"
+  if not allKw:
+    return ""
+  out: str = "  " + ty + " " + name + "{};\n"
+  i: int = 0
+  while i < len(parts):
+    p: str = parts[i].strip()
+    eq: int = p.find("=")
+    if eq > 0:
+      field: str = p[:eq].strip()
+      val: str = p[eq + 1 :].strip()
+      if _isIdent(field):
+        termV: str = _emitSimpleTerm(val, st)
+        if termV != "":
+          out = out + "  " + name + "." + field + " = " + termV + ";\n"
+    i += 1
+  return out
+
+def _softSkipLine(s: str) -> str:
+  head: str = _clipHead(s, 40)
+  head = head.replace("*/", "* /")
+  return "  /* skip: " + head + " */\n"
+
+def _emitAssignLine(line: str, st: EnumEmitState) -> str:
+  s: str = line.strip()
+  # ``i = 0`` (reassign)
+  colon: int = s.find(":")
+  eq: int = s.find("=")
+  augPos: int = _findOutsideQuotes(s, "+=")
+  # Do not exclude ``.append(`` globally — it appears inside string lits on RHS
+  # (``outL = outL + "…append(…"``). Only bare append stmts lack ``=``.
+  if eq > 0 and (colon < 0 or colon > eq) and augPos < 0:
+    nameR: str = s[:eq].strip()
+    rhsR: str = s[eq + 1 :].strip()
+    if _isIdent(nameR):
+      # ``_ = expr`` → discard (C++ ``(void)(expr);``).
+      if nameR == "_":
+        termU: str = _emitSimpleTerm(rhsR, st)
+        if termU != "":
+          return "  (void)(" + termU + ");\n"
+      if rhsR == "True":
+        return "  " + nameR + " = true;\n"
+      if rhsR == "False":
+        return "  " + nameR + " = false;\n"
+      if rhsR == "[]":
+        return "  " + nameR + " = {};\n"
+      if len(rhsR) >= 4 and rhsR[:4] == "new(" and rhsR[len(rhsR) - 1] == ")":
+        # ``adv = new(ok=False, endI=0)`` → field assigns on existing local
+        partsN: list[str] = _splitParams(rhsR[4 : len(rhsR) - 1])
+        outN: str = ""
+        pn: int = 0
+        while pn < len(partsN):
+          pN: str = partsN[pn].strip()
+          eqN: int = pN.find("=")
+          if eqN > 0 and _isIdent(pN[:eqN].strip()):
+            fN: str = pN[:eqN].strip()
+            vN: str = pN[eqN + 1 :].strip()
+            tN: str = _emitSimpleTerm(vN, st)
+            if tN != "":
+              outN = outN + "  " + nameR + "." + fN + " = " + tN + ";\n"
+          pn += 1
+        if outN != "":
+          return outN
+      if "//" in rhsR or ("*" in rhsR and ("+" in rhsR or "-" in rhsR or "/" in rhsR)):
+        rhsA: str = rhsR.replace(" // ", " / ").replace("//", "/")
+        termA: str = _emitArithExpr(rhsA)
+        if termA != "":
+          return "  " + nameR + " = " + termA + ";\n"
+      termR: str = _emitSimpleTerm(rhsR, st)
+      if termR != "":
+        return "  " + nameR + " = " + termR + ";\n"
+      plusR: str = _emitPlusExpr(rhsR, st)
+      if plusR != "":
+        return "  " + nameR + " = " + plusR + ";\n"
+    # ``out.name = tokens[i].text`` / ``bun.members = members``
+    if _isAttrOrIdent(nameR) and "." in nameR:
+      # ``bun.isProtocol = head == "protocol"`` / ``bun.isNative = "native" in prefixes``
+      if _rhsLooksBool(rhsR):
+        beAttr: str = _emitBoolCond(rhsR, st)
+        if beAttr != "":
+          return "  " + _rewriteSelf(nameR) + " = " + beAttr + ";\n"
+      termAttr: str = _emitSimpleTerm(rhsR, st)
+      if termAttr != "":
+        return "  " + _rewriteSelf(nameR) + " = " + termAttr + ";\n"
+      plusAttr: str = _emitPlusExpr(rhsR, st)
+      if plusAttr != "":
+        return "  " + _rewriteSelf(nameR) + " = " + plusAttr + ";\n"
+  # ``fid: FileId = new(value=fileValue)``
+  if colon > 0 and eq > colon:
+    name: str = s[:colon].strip()
+    mid: str = s[colon + 1 : eq].strip()
+    rhs: str = s[eq + 1 :].strip()
+    if not _isIdent(name):
+      return ""
+    ty: str = _cppType(mid) if mid != "" else "PyInt"
+    if rhs == "[]":
+      return "  " + ty + " " + name + "{};\n"
+    if len(rhs) >= 2 and rhs[0] == "[" and rhs[len(rhs) - 1] == "]":
+      elems: list[str] = _splitParams(rhs[1 : len(rhs) - 1])
+      outL: str = "  " + ty + " " + name + "{};\n"
+      ei: int = 0
+      while ei < len(elems):
+        et: str = _emitSimpleTerm(elems[ei].strip(), st)
+        if et == "":
+          return ""
+        outL = outL + "  (void)(" + name + ".append(" + et + "));\n"
+        ei += 1
+      return outL
+    if _isIntLit(rhs) or rhs == "True" or rhs == "False":
+      v: str = rhs
+      if rhs == "True":
+        v = "true"
+      if rhs == "False":
+        v = "false"
+      return "  " + ty + " " + name + " = " + v + ";\n"
+    if len(rhs) >= 4 and rhs[:4] == "new(" and rhs[len(rhs) - 1] == ")":
+      return _emitLocalNew(name, ty, rhs[4 : len(rhs) - 1], st)
+    # ``(col // 8 + 1) * 8``
+    if "//" in rhs:
+      rhs2: str = rhs.replace(" // ", " / ").replace("//", "/")
+      # only allow simple arith after rewrite
+      term2: str = _emitArithExpr(rhs2)
+      if term2 != "":
+        return "  " + ty + " " + name + " = " + term2 + ";\n"
+    # Bool locals via boolCond; non-bool only for pure compare/logic RHS.
+    if ty == "bool":
+      be: str = _emitBoolCond(rhs, st)
+      if be != "":
+        return "  " + ty + " " + name + " = " + be + ";\n"
+    if " + " not in rhs and " if " not in rhs and _rhsLooksBool(rhs):
+      be2: str = _emitBoolCond(rhs, st)
+      if be2 != "":
+        return "  " + ty + " " + name + " = " + be2 + ";\n"
+    term: str = _emitSimpleTerm(rhs, st)
+    if term != "":
+      # ``ch: str = s[i]`` — str index yields PyChar; wrap for PyStr locals.
+      # Inline wrap (no ``term = …`` reassignment) so thin self-host emits cleanly.
+      if ty == "PyStr" and ".__getitem__(" in term and "PySlice<" not in term:
+        if len(term) < 6 or term[:5] != "PyStr":
+          return "  " + ty + " " + name + " = PyStr(" + term + ");\n"
+      return "  " + ty + " " + name + " = " + term + ";\n"
+    plusT: str = _emitPlusExpr(rhs, st)
+    if plusT != "":
+      return "  " + ty + " " + name + " = " + plusT + ";\n"
+  # ``i += 1`` / ``self._i += 1`` (quote-aware; ignore ``+=`` inside string lits)
+  if augPos >= 0:
+    left: str = s[:augPos].strip()
+    right: str = s[augPos + 2 :].strip()
+    rterm: str = _emitSimpleTerm(right, st)
+    if rterm != "" and (_isIdent(left) or _isAttrOrIdent(left)):
+      # PyStr has no ``+=``; ``a = a + b`` works for PyInt/PyStr.
+      leftCpp: str = _rewriteSelf(left)
+      return "  " + leftCpp + " = " + leftCpp + " + " + rterm + ";\n"
+  subPos: int = _findOutsideQuotes(s, "-=")
+  if subPos >= 0:
+    leftB: str = s[:subPos].strip()
+    rightB: str = s[subPos + 2 :].strip()
+    rtermB: str = _emitSimpleTerm(rightB, st)
+    if rtermB != "" and (_isIdent(leftB) or _isAttrOrIdent(leftB)):
+      leftCppB: str = _rewriteSelf(leftB)
+      return "  " + leftCppB + " = " + leftCppB + " - " + rtermB + ";\n"
+  # ``seenFn.append(fn.name)`` / ``out.append("..." + fn.name)``
+  if ".append(" in s and s[len(s) - 1] == ")":
+    dot: int = s.find(".append(")
+    recv: str = s[:dot].strip()
+    inner2: str = s[dot + 8 : len(s) - 1].strip()
+    if _isIdent(recv):
+      plus: str = _emitPlusExpr(inner2, st)
+      if plus == "":
+        plus = _emitSimpleTerm(inner2, st)
+      if plus != "":
+        return "  (void)(" + recv + ".append(" + plus + "));\n"
+  # ``self.x = []`` / ``this`` — MSVC rejects ``field = {}`` for PyList; use decltype.
+  if len(s) >= 5 and s[:5] == "self.":
+    rest: str = s[5:]
+    eq2: int = rest.find("=")
+    if eq2 > 0:
+      field2: str = rest[:eq2].strip()
+      rhs2: str = rest[eq2 + 1 :].strip()
+      if _isIdent(field2) and rhs2 == "[]":
+        return (
+          "  this->"
+          + field2
+          + " = decltype(this->"
+          + field2
+          + "){};\n"
+        )
+      if _isIdent(field2) and len(rhs2) >= 2 and rhs2[0] == "[" and rhs2[len(rhs2) - 1] == "]":
+        elems2: list[str] = _splitParams(rhs2[1 : len(rhs2) - 1])
+        # One-line concat — multi-line ``outS = (`` soft-skips in thin emit.
+        outS: str = "  this->" + field2 + " = decltype(this->" + field2 + "){};\n"
+        ej: int = 0
+        while ej < len(elems2):
+          et2: str = _emitSimpleTerm(elems2[ej].strip(), st)
+          if et2 == "":
+            return ""
+          outS = outS + "  (void)(this->" + field2 + ".append(" + et2 + "));\n"
+          ej += 1
+        return outS
+      termS: str = _emitSimpleTerm(rhs2, st)
+      if _isIdent(field2) and termS != "":
+        return "  this->" + field2 + " = " + termS + ";\n"
+  # ``self._files.append(sf)``
+  if len(s) >= 5 and s[:5] == "self." and ".append(" in s and s[len(s) - 1] == ")":
+    dotA: int = s.find(".append(")
+    recvA: str = s[:dotA].strip()
+    innerA: str = s[dotA + 8 : len(s) - 1].strip()
+    recvCpp: str = _rewriteSelf(recvA)
+    argA: str = _emitSimpleTerm(innerA, st)
+    if recvCpp != "" and argA != "":
+      return "  (void)(" + recvCpp + ".append(" + argA + "));\n"
+  return ""
+
+def _emitReturnExpr(rest: str, ret: str, st: EnumEmitState) -> str:
+  r: str = rest.strip()
+  if r == "":
+    return "  return;\n"
+  if r == "True":
+    return "  return true;\n"
+  if r == "False":
+    return "  return false;\n"
+  if r == "None":
+    if ret == "void":
+      return "  return;\n"
+    return "  return " + ret + "{};\n"
+  if len(r) >= 4 and r[:4] == "new(":
+    if r[len(r) - 1] != ")":
+      return "  return " + ret + "{};\n"
+    return _emitNewReturn(ret, r[4 : len(r) - 1], st)
+  # bool expr before plus: ``or``/``and`` must not go through single-term plus.
+  # Only trust boolCond for bool returns — otherwise bare getitem is treated as truthiness.
+  if ret == "bool":
+    cmpE: str = _emitBoolCond(r, st)
+    if cmpE != "":
+      return "  return " + cmpE + ";\n"
+  plus: str = _emitPlusExpr(r, st)
+  if plus != "":
+    return "  return " + plus + ";\n"
+  if " or " in r or " and " in r or "==" in r or "!=" in r or "<=" in r or ">=" in r or " in " in r:
+    cmpE2: str = _emitBoolCond(r, st)
+    if cmpE2 != "":
+      return "  return " + cmpE2 + ";\n"
+  if len(r) >= 4 and r[:4] == "len(" and r[len(r) - 1] == ")":
+    return "  return (" + r[4 : len(r) - 1] + ").__len__();\n"
+  if _isIdent(r) or _isIntLit(r):
+    return "  return " + r + ";\n"
+  termR: str = _emitSimpleTerm(r, st)
+  if termR != "":
+    if ret == "PyStr":
+      termR = _wrapGetitemAsPyStr(termR)
+    return "  return " + termR + ";\n"
+  return ""
+
+def _lineIndent(line: str) -> int:
+  i: int = 0
+  while i < len(line) and (line[i] == " " or line[i] == "\t"):
+    i += 1
+  return i
+
+def _emitStmtSeq(body: str, ret: str, st: EnumEmitState, depth: int = 0) -> str:
+  if depth > 48:
+    return "  /* emit stmt depth limit */\n"
+  rawLines: list[str] = body.split("\n")
+  # Drop completely empty lines but keep indent info on code lines.
+  lines: list[str] = []
+  li: int = 0
+  while li < len(rawLines):
+    if rawLines[li].strip() != "":
+      lines.append(rawLines[li])
+    li += 1
+  if len(lines) == 0:
+    return ""
+  out: str = ""
+  i: int = 0
+  while i < len(lines):
+    line: str = lines[i]
+    ind: int = _lineIndent(line)
+    s: str = line.strip()
+    if s == "pass":
+      i += 1
+      continue
+    if s == "break":
+      out = out + "  break;\n"
+      i += 1
+      continue
+    if s == "continue":
+      out = out + "  continue;\n"
+      i += 1
+      continue
+    # Skip hash comments so call-join cannot treat them as code.
+    if len(s) > 0 and s[0] == "#":
+      i += 1
+      continue
+    needHdrJoin: bool = False
+    if len(s) >= 6 and s[:6] == "while " and s[len(s) - 1] != ":":
+      needHdrJoin = True
+    if len(s) >= 3 and s[:3] == "if " and s[len(s) - 1] != ":":
+      needHdrJoin = True
+    if len(s) >= 5 and s[:5] == "elif " and s[len(s) - 1] != ":":
+      needHdrJoin = True
+    if needHdrJoin:
+      iSaveH: int = i
+      hdr: str = s
+      while i + 1 < len(lines) and hdr[len(hdr) - 1] != ":":
+        i += 1
+        hdr = hdr + " " + lines[i].strip()
+      if hdr[len(hdr) - 1] == ":":
+        s = hdr
+      else:
+        i = iSaveH
+    if len(s) >= 6 and s[:6] == "return":
+      retJoined: str = s
+      depthR: int = 0
+      rj: int = 0
+      while rj < len(retJoined):
+        chR: str = retJoined[rj]
+        if chR == "(":
+          depthR += 1
+        elif chR == ")":
+          depthR -= 1
+        rj += 1
+      while depthR > 0 and i + 1 < len(lines):
+        i += 1
+        nxt: str = lines[i].strip()
+        retJoined = retJoined + " " + nxt
+        nj: int = 0
+        while nj < len(nxt):
+          chN: str = nxt[nj]
+          if chN == "(":
+            depthR += 1
+          elif chN == ")":
+            depthR -= 1
+          nj += 1
+      em: str = _emitReturnExpr(retJoined[6:], ret, st)
+      if em == "":
+        # Soft-skip: hard abort used to truncate thin-emit of large emitters.
+        out = out + _softSkipLine(s)
+        i += 1
+        continue
+      out = out + em
+      i += 1
+      continue
+    if len(s) >= 5 and s[:5] == "raise":
+      rj0: str = _emitRaise(s, st)
+      if rj0 == "":
+        out = out + _softSkipLine(s)
+        i += 1
+        continue
+      out = out + rj0
+      i += 1
+      continue
+    # ``match ch:`` / case suite -> if/else if
+    if len(s) >= 6 and s[:6] == "match " and s[len(s) - 1] == ":":
+      mSub: str = s[6 : len(s) - 1].strip()
+      mCpp: str = _emitSimpleTerm(mSub, st)
+      if mCpp == "":
+        out = out + _softSkipLine(s)
+        i += 1
+        if i < len(lines):
+          thenIndM: int = _lineIndent(lines[i])
+          if thenIndM > ind:
+            while i < len(lines) and _lineIndent(lines[i]) >= thenIndM:
+              i += 1
+        continue
+      i += 1
+      caseBlocks: list[str] = []
+      casePats: list[str] = []
+      matchOk: bool = True
+      while i < len(lines) and _lineIndent(lines[i]) > ind:
+        cs: str = lines[i].strip()
+        if not (len(cs) >= 5 and cs[:5] == "case " and cs[len(cs) - 1] == ":"):
+          matchOk = False
+          break
+        pat: str = cs[5 : len(cs) - 1].strip()
+        caseInd: int = _lineIndent(lines[i])
+        i += 1
+        cLines: list[str] = []
+        while i < len(lines) and _lineIndent(lines[i]) > caseInd:
+          cLines.append(lines[i])
+          i += 1
+        casePats.append(pat)
+        caseBlocks.append("\n".join(cLines))
+      if (not matchOk) or len(casePats) == 0:
+        out = out + "  /* skip: match */\n"
+        continue
+      ci: int = 0
+      while ci < len(casePats):
+        patI: str = casePats[ci]
+        bodyI: str = _emitStmtSeq(caseBlocks[ci], ret, st, depth + 1)
+        if bodyI == "" and caseBlocks[ci].strip() != "" and caseBlocks[ci].strip() != "pass":
+          bodyI = "  /* case omitted */\n"
+        if caseBlocks[ci].strip() == "pass":
+          bodyI = "  ;\n"
+        condC: str = ""
+        if patI != "_":
+          alts: list[str] = []
+          curA: str = ""
+          ai2: int = 0
+          while ai2 < len(patI):
+            if ai2 + 3 <= len(patI) and patI[ai2 : ai2 + 3] == " | ":
+              alts.append(curA.strip())
+              curA = ""
+              ai2 += 3
+              continue
+            chA: str = patI[ai2]
+            curA = curA + chA
+            ai2 += 1
+          if curA.strip() != "":
+            alts.append(curA.strip())
+          if len(alts) == 0:
+            out = out + "  /* skip: match alts */\n"
+            ci = len(casePats)
+            continue
+          a0t: str = _emitSimpleTerm(alts[0], st)
+          if a0t == "":
+            out = out + "  /* skip: match pat */\n"
+            ci = len(casePats)
+            continue
+          condC = "(" + mCpp + " == " + a0t + ")"
+          aj: int = 1
+          while aj < len(alts):
+            atj: str = _emitSimpleTerm(alts[aj], st)
+            if atj == "":
+              condC = ""
+              break
+            condC = "(" + condC + " || (" + mCpp + " == " + atj + "))"
+            aj += 1
+          if condC == "" and patI != "_":
+            out = out + "  /* skip: match alt */\n"
+            ci = len(casePats)
+            continue
+        if ci == 0:
+          if condC == "":
+            out = out + "  {\n" + bodyI + "  }\n"
+          else:
+            out = out + "  if (" + condC + ") {\n" + bodyI + "  }\n"
+        else:
+          if condC == "":
+            out = out + "  else {\n" + bodyI + "  }\n"
+          else:
+            out = out + "  else if (" + condC + ") {\n" + bodyI + "  }\n"
+        ci += 1
+      continue
+    if len(s) >= 3 and s[:3] == "if " and s[len(s) - 1] == ":":
+      cond: str = s[3 : len(s) - 1].strip()
+      condCpp: str = _emitBoolCond(cond, st)
+      if condCpp == "":
+        out = out + _softSkipLine("if " + cond)
+        i += 1
+        # skip then block by indent
+        if i < len(lines):
+          thenInd0: int = _lineIndent(lines[i])
+          if thenInd0 > ind:
+            while i < len(lines) and _lineIndent(lines[i]) >= thenInd0:
+              i += 1
+        continue
+      i += 1
+      thenLines: list[str] = []
+      if i < len(lines):
+        thenInd: int = _lineIndent(lines[i])
+        if thenInd > ind:
+          while i < len(lines) and _lineIndent(lines[i]) >= thenInd:
+            thenLines.append(lines[i])
+            i += 1
+      # elif / else chain
+      chain: str = ""
+      thenBody: str = "\n".join(thenLines)
+      thenCpp: str = _emitStmtSeq(thenBody, ret, st, depth + 1)
+      if thenBody.strip() == "pass":
+        thenCpp = "  ;\n"
+      elif thenCpp == "" and thenBody.strip() != "":
+        thenCpp = "  /* then omitted */\n"
+      chain = "  if (" + condCpp + ") {\n" + thenCpp + "  }"
+      # Split elif header checks — thin cannot emit complex ``while a and b and c``.
+      while i < len(lines):
+        es: str = lines[i].strip()
+        if len(es) < 5 or es[:5] != "elif ":
+          break
+        # Join multi-line ``elif (`` … ``):`` headers before requiring trailing ``:``.
+        if es[len(es) - 1] != ":":
+          iSaveE: int = i
+          while i + 1 < len(lines) and es[len(es) - 1] != ":":
+            i += 1
+            es = es + " " + lines[i].strip()
+          if es[len(es) - 1] != ":":
+            i = iSaveE
+            break
+        econd: str = es[5 : len(es) - 1].strip()
+        eCpp: str = _emitBoolCond(econd, st)
+        if eCpp == "":
+          out = out + chain + "\n"
+          out = out + _softSkipLine("elif " + econd)
+          i += 1
+          if i < len(lines):
+            eInd0: int = _lineIndent(lines[i])
+            if eInd0 > ind:
+              while i < len(lines) and _lineIndent(lines[i]) >= eInd0:
+                i += 1
+          while i < len(lines):
+            skipEl: str = lines[i].strip()
+            isElif: bool = len(skipEl) >= 5 and skipEl[:5] == "elif " and skipEl[len(skipEl) - 1] == ":"
+            isElse: bool = skipEl == "else:"
+            if (not isElif) and (not isElse):
+              break
+            i += 1
+            if i < len(lines):
+              eIndS: int = _lineIndent(lines[i])
+              if eIndS > ind:
+                while i < len(lines) and _lineIndent(lines[i]) >= eIndS:
+                  i += 1
+            if isElse:
+              break
+          continue
+        i += 1
+        eLines: list[str] = []
+        if i < len(lines):
+          eInd: int = _lineIndent(lines[i])
+          if eInd > ind:
+            while i < len(lines) and _lineIndent(lines[i]) >= eInd:
+              eLines.append(lines[i])
+              i += 1
+        eBody: str = "\n".join(eLines)
+        eSeq: str = _emitStmtSeq(eBody, ret, st, depth + 1)
+        if eBody.strip() == "pass":
+          eSeq = "  ;\n"
+        elif eSeq == "" and eBody.strip() != "":
+          eSeq = "  /* elif omitted */\n"
+        chain = chain + " else if (" + eCpp + ") {\n" + eSeq + "  }"
+      if i < len(lines) and lines[i].strip() == "else:":
+        i += 1
+        elseLines2: list[str] = []
+        if i < len(lines):
+          elseInd2: int = _lineIndent(lines[i])
+          if elseInd2 > ind:
+            while i < len(lines) and _lineIndent(lines[i]) >= elseInd2:
+              elseLines2.append(lines[i])
+              i += 1
+        elseBody2: str = "\n".join(elseLines2)
+        elseCpp2: str = _emitStmtSeq(elseBody2, ret, st, depth + 1)
+        if elseBody2.strip() == "pass":
+          elseCpp2 = "  ;\n"
+        elif elseCpp2 == "" and elseBody2.strip() != "":
+          elseCpp2 = "  /* else omitted */\n"
+        chain = chain + " else {\n" + elseCpp2 + "  }"
+      out = out + chain + "\n"
+      continue
+    # ``for i in range(len(x)):`` / ``for j in range(i, n):`` / ``range(a, len(x))``
+    if len(s) >= 4 and s[:4] == "for " and s[len(s) - 1] == ":" and " in range(" in s:
+      headF: str = s[4 : len(s) - 1].strip()
+      inPos: int = headF.find(" in range(")
+      if inPos > 0 and headF[len(headF) - 1] == ")":
+        varF: str = headF[:inPos].strip()
+        rangeArg: str = headF[inPos + len(" in range(") : len(headF) - 1].strip()
+        startCpp: str = "0"
+        limCpp: str = ""
+        commaR: int = rangeArg.find(",")
+        if commaR > 0:
+          startT: str = _emitSimpleTerm(rangeArg[:commaR].strip(), st)
+          stopRaw: str = rangeArg[commaR + 1 :].strip()
+          stopT: str = ""
+          if len(stopRaw) >= 4 and stopRaw[:4] == "len(" and stopRaw[len(stopRaw) - 1] == ")":
+            limInner2: str = stopRaw[4 : len(stopRaw) - 1].strip()
+            limTerm2: str = _emitSimpleTerm(limInner2, st)
+            if limTerm2 != "":
+              stopT = "(" + limTerm2 + ").__len__()"
+          else:
+            stopT = _emitSimpleTerm(stopRaw, st)
+          if startT != "" and stopT != "":
+            startCpp = startT
+            limCpp = stopT
+        elif len(rangeArg) >= 4 and rangeArg[:4] == "len(" and rangeArg[len(rangeArg) - 1] == ")":
+          limInner: str = rangeArg[4 : len(rangeArg) - 1].strip()
+          limTerm: str = _emitSimpleTerm(limInner, st)
+          if limTerm != "":
+            limCpp = "(" + limTerm + ").__len__()"
+        else:
+          limCpp = _emitSimpleTerm(rangeArg, st)
+        if _isIdent(varF) and limCpp != "":
+          i += 1
+          forLines: list[str] = []
+          if i < len(lines):
+            forInd: int = _lineIndent(lines[i])
+            if forInd > ind:
+              while i < len(lines) and _lineIndent(lines[i]) >= forInd:
+                forLines.append(lines[i])
+                i += 1
+          forCpp: str = _emitStmtSeq("\n".join(forLines), "void", st, depth + 1)
+          if forCpp == "" and len(forLines) > 0:
+            forCpp = "  /* for body omitted */\n"
+          out = out + "  for (PyInt "
+          out = out + varF
+          out = out + " = "
+          out = out + startCpp
+          out = out + "; "
+          out = out + varF
+          out = out + " < "
+          out = out + limCpp
+          out = out + "; "
+          out = out + varF
+          out = out + " += 1) {\n"
+          out = out + forCpp
+          out = out + "  }\n"
+          continue
+    if len(s) >= 6 and s[:6] == "while " and s[len(s) - 1] == ":":
+      wcond: str = s[6 : len(s) - 1].strip()
+      wCpp: str = ""
+      if wcond == "True":
+        wCpp = "true"
+      elif "len(" in wcond:
+        lt: int = wcond.find("<")
+        if lt > 0:
+          leftW: str = wcond[:lt].strip()
+          rightW: str = wcond[lt + 1 :].strip()
+          if len(rightW) >= 4 and rightW[:4] == "len(" and rightW[len(rightW) - 1] == ")":
+            innerL: str = rightW[4 : len(rightW) - 1].strip()
+            limT: str = _emitSimpleTerm(innerL, st)
+            if limT != "" and (_isIdent(leftW) or _isAttrOrIdent(leftW)):
+              wCpp = "(" + _rewriteSelf(leftW) + " < (" + limT + ").__len__())"
+      if wCpp == "":
+        wCpp = _emitBoolCond(wcond, st)
+      i += 1
+      loopLines: list[str] = []
+      if i < len(lines):
+        loopInd: int = _lineIndent(lines[i])
+        if loopInd > ind:
+          while i < len(lines) and _lineIndent(lines[i]) >= loopInd:
+            loopLines.append(lines[i])
+            i += 1
+      if wCpp == "":
+        out = out + "  /* skip: while */\n"
+        continue
+      loopCpp: str = _emitStmtSeq("\n".join(loopLines), "void", st, depth + 1)
+      if loopCpp == "" and len(loopLines) > 0:
+        loopCpp = "  /* while body omitted */\n"
+      out = out + "  while ("
+      out = out + wCpp
+      out = out + ") {\n"
+      out = out + loopCpp
+      out = out + "  }\n"
+      continue
+    # typed local / augassign / append
+    # ``fn: FunctionBundle = mod.functions[i]`` (bare index only; ``tokens[i].text`` via assign).
+    if "[" in s and "]" in s and ":" in s and "=" in s:
+      colon2: int = s.find(":")
+      eq2: int = s.find("=")
+      if colon2 > 0 and eq2 > colon2:
+        nm: str = s[:colon2].strip()
+        tyS: str = s[colon2 + 1 : eq2].strip()
+        rhsS: str = s[eq2 + 1 :].strip()
+        lb: int = rhsS.find("[")
+        rb: int = rhsS.rfind("]")
+        if (
+          _isIdent(nm)
+          and lb > 0
+          and rb > lb
+          and rb == len(rhsS) - 1
+        ):
+          base: str = rhsS[:lb].strip()
+          idx: str = rhsS[lb + 1 : rb].strip()
+          if ":" not in idx and ("." in base or _isIdent(base)):
+            idxCpp: str = _emitSimpleTerm(idx, st)
+            if idxCpp != "":
+              tyI: str = _cppType(tyS)
+              gotI: str = _rewriteSelf(base) + ".__getitem__(" + idxCpp + ")"
+              if tyI == "PyStr":
+                gotI = _wrapGetitemAsPyStr(gotI)
+              out = out + "  " + tyI + " " + nm + " = " + gotI + ";\n"
+              i += 1
+              continue
+    # Coalesce multi-line list/bracket assigns: ``ops: list[str] = [\n  ...\n]``
+    # Quote-aware (ops lit ``\"?[\"`` must not shift bracket depth).
+    eqB0: int = s.find("=")
+    if eqB0 > 0 and "[" in s[eqB0 :]:
+      iSaveB: int = i
+      brJoined: str = s
+      depthB: int = _bracketDepthDelta(brJoined, eqB0)
+      if depthB > 0:
+        while depthB > 0 and i + 1 < len(lines):
+          i += 1
+          nxtB: str = lines[i].strip()
+          brJoined = brJoined + " " + nxtB
+          depthB = depthB + _bracketDepthDelta(nxtB, 0)
+        if depthB == 0:
+          alB: str = _emitAssignLine(brJoined, st)
+          if alB != "":
+            out = out + alB
+            i += 1
+            continue
+        # Failed: restore so soft-skip / other handlers see original lines.
+        i = iSaveB
+    # Coalesce multi-line ``x: T = new(\n  ...\n)`` / ``x = new(...)``.
+    eqP0: int = s.find("=")
+    if eqP0 > 0 and "new(" in s[eqP0 :]:
+      iSaveP: int = i
+      pJoined: str = s
+      depthP: int = _parenDepthDelta(pJoined, eqP0)
+      if depthP > 0:
+        while depthP > 0 and i + 1 < len(lines):
+          i += 1
+          nxtP: str = lines[i].strip()
+          pJoined = pJoined + " " + nxtP
+          depthP = depthP + _parenDepthDelta(nxtP, 0)
+        if depthP == 0:
+          alP: str = _emitAssignLine(pJoined, st)
+          if alP != "":
+            out = out + alP
+            i += 1
+            continue
+        i = iSaveP
+    al: str = _emitAssignLine(s, st)
+    if al != "":
+      out = out + al
+      i += 1
+      continue
+    # bare method / call — coalesce multi-line ``self.f(\n  a,\n  b\n)``
+    if "(" in s:
+      callJoined: str = s
+      depthC: int = _parenDepthDelta(callJoined, 0)
+      iSaveCall: int = i
+      while depthC > 0 and i + 1 < len(lines):
+        i += 1
+        nxtC: str = lines[i].strip()
+        callJoined = callJoined + " " + nxtC
+        depthC = depthC + _parenDepthDelta(nxtC, 0)
+      if depthC == 0 and callJoined[len(callJoined) - 1] == ")":
+        callS: str = _emitSimpleTerm(callJoined, st)
+        if callS != "":
+          out = out + "  (void)(" + callS + ");\n"
+          i += 1
+          continue
+      i = iSaveCall
+    # Soft-skip unknown stmt so later lines still emit (thin vertical).
+    out = out + _softSkipLine(s)
+    i += 1
+    continue
+  return out
+
+def _emitBody(bodySource: str, ret: str, st: EnumEmitState) -> str:
+  b: str = bodySource.strip()
+  if b == "" or b == "pass" or b == "...":
+    if ret == "void":
+      return ""
+    if ret == "bool":
+      return "  return false;\n"
+    return "  return " + ret + "{};\n"
+  if len(b) >= 6 and b[:6] == "return":
+    emitted: str = _emitReturnExpr(b[6:], ret, st)
+    if emitted != "":
+      return emitted
+  # Prefer indent-aware multi-stmt (makeSpan / check / formatDiagnostic).
+  seq: str = _emitStmtSeq(b, ret, st)
+  if seq != "":
+    return seq
+  # Legacy: ``if <attr>: return … / return …`` without relying on indent.
+  if len(b) >= 3 and b[:3] == "if ":
+    colon: int = b.find(":")
+    if colon > 3:
+      cond: str = b[3:colon].strip()
+      restBody: str = b[colon + 1 :].strip()
+      condCpp: str = _emitSimpleTerm(cond, st)
+      firstRet: int = restBody.find("return")
+      if condCpp != "" and firstRet >= 0:
+        afterFirst: str = restBody[firstRet + 6 :]
+        second: int = _findElseReturn(afterFirst)
+        if second >= 0:
+          thenExpr2: str = afterFirst[:second].strip()
+          elseExpr: str = afterFirst[second + 6 :].strip()
+          thenCpp2: str = _emitReturnExpr(thenExpr2, ret, st)
+          elseCpp: str = _emitReturnExpr(elseExpr, ret, st)
+          if thenCpp2 != "" and elseCpp != "":
+            # Split brace/newline lits — thin plus-expr once mishandled ``") {\n"``.
+            return (
+              "  if ("
+              + condCpp
+              + ") "
+              + "{"
+              + "\n  "
+              + thenCpp2
+              + "  }\n  "
+              + elseCpp
+            )
+        else:
+          thenCpp: str = _emitReturnExpr(afterFirst.strip(), ret, st)
+          if thenCpp != "":
+            headIf: str = "  if (" + condCpp + ") " + "{" + "\n  " + thenCpp + "  }\n"
+            if ret == "void":
+              return headIf
+            if ret == "bool":
+              return headIf + "  return false;\n"
+            return headIf + "  return " + ret + "{};\n"
+  if ret == "void":
+    return "  // body omitted\n"
+  if ret == "bool":
+    return "  // body omitted\n  return false;\n"
+  return "  // body omitted\n  return " + ret + "{};\n"
+
+def _emitRelativeIncludes(mod: SyntaxModule, modulePath: str) -> str:
+  out: str = ""
+  seen: list[str] = []
+  _ = modulePath
+  i: int = 0
+  while i < len(mod.imports):
+    rel: str = _importRelPath(mod.imports[i])
+    if rel != "" and rel not in seen:
+      seen.append(rel)
+      out = out + "#include \"" + rel + ".h\"\n"
+    i += 1
+  return out
+
+def emitFunctionDecl(fn: FunctionBundle) -> str:
+  ret: str = _cppType(fn.returnSource)
+  params: str = _cppParams(fn.paramsSource, True)
+  return ret + " " + fn.name + "(" + params + ");\n"
+
+def emitFunctionDef(fn: FunctionBundle, st: EnumEmitState) -> str:
+  ret: str = _cppType(fn.returnSource)
+  params: str = _cppParams(fn.paramsSource, False)
+  # Avoid single lit ``") {\n"`` (thin plus-expr historically soft-skipped it).
+  out: str = ret + " " + fn.name + "(" + params + ") "
+  out = out + "{"
+  out = out + "\n"
+  out = out + _emitBody(fn.bodySource, ret, st)
+  out = out + "}"
+  out = out + "\n"
+  return out
+
+
+def emitClass(cls: ClassBundle, st: EnumEmitState) -> str:
+  out: str = "class Py" + cls.name + " {\npublic:\n"
+  out = out + "  // bases omitted\n"
+  fi: int = 0
+  while fi < len(cls.constFields):
+    cf: ConstField = cls.constFields[fi]
+    ty: str = _cppType(cf.typeName) if cf.typeName != "" else "PyInt"
+    defa: str = _fieldDefault(ty, cf.valueSource, st)
+    if defa != "":
+      out = out + "  " + ty + " " + cf.name + defa + ";\n"
+    else:
+      out = out + "  " + ty + " " + cf.name + "{};\n"
+    fi += 1
+  mi: int = 0
+  hasInit: bool = False
+  while mi < len(cls.methods):
+    fn: FunctionBundle = cls.methods[mi]
+    if fn.name == "__init__":
+      hasInit = True
+      paramsI: str = _cppParams(fn.paramsSource, True)
+      out = out + "  explicit Py" + cls.name + "(" + paramsI + ");\n"
+    else:
+      ret: str = _cppType(fn.returnSource)
+      params: str = _cppParams(fn.paramsSource, True)
+      out = out + "  " + ret + " " + fn.name + "(" + params + ");\n"
+    mi += 1
+  if not hasInit:
+    out = out + "  explicit Py" + cls.name + "() = default;\n"
+  out = out + "};\n"
+  return out
+
+def emitModuleHeader(mod: SyntaxModule, modulePath: str, st: EnumEmitState) -> str:
+  guard: str = _guardName(modulePath)
+  stem: str = modulePath
+  slash: int = modulePath.rfind("/")
+  if slash >= 0:
+    stem = modulePath[slash + 1 :]
+  out: str = "// seed mid_emit - " + modulePath + "\n"
+  out = out + "#ifndef " + guard + "\n#define " + guard + "\n\n"
+  out = out + "#include \"py2cpp/minimal.h\"\n"
+  out = out + _emitRelativeIncludes(mod, modulePath) + "\n"
+  i: int = 0
+  while i < len(mod.enums):
+    out = out + emitEnum(mod.enums[i]) + "\n"
+    i += 1
+  i = 0
+  while i < len(mod.classes):
+    out = out + emitClass(mod.classes[i], st) + "\n"
+    i += 1
+  i = 0
+  while i < len(mod.functions):
+    out = out + emitFunctionDecl(mod.functions[i])
+    i += 1
+  i = 0
+  while i < len(mod.items):
+    it: ModuleItem = mod.items[i]
+    if it.kind == ItemKindEnum.Opaque:
+      out = out + "// opaque omitted\n"
+    elif it.kind == ItemKindEnum.Import:
+      out = out + "// import: relative include above\n"
+    i += 1
+  out = out + "\n#endif // " + guard + "\n"
+  return out
+
+def emitModuleCpp(mod: SyntaxModule, modulePath: str, st: EnumEmitState) -> str:
+  stem: str = modulePath
+  slash: int = modulePath.rfind("/")
+  if slash >= 0:
+    stem = modulePath[slash + 1 :]
+  out: str = "// seed mid_emit - " + modulePath + "\n"
+  out = out + "#include \"" + stem + ".h\"\n\n"
+  i: int = 0
+  while i < len(mod.functions):
+    out = out + emitFunctionDef(mod.functions[i], st) + "\n"
+    i += 1
+  i = 0
+  while i < len(mod.classes):
+    cls: ClassBundle = mod.classes[i]
+    mi: int = 0
+    while mi < len(cls.methods):
+      fn: FunctionBundle = cls.methods[mi]
+      params: str = _cppParams(fn.paramsSource, False)
+      if fn.name == "__init__":
+        out = out + "Py" + cls.name + "::Py" + cls.name + "(" + params + ") {\n"
+        out = out + _emitBody(fn.bodySource, "void", st)
+        out = out + "}\n\n"
+      else:
+        ret: str = _cppType(fn.returnSource)
+        out = out + ret + " Py" + cls.name + "::" + fn.name + "(" + params + ") {\n"
+        out = out + _emitBody(fn.bodySource, ret, st)
+        out = out + "}\n\n"
+      mi += 1
+    i += 1
+  out = out + "// stem=" + stem + "\n"
+  return out
+
+def emitReport(mod: SyntaxModule) -> str:
+  return (
+    "fn="
+    + str(len(mod.functions))
+    + " en="
+    + str(len(mod.enums))
+    + " class="
+    + str(len(mod.classes))
+    + " items="
+    + str(len(mod.items))
+  )

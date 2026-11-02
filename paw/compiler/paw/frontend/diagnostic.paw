@@ -1,0 +1,21 @@
+"""Bootstrap 种子：前端诊断（对应 ``compiler/py/frontend/diagnostic.py``）。"""
+from py2cpp import *
+from .source import SourceSpan
+
+@copyable
+class Diagnostic:
+  code: str = ""
+  message: str = ""
+  span: SourceSpan = new()
+  hasSpan: bool = False
+
+def makeDiagnostic(code: str, message: str, span: SourceSpan) -> Diagnostic:
+  return new(code=code, message=message, span=span, hasSpan=True)
+
+def makeDiagnosticNoSpan(code: str, message: str) -> Diagnostic:
+  return new(code=code, message=message, span=new(), hasSpan=False)
+
+def formatDiagnostic(d: Diagnostic) -> str:
+  if d.hasSpan:
+    return d.code + ": " + d.message + " @" + str(d.span.start) + ":" + str(d.span.end)
+  return d.code + ": " + d.message

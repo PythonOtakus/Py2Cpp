@@ -31,7 +31,7 @@ zeus/
 
 | 依赖 | 获取 |
 |------|------|
-| Py2Cpp | monorepo `py2cpp/`（`Transform3D` / `Color`） |
+| Py2Cpp | monorepo `paw/py2cpp/`（`Transform3D` / `Color`） |
 | MSVC | `opengl32.lib` |
 | GLFW 3.4 WIN64 | `zeus\setup_deps.bat` → `zeus/third_party/glfw/` |
 

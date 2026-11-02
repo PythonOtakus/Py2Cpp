@@ -1,0 +1,109 @@
+"""MidIR 节点 — 与 ``compiler/py/mid/nodes.py`` 字段对齐（enum 竖切已接线；其余供扩展）。
+
+nested c1_emit 落 ``c1_emit/mid/nodes.h``。
+"""
+from py2cpp import *
+from ..frontend.source import SourceSpan
+from ..hir.nodes import ObjectModel
+
+class MidEnumMember:
+  name: str = ""
+  valueSource: str = ""
+
+class MidEnum:
+  declId: int = 0
+  name: str = ""
+  isTypeEnum: bool = False
+  flag: bool = False
+  members: list[MidEnumMember]
+  baseSource: str = ""
+  span: SourceSpan = new()
+
+  def __init__(self):
+    self.members = []
+
+class MidField:
+  name: str = ""
+  typeName: str = ""
+  valueSource: str = ""
+
+class MidFunction:
+  declId: int = 0
+  name: str = ""
+  decoratorsSource: str = ""
+  paramsSource: str = ""
+  returnSource: str = ""
+  bodySource: str = ""
+  isAsync: bool = False
+  span: SourceSpan = new()
+  isStatic: bool = False
+  isNative: bool = False
+  isOverride: bool = False
+  isFinal: bool = False
+  isAbstract: bool = False
+  isVirtual: bool = False
+  isDelegate: bool = False
+  isProperty: bool = False
+  typeParamsSource: str = ""
+
+class MidClass:
+  declId: int = 0
+  name: str = ""
+  objectModel: ObjectModel = ObjectModel.Value
+  isFinal: bool = False
+  isRecord: bool = False
+  isFrozen: bool = False
+  isOrdered: bool = False
+  isLazy: bool = False
+  isProtocol: bool = False
+  isMixin: bool = False
+  isUnion: bool = False
+  isVariant: bool = False
+  basesSource: str = ""
+  constFields: list[MidField]
+  fields: list[MidField]
+  opaqueMembers: list[str]
+  span: SourceSpan = new()
+  decoratorsSource: str = ""
+  isNative: bool = False
+  methods: list[MidFunction]
+  typeParamsSource: str = ""
+
+  def __init__(self):
+    self.constFields = []
+    self.fields = []
+    self.opaqueMembers = []
+    self.methods = []
+
+class MidImport:
+  source: str = ""
+  span: SourceSpan = new()
+
+class MidModuleConst:
+  name: str = ""
+  typeName: str = ""
+  valueSource: str = ""
+  span: SourceSpan = new()
+
+class MidOpaque:
+  source: str = ""
+  span: SourceSpan = new()
+
+class MidModule:
+  path: str = ""
+  enums: list[MidEnum]
+  classes: list[MidClass]
+  functions: list[MidFunction]
+  imports: list[MidImport]
+  consts: list[MidModuleConst]
+  opaques: list[MidOpaque]
+  diagnostics: list[str]
+
+  def __init__(self):
+    self.enums = []
+    self.classes = []
+    self.functions = []
+    self.imports = []
+    self.consts = []
+    self.opaques = []
+    self.diagnostics = []

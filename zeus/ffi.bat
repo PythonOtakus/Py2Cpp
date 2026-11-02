@@ -1,10 +1,12 @@
 @echo off
 setlocal EnableExtensions
-cd /d "%~dp0.."
-set "REPO=%CD%"
-set "ZEUS_FFI=%REPO%\zeus\ffi"
-set "GLFW_H=%REPO%\zeus\third_party\glfw\include\GLFW\glfw3.h"
-set "GLFW_INC=%REPO%\zeus\third_party\glfw\include"
+set "ZEUS_ROOT=%~dp0"
+set "MONOREPO_ROOT=%ZEUS_ROOT%.."
+set "PAW_ROOT=%MONOREPO_ROOT%\paw"
+cd /d "%PAW_ROOT%"
+set "ZEUS_FFI=%ZEUS_ROOT%ffi"
+set "GLFW_H=%ZEUS_ROOT%third_party\glfw\include\GLFW\glfw3.h"
+set "GLFW_INC=%ZEUS_ROOT%third_party\glfw\include"
 
 set "CHECK="
 set "TARGET=all"

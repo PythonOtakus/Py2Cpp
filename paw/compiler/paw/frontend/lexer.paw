@@ -1,0 +1,313 @@
+"""Bootstrap 种子：Lexer 竖切（NAME/NUMBER/INDENT、常用单双字符算子）。
+
+完整宿主实现仍在 ``compiler/py/frontend/lexer.py``；本文件须可被 C0 翻译。
+"""
+from py2cpp import *
+from .source import FileId, SourceSpan
+from .tokens import Token, TokenKindEnum
+from .diagnostic import Diagnostic, makeDiagnostic, formatDiagnostic
+
+def _isDigit(ch: str) -> bool:
+  return len(ch) == 1 and "0" <= ch <= "9"
+
+def _isAlpha(ch: str) -> bool:
+  if len(ch) != 1:
+    return False
+  return ("a" <= ch <= "z") or ("A" <= ch <= "Z")
+
+def _isAlnum(ch: str) -> bool:
+  return _isAlpha(ch) or _isDigit(ch)
+
+class Lexer:
+  _text: str = ""
+  _fileId: FileId = new()
+  _i: int = 0
+  _lineStart: bool = True
+  _indentStack: list[int] = []
+  _parenDepth: int = 0
+  _pending: list[Token] = []
+  _hasIndentTok: bool = False
+  _indentTok: Token = new()
+
+  def __init__(self, text: str, fileId: FileId):
+    t: str = text.replace("\r\n", "\n").replace("\r", "\n")
+    if t and t[0] == "\ufeff":
+      t = t[1:]
+    self._text = t
+    self._fileId = fileId
+    self._indentStack = [0]
+    self._pending = []
+
+  def tokenize(self) -> list[Token]:
+    out: list[Token] = []
+    while True:
+      tok: Token = self._next()
+      out.append(tok)
+      if tok.kind == TokenKindEnum.End:
+        break
+    return out
+
+  def _span(self, start: int, end: int) -> SourceSpan:
+    return new(fileId=self._fileId, start=start, end=end)
+
+  def _makeTok(self, kind: TokenKindEnum, start: int, end: int, text: str) -> Token:
+    return new(kind=kind, span=self._span(start, end), text=text)
+
+  def _pushPending(self, tok: Token) -> None:
+    self._pending.append(tok)
+
+  def _peek(self, n: int = 0) -> str:
+    j: int = self._i + n
+    if j >= len(self._text):
+      return ""
+    return self._text[j]
+
+  def _error(self, msg: str, start: int) -> None:
+    end: int = self._i
+    if end <= start:
+      end = start + 1
+    d: Diagnostic = makeDiagnostic("P0001", msg, self._span(start, end))
+    raise ValueError(formatDiagnostic(d))
+
+  def _next(self) -> Token:
+    if self._pending:
+      return self._pending.pop(0)
+    if self._lineStart and self._parenDepth == 0:
+      self._measureIndent()
+      if self._hasIndentTok:
+        self._hasIndentTok = False
+        return self._indentTok
+    else:
+      self._skipSpacesAndCommentsInline()
+
+    if self._i >= len(self._text):
+      while len(self._indentStack) > 1:
+        self._indentStack.pop()
+        self._pushPending(
+          self._makeTok(TokenKindEnum.Dedent, self._i, self._i, "")
+        )
+      if self._pending:
+        return self._pending.pop(0)
+      return self._makeTok(TokenKindEnum.End, self._i, self._i, "")
+
+    ch: str = self._peek()
+    if ch == "\n":
+      start: int = self._i
+      self._i += 1
+      self._lineStart = True
+      if self._parenDepth > 0:
+        return self._next()
+      return self._makeTok(TokenKindEnum.Newline, start, self._i, "\n")
+
+    if self._lineStart:
+      self._skipSpacesAndCommentsInline()
+      ch = self._peek()
+      match ch:
+        case "" | "\n":
+          return self._next()
+        case "#":
+          self._skipSpacesAndCommentsInline()
+          return self._next()
+        case _:
+          pass
+
+    self._lineStart = False
+    if ch in {"\"", "'"}:
+      return self._string()
+    if _isDigit(ch) or (ch == "." and _isDigit(self._peek(1))):
+      return self._number()
+    if ch == "." and self._peek(1) == "." and self._peek(2) == ".":
+      start2: int = self._i
+      self._i += 3
+      return self._makeTok(TokenKindEnum.Ellipsis, start2, self._i, "...")
+    if _isAlpha(ch) or ch == "_":
+      return self._name()
+    if self._emitMultiOp():
+      return self._pending.pop(0)
+    if ch == "=":
+      start3: int = self._i
+      self._i += 1
+      return self._makeTok(TokenKindEnum.Eq, start3, self._i, "=")
+    if ch == ".":
+      start4: int = self._i
+      self._i += 1
+      return self._makeTok(TokenKindEnum.Dot, start4, self._i, ".")
+    if ch == "(":
+      return self._singleOp(TokenKindEnum.Lpar, 1)
+    if ch == ")":
+      return self._singleOp(TokenKindEnum.Rpar, -1)
+    if ch == "[":
+      return self._singleOp(TokenKindEnum.Lsqb, 1)
+    if ch == "]":
+      return self._singleOp(TokenKindEnum.Rsqb, -1)
+    if ch == "{":
+      return self._singleOp(TokenKindEnum.Lbrace, 1)
+    if ch == "}":
+      return self._singleOp(TokenKindEnum.Rbrace, -1)
+    if ch == ",":
+      return self._singleOp(TokenKindEnum.Comma, 0)
+    if ch == ":":
+      return self._singleOp(TokenKindEnum.Colon, 0)
+    if ch == "@":
+      return self._singleOp(TokenKindEnum.At, 0)
+    if ch == "?":
+      return self._singleOp(TokenKindEnum.Question, 0)
+    if ch == "!":
+      return self._singleOp(TokenKindEnum.Bang, 0)
+    start5: int = self._i
+    self._i += 1
+    return self._makeTok(TokenKindEnum.Op, start5, self._i, ch)
+
+  def _singleOp(self, kind: TokenKindEnum, parenDelta: int) -> Token:
+    start: int = self._i
+    ch: str = self._peek()
+    self._i += 1
+    if parenDelta > 0:
+      self._parenDepth += 1
+    elif parenDelta < 0:
+      if self._parenDepth > 0:
+        self._parenDepth -= 1
+    return self._makeTok(kind, start, self._i, ch)
+
+  def _emitMultiOp(self) -> bool:
+    ops: list[str] = [
+      "=>", "->", "...", "==", "!=", "<=", ">=", "<<", ">>", "**", "//",
+      "+=", "-=", "*=", "/=", ":=", "??", "?.", "?[",
+    ]
+    kinds: list[TokenKindEnum] = [
+      TokenKindEnum.Arrow, TokenKindEnum.Rarrow, TokenKindEnum.Ellipsis,
+      TokenKindEnum.Op, TokenKindEnum.Op, TokenKindEnum.Op, TokenKindEnum.Op,
+      TokenKindEnum.Op, TokenKindEnum.Op, TokenKindEnum.Op, TokenKindEnum.Op,
+      TokenKindEnum.Op, TokenKindEnum.Op, TokenKindEnum.Op, TokenKindEnum.Op,
+      TokenKindEnum.Op, TokenKindEnum.Op, TokenKindEnum.Op, TokenKindEnum.Op,
+    ]
+    for i in range(len(ops)):
+      op: str = ops[i]
+      n: int = len(op)
+      if self._text[self._i : self._i + n] == op:
+        start: int = self._i
+        self._i += n
+        self._pushPending(self._makeTok(kinds[i], start, self._i, op))
+        return True
+    return False
+
+  def _skipSpacesAndCommentsInline(self) -> None:
+    while self._i < len(self._text):
+      ch: str = self._peek()
+      match ch:
+        case " " | "\t":
+          self._i += 1
+          continue
+        case "#":
+          while self._i < len(self._text) and self._peek() != "\n":
+            self._i += 1
+          continue
+        case "\\":
+          if self._peek(1) == "\n":
+            self._i += 2
+            continue
+          break
+        case _:
+          break
+
+  def _measureIndent(self) -> None:
+    self._hasIndentTok = False
+    start: int = self._i
+    col: int = 0
+    while True:
+      ch: str = self._peek()
+      if ch == " ":
+        col += 1
+        self._i += 1
+      elif ch == "\t":
+        col = (col // 8 + 1) * 8
+        self._i += 1
+      else:
+        break
+    if self._peek() in {"", "\n", "#"}:
+      return
+    self._lineStart = False
+    cur: int = self._indentStack[len(self._indentStack) - 1]
+    if col == cur:
+      return
+    if col > cur:
+      self._indentStack.append(col)
+      self._indentTok = self._makeTok(TokenKindEnum.Indent, start, self._i, "")
+      self._hasIndentTok = True
+      return
+    while self._indentStack[len(self._indentStack) - 1] > col:
+      self._indentStack.pop()
+      self._pushPending(self._makeTok(TokenKindEnum.Dedent, start, self._i, ""))
+    if self._indentStack[len(self._indentStack) - 1] != col:
+      self._error("inconsistent dedent", start)
+    if self._pending:
+      self._indentTok = self._pending.pop(0)
+      self._hasIndentTok = True
+
+  def _name(self) -> Token:
+    start: int = self._i
+    self._i += 1
+    while True:
+      ch: str = self._peek()
+      if _isAlnum(ch) or ch == "_":
+        self._i += 1
+      else:
+        break
+    text: str = self._text[start : self._i]
+    if text == "enum":
+      return self._makeTok(TokenKindEnum.KwEnum, start, self._i, text)
+    if text == "union":
+      return self._makeTok(TokenKindEnum.KwUnion, start, self._i, text)
+    return self._makeTok(TokenKindEnum.Name, start, self._i, text)
+
+  def _number(self) -> Token:
+    start: int = self._i
+    while _isAlnum(self._peek()) or self._peek() in "._":
+      self._i += 1
+    return self._makeTok(
+      TokenKindEnum.Number, start, self._i, self._text[start : self._i]
+    )
+
+  def _string(self) -> Token:
+    start: int = self._i
+    while _isAlpha(self._peek()):
+      self._i += 1
+    quote: str = self._peek()
+    if quote not in {"\"", "'"}:
+      self._error("expected string quote", start)
+    self._i += 1
+    triple: bool = self._peek() == quote and self._peek(1) == quote
+    if triple:
+      self._i += 2
+      endPat: str = quote + quote + quote
+      done: bool = False
+      while self._i < len(self._text):
+        if self._text[self._i : self._i + 3] == endPat:
+          self._i += 3
+          done = True
+          break
+        if self._peek() == "\\":
+          self._i += 2
+          continue
+        self._i += 1
+      if not done:
+        self._error("unterminated triple string", start)
+    else:
+      done2: bool = False
+      while self._i < len(self._text):
+        ch: str = self._peek()
+        if ch == "\\":
+          self._i += 2
+          continue
+        if ch == quote:
+          self._i += 1
+          done2 = True
+          break
+        if ch == "\n":
+          self._error("unterminated string", start)
+        self._i += 1
+      if not done2:
+        self._error("unterminated string", start)
+    return self._makeTok(
+      TokenKindEnum.String, start, self._i, self._text[start : self._i]
+    )

@@ -1,0 +1,4 @@
+enum class PyColor : int {
+  Red = 1,
+  Blue = 2
+};

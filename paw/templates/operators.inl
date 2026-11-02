@@ -1,0 +1,911 @@
+
+#include "ffi/crt/stdio.h"
+#include "ffi/crt/math.h"
+#include "ffi/crt/string.h"
+#include <cstdint>
+#ifdef _WIN32
+typedef void* PY2CPP_WIN_HANDLE;
+typedef unsigned long PY2CPP_WIN_DWORD;
+typedef int PY2CPP_WIN_BOOL;
+#define PY2CPP_WIN_STDIN ((PY2CPP_WIN_DWORD)-10)
+#define PY2CPP_WIN_INVALID_HANDLE ((PY2CPP_WIN_HANDLE)(intptr_t)-1)
+extern "C" __declspec(dllimport) PY2CPP_WIN_HANDLE __stdcall GetStdHandle(PY2CPP_WIN_DWORD nStdHandle);
+extern "C" __declspec(dllimport) PY2CPP_WIN_BOOL __stdcall GetConsoleMode(PY2CPP_WIN_HANDLE hConsoleHandle, PY2CPP_WIN_DWORD* lpMode);
+struct _CONSOLE_READCONSOLE_CONTROL;
+extern "C" __declspec(dllimport) PY2CPP_WIN_BOOL __stdcall ReadConsoleW(PY2CPP_WIN_HANDLE hConsoleInput, void* lpBuffer, PY2CPP_WIN_DWORD nNumberOfCharsToRead, PY2CPP_WIN_DWORD* lpNumberOfCharsRead, _CONSOLE_READCONSOLE_CONTROL* pInputControl);
+#endif
+
+PY2CPP_IGNORE
+#include "py2cpp/operators.h"
+#include "py2cpp/text/str.h"
+#include "py2cpp/util/tuple.h"
+PY2CPP_END
+
+inline PyInt hash(PY2CPP_TYPE(PyStr)& obj)
+{
+  return obj.__hash__();
+}
+
+inline PyInt hash(const PY2CPP_TYPE(PyStr)& obj)
+{
+  return const_cast<PY2CPP_TYPE(PyStr)&>(obj).__hash__();
+}
+
+inline PyInt _py_int_mod(PyInt a, PyInt b)
+{
+  PyInt r = a % b;
+  if (r != 0 && ((r < 0) != (b < 0)))
+  {
+    r += b;
+  }
+  return r;
+}
+
+inline PyInt _py_int_mod_mul(PyInt a, PyInt b, PyInt mod)
+{
+  PyInt64 p = (PyInt64)a * (PyInt64)b;
+  PyInt64 m = (PyInt64)mod;
+  PyInt64 r = p % m;
+  if (r != 0 && ((r < 0) != (m < 0)))
+  {
+    r += m;
+  }
+  return (PyInt)r;
+}
+
+inline PyInt _py_int_floordiv(PyInt a, PyInt b)
+{
+  PyInt q = a / b;
+  PyInt r = a % b;
+  if (r != 0 && ((r < 0) != (b < 0)))
+  {
+    q -= 1;
+  }
+  return q;
+}
+
+inline PyInt __mod__(PyInt a, PyInt b)
+{
+  return _py_int_mod(a, b);
+}
+
+inline PyFloat __mod__(PyFloat a, PyFloat b)
+{
+  double q = ::ffi::crt::math::pyiFloor((double)a / (double)b);
+  return (PyFloat)((double)a - q * (double)b);
+}
+
+inline PyFloat __mod__(PyInt a, PyFloat b)
+{
+  return __mod__((PyFloat)a, b);
+}
+
+inline PyFloat __mod__(PyFloat a, PyInt b)
+{
+  return __mod__(a, (PyFloat)b);
+}
+
+inline PyFloat __truediv__(PyInt a, PyInt b)
+{
+  return (PyFloat)a / (PyFloat)b;
+}
+
+inline PyFloat __truediv__(PyFloat a, PyFloat b)
+{
+  return a / b;
+}
+
+inline PyFloat __truediv__(PyInt a, PyFloat b)
+{
+  return (PyFloat)a / b;
+}
+
+inline PyFloat __truediv__(PyFloat a, PyInt b)
+{
+  return a / b;
+}
+
+inline PyInt __floordiv__(PyInt a, PyInt b)
+{
+  return _py_int_floordiv(a, b);
+}
+
+inline PyFloat __floordiv__(PyFloat a, PyFloat b)
+{
+  return (PyFloat)::ffi::crt::math::pyiFloor((double)a / (double)b);
+}
+
+inline PyFloat __floordiv__(PyInt a, PyFloat b)
+{
+  return __floordiv__((PyFloat)a, b);
+}
+
+inline PyFloat __floordiv__(PyFloat a, PyInt b)
+{
+  return __floordiv__(a, (PyFloat)b);
+}
+
+inline PyTuple<PyInt, PyInt> divmod(PyInt a, PyInt b)
+{
+  return PyTuple<PyInt, PyInt>(::__floordiv__(a, b), ::__mod__(a, b));
+}
+
+inline PyTuple<PyFloat, PyFloat> divmod(PyFloat a, PyFloat b)
+{
+  return PyTuple<PyFloat, PyFloat>(::__floordiv__(a, b), ::__mod__(a, b));
+}
+
+inline PyTuple<PyFloat, PyFloat> divmod(PyInt a, PyFloat b)
+{
+  return PyTuple<PyFloat, PyFloat>(::__floordiv__(a, b), ::__mod__(a, b));
+}
+
+inline PyTuple<PyFloat, PyFloat> divmod(PyFloat a, PyInt b)
+{
+  return PyTuple<PyFloat, PyFloat>(::__floordiv__(a, b), ::__mod__(a, b));
+}
+
+template<typename... Args>
+inline PY2CPP_TYPE(PyStr) __mod__(const PY2CPP_TYPE(PyStr)& fmt, const PyTuple<Args...>& rhs)
+{
+  return fmt.__mod__(rhs);
+}
+
+inline PyInt __modmul__(PyInt a, PyInt b, PyInt mod)
+{
+  return _py_int_mod_mul(a, b, mod);
+}
+
+inline PyInt modmul(PyInt a, PyInt b, PyInt mod)
+{
+  return __modmul__(a, b, mod);
+}
+
+inline PyInt _py_int_mod_inverse(PyInt a, PyInt mod)
+{
+  a = __mod__(a, mod);
+  if (mod < 0)
+  {
+    mod = -mod;
+  }
+  PyInt64 t = 0;
+  PyInt64 newt = 1;
+  PyInt64 r = mod;
+  PyInt64 newr = a;
+  while (newr != 0)
+  {
+    PyInt64 q = r / newr;
+    PyInt64 tr = newt;
+    newt = t - q * newt;
+    t = tr;
+    PyInt64 rr = newr;
+    newr = r - q * newr;
+    r = rr;
+  }
+  if (r != 1)
+  {
+    throw PY2CPP_TYPE(PyValueError)();
+  }
+  PyInt64 out = t % mod;
+  if (out < 0)
+  {
+    out += mod;
+  }
+  return (PyInt)out;
+}
+
+inline PyInt _py_int_pow_mod(PyInt base, PyInt exp, PyInt mod)
+{
+  if (mod == 0)
+  {
+    throw PY2CPP_TYPE(PyValueError)();
+  }
+  if (mod == 1)
+  {
+    return 0;
+  }
+  if (exp == 0 && base == 0)
+  {
+    throw PY2CPP_TYPE(PyValueError)();
+  }
+  base = __mod__(base, mod);
+  if (exp < 0)
+  {
+    base = _py_int_mod_inverse(base, mod);
+    exp = -exp;
+  }
+  PyInt result = 1;
+  PyInt b = base;
+  PyInt e = exp;
+  while (e > 0)
+  {
+    if (e & 1)
+    {
+      result = _py_int_mod_mul(result, b, mod);
+    }
+    b = _py_int_mod_mul(b, b, mod);
+    e >>= 1;
+  }
+  return result;
+}
+
+inline PyInt _py_pow_int(PyInt base, PyInt exp)
+{
+  if (exp < 0)
+  {
+    return 0;
+  }
+  PyInt out = 1;
+  for (PyInt i = 0; i < exp; ++i)
+  {
+    out *= base;
+  }
+  return out;
+}
+
+inline PyFloat _py_pow_float(PyFloat base, PyFloat exp)
+{
+  return (PyFloat)::ffi::crt::math::pyiPow((double)base, (double)exp);
+}
+
+namespace py2cpp {
+
+namespace detail {
+
+template<typename T, typename U>
+auto py_cmp_dispatch(T const& a, U const& b, int)
+  -> decltype(a.__cmp__(b), PyInt())
+{
+  return a.__cmp__(b);
+}
+
+template<typename T, typename U>
+PyInt py_cmp_dispatch(T const& a, U const& b, long)
+{
+  if (a < b)
+  {
+    return -1;
+  }
+  if (a > b)
+  {
+    return 1;
+  }
+  return 0;
+}
+
+} // namespace detail
+
+inline PyInt py_cmp(PyInt a, PyInt b)
+{
+  if (a < b)
+  {
+    return -1;
+  }
+  if (a > b)
+  {
+    return 1;
+  }
+  return 0;
+}
+
+inline PyInt py_cmp(PyFloat a, PyFloat b)
+{
+  if (a < b)
+  {
+    return -1;
+  }
+  if (a > b)
+  {
+    return 1;
+  }
+  return 0;
+}
+
+inline PyInt py_cmp(const PY2CPP_TYPE(PyStr)& a, const PY2CPP_TYPE(PyStr)& b)
+{
+  if (a < b)
+  {
+    return -1;
+  }
+  if (a > b)
+  {
+    return 1;
+  }
+  return 0;
+}
+
+template<typename T0, typename T1>
+PyInt py_cmp(T0 a, T1 b)
+{
+  return detail::py_cmp_dispatch(a, b, 0);
+}
+
+} // namespace py2cpp
+
+inline PyInt pow(PyInt base, PyInt exp)
+{
+  return _py_pow_int(base, exp);
+}
+
+inline PyInt pow(PyInt base, PyInt exp, PyInt mod)
+{
+  return _py_int_pow_mod(base, exp, mod);
+}
+
+inline PY2CPP_TYPE(PyStr) repr(PyInt v)
+{
+  return PY2CPP_TYPE(PyStr)(v);
+}
+
+inline PY2CPP_TYPE(PyStr) repr(PyFloat v)
+{
+  return PY2CPP_TYPE(PyStr)(v);
+}
+
+inline PY2CPP_TYPE(PyStr) repr(PyBool v)
+{
+  return PY2CPP_TYPE(PyStr)(v ? "True" : "False");
+}
+
+inline PY2CPP_TYPE(PyStr) repr(PyChar v)
+{
+  return (PY2CPP_TYPE(PyStr)("'")).__add__(PY2CPP_TYPE(PyStr)::reprChar(v)).__add__(PY2CPP_TYPE(PyStr)("'"));
+}
+
+static bool str_format_spec_empty(PyUtf8Ptr spec)
+{
+  return (!spec || !spec[0]);
+}
+
+static void str_format_printf_spec(PyUtf8Ptr spec, char* buf, size_t cap)
+{
+  if (!buf || cap == 0)
+  {
+    return;
+  }
+  buf[0] = '\0';
+  if (str_format_spec_empty(spec))
+  {
+    return;
+  }
+  PyInt at = 0;
+  if (spec[0] != '%')
+  {
+    buf[at] = '%';
+    at += 1;
+  }
+  for (PyInt i = 0; at + 1 < (PyInt)cap && spec[i]; i += 1)
+  {
+    buf[at] = spec[i];
+    at += 1;
+  }
+  buf[at] = '\0';
+}
+
+inline PY2CPP_TYPE(PyStr) format(PyInt v, PyUtf8Ptr format_spec)
+{
+  if (str_format_spec_empty(format_spec))
+  {
+    return PY2CPP_TYPE(PyStr)(v);
+  }
+  char fmt[64];
+  str_format_printf_spec(format_spec, fmt, sizeof(fmt));
+  return PY2CPP_TYPE(PyStr)::percent_format(fmt, v);
+}
+
+inline PY2CPP_TYPE(PyStr) format(PyFloat v, PyUtf8Ptr format_spec)
+{
+  if (str_format_spec_empty(format_spec))
+  {
+    return PY2CPP_TYPE(PyStr)(v);
+  }
+  char fmt[64];
+  str_format_printf_spec(format_spec, fmt, sizeof(fmt));
+  return PY2CPP_TYPE(PyStr)::percent_format(fmt, v);
+}
+
+inline PY2CPP_TYPE(PyStr) format(PyBool v, PyUtf8Ptr format_spec)
+{
+  if (str_format_spec_empty(format_spec))
+  {
+    return PY2CPP_TYPE(PyStr)(v ? "True" : "False");
+  }
+  char fmt[64];
+  str_format_printf_spec(format_spec, fmt, sizeof(fmt));
+  return PY2CPP_TYPE(PyStr)::percent_format(fmt, v ? "True" : "False");
+}
+
+inline PY2CPP_TYPE(PyStr) format(PyChar v, PyUtf8Ptr format_spec)
+{
+  if (str_format_spec_empty(format_spec))
+  {
+    return PY2CPP_TYPE(PyStr)(v);
+  }
+  char fmt[64];
+  str_format_printf_spec(format_spec, fmt, sizeof(fmt));
+  return PY2CPP_TYPE(PyStr)::percent_format(fmt, (int)(int32_t)v);
+}
+
+inline PY2CPP_TYPE(PyStr) format(const PY2CPP_TYPE(PyStr)& v, PyUtf8Ptr format_spec)
+{
+  (void)format_spec;
+  return v;
+}
+
+template<int I, int N, typename... Args>
+struct _PyTupleFormatAt
+{
+  static void append(PY2CPP_TYPE(PyStr)& out, const PyTuple<Args...>& v)
+  {
+    if (I > 0)
+    {
+      out = out + PY2CPP_TYPE(PyStr)(", ");
+    }
+    out = out + format(v.template get<I>(), "");
+    _PyTupleFormatAt<I + 1, N, Args...>::append(out, v);
+  }
+};
+
+template<int N, typename... Args>
+struct _PyTupleFormatAt<N, N, Args...>
+{
+  static void append(PY2CPP_TYPE(PyStr)&, const PyTuple<Args...>&)
+  {
+  }
+};
+
+template<typename... Args>
+PY2CPP_TYPE(PyStr) format(const PyTuple<Args...>& v, PyUtf8Ptr format_spec)
+{
+  (void)format_spec;
+  PY2CPP_TYPE(PyStr) out("(");
+  _PyTupleFormatAt<0, (int)sizeof...(Args), Args...>::append(out, v);
+  if (sizeof...(Args) == 1)
+  {
+    out = out + PY2CPP_TYPE(PyStr)(",");
+  }
+  return out + PY2CPP_TYPE(PyStr)(")");
+}
+
+template<>
+inline PY2CPP_TYPE(PyStr) format(const PyTuple<>& v, PyUtf8Ptr format_spec)
+{
+  (void)v;
+  (void)format_spec;
+  return PY2CPP_TYPE(PyStr)("()");
+}
+
+static PyBool _py_input_write_prompt(const PY2CPP_TYPE(PyStr)& prompt)
+{
+  PyInt n = prompt.__len__();
+  if (n <= 0)
+  {
+    return true;
+  }
+  char stack[4096];
+  int at = 0;
+  for (PyInt i = 0; i < n; i += 1)
+  {
+    if (at >= (int)sizeof(stack))
+    {
+      if (::ffi::crt::stdio::pyiFwrite((PyUIntPtr)(uintptr_t)stack, 1, (PyUInt64)at, stdout) != (size_t)at)
+      {
+        return false;
+      }
+      at = 0;
+    }
+    stack[at] = (char)prompt.__getitem__(i);
+    at += 1;
+  }
+  if (at > 0 && ::ffi::crt::stdio::pyiFwrite((PyUIntPtr)(uintptr_t)stack, 1, (PyUInt64)at, stdout) != (size_t)at)
+  {
+    return false;
+  }
+  return true;
+}
+
+#ifdef _WIN32
+static void _py_input_append_codepoint(PY2CPP_TYPE(PyArray)<PyChar>& codes, PyInt& total, int32_t cp)
+{
+  PyInt old = codes.__len__();
+  codes.reshape(old + 1, old);
+  codes.__setitem__(old, PyChar(cp));
+  total += 1;
+}
+
+static PyBool _py_input_try_console(PY2CPP_TYPE(PyStr)& out)
+{
+  PY2CPP_WIN_HANDLE h = GetStdHandle(PY2CPP_WIN_STDIN);
+  if (h == PY2CPP_WIN_INVALID_HANDLE || h == NULL)
+  {
+    return false;
+  }
+  PY2CPP_WIN_DWORD mode = 0;
+  if (!GetConsoleMode(h, &mode))
+  {
+    return false;
+  }
+
+  wchar_t stack[4096];
+  PY2CPP_TYPE(PyArray)<PyChar> codes;
+  PyInt total = 0;
+  while (true)
+  {
+    PY2CPP_WIN_DWORD got = 0;
+    if (!ReadConsoleW(h, stack, (PY2CPP_WIN_DWORD)(sizeof(stack) / sizeof(stack[0])), &got, NULL))
+    {
+      return false;
+    }
+    if (got == 0)
+    {
+      if (total <= 0)
+      {
+        throw PY2CPP_TYPE(PyEOFError)();
+      }
+      break;
+    }
+    PyBool done = false;
+    for (PY2CPP_WIN_DWORD i = 0; i < got; i += 1)
+    {
+      wchar_t wc = stack[i];
+      if (wc == L'\n')
+      {
+        done = true;
+        break;
+      }
+      if (wc == L'\r')
+      {
+        continue;
+      }
+      if (wc >= 0xD800 && wc <= 0xDBFF && i + 1 < got)
+      {
+        wchar_t lo = stack[i + 1];
+        if (lo >= 0xDC00 && lo <= 0xDFFF)
+        {
+          int32_t cp = 0x10000 + (((int32_t)wc - 0xD800) << 10) + ((int32_t)lo - 0xDC00);
+          _py_input_append_codepoint(codes, total, cp);
+          i += 1;
+          continue;
+        }
+      }
+      _py_input_append_codepoint(codes, total, (int32_t)wc);
+    }
+    if (done)
+    {
+      break;
+    }
+  }
+  out = PY2CPP_TYPE(PyStr)(codes);
+  return true;
+}
+#endif
+
+inline PY2CPP_TYPE(PyStr) py_input(const PY2CPP_TYPE(PyStr)& prompt)
+{
+  (void)_py_input_write_prompt(prompt);
+  ::ffi::crt::stdio::pyiFflush(stdout);
+
+#ifdef _WIN32
+  PY2CPP_TYPE(PyStr) console_out;
+  if (_py_input_try_console(console_out))
+  {
+    return console_out;
+  }
+#endif
+
+  char stack[4096];
+  PY2CPP_TYPE(PyArray)<PyChar> codes;
+  PyInt total = 0;
+  while (true)
+  {
+    if (::ffi::crt::stdio::pyiFgets(stack, (PyInt)sizeof(stack), stdin) == nullptr)
+    {
+      if (total <= 0)
+      {
+        throw PY2CPP_TYPE(PyEOFError)();
+      }
+      break;
+    }
+    int n = (int)::ffi::crt::string::pyiStrlen(stack);
+    PyBool done = false;
+    if (n > 0 && stack[n - 1] == '\n')
+    {
+      done = true;
+      n -= 1;
+      if (n > 0 && stack[n - 1] == '\r')
+      {
+        n -= 1;
+      }
+    }
+    if (n > 0)
+    {
+      PyInt old = codes.__len__();
+      codes.reshape(old + n, old);
+      for (int i = 0; i < n; i += 1)
+      {
+        codes.__setitem__(old + i, (PyChar)(unsigned char)stack[i]);
+      }
+      total += n;
+    }
+    if (done)
+    {
+      break;
+    }
+  }
+  return PY2CPP_TYPE(PyStr)(codes);
+}
+
+inline PY2CPP_TYPE(PyStr) py_input()
+{
+  return py_input(PY2CPP_TYPE(PyStr)(""));
+}
+
+template<typename T>
+inline T _py_input_scan_value()
+{
+  T out = T();
+  static_assert(sizeof(T) == 0, "py_input_typed<T>: unsupported input type");
+  return out;
+}
+
+template<>
+inline PY2CPP_TYPE(PyStr) _py_input_scan_value<PY2CPP_TYPE(PyStr)>()
+{
+  return py_input();
+}
+
+template<>
+inline PyInt _py_input_scan_value<PyInt>()
+{
+  PyInt out = 0;
+  if (scanf("%d", &out) != 1)
+  {
+    if (feof(stdin))
+    {
+      throw PY2CPP_TYPE(PyEOFError)();
+    }
+    throw PY2CPP_TYPE(PyValueError)();
+  }
+  return out;
+}
+
+template<>
+inline PyInt64 _py_input_scan_value<PyInt64>()
+{
+  PyInt64 out = 0;
+  if (scanf("%lld", &out) != 1)
+  {
+    if (feof(stdin))
+    {
+      throw PY2CPP_TYPE(PyEOFError)();
+    }
+    throw PY2CPP_TYPE(PyValueError)();
+  }
+  return out;
+}
+
+template<>
+inline PyFloat _py_input_scan_value<PyFloat>()
+{
+  PyFloat out = 0;
+  if (scanf("%f", &out) != 1)
+  {
+    if (feof(stdin))
+    {
+      throw PY2CPP_TYPE(PyEOFError)();
+    }
+    throw PY2CPP_TYPE(PyValueError)();
+  }
+  return out;
+}
+
+template<>
+inline PyFloat64 _py_input_scan_value<PyFloat64>()
+{
+  PyFloat64 out = 0;
+  if (scanf("%lf", &out) != 1)
+  {
+    if (feof(stdin))
+    {
+      throw PY2CPP_TYPE(PyEOFError)();
+    }
+    throw PY2CPP_TYPE(PyValueError)();
+  }
+  return out;
+}
+
+template<typename T>
+inline T py_input_typed()
+{
+  return _py_input_scan_value<T>();
+}
+
+template<typename T>
+inline T py_input_typed(const PY2CPP_TYPE(PyStr)& prompt)
+{
+  (void)_py_input_write_prompt(prompt);
+  ::ffi::crt::stdio::pyiFflush(stdout);
+  return _py_input_scan_value<T>();
+}
+
+template<>
+inline PY2CPP_TYPE(PyStr) py_input_typed<PY2CPP_TYPE(PyStr)>()
+{
+  return py_input();
+}
+
+template<>
+inline PY2CPP_TYPE(PyStr) py_input_typed<PY2CPP_TYPE(PyStr)>(const PY2CPP_TYPE(PyStr)& prompt)
+{
+  return py_input(prompt);
+}
+
+inline PyInt64 _py_i64_mod(PyInt64 a, PyInt64 b) {
+  PyInt64 r = a % b;
+  if (r != 0 && ((r < 0) != (b < 0))) {
+    r += b;
+  }
+  return r;
+}
+
+inline PyInt64 _py_i64_floordiv(PyInt64 a, PyInt64 b) {
+  PyInt64 q = a / b;
+  PyInt64 r = a % b;
+  if (r != 0 && ((r < 0) != (b < 0))) {
+    q -= 1;
+  }
+  return q;
+}
+
+inline PyInt64 __modmul__(PyInt64 a, PyInt64 b, PyInt64 mod) {
+  a = _py_i64_mod(a, mod);
+  b = _py_i64_mod(b, mod);
+  if (mod > 0 && mod <= (PyInt64)0xFFFFFFFFLL) {
+    return _py_i64_mod(a * b, mod);
+  }
+  PyInt64 res = 0;
+  while (b > 0) {
+    if (b & 1) {
+      res = _py_i64_mod(res + a, mod);
+    }
+    a = _py_i64_mod(a + a, mod);
+    b >>= 1;
+  }
+  return res;
+}
+
+inline PyInt64 modmul(PyInt64 a, PyInt64 b, PyInt64 mod) {
+  return __modmul__(a, b, mod);
+}
+
+inline PyInt64 __mod__(PyInt64 a, PyInt64 b) {
+  return _py_i64_mod(a, b);
+}
+
+inline PyInt64 __mod__(PyInt a, PyInt64 b) {
+  return _py_i64_mod((PyInt64)a, b);
+}
+
+inline PyInt64 __mod__(PyInt64 a, PyInt b) {
+  return _py_i64_mod(a, (PyInt64)b);
+}
+
+inline PyFloat64 __mod__(PyFloat64 a, PyFloat64 b) {
+  double q = ::ffi::crt::math::pyiFloor(a / b);
+  return (PyFloat64)(a - q * b);
+}
+
+inline PyFloat64 __truediv__(PyInt64 a, PyInt64 b) {
+  return (PyFloat64)a / (PyFloat64)b;
+}
+
+inline PyFloat64 __truediv__(PyFloat64 a, PyFloat64 b) {
+  return a / b;
+}
+
+inline PyFloat64 __truediv__(PyInt64 a, PyFloat64 b) {
+  return (PyFloat64)a / b;
+}
+
+inline PyFloat64 __truediv__(PyFloat64 a, PyInt64 b) {
+  return a / (PyFloat64)b;
+}
+
+inline PyFloat64 __truediv__(PyInt a, PyInt64 b) {
+  return (PyFloat64)a / (PyFloat64)b;
+}
+
+inline PyFloat64 __truediv__(PyInt64 a, PyInt b) {
+  return (PyFloat64)a / (PyFloat64)b;
+}
+
+inline PyFloat64 __truediv__(PyFloat a, PyFloat64 b) {
+  return (PyFloat64)a / b;
+}
+
+inline PyFloat64 __truediv__(PyFloat64 a, PyFloat b) {
+  return a / (PyFloat64)b;
+}
+
+inline PyInt64 __floordiv__(PyInt64 a, PyInt64 b) {
+  return _py_i64_floordiv(a, b);
+}
+
+inline PyInt64 __floordiv__(PyInt a, PyInt64 b) {
+  return _py_i64_floordiv((PyInt64)a, b);
+}
+
+inline PyInt64 __floordiv__(PyInt64 a, PyInt b) {
+  return _py_i64_floordiv(a, (PyInt64)b);
+}
+
+inline PyFloat64 __floordiv__(PyFloat64 a, PyFloat64 b) {
+  return (PyFloat64)::ffi::crt::math::pyiFloor(a / b);
+}
+
+inline PyFloat64 __floordiv__(PyFloat a, PyFloat64 b) {
+  return (PyFloat64)::ffi::crt::math::pyiFloor((PyFloat64)a / b);
+}
+
+inline PyFloat64 __floordiv__(PyFloat64 a, PyFloat b) {
+  return (PyFloat64)::ffi::crt::math::pyiFloor(a / (PyFloat64)b);
+}
+
+inline PyInt64 __pow__(PyInt64 base, PyInt64 exp) {
+  if (exp < 0) {
+    return 0;
+  }
+  PyInt64 out = 1;
+  for (PyInt64 i = 0; i < exp; ++i) {
+    out *= base;
+  }
+  return out;
+}
+
+inline PyFloat64 __pow__(PyFloat64 base, PyFloat64 exp) {
+  return (PyFloat64)::ffi::crt::math::pyiPow(base, exp);
+}
+
+inline PyFloat64 __pow__(PyInt64 base, PyFloat64 exp) {
+  return (PyFloat64)::ffi::crt::math::pyiPow((double)base, exp);
+}
+
+inline PyFloat64 __pow__(PyFloat64 base, PyInt64 exp) {
+  return (PyFloat64)::ffi::crt::math::pyiPow(base, (double)exp);
+}
+
+inline PyInt64 hash(PyInt64 v) {
+  return v;
+}
+
+inline PY2CPP_TYPE(PyStr) repr(PyInt64 v)
+{
+  return PY2CPP_TYPE(PyStr)(v);
+}
+
+inline PY2CPP_TYPE(PyStr) repr(PyFloat64 v)
+{
+  return PY2CPP_TYPE(PyStr)(v);
+}
+
+inline PY2CPP_TYPE(PyStr) format(PyInt64 v, PyUtf8Ptr format_spec) {
+  if (str_format_spec_empty(format_spec)) {
+    return repr(v);
+  }
+  char fmt[64];
+  str_format_printf_spec(format_spec, fmt, sizeof(fmt));
+  return PY2CPP_TYPE(PyStr)::percent_format(fmt, (long long)v);
+}
+
+inline PY2CPP_TYPE(PyStr) format(PyFloat64 v, PyUtf8Ptr format_spec) {
+  if (str_format_spec_empty(format_spec)) {
+    return repr(v);
+  }
+  char fmt[64];
+  str_format_printf_spec(format_spec, fmt, sizeof(fmt));
+  return PY2CPP_TYPE(PyStr)::percent_format(fmt, v);
+}
+
+inline PY2CPP_TYPE(PyStr) chr(PyInt i) {
+  return PY2CPP_TYPE(PyStr)((PyChar)i);
+}

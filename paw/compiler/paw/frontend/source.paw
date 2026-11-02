@@ -1,0 +1,60 @@
+"""Source / span / SourceManager — parity with ``compiler/py/frontend/source.py``.
+
+``SourceSpan``（非 ``Span``）避免与 ``py2cpp.util.span`` 的 C++ ``PySpan`` 冲突。
+"""
+from py2cpp import *
+
+@copyable
+class FileId:
+  value: int = 0
+
+@copyable
+class SourceSpan:
+  fileId: FileId = new()
+  start: int = 0
+  end: int = 0
+
+def makeSpan(fileValue: int, start: int, end: int) -> SourceSpan:
+  if start < 0 or end < start:
+    raise ValueError("invalid span")
+  fid: FileId = new(value=fileValue)
+  return new(fileId=fid, start=start, end=end)
+
+@copyable
+class SourceFile:
+  fileId: FileId = new()
+  path: str = ""
+  text: str = ""
+  digest: str = ""
+
+class SourceManager:
+  _files: list[SourceFile]
+  _paths: list[str]
+
+  def __init__(self):
+    self._files = []
+    self._paths = []
+
+  def add(self, path: str, text: str, digest: str) -> SourceFile:
+    for i in range(len(self._paths)):
+      if self._paths[i] == path:
+        return self._files[i]
+    fid: FileId = new(value=len(self._files))
+    sf: SourceFile = new(fileId=fid, path=path, text=text, digest=digest)
+    self._files.append(sf)
+    self._paths.append(path)
+    return sf
+
+  def get(self, fileId: FileId) -> SourceFile:
+    return self._files[fileId.value]
+
+  def getByPath(self, path: str) -> SourceFile:
+    for i in range(len(self._paths)):
+      if self._paths[i] == path:
+        return self._files[i]
+    raise KeyError(path)
+
+  def spanOf(self, fileId: FileId, start: int, end: int) -> SourceSpan:
+    if start < 0 or end < start:
+      raise ValueError("invalid span")
+    return new(fileId=fileId, start=start, end=end)

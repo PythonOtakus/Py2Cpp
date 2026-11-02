@@ -1,0 +1,106 @@
+"""SyntaxModule → HirModule → MidModule（enum Color 竖切；完整 HIR/Mid 节点仍在 py）。
+
+节点类型在 ``hir/nodes`` / ``mid/nodes``（nested c1_emit 已解 ``nodes.h`` 撞名）。
+"""
+from py2cpp import *
+from ..frontend.syntax_nodes import EnumBundle, EnumMember, SyntaxModule
+from ..hir.nodes import HirEnum, HirEnumMember, HirModule
+from ..mid.nodes import MidEnum, MidEnumMember, MidModule
+
+def bindModule(syntax: SyntaxModule, path: str) -> HirModule:
+  hir: HirModule = new()
+  hir.path = path
+  nextId: int = 1
+  di: int = 0
+  while di < len(syntax.unsupported):
+    hir.diagnostics.append(syntax.unsupported[di])
+    di += 1
+  ei: int = 0
+  while ei < len(syntax.enums):
+    en: EnumBundle = syntax.enums[ei]
+    he: HirEnum = new()
+    he.declId = nextId
+    he.name = en.name
+    he.isTypeEnum = en.isTypeEnum
+    he.flag = en.flag
+    he.span = en.span
+    he.baseSource = ""
+    mi: int = 0
+    while mi < len(en.members):
+      sm: EnumMember = en.members[mi]
+      hm: HirEnumMember = new()
+      hm.name = sm.name
+      hm.valueSource = sm.valueSource
+      hm.span = sm.span
+      he.members.append(hm)
+      mi += 1
+    hir.enums.append(he)
+    nextId = nextId + 1
+    ei += 1
+  return hir
+
+def lowerToMid(hir: HirModule) -> MidModule:
+  mid: MidModule = new()
+  mid.path = hir.path
+  di: int = 0
+  while di < len(hir.diagnostics):
+    mid.diagnostics.append(hir.diagnostics[di])
+    di += 1
+  ei: int = 0
+  while ei < len(hir.enums):
+    he: HirEnum = hir.enums[ei]
+    me: MidEnum = new()
+    me.declId = he.declId
+    me.name = he.name
+    me.isTypeEnum = he.isTypeEnum
+    me.flag = he.flag
+    me.baseSource = he.baseSource
+    me.span = he.span
+    mi: int = 0
+    while mi < len(he.members):
+      hm: HirEnumMember = he.members[mi]
+      mm: MidEnumMember = new()
+      mm.name = hm.name
+      mm.valueSource = hm.valueSource
+      me.members.append(mm)
+      mi += 1
+    mid.enums.append(me)
+    ei += 1
+  return mid
+
+def dumpMidModule(mid: MidModule) -> str:
+  # Align compiler/dual/dump_fmt.dump_mid_module (enum only; thin-emit friendly).
+  out: str = ""
+  ei: int = 0
+  while ei < len(mid.enums):
+    e: MidEnum = mid.enums[ei]
+    it: str = "0"
+    if e.isTypeEnum:
+      it = "1"
+    fl: str = "0"
+    if e.flag:
+      fl = "1"
+    out = out + "mid_enum name="
+    out = out + e.name
+    out = out + " is_type="
+    out = out + it
+    out = out + " flag="
+    out = out + fl
+    out = out + " base="
+    out = out + e.baseSource
+    out = out + "\n"
+    mi: int = 0
+    while mi < len(e.members):
+      m: MidEnumMember = e.members[mi]
+      # Thin emit drops whitespace-only / leading-space string lits — build indent from " ".
+      sp: str = " "
+      out = out + sp
+      out = out + sp
+      out = out + "member name="
+      out = out + m.name
+      out = out + " value="
+      out = out + m.valueSource
+      out = out + "\n"
+      mi += 1
+    ei += 1
+  return out

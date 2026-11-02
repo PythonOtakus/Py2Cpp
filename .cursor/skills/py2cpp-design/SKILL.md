@@ -10,9 +10,9 @@ description: >-
 
 # Py2Cpp 开发与验证流程
 
-将受限 Python 3 静态译为 C++11。**单一真相源**是仓库根 `py2cpp/`（标准库 Python）与 `src/`（译器）；`generated/` 仅由 `main.py` 生成，勿手改。
+将受限 Python 3 静态译为 C++11。**单一真相源**是`paw/py2cpp/`（标准库 Python）与 `src/`（译器）；`generated/` 仅由 `main.py` 生成，勿手改。
 
-详细架构见 [docs/参考手册.md](../../../docs/参考手册.md)；标准库写法见 [docs/编码规范.md](../../../docs/编码规范.md)。
+详细架构见 [docs/参考手册.md](../../../paw/docs/参考手册.md)；标准库写法见 [docs/编码规范.md](../../../paw/docs/编码规范.md)。
 
 **查阅表**（Passes 顺序、`constant` / `STDLIB_REL_PATHS`、生成物、MSVC 扩展、测试矩阵）：[reference.md](./reference.md)
 
@@ -20,7 +20,7 @@ description: >-
 
 ## 冲突须根治，勿绕行（重要的事情说三遍）
 
-1. **写法出现冲突时应解决冲突**（译器、`minimal.h`、MSVC 宏、`#undef`、属性派发等），**不要**换一种不符合 [编码规范.md](../../../docs/编码规范.md) / CPython 对外 API 的绕行写法（例如用 `dirName` 代替 `self.parent`、手改 `generated/`）。
+1. **写法出现冲突时应解决冲突**（译器、`minimal.h`、MSVC 宏、`#undef`、属性派发等），**不要**换一种不符合 [编码规范.md](../../../paw/docs/编码规范.md) / CPython 对外 API 的绕行写法（例如用 `dirName` 代替 `self.parent`、手改 `generated/`）。
 2. **写法出现冲突时应解决冲突**，在根因处修（如 `parent`/`suffix` Win 宏 → `minimal.h` `#undef` + `this->parent()`；`@property` 未生成 `()` → `_class_info_for_receiver`），**禁止**用“能编译就行”的替代 API 糊弄过去。
 3. **写法出现冲突时应解决冲突**：标准库与用户代码仍写规范 Python（`self.parent`、`Path.suffix`、链式比较、`Self._…` 静态调用等），冲突由基础设施层一次性消掉，**不得**把妥协扩散到业务代码。
 
@@ -28,7 +28,7 @@ description: >-
 
 ## 勿重复造轮子，严格按编码规范（重要的事情说三遍）
 
-1. **不要重复造轮子，严格按照 [编码规范.md](../../../docs/编码规范.md) 写代码**：实现前先查 `py2cpp/` 已有模块（如 `text.str` 的 `rfind`/`replace`/`split`、`io.file.path` 的 `dirName`/`baseName`/`splitExt`），能复用则复用，**禁止**手写 `while` 扫字符、私有 `_slice_str` 等与现有 API 等价的逻辑。
+1. **不要重复造轮子，严格按照 [编码规范.md](../../../paw/docs/编码规范.md) 写代码**：实现前先查 `py2cpp/` 已有模块（如 `text.str` 的 `rfind`/`replace`/`split`、`io.file.path` 的 `dirName`/`baseName`/`splitExt`），能复用则复用，**禁止**手写 `while` 扫字符、私有 `_slice_str` 等与现有 API 等价的逻辑。
 2. **不要重复造轮子，严格按照编码规范写代码**：标准库层用规范 Python（`Self` 静态调用、链式比较、`new`、勿手写 dunder、无 STL）；**切片起始为 0 时省略**（`path[:2]` 勿写 `path[0:2]`，与编码规范 §栈子区间一致）；与 CPython 3.13 语义对齐见编码规范 §8；`Path` 与 `os.path` 分工明确（pathlib 规则 vs `splitExt` 等），勿混用语义。
 3. **不要重复造轮子，严格按照编码规范写代码**：缺能力时优先补全/修正**已有**抽象（译器、`str`、`util`、C 层 `os_cpp`），**不要**在业务模块堆一次性 helper；写完后须走下文「实现后须自行对照规范自检」。
 
@@ -40,13 +40,13 @@ description: >-
 2. **`util/memory`**：``copyBuf`` / ``buf_to_str`` / ``loadU64Le`` / ``loadU64LeBytes`` 为 ``@native``（各带 ``*_ref``）；缓冲扩容见 ``array.reserve``。
 3. **`serde/json`**：``JsonEncoder`` 静态 ``append_*`` / ``fastEncode`` 纯 Python + ``JsonDecoder`` 实例 decode 组合（``loadU64Le`` 来自 ``util/memory``，``span``→``str`` 用 ``str.from_codes_span``）；``@serializable`` codegen 直调 ``dec.parseIntAtAscii()`` / ``dec.strAssignFromSeg(seg)``。**无** ``json_scan_cpp``。
 4. **C++ 可无损删除**：关掉 ``templates/util/+memory.inl`` 注入后仍靠 Python 组合 + 叶子 ``*_ref`` 全绿（性能可降）。
-5. **C / CRT / 平台 FFI**：仓库根 ``ffi/**/*.pyi``（**生成器产出，禁止手写**）→ 译器按需写 ``generated/runtime/ffi/…``，C++ ``ffi::…``（**不**挂 ``py2cpp::``、**不**进 ``minimal.h``）。范围 A+B（第三方 + ``ffi/windows/`` + ``ffi/crt/``）；不含 C++ STL。结构体 ``@native`` 类 + ``Pointer[T]``；glue ``#include <c_header>``。详规 [c-ffi-pyi.md](../../../docs/c-ffi-pyi.md) / 编码规范 §9.4；查阅表 [reference §5.3](./reference.md#53-c--crt--平台-ffiffipyi)。**禁止** star-import、模板直导 A/B 头、批量删 UI 组合 ``templates/**``。
+5. **C / CRT / 平台 FFI**：``paw/ffi/**/*.pyi``（**生成器产出，禁止手写**）→ 译器按需写 ``generated/runtime/ffi/…``，C++ ``ffi::…``（**不**挂 ``py2cpp::``、**不**进 ``minimal.h``）。范围 A+B（第三方 + ``ffi/windows/`` + ``ffi/crt/``）；不含 C++ STL。结构体 ``@native`` 类 + ``Pointer[T]``；glue ``#include <c_header>``。详规 [c-ffi-pyi.md](../../../paw/docs/c-ffi-pyi.md) / 编码规范 §9.4；查阅表 [reference §5.3](./reference.md#53-c--crt--平台-ffiffipyi)。**禁止** star-import、模板直导 A/B 头、批量删 UI 组合 ``templates/**``。
 
 ---
 
 ## 实现后须自行对照规范自检（重要的事情说三遍）
 
-每次**新特性落地**或**修改** `src/`、`py2cpp/`、`test/` 之后，在 bootstrap / MSVC 之前或与之并行，Agent **必须**主动对照 [编码规范.md](../../../docs/编码规范.md) 与相邻模块**自行审阅** diff，**不得**只跑编译、不查写法。
+每次**新特性落地**或**修改** `src/`、`py2cpp/`、`test/` 之后，在 bootstrap / MSVC 之前或与之并行，Agent **必须**主动对照 [编码规范.md](../../../paw/docs/编码规范.md) 与相邻模块**自行审阅** diff，**不得**只跑编译、不查写法。
 
 1. **实现后须自行对照规范自检**：标准库与用户测试仍写规范 Python——`new` / `Self` 静态调用、链式比较、**勿手写 dunder**、辅助数据结构用 **`@dataclass`**（勿手写 `__init__` 拼字段）、`@copyable` 等与域内范本一致；**无 STL**；能复用 `str` / `path` / `util` 现有 API 的**禁止**手写 `while` 扫串、重复 `splitExt` 语义。
 2. **实现后须自行对照规范自检**：对照编码规范 §2–§3、§8、§10 做清单核对——`s[:k]`（起始 0 省略 `s[0:k]`）、`not s` / `if s`（勿 `len(s)==0`）、`int64` 大常量勿用 32 位乘法溢出、测试用 `TestCaseMixin` + `override def test`；**同名符号**（如 `time` 函数 vs `datetime.time`）import 绑定与 C++ 名无歧义；依赖内建（`int(str)` 等）时确认译器已支持，否则在基础设施层补，勿在业务模块假造轮子。
@@ -122,7 +122,7 @@ build.bat io/test_path --seq --debug
 | 项 | 要求 | 自检命令 |
 |----|------|----------|
 | Python | 3.10+（PEP 695） | `python --version` |
-| 工作目录 | 仓库根 `Py2Cpp/` | `cd` 到含 `main.py` 的目录 |
+| 工作目录 | `paw/py2cpp/` | `cd` 到含 `main.py` 的目录 |
 | PYTHONPATH | 一般不需要；用 `python main.py` | — |
 | MSVC（Windows） | VS 2019/2022 +「使用 C++ 的桌面开发」 | 见下 |
 
@@ -213,7 +213,7 @@ generated\test\misc\test_containers.exe
 ## 2. 标准库 API 改动流程
 
 1. **读 CPython 3.13 语义**（编码规范 §8）：实现写在 `py2cpp/<域>/<mod>.py`（如 `util/list.py`、`text/str.py`）。
-2. **写法遵守** [编码规范.md](../../../docs/编码规范.md)：运算符、`Self`/`new`、勿手写 dunder、无 STL。
+2. **写法遵守** [编码规范.md](../../../paw/docs/编码规范.md)：运算符、`Self`/`new`、勿手写 dunder、无 STL。
 3. 若模块在 `py2cpp/` 下且未被 `constant` 的 `STDLIB_SKIP_*` 排除，bootstrap 会生成 `generated/runtime/py2cpp/...`。
 4. **重译 runtime**：
    ```bat
@@ -226,7 +226,7 @@ generated\test\misc\test_containers.exe
 
 - 有类型参数的类：声明在 `.h`，实现在 `.inl`（由译器写入，勿在 `.h` 末尾重复 include 破坏顺序）。
 - `tuple`：逻辑在 `templates/util/tuple.{h,inl}`，Python 侧 `py2cpp/util/tuple.py` 仅为薄声明。
-- `str` 的 `format` / `%`：声明 ``templates/text/+str.h``（``PY2CPP_INJECT_CLASS`` 类尾）；实现 ``templates/text/+str.inl``（paste_after）；标量 ``format`` 见 ``templates/+operators.inl``。``__mod__`` 还须 ``protocol_traits.h`` + ``operators.h`` 且声明带 `template<typename... Args>`。详见 [codegen-templates.md §8.3](../../../docs/codegen-templates.md#83-注入模板命名与路径定案)。
+- `str` 的 `format` / `%`：声明 ``templates/text/+str.h``（``PY2CPP_INJECT_CLASS`` 类尾）；实现 ``templates/text/+str.inl``（paste_after）；标量 ``format`` 见 ``templates/+operators.inl``。``__mod__`` 还须 ``protocol_traits.h`` + ``operators.h`` 且声明带 `template<typename... Args>`。详见 [codegen-templates.md §8.3](../../../paw/docs/codegen-templates.md#83-注入模板命名与路径定案)。
 
 ---
 
@@ -241,7 +241,7 @@ generated\test\misc\test_containers.exe
    `expand_enum` / `expand_union` 在 dataclass 后；**S1201 / `check_yield_from_in_async_def` 在 `expand_generators` 前**；**generators 在 decorators 前**；`expand_move_state` / `expand_descriptor_signatures` 在 analyze 前；analyze 后含 `check_parallel_loops`、`check_moved_use` 等。  
 3. **生成**：`.h` / `.cpp` / `.inl`；runtime bootstrap 写 `py2cpp/minimal.h`（万能头）
 
-新增 pass：在 `src/passes/` 实现并在 `src/translator.py` **按依赖**插入；同步 reference §2.1 与 [参考手册 §4](../../../docs/参考手册.md#4-翻译流水线)；加 `src/tests/test_*.py`。
+新增 pass：在 `src/passes/` 实现并在 `src/translator.py` **按依赖**插入；同步 reference §2.1 与 [参考手册 §4](../../../paw/docs/参考手册.md#4-翻译流水线)；加 `src/tests/test_*.py`。
 
 ### 3.2 测试分层
 
@@ -331,7 +331,7 @@ generated\test\misc\test_containers.exe
 | 头文件循环 include | `str.h`↔`list.h`：按参考手册 §8.5 拆 `protocol_traits`、调整 include |
 | 测试写 `Cls(1)` / `Cls(src)` | 用 `new(...)` / `dst: Cls = src`（编码规范 §2） |
 | `assertTrue(f)` 文件对象 | 勿 `f.__bool__()`；用 `assertTrue`/`assertFalse` |
-| MSVC **C4716** ``T0 fn(…): 必须返回一个值`` | 旧版误推返回 ``T0``（已删 fallback）。无 ``return expr`` → ``void``；有 ``return expr`` → ``decltype``。见 [参考手册 §5.3.1 **4）**](../../../docs/参考手册.md#531-缺少注解时的-c-类型策略) |
+| MSVC **C4716** ``T0 fn(…): 必须返回一个值`` | 旧版误推返回 ``T0``（已删 fallback）。无 ``return expr`` → ``void``；有 ``return expr`` → ``decltype``。见 [参考手册 §5.3.1 **4）**](../../../paw/docs/参考手册.md#531-缺少注解时的-c-类型策略) |
 | 规范写法与 MSVC/译器冲突（如 `self.parent`、`.suffix`） | **解决冲突**，勿改业务为绕行 API；见上文「冲突须根治，勿绕行」 |
 | 手写 `while` 扫路径/扩展名、重复实现 `splitExt` 等 | 复用 `str` / `io.file.path`；见上文「勿重复造轮子，严格按编码规范」 |
 | `s[0:k]`、`len(s)==0` / `len(s)>0` | 优先 `s[:k]`、`not s` / `if s`（编码规范 §布尔、§栈子区间） |
@@ -366,7 +366,7 @@ generated\test\misc\test_containers.exe
 | 编译 | `src/compile.py` |
 | 万能头 | `src/codegen/umbrella_gen.py` → `generated/runtime/py2cpp/minimal.h` |
 | 生成输出 | `generated/runtime/py2cpp/`、`generated/runtime/ffi/`、`generated/test/` |
-| FFI 规格 | [docs/c-ffi-pyi.md](../../../docs/c-ffi-pyi.md) |
+| FFI 规格 | [docs/c-ffi-pyi.md](../../../paw/docs/c-ffi-pyi.md) |
 
 ---
 
@@ -399,10 +399,10 @@ REM → ffi\sqlite\sqlite3.pyi（见 docs/c-ffi-pyi.md）
 3. **勿重复造轮子**：**严格按照编码规范**实现；先搜后写、复用已有 `py2cpp` API（见上文三节强调）。  
 4. **实现后须自行对照规范自检**：每次新特性或修改后，**主动**过编码规范与最小自检表（见上文三节强调），再 bootstrap / MSVC；禁止只编译不审代码。  
 5. **崩溃难查先用 --debug**：exe 异常退出且难以定位时，**优先**按上文三节强调重编 `--debug`、查 stderr 日志最后一行，再改源树；禁止未看 debug 日志就盲目拆函数或手改 `generated/`。  
-6. **先读再改**：动 `translator.py` 前读模块头注释与相关 `passes/`；动标准库前读 [编码规范.md](../../../docs/编码规范.md) 与同域参考实现。  
+6. **先读再改**：动 `translator.py` 前读模块头注释与相关 `passes/`；动标准库前读 [编码规范.md](../../../paw/docs/编码规范.md) 与同域参考实现。  
 7. **改必编**：至少编译触达的最小 `test_*.py`；标准库改动必须 bootstrap runtime。  
 8. **小步提交逻辑**：命名空间 / umbrella 类改动不要与功能改动混在同一 Diff，便于回滚。  
 9. **中文回复用户**，引用代码用 ```start:end:path``` 格式。  
 10. **不要**未经用户要求 commit、不要恢复 `range_shim`、不要 Over-engineer 新抽象。
 
-更多细节：[reference.md](./reference.md)、[参考手册 §14–15](../../../docs/参考手册.md)、[编码规范](../../../docs/编码规范.md)、[c-ffi-pyi.md](../../../docs/c-ffi-pyi.md)。
+更多细节：[reference.md](./reference.md)、[参考手册 §14–15](../../../paw/docs/参考手册.md)、[编码规范](../../../paw/docs/编码规范.md)、[c-ffi-pyi.md](../../../paw/docs/c-ffi-pyi.md)。

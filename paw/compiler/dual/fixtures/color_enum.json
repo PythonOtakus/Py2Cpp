@@ -1,0 +1,7 @@
+{
+  "name": "Color",
+  "members": [
+    {"name": "Red", "valueSource": "1"},
+    {"name": "Blue", "valueSource": "2"}
+  ]
+}

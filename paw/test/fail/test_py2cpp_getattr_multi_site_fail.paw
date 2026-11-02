@@ -1,0 +1,14 @@
+"""负向：同一函数两处 ``PY2CPP_GETATTR`` 应各自带语句行号的 ``static_assert``。"""
+from py2cpp import *
+
+@copyable
+record Box:
+  x: int = 0
+
+def readTwo(box) -> int:
+  a: int = box.missingA
+  return box.missingB
+
+def main() -> int:
+  b: Box = new()
+  return readTwo(b)

@@ -1,0 +1,53 @@
+"""存储字段 + ``property`` 块；访问器内 ``self.__value__``。"""
+from py2cpp import *
+from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
+
+class Holder:
+  value__value: int = 0
+  property value:
+    def __get__(self) -> int:
+      return self.__value__
+    def __set__(self, value: int) -> None:
+      self.__value__ = value
+
+  def bump(self) -> int:
+    self.value += 1
+    return self.value
+
+class Window:
+  title__value: str = ""
+  property title:
+    def __get__(self) -> str:
+      return self.__value__
+    def __set__(self, value: str) -> None:
+      self.__value__ = value
+
+  def assignTitle(self, value: str) -> None:
+    self.title = value
+
+class FieldPropertyTests(TestCaseMixin):
+  _testTag = 1
+
+  override def test(self):
+    h: Holder = new()
+    self.assertEqual(h.value, 0)
+    self.assertEqual(h.bump(), 1)
+    self.assertEqual(h.value, 1)
+
+class PropertyValueFieldTests(TestCaseMixin):
+  _testTag = 2
+
+  override def test(self):
+    win: Window = new()
+    self.assertEqual(win.title, "")
+    win.assignTitle("hello")
+    self.assertEqual(win.title, "hello")
+
+def main():
+  suite: TestSuite = new()
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
+    suite.addTest(Class())
+  return TextTestRunner().run(suite)
+
+if __name__ == "__main__":
+  raise SystemExit(main())

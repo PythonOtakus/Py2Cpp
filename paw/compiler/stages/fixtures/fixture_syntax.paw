@@ -1,0 +1,20 @@
+from .source import SourceSpan
+
+enum Color:
+  Red = 1
+  Blue = 2
+
+const MAX: int = 3
+
+class Point:
+  x: int = 0
+  y: int = 0
+  def sum(self) -> int:
+    return self.x + self.y
+
+record Box:
+  w: int = 1
+  h: int = 1
+
+def add(a: int, b: int) -> int:
+  return a + b

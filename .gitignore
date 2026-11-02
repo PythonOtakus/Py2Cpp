@@ -33,12 +33,29 @@ __pycache__/
 .coverage
 htmlcov/
 
-# Py2Cpp generated/build outputs
-/generated/
-/templates/~macro/
-/.cache/
-/_test_temp/
-/compile_commands.json
+# Paw generated/build outputs
+/paw/generated/
+/paw/templates/~macro/
+/paw/.cache/
+/paw/_test_temp/
+/paw/compile_commands.json
+
+# Paw bootstrap stage regenerables (keep driver/ fixtures/ README / .gitkeep)
+/paw/compiler/stages/bootstrap_status.json
+/paw/compiler/stages/stage1/bin/
+/paw/compiler/stages/stage1/compiler/
+/paw/compiler/stages/stage1/c1_emit/
+/paw/compiler/stages/stage1/c1_emit_*/
+/paw/compiler/stages/stage1/c2_thin/
+/paw/compiler/stages/stage1/c3_thin/
+/paw/compiler/stages/stage1/manifest.json
+/paw/compiler/stages/stage1/seed_sources.json
+/paw/compiler/stages/stage2/compiler/
+/paw/compiler/stages/stage2/manifest.json
+/paw/compiler/stages/stage2/seed_sources.json
+/paw/compiler/stages/stage3/compiler/
+/paw/compiler/stages/stage3/manifest.json
+/paw/compiler/stages/stage3/seed_sources.json
 
 # Zeus engine generated/build outputs
 /zeus/generated/

@@ -1,0 +1,91 @@
+{
+  "version": 2,
+  "note": "1:1 stem map: compiler/py/X.py ↔ compiler/paw/X.paw (and shared .md). See docs/paw/dual-impl.md",
+  "pairs": [
+    {
+      "id": "frontend/source",
+      "paw": "compiler/paw/frontend/source.paw",
+      "py": ["compiler/py/frontend/source.py"],
+      "level": "behavior_tests",
+      "status": "partial"
+    },
+    {
+      "id": "frontend/tokens",
+      "paw": "compiler/paw/frontend/tokens.paw",
+      "py": ["compiler/py/frontend/tokens.py"],
+      "level": "behavior_tests",
+      "status": "partial"
+    },
+    {
+      "id": "frontend/diagnostic",
+      "paw": "compiler/paw/frontend/diagnostic.paw",
+      "py": ["compiler/py/frontend/diagnostic.py"],
+      "level": "behavior_tests",
+      "status": "partial"
+    },
+    {
+      "id": "frontend/lexer",
+      "paw": "compiler/paw/frontend/lexer.paw",
+      "py": ["compiler/py/frontend/lexer.py"],
+      "level": "tokenize_dump",
+      "status": "dual_ok",
+      "compare": "tokenize_dump"
+    },
+    {
+      "id": "frontend/syntax_nodes",
+      "paw": "compiler/paw/frontend/syntax_nodes.paw",
+      "py": ["compiler/py/frontend/syntax_nodes.py"],
+      "level": "schema_align",
+      "status": "partial"
+    },
+    {
+      "id": "frontend/parser",
+      "paw": "compiler/paw/frontend/parser.paw",
+      "py": ["compiler/py/frontend/parser.py"],
+      "level": "parse_dump",
+      "status": "dual_ok",
+      "compare": "parse_dump"
+    },
+    {
+      "id": "mid/emit_cpp",
+      "paw": "compiler/paw/mid/emit_cpp.paw",
+      "py": ["compiler/py/mid/emit_cpp.py"],
+      "level": "emit_text_normalized",
+      "status": "dual_ok",
+      "compare": "emit_cpp_norm",
+      "note": "D4+: enum Color — Py Mid emit_cpp vs Paw host Mid emit_cpp.emitEnum; thin-emit of full emit_cpp.paw now green (depth guard)"
+    },
+    {
+      "id": "hir/nodes",
+      "paw": "compiler/paw/hir/nodes.paw",
+      "py": ["compiler/py/hir/nodes.py"],
+      "level": "schema_align",
+      "status": "partial",
+      "note": "enum 竖切已接线；其余类型字段对齐，StmtSyntax/ParamDecl 仍 py"
+    },
+    {
+      "id": "mid/nodes",
+      "paw": "compiler/paw/mid/nodes.paw",
+      "py": ["compiler/py/mid/nodes.py"],
+      "level": "schema_align",
+      "status": "partial",
+      "note": "enum 竖切已接线；其余类型字段对齐，StmtSyntax/ParamDecl 仍 py"
+    },
+    {
+      "id": "sema/bind",
+      "paw": "compiler/paw/sema/bind.paw",
+      "py": ["compiler/py/sema/bind.py"],
+      "level": "mid_dump",
+      "status": "dual_ok",
+      "compare": "mid_dump",
+      "note": "D2: Py bind+lower MidIR vs Paw bindModule→lowerToMid dump (enum Color)"
+    },
+    {
+      "id": "passes/check",
+      "paw": "compiler/paw/passes/check.paw",
+      "py": ["compiler/py/passes/check.py"],
+      "level": "behavior_tests",
+      "status": "partial"
+    }
+  ]
+}

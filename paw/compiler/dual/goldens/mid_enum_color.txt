@@ -1,0 +1,3 @@
+mid_enum name=Color is_type=0 flag=0 base=
+  member name=Red value=1
+  member name=Blue value=2

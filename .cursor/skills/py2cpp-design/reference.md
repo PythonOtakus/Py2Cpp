@@ -2,8 +2,8 @@
 
 本文件是 [SKILL.md](./SKILL.md) 的扩展查阅表；权威长文仍以仓库内文档为准：
 
-- [docs/参考手册.md](../../../docs/参考手册.md)
-- [docs/编码规范.md](../../../docs/编码规范.md)
+- [docs/参考手册.md](../../../paw/docs/参考手册.md)
+- [docs/编码规范.md](../../../paw/docs/编码规范.md)
 
 ---
 
@@ -48,7 +48,7 @@ Py2Cpp/
 
 | 层 | 含义 |
 |----|------|
-| 标准库 Python 包 | 仓库根 `py2cpp/`；`import py2cpp` |
+| 标准库 Python 包 | `paw/py2cpp/`；`import py2cpp` |
 | FFI 声明面 | 仓库根 `ffi/`；`from ffi.sqlite.sqlite3 import …` → C++ `ffi::…`（**不**挂 `py2cpp::`） |
 | 译器 Python 包 | `src/`；`from src import Translator` |
 | C++ 输出 | `generated/runtime/py2cpp/`（`namespace py2cpp::<域>::…`）与 `generated/runtime/ffi/` |
@@ -69,7 +69,7 @@ Py2Cpp/
 
 ### 2.1 Passes（`src/passes/`，顺序不可乱）
 
-**权威顺序以** `Translator.translate_file`（`src/translator.py`）**为准**。下表与之对齐（摘要；细节见 [参考手册 §4](../../../docs/参考手册.md#4-翻译流水线)）。
+**权威顺序以** `Translator.translate_file`（`src/translator.py`）**为准**。下表与之对齐（摘要；细节见 [参考手册 §4](../../../paw/docs/参考手册.md#4-翻译流水线)）。
 
 | 阶段 | 函数（摘） | 作用摘要 |
 |------|------------|----------|
@@ -88,15 +88,15 @@ Py2Cpp/
 | 后检 | `check_proxy_*` / `resolve_union_*` / `check_new_*` / `check_*_rules` / `check_*_style` / **`check_parallel_loops`** / **`check_moved_use`** | 静态约束（含 `prange`） |
 | 生成 | `_emit_all` 等 | 写 `.h` / `.inl` / `minimal.h` |
 
-协程相关：`coroutine_desugar.py`、`generator_emit.py`（由 `visit_Async*` / 生成器发射调用）。闭包捕获见 [closure.md](../../../docs/closure.md)（规划中，非上表已挂 pass）。
+协程相关：`coroutine_desugar.py`、`generator_emit.py`（由 `visit_Async*` / 生成器发射调用）。闭包捕获见 [closure.md](../../../paw/docs/closure.md)（规划中，非上表已挂 pass）。
 
 **生成顺序**：模块级描述符签名校验 helper（``is_descriptor_signature_helper``）在 ``_module_functions_emit_order`` 中排在普通模块函数之前，避免 MSVC「找不到标识符」。
 
-新增 pass：在 `passes/` 实现 → 在 `translator.py` **按依赖**插入 → 同步本表与 [参考手册 §4](../../../docs/参考手册.md#4-翻译流水线) → 加回归测试。
+新增 pass：在 `passes/` 实现 → 在 `translator.py` **按依赖**插入 → 同步本表与 [参考手册 §4](../../../paw/docs/参考手册.md#4-翻译流水线) → 加回归测试。
 
-**``select`` 路径**（**非**上表 AST pass）：``src/passes/selector_parse.py`` 仅作路径 DSL 解析；在 ``call_emit`` / ``visit_AnnAssign`` 触发。类型 walk + ``$`` 校验见 ``analysis/selector_types.py``；内联生成见 ``emit/selector_emit.py``。详规 [docs/selector.md](../../../docs/selector.md)；主文档 [参考手册 §7.9](../../../docs/参考手册.md#79-select译期路径选择)。
+**``select`` 路径**（**非**上表 AST pass）：``src/passes/selector_parse.py`` 仅作路径 DSL 解析；在 ``call_emit`` / ``visit_AnnAssign`` 触发。类型 walk + ``$`` 校验见 ``analysis/selector_types.py``；内联生成见 ``emit/selector_emit.py``。详规 [docs/selector.md](../../../paw/docs/selector.md)；主文档 [参考手册 §7.9](../../../paw/docs/参考手册.md#79-select译期路径选择)。
 
-**``build`` DSL**（**非** AST pass）：``src/passes/build_parse.py``；``analysis/build_types.py``；``emit/build_emit.py``。详规 [docs/build.md](../../../docs/build.md)；主文档 [参考手册 §7.10](../../../docs/参考手册.md#710-build译期对象构造)。
+**``build`` DSL**（**非** AST pass）：``src/passes/build_parse.py``；``analysis/build_types.py``；``emit/build_emit.py``。详规 [docs/build.md](../../../paw/docs/build.md)；主文档 [参考手册 §7.10](../../../paw/docs/参考手册.md#710-build译期对象构造)。
 
 ### 2.2 分析器（`analysis/`）
 
@@ -110,7 +110,7 @@ Py2Cpp/
 | `selector_types.py` | ``select("…")`` 路径 TypeGraph walk、``$`` 绑定作用域校验 |
 | `build_types.py` | ``Type.build("…")`` DSL TypeGraph walk、``[:N]: $i`` 下标绑定校验 |
 
-**缺少注解时的类型（勿与 `void*` 混谈）** — 详表 [参考手册 §5.3.1](../../../docs/参考手册.md#531-缺少注解时的-c-类型策略)：
+**缺少注解时的类型（勿与 `void*` 混谈）** — 详表 [参考手册 §5.3.1](../../../paw/docs/参考手册.md#531-缺少注解时的-c-类型策略)：
 
 | 场景 | C++ |
 |------|-----|
@@ -151,7 +151,7 @@ Py2Cpp/
 | `exception_group_gen.py` | `ExcTypeUnion` → `core/~exception_group_*` |
 | `brace_style.py` | Allman 大括号 |
 
-已迁 `templates/**` 的模块（`operators`、`io`、`memory`、`time` 等）不再保留独立 `templates/**`；见 [codegen-templates.md](../../../docs/codegen-templates.md)。
+已迁 `templates/**` 的模块（`operators`、`io`、`memory`、`time` 等）不再保留独立 `templates/**`；见 [codegen-templates.md](../../../paw/docs/codegen-templates.md)。
 
 ### 3.2 `src/emit/`（AST 生成）
 
@@ -254,7 +254,7 @@ Py2Cpp/
 
 ### 5.3 C / CRT / 平台 FFI（`ffi/**/*.pyi`）
 
-详规 [docs/c-ffi-pyi.md](../../../docs/c-ffi-pyi.md)；编码规范 §9.4。
+详规 [docs/c-ffi-pyi.md](../../../paw/docs/c-ffi-pyi.md)；编码规范 §9.4。
 
 | 项 | 约定 |
 |----|------|
@@ -359,7 +359,7 @@ Py2Cpp/
 
 ### 8.1.2 GPU kernel（`GpuKernelMixin`）
 
-**状态**：P1 Host OpenMP sim 已落地，见 [gpu-compute.md](../../../docs/gpu-compute.md)。**P1**：``@dataclass`` + ``@mixin GpuKernelMixin`` + 标量 ``def run(...) -> T`` + 译期 **``.map``** + 模块级 **``@GpuDeviceMeta``** + **``with gpuSync():``**。
+**状态**：P1 Host OpenMP sim 已落地，见 [gpu-compute.md](../../../paw/docs/gpu-compute.md)。**P1**：``@dataclass`` + ``@mixin GpuKernelMixin`` + 标量 ``def run(...) -> T`` + 译期 **``.map``** + 模块级 **``@GpuDeviceMeta``** + **``with gpuSync():``**。
 
 | 写法 | 实现（P1） |
 |------|-----------------|
@@ -385,7 +385,7 @@ Py2Cpp/
 
 ### 8.3 Pythonic 字面量 → 内联 C++（查阅表）
 
-**原则**：源码仍写规范 Python（`in`、`[]`、`match` 等）；脱糖/内联在译器或容器协议内完成，**勿**在业务模块手写 C 式扫串或重复 `splitExt` 语义（见 [编码规范 §7](../../../docs/编码规范.md#7-算法与-pythonic-控制流)）。
+**原则**：源码仍写规范 Python（`in`、`[]`、`match` 等）；脱糖/内联在译器或容器协议内完成，**勿**在业务模块手写 C 式扫串或重复 `splitExt` 语义（见 [编码规范 §7](../../../paw/docs/编码规范.md#7-算法与-pythonic-控制流)）。
 
 #### 8.3.1 元组字面量：禁止作「容器」
 
@@ -432,7 +432,7 @@ Py2Cpp/
 
 #### 8.3.3 字典字面量及相关 Pythonic 写法
 
-**须有类型上下文**：`d: dict[K,V] = …` 或 `return` / 形参注解；**无**裸 `{k: v}` 表达式（见 [编码规范 §2.1](../../../docs/编码规范.md#21-对照表)）。
+**须有类型上下文**：`d: dict[K,V] = …` 或 `return` / 形参注解；**无**裸 `{k: v}` 表达式（见 [编码规范 §2.1](../../../paw/docs/编码规范.md#21-对照表)）。
 
 ##### 8.3.3.1 内联映射字面量查表（`{a: x, b: y}[k]`、`{…}.get(k, z)`）
 
@@ -581,7 +581,7 @@ python main.py <input.py> [-o DIR] [--no-stdlib] [--no-main] [--debug]
 | `PY2CPP_FORCE_BOOTSTRAP=1` | `_bootstrap_runtime.bat` 忽略 `.bootstrap.stamp`，强制全量翻译 |
 | `PY2CPP_PROFILE=1` | `translate_file` 向 stderr 打印 discover/parse/expand/analyze/emit/write/nav_index 分段 |
 | `PY2CPP_NO_TEST_CACHE=1` | 关闭 P1.6：`test/` / `examples/` 不复用 `analyze_sigs.pkl`（仍走全量 analyze） |
-| `PY2CPP_USE_PCH=1` | 实验性 MSVC PCH（`pch/minimal.pch`）；默认关，见 [runtime-libs.md §P1.7](../../../docs/runtime-libs.md) |
+| `PY2CPP_USE_PCH=1` | 实验性 MSVC PCH（`pch/minimal.pch`）；默认关，见 [runtime-libs.md §P1.7](../../../paw/docs/runtime-libs.md) |
 | `--openmp` / `--no-openmp` | ``prange`` 是否发射 OpenMP（默认开；``--no-openmp`` 降级为 ``range``） |
 | `-c` | 翻译后编译 |
 | `--compiler cl` | Windows 推荐 MSVC |
@@ -595,7 +595,7 @@ python main.py <input.py> [-o DIR] [--no-stdlib] [--no-main] [--debug]
 
 ### 10.1 集成测试（`test/`）
 
-最近一次全量回归记录：[docs/test-report-2026-08-23.md](../../../docs/test-report-2026-08-23.md)（`build-all.bat` + `run.bat *`）。
+最近一次全量回归记录：[docs/test-report-2026-08-23.md](../../../paw/docs/test-report-2026-08-23.md)（`build-all.bat` + `run.bat *`）。
 
 | 文件 | 脚本 | 覆盖重点 |
 |------|------|----------|
@@ -608,7 +608,7 @@ python main.py <input.py> [-o DIR] [--no-stdlib] [--no-main] [--debug]
 | `test/io/file/test_file.py` | `build_all.bat` | ``os`` 磁盘 API（``getCwd``/``stat``/``listDir``/…） |
 | `test/io/file/test_path.py` | `build_all.bat` | ``os.path``（``join``/``splitExt``/…） |
 | `test/io/test_path.py` | `build_all.bat` | `Path`、`/` |
-| `test/sql/test_sqlite.py` | `build.bat sql/test_sqlite` | ``py2cpp/sql`` DB-API（P0 已落地）；见 [sql-orm.md](../../../docs/sql-orm.md) |
+| `test/sql/test_sqlite.py` | `build.bat sql/test_sqlite` | ``py2cpp/sql`` DB-API（P0 已落地）；见 [sql-orm.md](../../../paw/docs/sql-orm.md) |
 | `test/sql/test_sql_orm.py` | `build.bat sql/test_sql_orm`（**设计中，P1**） | ``table[User]()`` + ``*Meta`` / ``all`` / ``get`` / ``append`` |
 | `test/sql/test_sql_orm_genexp.py` | `build.bat sql/test_sql_orm_genexp`（**设计中，P2**） | ``extend`` / ``execute(e.assign…)`` / ``collect`` / ``remove`` + ``SqlQuery[T]`` |
 | `test/sql/test_sql_orm_join.py` | `build.bat sql/test_sql_orm_join`（**设计中，P3**） | ``session.collect[RowT](Row(…) for o in orders for u in users if …)`` → ``SqlQuery[RowT]`` |

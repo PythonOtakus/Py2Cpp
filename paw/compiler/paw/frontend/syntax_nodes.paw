@@ -1,0 +1,110 @@
+"""Bootstrap 种子：Syntax AST（Enum / Class·Record / Function / Import / Const / Opaque）。"""
+from py2cpp import *
+from .source import SourceSpan
+
+enum ItemKindEnum:
+  Enum = 0
+  Class = ...
+  Function = ...
+  Import = ...
+  ModuleConst = ...
+  Opaque = ...
+
+@copyable
+class EnumMember:
+  name: str = ""
+  valueSource: str = ""
+  span: SourceSpan = new()
+
+@copyable
+class ConstField:
+  name: str = ""
+  typeName: str = ""
+  valueSource: str = ""
+  span: SourceSpan = new()
+
+@copyable
+class FunctionBundle:
+  name: str = ""
+  paramsSource: str = ""
+  returnSource: str = ""
+  bodySource: str = ""
+  isAsync: bool = False
+  isStatic: bool = False
+  isNative: bool = False
+  isOverride: bool = False
+  isFinal: bool = False
+  isAbstract: bool = False
+  isVirtual: bool = False
+  decoratorsSource: str = ""
+  span: SourceSpan = new()
+
+@copyable
+class ModuleItem:
+  kind: ItemKindEnum = ItemKindEnum.Opaque
+  enumName: str = ""
+  enumIsType: bool = False
+  enumFlag: bool = False
+  className: str = ""
+  isRecord: bool = False
+  isRef: bool = False
+  isFinal: bool = False
+  isFrozen: bool = False
+  isOrdered: bool = False
+  functionName: str = ""
+  opaqueSource: str = ""
+  span: SourceSpan = new()
+
+class EnumBundle:
+  name: str = ""
+  isTypeEnum: bool = False
+  flag: bool = False
+  members: list[EnumMember]
+  span: SourceSpan = new()
+
+  def __init__(self):
+    self.members = []
+
+class ClassBundle:
+  name: str = ""
+  isRecord: bool = False
+  isRef: bool = False
+  isFinal: bool = False
+  isFrozen: bool = False
+  isOrdered: bool = False
+  isLazy: bool = False
+  isProtocol: bool = False
+  isMixin: bool = False
+  isUnion: bool = False
+  isVariant: bool = False
+  isNative: bool = False
+  basesSource: str = ""
+  bodySource: str = ""
+  decoratorsSource: str = ""
+  constFields: list[ConstField]
+  methods: list[FunctionBundle]
+  opaqueMembers: list[str]
+  span: SourceSpan = new()
+
+  def __init__(self):
+    self.constFields = []
+    self.methods = []
+    self.opaqueMembers = []
+
+class SyntaxModule:
+  items: list[ModuleItem]
+  enums: list[EnumBundle]
+  classes: list[ClassBundle]
+  functions: list[FunctionBundle]
+  imports: list[str]
+  moduleConsts: list[ConstField]
+  unsupported: list[str]
+
+  def __init__(self):
+    self.items = []
+    self.enums = []
+    self.classes = []
+    self.functions = []
+    self.imports = []
+    self.moduleConsts = []
+    self.unsupported = []

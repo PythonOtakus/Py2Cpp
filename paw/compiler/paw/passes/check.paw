@@ -1,0 +1,40 @@
+"""Bootstrap seed: thin name-uniqueness check over SyntaxModule (proto-bind)."""
+from py2cpp import *
+from ..frontend.syntax_nodes import ClassBundle, EnumBundle, FunctionBundle, SyntaxModule
+
+def checkModule(mod: SyntaxModule) -> list[str]:
+  out: list[str] = []
+  seenFn: list[str] = []
+  i: int = 0
+  while i < len(mod.functions):
+    fn: FunctionBundle = mod.functions[i]
+    if fn.name != "":
+      if fn.name in seenFn:
+        out.append("duplicate function " + fn.name)
+      else:
+        seenFn.append(fn.name)
+    i += 1
+  seenEn: list[str] = []
+  i = 0
+  while i < len(mod.enums):
+    en: EnumBundle = mod.enums[i]
+    if en.name != "":
+      if en.name in seenEn:
+        out.append("duplicate enum " + en.name)
+      else:
+        seenEn.append(en.name)
+    i += 1
+  seenCl: list[str] = []
+  i = 0
+  while i < len(mod.classes):
+    cls: ClassBundle = mod.classes[i]
+    if cls.name != "":
+      if cls.name in seenCl:
+        out.append("duplicate class " + cls.name)
+      else:
+        seenCl.append(cls.name)
+    i += 1
+  return out
+
+def checkOk(mod: SyntaxModule) -> bool:
+  return len(checkModule(mod)) == 0

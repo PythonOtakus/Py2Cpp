@@ -1,0 +1,225 @@
+"""``@property`` 接收者推断：``self`` / 局部变量 / 构造调用须生成 ``getter()``。"""
+from __future__ import annotations
+
+import tempfile
+import unittest
+from pathlib import Path
+
+from host.translator import Translator
+
+
+class PropertyReceiverTests(unittest.TestCase):
+  def test_self_and_ctor_property_read_use_getter_call(self):
+    src = """
+from paw import copyable, Self
+
+@copyable
+class Node:
+  @property
+  def parent(self) -> Self:
+    return Self("x")
+
+  def check(self) -> None:
+    par: Node = self.parent
+    _ = par
+
+def use() -> None:
+  _ = Node().parent
+"""
+    with tempfile.TemporaryDirectory() as tmp:
+      out = Path(tmp)
+      py = out / "mod.py"
+      py.write_text(src, encoding="utf-8")
+      _, cpp_path = Translator.translate_file(
+        str(py), output_dir=str(out), include_stdlib=False, strict=False,
+      )
+      cpp = cpp_path.read_text(encoding="utf-8")
+      self.assertIn("this->parent__get()", cpp.replace(" ", ""))
+      self.assertIn("PyNode().parent__get()", cpp.replace(" ", ""))
+      self.assertNotIn("this->parent__get;", cpp)
+      self.assertNotIn("PyNode().parent__get;", cpp)
+
+  def test_list_subscript_property_read_uses_getter_call(self):
+    src = """
+from paw import *
+
+@copyable
+class Item:
+  @property
+  def tag(self) -> int:
+    return 1
+
+def read(items: list[Item]) -> None:
+  _ = items[0].tag
+"""
+    with tempfile.TemporaryDirectory() as tmp:
+      out = Path(tmp)
+      py = out / "mod.py"
+      py.write_text(src, encoding="utf-8")
+      _, cpp_path = Translator.translate_file(
+        str(py), output_dir=str(out), include_stdlib=False, strict=False,
+      )
+      cpp = cpp_path.read_text(encoding="utf-8")
+      self.assertIn("tag__get()", cpp)
+      self.assertNotRegex(cpp, r"__getitem__\([^)]+\)\.tag[^_]")
+
+  def test_with_as_enter_type_enables_property_read(self):
+    src = """
+from paw import *
+
+@copyable
+class Box:
+  def __enter__(self) -> Self:
+    return self
+
+  def __exit__(self) -> None:
+    pass
+
+  @property
+  def value(self) -> str:
+    return "x"
+
+def use() -> None:
+  with Box() as b:
+    _ = b.value
+"""
+    with tempfile.TemporaryDirectory() as tmp:
+      out = Path(tmp)
+      py = out / "mod.py"
+      py.write_text(src, encoding="utf-8")
+      _, cpp_path = Translator.translate_file(
+        str(py), output_dir=str(out), include_stdlib=False, strict=False,
+      )
+      cpp = cpp_path.read_text(encoding="utf-8")
+      self.assertIn("PyBox& b =", cpp)
+      self.assertIn("value__get()", cpp)
+      self.assertNotRegex(cpp, r"\bb\.value[^_]")
+  def test_with_uncopyable_lvalue_binds_manager_and_alias_by_reference(self):
+    src = """
+from paw import *
+
+@uncopyable
+class Handle:
+  def __enter__(self) -> Self:
+    return self
+
+  def __exit__(self):
+    pass
+
+def use() -> None:
+  handle: Handle = new()
+  with handle as entered:
+    _ = entered
+"""
+    with tempfile.TemporaryDirectory() as tmp:
+      out = Path(tmp)
+      py = out / "mod.py"
+      py.write_text(src, encoding="utf-8")
+      _, cpp_path = Translator.translate_file(
+        str(py), output_dir=str(out), include_stdlib=False, strict=False,
+      )
+      cpp = cpp_path.read_text(encoding="utf-8")
+      self.assertRegex(cpp, r"auto& __py2cpp_with_mgr\d+ = handle;")
+      self.assertRegex(cpp, r"PyHandle& entered = __py2cpp_with_ent\d+;")
+  def test_with_instance_method_uses_enter_return_type(self):
+    src = """
+from paw import *
+
+@uncopyable
+class Scope:
+  def __enter__(self) -> int:
+    return 1
+
+  def __exit__(self):
+    pass
+
+@uncopyable
+class CScope:
+  def __enter__(self) -> utf8ptr:
+    return "x"
+
+  def __exit__(self):
+    pass
+
+class Source:
+  def scope(self) -> Scope:
+    return new()
+
+  def cScope(self) -> CScope:
+    return new()
+
+def use() -> None:
+  with Source().scope() as value:
+    _ = value
+  with Source().cScope() as cvalue:
+    _ = cvalue
+"""
+    with tempfile.TemporaryDirectory() as tmp:
+      out = Path(tmp)
+      py = out / "mod.py"
+      py.write_text(src, encoding="utf-8")
+      _, cpp_path = Translator.translate_file(
+        str(py), output_dir=str(out), include_stdlib=False, strict=False,
+      )
+      cpp = cpp_path.read_text(encoding="utf-8")
+      self.assertRegex(cpp, r"PyInt value = __py2cpp_with_ent\d+;")
+      self.assertRegex(cpp, r"PyUtf8Ptr cvalue = __py2cpp_with_ent\d+;")
+  def test_pointer_to_local_class_uses_cpp_class_name(self):
+    src = """
+from paw import *
+
+@uncopyable
+class Handle:
+  def __init__(self):
+    pass
+
+class Owner:
+  direct: Handle = None
+  handle: Pointer[Handle] = None
+
+  def __init__(self):
+    self.handle = alloc[Handle]()
+"""
+    with tempfile.TemporaryDirectory() as tmp:
+      out = Path(tmp)
+      py = out / "mod.py"
+      py.write_text(src, encoding="utf-8")
+      header_path, _ = Translator.translate_file(
+        str(py), output_dir=str(out), include_stdlib=False, strict=False,
+      )
+      header = header_path.read_text(encoding="utf-8")
+      self.assertIn("PyHandle direct", header)
+      self.assertIn("PyHandle* handle", header)
+      self.assertNotRegex(header, r"(?m)^\s+Handle(?:\*|\s+direct)")
+
+
+  def test_module_function_return_property_uses_getter(self):
+    src = """
+from paw import *
+
+@copyable
+class Box:
+  @property
+  def flag(self) -> bool:
+    return True
+
+def make() -> Box:
+  return new()
+
+def use() -> bool:
+  return make().flag
+"""
+    with tempfile.TemporaryDirectory() as tmp:
+      out = Path(tmp)
+      py = out / "mod.py"
+      py.write_text(src, encoding="utf-8")
+      _, cpp_path = Translator.translate_file(
+        str(py), output_dir=str(out), include_stdlib=False, strict=False,
+      )
+      cpp = cpp_path.read_text(encoding="utf-8")
+      self.assertIn("flag__get()", cpp)
+      self.assertNotRegex(cpp, r"make\(\)\.flag[^_]")
+
+
+if __name__ == "__main__":
+  unittest.main()

@@ -132,4 +132,4 @@ Python 侧：用户模块写规范 Python；译器或薄 `@native` 叶子只负�
 | 示例 | 最小 `host.py` + `game.py` 测例：改 game 后不杀 host 即可换逻辑 |
 | 测例 | 进程内：load → tick → unload → load 第二次；断言旧函数指针不可再用 |
 
-未落地前 **禁止**手改 `generated/` 假装已有热更。
+未落地前 **禁止**手改 `out/` 假装已有热更。

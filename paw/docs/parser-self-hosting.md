@@ -19,7 +19,7 @@
 | 已有结构化类型 IR，但仍有字符串桥接 | `src/analysis/type_node.py:39`、`src/analysis/type_parse_ast.py:1` | 可渐进复用 TypeNode，避免另外重造一套类型系统 |
 | 特性展开具有明确顺序 | `src/translator.py:463` 起 | 初期保持顺序，不能在换 parser 时同时重排所有语义 passes |
 | 模板由 Python 执行 | `src/codegen/expand_py2cpp_template.py:680` | 去掉 ast.parse 后仍有 CPython 依赖 |
-| 现有 bootstrap 是标准库再生成 | `scripts/_bootstrap_runtime.bat:30` | 当前尚未完成编译器自编译 |
+| 现有 bootstrap 是标准库再生成 | `tools/_bootstrap_runtime.bat:30` | 当前尚未完成编译器自编译 |
 
 静态统计范围为 `src/**/*.py`，排除 `src/tests`：198 个文件、80,022 物理行；123 个模块导入 ast，28 处 ast.parse，48 处 ast.unparse，66 处 ast.walk，305 处 copy.deepcopy，195 处 getattr，以及各 4 处 exec/eval 调用。这些是迁移规模指标，不代表每个调用点都需要独立重写。
 
@@ -368,6 +368,6 @@ P0 还应处理已发现的规范漂移：手册将宿主最低版本写成 3.10
 
 文件兼容与工具链也需要进入交付范围。新方言源文件统一为 **`*.paw`（语言名 Paw）**，旧 `.py` 与 `.pyi` 保持兼容入口；import resolver 同时认识两者，同名模块同时存在时明确报错，避免悄悄改变解析优先级。不保留 `.py2` 等过渡扩展名。首个原型可用显式 dialect 参数接入测试，正式开放前同步文件发现、构建脚本、FFI 桩扫描、nav/architect、语法高亮、格式化与错误跳转。迁移工具用 token span 修改，保留注释；Python 的 ast.unparse 无法直接输出新语法。软关键字只解决名称兼容，Paw 源文件仍需要相应 IDE 支持。
 
-当前 `plugins/py2cpp-lexer` 与根目录 `lexer_preview.paw` 用于高亮检查。GPU 模型分类和 TextMate grammar 不承担 compiler AST/语义验证；示例可展示的拼法不表示上述编译器阶段已经实现。
+当前 `extensions/py2cpp-lexer` 与根目录 `lexer_preview.paw` 用于高亮检查。GPU 模型分类和 TextMate grammar 不承担 compiler AST/语义验证；示例可展示的拼法不表示上述编译器阶段已经实现。
 
-**落地进度（2026-11-02）**：P0 基线见 [docs/paw/baseline.md](./paw/baseline.md)；生产路径 Syntax→HIR→MidIR；去桥 P0–P6；**C0 Mid 定点已绿**（seed **8/8**）；**C1 薄 emit 竖切已绿**（至 `parser` parseSource enum + `mid_emit_min` emitEnum；`c1_emit_*_run`，含 smoke/span/diag/check/srcmgr/lexer/parser/mid_min）。**双实现对照 D0 已绿**（[dual-impl.md](./paw/dual-impl.md)，`python scripts/paw_dual_compare.py`）。**真·C1 仍缺**：完整 HIR/语义、宿主级 Mid emit 对齐、完整 `mid_emit` 自薄 emit、完整 S Paw 化、模板离 CPython。
+**落地进度（2026-11-02）**：P0 基线见 [docs/paw/baseline.md](./paw/baseline.md)；生产路径 Syntax→HIR→MidIR；去桥 P0–P6；**C0 Mid 定点已绿**（seed **8/8**）；**C1 薄 emit 竖切已绿**（至 `parser` parseSource enum + `mid_emit_min` emitEnum；`c1_emit_*_run`，含 smoke/span/diag/check/srcmgr/lexer/parser/mid_min）。**双实现对照 D0 已绿**（[dual-impl.md](./paw/dual-impl.md)，`python tools/paw_dual_compare.py`）。**真·C1 仍缺**：完整 HIR/语义、宿主级 Mid emit 对齐、完整 `mid_emit` 自薄 emit、完整 S Paw 化、模板离 CPython。

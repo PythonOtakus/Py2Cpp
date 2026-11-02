@@ -11,15 +11,15 @@
 
 ```text
 Py2Cpp/
-├── main.py                      # CLI（from src import Translator）
-├── src/                         # 译器
+├── main.py                      # CLI（from host import Translator）
+├── host/                         # 译器
 │   ├── translator.py            # AST → C++ 主访问器
 │   ├── compile.py               # -c 编译；test/ 默认不链 py2cpp.cpp
 │   ├── constant/                # 静态表：模块/类/方法名、布局、umbrella、FFI、inject…
 │   │   ├── stdlib_layout.py     # 逻辑模块路径 → #include / ::
-│   │   ├── ffi_layout.py        # ffi/**/*.pyi → generated/runtime/ffi/；using Pyi_X = ::X
+│   │   ├── ffi_layout.py        # ffi/**/*.pyi → out/runtime/ffi/；using Pyi_X = ::X
 │   │   └── mixin.py             # @mixin 方法名契约
-│   ├── tools/c_ffi_pyi.py       # libclang → ffi/**/*.pyi（CLI：ffi.bat / scripts/gen_c_ffi.py）
+│   ├── tools/c_ffi_pyi.py       # libclang → ffi/**/*.pyi（CLI：ffi.bat / tools/gen_c_ffi.py）
 │   ├── analysis/
 │   │   ├── runtime_symbols.py   # 包根 AST 推导符号 + PyRange 限定构造
 │   │   └── stubs/               # AST loader（*_stubs.py）
@@ -33,11 +33,11 @@ Py2Cpp/
 │   └── …
 ├── ffi/                         # 第三方 C FFI 声明面（.pyi；生成器产出，勿手改 AUTO-GENERATED）
 ├── templates/                   # C++ 注入 / 万能头模板（+*.h / +*.inl）
-├── scripts/                     # MSVC / 翻译 / FFI 构建脚本
+├── tools/                     # MSVC / 翻译 / FFI 构建脚本
 ├── build_all.bat / build.bat / run.bat / demo.bat / ffi.bat
 ├── examples/
 ├── tests/                        # 集成测试（misc/ lang/ sql/ ui/ … / fail/）
-├── generated/                   # 翻译输出（勿手改）
+├── out/                   # 翻译输出（勿手改）
 │   ├── runtime/py2cpp/          # 标准库 .h / .inl / minimal.h / protocol_traits.h
 │   ├── runtime/ffi/             # FFI 按需生成（不进 minimal.h bulk）
 │   └── tests/                    # 用户测试 .h / .cpp / .exe
@@ -50,8 +50,8 @@ Py2Cpp/
 |----|------|
 | 标准库 Python 包 | `paw/py2cpp/`；`import py2cpp` |
 | FFI 声明面 | 仓库根 `ffi/`；`from ffi.sqlite.sqlite3 import …` → C++ `ffi::…`（**不**挂 `py2cpp::`） |
-| 译器 Python 包 | `src/`；`from src import Translator` |
-| C++ 输出 | `generated/runtime/py2cpp/`（`namespace py2cpp::<域>::…`）与 `generated/runtime/ffi/` |
+| 译器 Python 包 | `host/`；`from host import Translator` |
+| C++ 输出 | `out/runtime/py2cpp/`（`namespace py2cpp::<域>::…`）与 `out/runtime/ffi/` |
 
 ---
 
@@ -220,7 +220,7 @@ Py2Cpp/
 
 ---
 
-## 5. 生成物约定（`generated/`）
+## 5. 生成物约定（`out/`）
 
 | 产物 | 说明 |
 |------|------|
@@ -265,7 +265,7 @@ Py2Cpp/
 | MSVC 链库 | glue 可 `#pragma comment(lib, …)`（`ffi_msvc_comment_libs`；`shellapi` → `shell32.lib`）；勿把链接依赖留在已删除的业务模板 |
 | 禁止 | `from ffi… import *`；全量 Win32 进 `minimal.h`；手改 `AUTO-GENERATED` `.pyi`；批量删 UI 组合模板 |
 
-回归：`python -m unittest src.tests.test_ffi_import`；`build.bat sql/test_sqlite`。
+回归：`python -m unittest host.tests.test_ffi_import`；`build.bat sql/test_sqlite`。
 
 ---
 
@@ -574,7 +574,7 @@ python main.py <input.py> [-o DIR] [--no-stdlib] [--no-main] [--debug]
 
 | 参数 | 含义 |
 |------|------|
-| `-o` | 输出根（默认 `generated/`） |
+| `-o` | 输出根（默认 `out/`） |
 | `--no-stdlib` | 不翻译标准库 |
 | `--no-main` | 不包装 main；runtime bootstrap 用 |
 | `--debug` | 插入 `fprintf` 调用跟踪；``__debug__`` → ``true`` |
@@ -659,8 +659,8 @@ build containers misc\test_range
 等价手写单文件：
 
 ```bat
-python main.py tests\misc\test_containers.py -o generated -c --compiler cl --exe generated\tests\misc\test_containers.exe
-generated\tests\misc\test_containers.exe
+python main.py tests\misc\test_containers.py -o generated -c --compiler cl --exe out\tests\misc\test_containers.exe
+out\tests\misc\test_containers.exe
 ```
 
 ---
@@ -712,4 +712,4 @@ generated\tests\misc\test_containers.exe
 
 ---
 
-*附录版本：2026-08-05（标准库域布局、译器 `src/`、废弃 `builtins/`）；实现变更以 `src/translator.py`、`constant/stdlib_layout.py`、`analysis/runtime_symbols.py` 与 `py2cpp/` 源码为准。*
+*附录版本：2026-08-05（标准库域布局、译器 `host/`、废弃 `builtins/`）；实现变更以 `src/translator.py`、`constant/stdlib_layout.py`、`analysis/runtime_symbols.py` 与 `py2cpp/` 源码为准。*

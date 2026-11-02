@@ -10,7 +10,7 @@
 
 | 阶段 | 状态 | 说明 |
 |------|------|------|
-| **P0** mtime 跳过 | ✅ | `scripts/parallel_build.py`：exe 新于源/`minimal.h`/胖库则 skip；**翻译**：`generated/runtime/.bootstrap.stamp`，输入未变则跳过 `main.py paw/__init__.py` |
+| **P0** mtime 跳过 | ✅ | `tools/parallel_build.py`：exe 新于源/`minimal.h`/胖库则 skip；**翻译**：`out/runtime/.bootstrap.stamp`，输入未变则跳过 `main.py lib/paw/__init__.py` |
 | **P0.5** 写盘去重 | ✅ | 生成 `.h`/`.inl`/`.cpp` 时忽略 `// 生成时间:` 再比正文，相同则不刷新 mtime |
 | **P1** 胖库 | ✅ | 白名单非模板模块进 `py2cpp_runtime.lib`；模板/`Queue[T]` 仍 header-only；库增量看 `paw/**/*.{h,inl,cpp}` mtime |
 | **P1.5** bootstrap 加速 | ✅ | `ClassInfo`/`type_node` 查表；nav shard 按 `.h`/`.inl` mtime 跳过；叶子 `.py` 脏则只重分析/生成该模块，清洁模块跳过 import/expand/checks（mixin/`__init__.py`/译器/`templates/` 仍全量）。改一文件目标 **&lt;30s**；译器自身变更仍全量 |
@@ -23,7 +23,7 @@
 
 ```bat
 set PY2CPP_HEADER_ONLY=1
-scripts\_bootstrap_runtime.bat
+tools\_bootstrap_runtime.bat
 build.bat PATTERN --seq
 ```
 
@@ -70,7 +70,7 @@ test_foo.cpp
 | 一文件一 DLL | 导出面、循环依赖、启动成本均不可接受 |
 | 把全部模板搬进 DLL | C++ 无稳定「跨 DLL 模板 ABI」；需显式实例化白名单，成本高、收益窄 |
 | 用 STL 容器换链接模型 | 与编码规范「不链接 STL 容器」冲突 |
-| 手改 `generated/` 作为真相源 | 仍由译器生成 `.h` / `.inl` / `.cpp` |
+| 手改 `out/` 作为真相源 | 仍由译器生成 `.h` / `.inl` / `.cpp` |
 
 ---
 
@@ -149,9 +149,9 @@ P1 可先落 **单一胖库** `py2cpp_runtime.lib`（上述 library 模块全进
 
 | 文件 | 内容 |
 |------|------|
-| `generated/runtime/paw/<path>.h` | 类/函数声明；**不**在头尾 include 实现 `.inl` |
-| `generated/runtime/paw/<path>.inl` | 实现体（与现相同，可含 templates 注入） |
-| `generated/runtime/paw/<path>.cpp` | **新建**：`#define PY2CPP_LIBRARY_TU` + `#include "paw/minimal.h"` + `#include "<path>.inl"` |
+| `out/runtime/paw/<path>.h` | 类/函数声明；**不**在头尾 include 实现 `.inl` |
+| `out/runtime/paw/<path>.inl` | 实现体（与现相同，可含 templates 注入） |
+| `out/runtime/paw/<path>.cpp` | **新建**：`#define PY2CPP_LIBRARY_TU` + `#include "paw/minimal.h"` + `#include "<path>.inl"` |
 
 ### 5.2 `header_only` 模块
 
@@ -170,7 +170,7 @@ P1 可先落 **单一胖库** `py2cpp_runtime.lib`（上述 library 模块全进
 | `src/emit/layout_emit.py` | 按类别决定是否在 `.h` 尾 include `.inl`；写出库用 `.cpp` |
 | `src/codegen/umbrella_gen.py` | umbrella 只聚合声明头；库列表元数据可写旁路文件供 `compile.py` 读 |
 | `src/compile.py` | 编 `.lib`；测例链路追加 `.lib`；sqlite 仍按需 |
-| `scripts/build.bat` / `build_all.bat` / `_bootstrap_runtime.bat` | bootstrap 后编库；mtime 跳过；脏库重编 |
+| `tools/build.bat` / `build_all.bat` / `_bootstrap_runtime.bat` | bootstrap 后编库；mtime 跳过；脏库重编 |
 
 ---
 
@@ -180,20 +180,20 @@ P1 可先落 **单一胖库** `py2cpp_runtime.lib`（上述 library 模块全进
 
 ```bat
 REM 每个 library 模块一个 obj，再 lib 合并（或按域分批）
-cl /c /EHsc /std:c++14 /utf-8 /I generated\runtime ^
-  generated\runtime\paw\concur\thread.cpp ^
-  /Fo:generated\runtime\obj\concur_thread.obj
-lib /OUT:generated\runtime\lib\py2cpp_concur.lib generated\runtime\obj\concur_*.obj
+cl /c /EHsc /std:c++14 /utf-8 /I out\runtime ^
+  out\runtime\paw\concur\thread.cpp ^
+  /Fo:out\runtime\obj\concur_thread.obj
+lib /OUT:out\runtime\lib\py2cpp_concur.lib out\runtime\obj\concur_*.obj
 ```
 
 ### 6.2 编测例（示意）
 
 ```bat
-cl /EHsc /std:c++14 /utf-8 /I generated\runtime ^
-  generated\tests\concur\test_thread.cpp ^
-  /Fe:generated\tests\concur\test_thread.exe ^
-  /link generated\runtime\lib\py2cpp_core.lib ^
-        generated\runtime\lib\py2cpp_concur.lib
+cl /EHsc /std:c++14 /utf-8 /I out\runtime ^
+  out\tests\concur\test_thread.cpp ^
+  /Fe:out\tests\concur\test_thread.exe ^
+  /link out\runtime\lib\py2cpp_core.lib ^
+        out\runtime\lib\py2cpp_concur.lib
 ```
 
 依赖闭包：测例 import 闭包触及的域库都要链上（可由译器写 `*.link.json` 或粗粒度「测试默认链 core+io+concur+sql」起步）。
@@ -214,7 +214,7 @@ cl /EHsc /std:c++14 /utf-8 /I generated\runtime ^
 | 项 | 说明 |
 |----|------|
 | mtime 跳过 | `build.bat`：源 `.py`、已生成 `.cpp`、依赖的 runtime 头/库未变 → 跳过该 exe |
-| bootstrap stamp | `_bootstrap_runtime.bat`：`paw/`、`templates/`（**不含** clangd 生成的 `~macro/`）、`ffi/`、`src/translator.py` 与 `src/{analysis,passes,codegen,emit,constant}/**/*.py`（不含 `bootstrap_stamp.py` / `compile.py` / `src/tests`）、`main.py` 均不新于 `generated/runtime/.bootstrap.stamp` → **跳过全量翻译**。`PY2CPP_FORCE_BOOTSTRAP=1` 强制重译；`--debug` / `PY2CPP_HEADER_ONLY` 与 stamp 不一致也会重译 |
+| bootstrap stamp | `_bootstrap_runtime.bat`：`paw/`、`templates/`（**不含** clangd 生成的 `~macro/`）、`ffi/`、`src/translator.py` 与 `src/{analysis,passes,codegen,emit,constant}/**/*.py`（不含 `bootstrap_stamp.py` / `compile.py` / `src/tests`）、`main.py` 均不新于 `out/runtime/.bootstrap.stamp` → **跳过全量翻译**。`PY2CPP_FORCE_BOOTSTRAP=1` 强制重译；`--debug` / `PY2CPP_HEADER_ONLY` 与 stamp 不一致也会重译 |
 | 写盘去重 | 生成文件正文不变（忽略 `// 生成时间:`）则不写盘，避免打穿 P0 编译 skip |
 | 可选 PCH | MSVC `/Yc`/`/Yu` 对 `minimal.h`（或瘦声明伞头） |
 
@@ -227,7 +227,7 @@ cl /EHsc /std:c++14 /utf-8 /I generated\runtime ^
 | 标注 `library` 模块 | 显式表 |
 | 生成模块 `.cpp` | `#include` 对应 `.inl` |
 | `.h` 不再拉实现 inl | 仅 `library` |
-| bootstrap 后编胖库 | 测例默认链接。增量：库 `.cpp` **以及** `generated/runtime/paw/**/*.{h,inl,cpp}` 任一新于 obj/lib → 重编对应 obj（避免只改 `optional.h` 等 header-only 头时 `sqlite.cpp` 正文未变而漏编，导致 **LNK2019**） |
+| bootstrap 后编胖库 | 测例默认链接。增量：库 `.cpp` **以及** `out/runtime/paw/**/*.{h,inl,cpp}` 任一新于 obj/lib → 重编对应 obj（避免只改 `optional.h` 等 header-only 头时 `sqlite.cpp` 正文未变而漏编，导致 **LNK2019**） |
 | 开关 | 如 `PY2CPP_HEADER_ONLY=1` 恢复旧路径（过渡） |
 
 **验收**：
@@ -253,7 +253,7 @@ cl /EHsc /std:c++14 /utf-8 /I generated\runtime ^
 | 场景 | 预期 |
 |------|------|
 | 改用户测例 | 主要编测例 TU + 链接（秒级～十余秒，视机器）；bootstrap 翻译应 skip |
-| 改叶子标准库 `.py` | 增量：只重分析/生成该模块（签名+import 缓存 `generated/runtime/.cache/analyze_sigs.pkl`）；清洁模块跳过 import/expand/checks；nav 只重建脏 shard。mixin / `@protocol` / `__init__.py` / 译器 / `templates/` / `ffi/` 仍全量 |
+| 改叶子标准库 `.py` | 增量：只重分析/生成该模块（签名+import 缓存 `out/runtime/.cache/analyze_sigs.pkl`）；清洁模块跳过 import/expand/checks；nav 只重建脏 shard。mixin / `@protocol` / `__init__.py` / 译器 / `templates/` / `ffi/` 仍全量 |
 | 全量翻译 | 改译器或 templates 时仍较慢；`PY2CPP_PROFILE=1` 打印 parse/expand/analyze/emit/write/nav_index。`ClassInfo` cpp 名与 `type_node_from_cpp_string` 已建索引/缓存 |
 | 改 `library` 标准库模块 | 重编对应 `.lib` + 重链，而非 N×全量 inl |
 | 改 `header_only` 模板（`list`/`str`…） | 仍可能大面积重编（头依赖未变） |
@@ -269,7 +269,7 @@ cl /EHsc /std:c++14 /utf-8 /I generated\runtime ^
 
 优化前（无 P1.6 / 未缓存 FFI）：`test_print` 翻译 ~33s、翻译+编译 ~44–60s；`func_sigs` 单独 ~22s（重复构建 ~3800 条 `ffi/*` 签名）。
 
-**注意**：改 `src/` 后 `translator_fp` 变化，须重跑 bootstrap 写入 `analyze_sigs.pkl`，否则 P1.6 静默失效（analyze 回退全量）。
+**注意**：改 `host/` 后 `translator_fp` 变化，须重跑 bootstrap 写入 `analyze_sigs.pkl`，否则 P1.6 静默失效（analyze 回退全量）。
 
 ---
 
@@ -307,7 +307,7 @@ cl /EHsc /std:c++14 /utf-8 /I generated\runtime ^
 [x] P0 mtime 跳过可用
 [x] 代表测例（list_literal_lookup / path / thread / sqlite）MSVC 全绿
 [x] 参考手册链接模型节已更新并指向本文
-[x] 未手改 generated/ 作为提交真相源
+[x] 未手改 out/ 作为提交真相源
 ```
 
 ---

@@ -98,7 +98,7 @@ Console.stdout.write(result.stdout)
 
 ### 3.4 Python 描述策略，模板实现平台叶子
 
-Python 源码负责参数校验、状态机、格式化与组合；C++ / 模板仅负责无法进一步拆分的终端模式、Unicode 控制台输出、进程创建、pipe、等待和终端尺寸。真相源只改 `paw/`、`src/`、`templates/`、`tests/`、`docs/`，禁止修改 `generated/`。
+Python 源码负责参数校验、状态机、格式化与组合；C++ / 模板仅负责无法进一步拆分的终端模式、Unicode 控制台输出、进程创建、pipe、等待和终端尺寸。真相源只改 `paw/`、`host/`、`templates/`、`tests/`、`docs/`，禁止修改 `out/`。
 
 ### 3.5 复用现有并发基础
 

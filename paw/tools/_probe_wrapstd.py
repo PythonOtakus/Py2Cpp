@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 from pathlib import Path
 import ast
-from src.analysis.stubs.class_stubs import lookup_module_function_cpp_name, _scan_function_cpp_renames
-from src.constant.stdlib_layout import stdlib_module_path
+from host.analysis.stubs.class_stubs import lookup_module_function_cpp_name, _scan_function_cpp_renames
+from host.constant.stdlib_layout import stdlib_module_path
 
 mp = stdlib_module_path("io")
 renames = _scan_function_cpp_renames(Path("paw/io/__init__.py"))

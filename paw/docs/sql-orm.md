@@ -42,9 +42,9 @@ third_party/sqlite/      # SQLite amalgamation（已 vendoring，见 README.md�
   sqlite3.h
   sqlite3ext.h
 
-templates/               # 模板根：镜像 generated/runtime/paw/**（见 codegen-templates.md §8）
+templates/               # 模板根：镜像 out/runtime/paw/**（见 codegen-templates.md §8）
   ~helpers.inl           # 跨模块；sql/sqlite.inl 内 PY2CPP_INCLUDE("../~helpers.inl")
-  sql/sqlite.inl         # → generated/runtime/paw/sql/sqlite.inl
+  sql/sqlite.inl         # → out/runtime/paw/sql/sqlite.inl
   sql/~bind.inl          # 同目录 INCLUDE：~bind.inl
 
 src/codegen/

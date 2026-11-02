@@ -1,6 +1,6 @@
 # Zeus
 
-基于 Py2Cpp 的轻量 3D 游戏引擎（GLFW + OpenGL）。
+基于 Paw 的轻量 3D 游戏引擎（GLFW + OpenGL）。布局对齐 Unreal：`engine/` + `samples/` + `tools/` + `out/`。
 
 - **总设计**：[docs/zeus-engine.md](docs/zeus-engine.md)
 - **构建**：`zeus\build.bat`（runtime / render / editor / commands / jump）
@@ -12,15 +12,23 @@
 
 ```text
 zeus/
-  README.md            # 本文件
+  README.md
   docs/
-    zeus-engine.md     # 目标 / 对象模型 / Phase 计划
-  src/                 # Python 源（译器 project_root）
-  ffi/                 # 生成物：GLFW/GL .pyi（zeus\ffi.bat）
-  third_party/glfw/
-  generated/
-  build.bat
-  setup_deps.bat
+  engine/
+    source/zeus/          # 译器 project_root = engine/source
+      runtime/            # core / platform / render / assets / physics
+      editor/
+      developer/          # CommandBus 等
+      programs/           # editor_main + tests/
+    ffi/                  # 生成物：GLFW/GL .pyi（tools\ffi.bat）
+    thirdparty/glfw/
+  samples/
+    jump/
+      source/             # jump 包 + jump_demo.py（伴生搜索根）
+      content/scenes/
+  tools/                  # build / demo / editor / ffi / setup_deps
+  out/                    # 译器生成物（对齐 Paw）
+  build.bat               # → tools\*.bat 转发
 ```
 
 平台 / OpenGL 为**纯 Python**组合 `ffi.glfw.glfw3` / `ffi.gl.gl`（符号 `Pyi_*`）；无 `zeus/templates`、`zeus/native`。
@@ -30,11 +38,11 @@ zeus/
 
 | 依赖 | 获取 |
 |------|------|
-| Py2Cpp | monorepo `paw/paw/`（`Transform3D` / `Color`） |
+| Paw | monorepo `paw/lib/paw/`（`Transform3D` / `Color`） |
 | MSVC | `opengl32.lib` |
-| GLFW 3.4 WIN64 | `zeus\setup_deps.bat` → `zeus/third_party/glfw/` |
+| GLFW 3.4 WIN64 | `zeus\setup_deps.bat` → `zeus/engine/thirdparty/glfw/` |
 
-无 PhysX；重力见 `zeus/src/simple_world.py`（`physics/` 为占位包）。
+无 PhysX；重力见 `zeus/engine/source/zeus/runtime/core/simple_world.py`（`physics/` 为占位包）。
 
 ## 当前进度
 
@@ -49,12 +57,12 @@ zeus/
 
 ## Phase 1–2 验收
 
-- [x] Python 在 `zeus/src/`；C 叶子为 `zeus/ffi/**/*.pyi` + 纯 Python
+- [x] Python 在 `engine/source/zeus/`；C 叶子为 `engine/ffi/**/*.pyi` + 纯 Python
 - [x] `zeus/setup_deps.bat` 拉齐 GLFW
 - [x] `test_runtime.exe`：对象树 / 组件 / Transform / World / Mesh·Camera / 重力 / 序列化 — 失败数 0
 - [x] `test_render.exe`：隐藏 GLFW 窗 + 清屏 + 彩色 cube — 失败数 0
 - [x] `test_editor_smoke.exe`：命令 / `.zas` 往返 / Session / Inspector Apply / 一体窗+Scene View — 失败数 0
-- 打开编辑器：`zeus\editor.bat`（加载 `examples/jump_demo/scenes/main.zas`）
+- 打开编辑器：`zeus\editor.bat`（加载 `zeus/samples/jump/content/scenes/main.zas`）
 - [x] `test_commands.exe`：Play 写限制 + 命令管线 — 失败数 0
 - [x] `test_jump.exe`：满蓄力落地得分 + FBX/ZAS 往返 — 失败数 0
 - 有窗跳一跳：`zeus\demo.bat`（空格/左键蓄力）

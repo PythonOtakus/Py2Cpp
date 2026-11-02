@@ -84,7 +84,7 @@ def _looks_like_exception(node: ast.ClassDef) -> bool:
 
 
 def main() -> None:
-    roots = ["paw", "tests", "examples"]
+    roots = ["lib/paw", "tests", "examples"]
     for root in roots:
         for p in Path(root).rglob("*.py"):
             try:

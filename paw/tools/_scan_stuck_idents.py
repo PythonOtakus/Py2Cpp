@@ -188,12 +188,12 @@ def suggest(name: str) -> str | None:
 
 def main() -> None:
   found: dict[str, dict] = {}
-  for d in ("paw", "tests", "examples"):
+  for d in ("lib/paw", "tests", "examples"):
     base = ROOT / d
     if not base.exists():
       continue
     for path in base.rglob("*.py"):
-      if "generated" in path.parts:
+      if "out" in path.parts:
         continue
       try:
         tree = ast.parse(path.read_text(encoding="utf-8"))

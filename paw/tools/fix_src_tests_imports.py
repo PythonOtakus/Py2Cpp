@@ -1,4 +1,4 @@
-"""Fix ``from paw import …`` in src/tests embedded sources."""
+"""Fix ``from paw import …`` in host/tests embedded sources."""
 from __future__ import annotations
 
 import re

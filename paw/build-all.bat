@@ -1,2 +1,2 @@
 @echo off
-call "%~dp0scripts\build_all.bat" %*
+call "%~dp0tools\build_all.bat" %*

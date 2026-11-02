@@ -8,7 +8,7 @@
 | `sqlite3.h` | 公开 C API |
 | `sqlite3ext.h` | 扩展 API 头（加载扩展等；P0 可不启用） |
 
-FFI 声明不写在本目录：生成到 **`ffi/sqlite/sqlite3.pyi`**（`ffi.bat` / `scripts/gen_c_ffi.py`；见 [docs/c-ffi-pyi.md](../../docs/c-ffi-pyi.md)）。
+FFI 声明不写在本目录：生成到 **`ffi/sqlite/sqlite3.pyi`**（`ffi.bat` / `tools/gen_c_ffi.py`；见 [docs/c-ffi-pyi.md](../../docs/c-ffi-pyi.md)）。
 
 ## 当前版本
 

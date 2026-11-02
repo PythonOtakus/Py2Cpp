@@ -4,13 +4,13 @@
 > **受众**：译器维护者、`py2cpp-nav` / 重构工具链、标准库大规模 API 演进。  
 > **相关**：[py2cpp-nav.md](./py2cpp-nav.md)（符号跳转与索引）、[selector.md](./selector.md)（路径查询 DSL）、[runtime-libs.md](./runtime-libs.md)（bootstrap 增量）、[编码规范.md](./编码规范.md)、[参考手册 §4 翻译流水线](./参考手册.md#4-翻译流水线)。
 
-本文是 **元信息、语义图、RefactorPlan、可视化重构** 的单一真相源；插件安装与日常使用见 [`plugins/py2cpp-architect/README.md`](../plugins/py2cpp-architect/README.md)。
+本文是 **元信息、语义图、RefactorPlan、可视化重构** 的单一真相源；插件安装与日常使用见 [`extensions/py2cpp-architect/README.md`](../extensions/py2cpp-architect/README.md)。
 
 ---
 
 ## 1. 背景与动机
 
-Py2Cpp 将受限 Python **静态**译为 C++11，**无 CPython 解释器**，标准库与用户代码的单一真相源为 `paw/` 与 `src/`；`generated/` 仅由 `main.py` 生成，**勿手改**。
+Py2Cpp 将受限 Python **静态**译为 C++11，**无 CPython 解释器**，标准库与用户代码的单一真相源为 `paw/` 与 `host/`；`out/` 仅由 `main.py` 生成，**勿手改**。
 
 大规模演进（标准库域拆分、字段重命名、`@dataclass` schema 变更、`select` 路径批量更新）若依赖手工搜索替换，成本高且易漏改。业界「快速重构 + 数据迁移」的共性是：
 
@@ -36,7 +36,7 @@ Py2Cpp **已具备一半基础设施**（见 §2）；Architect 补齐 **语义�
 | **A** | 类型与装饰器 | 译器 codegen | `@dataclass`、`@protocol`、`@enum`、`@serializable`、`@mixin` |
 | **B** | 字段级 `@annotation` | 特定 pass | `ProtoFieldMeta`、`PosArgMeta`、`AnimateMeta`；`Self.iterFields` / `Self.getFieldAnnotation` |
 | **C** | 译期专用 API | pass 脱糖 | `assign`、`select`、`build`（`TRANSLATOR_ONLY_METHODS`） |
-| **D** | 工具索引 | IDE 只读 | `generated/.cache/nav/`（[py2cpp-nav](./py2cpp-nav.md)） |
+| **D** | 工具索引 | IDE 只读 | `out/.cache/nav/`（[py2cpp-nav](./py2cpp-nav.md)） |
 
 ### 2.2 相关组件
 
@@ -45,15 +45,15 @@ Py2Cpp **已具备一半基础设施**（见 §2）；Architect 补齐 **语义�
 | 导航索引 | `src/codegen/nav_index.py` | **扩展为语义图**（符号 + 引用 + import 边） |
 | 路径选择器 | `src/passes/selector_parse.py`、`src/emit/selector_emit.py` | 重构 UI 的查询 DSL 原型；重命名需同步字符串路径 |
 | 静态反射折叠 | `src/passes/static_reflect.py` | `getattr`/`setattr` 编译期解析；重构须保持可折叠 |
-| 仓库级 codemod | `scripts/migrate_*.py` | RefactorPlan 批处理的后端参考实现 |
-| 跳转扩展 | `plugins/py2cpp-nav` | 共享 `nav` 缓存与 `translateRunner`；Architect **承接** Rename / Find References |
+| 仓库级 codemod | `tools/migrate_*.py` | RefactorPlan 批处理的后端参考实现 |
+| 跳转扩展 | `extensions/py2cpp-nav` | 共享 `nav` 缓存与 `translateRunner`；Architect **承接** Rename / Find References |
 
 ### 2.3 明确不做
 
 | 项 | 说明 |
 |----|------|
 | 运行时反射驱动重构 | 无 `eval` / 动态 `getattr`；改写须在翻译前完成 |
-| 在 `generated/` 上重构 | 派生物可删可再生；只改 `paw/`、`tests/`、`examples/`（及必要时 `src/`） |
+| 在 `out/` 上重构 | 派生物可删可再生；只改 `paw/`、`tests/`、`examples/`（及必要时 `host/`） |
 | 函数体内逐行 Python↔C++ 映射 | 与 nav 非目标一致；语句级拖拽排序不在范围 |
 | 替代译器 pass | 业务语义仍由现有 pass 展开；Architect 改 **源码**，不绕过 analyze |
 | 一文件一 DLL / 进程内热更 | 见 [hot-reload.md](./hot-reload.md) |
@@ -70,10 +70,10 @@ Py2Cpp **已具备一半基础设施**（见 §2）；Architect 补齐 **语义�
 └────────────────────────────┬─────────────────────────────────┘
                              │ RefactorPlan JSON（§5）
 ┌────────────────────────────▼─────────────────────────────────┐
-│  重构引擎（Python：`scripts/apply_refactor_plan.py` 或译器子命令）│
+│  重构引擎（Python：`tools/apply_refactor_plan.py` 或译器子命令）│
 │  · AST 改写（libcst / ast）                                   │
 │  · 交叉校验：nav 符号、import 图、select 字面量、@annotation    │
-│  · 输出 unified diff；禁止写 generated/                       │
+│  · 输出 unified diff；禁止写 out/                       │
 └────────────────────────────┬─────────────────────────────────┘
                              │ 改写后的 .py
 ┌────────────────────────────▼─────────────────────────────────┐
@@ -119,7 +119,7 @@ Py2Cpp **已具备一半基础设施**（见 §2）；Architect 补齐 **语义�
 ### 4.2 侧车元信息（IDE 草稿）
 
 ```text
-generated/.cache/architect/
+out/.cache/architect/
   graph.json              # 全库语义图（§6）
   plans/<id>.arch.json    # RefactorPlan 草稿（§5）
   plans/<id>.preview.diff # 应用前预览
@@ -131,7 +131,7 @@ generated/.cache/architect/
 
 ## 5. RefactorPlan（`*.arch.json`）
 
-重构计划文件统一使用 **``*.arch.json``** 后缀（侧车默认目录 ``generated/.cache/architect/plans/``）。
+重构计划文件统一使用 **``*.arch.json``** 后缀（侧车默认目录 ``out/.cache/architect/plans/``）。
 
 ### 5.1 顶层结构
 
@@ -222,7 +222,7 @@ generated/.cache/architect/
 }
 ```
 
-仅用于已有 `scripts/migrate_*.py` 同等场景；应用前须输出 match 计数并由 UI 确认。
+仅用于已有 `tools/migrate_*.py` 同等场景；应用前须输出 match 计数并由 UI 确认。
 
 ### 5.3 应用流程
 
@@ -237,8 +237,8 @@ generated/.cache/architect/
 CLI 草案：
 
 ```bat
-python scripts/apply_refactor_plan.py plans/rename.arch.json --check
-python scripts/apply_refactor_plan.py plans/rename.arch.json --apply
+python tools/apply_refactor_plan.py plans/rename.arch.json --check
+python tools/apply_refactor_plan.py plans/rename.arch.json --apply
 ```
 
 ---
@@ -342,7 +342,7 @@ nav 文档中的「Rename / Find All References / 补全 → 后续可选」**�
 | `@dataclass` 字段重命名 | 字段表改名 | `rename_symbol` + `update_select_literals` | 域内 `test_*.py` + MSVC |
 | 提取 `@mixin` | 勾选方法 → Extract | 生成新模块 + `expand_mixins` 可分析静态方法集 | `tests/lang` mixin 测例 |
 | 模块搬家 | 拖拽模块节点 | `move_module` + `rewrite_imports` | **全量 bootstrap** + `build_all` |
-| API 批量替换 | 规则表 | `replace_text` 或 `migrate_*.py` | `scripts/migrate_* --check` 同等 |
+| API 批量替换 | 规则表 | `replace_text` 或 `migrate_*.py` | `tools/migrate_* --check` 同等 |
 | 序列化 schema 演进 | 字段增删 + version | 源内 `@annotation` + serde pass（非 Architect 实现体） | `tests/serde/*` |
 | 废弃 API 清扫 | 引用图标红 | `graph.refs` + 可选 `@deprecated` pass（远期） | grep + build |
 
@@ -352,12 +352,12 @@ nav 文档中的「Rename / Find All References / 补全 → 后续可选」**�
 
 ### P0 — 语义图 + 单模块 Rename（MVP）
 
-- [x] `src/codegen/architect_graph.py` 写出 `generated/.cache/architect/graph.json`（import / export）
-- [x] `scripts/apply_refactor_plan.py`：`rename_symbol`（单模块 field/method/class/function）
-- [x] `plugins/py2cpp-architect`：Apply Plan / Rename 命令 + diff 预览
+- [x] `src/codegen/architect_graph.py` 写出 `out/.cache/architect/graph.json`（import / export）
+- [x] `tools/apply_refactor_plan.py`：`rename_symbol`（单模块 field/method/class/function）
+- [x] `extensions/py2cpp-architect`：Apply Plan / Rename 命令 + diff 预览
 - [x] `src/tests/test_architect_plan.py`（plan 解析与干跑、graph 写入）
 
-**验收**：单测 `python -m unittest src.tests.test_architect_plan`；触达模块 `build.bat` + exe。
+**验收**：单测 `python -m unittest host.tests.test_architect_plan`；触达模块 `build.bat` + exe。
 
 ### P1 — 跨文件与 select 联动
 
@@ -390,10 +390,10 @@ nav 文档中的「Rename / Find All References / 补全 → 后续可选」**�
 ## 11. PR 检查单（实现阶段）
 
 ```text
-[ ] docs/py2cpp-architect.md 与 plugins/py2cpp-architect/README.md 已同步
-[ ] 只改源树；未手改 generated/ 充数（缓存 JSON 由译器/脚本写入除外）
+[ ] docs/py2cpp-architect.md 与 extensions/py2cpp-architect/README.md 已同步
+[ ] 只改源树；未手改 out/ 充数（缓存 JSON 由译器/脚本写入除外）
 [ ] RefactorPlan version 与 graph version 已文档化
-[ ] rename / plan 干跑有 src/tests 覆盖
+[ ] rename / plan 干跑有 host/tests 覆盖
 [ ] 触达模块 bootstrap + MSVC 全绿
 [ ] py2cpp-nav.md 已交叉引用本文（Rename/Refs 归属）
 ```
@@ -405,16 +405,16 @@ nav 文档中的「Rename / Find All References / 补全 → 后续可选」**�
 | 用途 | 路径 |
 |------|------|
 | 本方案 | `docs/py2cpp-architect.md` |
-| 插件说明 | `plugins/py2cpp-architect/README.md` |
-| 打包 | `pkg-arch.bat` / `plugins/py2cpp-architect/package.bat` |
+| 插件说明 | `extensions/py2cpp-architect/README.md` |
+| 打包 | `pkg-arch.bat` / `extensions/py2cpp-architect/package.bat` |
 | 导航索引（依赖） | `src/codegen/nav_index.py`、`docs/py2cpp-nav.md` |
 | 路径 DSL | `src/passes/selector_parse.py`、`docs/selector.md` |
-| Codemod 参考 | `scripts/migrate_type_pred.py` 等 |
-| Plan 应用 | `scripts/apply_refactor_plan.py` |
+| Codemod 参考 | `tools/migrate_type_pred.py` 等 |
+| Plan 应用 | `tools/apply_refactor_plan.py` |
 | 计划引擎 | `src/tools/architect_plan.py` |
 | 语义图 | `src/codegen/architect_graph.py` |
-| 语义图缓存 | `generated/.cache/architect/graph.json` |
-| 验收 | `scripts/_bootstrap_runtime.bat`、`build_all.bat`、`run.bat` |
+| 语义图缓存 | `out/.cache/architect/graph.json` |
+| 验收 | `tools/_bootstrap_runtime.bat`、`build_all.bat`、`run.bat` |
 
 ---
 

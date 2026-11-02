@@ -29,13 +29,13 @@ compiler/stages/
 ## 命令
 
 ```bat
-python scripts/paw_bootstrap_stages.py init
-python scripts/paw_bootstrap_stages.py snapshot-seed
-python scripts/paw_bootstrap_stages.py manifest stage1
-python scripts/paw_bootstrap_stages.py compare stage2 stage3
+python tools/paw_bootstrap_stages.py init
+python tools/paw_bootstrap_stages.py snapshot-seed
+python tools/paw_bootstrap_stages.py manifest stage1
+python tools/paw_bootstrap_stages.py compare stage2 stage3
 
-scripts\paw_stage1_c1_link.bat
-scripts\paw_c2_c3_thin_reseed.bat
+tools\paw_stage1_c1_link.bat
+tools\paw_c2_c3_thin_reseed.bat
 ```
 
 生产热路径：`Syntax → HIR → MidIR`（见 `compiler/py/sema`、`compiler/py/mid`）。C1 产物写入 `stage1/` 后填入真实 manifest。

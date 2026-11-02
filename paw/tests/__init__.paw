@@ -1,4 +1,4 @@
-"""py2cpp 集成测试包（``scripts/build_all.bat`` 递归 ``tests/**/test_*.paw``）。
+"""py2cpp 集成测试包（``tools/build_all.bat`` 递归 ``tests/**/test_*.paw``）。
 
 目录与 ``paw/<域>/`` 对齐：``tests/<域>/test_<模块>.paw`` 对应 ``paw/<域>/<模块>.paw``；
 子包同理（如 ``tests/io/test_path.paw`` ↔ ``paw/io/path.paw``）。

@@ -1,22 +1,22 @@
-# clangd：``#include "paw/..."`` 的根为 generated/runtime（与 compile.py 一致）
+# clangd：``#include "paw/..."`` 的根为 out/runtime（与 compile.py 一致）
 CompileFlags:
   Add:
     - -std=c++14
     - -I
-    - generated/runtime
+    - out/runtime
     - -I
     - templates
     - -D_WIN32
 
-# generated/*.inl 常不在 DB 中单独列出时的回退；templates/*.inl 走 compile_commands 条目
+# out/*.inl 常不在 DB 中单独列出时的回退；templates/*.inl 走 compile_commands 条目
 If:
-  PathMatch: generated/.*\.inl$
+  PathMatch: out/.*\.inl$
 CompileFlags:
   CompilationDatabase: None
   Add:
     - -std=c++14
     - -I
-    - generated/runtime
+    - out/runtime
     - -I
     - templates
     - -D_WIN32

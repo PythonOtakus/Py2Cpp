@@ -15,5 +15,5 @@ if "%~1"=="" (
   echo See docs\c-ffi-pyi.md
   exit /b 1
 )
-python scripts\gen_c_ffi.py %*
+python tools\gen_c_ffi.py %*
 exit /b %ERRORLEVEL%

@@ -1,7 +1,7 @@
 # Py2Cpp Navigation（符号双向跳转）完整方案
 
 状态：**v3 已落地**（A–G：property/staticproperty、type alias、enum、union variant、protocol/mixin/delegate、解析体验）。  
-本文是 **索引格式、覆盖矩阵与验收** 的单一真相源；插件安装与日常使用见 [`plugins/py2cpp-nav/README.md`](../plugins/py2cpp-nav/README.md)。
+本文是 **索引格式、覆盖矩阵与验收** 的单一真相源；插件安装与日常使用见 [`extensions/py2cpp-nav/README.md`](../extensions/py2cpp-nav/README.md)。
 
 相关文档：[参考手册 §8 装饰器](./参考手册.md#8-装饰器与翻译期展开)、[编码规范 §4 / §6.2](./编码规范.md)、译器索引实现 `src/codegen/nav_index.py`。
 
@@ -9,11 +9,11 @@
 
 | 扩展 | 打包脚本 | 插件目录 `package.bat` |
 |------|----------|------------------------|
-| py2cpp-nav | `pkg-nav.bat` | `plugins/py2cpp-nav/package.bat` |
-| py2cpp-pyml | `pkg-pyml.bat` | `plugins/py2cpp-pyml/package.bat` |
-| py2cpp-template | `pkg-temp.bat` | `plugins/py2cpp-template/package.bat` |
-| py2cpp-architect | `pkg-arch.bat` | `plugins/py2cpp-architect/package.bat` |
-| py2cpp-lexer | `pkg-lexer.bat` | `plugins/py2cpp-lexer/package.bat` |
+| py2cpp-nav | `pkg-nav.bat` | `extensions/py2cpp-nav/package.bat` |
+| py2cpp-pyml | `pkg-pyml.bat` | `extensions/py2cpp-pyml/package.bat` |
+| py2cpp-template | `pkg-temp.bat` | `extensions/py2cpp-template/package.bat` |
+| py2cpp-architect | `pkg-arch.bat` | `extensions/py2cpp-architect/package.bat` |
+| py2cpp-lexer | `pkg-lexer.bat` | `extensions/py2cpp-lexer/package.bat` |
 
 ---
 
@@ -21,7 +21,7 @@
 
 ### 1.1 目标
 
-在 **Python 源**（`paw/`、`tests/`、`examples/`、`ffi/**/*.pyi`）与 **`generated/` 生成 C++**（`.h` / `.inl` / 入口 `.cpp`）之间提供符号级 **Go to Definition**（F12 / Ctrl+点击）双向跳转：
+在 **Python 源**（`paw/`、`tests/`、`examples/`、`ffi/**/*.pyi`）与 **`out/` 生成 C++**（`.h` / `.inl` / 入口 `.cpp`）之间提供符号级 **Go to Definition**（F12 / Ctrl+点击）双向跳转：
 
 | 方向 | 典型场景 |
 |------|----------|
@@ -35,14 +35,14 @@
 | 项 | 说明 |
 |----|------|
 | 函数体内任意语句行映射 | 调试轨迹用 `--debug`，不属于 nav |
-| `templates/**` 编辑与跳转 | 归 [py2cpp-template](../plugins/py2cpp-template/README.md) |
+| `templates/**` 编辑与跳转 | 归 [py2cpp-template](../extensions/py2cpp-template/README.md) |
 | Rename / Find All References / 大规模重构 | 归 [py2cpp-architect](./py2cpp-architect.md) |
 | 补全 | 后续可选 |
-| 手改 `generated/` 作为索引源 | 索引仅由译器在翻译结束时写入 |
+| 手改 `out/` 作为索引源 | 索引仅由译器在翻译结束时写入 |
 
 ### 1.3 设计原则
 
-1. **索引由译器写、扩展只读 JSON**（`generated/.cache/nav/`）。
+1. **索引由译器写、扩展只读 JSON**（`out/.cache/nav/`）。
 2. **路径与模块同形**：shard 为 `modules/<module_path>.json`。
 3. **冲突须根治**：前向声明 / 调用点误匹配等在索引或解析层修。
 4. **与生成物命名一致**：property 用 `patterns.property_*_method_for`（`name__get` / `name__set`）。
@@ -56,18 +56,18 @@
 Python 保存 / 命令 Translate
         │
         ▼
-python main.py <file> -o generated [--no-main]
+python main.py <file> -o out [--no-main]
         │  translate 结束
         ▼
 src/codegen/nav_index.py  →  write_nav_index(translator)
         │
         ▼
-generated/.cache/nav/
+out/.cache/nav/
   manifest.json
   modules/<module_path>.json
         │  FileSystemWatcher / reload
         ▼
-plugins/py2cpp-nav
+extensions/py2cpp-nav
   extension.js → definitionProvider.js → indexStore.js
                  symbolParse.js（光标上下文）
 ```
@@ -77,14 +77,14 @@ plugins/py2cpp-nav
 | 索引写入 | `src/codegen/nav_index.py` | `ClassInfo` / 别名 / 枚举 / 变体 / delegate / 模块函数 → `.h`/`.inl` 行号；`.h`/`.inl` 未新于 shard 则跳过该模块 |
 | 挂钩 | `src/translator.py`（`translate_file` 末尾） | 调用 `write_nav_index` |
 | 译器单测 | `src/tests/test_nav_index.py` | A–E 关键路径 + 前向声明 / impl 调用点 |
-| 扩展 | `plugins/py2cpp-nav/out/*.js` | DefinitionProvider、限定名、setter 优先 |
-| 打包 | `pkg-nav.bat` / `plugins/py2cpp-nav/package.bat` | 打 vsix（无需 npm） |
+| 扩展 | `extensions/py2cpp-nav/out/*.js` | DefinitionProvider、限定名、setter 优先 |
+| 打包 | `pkg-nav.bat` / `extensions/py2cpp-nav/package.bat` | 打 vsix（无需 npm） |
 
 ### 2.1 工作流要点
 
 - 标准库单文件翻译：`project_root` 须为仓库根，否则 `module_order` 空、索引不更新。
 - `paw/` 翻译附加 `--no-main`；`tests/`、`examples/` 保留 `main()`。
-- 全量标准库索引：`python main.py paw\__init__.py -o generated --no-main`。
+- 全量标准库索引：`python main.py lib\paw\__init__.py -o out --no-main`。
 - 未翻译模块无 shard，跳转静默失败并交给其它 provider（如 clangd）。
 
 ---
@@ -94,7 +94,7 @@ plugins/py2cpp-nav
 ### 3.1 目录布局
 
 ```text
-generated/.cache/nav/
+out/.cache/nav/
   manifest.json
   modules/
     paw/util/list.json
@@ -111,7 +111,7 @@ generated/.cache/nav/
 ```json
 {
   "version": 3,
-  "generatedRoot": "generated",
+  "generatedRoot": "out",
   "repoRoot": ".",
   "updatedAt": "…",
   "modules": {
@@ -119,8 +119,8 @@ generated/.cache/nav/
       "shard": "modules/paw/util/list.json",
       "pyFile": "paw/util/list.py",
       "artifacts": {
-        "h": "generated/runtime/paw/util/list.h",
-        "inl": "generated/runtime/paw/util/list.inl",
+        "h": "out/runtime/paw/util/list.h",
+        "inl": "out/runtime/paw/util/list.inl",
         "cpp": null
       },
       "symbolCount": 120,
@@ -250,13 +250,13 @@ generated/.cache/nav/
 ### 8.1 最小命令
 
 ```bat
-python -m unittest src.tests.test_nav_index -v
-python main.py paw\util\list.py -o generated --no-main
-python main.py paw\alg\agg_mode.py -o generated --no-main
-python main.py paw\core\result.py -o generated --no-main
-python main.py paw\ui\events.py -o generated --no-main
+python -m unittest host.tests.test_nav_index -v
+python main.py lib\paw\util\list.py -o out --no-main
+python main.py lib\paw\alg\agg_mode.py -o out --no-main
+python main.py lib\paw\core\result.py -o out --no-main
+python main.py lib\paw\ui\events.py -o out --no-main
 REM 全量索引
-python main.py paw\__init__.py -o generated --no-main
+python main.py lib\paw\__init__.py -o out --no-main
 ```
 
 扩展：Reload Window；下列位点 F12 抽检。
@@ -279,9 +279,9 @@ python main.py paw\__init__.py -o generated --no-main
 
 ```text
 [x] 开放问题 Q1–Q5 已决议并写入本文
-[ ] 只改源树（nav_index / 扩展 / tests / docs），未手改 generated/ 充数
+[ ] 只改源树（nav_index / 扩展 / tests / docs），未手改 out/ 充数
 [ ] test_nav_index 全绿；触达模块已重译验证 shard
-[ ] docs/py2cpp-nav.md 与 plugins/py2cpp-nav/README.md 已同步
+[ ] docs/py2cpp-nav.md 与 extensions/py2cpp-nav/README.md 已同步
 [ ] NAV_INDEX_VERSION = 3
 ```
 
@@ -292,12 +292,12 @@ python main.py paw\__init__.py -o generated --no-main
 | 用途 | 路径 |
 |------|------|
 | 本方案 | `docs/py2cpp-nav.md` |
-| 插件说明 | `plugins/py2cpp-nav/README.md` |
+| 插件说明 | `extensions/py2cpp-nav/README.md` |
 | 索引生成 | `src/codegen/nav_index.py` |
 | 挂钩 | `src/translator.py` → `write_nav_index` |
-| 扩展实现 | `plugins/py2cpp-nav/out/` |
+| 扩展实现 | `extensions/py2cpp-nav/out/` |
 | 打包 | `pkg-nav.bat` |
-| 缓存 | `generated/.cache/nav/` |
+| 缓存 | `out/.cache/nav/` |
 | 重构方案（Rename/Refs） | `docs/py2cpp-architect.md` |
 
 ---

@@ -330,7 +330,7 @@ def collect_idents() -> tuple[set[str], set[str], set[str]]:
   screams: set[str] = set(SCREAMING_SPECIAL)
   classes: set[str] = set(SNAKE_CLASSES)
 
-  for root_name in ("paw", "tests", "examples"):
+  for root_name in ("lib/paw", "tests", "examples"):
     base = ROOT / root_name
     if not base.exists():
       continue
@@ -425,8 +425,8 @@ def transform_text(text: str, mapping: dict[str, str], *, native_file: bool = Fa
   return restore_held(text, held)
 
 
-ROOT_DIRS = ("paw", "tests", "examples", "docs", "templates")
-SKIP_PARTS = {"generated", ".git", ".cache", "node_modules", "__pycache__"}
+ROOT_DIRS = ("lib/paw", "tests", "examples", "docs", "templates")
+SKIP_PARTS = {"out", ".git", ".cache", "node_modules", "__pycache__"}
 EXT_OK = {".py", ".md", ".inl", ".h", ".hpp", ".cpp", ".txt"}
 
 

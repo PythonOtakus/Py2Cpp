@@ -29,10 +29,10 @@
 
 ```text
 third_party/foo/foo.h  |  …/um/windows.h  |  …/ucrt/stdio.h
-        │  ffi.bat → scripts/gen_c_ffi.py → src.tools.c_ffi_pyi（libclang）
+        │  ffi.bat → tools/gen_c_ffi.py → src.tools.c_ffi_pyi（libclang）
         ▼
 ffi/foo/foo.paw  |  ffi/windows/__init__.paw  |  ffi/crt/stdio.paw
-        │  译器 → generated/runtime/ffi/…（glue #include <c_header>）
+        │  译器 → out/runtime/ffi/…（glue #include <c_header>）
         ▼
 paw/.../*.py + templates（组合层；禁止直导 A/B 头）
 ```
@@ -48,8 +48,8 @@ paw/.../*.py + templates（组合层；禁止直导 A/B 头）
 | 路径 | 职责 |
 |------|------|
 | `src/tools/c_ffi_pyi.py` | **核心**：libclang 解析、类型映射、渲染、`generate_pyi` / `run_checks` |
-| `scripts/gen_c_ffi.py` | **CLI**：`argparse` 后调用 `src.tools.c_ffi_pyi.generate_pyi` |
-| `ffi.bat` | **根目录薄封装**：`ffi <header> [options]` → `python scripts\gen_c_ffi.py …` |
+| `tools/gen_c_ffi.py` | **CLI**：`argparse` 后调用 `src.tools.c_ffi_pyi.generate_pyi` |
+| `ffi.bat` | **根目录薄封装**：`ffi <header> [options]` → `python tools\gen_c_ffi.py …` |
 | `zeus\ffi.bat` | Zeus：重生成 `zeus/ffi/glfw/glfw3.pyi`、`zeus/ffi/gl/gl.pyi` |
 
 ```bat
@@ -246,7 +246,7 @@ ffi math
 
 ## 11. 模板迁移（策略：组合可留，禁止直导 A/B）
 
-**定案**：`templates/**` 与业务 C++ 注入**可保留组合/胶水**，但**禁止**再 `#include` 第三方库或 CRT 头（译期 **R0902**）；平台/CRT 经 `#include "ffi/…"`；真实 `#include <c_header>` **仅**出现在生成的 ffi glue（`generated/runtime/ffi/…`）。`stdint.h`/`stdarg.h`/`float.h`/`math.h` 改用 C++ 包装 `<cstdint>`/`<cstdarg>`/`<cfloat>`/`<cmath>`（属允许的 STL，不进 `ffi/`；`math.h`→`<cmath>` 亦避免 `py_types.h`↔`ffi/crt/math.h` 环依赖）。
+**定案**：`templates/**` 与业务 C++ 注入**可保留组合/胶水**，但**禁止**再 `#include` 第三方库或 CRT 头（译期 **R0902**）；平台/CRT 经 `#include "ffi/…"`；真实 `#include <c_header>` **仅**出现在生成的 ffi glue（`out/runtime/ffi/…`）。`stdint.h`/`stdarg.h`/`float.h`/`math.h` 改用 C++ 包装 `<cstdint>`/`<cstdarg>`/`<cfloat>`/`<cmath>`（属允许的 STL，不进 `ffi/`；`math.h`→`<cmath>` 亦避免 `py_types.h`↔`ffi/crt/math.h` 环依赖）。
 
 | 类型 | 例子 | 与 `.pyi` 的关系 |
 |------|------|------------------|
@@ -269,7 +269,7 @@ ffi math
 | Import | `from ffi.sqlite.sqlite3 import …` / `from ffi.windows import …` / `from ffi.crt.stdio import …` |
 | 源文件 | 仓库根 `ffi/**/*.pyi`；其次 `zeus/ffi/**/*.pyi`（同 module_path，见 `find_ffi_source_file`） |
 | module_path | `ffi/windows`、`ffi/crt/stdio`、`ffi/sqlite/sqlite3` |
-| 生成物 | `generated/runtime/ffi/….h` + 有 C 头映射时 `.inl`（`#include "ffi/…"`） |
+| 生成物 | `out/runtime/ffi/….h` + 有 C 头映射时 `.inl`（`#include "ffi/…"`） |
 | C++ 命名空间 | `ffi::…`（**不**挂 `paw::`；路径段 = 命名空间段） |
 | 结构体 / 枚举 | `using PyiX = ::X`；签名 `PyiX` / `Pointer[PyiX]`；枚举成员作常量；无 `struct ::Tag` |
 | docstring | 仅 `.pyi` 可读性；**不**编进 glue（§7.1） |
@@ -279,7 +279,7 @@ ffi math
 | `@native` glue | `src/emit/ffi_glue_emit.py`：`inline` 转发；`#include <c_header>`；指针/按值直传；白名单 `ffi_glue_allowlist`；Win32 导入库经 `ffi_msvc_comment_libs` 发 `#pragma comment(lib, …)`（如 `shellapi` → `shell32.lib`） |
 | sqlite 业务 | `paw/sql/sqlite.py` 用 `Pointer[PyiSqlite3]`；`templates/sql/+sqlite.inl` 调 `::ffi::sqlite::sqlite3::…`（经 ffi 头间接拿到 C API） |
 
-回归：`python -m unittest src.tests.test_ffi_import`；`build.bat sql/test_sqlite`；夹具 `src/tests/_ffi_entry_sqlite.py`。
+回归：`python -m unittest host.tests.test_ffi_import`；`build.bat sql/test_sqlite`；夹具 `src/tests/_ffi_entry_sqlite.py`。
 
 ## 13. 后续（未做）
 
@@ -298,14 +298,14 @@ ffi math
 | `src/tools/c_ffi_pyi.py` | 生成器核心（**唯一**写 `.pyi` 的途径） |
 | `ffi.bat` | 根目录入口（sqlite / windows / CRT 裸名） |
 | `zeus\ffi.bat` | Zeus GLFW / OpenGL `.pyi` 生成入口 |
-| `scripts/gen_c_ffi.py` | CLI 封装 |
+| `tools/gen_c_ffi.py` | CLI 封装 |
 | `third_party/sqlite/sqlite3.h` | 输入（C 源仍在 `third_party/`） |
 | `ffi/sqlite/sqlite3.pyi` | sqlite 声明面（生成） |
 | `ffi/windows/__init__.pyi` | Win32 伞头声明面（生成） |
 | `ffi/crt/*.pyi` | UCRT 声明面（生成） |
 | `zeus/ffi/glfw/glfw3.pyi` | GLFW 声明面（`zeus\ffi.bat` 生成） |
 | `zeus/ffi/gl/gl.pyi` | OpenGL 兼容配置声明面（`zeus\ffi.bat` 生成） |
-| `generated/runtime/ffi/` | 译器按需写出的 `.h` / `.inl`（与 `paw/` 并列） |
+| `out/runtime/ffi/` | 译器按需写出的 `.h` / `.inl`（与 `paw/` 并列） |
 | `src/tests/test_ffi_import.py` | 译器单测 |
 | `templates/sql/+sqlite.inl` | 组合层（经 ffi，勿直导 `<sqlite3.h>`） |
 | `paw/sql/sqlite.py` | 业务 API |

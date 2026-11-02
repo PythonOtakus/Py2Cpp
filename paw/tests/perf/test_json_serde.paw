@@ -1,10 +1,10 @@
-"""JSON 序列化性能：多类型/嵌套 ``@serializable`` 结构，对照 CPython 基线（见 ``scripts/compare_json_perf.py``）。"""
+"""JSON 序列化性能：多类型/嵌套 ``@serializable`` 结构，对照 CPython 基线（见 ``tools/compare_json_perf.py``）。"""
 from paw import *
 from paw.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 from paw.serde.json import Json
 from paw.system.time import formatDuration, perfCounter
 
-# 与 scripts/compare_json_perf.py 中 _SIZES 对齐
+# 与 tools/compare_json_perf.py 中 _SIZES 对齐
 _SizeInt: int = 50000
 _SizeStr: int = 20000
 _SizeNested: int = 5000
@@ -20,7 +20,7 @@ _MaxLoadsListUser2k: float64 = 0.012
 # PR-P1/P2：``dict[str,int|str]`` ASCII 叶子快路径（``dict._index`` 用 ``hash(key)``）
 _MaxLoadsDictStrInt5k: float64 = 0.120
 _MaxLoadsDictStrStr5k: float64 = 0.180
-# 10k list[int]：Py2Cpp 约 5–8ms；CPython ~0.36ms（见 scripts/compare_json_perf.py）
+# 10k list[int]：Py2Cpp 约 5–8ms；CPython ~0.36ms（见 tools/compare_json_perf.py）
 _MaxDumpsListInt10k: float64 = 0.012
 
 @serializable

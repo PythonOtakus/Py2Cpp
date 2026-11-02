@@ -108,7 +108,7 @@
 | 模块 | source/tokens/diagnostic/lexer/parser/check/emit_cpp/bind/nodes… | `param_parse` / `stmt_parse` / `type_parse` / `surface_rewrite` / `legacy_to_paw` / `ast_from_mid` / `structure` / `apply_mid_decls` 现为 **stub**（仅 docstring） |
 | 自举 | D0–D7；**c2_thin ≡ c3_thin** | 生产仍宿主 Mid；模板仍 CPython |
 
-门闩：`scripts/paw_stage1_c1_link.bat`、`compare-host-thin`、`paw_c2_c3_thin_reseed.bat`。
+门闩：`tools/paw_stage1_c1_link.bat`、`compare-host-thin`、`paw_c2_c3_thin_reseed.bat`。
 
 ---
 
@@ -163,5 +163,5 @@
 | 薄 seed 能力 | `dual-impl.md` / `baseline.md` §7 + 本清单 §2 |
 | bootstrap 允许集 | `compiler/bootstrap_profile.md` |
 
-刷新语料计数：`python scripts/paw_inventory_corpus.py`。  
-stdlib mid-emit：`python scripts/paw_mid_emit_coverage.py`。
+刷新语料计数：`python tools/paw_inventory_corpus.py`。  
+stdlib mid-emit：`python tools/paw_mid_emit_coverage.py`。

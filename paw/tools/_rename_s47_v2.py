@@ -93,7 +93,7 @@ RENAMES = _ordered
 SKIP_DIRS = {
   ".git",
   ".cache",
-  "generated",
+  "out",
   "__pycache__",
   ".venv",
   "node_modules",

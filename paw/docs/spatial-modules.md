@@ -87,7 +87,7 @@ test/spatial/
   test_animate.py
 ```
 
-实现时：`STDLIB_REL_PATHS` 随 `paw/` 发现自动纳入；bootstrap `python main.py paw\__init__.py -o generated --no-main`。
+实现时：`STDLIB_REL_PATHS` 随 `paw/` 发现自动纳入；bootstrap `python main.py lib\paw\__init__.py -o out --no-main`。
 ---
 
 ## 3. `spatial.rect`：`Rect`
@@ -400,7 +400,7 @@ handle.cancel()
 - [ ] `Random2D`/`Random3D` 约束与种子测例全绿  
 - [ ] `Noise` 可复现与维度采样全绿  
 - [ ] `@AnimateMeta` 标记字段可 `await animate`；未标记失败明确  
-- [ ] 无手改 `generated/`；bootstrap + 触达测试 MSVC 通过  
+- [ ] 无手改 `out/`；bootstrap + 触达测试 MSVC 通过  
 - [ ] 对照编码规范自检；手册/规范模块表已更新  
 
 ---

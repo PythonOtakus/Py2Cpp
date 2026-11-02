@@ -366,7 +366,7 @@ def outer():
 [ ] PyCallable 推断与调用（与 lambda 赋值一致）
 [ ] self → [this] capture
 [ ] 自引用递归
-[ ] tests/lang/test_closure.py + src/tests/test_closure_analysis.py
+[ ] tests/lang/test_closure.py + host/tests/test_closure_analysis.py
 [ ] 参考手册 §6.6、编码规范 §7.8、reference Pass 表
 [ ] 文档注明逃逸 = C++ lambda 语义（首期）
 ```

@@ -1,6 +1,6 @@
 -std=c++14
 -I
-generated/runtime
+out/runtime
 -I
 templates
 -D_WIN32

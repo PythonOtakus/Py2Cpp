@@ -305,7 +305,7 @@ class ToolCallError(OpenAIError): ...
 不访问真实 OpenAI API，默认仍用本地 fake server：
 
 ```bat
-python main.py paw\__init__.py -o generated --no-main
+python main.py lib\paw\__init__.py -o out --no-main
 build.bat web/test_openai --seq
 run.bat web/test_openai
 ```

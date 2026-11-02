@@ -178,7 +178,7 @@ render(apply_storage(parse_type_node(ast))) == parse_storage_type(ast)  # 存储
 - [x] 删除 ``ir.py`` 中 ``is_cpp_*`` / ``cpp_*_elem`` 薄包装；内部经 ``_type_pred()`` / ``_type_extract()`` 懒加载
 - [x] ``type_emit``：``field_type_node`` / ``param_type_node`` / ``sig_return_type_node`` 不再 ``coerce_type_node`` 回退
 - [x] ``type_pred`` 补数组组合谓词（``is_char_heap_array_type`` 等）；``type_extract`` 公开容器/协议提取别名
-- [x] 全仓库 emit / passes / translator 改 ``from ..analysis.type_pred import …``（``scripts/migrate_type_pred.py`` + 手修）
+- [x] 全仓库 emit / passes / translator 改 ``from ..analysis.type_pred import …``（``tools/migrate_type_pred.py`` + 手修）
 - [x] ``build-all.bat`` **129/129**
 
 ### Phase 8a — 清除 `ir` re-export，import 直引 `type_pred` / `type_extract`（已完成，129/129）
@@ -338,7 +338,7 @@ render(apply_storage(parse_type_node(ast))) == parse_storage_type(ast)  # 存储
 Phase 0 译器单测：
 
 ```bat
-python -m unittest src.tests.test_type_node src.tests.test_boxing_storage -q
+python -m unittest host.tests.test_type_node src.tests.test_boxing_storage -q
 ```
 
 Phase 1+ 触达集成测：

@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-PY2CPP = ROOT / "paw"
+PY2CPP = ROOT / "lib" / "paw"
 
 EXTRA_IMPORTS: dict[str, list[str]] = {
   "text/bytes.py": ["from .str import str"],

@@ -6,7 +6,7 @@ PY2CPP_IGNORE
 #include "ffi/sqlite/sqlite3.h"
 PY2CPP_END
 
-// 第三方 C 头仅由 ffi glue（``generated/runtime/ffi/sqlite/sqlite3.*``）``#include <sqlite3.h>``；
+// 第三方 C 头仅由 ffi glue（``out/runtime/ffi/sqlite/sqlite3.*``）``#include <sqlite3.h>``；
 // 业务模板禁止直导。``stdint``/``string`` 暂仍直导，待 ``ffi/crt/*`` 叶子迁移后去掉。
 #include <cstdint>
 #include "ffi/crt/string.h"

@@ -33,14 +33,15 @@ __pycache__/
 .coverage
 htmlcov/
 
-# Paw generated/build outputs
+# Paw build outputs
+/paw/out/
 /paw/generated/
 /paw/templates/~macro/
 /paw/.cache/
 /paw/_test_temp/
 /paw/compile_commands.json
 
-# Paw bootstrap stage regenerables (keep driver/ fixtures/ README / .gitkeep)
+# Paw bootstrap stage regenerables
 /paw/compiler/stages/bootstrap_status.json
 /paw/compiler/stages/stage1/bin/
 /paw/compiler/stages/stage1/compiler/
@@ -57,8 +58,9 @@ htmlcov/
 /paw/compiler/stages/stage3/manifest.json
 /paw/compiler/stages/stage3/seed_sources.json
 
-# Zeus engine generated/build outputs
+# Zeus engine build outputs
 /zeus/generated/
+/zeus/out/
 /zeus/templates/~macro/
 /zeus/.cache/
 /zeus/_test_temp/

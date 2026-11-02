@@ -14,7 +14,7 @@ from compiler.py.mid.nodes import (
 )
 
 if TYPE_CHECKING:
-  from src.translator import Translator
+  from host.translator import Translator
 
 
 def register_module_from_mid(
@@ -30,7 +30,7 @@ def register_module_from_mid(
     stmt_from_mid_module_const,
     stmts_from_mid_function,
   )
-  from src.analysis.ir import ClassInfo
+  from host.analysis.ir import ClassInfo
 
   n = 0
   filename = module_path.replace("\\", "/")
@@ -160,7 +160,7 @@ def nested_variant_classdefs_from_mid(tr: Translator, info: object) -> list[ast.
 
   无可用 Mid / 无解析成功变体时返回 ``None``（调用方回退 ``info.node.body``）。
   """
-  from src.analysis.ir import has_named_decorator
+  from host.analysis.ir import has_named_decorator
 
   item = _mid_class_for_info(tr, info)
   if item is None or not item.is_union or not item.opaque_members:
@@ -187,14 +187,14 @@ def record_field_specs_from_mid(tr: Translator, info: object) -> list | None:
   ``opaque_members`` 时回退 ``_collect_dataclass_fields``。
   """
   from compiler.py.mid.ast_from_mid import _type_to_legacy_annotation
-  from src.analysis.ir import (
+  from host.analysis.ir import (
     is_const_type_annotation,
     is_optional_type_annotation,
     is_postsetter_type_annotation,
     is_property_type_annotation,
     strip_type_annotation_markers,
   )
-  from src.passes.dataclass_expand import (
+  from host.passes.dataclass_expand import (
     DataclassFieldSpec,
     _is_classvar_annotation,
     _parse_class_default,
@@ -278,7 +278,7 @@ def _parse_mid_enum_base(
 def _mid_enum_member_specs(
   item: MidEnum,
 ) -> list[tuple[str, ast.expr | None]]:
-  from src.passes.enum_expand import _parse_int_value
+  from host.passes.enum_expand import _parse_int_value
 
   own_specs: list[tuple[str, ast.expr | None]] = []
   for name, val in item.members:
@@ -308,7 +308,7 @@ def expand_enums_from_mid(tr: Translator) -> set[str]:
   最终未处理者留给 AST ``_parse_enum_layout``。
   返回已处理的类名集合；``expand_enum`` 应跳过这些类。
   """
-  from src.passes.enum_expand import (
+  from host.passes.enum_expand import (
     _clear_enum_class_body,
     _resolve_enum_members,
     _underlying_cpp_for_scalar,

@@ -1,6 +1,6 @@
 // templates/~test/~syntax_showcase.inl
 // 七宏 + IGNORE / INCLUDE / SCOPE / TYPE 对照表（单测 ctx 见 test_expand_py2cpp_template._SHOWCASE_CTX）
-// 勿 mirror 到 generated/；供 expand_py2cpp_template 单测与 clangd 阅读。
+// 勿 mirror 到 out/；供 expand_py2cpp_template 单测与 clangd 阅读。
 //
 // | 设施 | 下文标记 |
 // | IGNORE 块 + ctx_* 桩 | 块首 |

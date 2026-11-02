@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """xSplit/xRSplit → 全小写；xSplitLines/xsplitlines → xsplitLines；maxsplit → maxSplit。
 
-不改 ``src/`` 内 CPython ``re.split(..., maxsplit=)``。
+不改 ``host/`` 内 CPython ``re.split(..., maxsplit=)``。
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ METHOD_MAP = [
   ("xSplit", "xsplit"),
 ]
 
-DIRS = ("paw", "tests", "examples", "docs", "templates", ".cursor", "scripts", "tools")
+DIRS = ("lib/paw", "tests", "examples", "docs", "templates", ".cursor", "tools", "tools")
 EXTS = {".py", ".md", ".inl", ".h", ".cpp", ".txt"}
 
 
@@ -38,7 +38,7 @@ def main() -> None:
     for path in base.rglob("*"):
       if not path.is_file() or path.suffix.lower() not in EXTS:
         continue
-      if "node_modules" in path.parts or "generated" in path.parts:
+      if "node_modules" in path.parts or "out" in path.parts:
         continue
       if path.name == "_fix_xsplit_maxsplit.py":
         continue

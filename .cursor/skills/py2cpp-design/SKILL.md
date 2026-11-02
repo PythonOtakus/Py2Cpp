@@ -10,7 +10,7 @@ description: >-
 
 # Py2Cpp 开发与验证流程
 
-将受限 Python 3 静态译为 C++11。**单一真相源**是`paw/paw/`（标准库 Python）与 `src/`（译器）；`generated/` 仅由 `main.py` 生成，勿手改。
+将受限 Python 3 静态译为 C++11。**单一真相源**是`paw/paw/`（标准库 Python）与 `host/`（译器）；`out/` 仅由 `main.py` 生成，勿手改。
 
 详细架构见 [docs/参考手册.md](../../../paw/docs/参考手册.md)；标准库写法见 [docs/编码规范.md](../../../paw/docs/编码规范.md)。
 
@@ -20,7 +20,7 @@ description: >-
 
 ## 冲突须根治，勿绕行（重要的事情说三遍）
 
-1. **写法出现冲突时应解决冲突**（译器、`minimal.h`、MSVC 宏、`#undef`、属性派发等），**不要**换一种不符合 [编码规范.md](../../../paw/docs/编码规范.md) / CPython 对外 API 的绕行写法（例如用 `dirName` 代替 `self.parent`、手改 `generated/`）。
+1. **写法出现冲突时应解决冲突**（译器、`minimal.h`、MSVC 宏、`#undef`、属性派发等），**不要**换一种不符合 [编码规范.md](../../../paw/docs/编码规范.md) / CPython 对外 API 的绕行写法（例如用 `dirName` 代替 `self.parent`、手改 `out/`）。
 2. **写法出现冲突时应解决冲突**，在根因处修（如 `parent`/`suffix` Win 宏 → `minimal.h` `#undef` + `this->parent()`；`@property` 未生成 `()` → `_class_info_for_receiver`），**禁止**用“能编译就行”的替代 API 糊弄过去。
 3. **写法出现冲突时应解决冲突**：标准库与用户代码仍写规范 Python（`self.parent`、`Path.suffix`、链式比较、`Self._…` 静态调用等），冲突由基础设施层一次性消掉，**不得**把妥协扩散到业务代码。
 
@@ -40,17 +40,17 @@ description: >-
 2. **`util/memory`**：``copyBuf`` / ``buf_to_str`` / ``loadU64Le`` / ``loadU64LeBytes`` 为 ``@native``（各带 ``*_ref``）；缓冲扩容见 ``array.reserve``。
 3. **`serde/json`**：``JsonEncoder`` 静态 ``append_*`` / ``fastEncode`` 纯 Python + ``JsonDecoder`` 实例 decode 组合（``loadU64Le`` 来自 ``util/memory``，``span``→``str`` 用 ``str.from_codes_span``）；``@serializable`` codegen 直调 ``dec.parseIntAtAscii()`` / ``dec.strAssignFromSeg(seg)``。**无** ``json_scan_cpp``。
 4. **C++ 可无损删除**：关掉 ``templates/util/+memory.inl`` 注入后仍靠 Python 组合 + 叶子 ``*_ref`` 全绿（性能可降）。
-5. **C / CRT / 平台 FFI**：``paw/ffi/**/*.pyi``（**生成器产出，禁止手写**）→ 译器按需写 ``generated/runtime/ffi/…``，C++ ``ffi::…``（**不**挂 ``py2cpp::``、**不**进 ``minimal.h``）。范围 A+B（第三方 + ``ffi/windows/`` + ``ffi/crt/``）；不含 C++ STL。结构体 ``@native`` 类 + ``Pointer[T]``；glue ``#include <c_header>``。详规 [c-ffi-pyi.md](../../../paw/docs/c-ffi-pyi.md) / 编码规范 §9.4；查阅表 [reference §5.3](./reference.md#53-c--crt--平台-ffiffipyi)。**禁止** star-import、模板直导 A/B 头、批量删 UI 组合 ``templates/**``。
+5. **C / CRT / 平台 FFI**：``paw/ffi/**/*.pyi``（**生成器产出，禁止手写**）→ 译器按需写 ``out/runtime/ffi/…``，C++ ``ffi::…``（**不**挂 ``py2cpp::``、**不**进 ``minimal.h``）。范围 A+B（第三方 + ``ffi/windows/`` + ``ffi/crt/``）；不含 C++ STL。结构体 ``@native`` 类 + ``Pointer[T]``；glue ``#include <c_header>``。详规 [c-ffi-pyi.md](../../../paw/docs/c-ffi-pyi.md) / 编码规范 §9.4；查阅表 [reference §5.3](./reference.md#53-c--crt--平台-ffiffipyi)。**禁止** star-import、模板直导 A/B 头、批量删 UI 组合 ``templates/**``。
 
 ---
 
 ## 实现后须自行对照规范自检（重要的事情说三遍）
 
-每次**新特性落地**或**修改** `src/`、`py2cpp/`、`tests/` 之后，在 bootstrap / MSVC 之前或与之并行，Agent **必须**主动对照 [编码规范.md](../../../paw/docs/编码规范.md) 与相邻模块**自行审阅** diff，**不得**只跑编译、不查写法。
+每次**新特性落地**或**修改** `host/`、`py2cpp/`、`tests/` 之后，在 bootstrap / MSVC 之前或与之并行，Agent **必须**主动对照 [编码规范.md](../../../paw/docs/编码规范.md) 与相邻模块**自行审阅** diff，**不得**只跑编译、不查写法。
 
 1. **实现后须自行对照规范自检**：标准库与用户测试仍写规范 Python——`new` / `Self` 静态调用、链式比较、**勿手写 dunder**、辅助数据结构用 **`@dataclass`**（勿手写 `__init__` 拼字段）、`@copyable` 等与域内范本一致；**无 STL**；能复用 `str` / `path` / `util` 现有 API 的**禁止**手写 `while` 扫串、重复 `splitExt` 语义。
 2. **实现后须自行对照规范自检**：对照编码规范 §2–§3、§8、§10 做清单核对——`s[:k]`（起始 0 省略 `s[0:k]`）、`not s` / `if s`（勿 `len(s)==0`）、`int64` 大常量勿用 32 位乘法溢出、测试用 `TestCaseMixin` + `override def test`；**同名符号**（如 `time` 函数 vs `datetime.time`）import 绑定与 C++ 名无歧义；依赖内建（`int(str)` 等）时确认译器已支持，否则在基础设施层补，勿在业务模块假造轮子。
-3. **实现后须自行对照规范自检**：与上文「冲突须根治」联动——Win 宏、`parent`/`suffix`/`date`/`time` 等须在 `minimal.h` / 译器根因处理，**禁止**为通过编译改业务 API；对外可见行为变化须同步 `docs/参考手册.md` / `docs/编码规范.md` §8.1（动 FFI 时含 `c-ffi-pyi.md`）；自检未通过则继续改源树，**禁止**声称完成或只改 `generated/`。
+3. **实现后须自行对照规范自检**：与上文「冲突须根治」联动——Win 宏、`parent`/`suffix`/`date`/`time` 等须在 `minimal.h` / 译器根因处理，**禁止**为通过编译改业务 API；对外可见行为变化须同步 `docs/参考手册.md` / `docs/编码规范.md` §8.1（动 FFI 时含 `c-ffi-pyi.md`）；自检未通过则继续改源树，**禁止**声称完成或只改 `out/`。
 
 **最小自检表**（可 mental walk，宜在回复用户前过一遍）：
 
@@ -68,7 +68,7 @@ description: >-
 
 ## 先问清再实现（重要的事情说三遍）
 
-1. **先问清再实现**：新功能或**改变对外可见行为**（新语法、标准库 API、容器/切片/view 语义等）时，**须先**向用户提交「理解 + 疑问」并**等待明确同意**，再改 `src/`、`py2cpp/`、`tests/`、`docs/`；未对齐前**禁止**大规模写实现代码。
+1. **先问清再实现**：新功能或**改变对外可见行为**（新语法、标准库 API、容器/切片/view 语义等）时，**须先**向用户提交「理解 + 疑问」并**等待明确同意**，再改 `host/`、`py2cpp/`、`tests/`、`docs/`；未对齐前**禁止**大规模写实现代码。
 2. **先问清再实现**：有歧义则继续追问，**直到彻底弄懂**再进入 §0 动手；勿凭猜测定边界、测例范围或与 CPython 的差异。
 3. **先问清再实现**：用户确认（或修正理解后再次确认）后方可 bootstrap、加测试、声称完成；仅 typo/注释、用户给出无歧义完整 spec、或用户明确「直接改不用先问」可跳过完整对齐，**仍须**用一句话说明意图。
 
@@ -76,7 +76,7 @@ description: >-
 
 ## 崩溃难查先用 --debug（重要的事情说三遍）
 
-1. **崩溃难以排查时优先用 `--debug`**：exe 无输出、`0xC0000409` / `-1073740791`、疑似栈溢出或「猜栈帧拆分」无效时，**先**重译并编译带 `--debug` 的用例，跑 exe 将 **stderr** 重定向到日志，**以最后一条** `[py2cpp] 源.py:行号 …` 定位崩溃前执行的 Python 级调用；**禁止**在未看 debug 日志前盲目拆函数或改 `generated/`。
+1. **崩溃难以排查时优先用 `--debug`**：exe 无输出、`0xC0000409` / `-1073740791`、疑似栈溢出或「猜栈帧拆分」无效时，**先**重译并编译带 `--debug` 的用例，跑 exe 将 **stderr** 重定向到日志，**以最后一条** `[py2cpp] 源.py:行号 …` 定位崩溃前执行的 Python 级调用；**禁止**在未看 debug 日志前盲目拆函数或改 `out/`。
 2. **崩溃难以排查时优先用 `--debug`**：测试/示例用 `build.bat PATTERN --seq --debug`（或 `python main.py … -o generated -c --debug --exe …`）；需跟踪标准库/runtime 内调用时，**先** `python main.py py2cpp\__init__.py -o generated --no-main --debug` 再编目标用例；日志格式见 `src/codegen/debug_cpp.py`（`fprintf(stderr, "[py2cpp] …")`）。
 3. **崩溃难以排查时优先用 `--debug`**：常见根因包括 **未捕获 C++ 异常**（如 `fs_*` 抛 `OSError`、非空目录 `rmdir`）——debug 常停在 `throw` 前最后一条调用；与 unittest 软断言失败区分（后者有 FAIL 汇总）。定位后再修源树；`--debug` 仅调试用，**勿**作为发布默认。
 
@@ -84,7 +84,7 @@ description: >-
 
 ```bat
 build.bat io/test_path --seq --debug
-generated\tests\io\test_path.exe 2> dbg.log
+out\tests\io\test_path.exe 2> dbg.log
 REM 看 dbg.log 最后一行 [py2cpp] … 对应的 .py 行号
 REM 需 runtime 内跟踪：
 python main.py py2cpp\__init__.py -o generated --no-main --debug
@@ -95,7 +95,7 @@ build.bat io/test_path --seq --debug
 
 ## 需求确认（新功能 / 语义变更，必做）
 
-落实上文「先问清再实现」；实现**新功能**或**改变对外可见行为**时，Agent **不得**在未对齐前直接大规模改 `src/`、`py2cpp/`、`tests/`、`docs/`。
+落实上文「先问清再实现」；实现**新功能**或**改变对外可见行为**时，Agent **不得**在未对齐前直接大规模改 `host/`、`py2cpp/`、`tests/`、`docs/`。
 
 **须先向用户提交一份「理解 + 疑问」**，并等待确认；若有歧义则继续追问，**直到彻底弄懂**再进入下文 §0 动手与实现。
 
@@ -149,8 +149,8 @@ python main.py py2cpp\__init__.py -o generated --no-main
 REM 2) 单测快速迭代（示例：容器 + range）
 python main.py tests\misc\test_containers.py -o generated --no-main
 call "%ProgramFiles%\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat" >nul
-cl /EHsc /W3 /std:c++14 /I generated\runtime generated\tests\misc\test_containers.cpp /Fe:generated\tests\misc\test_containers.exe
-generated\tests\misc\test_containers.exe
+cl /EHsc /W3 /std:c++14 /I out\runtime out\tests\misc\test_containers.cpp /Fe:out\tests\misc\test_containers.exe
+out\tests\misc\test_containers.exe
 
 REM 3) 全量测试编译（发布前）
 build_all.bat
@@ -159,11 +159,11 @@ build_all.bat
 或使用一行（脚本已调 vcvars）：
 
 ```bat
-python main.py tests\misc\test_containers.py -o generated -c --compiler cl --exe generated\tests\misc\test_containers.exe
-generated\tests\misc\test_containers.exe
+python main.py tests\misc\test_containers.py -o generated -c --compiler cl --exe out\tests\misc\test_containers.exe
+out\tests\misc\test_containers.exe
 ```
 
-**注意**：测试/示例 TU 通常只 `#include generated/runtime/py2cpp/minimal.h`，**不要**再链 `generated/runtime/py2cpp.cpp`（易重复定义）。``compile.py`` 对 ``tests/``、``examples/`` 已自动跳过 runtime TU。
+**注意**：测试/示例 TU 通常只 `#include out/runtime/py2cpp/minimal.h`，**不要**再链 `out/runtime/py2cpp.cpp`（易重复定义）。``compile.py`` 对 ``tests/``、``examples/`` 已自动跳过 runtime TU。
 
 ### 0.4 规范自检（实现后、声称完成前）
 
@@ -171,7 +171,7 @@ generated\tests\misc\test_containers.exe
 
 ### 0.5 运行时崩溃（先用 --debug）
 
-落实上文「崩溃难查先用 --debug」：**exe 异常退出且难以定位时**，按该节最小流程重编 `--debug`、查 stderr 最后一条 `[py2cpp]` 再改源树；勿手改 `generated/`、勿未看日志就声称「栈帧过大」。
+落实上文「崩溃难查先用 --debug」：**exe 异常退出且难以定位时**，按该节最小流程重编 `--debug`、查 stderr 最后一条 `[py2cpp]` 再改源树；勿手改 `out/`、勿未看日志就声称「栈帧过大」。
 
 ---
 
@@ -184,29 +184,29 @@ generated\tests\misc\test_containers.exe
 │    → 必要时 `templates/<域>/+*.inl`（或 `-*.inl`）并在 inject / STDLIB_CODEGEN 登记
 │    → 重译 runtime + 相关 test_*.py
 ├─ 新语法 / 新语句 / 新表达式形式
-│    → src/translator.py（visit_* / _emit_*）
-│    → 可能 src/passes/*.py（先脱糖再生成）
-│    → src/analysis/analyzer.py、ir.py（类型/签名）
+│    → host/translator.py（visit_* / _emit_*）
+│    → 可能 host/passes/*.py（先脱糖再生成）
+│    → host/analysis/analyzer.py、ir.py（类型/签名）
 │    → 新 tests/**/test_*.py（如 misc/、lang/）+ 更新 docs
 ├─ 装饰器 / @protocol / mixin / dataclass / yield / async
-│    → src/passes/<对应>.py（须在 translator 流水线中已挂载）
+│    → host/passes/<对应>.py（须在 translator 流水线中已挂载）
 │    → translator.py + protocol_traits_gen / 编码规范
 ├─ 运算符 / 内置函数（len、in、print、%…）
 │    → `layout_emit` 展开 `+operators.{h,inl}`、emit/*_emit.py、translator 内建分发
 │    → 标准库 __init__.py 桩声明
 ├─ 模块路径 / C++ 命名空间 / 万能头 include 顺序
-│    → src/analysis/module_namespace.py
-│    → src/codegen/umbrella_gen.py（→ generated/runtime/py2cpp/minimal.h）
-│    → src/emit/layout_emit.py、src/translator.py（per-module .h/.inl）
+│    → host/analysis/module_namespace.py
+│    → host/codegen/umbrella_gen.py（→ out/runtime/py2cpp/minimal.h）
+│    → host/emit/layout_emit.py、src/translator.py（per-module .h/.inl）
 │    ⚠ 高风险：MSVC 对多个 namespace py2cpp 块、块内 #include <utility> 极敏感
 ├─ 第三方 C FFI（.pyi / glue）
-│    → ffi/**/*.pyi（ffi.bat / src/tools/c_ffi_pyi.py）；constant/ffi_layout.py
-│    → src/emit/ffi_glue_emit.py；docs/c-ffi-pyi.md
+│    → ffi/**/*.pyi（ffi.bat / host/tools/c_ffi_pyi.py）；constant/ffi_layout.py
+│    → host/emit/ffi_glue_emit.py；docs/c-ffi-pyi.md
 └─ 仅用户示例/测试 Python
      → tests/ 或 examples/，不改译器
 ```
 
-**不要**直接编辑 `generated/`（下次翻译会覆盖）。
+**不要**直接编辑 `out/`（下次翻译会覆盖）。
 
 ---
 
@@ -214,7 +214,7 @@ generated\tests\misc\test_containers.exe
 
 1. **读 CPython 3.13 语义**（编码规范 §8）：实现写在 `py2cpp/<域>/<mod>.py`（如 `util/list.py`、`text/str.py`）。
 2. **写法遵守** [编码规范.md](../../../paw/docs/编码规范.md)：运算符、`Self`/`new`、勿手写 dunder、无 STL。
-3. 若模块在 `py2cpp/` 下且未被 `constant` 的 `STDLIB_SKIP_*` 排除，bootstrap 会生成 `generated/runtime/py2cpp/...`。
+3. 若模块在 `py2cpp/` 下且未被 `constant` 的 `STDLIB_SKIP_*` 排除，bootstrap 会生成 `out/runtime/py2cpp/...`。
 4. **重译 runtime**：
    ```bat
    python main.py py2cpp\__init__.py -o generated --no-main
@@ -299,7 +299,7 @@ generated\tests\misc\test_containers.exe
 ```text
 [ ] 新功能/语义变更：已与用户对齐「理解 + 疑问」，获明确同意后再实现
 [ ] 实现后已自行对照编码规范与相邻模块（见「实现后须自行对照规范自检」最小自检表）
-[ ] 只改源树（py2cpp/、test/、docs/），未手改 generated/
+[ ] 只改源树（py2cpp/、test/、docs/），未手改 out/
 [ ] 若动标准库或 runtime 布局：已运行
       python main.py py2cpp\__init__.py -o generated --no-main
 [ ] 已为行为添加/更新 tests/**/test_*.py（unittest 结构正确）
@@ -308,7 +308,7 @@ generated\tests\misc\test_containers.exe
 [ ] 若动 @protocol：已考虑 build_protocol.bat
 [ ] 若动负向用例：已考虑 build_fail.bat
 [ ] 文档已同步（参考手册 / 编码规范；动 FFI 时含 c-ffi-pyi.md / skill reference §5.3）
-[ ] 未引入 range_shim、未提交 generated/（除非用户明确要求）
+[ ] 未引入 range_shim、未提交 out/（除非用户明确要求）
 ```
 
 ---
@@ -364,8 +364,8 @@ generated\tests\misc\test_containers.exe
 | FFI 声明 | `ffi/**/*.pyi`；布局 `src/constant/ffi_layout.py`；生成器 `src/tools/c_ffi_pyi.py` |
 | 模块列表 | `src/constant/stdlib_discovery.py` → `STDLIB_REL_PATHS`（遍历 `py2cpp/`） |
 | 编译 | `src/compile.py` |
-| 万能头 | `src/codegen/umbrella_gen.py` → `generated/runtime/py2cpp/minimal.h` |
-| 生成输出 | `generated/runtime/py2cpp/`、`generated/runtime/ffi/`、`generated/testss/` |
+| 万能头 | `src/codegen/umbrella_gen.py` → `out/runtime/py2cpp/minimal.h` |
+| 生成输出 | `out/runtime/py2cpp/`、`out/runtime/ffi/`、`out/testss/` |
 | FFI 规格 | [docs/c-ffi-pyi.md](../../../paw/docs/c-ffi-pyi.md) |
 
 ---
@@ -398,7 +398,7 @@ REM → ffi\sqlite\sqlite3.pyi（见 docs/c-ffi-pyi.md）
 2. **冲突须根治**：写法与编译器/译器/宏冲突时**解决冲突**，**不要**换成不符合规范的绕行写法（见上文三节强调）。  
 3. **勿重复造轮子**：**严格按照编码规范**实现；先搜后写、复用已有 `py2cpp` API（见上文三节强调）。  
 4. **实现后须自行对照规范自检**：每次新特性或修改后，**主动**过编码规范与最小自检表（见上文三节强调），再 bootstrap / MSVC；禁止只编译不审代码。  
-5. **崩溃难查先用 --debug**：exe 异常退出且难以定位时，**优先**按上文三节强调重编 `--debug`、查 stderr 日志最后一行，再改源树；禁止未看 debug 日志就盲目拆函数或手改 `generated/`。  
+5. **崩溃难查先用 --debug**：exe 异常退出且难以定位时，**优先**按上文三节强调重编 `--debug`、查 stderr 日志最后一行，再改源树；禁止未看 debug 日志就盲目拆函数或手改 `out/`。  
 6. **先读再改**：动 `translator.py` 前读模块头注释与相关 `passes/`；动标准库前读 [编码规范.md](../../../paw/docs/编码规范.md) 与同域参考实现。  
 7. **改必编**：至少编译触达的最小 `test_*.py`；标准库改动必须 bootstrap runtime。  
 8. **小步提交逻辑**：命名空间 / umbrella 类改动不要与功能改动混在同一 Diff，便于回滚。  

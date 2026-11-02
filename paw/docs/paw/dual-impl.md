@@ -11,7 +11,7 @@ compiler/py/<rel>.py   ↔  compiler/paw/<rel>.paw
 compiler/py/**/__init__.py  ↔  compiler/paw/**/__init__.paw
 ```
 
-门闩：`python scripts/paw_dual_compare.py`（需 `c1_emit_*_run.exe` 与 `c1_seed_driver.exe`，见 `paw_stage1_c1_link.bat`）。
+门闩：`python tools/paw_dual_compare.py`（需 `c1_emit_*_run.exe` 与 `c1_seed_driver.exe`，见 `paw_stage1_c1_link.bat`）。
 
 ## 对照层级
 
@@ -26,8 +26,8 @@ compiler/py/**/__init__.py  ↔  compiler/paw/**/__init__.paw
 ## 命令
 
 ```bat
-python scripts/paw_dual_compare.py
-scripts\paw_stage1_c1_link.bat
+python tools/paw_dual_compare.py
+tools\paw_stage1_c1_link.bat
 ```
 
 ## 节奏
@@ -46,7 +46,7 @@ scripts\paw_stage1_c1_link.bat
 | D5 parse→薄 emit→链跑 | **绿**：薄 parser 解析 `fixtures/fixture_foo.paw` → 薄 `emitModule` → `c1_emit_thin_foo_run`；`_extractFunction` 改 while/字段赋值可薄 emit；读入去 CRLF |
 | D6 声明面 class/record/const/import/def | **绿**：`_appendClass` 调用可薄 emit；`c1_emit_parser` D6 + `fixture_syntax.paw` 薄 parse→emit（enum/class/record/def/import）；kwargs/类型 ctor IIFE |
 | D7 薄 reseed C1→C2→C3 | **绿**：`c1_thin_reseed` 用薄 parser+emit 重发射 seed → `c2_thin`；`paw_c2_c3_thin_reseed.bat` → `c3_thin`；**c2≡c3**（同字节）；C2 span/parser 竖切绿 |
-| compare-host-thin | **绿**：`python scripts/paw_bootstrap_stages.py compare-host-thin`（宿主 Mid vs `c1_emit` soft-skip=0；有则查 c2≡c3） |
+| compare-host-thin | **绿**：`python tools/paw_bootstrap_stages.py compare-host-thin`（宿主 Mid vs `c1_emit` soft-skip=0；有则查 c2≡c3） |
 | paw/sema 真 Mid（enum Color） | 绿（`bindModule`→`lowerToMid`→`dumpMidModule`） |
 | nested c1_emit | **绿**：`c1_emit/<pkg>/…`（已解 `nodes.h` 撞名） |
 | hir/mid/nodes 字段对齐 | **绿**：Class/Function/Import/… 已在 paw；`StmtSyntax`/`ParamDecl` 仍 py |

@@ -11,7 +11,7 @@ if errorlevel 1 set "PY=py -3"
 "%PY%" --version >nul 2>&1
 if errorlevel 1 goto NoPython
 
-"%PY%" scripts\stat_lines.py %*
+"%PY%" tools\stat_lines.py %*
 exit /b %ERRORLEVEL%
 
 :NoPython

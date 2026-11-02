@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""仅更新 src/ 中对已改名标准库类的硬编码字符串（不碰 startswith 等 Python API）。"""
+"""仅更新 host/ 中对已改名标准库类的硬编码字符串（不碰 startswith 等 Python API）。"""
 from __future__ import annotations
 
 import re

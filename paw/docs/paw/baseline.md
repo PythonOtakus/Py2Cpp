@@ -43,8 +43,8 @@
 | Paw 高亮预览 | 1 | `lexer_preview.paw` |
 | Seed | 8+ | `compiler/paw/**` 竖切（thin c1_emit nested；emitEnum 走宿主 Mid） |
 
-生成/刷新计数：`python scripts/paw_inventory_corpus.py`。  
-stdlib mid-emit 覆盖：`python scripts/paw_mid_emit_coverage.py`。
+生成/刷新计数：`python tools/paw_inventory_corpus.py`。  
+stdlib mid-emit 覆盖：`python tools/paw_mid_emit_coverage.py`。
 
 ## 4. 支持分层（原生路径）
 
@@ -56,7 +56,7 @@ stdlib mid-emit 覆盖：`python scripts/paw_mid_emit_coverage.py`。
 | L1+ mid-emit | `can_emit_mid` → `emit_cpp` 旁路 | seed 全量；stdlib 渐进 |
 | L2 暂诊断未支持 | 解析可认、语义未接通 | 完整逃逸闭包、机器码后端、PEG 双前端、模板「任意 CPython」 |
 
-**已废弃作生产步骤**：整文件 `rewrite_paw_to_legacy` / `paw_source_to_ast`。物化仍是 **MidIR → 程序化 `ast.Module`**（非全文改写）。检查：`python scripts/paw_ast_ban_checklist.py`。
+**已废弃作生产步骤**：整文件 `rewrite_paw_to_legacy` / `paw_source_to_ast`。物化仍是 **MidIR → 程序化 `ast.Module`**（非全文改写）。检查：`python tools/paw_ast_ban_checklist.py`。
 
 ## 5. 可复现输出开关
 
@@ -81,7 +81,7 @@ stdlib mid-emit 覆盖：`python scripts/paw_mid_emit_coverage.py`。
 | 项 | 状态 |
 |---|---|
 | seed MidIR 直 emit | **完成**（含 `hir/nodes`/`mid/nodes`/`emit_cpp`） |
-| stdlib `can_emit_mid` | **153/153（100%）**（见 `scripts/paw_mid_emit_coverage.py`） |
+| stdlib `can_emit_mid` | **153/153（100%）**（见 `tools/paw_mid_emit_coverage.py`） |
 | `tests/` build-all | **155/155 绿**（2026-11-02） |
 | 删除 `materialize_ast` | **已删**；mid_ok **默认空树** + 回填 |
 | PRIMARY | 默认仅 `compiler/paw/**`；stdlib/test 需 `MID_PRIMARY=1` |

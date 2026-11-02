@@ -13,8 +13,8 @@
 **禁止**：生产路径调用 `py/frontend/surface_rewrite.py`（仅离线迁移/对照）。
 
 ```bat
-python scripts/paw_dual_compare.py
-scripts\paw_stage1_c1_link.bat
+python tools/paw_dual_compare.py
+tools\paw_stage1_c1_link.bat
 ```
 
 宿主入口：`src/frontend` 调用 `compiler.py.*`。完整无 Python 构建见 N6。

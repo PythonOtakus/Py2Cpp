@@ -1,0 +1,76 @@
+"""Phase 6：跳一跳 headless + FBX/ZAS 资产烟雾。"""
+from paw import *
+from paw.io.path import Path
+from paw.spatial.color import Color
+from paw.test.test_temp import _TestTemp, ensureTestTemp
+from paw.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
+
+from zeus.runtime.assets.fbx_ascii import mesh_to_fbx_ascii, read_fbx, write_fbx
+from zeus.developer.command import CommandBus, ZeusCommandUnion
+from jump.game import JumpGame
+from jump.motor import JUMP_FAILED, JUMP_IDLE, JUMP_LANDED
+from zeus.runtime.render.mesh import Mesh
+from zeus.runtime.assets.scene_io import scene_load, scene_save
+
+
+class JumpGameplayTests(TestCaseMixin):
+  _test_tag = 1
+
+  @override
+  def test(self):
+    game: JumpGame = new()
+    game.setup_default()
+    self.assertEqual(game.score, 0)
+    game.simulate_perfect_jump()
+    self.assertTrue(game.score >= 1)
+    self.assertTrue(game.motor.state in {JUMP_LANDED, JUMP_IDLE})
+    self.assertFalse(game.motor.state == JUMP_FAILED)
+
+
+class FbxAsciiRoundTripTests(TestCaseMixin):
+  _test_tag = 2
+
+  @override
+  def test(self):
+    ensureTestTemp()
+    col: Color = new(0.2, 0.6, 0.9, 1.0)
+    write_fbx(Mesh.colored_cube(1.0, col), str(Path(_TestTemp) / "zeus_cube.fbx"))
+    doc: Path = Path(_TestTemp) / "zeus_cube.fbx"
+    self.assertTrue(doc.exists())
+    text: str = doc.readText()
+    self.assertTrue(text.find("Vertices") >= 0)
+    loaded: Mesh = read_fbx(str(Path(_TestTemp) / "zeus_cube.fbx"), col)
+    self.assertTrue(loaded.vertex_count > 0)
+    ascii2: str = mesh_to_fbx_ascii(loaded)
+    self.assertTrue(ascii2.find("Geometry") >= 0)
+
+
+class ZasSceneRoundTripTests(TestCaseMixin):
+  _test_tag = 3
+
+  @override
+  def test(self):
+    ensureTestTemp()
+    bus: CommandBus = new()
+    bus.dispatch(ZeusCommandUnion.ObjectCreate("p", ""))
+    bus.dispatch(ZeusCommandUnion.ObjectAddMesh("p", 1.0))
+    scene_save(bus.world, str(Path(_TestTemp) / "zeus_jump_scene.zas"), "JumpDemo")
+    doc: Path = Path(_TestTemp) / "zeus_jump_scene.zas"
+    self.assertTrue(doc.exists())
+    text: str = doc.readText()
+    self.assertTrue(text.find("zas") >= 0)
+    bus2: CommandBus = new()
+    name: str = scene_load(bus2.world, str(Path(_TestTemp) / "zeus_jump_scene.zas"))
+    self.assertEqual(name, "JumpDemo")
+    self.assertTrue(bus2.world.root.find("p") is not None)
+
+
+def main() -> int:
+  suite: TestSuite = new()
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_test_tag"):
+    suite.addTest(Class())
+  return TextTestRunner().run(suite)
+
+
+if __name__ == "__main__":
+  raise SystemExit(main())

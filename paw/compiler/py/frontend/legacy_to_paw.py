@@ -1,7 +1,7 @@
 """旧方言装饰器 → Paw 表面语法（标准库迁移用）。
 
 保留 ``@immutable`` / ``@copyable`` / ``@property`` 等；``@native`` /
-``@staticmethod`` / ``@overload`` 由 ``scripts/paw_migrate_method_surface.py``
+``@staticmethod`` / ``@overload`` 由 ``tools/paw_migrate_method_surface.py``
 改为 ``native`` / ``static`` 关键字或删除。
 """
 from __future__ import annotations

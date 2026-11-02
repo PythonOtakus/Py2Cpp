@@ -1,2 +1,2 @@
 @echo off
-call "%~dp0scripts\build_protocol.bat" %*
+call "%~dp0tools\build_protocol.bat" %*

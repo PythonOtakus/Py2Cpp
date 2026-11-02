@@ -70,7 +70,7 @@ output: str = Html.render(document)
 pretty: str = Html.render(document, pretty=True)
 
 text = Html.text("hello")
-comment = Html.comment("generated")
+comment = Html.comment("out")
 element = Html.element("div")
 ```
 

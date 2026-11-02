@@ -4,7 +4,7 @@ from pathlib import Path
 
 p = Path(
   r"C:\Users\Anantian\.cursor\projects\c-Users-Anantian-source-repos-Py2Cpp"
-  r"\agent-transcripts\afb7df37-3f7b-4d19-a834-1768d2e3e465"
+  r"\agent-trantools\afb7df37-3f7b-4d19-a834-1768d2e3e465"
   r"\afb7df37-3f7b-4d19-a834-1768d2e3e465.jsonl"
 )
 out = Path("tools/_extracted_io_patches.txt")

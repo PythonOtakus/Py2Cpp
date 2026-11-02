@@ -57,7 +57,7 @@ Zeus 是一个基于现有 Py2Cpp 能力实现的轻量 3D 游戏引擎。第一
 
 - 规范 Python：`new` / `Self` / `@dataclass` / `@mixin` / 勿手写 dunder / 无 STL。
 - **`@native` 原子化**：仅窗口、GL、shader/buffer/texture、draw、平台输入叶子。
-- 不手改 `generated/`；冲突在根因处解决。
+- 不手改 `out/`；冲突在根因处解决。
 
 ### 2.2 Runtime / Editor 分层
 
@@ -384,21 +384,21 @@ Inspector：对象字段 + 组件列表字段（含 root `Transform` TRS）。
 
 ## 12. 阶段计划
 
-进度约定：每阶段结束须 `zeus\build.bat`（或阶段新增测例）全绿；只改源树，不手改 `generated/`。
+进度约定：每阶段结束须 `zeus\build.bat`（或阶段新增测例）全绿；只改源树，不手改 `out/`。
 
 ### Phase 0 — 文档与选型（已完成）
 
-- 本文档定案；布局 `zeus/src` + `zeus/ffi`；GLFW（非 WGL）为首版窗口后端。
+- 本文档定案；布局 `engine/source/zeus` + `engine/ffi`；GLFW（非 WGL）为首版窗口后端。
 - MCP / UI 嵌 GL 列为后续，不阻塞 Runtime。
 
 ### Phase 1 — Runtime 骨架（已完成）
 
 | 交付 | 路径 / 测例 |
 |------|-------------|
-| `World` / Task 槽 | `src/world.py`、`src/task.py` |
-| `GameObject` / `Component` / `Transform` | `src/scene.py` |
-| 组件生命周期 + `kind` 查找 | `test_runtime`：`ComponentLifecycleTests` |
-| 简易重力 | `src/simple_world.py` |
+| `World` / Task 槽 | `runtime/core/world.py`、`task.py` |
+| `GameObject` / `Component` / `Transform` | `runtime/core/scene.py` |
+| 组件生命周期 + `kind` 查找 | `programs/tests/test_runtime`：`ComponentLifecycleTests` |
+| 简易重力 | `runtime/core/simple_world.py` |
 | 场景序列化烟测 | `SceneSerializeSmokeTests` |
 
 验收：`test_runtime.exe` 失败数 0。
@@ -466,7 +466,7 @@ Inspector：对象字段 + 组件列表字段（含 root `Transform` TRS）。
 | **输入** | 键盘或鼠标（`platform/input`）；FSM：`idle`→`charging`→`jumping`→`landed`/`failed` |
 | **相机** | `CameraComponent` 跟随 |
 | **渲染** | 平台与角色 mesh + 纯色材质（仍可立即模式；可引入薄 shader 叶子） |
-| **入口** | `examples/jump` 或 `zeus/src/demos/jump` + `demo.bat` 式脚本 |
+| **入口** | `samples/jump` + `zeus\demo.bat` |
 | **测例** | headless：固定输入序列断言分数/落点；可选有窗烟雾 |
 
 **验收**：可玩一局；编辑器能改 `jump_power` 等字段并 Play 验证。
@@ -542,4 +542,4 @@ Phase 0–2（已完成）
 
 **资产后缀**：场景与引擎侧序列化资产统一 `.zas`（Zeus Asset）；网格模型通用 `.fbx`。
 
-实现新阶段前若改对外 API / 序列化格式，仍按 py2cpp-design「先问清再实现」对齐后再改 `zeus/src`。
+实现新阶段前若改对外 API / 序列化格式，仍按 py2cpp-design「先问清再实现」对齐后再改 `engine/source/zeus` / `samples/`。

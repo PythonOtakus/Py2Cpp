@@ -116,7 +116,7 @@ EXCLUDE: set[tuple[str, str]] = {
 
 SKIP_DIRS = {
     ".git",
-    "generated",
+    "out",
     ".cache",
     "node_modules",
     "__pycache__",

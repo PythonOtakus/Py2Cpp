@@ -7,7 +7,7 @@ from paw.serde.json import Json, JsonDocument
 from paw.system.time import formatDuration, perfCounter
 from paw.test.test_temp import _TestTemp, ensureTestTemp
 
-# 与 ``scripts/compare_json_perf.py`` 规模同一量级：嵌套 ``Org``，单次深路径读写/写回
+# 与 ``tools/compare_json_perf.py`` 规模同一量级：嵌套 ``Org``，单次深路径读写/写回
 _NTeams: int = 100
 _NMembers: int = 20
 _TeamIdx: int = 50

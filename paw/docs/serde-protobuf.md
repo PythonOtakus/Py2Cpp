@@ -16,7 +16,7 @@
 - 基于 `Self.iterFields`、`Self.getFieldAnnotation`、`Self.getFieldType` 在翻译期展开，不依赖运行时字段反射；
 - 不依赖 STL；
 - 不依赖 Google Protobuf Runtime；
-- 单一真相源为 `paw/serde/protobuf.py`、必要模板、测试和本文档，禁止修改 `generated/`。
+- 单一真相源为 `paw/serde/protobuf.py`、必要模板、测试和本文档，禁止修改 `out/`。
 
 模块不追求完整复刻 `google.protobuf` 的动态 descriptor API。它是面向受限静态类型子集的 protobuf codec。
 

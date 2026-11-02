@@ -454,7 +454,7 @@ P1 起：左侧 palette 按 `category` 分组（`Events` / `Combat` / 类名等�
 | 演示 | `examples/ui_flow_demo.py` | 交互式三节点图 |
 
 ```bat
-python main.py paw\__init__.py -o generated --no-main
+python main.py lib\paw\__init__.py -o out --no-main
 build.bat ui/test_flow --seq
 ```
 

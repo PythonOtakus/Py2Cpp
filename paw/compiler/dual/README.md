@@ -8,5 +8,5 @@
 | `fixtures/` · `goldens/` | 共享输入与期望输出 |
 
 ```bat
-python scripts/paw_dual_compare.py
+python tools/paw_dual_compare.py
 ```

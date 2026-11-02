@@ -394,7 +394,7 @@ obj.select(".teams[0].name")
 | 生成 | ``src/emit/selector_emit.py`` |
 | 注册 | ``src/emit/call_emit.py``、``translator.visit_AnnAssign``；``TRANSLATOR_ONLY_METHODS`` 含 ``"select"`` |
 
-**不** bootstrap 生成 ``select`` 的 ``.inl``；**不**手改 ``generated/``。
+**不** bootstrap 生成 ``select`` 的 ``.inl``；**不**手改 ``out/``。
 
 ### 5.2 与真实 ``select`` 方法冲突
 

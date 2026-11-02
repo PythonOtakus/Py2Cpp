@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""修复命名规范后 src/ 中仍引用旧 snake 路径 / C++ 关键字 / serializable 方法名。"""
+"""修复命名规范后 host/ 中仍引用旧 snake 路径 / C++ 关键字 / serializable 方法名。"""
 from __future__ import annotations
 
 import re

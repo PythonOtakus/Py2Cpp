@@ -12,8 +12,8 @@
 | **P0 类型表面** | `list[T]` / `ref T` / `T?` / `T @Meta` / 裸箭头 / `Callable[arrow]` → `TypeSyntax` | `test_paw_type_parse.py` | **完成** |
 | **P1 签名结构化** | `ParamDecl` + `parse_params` → FunctionDecl/HIR/Mid | `test_paw_debridge_p1_p3.py` | **完成** |
 | **P2 语句/表达式** | Return/If/Elif/While/For/Match/Assign/AugAssign/Call/BinOp/下标/切片/list/set/dict/三元/`a @ b` | 同上；seed 函数体无 Opaque | **完成** |
-| **P3 MidIR emit** | `compiler/py/mid/emit_cpp.py` + `scripts/paw_mid_emit_seed.py` | seed 6/6 `can_emit_mid` | **完成** |
-| **P4 passes 迁 MidIR** | translator 记录 `mid_emit_ok`；`_emit_mid_capable_modules` 旁路写出 | seed 旁路产物在 `generated/**/mid_emit/` | **完成（旁路）** |
+| **P3 MidIR emit** | `compiler/py/mid/emit_cpp.py` + `tools/paw_mid_emit_seed.py` | seed 6/6 `can_emit_mid` | **完成** |
+| **P4 passes 迁 MidIR** | translator 记录 `mid_emit_ok`；`_emit_mid_capable_modules` 旁路写出 | seed 旁路产物在 `out/**/mid_emit/` | **完成（旁路）** |
 | **P5 删桥** | Mid emit 对齐 + 删物化 | seed 6/6 mid；stdlib **153/153**；MSVC 竖切 **6/6**；`PY2CPP_MID_PRIMARY=1` 跳过 AST emit | **完成**：已删 `materialize_ast.py`；生产树一律 `ast_from_mid`；`py2cpp`+`test`+`seed` mid_ok+直构全绿 |
 | **P6 passes 迁 Mid** | 少读 `ast.*`；空树可回填；C0 Mid 定点 | discover MidImport；空树回填；`fixedpoint` stage1==stage2==stage3 | **完成（C0 定点）**；真·C1 驱动/全量 S 另列 |
 
@@ -32,30 +32,30 @@
 
 ```bat
 REM 单元
-python -m pytest src/tests/test_paw_type_parse.py src/tests/test_paw_debridge_p1_p3.py -q
+python -m pytest host/tests/test_paw_type_parse.py host/tests/test_paw_debridge_p1_p3.py -q
 
 REM seed MidIR 直 emit
-python scripts/paw_mid_emit_seed.py
+python tools/paw_mid_emit_seed.py
 
 REM seed Mid emit MSVC 竖切（验收 6/6）
-scripts\paw_mid_emit_msvc_seed.bat
+tools\paw_mid_emit_msvc_seed.bat
 
 REM 自举：C0 Mid-emit 定点闭环（stage1==stage2==stage3）
-python scripts\paw_bootstrap_stages.py fixedpoint
+python tools\paw_bootstrap_stages.py fixedpoint
 REM stage1 MSVC 竖切（验收 6/6）
-scripts\paw_stage1_msvc_seed.bat
+tools\paw_stage1_msvc_seed.bat
 REM C1 seed 驱动：smoke + 自解析 compiler\paw\*.paw
-scripts\paw_stage1_c1_link.bat
+tools\paw_stage1_c1_link.bat
 
 REM Py×Paw 双实现对照（D0：配对表 + emitEnum）
-python scripts/paw_dual_compare.py
+python tools/paw_dual_compare.py
 # 方案：docs/paw/dual-impl.md
 
 REM 去桥验收（seed mid-emit + Translator PRIMARY）
-python scripts/paw_debridge_accept.py
+python tools/paw_debridge_accept.py
 
 REM stdlib mid-emit 覆盖率
-python scripts/paw_mid_emit_coverage.py
+python tools/paw_mid_emit_coverage.py
 
 REM 空 tree（translator 回填 / register_module_from_mid）；=0 关闭空树仍走 ast_from_mid
 REM 未设置或 =1：全部 mid_ok 空树；=0 关闭
@@ -71,7 +71,7 @@ set PY2CPP_MID_EMIT=0
 
 ## 水位（stdlib）
 
-以 `python scripts/paw_mid_emit_coverage.py` 为准。2026-11-01：`py2cpp` **153/153（100%）** `mid_emit_ok`。
+以 `python tools/paw_mid_emit_coverage.py` 为准。2026-11-01：`py2cpp` **153/153（100%）** `mid_emit_ok`。
 
 本轮抬升：类型 `A|B` / `T[:,:]` / `T[:N]` / `list[T,N]`、值下标多维与 `,`、表达式 `@`/`@=`、`lambda`、`*args`/`**kwargs`、隐式字符串拼接、f-string 词法、嵌套 `variant` opaque、`return a,b`。
 
@@ -89,7 +89,7 @@ seed（`compiler/paw/*.paw`）保持 **8/8** mid-emit（含 `mid_emit`/`check`�
 
 ## Mid emit → MSVC（seed）
 
-验收：`scripts/paw_mid_emit_msvc_seed.bat`（需 vcvars）→ **6/6**。
+验收：`tools/paw_mid_emit_msvc_seed.bat`（需 vcvars）→ **6/6**。
 
 | 模块 | MSVC | 备注 |
 |---|---|---|
@@ -106,9 +106,9 @@ seed（`compiler/paw/*.paw`）保持 **8/8** mid-emit（含 `mid_emit`/`check`�
 
 1. **P5**：已删 `materialize_ast`；`ast_from_mid` + `structure.py`
 2. **P6**：默认空树；非 stdlib PRIMARY；Mid expand；stdlib PRIMARY 布局；**C0 Mid-emit 定点** `fixedpoint`（stage1==stage2==stage3）；stage1 MSVC 6/6
-3. **C1 seed 驱动**：parse→薄 mid_emit→**链跑** … + **D7 `c1_thin_reseed`→`c2_thin`** 已绿（`scripts\paw_stage1_c1_link.bat`）
+3. **C1 seed 驱动**：parse→薄 mid_emit→**链跑** … + **D7 `c1_thin_reseed`→`c2_thin`** 已绿（`tools\paw_stage1_c1_link.bat`）
 4. **nested c1_emit / D4+–D7**：**绿** — 薄 emit 无真实 soft-skip；**D7：薄栈重种子 seed 语料**
-5. **C1→C2→C3（seed 薄定点）**：**绿** — `c2_thin`≡`c3_thin`；`scripts\paw_c2_c3_thin_reseed.bat`；C2 span/parser 竖切
+5. **C1→C2→C3（seed 薄定点）**：**绿** — `c2_thin`≡`c3_thin`；`tools\paw_c2_c3_thin_reseed.bat`；C2 span/parser 竖切
 6. **全量自举仍缺**：生产路径仍宿主 Mid；完整 S Paw 化；模板执行器离 CPython — 见 [parser-self-hosting.md](../parser-self-hosting.md)
 7. **双实现对照**：见 [dual-impl.md](./dual-impl.md)；D0–D7 已绿
 

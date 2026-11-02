@@ -505,7 +505,7 @@ class ChunkDeque[T]:
 | `heap` | `test_heap.py` |
 | `mono_queue` | `test_mono_queue.py` |
 
-验证：`python main.py paw\__init__.py -o generated --no-main` + 上述测试 MSVC 全绿。
+验证：`python main.py lib\paw\__init__.py -o out --no-main` + 上述测试 MSVC 全绿。
 
 ### P1b — 可拼接序列（并入 `ChunkDeque`）✅
 
@@ -566,11 +566,11 @@ test/alg/
 
 ```bat
 REM bootstrap
-python main.py paw\__init__.py -o generated --no-main
+python main.py lib\paw\__init__.py -o out --no-main
 
 REM 单测
-python main.py test\alg\test_dsu.py -o generated -c --compiler cl --exe generated\tests\alg\test_dsu.exe
-generated\tests\alg\test_dsu.exe
+python main.py test\alg\test_dsu.py -o out -c --compiler cl --exe out\tests\alg\test_dsu.exe
+out\tests\alg\test_dsu.exe
 
 REM 全量
 build_all.bat
@@ -640,8 +640,8 @@ __all__ = [
 [ ] 行为与本文档一致；分期范围未蔓延
 [ ] paw/alg 源树 + constant 发现 + __all__
 [ ] tests/alg/* 集成测 MSVC 全绿
-[ ] 未手改 generated/
-[ ] bootstrap: python main.py paw\__init__.py -o generated --no-main
+[ ] 未手改 out/
+[ ] bootstrap: python main.py lib\paw\__init__.py -o out --no-main
 [ ] 编码规范自检（new / Self / 无 STL / range）
 [ ] 参考手册 + 编码规范 §8.1 已更新
 ```

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """补漏：CPython 粘连名 / snake 别名 → camelCase（§1.0）。
 
-勿对整个 ``src/`` 无差别替换（会弄坏 ``str.startswith``、``path.removesuffix`` 等）。
+勿对整个 ``host/`` 无差别替换（会弄坏 ``str.startswith``、``path.removesuffix`` 等）。
 """
 from __future__ import annotations
 
@@ -55,9 +55,9 @@ MAP: dict[str, str] = {
   # 勿批量改 gmtime/localtime/mktime/copysign：templates 内含 C 库同名调用
 }
 
-DIRS = ("paw", "tests", "examples", "docs", "templates", ".cursor")
+DIRS = ("lib/paw", "tests", "examples", "docs", "templates", ".cursor")
 EXTS = {".py", ".md", ".inl", ".h", ".cpp", ".txt"}
-# 勿改 scripts/：其中 ``pathlib.Path.iterdir`` 等为 CPython API
+# 勿改 tools/：其中 ``pathlib.Path.iterdir`` 等为 CPython API
 
 
 def replace_idents(text: str) -> str:
@@ -75,7 +75,7 @@ def main() -> None:
     for path in base.rglob("*"):
       if not path.is_file() or path.suffix.lower() not in EXTS:
         continue
-      if "node_modules" in path.parts or "generated" in path.parts:
+      if "node_modules" in path.parts or "out" in path.parts:
         continue
       try:
         raw = path.read_text(encoding="utf-8")

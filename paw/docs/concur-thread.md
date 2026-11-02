@@ -74,7 +74,7 @@ C++11 runtime 叶子
 - Condition waiter 队列和 timeout 循环位于 Python 层；
 - 只有无法继续拆分的阻塞、线程句柄和 TLS 操作进入 C++。
 
-单一真相源为 `paw/`、`templates/`、`src/` 和 `tests/`，禁止直接修改 `generated/`。
+单一真相源为 `paw/`、`templates/`、`host/` 和 `tests/`，禁止直接修改 `out/`。
 
 ## 4. 实施前置项
 
@@ -804,11 +804,11 @@ native 模板预计使用：
 
 1. 对照 `docs/编码规范.md` 自检标准库 Python 写法；
 2. 确认 native 已缩小到不可再拆的叶子；
-3. 确认未手改 `generated/`；
+3. 确认未手改 `out/`；
 4. bootstrap runtime：
 
    ```bat
-   python main.py paw\__init__.py -o generated --no-main
+   python main.py lib\paw\__init__.py -o out --no-main
    ```
 
 5. 编译并执行 `tests/concur/test_thread.py` 和 `tests/concur/test_thread_pool.py`；

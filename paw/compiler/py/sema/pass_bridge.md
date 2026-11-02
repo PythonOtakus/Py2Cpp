@@ -20,12 +20,12 @@
 | 生产树直构 | **P5**：一律 `ast_module_from_mid`；门闩 `structure.module_fully_structured` |
 | C0 seed | `span_tokens`…`lexer` + `syntax_nodes` + `parser`；PRIMARY + 空树 |
 | seed 绝对 import | `from compiler.paw.…`（stdlib 未命中后回退仓库顶层包） |
-| 结构化探测 | `scripts/paw_mid_rewrite_probe.py`（A/B + seed 须 `structured=True`） |
+| 结构化探测 | `tools/paw_mid_rewrite_probe.py`（A/B + seed 须 `structured=True`） |
 
 ## 验收
 
-- `python main.py paw/__init__.paw -o generated --no-main` 不经过全文 `surface_rewrite`
+- `python main.py lib/paw/__init__.paw -o out --no-main` 不经过全文 `surface_rewrite`
 - A/B：`test_paw_a_batch` / `test_paw_record` 类体 MidIR 直构（`_class_needs_rewrite==False`）
-- `python scripts/paw_c0_seed_smoke.py`；`python scripts/paw_mid_rewrite_probe.py`
+- `python tools/paw_c0_seed_smoke.py`；`python tools/paw_mid_rewrite_probe.py`
 - `build.bat lang\test_paw_seed_span lang\test_paw_seed_lexer --seq`
-- `python scripts/paw_ast_ban_checklist.py` 中 hot-path `ast.parse` 债务递减
+- `python tools/paw_ast_ban_checklist.py` 中 hot-path `ast.parse` 债务递减

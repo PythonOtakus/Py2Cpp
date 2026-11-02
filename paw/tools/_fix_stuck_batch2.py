@@ -65,7 +65,7 @@ DIRS = (
   "docs",
   "templates",
   ".cursor",
-  "scripts",
+  "tools",
   "tools",
 )
 EXTS = {".py", ".md", ".inl", ".h", ".cpp", ".txt"}
@@ -117,7 +117,7 @@ def transform(text: str, *, protect_c_lib: bool) -> str:
 
 def should_skip(path: Path) -> bool:
   parts = path.parts
-  if "generated" in parts or "node_modules" in parts or "third_party" in parts:
+  if "out" in parts or "node_modules" in parts or "third_party" in parts:
     return True
   # 工具脚本自身的 MAP 表勿二次改写键
   if path.name in (
@@ -146,7 +146,7 @@ def main() -> None:
       protect = path.suffix.lower() in {".inl", ".h", ".cpp"} or "templates" in path.parts
       # docs/scripts 里的 exist_ok 是 pathlib — 对 scripts 跳过 exist_ok
       text = raw
-      if "scripts" in path.parts or path.parts[:1] == ("scripts",):
+      if "tools" in path.parts or path.parts[:1] == ("tools",):
         # 仍改其它 API 文档名，但 exist_ok 在 scripts 是 CPython
         text2 = transform(text, protect_c_lib=protect)
         # 回滚 scripts 中的 existOk → exist_ok（pathlib）

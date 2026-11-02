@@ -2,13 +2,13 @@
 
 > **状态**：实现中（阶段 0–2 已完成，阶段 3 部分落地）  
 > **目标 workload**：`loads[list[User]]`（`tests/perf/test_json_serde.py`，n=2000，payload ≈ 85–95 KB）  
-> **约束**：符合 [编码规范.md](./编码规范.md)；不引入 STL / 第三方 JSON 库；不手改 `generated/`；用户 Python API（`loads` / `@serializable`）不变。
+> **约束**：符合 [编码规范.md](./编码规范.md)；不引入 STL / 第三方 JSON 库；不手改 `out/`；用户 Python API（`loads` / `@serializable`）不变。
 
 ### 实现进度（2026-05-27）
 
 | 阶段 | 内容 | 状态 | 实测 / 备注 |
 |------|------|------|-------------|
-| **0** | perf 基线、`test_json` 乱序键 | ✅ | `scripts/build_perf_json.bat` 全绿 |
+| **0** | perf 基线、`test_json` 乱序键 | ✅ | `tools/build_perf_json.bat` 全绿 |
 | **PR-A** | `mark`/`restore`、`_src_view`、`loadStrSpan`、`skipEmptyArray`；`str.from_codes_span` | ✅ | `paw/serde/json.py`、`paw/text/str.py` |
 | **PR-B** | `_schema_deserialize_eligible`、有序 `deserialize` + `restore` 回退 | ✅ | `tests/serde/test_json.py` 含 `reordered` |
 | **PR-C** | `_fast_load_list_*` + `_JsonLoads<PyList<User>>` 特化 | ✅ | `serializable.py` → 用户模块 `.inl` |
@@ -32,7 +32,7 @@
 | **PR-P3** | ``dict`` ``setCapacity`` 预分配；``dict[str,long|float]`` ASCII 叶子循环 | ✅ | 减 rehash；long/float 镜像 int/str |
 | **译器单测** | `src/tests/test_serializable_schema.py` | ⏸ | 未开始 |
 
-**MSVC（`scripts/build_perf_json.bat`）**：`test_json` 7/7；`test_json_serde` 含 `Ticker`/`MiniUser`/`loads list[int|str]` 等对照用例。
+**MSVC（`tools/build_perf_json.bat`）**：`test_json` 7/7；`test_json_serde` 含 `Ticker`/`MiniUser`/`loads list[int|str]` 等对照用例。
 
 **perf 对照结构**（`tests/perf/test_json_serde.py`）：
 
@@ -60,7 +60,7 @@
 **验证命令**：
 
 ```bat
-scripts\build_perf_json.bat
+tools\build_perf_json.bat
 ```
 
 ---
@@ -308,9 +308,9 @@ PR-A  基础设施
       paw/util/memory.py      loadU64Le 等 @native 叶子
 
 PR-B  Schema 双路径
-      src/passes/serializable.py  ordered + generic；_schema_deserialize_eligible
+      host/passes/serializable.py  ordered + generic；_schema_deserialize_eligible
       tests/serde/test_json.py      乱序键 / 缺字段 / 未知键
-      src/tests/test_serializable_schema.py
+      host/tests/test_serializable_schema.py
 
 PR-C  list[User] 特化 + 阶段 3
       serializable.py             _fast_load_list_* + _JsonLoads 特化生成
@@ -318,11 +318,11 @@ PR-C  list[User] 特化 + 阶段 3
       docs/参考手册.md            §10.1 快路径与回退语义（对外行为不变则简述）
 
 bootstrap（改标准库后）:
-      python main.py paw\__init__.py -o generated --no-main
+      python main.py lib\paw\__init__.py -o out --no-main
 
 验证:
       tests/serde/test_json.py
-      scripts/build_perf_json.bat  或 build_all.bat
+      tools/build_perf_json.bat  或 build_all.bat
 ```
 
 ---
@@ -358,7 +358,7 @@ bootstrap（改标准库后）:
 - 使用 `std::string_view` 或 STL 容器  
 - 仅 `ordered_load=True` 且不支持乱序（默认 **try ordered + restore**）  
 - 业务代码使用 `span[char]` 或专用 `_fast_loads_*` API  
-- 手改 `generated/`  
+- 手改 `out/`  
 - 为 perf 修改 `@copyable` / `User` 内存布局  
 
 ---

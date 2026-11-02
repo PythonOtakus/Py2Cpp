@@ -1,6 +1,6 @@
 # 内核迁移清单（原生编译器 / 原 P4）
 
-目标：生产路径 **不依赖** CPython AST 与 Paw→legacy 文本改写；`src/` 能力迁入可自举的 `compiler/`。
+目标：生产路径 **不依赖** CPython AST 与 Paw→legacy 文本改写；`host/` 能力迁入可自举的 `compiler/`。
 
 | 模块族 | 现状 | 迁入条件 |
 |---|---|---|
@@ -15,5 +15,5 @@
 
 验收：
 
-1. `python scripts/paw_ast_ban_checklist.py` → api 无 rewrite
-2. `python scripts/paw_bootstrap_stages.py` 在 C1 写入 `compiler/stages/stage1/` 后，`compare stage2 stage3` 对真实 manifest 通过
+1. `python tools/paw_ast_ban_checklist.py` → api 无 rewrite
+2. `python tools/paw_bootstrap_stages.py` 在 C1 写入 `compiler/stages/stage1/` 后，`compare stage2 stage3` 对真实 manifest 通过

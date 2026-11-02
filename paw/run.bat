@@ -1,2 +1,2 @@
 @echo off
-call "%~dp0scripts\run.bat" %*
+call "%~dp0tools\run.bat" %*

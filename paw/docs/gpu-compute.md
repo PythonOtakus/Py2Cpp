@@ -1,7 +1,7 @@
 # Py2Cpp GPU 计算 — 设计方案（现有写法优先）
 
 > **状态**：P1 Host OpenMP sim 验收通过；**CUDA AOT 骨架**（`--gpu-backend=cuda` → `.cu` + Host `cudaMalloc` launch）已落地；`ffi/cuda` 待 Toolkit 安装后用 `ffi.bat` 生成  
-> **单一真相源**：`py2cpp/gpu/*.py`、`src/passes/*gpu*`、`src/emit/*gpu*`、`src/codegen/gpu_backend_cuda.py`  
+> **单一真相源**：`paw/gpu/*.py`、`src/passes/*gpu*`、`src/emit/*gpu*`、`src/codegen/gpu_backend_cuda.py`  
 > **关联**：[编码规范](./编码规范.md)、[参考手册](./参考手册.md)、[concur-thread.md](./concur-thread.md)、[c-ffi-pyi.md](./c-ffi-pyi.md)、[py2cpp-design](../.cursor/skills/py2cpp-design/SKILL.md)
 
 ---
@@ -55,7 +55,7 @@
 ### 2.1 模块布局
 
 ```text
-py2cpp/gpu/
+paw/gpu/
   mixin.py      # @mixin class GpuKernelMixin
   meta.py       # @annotation class GpuDeviceMeta
   field.py      # Field[T]
@@ -66,8 +66,8 @@ py2cpp/gpu/
 ### 2.2 典型用法
 
 ```python
-from py2cpp import dataclass
-from py2cpp.gpu import Field, GpuDeviceMeta, GpuKernelMixin, gpuSync
+from paw import dataclass
+from paw.gpu import Field, GpuDeviceMeta, GpuKernelMixin, gpuSync
 
 @GpuDeviceMeta
 def clamp01(x: float) -> float:
@@ -243,7 +243,7 @@ Add(c=1.0).map(a, b, out)
 - **CUDA AOT**：`--gpu --gpu-backend=cuda` 生成旁路 `.cu`；`compile.py` 调 `nvcc -c -arch=native` 并链 `cudart`；无 `nvcc` 时编译报错。新会话需 `CUDA_PATH`（如 `...\CUDA\v13.3`）与 `PATH` 含 `bin`。
 - **`ffi/cuda`**：已由 `ffi.bat`/`gen_c_ffi.py` 从 `cuda_runtime_api.h` 生成 `ffi/cuda/cuda_runtime_api.pyi`（**勿手改**）；**不进 `minimal.h`**；业务层尚未全面改调 `ffi::cuda`（Host 现直 include `<cuda_runtime.h>`）。
 - **`--gpu` / `--no-gpu` / `--gpu-backend`**：未启用时遇 `.map` / Host 调 `@GpuDeviceMeta` → **译期 error**。
-- 验收：`test/gpu/test_vector_add.py`、`test_gpu_device_meta.py`；负向 `test/fail/test_gpu_host_device_meta_fail.py`；译器 `src/tests/test_gpu_backend_emit.py`。
+- 验收：`tests/gpu/test_vector_add.py`、`test_gpu_device_meta.py`；负向 `tests/fail/test_gpu_host_device_meta_fail.py`；译器 `src/tests/test_gpu_backend_emit.py`。
 
 ---
 

@@ -1667,7 +1667,7 @@ def str_cpp_from_literal(text: str) -> str:
 
 def bytes_cpp_from_literal(data: bytes) -> str:
   """Python ``bytes`` 常量 → ``bytes_from_literal``（见 ``text/+bytes.inl``；生成写入 ``bytes.h``）。"""
-  fn = "::py2cpp::text::bytes::bytes_from_literal"
+  fn = "::paw::text::bytes::bytes_from_literal"
   if not data:
     return f"{fn}(nullptr, 0)"
   esc = "".join(f"\\x{b:02x}" for b in data)
@@ -2406,7 +2406,7 @@ def strip_descriptor_type_annotation(
   return copy.deepcopy(ann)
 
 
-# ``@protocol`` 表：自 ``py2cpp/**/protocols.py`` AST 推导（见 ``protocol_stubs``）
+# ``@protocol`` 表：自 ``paw/**/protocols.py`` AST 推导（见 ``protocol_stubs``）
 from .stubs.protocol_stubs import (
   load_protocol_impl_assoc_receiver,
   load_protocol_param_erase,
@@ -2841,7 +2841,7 @@ def parse_class_friends(node: ast.ClassDef) -> list[str]:
             raise SyntaxError(
               f"{node.name}: friends= 勿用字符串 '{elt.value}'，请写类名 "
               f"（同模块可前向：友元类可在宿主类之后定义；运行时 import 须友元类已存在，"
-              f"一般将友元类声明放在宿主类之前，见 ``py2cpp/util/dict.py``）"
+              f"一般将友元类声明放在宿主类之前，见 ``paw/util/dict.py``）"
             )
       case ast.Name(id=name):
         out.append(name)

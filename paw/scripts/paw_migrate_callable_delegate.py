@@ -20,8 +20,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 TARGETS = (
-  ROOT / "py2cpp",
-  ROOT / "test",
+  ROOT / "paw",
+  ROOT / "tests",
   ROOT / "ffi",
   ROOT / "zeus",
 )

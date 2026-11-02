@@ -29,18 +29,18 @@ Py2Cpp/
 │   └── tests/                   # 译器单元测试
 ├── py2cpp/                      # 标准库 Python 规格（按域分目录）
 │   ├── __init__.py              # 包根 API、域再导出
-│   ├── core/ util/ text/ io/ system/ concur/ test/ sql/ …
+│   ├── core/ util/ text/ io/ system/ concur/ tests/ sql/ …
 │   └── …
 ├── ffi/                         # 第三方 C FFI 声明面（.pyi；生成器产出，勿手改 AUTO-GENERATED）
 ├── templates/                   # C++ 注入 / 万能头模板（+*.h / +*.inl）
 ├── scripts/                     # MSVC / 翻译 / FFI 构建脚本
 ├── build_all.bat / build.bat / run.bat / demo.bat / ffi.bat
 ├── examples/
-├── test/                        # 集成测试（misc/ lang/ sql/ ui/ … / fail/）
+├── tests/                        # 集成测试（misc/ lang/ sql/ ui/ … / fail/）
 ├── generated/                   # 翻译输出（勿手改）
 │   ├── runtime/py2cpp/          # 标准库 .h / .inl / minimal.h / protocol_traits.h
 │   ├── runtime/ffi/             # FFI 按需生成（不进 minimal.h bulk）
-│   └── test/                    # 用户测试 .h / .cpp / .exe
+│   └── tests/                    # 用户测试 .h / .cpp / .exe
 └── docs/                        # 参考手册、编码规范、c-ffi-pyi.md …
 ```
 
@@ -209,7 +209,7 @@ Py2Cpp/
 | io | `io/path` | `py2cpp::io::path` | `Path`（pathlib 子集） |
 | system | `system/time` | `py2cpp::system::time` | `templates/system/-time.inl` |
 | concur | `concur/task` | `py2cpp::concur::task` | |
-| test | `test/unittest` | `py2cpp::test::unittest` | 集成测显式 ``from py2cpp.test.unittest import TestCaseMixin, …``（非包根 star） |
+| test | `tests/unittest` | `py2cpp::test::unittest` | 集成测显式 ``from py2cpp.test.unittest import TestCaseMixin, …``（非包根 star） |
 | serde | `serde/protocols` | `py2cpp::serde::protocols` | `EncoderType` / `DecoderType` |
 | serde | `serde/json` | `py2cpp::serde::json` | 单文件 `JsonEncoder`/`JsonDecoder`；`dumps` / `loads` |
 | ui | `ui/meta` … `ui/window` | `py2cpp::ui::<mod>` | Panel；``UIWindow`` Win32（``templates/ui/+window.inl``）；``__init__.py`` 勿 re-export 子模块 |
@@ -228,9 +228,9 @@ Py2Cpp/
 | `runtime/py2cpp/<域>/*.h` | 类声明；模板类末尾或万能头外挂 `*.inl` |
 | `runtime/py2cpp/util/range.h` | `PyRange`（`py2cpp::util::range::PyRange`；**不**在已删除的根 `py2cpp.h`） |
 | `runtime/py2cpp/core/protocol_traits.h` | 全部 `@protocol` traits；**全局作用域** |
-| `runtime/py2cpp.cpp` | 可选汇总 TU；**`test/` 链接时不要同时用** |
+| `runtime/py2cpp.cpp` | 可选汇总 TU；**`tests/` 链接时不要同时用** |
 | `runtime/ffi/**` | FFI 按需写出（`#include "ffi/…"`）；**不**进 `minimal.h` bulk |
-| `test/<module>.h/.cpp` | 用户测试翻译结果 |
+| `tests/<module>.h/.cpp` | 用户测试翻译结果 |
 
 ### 5.1 头文件依赖（常见）
 
@@ -243,7 +243,7 @@ Py2Cpp/
 
 | 场景 | C++ 结构 |
 |------|----------|
-| 用户 `test/foo.py` | `namespace test { … }` |
+| 用户 `tests/foo.py` | `namespace test { … }` |
 | 用户 `pkg/sub.py` | `namespace pkg { namespace sub { … } }` |
 | 标准库 `py2cpp/util/list.py` | `namespace py2cpp { namespace util { namespace list { … } } }` |
 | FFI `ffi/sqlite/sqlite3.pyi` | `namespace ffi { namespace sqlite { namespace sqlite3 { … } } }`（路径段 = 命名空间段） |
@@ -371,7 +371,7 @@ Py2Cpp/
 | ``Field[T]`` | ``copyFromHost``/``toHost`` |
 | P1 | 用户 **不写** ``prange``；grid 由 ``.map`` codegen 内部生成（当前 OpenMP） |
 | ``--gpu`` / ``--no-gpu`` / ``--gpu-backend=omp\|cuda`` | 启用 GPU；``cuda`` 生成旁路 ``.cu`` + Host launch |
-| 验收 | ``test/gpu/test_vector_add.py``、``test_gpu_device_meta.py``（须 ``--gpu``）；``test_gpu_backend_emit`` |
+| 验收 | ``tests/gpu/test_vector_add.py``、``test_gpu_device_meta.py``（须 ``--gpu``）；``test_gpu_backend_emit`` |
 | ``ffi/cuda`` | Toolkit 就绪后 ``ffi.bat``；**不进** ``minimal.h`` |
 | P2 | ``run`` 内显式 ``for i in prange(n)``（stencil 等） |
 
@@ -580,61 +580,61 @@ python main.py <input.py> [-o DIR] [--no-stdlib] [--no-main] [--debug]
 | `--debug` | 插入 `fprintf` 调用跟踪；``__debug__`` → ``true`` |
 | `PY2CPP_FORCE_BOOTSTRAP=1` | `_bootstrap_runtime.bat` 忽略 `.bootstrap.stamp`，强制全量翻译 |
 | `PY2CPP_PROFILE=1` | `translate_file` 向 stderr 打印 discover/parse/expand/analyze/emit/write/nav_index 分段 |
-| `PY2CPP_NO_TEST_CACHE=1` | 关闭 P1.6：`test/` / `examples/` 不复用 `analyze_sigs.pkl`（仍走全量 analyze） |
+| `PY2CPP_NO_TEST_CACHE=1` | 关闭 P1.6：`tests/` / `examples/` 不复用 `analyze_sigs.pkl`（仍走全量 analyze） |
 | `PY2CPP_USE_PCH=1` | 实验性 MSVC PCH（`pch/minimal.pch`）；默认关，见 [runtime-libs.md §P1.7](../../../paw/docs/runtime-libs.md) |
 | `--openmp` / `--no-openmp` | ``prange`` 是否发射 OpenMP（默认开；``--no-openmp`` 降级为 ``range``） |
 | `-c` | 翻译后编译 |
 | `--compiler cl` | Windows 推荐 MSVC |
 | `--exe` | 指定可执行文件路径 |
 
-批处理（仓库根）：``build.bat PATTERN`` / ``run.bat PATTERN`` / ``demo.bat PATTERN`` — 分别匹配 ``test/**/test_*.py``、运行已编译测试 exe、``examples/**/*.py`` 翻译+编译+运行。
+批处理（仓库根）：``build.bat PATTERN`` / ``run.bat PATTERN`` / ``demo.bat PATTERN`` — 分别匹配 ``tests/**/test_*.py``、运行已编译测试 exe、``examples/**/*.py`` 翻译+编译+运行。
 
 ---
 
 ## 10. 测试矩阵
 
-### 10.1 集成测试（`test/`）
+### 10.1 集成测试（`tests/`）
 
 最近一次全量回归记录：[docs/test-report-2026-08-23.md](../../../paw/docs/test-report-2026-08-23.md)（`build-all.bat` + `run.bat *`）。
 
 | 文件 | 脚本 | 覆盖重点 |
 |------|------|----------|
-| `test/util/test_list.py` 等 | `build_all.bat` | list/dict/deque/set/range |
-| `test/core/test_delegate.py` | `build_all.bat` | `@delegate` / `Callable` / `Function` |
-| `test/text/test_str.py` | `build_all.bat` | str API、format / f-string、字面量内联 |
-| `test/text/test_bytes.py` | `build_all.bat` | bytes |
-| `test/misc/test_chr_ord.py` | `build_all.bat` | `chr` / `ord` / `byte` |
-| `test/io/test_io.py` | `build_all.bat` | `with`、`py_open` |
-| `test/io/file/test_file.py` | `build_all.bat` | ``os`` 磁盘 API（``getCwd``/``stat``/``listDir``/…） |
-| `test/io/file/test_path.py` | `build_all.bat` | ``os.path``（``join``/``splitExt``/…） |
-| `test/io/test_path.py` | `build_all.bat` | `Path`、`/` |
-| `test/sql/test_sqlite.py` | `build.bat sql/test_sqlite` | ``py2cpp/sql`` DB-API（P0 已落地）；见 [sql-orm.md](../../../paw/docs/sql-orm.md) |
-| `test/sql/test_sql_orm.py` | `build.bat sql/test_sql_orm`（**设计中，P1**） | ``table[User]()`` + ``*Meta`` / ``all`` / ``get`` / ``append`` |
-| `test/sql/test_sql_orm_genexp.py` | `build.bat sql/test_sql_orm_genexp`（**设计中，P2**） | ``extend`` / ``execute(e.assign…)`` / ``collect`` / ``remove`` + ``SqlQuery[T]`` |
-| `test/sql/test_sql_orm_join.py` | `build.bat sql/test_sql_orm_join`（**设计中，P3**） | ``session.collect[RowT](Row(…) for o in orders for u in users if …)`` → ``SqlQuery[RowT]`` |
-| `test/system/test_time.py` | `build_all.bat` | time / float64 / int64 |
-| `test/perf/test_json_serde.py` | 手动 / 专用脚本 | 性能（默认跳过 `build_all.bat`） |
-| `test/lang/test_dataclass.py` | `build_all.bat` | `@dataclass`、`new` |
-| `test/lang/test_enum.py` | `build_all.bat` | `@enum`、`flag=True`、`match` 枚举模式 |
-| `test/lang/test_kwargs_options.py` | `build_all.bat` | `@kwargs_options` |
-| `test/lang/test_selector.py` | `build_all.bat` | ``select`` 路径 DSL（``:$``/``$``/``;``、filter、投影） |
-| `test/lang/test_build.py` | `build_all.bat` | ``build`` 对象构造 DSL（``[:N] >``、``:$i``） |
-| `test/lang/test_generator.py` | `build_all.bat` | `yield` |
-| `test/lang/test_async.py` | `build_all.bat` | async/await |
-| `test/concur/test_parallel.py` | `build.bat concur` | ``prange`` / OpenMP / reduction / 负 step |
-| `test/ui/test_panel.py` | `build.bat panel` | ``UIPanelMixin`` / ``UIInvisibleMeta`` / ``UILabelMeta`` / ``RangeVar`` |
-| `test/ui/test_widget.py` | `build.bat button` | ``ui/widget``：控件字段与 ``UIButtonMeta`` |
-| `test/ui/test_window.py` | `build.bat ui\\window` | ``ui/window`` Win32 ``begin``/``draw``/``end`` |
-| `test/ui/test_style.py` | `build_all.bat` | ``ui/style`` 默认值 |
+| `tests/util/test_list.py` 等 | `build_all.bat` | list/dict/deque/set/range |
+| `tests/core/test_delegate.py` | `build_all.bat` | `@delegate` / `Callable` / `Function` |
+| `tests/text/test_str.py` | `build_all.bat` | str API、format / f-string、字面量内联 |
+| `tests/text/test_bytes.py` | `build_all.bat` | bytes |
+| `tests/misc/test_chr_ord.py` | `build_all.bat` | `chr` / `ord` / `byte` |
+| `tests/io/test_io.py` | `build_all.bat` | `with`、`py_open` |
+| `tests/io/file/test_file.py` | `build_all.bat` | ``os`` 磁盘 API（``getCwd``/``stat``/``listDir``/…） |
+| `tests/io/file/test_path.py` | `build_all.bat` | ``os.path``（``join``/``splitExt``/…） |
+| `tests/io/test_path.py` | `build_all.bat` | `Path`、`/` |
+| `tests/sql/test_sqlite.py` | `build.bat sql/test_sqlite` | ``py2cpp/sql`` DB-API（P0 已落地）；见 [sql-orm.md](../../../paw/docs/sql-orm.md) |
+| `tests/sql/test_sql_orm.py` | `build.bat sql/test_sql_orm`（**设计中，P1**） | ``table[User]()`` + ``*Meta`` / ``all`` / ``get`` / ``append`` |
+| `tests/sql/test_sql_orm_genexp.py` | `build.bat sql/test_sql_orm_genexp`（**设计中，P2**） | ``extend`` / ``execute(e.assign…)`` / ``collect`` / ``remove`` + ``SqlQuery[T]`` |
+| `tests/sql/test_sql_orm_join.py` | `build.bat sql/test_sql_orm_join`（**设计中，P3**） | ``session.collect[RowT](Row(…) for o in orders for u in users if …)`` → ``SqlQuery[RowT]`` |
+| `tests/system/test_time.py` | `build_all.bat` | time / float64 / int64 |
+| `tests/perf/test_json_serde.py` | 手动 / 专用脚本 | 性能（默认跳过 `build_all.bat`） |
+| `tests/lang/test_dataclass.py` | `build_all.bat` | `@dataclass`、`new` |
+| `tests/lang/test_enum.py` | `build_all.bat` | `@enum`、`flag=True`、`match` 枚举模式 |
+| `tests/lang/test_kwargs_options.py` | `build_all.bat` | `@kwargs_options` |
+| `tests/lang/test_selector.py` | `build_all.bat` | ``select`` 路径 DSL（``:$``/``$``/``;``、filter、投影） |
+| `tests/lang/test_build.py` | `build_all.bat` | ``build`` 对象构造 DSL（``[:N] >``、``:$i``） |
+| `tests/lang/test_generator.py` | `build_all.bat` | `yield` |
+| `tests/lang/test_async.py` | `build_all.bat` | async/await |
+| `tests/concur/test_parallel.py` | `build.bat concur` | ``prange`` / OpenMP / reduction / 负 step |
+| `tests/ui/test_panel.py` | `build.bat panel` | ``UIPanelMixin`` / ``UIInvisibleMeta`` / ``UILabelMeta`` / ``RangeVar`` |
+| `tests/ui/test_widget.py` | `build.bat button` | ``ui/widget``：控件字段与 ``UIButtonMeta`` |
+| `tests/ui/test_window.py` | `build.bat ui\\window` | ``ui/window`` Win32 ``begin``/``draw``/``end`` |
+| `tests/ui/test_style.py` | `build_all.bat` | ``ui/style`` 默认值 |
 | `examples/ui_panel_demo.py` | `demo.bat panel` | 交互 Win32 Panel 窗口（``run`` 阻塞至关闭） |
-| `test/lang/test_decorator.py` | `build_all.bat` | `@decorator`、`@context` |
-| `test/lang/test_friends.py` | `build_all.bat` | `friends=` |
-| `test/lang/test_stack_array.py` | `build_all.bat` | 栈数组字面量 |
-| `test/lang/test_protocol.py` | `build_protocol.bat` | `@protocol` 正向 |
-| `test/lang/test_*.py`（其余） | `build_all.bat` | dunder / move / 空 main |
-| `test/util/test_pool.py` | `build_all.bat` | pool 功能 + 微基准 |
-| `test/import_tests/test_import.py` | `build_all.bat` | import / 命名空间 |
-| `test/fail/test_*_fail.py` | `build_fail.bat` | 预期编译失败 |
+| `tests/lang/test_decorator.py` | `build_all.bat` | `@decorator`、`@context` |
+| `tests/lang/test_friends.py` | `build_all.bat` | `friends=` |
+| `tests/lang/test_stack_array.py` | `build_all.bat` | 栈数组字面量 |
+| `tests/lang/test_protocol.py` | `build_protocol.bat` | `@protocol` 正向 |
+| `tests/lang/test_*.py`（其余） | `build_all.bat` | dunder / move / 空 main |
+| `tests/util/test_pool.py` | `build_all.bat` | pool 功能 + 微基准 |
+| `tests/import_tests/test_import.py` | `build_all.bat` | import / 命名空间 |
+| `tests/fail/test_*_fail.py` | `build_fail.bat` | 预期编译失败 |
 
 **unittest 结构**（编码规范 §10）：`TestCaseMixin` + `@override def test(self)` + `main()` 里 `suite: TestSuite = new()` / `TextTestRunner`；``iterSubclasses(sortConst="_testTag")`` 按 ``static const`` 升序（``@mixin`` 展开，无运行时反射）。
 
@@ -646,7 +646,7 @@ build_all.bat
 build_protocol.bat
 ```
 
-按模式编译（子串或 `*` `?` 通配，跳过 `test\fail\` / `test\perf\`）：
+按模式编译（子串或 `*` `?` 通配，跳过 `tests\fail\` / `tests\perf\`）：
 
 ```bat
 build vararg
@@ -659,8 +659,8 @@ build containers misc\test_range
 等价手写单文件：
 
 ```bat
-python main.py test\misc\test_containers.py -o generated -c --compiler cl --exe generated\test\misc\test_containers.exe
-generated\test\misc\test_containers.exe
+python main.py tests\misc\test_containers.py -o generated -c --compiler cl --exe generated\tests\misc\test_containers.exe
+generated\tests\misc\test_containers.exe
 ```
 
 ---
@@ -671,7 +671,7 @@ generated\test\misc\test_containers.exe
 |------|----------|------|
 | `'cl' 不是内部或外部命令` | 未进 vcvars 环境 | `build_*.bat` 或 Native Tools Prompt |
 | 翻译 Ok、链接旧符号 | 未重链 | 全量重编；`main.py -c` / `build_*.bat` 会自动删 `.obj` |
-| LNK2005 | 同时链 `py2cpp.cpp` + 含实现的万能头 | `compile.py` 对 `test/` 已跳过 `py2cpp.cpp` |
+| LNK2005 | 同时链 `py2cpp.cpp` + 含实现的万能头 | `compile.py` 对 `tests/` 已跳过 `py2cpp.cpp` |
 | LNK2019 `py_open` | 缺 `io.inl` 或未链入 | 重译 runtime |
 | `PyRange` 未声明 | 未 include `minimal.h`（或 `util/range`）或 namespace 尾块污染 | 用 `(::py2cpp::util::range::PyRange)(n)`；勿乱改 umbrella |
 | `C2065: Args` | `protocol_traits` 中 `__mod__` 缺 `template<typename... Args>` | 修 `translator._emit_module_protocol_traits` |

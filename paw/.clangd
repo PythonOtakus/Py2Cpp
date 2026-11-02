@@ -1,4 +1,4 @@
-# clangd：``#include "py2cpp/..."`` 的根为 generated/runtime（与 compile.py 一致）
+# clangd：``#include "paw/..."`` 的根为 generated/runtime（与 compile.py 一致）
 CompileFlags:
   Add:
     - -std=c++14

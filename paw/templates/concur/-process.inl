@@ -18,13 +18,13 @@
 #endif
 
 PY2CPP_IGNORE
-#include "py2cpp/concur/process.h"
-#include "py2cpp/core/delegate.h"
-#include "py2cpp/core/exceptions.h"
-#include "py2cpp/text/str.h"
+#include "paw/concur/process.h"
+#include "paw/core/delegate.h"
+#include "paw/core/exceptions.h"
+#include "paw/text/str.h"
 PY2CPP_END
 
-namespace py2cpp_concur_process_detail
+namespace paw_concur_process_detail
 {
   typedef PyCallable<void> ProcessTarget;
 
@@ -311,7 +311,7 @@ namespace py2cpp_concur_process_detail
 #endif
 }
 
-namespace py2cpp {
+namespace paw {
 namespace concur {
 namespace process {
 
@@ -761,4 +761,4 @@ Value _processInvoke(PyCallable<Value> fn)
 
 } // namespace process
 } // namespace concur
-} // namespace py2cpp
+} // namespace paw

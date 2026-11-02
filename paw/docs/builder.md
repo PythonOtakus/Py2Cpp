@@ -111,7 +111,7 @@ org: Org = Org.build(
 | 内联 emit | ``src/emit/build_emit.py`` |
 | 触发 | ``call_emit.try_emit_build_call``、``visit_AnnAssign`` |
 | 单测 | ``src/tests/test_build_*.py`` |
-| 集成测 | ``test/lang/test_build.py`` |
+| 集成测 | ``tests/lang/test_build.py`` |
 
 ---
 

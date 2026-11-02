@@ -1,4 +1,4 @@
-=== line 22 StrReplace c:/Users/Anantian/source/repos/Py2Cpp/py2cpp/io/protocols.py ===
+=== line 22 StrReplace c:/Users/Anantian/source/repos/Py2Cpp/paw/io/protocols.py ===
 
 OLD:
 @protocol
@@ -113,7 +113,7 @@ class TextIOType:
   @property
   def isatty(self) -> bool: ...
 
-=== line 22 StrReplace c:/Users/Anantian/source/repos/Py2Cpp/py2cpp/io/__init__.py ===
+=== line 22 StrReplace c:/Users/Anantian/source/repos/Py2Cpp/paw/io/__init__.py ===
 
 OLD:
   def close(self) -> None:
@@ -140,7 +140,7 @@ NEW:
   def tell(self) -> int:
     return self._pos
 
-=== line 22 StrReplace c:/Users/Anantian/source/repos/Py2Cpp/py2cpp/io/__init__.py ===
+=== line 22 StrReplace c:/Users/Anantian/source/repos/Py2Cpp/paw/io/__init__.py ===
 
 OLD:
 @native
@@ -278,10 +278,10 @@ def wrap_std(fd: int) -> TextIOWrapper:
 === line 23 Write c:/Users/Anantian/source/repos/Py2Cpp/templates/+io.inl ===
 
 PY2CPP_IGNORE
-#include "py2cpp/io.h"
-#include "py2cpp/text/str.h"
-#include "py2cpp/util/list.h"
-#include "py2cpp/core/iter_result.h"
+#include "paw/io.h"
+#include "paw/text/str.h"
+#include "paw/util/list.h"
+#include "paw/core/iter_result.h"
 PY2CPP_END
 
 #include <stdio.h>

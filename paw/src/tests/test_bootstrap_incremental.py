@@ -27,10 +27,10 @@ class BootstrapIncrementalPlanTests(unittest.TestCase):
 
   def test_py_rel_to_module_path(self):
     self.assertEqual(
-      py_rel_to_module_path("py2cpp/io/path.py"),
-      "py2cpp/io/path",
+      py_rel_to_module_path("paw/io/path.py"),
+      "paw/io/path",
     )
-    self.assertEqual(py_rel_to_module_path("py2cpp/io/__init__.py"), "py2cpp/io")
+    self.assertEqual(py_rel_to_module_path("paw/io/__init__.py"), "paw/io")
     self.assertIsNone(py_rel_to_module_path("templates/minimal.h"))
 
   def test_unchanged_is_empty_dirty(self):
@@ -47,7 +47,7 @@ class BootstrapIncrementalPlanTests(unittest.TestCase):
     with TemporaryDirectory() as td:
       root = Path(td)
       _touch_layout(root)
-      sys_dir = root / "py2cpp" / "system"
+      sys_dir = root / "paw" / "system"
       sys_dir.mkdir()
       (sys_dir / "environ.py").write_text("x = 1\n", encoding="utf-8")
       write_stamp(debug=False, header_only=False, root=root)
@@ -55,7 +55,7 @@ class BootstrapIncrementalPlanTests(unittest.TestCase):
       (sys_dir / "environ.py").write_text("x = 2\n", encoding="utf-8")
       plan = plan_bootstrap_incremental(root=root)
       self.assertFalse(plan.full)
-      self.assertEqual(plan.dirty_modules, {"py2cpp/system/environ"})
+      self.assertEqual(plan.dirty_modules, {"paw/system/environ"})
 
   def test_init_py_forces_full(self):
     with TemporaryDirectory() as td:
@@ -63,7 +63,7 @@ class BootstrapIncrementalPlanTests(unittest.TestCase):
       _touch_layout(root)
       write_stamp(debug=False, header_only=False, root=root)
       time.sleep(0.05)
-      (root / "py2cpp" / "__init__.py").write_text("# changed\n", encoding="utf-8")
+      (root / "paw" / "__init__.py").write_text("# changed\n", encoding="utf-8")
       plan = plan_bootstrap_incremental(root=root)
       self.assertTrue(plan.full)
 
@@ -71,7 +71,7 @@ class BootstrapIncrementalPlanTests(unittest.TestCase):
     with TemporaryDirectory() as td:
       root = Path(td)
       _touch_layout(root)
-      util = root / "py2cpp" / "util"
+      util = root / "paw" / "util"
       util.mkdir()
       (util / "list.py").write_text("class X: pass\n", encoding="utf-8")
       write_stamp(debug=False, header_only=False, root=root)
@@ -96,11 +96,11 @@ class SkipCachedAnalysisModuleTests(unittest.TestCase):
     from src.translator import Translator
 
     tr = Translator("x", "x.py")
-    self.assertFalse(tr.skip_cached_analysis_module("py2cpp/system/environ"))
-    tr.cached_analysis_modules = {"py2cpp/system/environ"}
-    self.assertTrue(tr.skip_cached_analysis_module("py2cpp/system/environ"))
+    self.assertFalse(tr.skip_cached_analysis_module("paw/system/environ"))
+    tr.cached_analysis_modules = {"paw/system/environ"}
+    self.assertTrue(tr.skip_cached_analysis_module("paw/system/environ"))
     self.assertTrue(tr.skip_cached_analysis_module("py2cpp\\system\\environ"))
-    self.assertFalse(tr.skip_cached_analysis_module("py2cpp/io/path"))
+    self.assertFalse(tr.skip_cached_analysis_module("paw/io/path"))
 
 
 class UserEntryCacheTests(unittest.TestCase):
@@ -109,9 +109,9 @@ class UserEntryCacheTests(unittest.TestCase):
     from src.codegen import bootstrap_incremental as bi
     from src.codegen.bootstrap_incremental import attach_user_entry_cache_to_translator
 
-    tr = Translator("test/misc/test_print", "test/misc/test_print.py")
-    tr.entry_module_path = "test/misc/test_print"
-    tr.module_order = ["py2cpp/test/unittest", "test/misc/test_print"]
+    tr = Translator("tests/misc/test_print", "tests/misc/test_print.py")
+    tr.entry_module_path = "tests/misc/test_print"
+    tr.module_order = ["paw/test/unittest", "tests/misc/test_print"]
     old = bi.load_analysis_cache
     bi.load_analysis_cache = lambda root=None: None
     try:
@@ -135,19 +135,19 @@ class UserEntryCacheTests(unittest.TestCase):
       fp = translator_fingerprint(root)
       data = {
         "translator_fp": fp,
-        "modules": {"py2cpp/test/unittest": {"src_sig": "1:1"}},
+        "modules": {"paw/test/unittest": {"src_sig": "1:1"}},
         "classes": {},
         "function_sigs": {},
         "overload_sigs": {},
         "module_analysis": {},
-        "import_bindings": {"py2cpp/test/unittest": {}},
-        "import_usings": {"py2cpp/test/unittest": []},
+        "import_bindings": {"paw/test/unittest": {}},
+        "import_usings": {"paw/test/unittest": []},
       }
       with (cache_dir / CACHE_REL.name).open("wb") as fh:
         pickle.dump(data, fh)
-      tr = Translator("test/misc/test_print", str(root / "test/misc/test_print.py"))
-      tr.entry_module_path = "test/misc/test_print"
-      tr.module_order = ["py2cpp/test/unittest", "test/misc/test_print"]
+      tr = Translator("tests/misc/test_print", str(root / "tests/misc/test_print.py"))
+      tr.entry_module_path = "tests/misc/test_print"
+      tr.module_order = ["paw/test/unittest", "tests/misc/test_print"]
       # monkeypatch repo_root via loading cache with explicit root — use load path
       from src.codegen import bootstrap_incremental as bi
 
@@ -161,8 +161,8 @@ class UserEntryCacheTests(unittest.TestCase):
         bi.cache_path = old_cache_path
         bi.translator_fingerprint = old_fp
       self.assertTrue(ok)
-      self.assertIn("py2cpp/test/unittest", tr.cached_analysis_modules)
-      self.assertNotIn("test/misc/test_print", tr.cached_analysis_modules)
+      self.assertIn("paw/test/unittest", tr.cached_analysis_modules)
+      self.assertNotIn("tests/misc/test_print", tr.cached_analysis_modules)
 
   def test_attach_includes_ffi_closure(self):
     import pickle
@@ -181,7 +181,7 @@ class UserEntryCacheTests(unittest.TestCase):
       data = {
         "translator_fp": fp,
         "modules": {
-          "py2cpp/test/unittest": {"src_sig": "1:1"},
+          "paw/test/unittest": {"src_sig": "1:1"},
           "ffi/crt/stdio": {"src_sig": "1:1"},
         },
         "classes": {},
@@ -189,22 +189,22 @@ class UserEntryCacheTests(unittest.TestCase):
         "overload_sigs": {},
         "module_analysis": {},
         "import_bindings": {
-          "py2cpp/test/unittest": {},
+          "paw/test/unittest": {},
           "ffi/crt/stdio": {},
         },
         "import_usings": {
-          "py2cpp/test/unittest": [],
+          "paw/test/unittest": [],
           "ffi/crt/stdio": [],
         },
       }
       with (cache_dir / CACHE_REL.name).open("wb") as fh:
         pickle.dump(data, fh)
-      tr = Translator("test/misc/test_print", str(root / "test/misc/test_print.py"))
-      tr.entry_module_path = "test/misc/test_print"
+      tr = Translator("tests/misc/test_print", str(root / "tests/misc/test_print.py"))
+      tr.entry_module_path = "tests/misc/test_print"
       tr.module_order = [
-        "py2cpp/test/unittest",
+        "paw/test/unittest",
         "ffi/crt/stdio",
-        "test/misc/test_print",
+        "tests/misc/test_print",
       ]
       from src.codegen import bootstrap_incremental as bi
 

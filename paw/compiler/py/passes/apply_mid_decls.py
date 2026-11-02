@@ -78,7 +78,7 @@ def _mid_module_path_norm(path: str) -> str:
 
 
 def _classinfo_matches_mid_module(info: object, mid: MidModule) -> bool:
-  """避免同名跨模块污染（如测试 ``ContainerType`` vs ``py2cpp.util.protocols.ContainerType``）。"""
+  """避免同名跨模块污染（如测试 ``ContainerType`` vs ``paw.util.protocols.ContainerType``）。"""
   mp = getattr(info, "module_path", None)
   if not mp:
     return True

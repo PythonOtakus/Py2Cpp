@@ -1015,7 +1015,7 @@ _NAMESPACE_MACRO_RE = re.compile(r"\bPY2CPP_NAMESPACE\b")
 
 
 def _expand_namespace_macro(text: str, module_rel: str | None) -> str:
-  """模板源 ``PY2CPP_NAMESPACE::…`` → ``py2cpp::…::…``（MSVC 展开路径；clangd 见 ``~macro`` 头）。"""
+  """模板源 ``PY2CPP_NAMESPACE::…`` → ``paw::…::…``（MSVC 展开路径；clangd 见 ``~macro`` 头）。"""
   if not _NAMESPACE_MACRO_RE.search(text):
     return text
   if not module_rel:
@@ -1222,7 +1222,7 @@ def expand_exception_repr_inl(*, apply_allman: bool = False) -> str:
   _ = apply_allman
   ctx = _builtin_template_ctx()
   chunks: list[str] = [
-    "PyStr py2cpp::core::exceptions::PyException::__repr__() const",
+    "PyStr paw::core::exceptions::PyException::__repr__() const",
     "{",
     '  return PyStr("Exception()");',
     "}",
@@ -1230,7 +1230,7 @@ def expand_exception_repr_inl(*, apply_allman: bool = False) -> str:
   ]
   for name in ctx["exception_type_names"]:
     chunks.extend([
-      f"PyStr py2cpp::core::exceptions::{name}::__repr__() const",
+      f"PyStr paw::core::exceptions::{name}::__repr__() const",
       "{",
       f'  return PyStr("{name}()");',
       "}",

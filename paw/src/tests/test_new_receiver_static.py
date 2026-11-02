@@ -27,7 +27,7 @@ class NewReceiverStaticTests(unittest.TestCase):
   def test_ann_assign_new_open(self):
     cpp = self._translate(
       '''
-from py2cpp import Self, dataclass, new
+from paw import Self, dataclass, new
 
 @dataclass
 class Org:
@@ -49,7 +49,7 @@ def load_doc(path: str) -> None:
   def test_return_new_open(self):
     cpp = self._translate(
       '''
-from py2cpp import Self, dataclass, new
+from paw import Self, dataclass, new
 
 @dataclass
 class Org:
@@ -73,7 +73,7 @@ def load_doc(path: str) -> Doc[Org]:
       py = out / "mod.py"
       py.write_text(
         '''
-from py2cpp import Self, dataclass, new
+from paw import Self, dataclass, new
 
 @dataclass
 class Org:
@@ -100,7 +100,7 @@ def load_doc(path: str) -> None:
   def test_ann_assign_new_union_variant(self):
     cpp = self._translate(
       '''
-from py2cpp import union, variant, new
+from paw import union, variant, new
 
 @union
 class Message:
@@ -129,7 +129,7 @@ def make_quit() -> None:
       py = out / "mod.py"
       py.write_text(
         '''
-from py2cpp import union, variant, new
+from paw import union, variant, new
 
 @union
 class Message:
@@ -155,7 +155,7 @@ def make_quit() -> None:
       py = out / "mod.py"
       py.write_text(
         '''
-from py2cpp import union, variant, new
+from paw import union, variant, new
 
 @union
 class Message:

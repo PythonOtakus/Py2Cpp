@@ -12,7 +12,7 @@ from src.translator import Translator
 class KwargsAssignInlineTests(unittest.TestCase):
   def test_assign_no_cpp_method_in_header(self):
     src = '''
-from py2cpp import copyable
+from paw import copyable
 
 @copyable
 class Box:
@@ -40,7 +40,7 @@ def use(b: Box):
 
   def test_assign_positional_rejected(self):
     src = '''
-from py2cpp import copyable
+from paw import copyable
 
 @copyable
 class Box:

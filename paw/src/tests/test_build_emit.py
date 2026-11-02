@@ -21,7 +21,7 @@ class BuildInlineCppTests(unittest.TestCase):
 
   def test_build_no_cpp_method(self):
     src = '''
-from py2cpp import dataclass
+from paw import dataclass
 
 @dataclass
 class Team:
@@ -41,7 +41,7 @@ def use():
 
   def test_index_bind_loop(self):
     src = '''
-from py2cpp import dataclass
+from paw import dataclass
 
 @dataclass
 class Team:
@@ -64,7 +64,7 @@ def use():
 
   def test_list_root_build(self):
     src = '''
-from py2cpp import dataclass
+from paw import dataclass
 
 @dataclass
 class Team:
@@ -79,7 +79,7 @@ def use():
 
   def test_repeat_template(self):
     src = '''
-from py2cpp import dataclass
+from paw import dataclass
 
 @dataclass
 class Member:

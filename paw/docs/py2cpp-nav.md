@@ -21,7 +21,7 @@
 
 ### 1.1 目标
 
-在 **Python 源**（`py2cpp/`、`test/`、`examples/`、`ffi/**/*.pyi`）与 **`generated/` 生成 C++**（`.h` / `.inl` / 入口 `.cpp`）之间提供符号级 **Go to Definition**（F12 / Ctrl+点击）双向跳转：
+在 **Python 源**（`paw/`、`tests/`、`examples/`、`ffi/**/*.pyi`）与 **`generated/` 生成 C++**（`.h` / `.inl` / 入口 `.cpp`）之间提供符号级 **Go to Definition**（F12 / Ctrl+点击）双向跳转：
 
 | 方向 | 典型场景 |
 |------|----------|
@@ -83,8 +83,8 @@ plugins/py2cpp-nav
 ### 2.1 工作流要点
 
 - 标准库单文件翻译：`project_root` 须为仓库根，否则 `module_order` 空、索引不更新。
-- `py2cpp/` 翻译附加 `--no-main`；`test/`、`examples/` 保留 `main()`。
-- 全量标准库索引：`python main.py py2cpp\__init__.py -o generated --no-main`。
+- `paw/` 翻译附加 `--no-main`；`tests/`、`examples/` 保留 `main()`。
+- 全量标准库索引：`python main.py paw\__init__.py -o generated --no-main`。
 - 未翻译模块无 shard，跳转静默失败并交给其它 provider（如 clangd）。
 
 ---
@@ -97,9 +97,9 @@ plugins/py2cpp-nav
 generated/.cache/nav/
   manifest.json
   modules/
-    py2cpp/util/list.json
-    py2cpp/alg/agg_mode.json
-    test/misc/test_chr_ord.json
+    paw/util/list.json
+    paw/alg/agg_mode.json
+    tests/misc/test_chr_ord.json
     ffi/sqlite/sqlite3.json
 ```
 
@@ -115,12 +115,12 @@ generated/.cache/nav/
   "repoRoot": ".",
   "updatedAt": "…",
   "modules": {
-    "py2cpp/util/list": {
-      "shard": "modules/py2cpp/util/list.json",
-      "pyFile": "py2cpp/util/list.py",
+    "paw/util/list": {
+      "shard": "modules/paw/util/list.json",
+      "pyFile": "paw/util/list.py",
       "artifacts": {
-        "h": "generated/runtime/py2cpp/util/list.h",
-        "inl": "generated/runtime/py2cpp/util/list.inl",
+        "h": "generated/runtime/paw/util/list.h",
+        "inl": "generated/runtime/paw/util/list.inl",
         "cpp": null
       },
       "symbolCount": 120,
@@ -251,12 +251,12 @@ generated/.cache/nav/
 
 ```bat
 python -m unittest src.tests.test_nav_index -v
-python main.py py2cpp\util\list.py -o generated --no-main
-python main.py py2cpp\alg\agg_mode.py -o generated --no-main
-python main.py py2cpp\core\result.py -o generated --no-main
-python main.py py2cpp\ui\events.py -o generated --no-main
+python main.py paw\util\list.py -o generated --no-main
+python main.py paw\alg\agg_mode.py -o generated --no-main
+python main.py paw\core\result.py -o generated --no-main
+python main.py paw\ui\events.py -o generated --no-main
 REM 全量索引
-python main.py py2cpp\__init__.py -o generated --no-main
+python main.py paw\__init__.py -o generated --no-main
 ```
 
 扩展：Reload Window；下列位点 F12 抽检。

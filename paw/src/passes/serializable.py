@@ -908,7 +908,7 @@ def _cpp_emit_fast_from_ordered_helper(
       params.append(f"PySpan<PyChar> {spec.name}_seg")
     elif spec.annotation.id == "bool":
       params.append(f"PyBool {spec.name}_v")
-  params.append("::py2cpp::serde::json::PyJsonDecoder& dec")
+  params.append("::paw::serde::json::PyJsonDecoder& dec")
   lines_out.append(
     f"static __forceinline {cpp_cls} {helper}({', '.join(params)})",
   )
@@ -1101,7 +1101,7 @@ def _emit_cpp_list_load_fast(
   def_ctor = _cpp_default_ctor_expr(cpp_cls, specs)
   fail_out = f"PyList<{cpp_cls}>()"
   lines_out.append(
-    f"static __forceinline {cpp_cls} {parse_fn}(::py2cpp::serde::json::PyJsonDecoder& dec)",
+    f"static __forceinline {cpp_cls} {parse_fn}(::paw::serde::json::PyJsonDecoder& dec)",
   )
   lines_out.append("{")
   lines_out.extend(_cpp_emit_ordered_locals(specs, str_as_span=str_as_span))
@@ -1115,7 +1115,7 @@ def _emit_cpp_list_load_fast(
   lines_out.append("")
   lines_out.append(
     f"static __forceinline PyList<{cpp_cls}> {load_fn}"
-    "(::py2cpp::serde::json::PyJsonDecoder& dec)",
+    "(::paw::serde::json::PyJsonDecoder& dec)",
   )
   lines_out.append("{")
   lines_out.append("  dec.skipSpaces();")
@@ -1179,11 +1179,11 @@ def _emit_cpp_list_load_fast(
   for seg in reversed(inl_ns):
     lines_out.append(f"}} // namespace {seg}")
   lines_out.append("")
-  lines_out.append("namespace py2cpp {")
+  lines_out.append("namespace paw {")
   lines_out.append("namespace serde {")
   lines_out.append("namespace json {")
   lines_out.append("")
-  # helper 在用户模块 namespace（runtime .inl 则为全局）；特化在 py2cpp::serde::json，须限定调用。
+  # helper 在用户模块 namespace（runtime .inl 则为全局）；特化在 paw::serde::json，须限定调用。
   call_load = f"::{'::'.join(inl_ns)}::{load_fn}" if inl_ns else load_fn
   lines_out.append(f"template<>")
   lines_out.append(

@@ -2,7 +2,7 @@
 
 完整宿主实现仍在 ``compiler/py/frontend/lexer.py``；本文件须可被 C0 翻译。
 """
-from py2cpp import *
+from paw import *
 from .source import FileId, SourceSpan
 from .tokens import Token, TokenKindEnum
 from .diagnostic import Diagnostic, makeDiagnostic, formatDiagnostic

@@ -176,13 +176,13 @@ def _diagnose_paw_banned_decorators(
 ) -> None:
   """``.paw`` 禁止旧装饰器 / 类型标记写法（``@native_name`` 除外）。
 
-  ``py2cpp/reflect/mixin.paw`` 为 CPython/IDE 桩，允许 ``@classmethod``。
+  ``paw/reflect/mixin.paw`` 为 CPython/IDE 桩，允许 ``@classmethod``。
   """
   from compiler.py.frontend.source import FileId
   from compiler.py.frontend.tokens import TokenKind
 
   norm = path.replace("\\", "/")
-  allow_classmethod = norm.endswith("py2cpp/reflect/mixin.paw")
+  allow_classmethod = norm.endswith("paw/reflect/mixin.paw")
   for i, line in enumerate(source.splitlines(), start=1):
     s = line.lstrip()
     if s.startswith("@native_name"):

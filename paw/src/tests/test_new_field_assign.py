@@ -12,7 +12,7 @@ from src.translator import Translator
 class MakeFieldAssignTests(unittest.TestCase):
   def _translate(self, body: str) -> str:
     src = f"""
-from py2cpp import *
+from paw import *
 
 @copyable
 class Grid:
@@ -52,8 +52,8 @@ class Grid:
 
   def test_self_property_new_method_assign(self):
     src = """
-from py2cpp import *
-from py2cpp.spatial.rotator import Rotator
+from paw import *
+from paw.spatial.rotator import Rotator
 
 @copyable
 class Node:
@@ -89,7 +89,7 @@ class Node:
 class FieldLiteralAssignTests(unittest.TestCase):
   def _translate(self, body: str, *, fields: str) -> str:
     src = f"""
-from py2cpp import *
+from paw import *
 
 @copyable
 class Box:

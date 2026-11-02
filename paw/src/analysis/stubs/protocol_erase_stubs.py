@@ -1,4 +1,4 @@
-"""从 ``py2cpp/**/protocols.py`` 推导运行时擦除协议（``Py{Name}`` / ``make{Name}``）。"""
+"""从 ``paw/**/protocols.py`` 推导运行时擦除协议（``Py{Name}`` / ``make{Name}``）。"""
 from __future__ import annotations
 
 import ast
@@ -61,8 +61,8 @@ PROTOCOL_ERASE_SKIP: frozenset[str] = frozenset({
 
 # ``protocol_erase.h`` 在全局命名空间；嵌套模块类型须 FQN（``minimal.h`` 中 ``long.h`` 在其后）。
 _PROTOCOL_ERASE_TYPE_FQN: dict[str, str] = {
-  "long": "py2cpp::numeric::py_long::PyLong",
-  "PyLong": "py2cpp::numeric::py_long::PyLong",
+  "long": "paw::numeric::py_long::PyLong",
+  "PyLong": "paw::numeric::py_long::PyLong",
 }
 
 PROTOCOL_ERASE_SPEC_ORDER: tuple[str, ...] = (

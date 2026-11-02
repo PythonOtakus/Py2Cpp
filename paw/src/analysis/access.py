@@ -385,7 +385,7 @@ def _external_protected_access_hint(accessor: str, host: str, member: str) -> st
     return (
       f"  {accessor} 访问 {host}.{member}  "
       f"→ 在 ``class {host}(friends=({accessor}, …))`` 声明友元"
-      f"（被访问类声明，非访问方；见 ``test/lang/test_friends.py``）"
+      f"（被访问类声明，非访问方；见 ``tests/lang/test_friends.py``）"
     )
   pub = member[1:] if member.startswith("_") else member
   return (

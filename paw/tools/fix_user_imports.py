@@ -1,12 +1,12 @@
-"""Normalize non-stdlib modules to ``from py2cpp import *``."""
+"""Normalize non-stdlib modules to ``from paw import *``."""
 from __future__ import annotations
 
 import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DIRS = [ROOT / "test", ROOT / "examples"]
-PY2CPP_IMPORT = re.compile(r"^from py2cpp import .+$")
+DIRS = [ROOT / "tests", ROOT / "examples"]
+PY2CPP_IMPORT = re.compile(r"^from paw import .+$")
 
 
 def fix_file(path: Path) -> bool:
@@ -39,7 +39,7 @@ def fix_file(path: Path) -> bool:
   while i < len(lines) and lines[i].strip() == "":
     out.append(lines[i])
     i += 1
-  has_star = "from py2cpp import *" in text
+  has_star = "from paw import *" in text
   new_lines: list[str] = []
   while i < len(lines):
     line = lines[i]
@@ -50,7 +50,7 @@ def fix_file(path: Path) -> bool:
     new_lines.append(line)
     i += 1
   if not has_star:
-    out.append("from py2cpp import *\n")
+    out.append("from paw import *\n")
     changed = True
   out.extend(new_lines)
   if changed:

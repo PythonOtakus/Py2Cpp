@@ -12,9 +12,9 @@ from src.translator import Translator
 
 
 def main() -> int:
-  entry = ROOT / "py2cpp" / "__init__.paw"
+  entry = ROOT / "paw" / "__init__.paw"
   if not entry.is_file():
-    entry = ROOT / "py2cpp" / "__init__.py"
+    entry = ROOT / "paw" / "__init__.py"
   out = ROOT / "generated"
   try:
     Translator.translate_file(

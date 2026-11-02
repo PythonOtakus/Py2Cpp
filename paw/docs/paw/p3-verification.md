@@ -8,7 +8,7 @@
 | Syntax→HIR→MidIR | `compiler/py/sema` + `compiler/py/mid` |
 | A 批 `test_paw_a_batch.paw` | 翻译 + MSVC + exe exit 0 |
 | B 批 `test_paw_record.paw` | 翻译 + MSVC + exe exit 0 |
-| stdlib bootstrap | `python main.py py2cpp/__init__.paw -o generated --no-main` |
+| stdlib bootstrap | `python main.py paw/__init__.paw -o generated --no-main` |
 | C0 tree | `MidEnum` + `MidClass` MidIR 直构（含 PEP695 / `friends=`）；失败回退 rewrite |
 | 类内方法结构化 | `FunctionDecl` → `MidClass.methods`；`static`/`native` 进物化 |
 | Passes 直读 MidIR | `expand_enums_from_mid` + `apply_mid_*_flags`（dataclass 前）；见 `compiler/py/sema/pass_bridge.md` |

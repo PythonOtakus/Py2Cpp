@@ -1,0 +1,35 @@
+"""C0 种子回归：编译 ``compiler/paw`` 同构的 Span/TokenKind 用法。"""
+from paw import *
+from paw.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
+
+enum SeedTokenKindEnum:
+  End = 0
+  Name = ...
+  Number = ...
+
+@copyable
+class SeedFileId:
+  value: int = 0
+
+@copyable
+class SeedSpan:
+  fileId: SeedFileId = new()
+  start: int = 0
+  end: int = 0
+
+class PawSeedSpanTests(TestCaseMixin):
+  _testTag = 1
+
+  override def test(self):
+    sp: SeedSpan = new(
+      fileId=new(value=1), start=2, end=5
+    )
+    self.assertTrue(sp.end - sp.start == 3)
+    self.assertTrue(SeedTokenKindEnum.Name != SeedTokenKindEnum.End)
+    self.assertTrue(SeedTokenKindEnum.Number != SeedTokenKindEnum.Name)
+
+def main():
+  suite: TestSuite = new()
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
+    suite.addTest(Class())
+  return TextTestRunner().run(suite)

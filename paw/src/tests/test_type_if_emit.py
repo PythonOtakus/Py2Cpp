@@ -199,7 +199,7 @@ def f[T, _U = ...](x: T) -> int:
 class TypeIfEmitTests(unittest.TestCase):
   def test_module_function_emits_pick_struct(self):
     src = """
-from py2cpp import *
+from paw import *
 
 def pick[T](x: T) -> int:
   if T is int:
@@ -227,7 +227,7 @@ def pick[T](x: T) -> int:
 
   def test_is_not_branch_uses_enable_if(self):
     src = """
-from py2cpp import *
+from paw import *
 
 def neg[T](x: T) -> int:
   if T is not int:
@@ -248,7 +248,7 @@ def neg[T](x: T) -> int:
 
   def test_missing_else_emits_static_assert(self):
     src = """
-from py2cpp import *
+from paw import *
 
 def only[T](x: T) -> int:
   if T is int:
@@ -268,7 +268,7 @@ def only[T](x: T) -> int:
 
   def test_for_body_spliced_into_call(self):
     src = """
-from py2cpp import *
+from paw import *
 
 def tally[T]() -> int:
   n: int = 0
@@ -292,7 +292,7 @@ def tally[T]() -> int:
 
   def test_list_wildcard_emits_partial_specialization(self):
     src = """
-from py2cpp import *
+from paw import *
 
 def pick_list[T](x: T) -> int:
   if T is list[int]:
@@ -318,7 +318,7 @@ def pick_list[T](x: T) -> int:
 
   def test_list_wildcard_branch_uses_element_type_param(self):
     src = """
-from py2cpp import *
+from paw import *
 
 class Box[U]:
   val: int = 0
@@ -347,7 +347,7 @@ def pick[T](slot: int) -> int:
 
   def test_type_if_prologue_before_dispatch(self):
     src = """
-from py2cpp import *
+from paw import *
 
 def pick[T](slot: int) -> int:
   if slot == 0:
@@ -370,7 +370,7 @@ def pick[T](slot: int) -> int:
 
   def test_t_in_set_returns_bool_not_concrete_type(self):
     src = """
-from py2cpp import *
+from paw import *
 
 def uses_arena[T]() -> bool:
   if T in { int, str }:

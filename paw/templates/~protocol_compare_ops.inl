@@ -1,6 +1,6 @@
 PY2CPP_IGNORE
 #include <type_traits>
-#include "py2cpp/py_types.h"
+#include "paw/py_types.h"
 PY2CPP_END
 
 template<typename U, bool IsClass = std::is_class<U>::value>

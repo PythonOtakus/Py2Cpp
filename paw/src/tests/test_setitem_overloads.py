@@ -41,7 +41,7 @@ class dict[Key, Value]:
     pass
 """
     dict_node = ast.parse(dict_src).body[0]
-    dinfo = ClassInfo(dict_node, "py2cpp/util/dict")
+    dinfo = ClassInfo(dict_node, "paw/util/dict")
     method = dinfo.methods["__setitem__"]
     tp = TypeParser()
     tp.set_type_aliases(dinfo.type_aliases, use_as_cpp_name=True)
@@ -60,8 +60,8 @@ class dict[Key, ValueType]:
     union_src = "class ValueType[T]: pass"
     dict_node = ast.parse(dict_src).body[0]
     union_node = ast.parse(union_src).body[0]
-    dinfo = ClassInfo(dict_node, "py2cpp/util/dict")
-    vinfo = ClassInfo(union_node, "test/lang/test_union")
+    dinfo = ClassInfo(dict_node, "paw/util/dict")
+    vinfo = ClassInfo(union_node, "tests/lang/test_union")
     method = dinfo.methods["__setitem__"]
     tp = TypeParser()
     tp.set_type_aliases(dinfo.type_aliases, use_as_cpp_name=True)

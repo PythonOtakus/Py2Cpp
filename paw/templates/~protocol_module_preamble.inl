@@ -1,8 +1,8 @@
 PY2CPP_IGNORE
 #include <type_traits>
-#include "py2cpp/py_types.h"
+#include "paw/py_types.h"
 
-namespace py2cpp { namespace text { namespace str { class PyStr; } } }
+namespace paw { namespace text { namespace str { class PyStr; } } }
 template<typename... Args>
 class PyTuple;
 template<typename... Args>

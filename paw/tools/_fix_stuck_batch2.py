@@ -19,7 +19,7 @@ MAP: list[tuple[str, str]] = [
   ("case_sensitive", "caseSensitive"),
   ("ignore_case", "ignoreCase"),
   ("missing_ok", "missingOk"),
-  ("exist_ok", "existOk"),  # 仅 py2cpp/test/examples/docs/templates；src 单独处理
+  ("exist_ok", "existOk"),  # 仅 paw/test/examples/docs/templates；src 单独处理
   ("asctimeNow", "ascTimeNow"),
   ("gmtimeNow", "gmTimeNow"),
   ("localtimeNow", "localTimeNow"),
@@ -59,7 +59,7 @@ C_LIB_PROTECT = [
 ]
 
 DIRS = (
-  "py2cpp",
+  "paw",
   "test",
   "examples",
   "docs",

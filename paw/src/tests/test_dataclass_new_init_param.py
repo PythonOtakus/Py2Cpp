@@ -11,7 +11,7 @@ from src.translator import Translator
 class DataclassMakeInitParamTests(unittest.TestCase):
   def _translate(self, extra: str) -> str:
     src = f"""
-from py2cpp import dataclass, new, optional
+from paw import dataclass, new, optional
 
 @dataclass
 class Inner:

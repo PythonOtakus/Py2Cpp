@@ -1,12 +1,12 @@
 """场景对象模型：``Component`` / ``Transform`` / ``GameObject``（同模块避免循环依赖）。"""
 from __future__ import annotations
 
-from py2cpp import *
-from py2cpp.spatial.color import Color
-from py2cpp.spatial.matrix import Matrix4
-from py2cpp.spatial.rotator import Quaternion
-from py2cpp.spatial.transform import Transform3D
-from py2cpp.spatial.vector import Vector3
+from paw import *
+from paw.spatial.color import Color
+from paw.spatial.matrix import Matrix4
+from paw.spatial.rotator import Quaternion
+from paw.spatial.transform import Transform3D
+from paw.spatial.vector import Vector3
 
 from .assets.fbx_ascii import read_fbx
 from .render.mesh import Mesh

@@ -1,6 +1,6 @@
 PY2CPP_IGNORE
-#include "py2cpp/core/exceptions.h"
-#include "py2cpp/text/str.h"
+#include "paw/core/exceptions.h"
+#include "paw/text/str.h"
 #define ctx_Cls PyValueError
 #define ctx_Base PyException
 PY2CPP_END

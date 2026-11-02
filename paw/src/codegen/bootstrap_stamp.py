@@ -1,6 +1,6 @@
-"""Runtime bootstrap 增量：输入未变则跳过 ``main.py py2cpp/__init__.py``。
+"""Runtime bootstrap 增量：输入未变则跳过 ``main.py paw/__init__.py``。
 
-扫描 ``py2cpp/``、``templates/``（不含 clangd 生成的 ``~macro/``）、``ffi/``、译器
+扫描 ``paw/``、``templates/``（不含 clangd 生成的 ``~macro/``）、``ffi/``、译器
 ``src``（``translator.py`` 与 ``analysis`` / ``passes`` / ``codegen`` / ``emit`` /
 ``constant``，不含 stamp 自身与 ``compile.py``）、``main.py``。
 ``PY2CPP_FORCE_BOOTSTRAP=1`` 强制全量翻译。
@@ -14,7 +14,7 @@ from pathlib import Path
 
 STAMP_REL = Path("generated") / "runtime" / ".bootstrap.stamp"
 FORCE_ENV = "PY2CPP_FORCE_BOOTSTRAP"
-_INPUT_DIRS = ("py2cpp", "templates", "ffi")
+_INPUT_DIRS = ("paw", "templates", "ffi")
 _INPUT_FILES = ("main.py",)
 _SRC_CODEGEN_DIRS = ("analysis", "passes", "codegen", "emit", "constant")
 _SRC_CODEGEN_FILES = ("translator.py",)
@@ -97,7 +97,7 @@ def should_skip_translate(
     return False
   root = root or repo_root()
   stamp = stamp_path(root)
-  umbrella = root / "generated" / "runtime" / "py2cpp" / "minimal.h"
+  umbrella = root / "generated" / "runtime" / "paw" / "minimal.h"
   if not stamp.is_file() or not umbrella.is_file():
     return False
   ho = _header_only_flag() if header_only is None else header_only

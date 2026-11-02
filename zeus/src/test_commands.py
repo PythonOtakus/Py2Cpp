@@ -1,6 +1,6 @@
 """Phase 4：命令写限制 + 建对象挂 Mesh 步进。"""
-from py2cpp import *
-from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
+from paw import *
+from paw.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 from .command import CommandBus, CommandResult, ZeusCommandUnion
 from .world import WORLD_PLAYING

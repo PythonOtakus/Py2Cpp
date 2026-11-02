@@ -22,7 +22,7 @@ class EnumIterEmitTests(unittest.TestCase):
   def test_len_enum_class(self):
     cpp = self._translate(
       '''
-from py2cpp import enum
+from paw import enum
 
 @enum
 class Mode:
@@ -40,7 +40,7 @@ def n() -> int:
   def test_for_enum_class(self):
     cpp = self._translate(
       '''
-from py2cpp import enum
+from paw import enum
 
 @enum
 class Mode:

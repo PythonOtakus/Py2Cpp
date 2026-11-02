@@ -10,7 +10,7 @@ from src.translator import Translator
 
 class ComplexBinopEmitTests(unittest.TestCase):
   def _translate(self, body: str, *, extra: str = "") -> str:
-    src = f"""from py2cpp import *
+    src = f"""from paw import *
 {extra}
 
 def probe():

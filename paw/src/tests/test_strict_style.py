@@ -14,7 +14,7 @@ class StrictStyleTests(unittest.TestCase):
     with tempfile.TemporaryDirectory() as tmp:
       out = Path(tmp)
       py = out / "mod.py"
-      py.write_text(f"from py2cpp import *\n\n{body}", encoding="utf-8")
+      py.write_text(f"from paw import *\n\n{body}", encoding="utf-8")
       Translator.translate_file(
         str(py),
         output_dir=str(out / "generated"),
@@ -26,7 +26,7 @@ class StrictStyleTests(unittest.TestCase):
     with tempfile.TemporaryDirectory() as tmp:
       out = Path(tmp)
       py = out / "mod.py"
-      py.write_text(f"from py2cpp import *\n\n{body}", encoding="utf-8")
+      py.write_text(f"from paw import *\n\n{body}", encoding="utf-8")
       with self.assertRaises(TranslationError) as ctx:
         Translator.translate_file(
           str(py),
@@ -317,7 +317,7 @@ def main():
     with tempfile.TemporaryDirectory() as tmp:
       out = Path(tmp)
       py = out / "mod.py"
-      py.write_text(f"from py2cpp import *\n\n{body}", encoding="utf-8")
+      py.write_text(f"from paw import *\n\n{body}", encoding="utf-8")
       with self.assertRaises(TranslationError) as ctx:
         Translator.translate_file(
           str(py),
@@ -485,7 +485,7 @@ def main():
       out = Path(tmp)
       py = out / "mod.py"
       py.write_text(
-        """from py2cpp import *
+        """from paw import *
 
 class SimpleAsyncCM:
   async def __aenter__(self) -> int:
@@ -566,7 +566,7 @@ def main():
     with tempfile.TemporaryDirectory() as tmp:
       out = Path(tmp)
       py = out / "mod.py"
-      py.write_text(f"from py2cpp import *\n\n{body}", encoding="utf-8")
+      py.write_text(f"from paw import *\n\n{body}", encoding="utf-8")
       with self.assertRaises(TranslationError) as ctx:
         Translator.translate_file(
           str(py),
@@ -593,7 +593,7 @@ def main():
     with tempfile.TemporaryDirectory() as tmp:
       out = Path(tmp)
       py = out / "mod.py"
-      py.write_text(f"from py2cpp import *\n\n{body}", encoding="utf-8")
+      py.write_text(f"from paw import *\n\n{body}", encoding="utf-8")
       with self.assertRaises(TranslationError) as ctx:
         Translator.translate_file(
           str(py),
@@ -645,8 +645,8 @@ def main():
 
   def test_s0306_allows_explicit_cls_in_binop(self):
     self._translate(
-      """from py2cpp.spatial.rotator import Quaternion
-from py2cpp.spatial.vector import Vector3
+      """from paw.spatial.rotator import Quaternion
+from paw.spatial.vector import Vector3
 
 def main() -> int:
   q: Quaternion = new(1.0, 0.0, 0.0, 0.0)
@@ -657,8 +657,8 @@ def main() -> int:
 
   def test_s0306_rejects_new_staticproperty_in_binop(self):
     self._expect_strict_fail(
-      """from py2cpp.spatial.rotator import Quaternion
-from py2cpp.spatial.vector import Vector3
+      """from paw.spatial.rotator import Quaternion
+from paw.spatial.vector import Vector3
 
 def main() -> int:
   q: Quaternion = new(1.0, 0.0, 0.0, 0.0)
@@ -749,7 +749,7 @@ def main():
 
   def test_s0309_rejects_redundant_cast_subscript(self):
     self._expect_strict_fail(
-      """from py2cpp import *
+      """from paw import *
 
 @refcount
 class Base:
@@ -767,7 +767,7 @@ def narrow(slot: Base) -> None:
 
   def test_s0309_allows_cast_shorthand(self):
     self._translate(
-      """from py2cpp import *
+      """from paw import *
 
 @refcount
 class Base:
@@ -1453,7 +1453,7 @@ def main():
 
   def test_s0602_allows_other_generic_instantiation(self):
     self._translate(
-      """from py2cpp import *
+      """from paw import *
 
 class Task[Element]:
   @staticmethod
@@ -1472,7 +1472,7 @@ def main():
 
   def test_s0602_rejects_same_class_type_param_in_annotation(self):
     self._expect_strict_fail(
-      """from py2cpp import *
+      """from paw import *
 
 class Task[Element]:
   def copy(self) -> Task[Element]:
@@ -1537,7 +1537,7 @@ def main():
 
   def test_s1002_rejects_missing_override_on_virtual_base(self):
     self._expect_strict_fail(
-      """from py2cpp import *
+      """from paw import *
 
 class Base:
   @virtual
@@ -1557,7 +1557,7 @@ def main():
 
   def test_s1002_allows_override_without_base_virtual(self):
     self._translate(
-      """from py2cpp import *
+      """from paw import *
 
 class Base:
   def foo(self) -> int:
@@ -1576,7 +1576,7 @@ def main():
 
   def test_s0704_allows_both_override_and_virtual(self):
     self._translate(
-      """from py2cpp import *
+      """from paw import *
 
 class Base:
   @virtual
@@ -1596,7 +1596,7 @@ def main():
 
   def test_s1002_rejects_missing_override_on_abstract_base(self):
     self._expect_strict_fail(
-      """from py2cpp import *
+      """from paw import *
 
 class Base:
   @abstract
@@ -1616,7 +1616,7 @@ def main():
 
   def test_s1002_rejects_missing_override_on_abstract_chain(self):
     self._expect_strict_fail(
-      """from py2cpp import *
+      """from paw import *
 
 class Base:
   @abstract
@@ -1641,7 +1641,7 @@ def main():
 
   def test_s1002_rejects_missing_override_on_static_protocol_impl(self):
     self._expect_strict_fail(
-      """from py2cpp import *
+      """from paw import *
 
 @protocol
 class IParsableType:
@@ -1666,7 +1666,7 @@ def main():
 
   def test_s1002_rejects_missing_override_on_static_inherit_chain(self):
     self._expect_strict_fail(
-      """from py2cpp import *
+      """from paw import *
 
 class Base:
   @staticmethod
@@ -1687,7 +1687,7 @@ def main():
 
   def test_s1003_rejects_virtual_and_final(self):
     self._expect_strict_fail(
-      """from py2cpp import *
+      """from paw import *
 
 class Box:
   @virtual
@@ -1704,7 +1704,7 @@ def main():
 
   def test_s1003_rejects_abstract_and_virtual(self):
     self._expect_strict_fail(
-      """from py2cpp import *
+      """from paw import *
 
 class Base:
   @abstract
@@ -1720,7 +1720,7 @@ def main():
 
   def test_s1003_allows_final_alone(self):
     self._translate(
-      """from py2cpp import *
+      """from paw import *
 
 class Box:
   @final
@@ -2043,7 +2043,7 @@ def walk(head: Pointer[Node]) -> None:
 
   def test_s0103_rejects_self_static_forward(self):
     self._expect_strict_fail(
-      """from py2cpp import *
+      """from paw import *
 
 class Point:
   @staticmethod
@@ -2058,7 +2058,7 @@ class Point:
 
   def test_s0103_allows_self_static_with_extra_logic(self):
     self._translate(
-      """from py2cpp import *
+      """from paw import *
 
 class Point:
   x: int = 0
@@ -2256,7 +2256,7 @@ def choose(x: int, y: int) -> int:
       out = Path(tmp)
       py = out / "mod.py"
       py.write_text(
-        "from py2cpp import *\n\n"
+        "from paw import *\n\n"
         "def pick(c: char) -> bool:\n"
         '  return c == ord("a") or c == ord("b")\n',
         encoding="utf-8",
@@ -2297,7 +2297,7 @@ def choose(x: int, y: int) -> int:
       out = Path(tmp)
       py = out / "mod.py"
       py.write_text(
-        "from py2cpp import *\n\n"
+        "from paw import *\n\n"
         "def ok(c: char) -> bool:\n"
         '  return c != ord("a") and c != ord("b")\n',
         encoding="utf-8",
@@ -2737,7 +2737,7 @@ def f(c: ColorEnum) -> int:
 
   def test_s0805_rejects_optional_some_match_pattern(self):
     self._expect_strict_fail(
-      """from py2cpp.core.optional import Optional
+      """from paw.core.optional import Optional
 
 def f(opt: Optional[int]) -> int:
   match opt:
@@ -2751,7 +2751,7 @@ def f(opt: Optional[int]) -> int:
 
   def test_s0805_rejects_optional_none_union_match_pattern(self):
     self._expect_strict_fail(
-      """from py2cpp.core.optional import Optional
+      """from paw.core.optional import Optional
 
 def f(opt: Optional[int]) -> int:
   match opt:
@@ -2765,7 +2765,7 @@ def f(opt: Optional[int]) -> int:
 
   def test_s0805_allows_optional_sugar_match(self):
     self._translate(
-      """from py2cpp.core.optional import Optional
+      """from paw.core.optional import Optional
 
 def f(opt: Optional[int]) -> int:
   match opt:
@@ -2778,7 +2778,7 @@ def f(opt: Optional[int]) -> int:
 
   def test_s0805_rejects_optional_eq_none(self):
     self._expect_strict_fail(
-      """from py2cpp.core.optional import Optional
+      """from paw.core.optional import Optional
 
 def f(opt: Optional[int]) -> int:
   if opt == None:
@@ -2790,7 +2790,7 @@ def f(opt: Optional[int]) -> int:
 
   def test_s0805_allows_optional_is_none(self):
     self._translate(
-      """from py2cpp.core.optional import Optional
+      """from paw.core.optional import Optional
 
 def f(opt: Optional[int]) -> int:
   if opt is None:
@@ -2803,7 +2803,7 @@ def f(opt: Optional[int]) -> int:
 
   def test_s0805_rejects_optional_some_ctor(self):
     self._expect_strict_fail(
-      """from py2cpp.core.optional import Optional
+      """from paw.core.optional import Optional
 
 def f(v: int) -> Optional[int]:
   return Optional[int].Some(v)
@@ -2813,7 +2813,7 @@ def f(v: int) -> Optional[int]:
 
   def test_s0805_rejects_optional_none_ctor(self):
     self._expect_strict_fail(
-      """from py2cpp.core.optional import Optional
+      """from paw.core.optional import Optional
 
 def f() -> Optional[int]:
   return Optional[int].None_()
@@ -2823,7 +2823,7 @@ def f() -> Optional[int]:
 
   def test_s0805_allows_optional_assign_sugar(self):
     self._translate(
-      """from py2cpp.core.optional import Optional
+      """from paw.core.optional import Optional
 
 def f(v: int) -> Optional[int]:
   out: Optional[int] = v
@@ -3268,8 +3268,8 @@ def main():
 
   def test_s0201_allows_unittest_submodule_import(self):
     self._translate(
-      """from py2cpp import *
-from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
+      """from paw import *
+from paw.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 class T(TestCaseMixin):
   _test_tag = 1
@@ -3285,8 +3285,8 @@ def main():
 
   def test_s0201_rejects_unittest_submodule_override(self):
     self._expect_strict_fail(
-      """from py2cpp import *
-from py2cpp.test.unittest import override
+      """from paw import *
+from paw.test.unittest import override
 
 class T(TestCaseMixin):
   _test_tag = 1
@@ -3303,7 +3303,7 @@ def main():
 
   def test_s0201_rejects_named_py2cpp_import(self):
     self._expect_strict_fail(
-      """from py2cpp import override
+      """from paw import override
 
 class Base:
   @override
@@ -3318,8 +3318,8 @@ def main():
 
   def test_s0201_allows_io_submodule_import(self):
     self._translate(
-      """from py2cpp import *
-from py2cpp.io import open, StringIO
+      """from paw import *
+from paw.io import open, StringIO
 
 def main():
   sio: StringIO = new()

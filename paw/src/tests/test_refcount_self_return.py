@@ -11,7 +11,7 @@ from src.translator import Translator
 class RefcountSelfReturnTests(unittest.TestCase):
   def test_self_return_and_param_use_pyrefcount(self):
     src = """
-from py2cpp import *
+from paw import *
 
 @refcount
 class Node:

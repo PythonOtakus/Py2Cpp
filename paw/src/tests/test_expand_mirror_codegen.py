@@ -22,11 +22,11 @@ class ExpandMirrorCodegenTests(unittest.TestCase):
       self.assertIn("util/tuple.inl", rels)
       htext = (root / "util/tuple.h").read_text(encoding="utf-8")
       self.assertIn("#ifndef PY2CPP_UTIL_TUPLE_H", htext)
-      self.assertIn("#include \"py2cpp/util/tuple.inl\"", htext)
+      self.assertIn("#include \"paw/util/tuple.inl\"", htext)
       self.assertIn("class PyTuple", htext)
       itext = (root / "util/tuple.inl").read_text(encoding="utf-8")
       self.assertIn("模板实现", itext)
-      self.assertIn("throw py2cpp::core::exceptions::IndexError();", itext)
+      self.assertIn("throw paw::core::exceptions::IndexError();", itext)
 
   def test_mirror_writes_p0_stdlib_codegen(self):
     with tempfile.TemporaryDirectory() as tmp:
@@ -50,16 +50,16 @@ class ExpandMirrorCodegenTests(unittest.TestCase):
       self.assertIn("class PyCoroutine", coro_h)
       stack_h = (root / "util/stack_array.h").read_text(encoding="utf-8")
       self.assertIn("class PyStackArray", stack_h)
-      self.assertIn("#include \"py2cpp/util/stack_array.inl\"", stack_h)
+      self.assertIn("#include \"paw/util/stack_array.inl\"", stack_h)
       refcount_h = (root / "core/refcount.h").read_text(encoding="utf-8")
       self.assertIn("class PyRefCount", refcount_h)
       self.assertIn("class PyWeakRef", refcount_h)
-      self.assertNotIn("#include \"py2cpp/core/refcount.inl\"", refcount_h)
+      self.assertNotIn("#include \"paw/core/refcount.inl\"", refcount_h)
       weak_h = (root / "weak/ref.h").read_text(encoding="utf-8")
-      self.assertIn("#include \"py2cpp/core/refcount.h\"", weak_h)
+      self.assertIn("#include \"paw/core/refcount.h\"", weak_h)
       delegate_h = (root / "core/delegate.h").read_text(encoding="utf-8")
       self.assertIn("class PyDelegate", delegate_h)
-      self.assertIn("py2cpp::util::list::PyList", delegate_h)
+      self.assertIn("paw::util::list::PyList", delegate_h)
 
 
 if __name__ == "__main__":

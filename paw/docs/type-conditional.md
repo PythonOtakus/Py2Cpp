@@ -81,7 +81,7 @@ type ValOf[T, _V = ..., _W = ...] = (
 
 ## 3. 标准库范本别名与命名规范
 
-条件类型别名在 **G1** 已可在模块/类内定义；标准库宜在 ``py2cpp/core/``（或 ``py2cpp/typing.py``）集中导出**同一套名字**，业务模块只 **组合**、不另造同义萃取名。
+条件类型别名在 **G1** 已可在模块/类内定义；标准库宜在 ``paw/core/``（或 ``paw/typing.py``）集中导出**同一套名字**，业务模块只 **组合**、不另造同义萃取名。
 
 ### 3.1 统一命名规范
 
@@ -102,7 +102,7 @@ type ValOf[T, _V = ..., _W = ...] = (
 
 ### 3.2 常用类型萃取一览
 
-下表为 Py2Cpp 条件别名。**G1 已实现**；``py2cpp/util/types.py`` 导出恒等/严格变体；``KeyOf``/``PointeeOf`` 等未单独导出，分派用 type if 的 ``T.Key`` / ``T.Value`` / ``Pointer[…]`` 模式。
+下表为 Py2Cpp 条件别名。**G1 已实现**；``paw/util/types.py`` 导出恒等/严格变体；``KeyOf``/``PointeeOf`` 等未单独导出，分派用 type if 的 ``T.Key`` / ``T.Value`` / ``Pointer[…]`` 模式。
 
 | 别名 | 匹配模式 | 捕获 | Fallback | 典型实例化 | 标准库 | 说明 |
 |------|----------|------|----------|------------|--------|------|
@@ -112,8 +112,8 @@ type ValOf[T, _V = ..., _W = ...] = (
 | **``ListOnly``** | ``T is list[_V]`` | ``_V`` | ``Never`` | ``list[int]`` → ``int``；``str`` → 编译失败 | ✅ | 严格 list-only |
 | **``KeyOf``** / **``ValueOf``** | ``dict[_K, …]`` / ``dict[..., _V]`` | ``_K`` / ``_V`` | ``T`` | — | 否 | 概念上与 ``T.Key``/``T.Value`` 等价；模块内自建 |
 | **``PointeeOf``** | ``T is Pointer[_P]`` | ``_P`` | ``T`` | — | 否 | ``Pointer[T]`` 形参时 ``T`` 已是 pointee |
-| **（组合）``Inner``** | ``ListElemOf[ListElemOf[T]]`` | — | — | ``list[list[int]]`` → ``int`` | 用户层 | 见 ``test/lang/test_type_if.py`` |
-| **``TaskPayloadOf``** / **``GatherElemOf``** | ``Task[_R]`` / ``Task[list[_U]]`` | ``_R`` / ``_U`` | ``T`` | — | 模块内 | ``py2cpp/concur/task.py`` |
+| **（组合）``Inner``** | ``ListElemOf[ListElemOf[T]]`` | — | — | ``list[list[int]]`` → ``int`` | 用户层 | 见 ``tests/lang/test_type_if.py`` |
+| **``TaskPayloadOf``** / **``GatherElemOf``** | ``Task[_R]`` / ``Task[list[_U]]`` | ``_R`` / ``_U`` | ``T`` | — | 模块内 | ``paw/concur/task.py`` |
 | **``TupleAt``** / **``ResultOf``** 等 | — | — | — | — | **G3** | 尚未实现 |
 
 **已实现、非 ``*Of`` 的 type if 便捷属性**（仅 **函数 type if / 类 type if 分支内**）：
@@ -145,11 +145,11 @@ type ValOf[T, _V = ..., _W = ...] = (
 | **恒等** | ``else T`` | 泛型 API：``def f[T](x: T) -> ListElemOf[T]``；非 list 时 ``ListElemOf[str]=str`` |
 | **严格** | ``else Never`` 或无 ``else`` | 仅接受 list：``def g[T](xs: ListOnly[T])``；``ListOnly[str]`` 翻译失败 |
 
-标准库导出 **``ValOf`` / ``StrDictValueOf`` / ``ListElemOf`` / ``ListOnly``**（``py2cpp/util/types.py``）；``KeyOf``/``PointeeOf`` 等按需模块内定义。
+标准库导出 **``ValOf`` / ``StrDictValueOf`` / ``ListElemOf`` / ``ListOnly``**（``paw/util/types.py``）；``KeyOf``/``PointeeOf`` 等按需模块内定义。
 
 **``@union`` ADT**（``IterResult`` / ``Result`` / ``Optional`` 等）亦可在类体内写 ``type YieldValue = YieldType`` 等简单别名；变体字段、属性与 ``Cls[T].Alias`` 注解均可引用。``Result`` 模块另含 ``OkOf`` / ``ErrOf`` 条件别名。
 
-### 3.5 标准库定义（``py2cpp/util/types.py``）
+### 3.5 标准库定义（``paw/util/types.py``）
 
 ```python
 type ValOf[T, _V = ..., _W = ...] = (
@@ -257,7 +257,7 @@ using ListElemOf = /* meta: 按 T 分派，匹配 list 时引入 typename U，�
 
 ### 7.3 ``Never``
 
-- Python 桩：``py2cpp/util/types.py`` 中 ``Never``（或 ``typing_extensions`` 风格声明）。
+- Python 桩：``paw/util/types.py`` 中 ``Never``（或 ``typing_extensions`` 风格声明）。
 - C++：``PyNever`` 标记类型；任何需要对象存储的位置 ``static_assert(sizeof(PyNever)==0, ...)`` 或等价拒绝。
 
 ---
@@ -267,12 +267,12 @@ using ListElemOf = /* meta: 按 T 分派，匹配 list 时引入 typename U，�
 | 阶段 | 内容 | 主要文件 |
 |------|------|----------|
 | **G0** | ``Never`` + ``T.Element``/``Key``/``Value`` 在更多类型上下文（含别名展开钩子） | ``ir.py``、``translator.py``、``templates/core/+types.h`` |
-| **G1** | 条件别名 + ``py2cpp/util/types.py``；``test/lang/test_type_if.py`` | ``type_conditional.py``、``type_extract.py`` |
+| **G1** | 条件别名 + ``paw/util/types.py``；``tests/lang/test_type_if.py`` | ``type_conditional.py``、``type_extract.py`` |
 | **G1.5**（可选） | type if 模式内命名捕获 ``list[Elem]``（与 ``list[...]`` 等价） | ``type_if.py`` |
 | **G2** | 注解中的类型三目（非别名 RHS）；简化 ``Json.loads`` 等对 ``_type_if_concrete_bind`` 的依赖 | ``analyzer.py`` |
 | **G3** | ``Pick``/``Omit``/``Extract`` 等映射类型（若仍需要） | 待定 |
 
-**验证**：G1 完成后至少 ``build.bat lang/test_type_if`` 全绿（含 ``TypeAliasTests``）；动标准库别名时 bootstrap ``py2cpp/__init__.py``。
+**验证**：G1 完成后至少 ``build.bat lang/test_type_if`` 全绿（含 ``TypeAliasTests``）；动标准库别名时 bootstrap ``paw/__init__.py``。
 
 ---
 
@@ -360,7 +360,7 @@ def dispatch[T](x: T) -> int:
 | 泛型 type if（已实现） | [参考手册 §5.2](./参考手册.md#泛型类型条件py2cpp-扩展非-cpython)、``src/passes/type_if.py`` |
 | 类内/模块 type 别名 | [编码规范 §6.2](./编码规范.md#62-类内-type-别名) |
 | ``Pointer[T]`` → ``T*`` | [参考手册类型对照](./参考手册.md#52-泛型与-type-别名)、``analyzer.py`` |
-| 集成测 | ``test/lang/test_type_if.py``（``TypeIfModuleTests`` / ``TypeAliasTests``） |
+| 集成测 | ``tests/lang/test_type_if.py``（``TypeIfModuleTests`` / ``TypeAliasTests``） |
 | 译器单测 | ``src/tests/test_type_conditional.py`` |
 
 ---

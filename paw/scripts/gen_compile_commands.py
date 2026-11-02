@@ -1,6 +1,6 @@
 """为 clangd / IDE 生成 compile_commands.json 与根目录 compile_flags.txt。
 
-``#include "py2cpp/..."`` 的 include 根与 ``src/compile.py`` 的 ``discover_include_dirs`` 一致。
+``#include "paw/..."`` 的 include 根与 ``src/compile.py`` 的 ``discover_include_dirs`` 一致。
 bootstrap 或翻译后若 IDE 仍报头文件找不到，可运行::
 
     python scripts/gen_compile_commands.py
@@ -118,7 +118,7 @@ def _collect_sources() -> list[Path]:
             if path.relative_to(TEMPLATES_ROOT).as_posix().startswith("~macro/"):
                 continue
             sources.append(path)
-    test_root = ROOT / "generated" / "test"
+    test_root = ROOT / "generated" / "tests"
     if test_root.is_dir():
         sources.extend(sorted(test_root.rglob("*.cpp")))
     examples = ROOT / "generated" / "examples"
@@ -144,7 +144,7 @@ def main() -> int:
     runtime_dir = ROOT / "generated" / "runtime"
     if not runtime_dir.is_dir():
         print("generated/runtime 不存在，请先 bootstrap：", file=sys.stderr)
-        print("  python main.py py2cpp\\__init__.paw -o generated --no-main", file=sys.stderr)
+        print("  python main.py paw\\__init__.paw -o generated --no-main", file=sys.stderr)
         return 1
 
     macro_written = write_macro_headers()

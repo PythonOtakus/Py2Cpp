@@ -22,7 +22,7 @@ class PointerSubscriptTests(unittest.TestCase):
   def test_container_view_uses_view_get(self):
     cpp = self._translate(
       '''
-from py2cpp import *
+from paw import *
 
 def f() -> int:
   buf: int[:4] = new()
@@ -37,7 +37,7 @@ def f() -> int:
   def test_property_ptr_subscript_assign(self):
     cpp = self._translate(
       '''
-from py2cpp import *
+from paw import *
 
 @copyable
 class Holder:
@@ -57,7 +57,7 @@ class Holder:
   def test_nested_property_ptr_subscript_assign(self):
     cpp = self._translate(
       '''
-from py2cpp import *
+from paw import *
 
 @copyable
 class Inner:
@@ -81,7 +81,7 @@ class Outer:
   def test_property_ptr_subscript_iadd(self):
     cpp = self._translate(
       '''
-from py2cpp import *
+from paw import *
 
 @copyable
 class Holder:
@@ -101,7 +101,7 @@ class Holder:
   def test_span_data_subscript(self):
     cpp = self._translate(
       '''
-from py2cpp import *
+from paw import *
 
 def f() -> int:
   sub: span[int] = new()

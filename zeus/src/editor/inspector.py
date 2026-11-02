@@ -1,10 +1,10 @@
 """Inspector：对象属性 + ``JumpMotorPanel`` 镜像字段（``float64`` / ``UIFloatEdit``）。"""
 from __future__ import annotations
 
-from py2cpp import *
-from py2cpp.spatial.vector import Vector3
-from py2cpp.ui.meta import UIButtonMeta, UIInvisibleMeta, UILabelMeta
-from py2cpp.ui.panel import UIPanelMixin
+from paw import *
+from paw.spatial.vector import Vector3
+from paw.ui.meta import UIButtonMeta, UIInvisibleMeta, UILabelMeta
+from paw.ui.panel import UIPanelMixin
 
 from ..command import CommandBus, ZeusCommandUnion
 from ..scene import Component, GameObject

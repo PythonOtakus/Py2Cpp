@@ -1,7 +1,7 @@
 """编码规范强检查（``--strict``，默认开启）。
 
 规则编号 ``SXXYY``（前两位类别、后两位类内序号），分类见 ``docs/编码规范.md`` §1.1。
-检查 ``py2cpp/``、用户模块与 ``test/**``；``test/fail/`` 豁免；``# py2cpp: strict-off`` 可关单文件。
+检查 ``paw/``、用户模块与 ``tests/**``；``tests/fail/`` 豁免；``# py2cpp: strict-off`` 可关单文件。
 
 内部 helper 前缀 ``_sXXXX_`` / ``_check_sXXXX_`` 与 §1.1 规则 ID 一致。
 """
@@ -144,20 +144,20 @@ class _Violation:
     message: str
     node: ast.AST
     module_path: str
-_S1101_EXEMPT = frozenset({'py2cpp/core/refcount.py', 'py2cpp/core/refcount'})
+_S1101_EXEMPT = frozenset({'paw/core/refcount.py', 'paw/core/refcount'})
 
 def _s1101_module_exempt(module_path: str) -> bool:
     norm = module_path.replace('\\', '/')
     if norm in _S1101_EXEMPT:
         return True
-    return norm.endswith('/py2cpp/core/refcount.py') or norm.endswith('/py2cpp/core/refcount')
-_S1102_EXEMPT = frozenset({'py2cpp/core/none.py', 'py2cpp/core/none'})
+    return norm.endswith('/paw/core/refcount.py') or norm.endswith('/paw/core/refcount')
+_S1102_EXEMPT = frozenset({'paw/core/none.py', 'paw/core/none'})
 
 def _s1102_module_exempt(module_path: str) -> bool:
     norm = module_path.replace('\\', '/')
     if norm in _S1102_EXEMPT:
         return True
-    return norm.endswith('/py2cpp/core/none.py') or norm.endswith('/py2cpp/core/none')
+    return norm.endswith('/paw/core/none.py') or norm.endswith('/paw/core/none')
 
 def check_strict_style(tr: TranslatorState):
     if not getattr(tr, 'strict', True):
@@ -198,7 +198,7 @@ def check_strict_style(tr: TranslatorState):
     raise TranslationError('\n'.join(parts), location=first_loc)
 
 def check_refcount_source_style(tr: TranslatorState) -> None:
-    """S1101：全模块（含 ``test/fail/``）禁止显式 ``RefCount``。"""
+    """S1101：全模块（含 ``tests/fail/``）禁止显式 ``RefCount``。"""
     if not getattr(tr, 'strict', True):
         return
     violations: list[_Violation] = []
@@ -232,7 +232,7 @@ def check_refcount_source_style(tr: TranslatorState) -> None:
 _S1102_PYNONE_NAME = re.compile('\\bPyNone\\b')
 
 def check_pynone_source_style(tr: TranslatorState) -> None:
-    """S1102：全模块（含 ``test/fail/``）禁止显式 ``PyNone``（查源码，非脱糖 AST）。"""
+    """S1102：全模块（含 ``tests/fail/``）禁止显式 ``PyNone``（查源码，非脱糖 AST）。"""
     if not getattr(tr, 'strict', True):
         return
     violations: list[_Violation] = []
@@ -362,7 +362,7 @@ def _should_check_module(tr: Translator, module_path: str) -> bool:
     if skip is not None and skip(module_path):
         return False
     norm = module_path.replace('\\', '/')
-    if '/test/fail/' in f'/{norm}/' or norm.startswith('test/fail/'):
+    if '/tests/fail/' in f'/{norm}/' or norm.startswith('tests/fail/'):
         return False
     if norm.endswith('_fail') or '/test_fail/' in f'/{norm}/':
         return False
@@ -3103,16 +3103,16 @@ def _expected_builtins_import_line(tr: Translator, module_path: str) -> str:
     return f'from {prefix}builtins import *'
 
 def _s0201_missing_builtins_msg(expected: str) -> str:
-    return _strict_msg(f'缺少 ``{expected}``', f'模块顶部写 ``{expected}``', '``py2cpp/`` 标准库子模块', reason='内建/装饰器由 ``builtins`` 统一提供，勿 ``from .. import …`` 挑符号', example=expected)
+    return _strict_msg(f'缺少 ``{expected}``', f'模块顶部写 ``{expected}``', '``paw/`` 标准库子模块', reason='内建/装饰器由 ``builtins`` 统一提供，勿 ``from .. import …`` 挑符号', example=expected)
 
 def _s0201_missing_py2cpp_star_msg() -> str:
-    return _strict_msg('缺少 ``from py2cpp import *``', '模块顶部写 ``from py2cpp import *``', '用户/测试模块', reason='内建/标准库类型统一 star import，勿 ``from py2cpp import foo, bar``', example='from py2cpp import *')
+    return _strict_msg('缺少 ``from paw import *``', '模块顶部写 ``from paw import *``', '用户/测试模块', reason='内建/标准库类型统一 star import，勿 ``from paw import foo, bar``', example='from paw import *')
 
 def _s0201_forbidden_named_py2cpp_import_msg() -> str:
-    return _strict_msg('``from py2cpp import foo, bar``', '``from py2cpp import *``', '用户/测试模块', reason='包根 star import 已提供内建/装饰器，勿具名挑符号', example='from py2cpp import *')
+    return _strict_msg('``from paw import foo, bar``', '``from paw import *``', '用户/测试模块', reason='包根 star import 已提供内建/装饰器，勿具名挑符号', example='from paw import *')
 
 def _s0201_forbidden_submodule_root_import_msg(module: str, sym: str) -> str:
-    return _strict_msg(f'``from {module} import {sym}``', '``from py2cpp import *``', '用户/测试模块', reason='包根 star import 已提供的符号，勿从其它子模块路径导入', example='from py2cpp import *')
+    return _strict_msg(f'``from {module} import {sym}``', '``from paw import *``', '用户/测试模块', reason='包根 star import 已提供的符号，勿从其它子模块路径导入', example='from paw import *')
 _PY2CPP_ROOT_STAR_NAMES: frozenset[str] | None = None
 _IO_SUBMODULE_ROOT_OK = frozenset({'open', 'StringIO', 'TextIO'})
 _UNITTEST_SUBMODULE_OK = frozenset({'TestCaseMixin', 'TestSuite', 'TextTestRunner'})
@@ -3146,24 +3146,24 @@ def _check_s0201_user_py2cpp_imports(tr: Translator, module_path: str, tree: ast
             continue
         mod = node.module or ''
         imported = [alias.name for alias in node.names if alias.name != '*']
-        if mod == 'py2cpp':
+        if mod == 'paw':
             if imported and any((name in root_names for name in imported)):
                 violations.append(_Violation(S0201, _s0201_forbidden_named_py2cpp_import_msg(), node, module_path))
             continue
-        if not mod.startswith('py2cpp.'):
+        if not mod.startswith('paw.'):
             continue
         for sym in imported:
             if sym not in root_names:
                 continue
-            if mod == 'py2cpp.io' and sym in _IO_SUBMODULE_ROOT_OK:
+            if mod == 'paw.io' and sym in _IO_SUBMODULE_ROOT_OK:
                 continue
-            if mod == 'py2cpp.test.unittest' and sym in _UNITTEST_SUBMODULE_OK:
+            if mod == 'paw.test.unittest' and sym in _UNITTEST_SUBMODULE_OK:
                 continue
             violations.append(_Violation(S0201, _s0201_forbidden_submodule_root_import_msg(mod, sym), node, module_path))
 
 def _check_s0201_imports(tr: Translator, violations: list[_Violation]) -> None:
     from ..constant.stdlib_layout import RUNTIME_PKG
-    star = 'from py2cpp import *'
+    star = 'from paw import *'
     for module_path, tree in tr.module_asts.items():
         if not _should_check_module(tr, module_path):
             continue
@@ -3181,10 +3181,10 @@ def _check_s0201_imports(tr: Translator, violations: list[_Violation]) -> None:
             continue
         from ..constant.ffi_layout import is_ffi_module_path
         if is_ffi_module_path(norm):
-            # 生成器产出 ``from py2cpp.builtins import *``（同标准库域内风格），勿要求包根 star
-            if 'from py2cpp.builtins import *' not in source and 'from py2cpp import *' not in source:
+            # 生成器产出 ``from paw.builtins import *``（同标准库域内风格），勿要求包根 star
+            if 'from paw.builtins import *' not in source and 'from paw import *' not in source:
                 violations.append(
-                    _Violation(S0201, _s0201_missing_builtins_msg('from py2cpp.builtins import *'), tree, module_path)
+                    _Violation(S0201, _s0201_missing_builtins_msg('from paw.builtins import *'), tree, module_path)
                 )
             continue
         if star not in source:
@@ -3542,7 +3542,7 @@ def _check_s1002_instance_override(tr: Translator, info: ClassInfo, method: ast.
     _append_s1002_override_violation(violations, info=info, method=method, module_path=module_path, detail=f'继承链上 `{origin.name}.{method.name}` 已标 {origin_tag}。', static=False)
 
 def check_static_virtual_override_s1002(tr: Translator) -> None:
-    """静态虚 ``@override``（**S1002**）：全模块含 ``test/fail/``。"""
+    """静态虚 ``@override``（**S1002**）：全模块含 ``tests/fail/``。"""
     violations: list[_Violation] = []
     for module_path in tr.module_asts:
         skip = getattr(tr, 'skip_cached_analysis_module', None)

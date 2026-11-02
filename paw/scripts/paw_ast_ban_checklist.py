@@ -24,7 +24,7 @@ ALLOW_PREFIXES = (
   "compiler/py/frontend/surface_rewrite.py",  # 离线工具
   "compiler/py/frontend/legacy_to_paw.py",
   "src/tests/",
-  "test/",
+  "tests/",
 )
 
 # 热路径高风险（应随 N3/N4 清零）

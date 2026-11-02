@@ -10,7 +10,7 @@ from src.translator import Translator
 
 class CharArrayLiteralEmitTests(unittest.TestCase):
   def _translate(self, body: str) -> str:
-    src = f"""from py2cpp import char
+    src = f"""from paw import char
 
 def probe():
 {body}"""
@@ -53,7 +53,7 @@ def probe():
     self.assertIn("__setitem__(2, 3)", cpp)
 
   def test_self_field_heap_array_from_list_literal(self):
-    src = """from py2cpp import char, copyable
+    src = """from paw import char, copyable
 
 @copyable
 class Box:
@@ -74,7 +74,7 @@ class Box:
     self.assertIn("this->data.__setitem__(0,", cpp)
 
   def test_self_field_empty_char_heap_skips_init(self):
-    src = """from py2cpp import char, copyable
+    src = """from paw import char, copyable
 
 @copyable
 class Buf:
@@ -93,7 +93,7 @@ class Buf:
     self.assertNotIn("PyArray<PyChar>(0)", cpp)
 
   def test_self_field_char_heap_from_str_literal_no_move(self):
-    src = """from py2cpp import char, copyable
+    src = """from paw import char, copyable
 
 @copyable
 class Box:

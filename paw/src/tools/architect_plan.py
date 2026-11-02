@@ -15,7 +15,7 @@ from ..passes.selector_parse import SelectorParseError, parse_selector_path
 PLAN_VERSION = 1
 _IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _RENAME_KINDS = frozenset({"field", "method", "class", "function"})
-_SCAN_ROOTS = ("py2cpp", "test", "examples")
+_SCAN_ROOTS = ("paw", "tests", "examples")
 _SELECT_RE = re.compile(r"""\.select\s*\(\s*(['"])(.+?)\1""")
 
 

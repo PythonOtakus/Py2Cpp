@@ -22,7 +22,7 @@ class ForIterMaterializeTests(unittest.TestCase):
   def test_for_in_call_returns_list_index_loop(self):
     cpp = self._translate(
       '''
-from py2cpp.util.list import list
+from paw.util.list import list
 
 def neighbors() -> list[int]:
   out: list[int] = []
@@ -46,7 +46,7 @@ def run() -> int:
   def test_for_in_call_no_ampersand_on_temp(self):
     cpp = self._translate(
       '''
-from py2cpp.util.list import list
+from paw.util.list import list
 
 def items() -> list[int]:
   xs: list[int] = []

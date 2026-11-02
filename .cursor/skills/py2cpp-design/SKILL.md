@@ -10,7 +10,7 @@ description: >-
 
 # Py2Cpp 开发与验证流程
 
-将受限 Python 3 静态译为 C++11。**单一真相源**是`paw/py2cpp/`（标准库 Python）与 `src/`（译器）；`generated/` 仅由 `main.py` 生成，勿手改。
+将受限 Python 3 静态译为 C++11。**单一真相源**是`paw/paw/`（标准库 Python）与 `src/`（译器）；`generated/` 仅由 `main.py` 生成，勿手改。
 
 详细架构见 [docs/参考手册.md](../../../paw/docs/参考手册.md)；标准库写法见 [docs/编码规范.md](../../../paw/docs/编码规范.md)。
 
@@ -46,7 +46,7 @@ description: >-
 
 ## 实现后须自行对照规范自检（重要的事情说三遍）
 
-每次**新特性落地**或**修改** `src/`、`py2cpp/`、`test/` 之后，在 bootstrap / MSVC 之前或与之并行，Agent **必须**主动对照 [编码规范.md](../../../paw/docs/编码规范.md) 与相邻模块**自行审阅** diff，**不得**只跑编译、不查写法。
+每次**新特性落地**或**修改** `src/`、`py2cpp/`、`tests/` 之后，在 bootstrap / MSVC 之前或与之并行，Agent **必须**主动对照 [编码规范.md](../../../paw/docs/编码规范.md) 与相邻模块**自行审阅** diff，**不得**只跑编译、不查写法。
 
 1. **实现后须自行对照规范自检**：标准库与用户测试仍写规范 Python——`new` / `Self` 静态调用、链式比较、**勿手写 dunder**、辅助数据结构用 **`@dataclass`**（勿手写 `__init__` 拼字段）、`@copyable` 等与域内范本一致；**无 STL**；能复用 `str` / `path` / `util` 现有 API 的**禁止**手写 `while` 扫串、重复 `splitExt` 语义。
 2. **实现后须自行对照规范自检**：对照编码规范 §2–§3、§8、§10 做清单核对——`s[:k]`（起始 0 省略 `s[0:k]`）、`not s` / `if s`（勿 `len(s)==0`）、`int64` 大常量勿用 32 位乘法溢出、测试用 `TestCaseMixin` + `override def test`；**同名符号**（如 `time` 函数 vs `datetime.time`）import 绑定与 C++ 名无歧义；依赖内建（`int(str)` 等）时确认译器已支持，否则在基础设施层补，勿在业务模块假造轮子。
@@ -68,7 +68,7 @@ description: >-
 
 ## 先问清再实现（重要的事情说三遍）
 
-1. **先问清再实现**：新功能或**改变对外可见行为**（新语法、标准库 API、容器/切片/view 语义等）时，**须先**向用户提交「理解 + 疑问」并**等待明确同意**，再改 `src/`、`py2cpp/`、`test/`、`docs/`；未对齐前**禁止**大规模写实现代码。
+1. **先问清再实现**：新功能或**改变对外可见行为**（新语法、标准库 API、容器/切片/view 语义等）时，**须先**向用户提交「理解 + 疑问」并**等待明确同意**，再改 `src/`、`py2cpp/`、`tests/`、`docs/`；未对齐前**禁止**大规模写实现代码。
 2. **先问清再实现**：有歧义则继续追问，**直到彻底弄懂**再进入 §0 动手；勿凭猜测定边界、测例范围或与 CPython 的差异。
 3. **先问清再实现**：用户确认（或修正理解后再次确认）后方可 bootstrap、加测试、声称完成；仅 typo/注释、用户给出无歧义完整 spec、或用户明确「直接改不用先问」可跳过完整对齐，**仍须**用一句话说明意图。
 
@@ -84,7 +84,7 @@ description: >-
 
 ```bat
 build.bat io/test_path --seq --debug
-generated\test\io\test_path.exe 2> dbg.log
+generated\tests\io\test_path.exe 2> dbg.log
 REM 看 dbg.log 最后一行 [py2cpp] … 对应的 .py 行号
 REM 需 runtime 内跟踪：
 python main.py py2cpp\__init__.py -o generated --no-main --debug
@@ -95,7 +95,7 @@ build.bat io/test_path --seq --debug
 
 ## 需求确认（新功能 / 语义变更，必做）
 
-落实上文「先问清再实现」；实现**新功能**或**改变对外可见行为**时，Agent **不得**在未对齐前直接大规模改 `src/`、`py2cpp/`、`test/`、`docs/`。
+落实上文「先问清再实现」；实现**新功能**或**改变对外可见行为**时，Agent **不得**在未对齐前直接大规模改 `src/`、`py2cpp/`、`tests/`、`docs/`。
 
 **须先向用户提交一份「理解 + 疑问」**，并等待确认；若有歧义则继续追问，**直到彻底弄懂**再进入下文 §0 动手与实现。
 
@@ -122,7 +122,7 @@ build.bat io/test_path --seq --debug
 | 项 | 要求 | 自检命令 |
 |----|------|----------|
 | Python | 3.10+（PEP 695） | `python --version` |
-| 工作目录 | `paw/py2cpp/` | `cd` 到含 `main.py` 的目录 |
+| 工作目录 | `paw/paw/` | `cd` 到含 `main.py` 的目录 |
 | PYTHONPATH | 一般不需要；用 `python main.py` | — |
 | MSVC（Windows） | VS 2019/2022 +「使用 C++ 的桌面开发」 | 见下 |
 
@@ -147,10 +147,10 @@ REM 1) 重生成 runtime（改标准库 / 改会影响 runtime 的译器逻辑�
 python main.py py2cpp\__init__.py -o generated --no-main
 
 REM 2) 单测快速迭代（示例：容器 + range）
-python main.py test\misc\test_containers.py -o generated --no-main
+python main.py tests\misc\test_containers.py -o generated --no-main
 call "%ProgramFiles%\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat" >nul
-cl /EHsc /W3 /std:c++14 /I generated\runtime generated\test\misc\test_containers.cpp /Fe:generated\test\misc\test_containers.exe
-generated\test\misc\test_containers.exe
+cl /EHsc /W3 /std:c++14 /I generated\runtime generated\tests\misc\test_containers.cpp /Fe:generated\tests\misc\test_containers.exe
+generated\tests\misc\test_containers.exe
 
 REM 3) 全量测试编译（发布前）
 build_all.bat
@@ -159,11 +159,11 @@ build_all.bat
 或使用一行（脚本已调 vcvars）：
 
 ```bat
-python main.py test\misc\test_containers.py -o generated -c --compiler cl --exe generated\test\misc\test_containers.exe
-generated\test\misc\test_containers.exe
+python main.py tests\misc\test_containers.py -o generated -c --compiler cl --exe generated\tests\misc\test_containers.exe
+generated\tests\misc\test_containers.exe
 ```
 
-**注意**：测试/示例 TU 通常只 `#include generated/runtime/py2cpp/minimal.h`，**不要**再链 `generated/runtime/py2cpp.cpp`（易重复定义）。``compile.py`` 对 ``test/``、``examples/`` 已自动跳过 runtime TU。
+**注意**：测试/示例 TU 通常只 `#include generated/runtime/py2cpp/minimal.h`，**不要**再链 `generated/runtime/py2cpp.cpp`（易重复定义）。``compile.py`` 对 ``tests/``、``examples/`` 已自动跳过 runtime TU。
 
 ### 0.4 规范自检（实现后、声称完成前）
 
@@ -187,7 +187,7 @@ generated\test\misc\test_containers.exe
 │    → src/translator.py（visit_* / _emit_*）
 │    → 可能 src/passes/*.py（先脱糖再生成）
 │    → src/analysis/analyzer.py、ir.py（类型/签名）
-│    → 新 test/**/test_*.py（如 misc/、lang/）+ 更新 docs
+│    → 新 tests/**/test_*.py（如 misc/、lang/）+ 更新 docs
 ├─ 装饰器 / @protocol / mixin / dataclass / yield / async
 │    → src/passes/<对应>.py（须在 translator 流水线中已挂载）
 │    → translator.py + protocol_traits_gen / 编码规范
@@ -203,7 +203,7 @@ generated\test\misc\test_containers.exe
 │    → ffi/**/*.pyi（ffi.bat / src/tools/c_ffi_pyi.py）；constant/ffi_layout.py
 │    → src/emit/ffi_glue_emit.py；docs/c-ffi-pyi.md
 └─ 仅用户示例/测试 Python
-     → test/ 或 examples/，不改译器
+     → tests/ 或 examples/，不改译器
 ```
 
 **不要**直接编辑 `generated/`（下次翻译会覆盖）。
@@ -219,7 +219,7 @@ generated\test\misc\test_containers.exe
    ```bat
    python main.py py2cpp\__init__.py -o generated --no-main
    ```
-5. **加/改测试**：`test/misc/test_<area>.py` 或 `test/lang/test_<area>.py` 等子目录，`unittest` 结构见编码规范 §10（`TestCaseMixin` + `override def test` + `main` 跑 suite）。
+5. **加/改测试**：`tests/misc/test_<area>.py` 或 `tests/lang/test_<area>.py` 等子目录，`unittest` 结构见编码规范 §10（`TestCaseMixin` + `override def test` + `main` 跑 suite）。
 6. **编译并运行** 对应用例；大范围改动跑 `build_all.bat`。
 
 ### 2.1 模板类 / `.inl`
@@ -248,8 +248,8 @@ generated\test\misc\test_containers.exe
 | 层 | 路径 | 用途 |
 |----|------|------|
 | 译器单测 | `src/tests/test_*.py` | 断言生成片段、import 发现、moved 检查等 |
-| 集成测 | `test/**/test_*.py` | 翻译 + MSVC 链接 + `unittest` 跑通 |
-| 负向协议 | `test/fail/test_*_fail.py` | `build_fail.bat` / `build_protocol.bat` |
+| 集成测 | `tests/**/test_*.py` | 翻译 + MSVC 链接 + `unittest` 跑通 |
+| 负向协议 | `tests/fail/test_*_fail.py` | `build_fail.bat` / `build_protocol.bat` |
 
 ### 3.3 文档
 
@@ -302,7 +302,7 @@ generated\test\misc\test_containers.exe
 [ ] 只改源树（py2cpp/、test/、docs/），未手改 generated/
 [ ] 若动标准库或 runtime 布局：已运行
       python main.py py2cpp\__init__.py -o generated --no-main
-[ ] 已为行为添加/更新 test/**/test_*.py（unittest 结构正确）
+[ ] 已为行为添加/更新 tests/**/test_*.py（unittest 结构正确）
 [ ] 已在 Windows 上编译（build_all.bat 或目标 test 的 -c --compiler cl）
 [ ] 已运行对应 .exe，失败数为 0
 [ ] 若动 @protocol：已考虑 build_protocol.bat
@@ -365,7 +365,7 @@ generated\test\misc\test_containers.exe
 | 模块列表 | `src/constant/stdlib_discovery.py` → `STDLIB_REL_PATHS`（遍历 `py2cpp/`） |
 | 编译 | `src/compile.py` |
 | 万能头 | `src/codegen/umbrella_gen.py` → `generated/runtime/py2cpp/minimal.h` |
-| 生成输出 | `generated/runtime/py2cpp/`、`generated/runtime/ffi/`、`generated/test/` |
+| 生成输出 | `generated/runtime/py2cpp/`、`generated/runtime/ffi/`、`generated/testss/` |
 | FFI 规格 | [docs/c-ffi-pyi.md](../../../paw/docs/c-ffi-pyi.md) |
 
 ---

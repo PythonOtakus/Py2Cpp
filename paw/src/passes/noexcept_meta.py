@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 NOEXCEPT_DECORATOR = "noexcept"
 
-# ``py2cpp.core.exceptions`` 单继承链（用于多 ``raise`` 类型求最近公共基类）
+# ``paw.core.exceptions`` 单继承链（用于多 ``raise`` 类型求最近公共基类）
 _EXCEPTION_BASES: dict[str, str] = {
   "StatisticsError": "ValueError",
   "LinAlgError": "ValueError",
@@ -45,7 +45,7 @@ def _exception_ancestors(name: str) -> list[str]:
 
 
 def resolve_noexcept_err_type(exc_names: frozenset[str]) -> str:
-  """``raise`` 集合 → ``E`` 的 C++ 类型（``py2cpp::core::exceptions::…``）。"""
+  """``raise`` 集合 → ``E`` 的 C++ 类型（``paw::core::exceptions::…``）。"""
   if not exc_names:
     return cpp_exception_type()
   if len(exc_names) == 1:

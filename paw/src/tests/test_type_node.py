@@ -11,9 +11,9 @@ from src.analysis.type_render import CLASS_BODY, TEMPLATE_HEADER
 from src.analysis.type_storage import apply_full_storage_type_node, apply_storage_type_node
 
 def _parser_with_dict_entry() -> tuple[TypeParser, dict[str, ClassInfo]]:
-    src = '\nfrom py2cpp import DictKeyType, Self, boxing\n\n@boxing\n@native_name("PyDictEntryUnsafe")\nclass DictEntryUnsafe[Key: DictKeyType, Value]:\n  def __init__(self, key: Key, value: Value, next_entry: Self):\n    self.next: Self = next_entry\n'
+    src = '\nfrom paw import DictKeyType, Self, boxing\n\n@boxing\n@native_name("PyDictEntryUnsafe")\nclass DictEntryUnsafe[Key: DictKeyType, Value]:\n  def __init__(self, key: Key, value: Value, next_entry: Self):\n    self.next: Self = next_entry\n'
     tree = ast.parse(src)
-    info = ClassInfo(tree.body[-1], module_path='py2cpp/util/dict.py')
+    info = ClassInfo(tree.body[-1], module_path='paw/util/dict.py')
     classes = {'DictEntryUnsafe': info}
     parser = TypeParser()
     parser.set_classes(classes)
@@ -135,9 +135,9 @@ class TestTypeNodeStructuralMatch(unittest.TestCase):
 class TestTypeNodePhase1DualWrite(unittest.TestCase):
 
     def test_dict_entry_field_type_nodes_match_strings(self):
-        src = '\nfrom py2cpp import DictKeyType, Self, boxing\n\n@boxing\n@native_name("PyDictEntryUnsafe")\nclass DictEntryUnsafe[Key: DictKeyType, Value]:\n  def __init__(self, key: Key, value: Value, next_entry: Self):\n    self.key: Key = key\n    self.value: Value = value\n    self.next: Self = next_entry\n'
+        src = '\nfrom paw import DictKeyType, Self, boxing\n\n@boxing\n@native_name("PyDictEntryUnsafe")\nclass DictEntryUnsafe[Key: DictKeyType, Value]:\n  def __init__(self, key: Key, value: Value, next_entry: Self):\n    self.key: Key = key\n    self.value: Value = value\n    self.next: Self = next_entry\n'
         tree = ast.parse(src)
-        info = ClassInfo(tree.body[-1], module_path='py2cpp/util/dict.py')
+        info = ClassInfo(tree.body[-1], module_path='paw/util/dict.py')
         classes = {'DictEntryUnsafe': info}
         parser = TypeParser()
         parser.set_classes(classes)
@@ -163,7 +163,7 @@ class TestParseStorageStackArrayAliasImport(unittest.TestCase):
         from src.analysis.imports import ImportBinding
         from src.analysis.type_pred import is_stack_array_type
         tp = TypeParser()
-        tp.set_import_bindings({'float64': ImportBinding(local_name='float64', symbol='float64', module_path='py2cpp/builtins.py', kind='type_alias', cpp_name='float64')})
+        tp.set_import_bindings({'float64': ImportBinding(local_name='float64', symbol='float64', module_path='paw/builtins.py', kind='type_alias', cpp_name='float64')})
         ann = ast.parse('u: float64[:3] = [1.0]').body[0].annotation
         cpp = tp.parse_storage_type(ann, set())
         self.assertTrue(is_stack_array_type(cpp))
@@ -172,9 +172,9 @@ class TestParseStorageStackArrayAliasImport(unittest.TestCase):
 class TestTypeNodePhase3EmitBoundary(unittest.TestCase):
 
     def _dict_entry_setup(self):
-        src = '\nfrom py2cpp import DictKeyType, Self, boxing\n\n@boxing\n@native_name("PyDictEntryUnsafe")\nclass DictEntryUnsafe[Key: DictKeyType, Value]:\n  def __init__(self, key: Key, value: Value, next_entry: Self):\n    self.key: Key = key\n    self.value: Value = value\n    self.next: Self = next_entry\n'
+        src = '\nfrom paw import DictKeyType, Self, boxing\n\n@boxing\n@native_name("PyDictEntryUnsafe")\nclass DictEntryUnsafe[Key: DictKeyType, Value]:\n  def __init__(self, key: Key, value: Value, next_entry: Self):\n    self.key: Key = key\n    self.value: Value = value\n    self.next: Self = next_entry\n'
         tree = ast.parse(src)
-        info = ClassInfo(tree.body[-1], module_path='py2cpp/util/dict.py')
+        info = ClassInfo(tree.body[-1], module_path='paw/util/dict.py')
         classes = {'DictEntryUnsafe': info}
         parser = TypeParser()
         parser.set_classes(classes)
@@ -350,12 +350,12 @@ class TestTypeNodePhase4Helpers(unittest.TestCase):
         from src.analysis.analyzer import SignatureBuilder, TypeParser
         from src.analysis.ir import ClassInfo
         from src.analysis.type_render import CLASS_BODY
-        with open('py2cpp/util/deque.py', encoding='utf-8') as f:
+        with open('paw/util/deque.py', encoding='utf-8') as f:
             src = f.read()
         tree = ast.parse(src)
         rev_cls = next((n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == 'DequeReverseIterator'))
-        info = ClassInfo(rev_cls, module_path='py2cpp/util/deque.py')
-        classes = {n.name: ClassInfo(n, module_path='py2cpp/util/deque.py') for n in tree.body if isinstance(n, ast.ClassDef)}
+        info = ClassInfo(rev_cls, module_path='paw/util/deque.py')
+        classes = {n.name: ClassInfo(n, module_path='paw/util/deque.py') for n in tree.body if isinstance(n, ast.ClassDef)}
         parser = TypeParser()
         parser.set_classes(classes)
         sigs = SignatureBuilder(parser)

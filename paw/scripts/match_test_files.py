@@ -1,4 +1,4 @@
-"""列出 ``test/**/test_*.paw`` 中匹配模式的相对路径（供 ``build.bat`` / ``run.bat``）。"""
+"""列出 ``tests/**/test_*.paw`` 中匹配模式的相对路径（供 ``build.bat`` / ``run.bat``）。"""
 from __future__ import annotations
 
 import fnmatch
@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-TEST_DIR = ROOT / "test"
+TEST_DIR = ROOT / "tests"
 
 
 def _is_fail(path: Path) -> bool:

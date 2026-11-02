@@ -23,7 +23,7 @@ class ClassTypeUsingIndentTests(unittest.TestCase):
   def test_type_alias_using_indented_with_members(self):
     text = self._translate(
       '''
-from py2cpp import *
+from paw import *
 
 class Box:
   type Element = int
@@ -48,7 +48,7 @@ class Box:
   def test_generator_single_public_with_indented_associated_types(self):
     text = self._translate(
       '''
-from py2cpp import *
+from paw import *
 
 def gen_three() -> GeneratorType[int, None, None]:
   yield 1

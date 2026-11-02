@@ -1,5 +1,5 @@
 PY2CPP_IGNORE
-#include "py2cpp/ui/file_dialog.h"
+#include "paw/ui/file_dialog.h"
 PY2CPP_END
 
 #ifdef _WIN32

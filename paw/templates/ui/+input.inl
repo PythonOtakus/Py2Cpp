@@ -1,5 +1,5 @@
 PY2CPP_IGNORE
-#include "py2cpp/ui/input.h"
+#include "paw/ui/input.h"
 PY2CPP_END
 
 #ifdef _WIN32

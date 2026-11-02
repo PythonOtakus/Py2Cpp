@@ -20,7 +20,7 @@ _ZEUS_TEMPLATE_ROOT = MONOREPO_ROOT / "zeus" / "templates"
 
 
 def discover_module_paste_after_templates() -> tuple[tuple[str, str, bool], ...]:
-  """返回 ``(module_rel, template_rel, in_module)``；跳过 ``test/``。"""
+  """返回 ``(module_rel, template_rel, in_module)``；跳过 ``~test/`` 等。"""
   validate_template_module_bindings()
   out: list[tuple[str, str, bool]] = []
   root = _TEMPLATE_ROOT.resolve()
@@ -41,7 +41,7 @@ def discover_module_paste_after_templates() -> tuple[tuple[str, str, bool], ...]
 def discover_zeus_paste_after_templates() -> tuple[tuple[str, str, str], ...]:
   """``zeus/templates/**/+*.inl`` → ``(module_rel, template_rel, templates_root)``。
 
-  模块路径为用户模块 rel（如 ``platform/window``），**不**加 ``py2cpp/`` 前缀。
+  模块路径为用户模块 rel（如 ``platform/window``），**不**加 ``paw/`` 前缀。
   """
   out: list[tuple[str, str, str]] = []
   root = _ZEUS_TEMPLATE_ROOT
@@ -74,7 +74,7 @@ def discover_class_header_inject_templates() -> tuple[tuple[str, str], ...]:
 
 
 def discover_module_paste_before_templates() -> tuple[tuple[str, str], ...]:
-  """返回 ``(module_rel, template_rel)``；跳过 ``test/``。"""
+  """返回 ``(module_rel, template_rel)``；跳过 ``~test/`` 等。"""
   validate_template_module_bindings()
   out: list[tuple[str, str]] = []
   root = _TEMPLATE_ROOT.resolve()

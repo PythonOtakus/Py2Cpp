@@ -29,7 +29,7 @@ int main() {
   bool threw = false;
   try {
     (void)sm.spanOf(a.fileId, 5, 2);
-  } catch (const py2cpp::core::exceptions::PyValueError&) {
+  } catch (const paw::core::exceptions::PyValueError&) {
     threw = true;
   } catch (...) {
     std::printf("FAIL spanOf bad range wrong exception\n");

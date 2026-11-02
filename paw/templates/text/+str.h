@@ -1,8 +1,8 @@
 PY2CPP_IGNORE
-#include "py2cpp/text/str.h"
-#include "py2cpp/util/tuple.h"
+#include "paw/text/str.h"
+#include "paw/util/tuple.h"
 
-namespace py2cpp
+namespace paw
 {
 namespace text
 {
@@ -52,5 +52,5 @@ PY2CPP_IGNORE
 
 } // namespace str
 } // namespace text
-} // namespace py2cpp
+} // namespace paw
 PY2CPP_END

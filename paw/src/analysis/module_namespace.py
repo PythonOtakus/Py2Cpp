@@ -68,8 +68,8 @@ def namespace_qualifier_for_module(module_path: str) -> str:
 def inl_namespace_segments(module_path: str) -> list[str]:
   """``.inl`` 实现作用域：用户模块套 ``namespace``；运行时用全局全限定名。
 
-  MSVC 在多个 ``namespace py2cpp { }`` 块（各子模块 ``.inl``）之后无法正确解析
-  ``py2cpp::PyRange`` 等包根符号，故 ``py2cpp`` 及 ``py2cpp/…`` 下所有 ``.inl`` 均不套命名空间。
+  MSVC 在多个 ``namespace paw { }`` 块（各子模块 ``.inl``）之后无法正确解析
+  ``paw::PyRange`` 等包根符号，故 ``py2cpp`` 及 ``paw/…`` 下所有 ``.inl`` 均不套命名空间。
   FFI（``ffi/…``）``.inl`` 同样不套命名空间，实现用全限定 ``ffi::…``。
   """
   from ..constant.ffi_layout import is_ffi_module_path
@@ -111,7 +111,7 @@ def using_namespace_line(qualifier: str) -> str:
 
 
 def using_symbol_line(qualifier: str, symbol: str) -> str:
-  # 嵌套 ``namespace py2cpp`` 内 ``using py2cpp::PyRange`` 须 ``::`` 前缀，否则 MSVC 绑到未完成的同名外层块。
+  # 嵌套 ``namespace paw`` 内 ``using paw::PyRange`` 须 ``::`` 前缀，否则 MSVC 绑到未完成的同名外层块。
   return f"using ::{qualifier}::{symbol};"
 
 

@@ -1,0 +1,12 @@
+"""``@final`` 类不可继承（``tests/fail/``）。"""
+from paw import *
+
+final class Sealed:
+  pass
+
+class Bad(Sealed):
+  pass
+
+def main():
+  x: Bad = new()
+  return 0

@@ -1,9 +1,9 @@
 PY2CPP_IGNORE
-#include "py2cpp/core/exceptions.h"
-using namespace py2cpp::core::exceptions;
+#include "paw/core/exceptions.h"
+using namespace paw::core::exceptions;
 PY2CPP_END
 
-namespace py2cpp {
+namespace paw {
 namespace core {
 namespace exceptions {
 

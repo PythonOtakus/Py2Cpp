@@ -6,7 +6,7 @@ cd /d "%ROOT%"
 
 set "PY=python"
 set "MATCH_PY=%CD%\scripts\match_test_files.py"
-set "GEN_DIR=%CD%\generated\test"
+set "GEN_DIR=%CD%\generated\tests"
 set "COUNT=0"
 set "FAILED="
 set "MATCHED=0"
@@ -46,7 +46,7 @@ for /f "usebackq delims=" %%R in (`%PY% "%MATCH_PY%"!PAT_ARGS!`) do (
 )
 
 if !MATCHED! equ 0 (
-  echo ERROR: no test\**\test_*.py matched patterns:!PAT_ARGS!
+  echo ERROR: no tests\**\test_*.py matched patterns:!PAT_ARGS!
   goto NoMatch
 )
 
@@ -60,7 +60,7 @@ exit /b 0
 
 :RunOneTest
 set "REL=%~1"
-set "SRC=test\!REL!"
+set "SRC=tests\!REL!"
 if not exist "%SRC%" (
   echo ERROR: not found: %SRC%
   set "FAILED=!FAILED! %SRC%(missing)"
@@ -70,7 +70,7 @@ set "EXE_REL=!REL:.py=.exe!"
 set "EXE_REL=!EXE_REL:.paw=.exe!"
 set "EXE=!GEN_DIR!\!EXE_REL!"
 set /a COUNT+=1
-echo === run test\!REL! ===
+echo === run tests\!REL! ===
 if not exist "!EXE!" (
   echo ERROR: exe not found: !EXE! ^(run build first^)
   set "FAILED=!FAILED! !REL!(no exe)"
@@ -95,7 +95,7 @@ goto Usage
 echo.
 echo(Usage: run PATTERN [PATTERN ...]
 echo.
-echo(  PATTERN   Same as build.bat; runs generated\test\...\test_*.exe only
+echo(  PATTERN   Same as build.bat; runs generated\tests\...\test_*.exe only
 echo(  Examples:
 echo(    run vararg
 echo(    run *vararg*

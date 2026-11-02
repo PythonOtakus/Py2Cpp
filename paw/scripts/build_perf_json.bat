@@ -17,20 +17,20 @@ call "%~dp0_bootstrap_runtime.bat"
 if errorlevel 1 exit /b 1
 
 echo === parallel compile JSON tests ===
-%PY% scripts\parallel_build.py files --root test stdlib\serde\test_json.py perf\test_json_serde.py perf\test_json_dump_perf.py perf\test_json_document_perf.py %EXTRA%
+%PY% scripts\parallel_build.py files --root tests stdlib\serde\test_json.py perf\test_json_serde.py perf\test_json_dump_perf.py perf\test_json_document_perf.py %EXTRA%
 if errorlevel 1 exit /b 1
 
 echo.
 echo === Py2Cpp JSON serde perf ===
-generated\test\perf\test_json_serde.exe
+generated\tests\perf\test_json_serde.exe
 if errorlevel 1 exit /b 1
 echo.
 echo === dumps vs dump(StringIO) ===
-generated\test\perf\test_json_dump_perf.exe
+generated\tests\perf\test_json_dump_perf.exe
 if errorlevel 1 exit /b 1
 echo.
 echo === JsonDocument vs full RMW ===
-generated\test\perf\test_json_document_perf.exe
+generated\tests\perf\test_json_document_perf.exe
 if errorlevel 1 exit /b 1
 echo.
 echo === CPython baseline ===

@@ -1,5 +1,5 @@
 PY2CPP_IGNORE
-#include "py2cpp/text/bytes.h"
+#include "paw/text/bytes.h"
 PY2CPP_END
 
 PY2CPP_BEGIN_SCOPE

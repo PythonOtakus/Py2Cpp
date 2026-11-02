@@ -1,5 +1,5 @@
 PY2CPP_IGNORE
-#include "py2cpp/core/exceptions.h"
+#include "paw/core/exceptions.h"
 #define ctx_EnumGetter get___enum__
 #define ctx_IsInstanceBody
 #define ctx_AppendImpls

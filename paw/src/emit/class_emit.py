@@ -845,7 +845,7 @@ def _emit_coroutine_param_default_ctor(tr: "Translator", info: ClassInfo) -> Non
     tr.indent_level += 1
     tr.write_line("this->_state = 0;")
     tr.write_line("this->_send_pending = false;")
-    tr.write_line("this->_send_value = ::py2cpp::core::none::PyNone();")
+    tr.write_line("this->_send_value = ::paw::core::none::PyNone();")
     for fname in info.fields:
       if fname.endswith("_active") and (
         fname.startswith("_yf") or fname.startswith("_for")

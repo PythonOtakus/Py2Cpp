@@ -1,9 +1,9 @@
 """FBX ASCII 子集读写（Vertices → ``Mesh``）。二进制 FBX 本阶段不解析。"""
 from __future__ import annotations
 
-from py2cpp import *
-from py2cpp.io.path import Path
-from py2cpp.spatial.color import Color
+from paw import *
+from paw.io.path import Path
+from paw.spatial.color import Color
 
 from ..render.mesh import Mesh
 

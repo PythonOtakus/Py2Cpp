@@ -1231,7 +1231,7 @@ def _func_template_params(func: ast.FunctionDef) -> set[str]:
 
 
 def _dispatch_pick_name(func: ast.FunctionDef) -> str:
-  from ..analysis.patterns import py2cpp_emit_symbol
+  from ..analysis.patterns import paw_emit_symbol
 
   safe = "".join(c if c.isalnum() else "_" for c in func.name)
   return py2cpp_emit_symbol("type_if", safe, str(func.lineno), "pick")

@@ -113,7 +113,7 @@ def test_stdlib_ast_from_mid_zero_fallback():
   from compiler.py.mid.ast_from_mid import ast_module_from_mid
 
   n = 0
-  for path in sorted(Path("py2cpp").rglob("*.paw")):
+  for path in sorted(Path("paw").rglob("*.paw")):
     src = path.read_text(encoding="utf-8")
     mid = lower_to_mid(
       bind_module(parse_tokens(Lexer(src, FileId(0)).tokenize(), src), path=str(path))
@@ -225,7 +225,7 @@ def test_seed_no_materialize_default(monkeypatch):
   assert sp.mid_emit_ok and sp.tree.body == []
   assert any("跳过 materialize_ast" in d for d in sp.diagnostics)
 
-  opt = Path("py2cpp/core/optional.paw")
+  opt = Path("paw/core/optional.paw")
   op = parse_module(opt.read_text(encoding="utf-8"), path=str(opt), use_cache=False)
   assert op.mid_emit_ok and op.tree.body == []
   assert any("跳过 materialize_ast" in d for d in op.diagnostics)
@@ -246,7 +246,7 @@ def test_mid_ok_prefers_ast_from_mid(monkeypatch):
   from src.frontend.api import clear_parse_cache, parse_module
 
   clear_parse_cache()
-  path = Path("py2cpp/core/optional.paw")
+  path = Path("paw/core/optional.paw")
   parsed = parse_module(path.read_text(encoding="utf-8"), path=str(path), use_cache=False)
   assert parsed.mid_emit_ok and len(parsed.tree.body) > 0
   assert any(d.endswith("mid_ok → ast_from_mid") for d in parsed.diagnostics)
@@ -257,7 +257,7 @@ def test_repo_paw_mid_ok_and_from_mid():
   from compiler.py.mid.ast_from_mid import ast_module_from_mid
 
   n = 0
-  for root in ("py2cpp", "test", "compiler/paw"):
+  for root in ("paw", "tests", "compiler/paw"):
     for path in sorted(Path(root).rglob("*.paw")):
       src = path.read_text(encoding="utf-8")
       mid = lower_to_mid(
@@ -303,18 +303,18 @@ def test_seed_mid_primary_default(monkeypatch):
   tr = Translator("t", "compiler/paw/frontend/diagnostic.paw")
   tr.module_mid_emit_ok = {
     "compiler/paw/frontend/diagnostic": True,
-    "py2cpp/core/optional": True,
-    "test/lang/test_enum": True,
+    "paw/core/optional": True,
+    "tests/lang/test_enum": True,
   }
   assert tr._module_mid_emit_primary("compiler/paw/frontend/diagnostic")
-  assert not tr._module_mid_emit_primary("test/lang/test_enum")
-  assert not tr._module_mid_emit_primary("py2cpp/core/optional")
+  assert not tr._module_mid_emit_primary("tests/lang/test_enum")
+  assert not tr._module_mid_emit_primary("paw/core/optional")
   monkeypatch.setenv("PY2CPP_MID_PRIMARY", "0")
   assert not tr._module_mid_emit_primary("compiler/paw/frontend/diagnostic")
-  assert not tr._module_mid_emit_primary("test/lang/test_enum")
+  assert not tr._module_mid_emit_primary("tests/lang/test_enum")
   monkeypatch.setenv("PY2CPP_MID_PRIMARY", "1")
-  assert tr._module_mid_emit_primary("py2cpp/core/optional")
-  assert tr._module_mid_emit_primary("test/lang/test_enum")
+  assert tr._module_mid_emit_primary("paw/core/optional")
+  assert tr._module_mid_emit_primary("tests/lang/test_enum")
 
 
 def test_seed_translate_keeps_module_path(tmp_path, monkeypatch):
@@ -455,7 +455,7 @@ def test_seed_discover_mid_imports_when_empty_tree(monkeypatch):
   mods = discover_translation_modules(
     (root / "compiler/paw/frontend/parser.paw").resolve(),
     include_stdlib=False,
-    runtime_root=root / "py2cpp",
+    runtime_root=root / "paw",
     project_root=root,
   )
   names = [m for m, _ in mods]
@@ -606,7 +606,7 @@ def test_user_module_mid_primary_translate(tmp_path, monkeypatch):
 
   clear_parse_cache()
   _h, cpp = Translator.translate_file(
-    "test/lang/test_enum.paw",
+    "tests/lang/test_enum.paw",
     str(tmp_path / "out"),
     include_stdlib=False,
     emit_main=False,
@@ -616,7 +616,7 @@ def test_user_module_mid_primary_translate(tmp_path, monkeypatch):
 
 
 def test_stdlib_mid_primary_writes_runtime(tmp_path, monkeypatch):
-  """``MID_PRIMARY=1`` 时 stdlib 入口 Mid 落 ``runtime/py2cpp/...`` 且 ``.h/.inl/.cpp`` 齐。"""
+  """``MID_PRIMARY=1`` 时 stdlib 入口 Mid 落 ``runtime/paw/...`` 且 ``.h/.inl/.cpp`` 齐。"""
   monkeypatch.setenv("PY2CPP_MID_PRIMARY", "1")
   monkeypatch.delenv("PY2CPP_NO_MATERIALIZE", raising=False)
   from src.frontend.api import clear_parse_cache
@@ -624,7 +624,7 @@ def test_stdlib_mid_primary_writes_runtime(tmp_path, monkeypatch):
 
   clear_parse_cache()
   h, cpp = Translator.translate_file(
-    "py2cpp/core/optional.paw",
+    "paw/core/optional.paw",
     str(tmp_path / "out"),
     include_stdlib=False,
     emit_main=False,
@@ -638,7 +638,7 @@ def test_stdlib_mid_primary_writes_runtime(tmp_path, monkeypatch):
   inl = cpp_p.with_suffix(".inl")
   assert inl.is_file()
   h_text = h_p.read_text(encoding="utf-8")
-  assert 'include "py2cpp/core/optional.inl"' in h_text.replace("\\", "/")
+  assert 'include "paw/core/optional.inl"' in h_text.replace("\\", "/")
   cpp_text = cpp_p.read_text(encoding="utf-8")
   assert "PY2CPP_LIBRARY_TU" in cpp_text
   assert "optional.inl" in cpp_text

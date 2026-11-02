@@ -22,7 +22,7 @@ class EnumNumericEmitTests(unittest.TestCase):
   def test_int_enum_member_uses_pyint_wrapper(self):
     cpp = self._translate(
       '''
-from py2cpp import enum
+from paw import enum
 
 @enum
 class Mode:
@@ -41,7 +41,7 @@ def f() -> int:
   def test_enum_ctor_from_int(self):
     cpp = self._translate(
       '''
-from py2cpp import enum
+from paw import enum
 
 @enum
 class Mode:
@@ -57,7 +57,7 @@ def f() -> int:
   def test_int64_enum_scalar_wrapper(self):
     cpp = self._translate(
       '''
-from py2cpp import enum, int64
+from paw import enum, int64
 
 @enum
 class Wide(int64):
@@ -76,7 +76,7 @@ def f() -> int:
   def test_int64_enum_ctor(self):
     cpp = self._translate(
       '''
-from py2cpp import enum, int64
+from paw import enum, int64
 
 @enum
 class Wide(int64):

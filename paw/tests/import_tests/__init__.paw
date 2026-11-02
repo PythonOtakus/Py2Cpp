@@ -1,0 +1,4 @@
+"""包 ``import_tests``（``__init__.py`` → ``namespace __init__``）。"""
+
+from paw import *
+PkgTag: int = 1

@@ -13,8 +13,8 @@ from src.translator import Translator
 
 class ClassInfoForTypeTests(unittest.TestCase):
   def _translator_with_list(self) -> Translator:
-    path = Path("test/util/test_list.py").resolve()
-    runtime_root = Path("py2cpp").resolve()
+    path = Path("tests/util/test_list.py").resolve()
+    runtime_root = Path("paw").resolve()
     project_root = path.parent.parent.parent
     modules = discover_translation_modules(
       path,
@@ -42,7 +42,7 @@ class ClassInfoForTypeTests(unittest.TestCase):
     from src.analysis.ir import ClassInfo, class_info_for_cpp_type, clear_class_cpp_index
 
     node = ast.parse("class list: pass").body[0]
-    info = ClassInfo(node, "py2cpp/util/list")
+    info = ClassInfo(node, "paw/util/list")
     info.cpp_rename = "PyList"
     classes = {"list": info}
     clear_class_cpp_index()

@@ -39,10 +39,10 @@ def _translate_snippet(src: str, *, name: str = "nav_snip.py") -> tuple[Path, di
 
 class NavIndexTests(unittest.TestCase):
   def test_module_shard_path_matches_module(self):
-    self.assertEqual(module_shard_name("py2cpp/util/list"), "py2cpp/util/list.json")
+    self.assertEqual(module_shard_name("paw/util/list"), "paw/util/list.json")
     self.assertEqual(
-      module_shard_rel("test/misc/test_chr_ord"),
-      "modules/test/misc/test_chr_ord.json",
+      module_shard_rel("tests/misc/test_chr_ord"),
+      "modules/tests/misc/test_chr_ord.json",
     )
 
   def test_index_version_is_3(self):
@@ -50,8 +50,8 @@ class NavIndexTests(unittest.TestCase):
 
   def test_user_module_shard_has_class_and_method(self):
     src = """
-from py2cpp import *
-from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
+from paw import *
+from paw.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 @copyable
 class ChrOrdTests(TestCaseMixin):
@@ -86,8 +86,8 @@ class ChrOrdTests(TestCaseMixin):
 
   def test_second_write_skips_unchanged_shard(self):
     src = """
-from py2cpp import *
-from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
+from paw import *
+from paw.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 @copyable
 class ChrOrdTests(TestCaseMixin):
@@ -110,7 +110,7 @@ class ChrOrdTests(TestCaseMixin):
 
   def test_property_setter_uses_dunder_set(self):
     src = """
-from py2cpp import *
+from paw import *
 
 @copyable
 class Box:
@@ -137,7 +137,7 @@ class Box:
 
   def test_staticproperty_indexed(self):
     src = """
-from py2cpp import *
+from paw import *
 
 @copyable
 class Matrix3:
@@ -156,7 +156,7 @@ class Matrix3:
 
   def test_type_alias_indexed(self):
     src = """
-from py2cpp import *
+from paw import *
 
 @copyable
 class Holder:
@@ -174,7 +174,7 @@ class Holder:
 
   def test_enum_members_indexed(self):
     src = """
-from py2cpp import *
+from paw import *
 
 @enum
 class AggModeEnum:
@@ -198,7 +198,7 @@ class AggModeEnum:
 
   def test_union_variant_prefers_factory(self):
     src = """
-from py2cpp import *
+from paw import *
 
 @union
 class Result[OkValue, ErrValue]:
@@ -245,7 +245,7 @@ class Result[OkValue, ErrValue]:
 
   def test_protocol_py_only(self):
     src = """
-from py2cpp import *
+from paw import *
 
 @protocol
 class Readable:
@@ -264,7 +264,7 @@ class Readable:
 
   def test_delegate_indexed(self):
     src = """
-from py2cpp import *
+from paw import *
 
 @delegate
 def UIEventDelegate() -> None: ...
@@ -281,8 +281,8 @@ def UIEventDelegate() -> None: ...
     from src.analysis.ir import ClassInfo
 
     header = """
-namespace py2cpp { namespace util { namespace list { template<typename T> class PyList; } } }
-namespace py2cpp
+namespace paw { namespace util { namespace list { template<typename T> class PyList; } } }
+namespace paw
 {
   namespace util
   {
@@ -302,7 +302,7 @@ namespace py2cpp
 """
     lines = header.splitlines()
     node = ast.parse("class list: pass").body[0]
-    info = ClassInfo(node, "py2cpp/util/list")
+    info = ClassInfo(node, "paw/util/list")
     info.cpp_rename = "PyList"
     self.assertEqual(_class_decl_line(lines, info), 12)
 
@@ -312,7 +312,7 @@ namespace py2cpp
     from src.analysis.ir import ClassInfo
 
     header = """
-namespace py2cpp
+namespace paw
 {
   enum class AggModeEnum : PyInt
   {
@@ -322,25 +322,25 @@ namespace py2cpp
 """
     lines = header.splitlines()
     node = ast.parse("class AggModeEnum: pass").body[0]
-    info = ClassInfo(node, "py2cpp/alg/agg_mode")
+    info = ClassInfo(node, "paw/alg/agg_mode")
     self.assertEqual(_class_decl_line(lines, info), 4)
 
   def test_impl_line_skips_this_call_site(self):
     inl = """
-void py2cpp::util::list::PyList<T>::sort()
+void paw::util::list::PyList<T>::sort()
 {
   PyInt minrun = this->_tim_compute_minrun(n);
 }
 
 template<typename T>
-PyInt py2cpp::util::list::PyList<T>::_tim_compute_minrun(PyInt n) const
+PyInt paw::util::list::PyList<T>::_tim_compute_minrun(PyInt n) const
 {
   return n;
 }
 """
     lines = inl.splitlines()
     patterns = [
-      re.compile(r"\bpy2cpp::util::list::PyList\s*::\s*_tim_compute_minrun\s*\("),
+      re.compile(r"\bpaw::util::list::PyList\s*::\s*_tim_compute_minrun\s*\("),
       re.compile(r"\bPyList\s*::\s*_tim_compute_minrun\s*\("),
       re.compile(r"\b_tim_compute_minrun\s*\("),
     ]

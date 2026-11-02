@@ -2,7 +2,7 @@
 
 用法:
   python scripts/reorder_class_members.py py2cpp
-  python scripts/reorder_class_members.py py2cpp/text/str.py
+  python scripts/reorder_class_members.py paw/text/str.py
 
 仅重排 ``class`` 体内部语句；模块 import、类定义先后顺序不变。
 """
@@ -414,7 +414,7 @@ def reorder_file(path: Path) -> bool:
 
 
 def main(argv: list[str]) -> int:
-  roots = [Path(a) for a in argv] if argv else [REPO / "py2cpp"]
+  roots = [Path(a) for a in argv] if argv else [REPO / "paw"]
   changed = 0
   for root in roots:
     if not root.is_absolute():

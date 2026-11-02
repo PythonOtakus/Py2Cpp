@@ -40,11 +40,11 @@ def _info(
 class HeaderUsingsTests(unittest.TestCase):
   def test_list_header_from_native_name_classes(self):
     classes = {
-      "list": _info("list", "py2cpp/util/list", cpp_rename="PyList"),
+      "list": _info("list", "paw/util/list", cpp_rename="PyList"),
       "ListIterator": _info(
-        "ListIterator", "py2cpp/util/list", cpp_rename="PyListIterator"
+        "ListIterator", "paw/util/list", cpp_rename="PyListIterator"
       ),
-      "TestCase": _info("TestCase", "py2cpp/test/unittest"),
+      "TestCase": _info("TestCase", "paw/test/unittest"),
     }
     index = build_header_usings_index(classes)
     list_h = stdlib_header_include("util/list")
@@ -58,17 +58,17 @@ class HeaderUsingsTests(unittest.TestCase):
     from src.constant.stdlib_layout import stdlib_header_include
 
     classes = {
-      "range": _info("range", "py2cpp/util/range", cpp_rename="PyRange"),
+      "range": _info("range", "paw/util/range", cpp_rename="PyRange"),
     }
     index = build_header_usings_index(classes)
     range_h = stdlib_header_include("util/range")
     pairs = index[range_h]
-    self.assertEqual(pairs, [("py2cpp::util::range", "PyRange")])
+    self.assertEqual(pairs, [("paw::util::range", "PyRange")])
 
   def test_global_namespace_module_omitted(self):
     classes = {
       "StackArray": _info(
-        "StackArray", "py2cpp/util/stack_array", cpp_rename="PyStackArray"
+        "StackArray", "paw/util/stack_array", cpp_rename="PyStackArray"
       ),
     }
     index = build_header_usings_index(classes)
@@ -88,23 +88,23 @@ class StdlibHeaderGlobalUsingTests(unittest.TestCase):
     from src.emit.layout_emit import stdlib_header_global_using_line
 
     self.assertEqual(
-      stdlib_header_global_using_line("py2cpp/util/dict"),
-      "using namespace py2cpp::util::dict;",
+      stdlib_header_global_using_line("paw/util/dict"),
+      "using namespace paw::util::dict;",
     )
     self.assertEqual(
-      stdlib_header_global_using_line("py2cpp/util/list"),
-      "using namespace py2cpp::util::list;",
+      stdlib_header_global_using_line("paw/util/list"),
+      "using namespace paw::util::list;",
     )
     self.assertEqual(
-      stdlib_header_global_using_line("py2cpp/text/str"),
-      "using namespace py2cpp::text::str;",
+      stdlib_header_global_using_line("paw/text/str"),
+      "using namespace paw::text::str;",
     )
 
   def test_global_namespace_modules_skip(self):
     from src.emit.layout_emit import stdlib_header_global_using_line
 
-    self.assertIsNone(stdlib_header_global_using_line("py2cpp/util/tuple"))
-    self.assertIsNone(stdlib_header_global_using_line("py2cpp"))
+    self.assertIsNone(stdlib_header_global_using_line("paw/util/tuple"))
+    self.assertIsNone(stdlib_header_global_using_line("paw"))
 
 
 if __name__ == "__main__":

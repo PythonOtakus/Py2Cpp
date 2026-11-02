@@ -1,11 +1,11 @@
-"""One-off: split py2cpp/__init__.py -> builtins.py + slim __init__.py; update stdlib imports."""
+"""One-off: split paw/__init__.py -> builtins.py + slim __init__.py; update stdlib imports."""
 from __future__ import annotations
 
 import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-PY2CPP = ROOT / "py2cpp"
+PY2CPP = ROOT / "paw"
 
 EXTRA_IMPORTS: dict[str, list[str]] = {
   "text/bytes.py": ["from .str import str"],
@@ -36,7 +36,7 @@ def split_init() -> None:
       body_lines.append(line)
   builtins_doc = (
     '"""py2cpp 内建：类型标记、内存 API、装饰器桩、new/len/print 等。\n\n'
-    "由 ``py2cpp/__init__.py`` 再导出；标准库子模块须 ``from ..builtins import *``（深度见编码规范 S27）。\n"
+    "由 ``paw/__init__.py`` 再导出；标准库子模块须 ``from ..builtins import *``（深度见编码规范 S27）。\n"
     '"""\n'
     "from __future__ import annotations\n\n"
     "# py2cpp: strict-off\n\n"
@@ -47,7 +47,7 @@ def split_init() -> None:
   )
   new_init = (
     '"""py2cpp 标准库包根：自 ``builtins`` 与域子包再导出（见 ``builtins.py``）。\n\n'
-    "``from py2cpp import *`` 拉入 ``list``/``str``/``dict`` 等；``io`` 须 ``from py2cpp.io import open, StringIO``。\n"
+    "``from paw import *`` 拉入 ``list``/``str``/``dict`` 等；``io`` 须 ``from paw.io import open, StringIO``。\n"
     '"""\n'
     "from .builtins import *\n"
     + tail

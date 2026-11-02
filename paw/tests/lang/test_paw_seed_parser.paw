@@ -1,0 +1,48 @@
+"""C0 种子回归：``compiler.paw.frontend.parser`` 解析 ``enum`` / ``record`` / ``ref class``。"""
+from paw import *
+from paw.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
+from compiler.paw.frontend.source import SourceManager
+from compiler.paw.frontend.parser import parseSource
+from compiler.paw.frontend.syntax_nodes import ItemKindEnum, SyntaxModule
+
+class PawSeedParserTests(TestCaseMixin):
+  _testTag = 1
+
+  override def test(self):
+    src: str = (
+      "enum Color:\n"
+      "  Red = 0\n"
+      "  Green = ...\n"
+      "record Point:\n"
+      "  x: int = 0\n"
+      "ref class Node:\n"
+      "  value: int = 0\n"
+      "x = 1\n"
+    )
+    sm: SourceManager = new()
+    sf = sm.add("e.paw", src, "d1")
+    mod: SyntaxModule = parseSource(sf.text, sf.fileId)
+    self.assertTrue(len(mod.enums) == 1)
+    self.assertTrue(len(mod.classes) == 2)
+    self.assertTrue(len(mod.items) >= 4)
+    self.assertTrue(mod.items[0].kind == ItemKindEnum.Enum)
+    self.assertTrue(mod.enums[0].name == "Color")
+    self.assertTrue(len(mod.enums[0].members) == 2)
+    self.assertTrue(mod.enums[0].members[0].name == "Red")
+    self.assertTrue(mod.enums[0].members[0].valueSource == "0")
+    self.assertTrue(mod.enums[0].members[1].name == "Green")
+    self.assertTrue(mod.enums[0].members[1].valueSource == "...")
+    self.assertTrue(mod.items[1].kind == ItemKindEnum.Class)
+    self.assertTrue(mod.classes[0].name == "Point")
+    self.assertTrue(mod.classes[0].isRecord)
+    self.assertTrue(not mod.classes[0].isRef)
+    self.assertTrue(mod.classes[1].name == "Node")
+    self.assertTrue(mod.classes[1].isRef)
+    self.assertTrue(not mod.classes[1].isRecord)
+    self.assertTrue(mod.items[3].kind == ItemKindEnum.Opaque)
+
+def main():
+  suite: TestSuite = new()
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
+    suite.addTest(Class())
+  return TextTestRunner().run(suite)

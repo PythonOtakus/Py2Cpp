@@ -29,7 +29,7 @@ class PyTupleSliceEmitTests(unittest.TestCase):
     with tempfile.TemporaryDirectory() as tmp:
       out = Path(tmp)
       py = out / "mod.py"
-      py.write_text(f"from py2cpp import *\n\n{body}", encoding="utf-8")
+      py.write_text(f"from paw import *\n\n{body}", encoding="utf-8")
       _h, cpp_path = Translator.translate_file(
         str(py), output_dir=str(out / "generated"), include_stdlib=True,
       )

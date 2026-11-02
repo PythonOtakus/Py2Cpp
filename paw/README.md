@@ -36,10 +36,10 @@ ffi.bat third_party\sqlite\sqlite3.h
 |------|------|
 | `main.py` | CLI 入口 |
 | `src/` | Python→C++ 翻译器 |
-| `py2cpp/` | 标准库 Python 描述 |
+| `paw/` | 标准库包（`from paw import *` / `from paw.xxx import …`） |
 | `compiler/` | Paw 自举前端 / Mid / stages |
 | `ffi/` | 第三方 C FFI `.pyi` |
-| `test/` | 集成测试 |
+| `tests/` | 集成测试 |
 | `examples/` | 示例 |
 | `generated/` | 默认翻译输出（勿手改） |
 | `docs/` | 项目文档 |

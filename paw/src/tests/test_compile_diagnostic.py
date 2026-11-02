@@ -66,8 +66,8 @@ class CompileDiagnosticTests(unittest.TestCase):
   def test_py2cpp_getattr_message_includes_location(self):
     from src.emit.compile_diagnostic_emit import compile_diag_py2cpp_getattr
 
-    msg = compile_diag_py2cpp_getattr("missing", loc_prefix="test/fail/x.py:12: ")
-    self.assertTrue(msg.startswith("test/fail/x.py:12:"))
+    msg = compile_diag_py2cpp_getattr("missing", loc_prefix="tests/fail/x.py:12: ")
+    self.assertTrue(msg.startswith("tests/fail/x.py:12:"))
     self.assertIn("PY2CPP_GETATTR", msg)
     self.assertIn("missing", msg)
 

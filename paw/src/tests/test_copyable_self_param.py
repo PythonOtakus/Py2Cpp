@@ -14,7 +14,7 @@ from src.translator import Translator
 class CopyableSelfParamTests(unittest.TestCase):
   def test_instance_method_self_param_is_const_ref(self):
     src = """
-from py2cpp import copyable, Self
+from paw import copyable, Self
 
 @copyable
 class Widget:
@@ -36,7 +36,7 @@ class Widget:
 
   def test_staticmethod_self_param_by_value(self):
     src = """
-from py2cpp import copyable, Self, staticmethod
+from paw import copyable, Self, staticmethod
 
 @copyable
 class Widget:
@@ -59,7 +59,7 @@ class Widget:
 
   def test_decimal_compare_emits_const_ref(self):
     src = """
-from py2cpp import *
+from paw import *
 
 @copyable
 class Decimal:

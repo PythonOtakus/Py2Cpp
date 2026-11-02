@@ -1,7 +1,7 @@
 # JSON `loads` RapidJSON 档优化方案
 
 > **状态**：实现中（阶段 0–2 已完成，阶段 3 部分落地）  
-> **目标 workload**：`loads[list[User]]`（`test/perf/test_json_serde.py`，n=2000，payload ≈ 85–95 KB）  
+> **目标 workload**：`loads[list[User]]`（`tests/perf/test_json_serde.py`，n=2000，payload ≈ 85–95 KB）  
 > **约束**：符合 [编码规范.md](./编码规范.md)；不引入 STL / 第三方 JSON 库；不手改 `generated/`；用户 Python API（`loads` / `@serializable`）不变。
 
 ### 实现进度（2026-05-27）
@@ -9,18 +9,18 @@
 | 阶段 | 内容 | 状态 | 实测 / 备注 |
 |------|------|------|-------------|
 | **0** | perf 基线、`test_json` 乱序键 | ✅ | `scripts/build_perf_json.bat` 全绿 |
-| **PR-A** | `mark`/`restore`、`_src_view`、`loadStrSpan`、`skipEmptyArray`；`str.from_codes_span` | ✅ | `py2cpp/serde/json.py`、`py2cpp/text/str.py` |
-| **PR-B** | `_schema_deserialize_eligible`、有序 `deserialize` + `restore` 回退 | ✅ | `test/serde/test_json.py` 含 `reordered` |
+| **PR-A** | `mark`/`restore`、`_src_view`、`loadStrSpan`、`skipEmptyArray`；`str.from_codes_span` | ✅ | `paw/serde/json.py`、`paw/text/str.py` |
+| **PR-B** | `_schema_deserialize_eligible`、有序 `deserialize` + `restore` 回退 | ✅ | `tests/serde/test_json.py` 含 `reordered` |
 | **PR-C** | `_fast_load_list_*` + `_JsonLoads<PyList<User>>` 特化 | ✅ | `serializable.py` → 用户模块 `.inl` |
 | **3** | C++ 快路径 `from_codes_span`/`skipEmptyArray`；`new` 收尾（Python 有序路径） | 🔄 | C++ 仍 `User(…)+tags` 赋值 |
 | **3-span** | `JsonDecoder.srcLen`/`srcChar`；热路径读 `_src`；`list[User]` 生成改 `srcChar` | ✅ | 见上 |
 | **3-inline** | C++ 有序解析：内联 ``"k":`` / ``,\"k\":``、内联 `true`/`[]`、去 `tryMatchKey`/`beginRootObject` 冗余 | ✅ | 见上 |
 | **3-append** | `list.append`/`_insertNew` 形参 `const T&`；空 `tags` 跳过 `_u.tags` 赋值；`__forceinline` 解析函数 | ✅ | `loads list[User]` **~8.2 ms**（约 **2.6×** 基线） |
-| **3-fix** | `skipEmptyArray` 用 `in "[` / `in "]"`（勿 `== "["` → C++ `PyStr` 比较会崩） | ✅ | `py2cpp/serde/json.py` |
+| **3-fix** | `skipEmptyArray` 用 `in "[` / `in "]"`（勿 `== "["` → C++ `PyStr` 比较会崩） | ✅ | `paw/serde/json.py` |
 | **3-mega** | mega-loop 内联 2000× 对象体；`name_seg` + `assign_from_codes_span` 减 PyStr 双拷贝 | ✅ | `loads list[User]` **~7.9 ms**（约 **2.7×** 基线） |
 | **4a** | 档 A：`asciiBytes` + `list[int]` SwAR（不绑 `list[User]`） | ✅ | `list[int]` 50k ~9.4 ms |
 | **4b** | `serdePushSlot` 原位 `init` + `assign_from_codes_span`； ctor 用 `(id_v,\"\",active_v)` | ✅ | `loads list[User]` **~7.8 ms** |
-| **4c** | `loadStrSpan` 引号 SwAR（修 ``i+k``）；`list[str]` ``serdePushSlot``；`list[int]` push 槽 | ✅ | `py2cpp/serde/json.py` |
+| **4c** | `loadStrSpan` 引号 SwAR（修 ``i+k``）；`list[str]` ``serdePushSlot``；`list[int]` push 槽 | ✅ | `paw/serde/json.py` |
 | **4d** | 纯 ``int`` dataclass（``Ticker``）``serdePushSlot`` + ``init`` | ✅ | `serializable.py` |
 | **4 arena** | `PyArena` + `acquire`/`release` + `adopt_codes_buf`；`loads` 启 `strArena` | ✅ | 见上 |
 | **4 arena-2** | `span.at()` + `memory.copyArray`（``memcpy``）；`reserve(sl/2)` | ✅ | 见 perf |
@@ -34,7 +34,7 @@
 
 **MSVC（`scripts/build_perf_json.bat`）**：`test_json` 7/7；`test_json_serde` 含 `Ticker`/`MiniUser`/`loads list[int|str]` 等对照用例。
 
-**perf 对照结构**（`test/perf/test_json_serde.py`）：
+**perf 对照结构**（`tests/perf/test_json_serde.py`）：
 
 | 用例 | 优势来源 |
 |------|----------|
@@ -99,10 +99,10 @@ loads<PyList<User>>(js)
 
 | 组件 | 路径 |
 |------|------|
-| 列表反序列化 | `py2cpp/serde/json.py` → `Json.loads` 类型 if + `@native` `_json_read_list_*` |
+| 列表反序列化 | `paw/serde/json.py` → `Json.loads` 类型 if + `@native` `_json_read_list_*` |
 | 对象反序列化 | `src/passes/serializable.py` → `_emit_dataclass_serializable` + `_json_read_list_serializable<>` 特化 |
-| 解码器 | `py2cpp/serde/json.py` → `JsonDecoder` |
-| 参照快路径 | `py2cpp/serde/json.py` → `_loadListIntAsciiLoop` / `parseIntAtAscii` |
+| 解码器 | `paw/serde/json.py` → `JsonDecoder` |
+| 参照快路径 | `paw/serde/json.py` → `_loadListIntAsciiLoop` / `parseIntAtAscii` |
 
 ### 2.2 与 RapidJSON 的差距来源
 
@@ -150,7 +150,7 @@ loads(js)
 
 ### 3.3 `JsonDecoder` 增量字段（基础设施）
 
-在 `py2cpp/serde/json.py` 中扩展（**不改变** `loads` / `load` 签名）：
+在 `paw/serde/json.py` 中扩展（**不改变** `loads` / `load` 签名）：
 
 ```python
 class JsonDecoder:
@@ -208,16 +208,16 @@ C++ 生成形态：`PySpan<PyChar>`；热路径用 `dec._src[k]` / `dec._sliceAt
 
 | 改动 | 文件 |
 |------|------|
-| `mark` / `restore` | `py2cpp/serde/json.py` |
+| `mark` / `restore` | `paw/serde/json.py` |
 | `_schema_deserialize_eligible` | `src/passes/serializable.py` |
 | 生成 `deserialize`：`mark` → `_deserialize_ordered` → 失败 `restore` → `_deserialize_generic` | 同上 |
 | `_deserialize_generic` | 现有 `while` + `tryMatchKey` + `skipField` |
 
 **有序路径（`User`）**：字段顺序与 `serialize` 一致：`id` → `name` → `active` → `tags`；每步后 `atObjectEnd()` 可提前 `return new(...)`。
 
-**`span[char]` 在本阶段**：`fromText` 初始化 `_src`；`tryMatchKey` / `parseIntAt` 优先读 `_src`（叶子在 `py2cpp/serde/json.py` + `util/memory` 的 `@native`）。
+**`span[char]` 在本阶段**：`fromText` 初始化 `_src`；`tryMatchKey` / `parseIntAt` 优先读 `_src`（叶子在 `paw/serde/json.py` + `util/memory` 的 `@native`）。
 
-**验收**：`test/serde/test_json.py` 全绿 + 乱序键用例 1 条。
+**验收**：`tests/serde/test_json.py` 全绿 + 乱序键用例 1 条。
 
 **预期**：~21 ms → ~8–10 ms（仅对象层，未改 list 特化）。
 
@@ -231,13 +231,13 @@ C++ 生成形态：`PySpan<PyChar>`；热路径用 `dec._src[k]` / `dec._sliceAt
 |----------------------|------|
 | `_json_parse_user_ordered(JsonDecoder&)` | 阶段 1 有序体，供数组循环调用 |
 | `_fast_load_list_user_dec(JsonDecoder&)` | 扫 `[` / `]`，`setCapacity`，循环 `_json_parse_user_ordered` |
-| `template<> _JsonLoads<PyList<Ns::User>>::go` | 特化于 `py2cpp::serde::json`，用户 TU 可见主模板 |
+| `template<> _JsonLoads<PyList<Ns::User>>::go` | 特化于 `paw::serde::json`，用户 TU 可见主模板 |
 
 **注意**：`User` / `__json_key_User_*` 在用户命名空间，由 `serializable` pass 按模块生成（非 codegen 注入）。
 
 **`span[char]`**：数组循环内对象解析全程 `_src` + `pos`，与 int 快路径一样减少 `beginArray` API 层开销。
 
-**验收**：`test/perf/test_json_serde.py`；`loads<PyList<User>>` 写法不变。
+**验收**：`tests/perf/test_json_serde.py`；`loads<PyList<User>>` 写法不变。
 
 **预期**：累计 ~4–6 ms。
 
@@ -259,7 +259,7 @@ perf 数据 `"tags":[]`：有序路径在 `tags` 处调用 `skipEmptyArray()`（
 
 #### 3d. `list` 追加优化
 
-查 `py2cpp/util/list.py`：若可 **原位构造** / 减少 `append` 拷贝，在基础设施层扩展；生成代码向 `set_item` / 槽位写入靠拢。
+查 `paw/util/list.py`：若可 **原位构造** / 减少 `append` 拷贝，在基础设施层扩展；生成代码向 `set_item` / 槽位写入靠拢。
 
 #### 3e. `span[char]` 延迟物化（本阶段重点）
 
@@ -278,7 +278,7 @@ perf 数据 `"tags":[]`：有序路径在 `tags` 处调用 `skipEmptyArray()`（
 | 项 | 内容 | 风险 |
 |----|------|------|
 | 单函数 `loads list[User]` | pass 生成 mega-loop，内联 int/bool/空 tags | 与 `JsonDecoder` 分叉，须 mark 回退 |
-| `parse_int` SwAR | `py2cpp/serde/json.py` + `util/memory.loadU64Le` | 中等 |
+| `parse_int` SwAR | `paw/serde/json.py` + `util/memory.loadU64Le` | 中等 |
 | loads 级 arena | ✅ `PyArena::acquire` + `adopt_codes_buf`；`span.at()` + `memcpy`（arena-2） | 单块 bump+adopt 需 finalize，暂未做 |
 
 **暂不实现**：simdjson 链接、全局 `PyStr` 改 view 语义。
@@ -303,25 +303,25 @@ perf 数据 `"tags":[]`：有序路径在 `tags` 处调用 `skipEmptyArray()`（
 
 ```text
 PR-A  基础设施
-      py2cpp/serde/json.py       _src, mark/restore, loadStrSpan, skipEmptyArray
-      py2cpp/text/str.py         from_codes_span（或等价，单点）
-      py2cpp/util/memory.py      loadU64Le 等 @native 叶子
+      paw/serde/json.py       _src, mark/restore, loadStrSpan, skipEmptyArray
+      paw/text/str.py         from_codes_span（或等价，单点）
+      paw/util/memory.py      loadU64Le 等 @native 叶子
 
 PR-B  Schema 双路径
       src/passes/serializable.py  ordered + generic；_schema_deserialize_eligible
-      test/serde/test_json.py      乱序键 / 缺字段 / 未知键
+      tests/serde/test_json.py      乱序键 / 缺字段 / 未知键
       src/tests/test_serializable_schema.py
 
 PR-C  list[User] 特化 + 阶段 3
       serializable.py             _fast_load_list_* + _JsonLoads 特化生成
-      test/perf/test_json_serde.py  可选阈值 assert（Release）
+      tests/perf/test_json_serde.py  可选阈值 assert（Release）
       docs/参考手册.md            §10.1 快路径与回退语义（对外行为不变则简述）
 
 bootstrap（改标准库后）:
-      python main.py py2cpp\__init__.py -o generated --no-main
+      python main.py paw\__init__.py -o generated --no-main
 
 验证:
-      test/serde/test_json.py
+      tests/serde/test_json.py
       scripts/build_perf_json.bat  或 build_all.bat
 ```
 
@@ -377,8 +377,8 @@ bootstrap（改标准库后）:
 
 ## 11. 参考
 
-- 仓库内：`py2cpp/serde/json.py`（`JsonDecoder` / `Json.loads`）、`src/passes/serializable.py`（`@serializable` 生成）  
-- 仓库内：`py2cpp/util/span.py`、`docs/编码规范.md` §5.1  
+- 仓库内：`paw/serde/json.py`（`JsonDecoder` / `Json.loads`）、`src/passes/serializable.py`（`@serializable` 生成）  
+- 仓库内：`paw/util/span.py`、`docs/编码规范.md` §5.1  
 - 外部：[simdjson On-Demand 论文](https://arxiv.org/html/2312.17149v3)、[json_benchmark_results](https://github.com/simdjson/json_benchmark_results)  
 
 ---

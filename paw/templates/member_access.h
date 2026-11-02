@@ -1,8 +1,8 @@
 
 #include <type_traits>
-#include "py2cpp/py_types.h"
+#include "paw/py_types.h"
 
-namespace py2cpp {
+namespace paw {
 namespace access {
 namespace detail {
 
@@ -24,23 +24,23 @@ struct py2cpp_invoke_tag3 {};
 
 } // namespace detail
 } // namespace access
-} // namespace py2cpp
+} // namespace paw
 
 /* 译器在无法可靠选定 ``.``/``->`` 时使用；每条宏调用前 ``#line`` + 前置 ``static_assert``（见 ``translator._emit_py2cpp_dispatch_check``）。 */
 #define PY2CPP_GETATTR(obj, attr) \
-  (::py2cpp::access::py2cpp_invoke_get_##attr((obj), 0))
+  (::paw::access::py2cpp_invoke_get_##attr((obj), 0))
 #define PY2CPP_SETATTR(obj, attr, val) \
-  (::py2cpp::access::py2cpp_invoke_set_##attr((obj), (val), 0))
+  (::paw::access::py2cpp_invoke_set_##attr((obj), (val), 0))
 #define PY2CPP_CALL(obj, method) \
-  (::py2cpp::access::py2cpp_invoke_call_##method(::py2cpp::access::detail::py2cpp_invoke_tag0(), (obj)))
+  (::paw::access::py2cpp_invoke_call_##method(::paw::access::detail::py2cpp_invoke_tag0(), (obj)))
 #define PY2CPP_CALL1(obj, method, a1) \
-  (::py2cpp::access::py2cpp_invoke_call_##method(::py2cpp::access::detail::py2cpp_invoke_tag1(), (obj), (a1)))
+  (::paw::access::py2cpp_invoke_call_##method(::paw::access::detail::py2cpp_invoke_tag1(), (obj), (a1)))
 #define PY2CPP_CALL2(obj, method, a1, a2) \
-  (::py2cpp::access::py2cpp_invoke_call_##method(::py2cpp::access::detail::py2cpp_invoke_tag2(), (obj), (a1), (a2)))
+  (::paw::access::py2cpp_invoke_call_##method(::paw::access::detail::py2cpp_invoke_tag2(), (obj), (a1), (a2)))
 #define PY2CPP_CALL3(obj, method, a1, a2, a3) \
-  (::py2cpp::access::py2cpp_invoke_call_##method(::py2cpp::access::detail::py2cpp_invoke_tag3(), (obj), (a1), (a2), (a3)))
+  (::paw::access::py2cpp_invoke_call_##method(::paw::access::detail::py2cpp_invoke_tag3(), (obj), (a1), (a2), (a3)))
 
-/* 每个翻译单元在首次使用某 attr/method 前须展开（由译器写入 ``namespace py2cpp::access``）。 */
+/* 每个翻译单元在首次使用某 attr/method 前须展开（由译器写入 ``namespace paw::access``）。 */
 #define PY2CPP_DECLARE_GETATTR(attr) \
   template<typename T> \
   auto get_##attr(T& o, int) -> decltype(o.PY2CPP_GETTER(attr)()) { return o.PY2CPP_GETTER(attr)(); } \
@@ -89,7 +89,7 @@ template<typename T> \
   template<typename T> \
   struct can_get_##attr { \
     static const bool value = \
-      ::py2cpp::access::detail::access_is_raw_pointer<T>::value \
+      ::paw::access::detail::access_is_raw_pointer<T>::value \
         ? (py2cpp_get_##attr##_detect_int_ptr<typename std::remove_pointer<T>::type>::value || \
            py2cpp_get_##attr##_detect_long_ptr<typename std::remove_pointer<T>::type>::value) \
         : (py2cpp_get_##attr##_detect_int_val<T>::value || \
@@ -125,7 +125,7 @@ template<typename T> \
   }; \
   template<typename T> \
   typename std::enable_if< \
-    !::py2cpp::access::detail::access_is_raw_pointer<T>::value, \
+    !::paw::access::detail::access_is_raw_pointer<T>::value, \
     decltype(py2cpp_get_##attr##_pick_val<T, \
       py2cpp_get_##attr##_detect_int_val<T>::value, \
       py2cpp_get_##attr##_detect_long_val<T>::value>::run(std::declval<T&>()))>::type \
@@ -136,7 +136,7 @@ template<typename T> \
   } \
   template<typename T> \
   typename std::enable_if< \
-    ::py2cpp::access::detail::access_is_raw_pointer<T>::value, \
+    ::paw::access::detail::access_is_raw_pointer<T>::value, \
     decltype(py2cpp_get_##attr##_pick_ptr<typename std::remove_pointer<T>::type, \
       py2cpp_get_##attr##_detect_int_ptr<typename std::remove_pointer<T>::type>::value, \
       py2cpp_get_##attr##_detect_long_ptr<typename std::remove_pointer<T>::type>::value \
@@ -221,7 +221,7 @@ template<typename T, typename V> \
   template<typename T, typename V> \
   struct can_set_##attr { \
     static const bool value = \
-      ::py2cpp::access::detail::access_is_raw_pointer<T>::value \
+      ::paw::access::detail::access_is_raw_pointer<T>::value \
         ? (py2cpp_set_##attr##_detect_int_ptr<typename std::remove_pointer<T>::type, V>::value || \
            py2cpp_set_##attr##_detect_long_ptr<typename std::remove_pointer<T>::type, V>::value) \
         : (py2cpp_set_##attr##_detect_int_val<T, V>::value || \
@@ -257,7 +257,7 @@ template<typename T, typename V> \
   }; \
   template<typename T, typename V> \
   typename std::enable_if< \
-    !::py2cpp::access::detail::access_is_raw_pointer<T>::value, void>::type \
+    !::paw::access::detail::access_is_raw_pointer<T>::value, void>::type \
   set_##attr(T& o, V v) { \
     py2cpp_set_##attr##_pick_val<T, V, \
       py2cpp_set_##attr##_detect_int_val<T, V>::value, \
@@ -265,7 +265,7 @@ template<typename T, typename V> \
   } \
   template<typename T, typename V> \
   typename std::enable_if< \
-    ::py2cpp::access::detail::access_is_raw_pointer<T>::value, void>::type \
+    ::paw::access::detail::access_is_raw_pointer<T>::value, void>::type \
   set_##attr(T o, V v) { \
     typedef typename std::remove_pointer<T>::type Pointee; \
     py2cpp_set_##attr##_pick_ptr<Pointee, V, \
@@ -325,7 +325,7 @@ template<typename T> \
   template<typename T> \
   struct can_call0_##method { \
     static const bool value = \
-      ::py2cpp::access::detail::access_is_raw_pointer<T>::value \
+      ::paw::access::detail::access_is_raw_pointer<T>::value \
         ? py2cpp_call_##method##_detect_int_ptr<typename std::remove_pointer<T>::type>::value \
         : py2cpp_call_##method##_detect_int_val<T>::value; \
   }; \
@@ -347,7 +347,7 @@ template<typename T> \
   }; \
   template<typename T> \
   typename std::enable_if< \
-    !::py2cpp::access::detail::access_is_raw_pointer<T>::value, \
+    !::paw::access::detail::access_is_raw_pointer<T>::value, \
     decltype(py2cpp_call_##method##_pick0_val<T, \
       py2cpp_call_##method##_detect_int_val<T>::value>::run(std::declval<T&>()))>::type \
   call_##method(T& o) { \
@@ -356,7 +356,7 @@ template<typename T> \
   } \
   template<typename T> \
   typename std::enable_if< \
-    ::py2cpp::access::detail::access_is_raw_pointer<T>::value, \
+    ::paw::access::detail::access_is_raw_pointer<T>::value, \
     decltype(py2cpp_call_##method##_pick0_ptr<typename std::remove_pointer<T>::type, \
       py2cpp_call_##method##_detect_int_ptr<typename std::remove_pointer<T>::type>::value \
       >::run_ptr(std::declval<T>()))>::type \
@@ -374,12 +374,12 @@ template<typename T> \
   template<typename T> \
   typename std::enable_if<can_call0_##method<T>::value, \
     decltype(call_##method(std::declval<T&>()))>::type \
-  py2cpp_invoke_call_##method(::py2cpp::access::detail::py2cpp_invoke_tag0, T& o) { \
+  py2cpp_invoke_call_##method(::paw::access::detail::py2cpp_invoke_tag0, T& o) { \
     return call_##method(o); \
   } \
   template<typename T> \
   typename std::enable_if<!can_call0_##method<T>::value, int>::type \
-  py2cpp_invoke_call_##method(::py2cpp::access::detail::py2cpp_invoke_tag0, T&) { return 0; } \
+  py2cpp_invoke_call_##method(::paw::access::detail::py2cpp_invoke_tag0, T&) { return 0; } \
 template<typename T, typename A1> \
   struct py2cpp_call_##method##_detect_int_1_val { \
     template<typename U> \
@@ -399,7 +399,7 @@ template<typename T, typename A1> \
   template<typename T, typename A1> \
   struct can_call1_##method { \
     static const bool value = \
-      ::py2cpp::access::detail::access_is_raw_pointer<T>::value \
+      ::paw::access::detail::access_is_raw_pointer<T>::value \
         ? py2cpp_call_##method##_detect_int_1_ptr<typename std::remove_pointer<T>::type, A1>::value \
         : py2cpp_call_##method##_detect_int_1_val<T, A1>::value; \
   }; \
@@ -425,7 +425,7 @@ template<typename T, typename A1> \
   }; \
   template<typename T, typename A1> \
   typename std::enable_if< \
-    !::py2cpp::access::detail::access_is_raw_pointer<T>::value, \
+    !::paw::access::detail::access_is_raw_pointer<T>::value, \
     decltype(py2cpp_call_##method##_pick1_val<T, A1, \
       py2cpp_call_##method##_detect_int_1_val<T, A1>::value>::run( \
         std::declval<T&>(), std::declval<A1>()))>::type \
@@ -435,7 +435,7 @@ template<typename T, typename A1> \
   } \
   template<typename T, typename A1> \
   typename std::enable_if< \
-    ::py2cpp::access::detail::access_is_raw_pointer<T>::value, \
+    ::paw::access::detail::access_is_raw_pointer<T>::value, \
     decltype(py2cpp_call_##method##_pick1_ptr<typename std::remove_pointer<T>::type, A1, \
       py2cpp_call_##method##_detect_int_1_ptr<typename std::remove_pointer<T>::type, A1>::value \
       >::run_ptr(std::declval<T>(), std::declval<A1>()))>::type \
@@ -453,12 +453,12 @@ template<typename T, typename A1> \
   template<typename T, typename A1> \
   typename std::enable_if<can_call1_##method<T, A1>::value, \
     decltype(call_##method(std::declval<T&>(), std::declval<A1>()))>::type \
-  py2cpp_invoke_call_##method(::py2cpp::access::detail::py2cpp_invoke_tag1, T& o, A1&& a1) { \
+  py2cpp_invoke_call_##method(::paw::access::detail::py2cpp_invoke_tag1, T& o, A1&& a1) { \
     return call_##method(o, std::forward<A1>(a1)); \
   } \
   template<typename T, typename A1> \
   typename std::enable_if<!can_call1_##method<T, A1>::value, int>::type \
-  py2cpp_invoke_call_##method(::py2cpp::access::detail::py2cpp_invoke_tag1, T&, A1&&) { return 0; } \
+  py2cpp_invoke_call_##method(::paw::access::detail::py2cpp_invoke_tag1, T&, A1&&) { return 0; } \
 template<typename T, typename A1, typename A2> \
   struct py2cpp_call_##method##_detect_int_2_val { \
     template<typename U> \
@@ -480,7 +480,7 @@ template<typename T, typename A1, typename A2> \
   template<typename T, typename A1, typename A2> \
   struct can_call2_##method { \
     static const bool value = \
-      ::py2cpp::access::detail::access_is_raw_pointer<T>::value \
+      ::paw::access::detail::access_is_raw_pointer<T>::value \
         ? py2cpp_call_##method##_detect_int_2_ptr<typename std::remove_pointer<T>::type, A1, A2>::value \
         : py2cpp_call_##method##_detect_int_2_val<T, A1, A2>::value; \
   }; \
@@ -508,7 +508,7 @@ template<typename T, typename A1, typename A2> \
   }; \
   template<typename T, typename A1, typename A2> \
   typename std::enable_if< \
-    !::py2cpp::access::detail::access_is_raw_pointer<T>::value, \
+    !::paw::access::detail::access_is_raw_pointer<T>::value, \
     decltype(py2cpp_call_##method##_pick2_val<T, A1, A2, \
       py2cpp_call_##method##_detect_int_2_val<T, A1, A2>::value>::run( \
         std::declval<T&>(), std::declval<A1>(), std::declval<A2>()))>::type \
@@ -519,7 +519,7 @@ template<typename T, typename A1, typename A2> \
   } \
   template<typename T, typename A1, typename A2> \
   typename std::enable_if< \
-    ::py2cpp::access::detail::access_is_raw_pointer<T>::value, \
+    ::paw::access::detail::access_is_raw_pointer<T>::value, \
     decltype(py2cpp_call_##method##_pick2_ptr<typename std::remove_pointer<T>::type, A1, A2, \
       py2cpp_call_##method##_detect_int_2_ptr<typename std::remove_pointer<T>::type, A1, A2>::value \
       >::run_ptr(std::declval<T>(), std::declval<A1>(), std::declval<A2>()))>::type \
@@ -568,7 +568,7 @@ template<typename T, typename A1, typename A2, typename A3> \
   template<typename T, typename A1, typename A2, typename A3> \
   struct can_call3_##method { \
     static const bool value = \
-      ::py2cpp::access::detail::access_is_raw_pointer<T>::value \
+      ::paw::access::detail::access_is_raw_pointer<T>::value \
         ? py2cpp_call_##method##_detect_int_3_ptr<typename std::remove_pointer<T>::type, A1, A2, A3>::value \
         : py2cpp_call_##method##_detect_int_3_val<T, A1, A2, A3>::value; \
   }; \
@@ -602,7 +602,7 @@ template<typename T, typename A1, typename A2, typename A3> \
   }; \
   template<typename T, typename A1, typename A2, typename A3> \
   typename std::enable_if< \
-    !::py2cpp::access::detail::access_is_raw_pointer<T>::value, \
+    !::paw::access::detail::access_is_raw_pointer<T>::value, \
     decltype(py2cpp_call_##method##_pick3_val<T, A1, A2, A3, \
       py2cpp_call_##method##_detect_int_3_val<T, A1, A2, A3>::value>::run( \
         std::declval<T&>(), std::declval<A1>(), std::declval<A2>(), std::declval<A3>()))>::type \
@@ -613,7 +613,7 @@ template<typename T, typename A1, typename A2, typename A3> \
   } \
   template<typename T, typename A1, typename A2, typename A3> \
   typename std::enable_if< \
-    ::py2cpp::access::detail::access_is_raw_pointer<T>::value, \
+    ::paw::access::detail::access_is_raw_pointer<T>::value, \
     decltype(py2cpp_call_##method##_pick3_ptr<typename std::remove_pointer<T>::type, A1, A2, A3, \
       py2cpp_call_##method##_detect_int_3_ptr<typename std::remove_pointer<T>::type, A1, A2, A3>::value \
       >::run_ptr(std::declval<T>(), std::declval<A1>(), std::declval<A2>(), std::declval<A3>()))>::type \
@@ -636,10 +636,10 @@ template<typename T, typename A1, typename A2, typename A3> \
   typename std::enable_if<can_call3_##method<T, A1, A2, A3>::value, \
     decltype(call_##method(std::declval<T&>(), std::declval<A1>(), std::declval<A2>(), \
       std::declval<A3>()))>::type \
-  py2cpp_invoke_call_##method(::py2cpp::access::detail::py2cpp_invoke_tag3, T& o, A1&& a1, A2&& a2, A3&& a3) { \
+  py2cpp_invoke_call_##method(::paw::access::detail::py2cpp_invoke_tag3, T& o, A1&& a1, A2&& a2, A3&& a3) { \
     return call_##method(o, std::forward<A1>(a1), std::forward<A2>(a2), std::forward<A3>(a3)); \
   } \
   template<typename T, typename A1, typename A2, typename A3> \
   typename std::enable_if<!can_call3_##method<T, A1, A2, A3>::value, int>::type \
-  py2cpp_invoke_call_##method(::py2cpp::access::detail::py2cpp_invoke_tag3, T&, A1&&, A2&&, A3&&) { return 0; }
+  py2cpp_invoke_call_##method(::paw::access::detail::py2cpp_invoke_tag3, T&, A1&&, A2&&, A3&&) { return 0; }
 

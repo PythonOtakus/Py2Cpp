@@ -11,7 +11,7 @@ from src.translator import Translator
 class MixinInstanceFieldsPass(unittest.TestCase):
   def test_mixin_instance_field_merged_into_host(self):
     code = '''
-from py2cpp import mixin
+from paw import mixin
 
 @mixin
 class CounterMixin:
@@ -32,7 +32,7 @@ class Host(CounterMixin):
 
   def test_mixin_dataclass_init_merged_into_host(self):
     code = '''
-from py2cpp import mixin, dataclass
+from paw import mixin, dataclass
 
 @dataclass
 @mixin

@@ -26,7 +26,7 @@ class AsyncNewKwargsTests(unittest.TestCase):
   def test_await_new_static_and_async_return_new_static(self):
     cpp = self._translate(
       '''
-from py2cpp import *
+from paw import *
 
 @copyable
 class Sock:
@@ -52,7 +52,7 @@ async def use() -> Sock:
   def test_async_kwargs_forward_inside_await(self):
     cpp = self._translate(
       '''
-from py2cpp import *
+from paw import *
 
 @copyable
 class Options:
@@ -73,7 +73,7 @@ class Client:
   def test_await_async_method_on_host_field_keeps_coroutine_type(self):
     cpp = self._translate(
       '''
-from py2cpp import *
+from paw import *
 
 @copyable
 class Sock:
@@ -95,7 +95,7 @@ class Writer:
   def test_debug_wrap_ref_return_keeps_reference(self):
     cpp = self._translate(
       '''
-from py2cpp import *
+from paw import *
 
 @copyable
 class Box:
@@ -119,7 +119,7 @@ def use() -> int:
   def test_wrapper_infers_internal_coroutine_return_type(self):
     cpp = self._translate(
       '''
-from py2cpp import *
+from paw import *
 
 @refcount
 class State:

@@ -42,7 +42,7 @@ class PrangeEmitTests(unittest.TestCase):
   def test_th_skips_omp_for_small_const_trip(self):
     cpp = self._translate_snippet(
       """
-      from py2cpp.concur.parallel import prange
+      from paw.concur.parallel import prange
 
       def work() -> None:
         for i in prange(64, th=10000):
@@ -56,7 +56,7 @@ class PrangeEmitTests(unittest.TestCase):
   def test_th_zero_keeps_omp(self):
     cpp = self._translate_snippet(
       """
-      from py2cpp.concur.parallel import prange
+      from paw.concur.parallel import prange
 
       def work() -> None:
         for i in prange(64, th=0):
@@ -69,7 +69,7 @@ class PrangeEmitTests(unittest.TestCase):
   def test_th_large_const_trip_uses_omp(self):
     cpp = self._translate_snippet(
       """
-      from py2cpp.concur.parallel import prange
+      from paw.concur.parallel import prange
 
       def work() -> None:
         for i in prange(10000, th=10000):
@@ -83,7 +83,7 @@ class PrangeEmitTests(unittest.TestCase):
   def test_th_runtime_emits_branch(self):
     cpp = self._translate_snippet(
       """
-      from py2cpp.concur.parallel import prange
+      from paw.concur.parallel import prange
 
       def work(n: int) -> None:
         for i in prange(n, th=10000):
@@ -98,7 +98,7 @@ class PrangeEmitTests(unittest.TestCase):
   def test_th_len_emits_branch(self):
     cpp = self._translate_snippet(
       """
-      from py2cpp.concur.parallel import prange
+      from paw.concur.parallel import prange
 
       def work(s: int[:]) -> None:
         for i in prange(len(s), th=10000):
@@ -114,7 +114,7 @@ class PrangeEmitTests(unittest.TestCase):
   def test_openmp_disabled_emits_plain_for(self):
     cpp = self._translate_snippet(
       """
-      from py2cpp.concur.parallel import prange
+      from paw.concur.parallel import prange
 
       def work(n: int) -> None:
         for i in prange(n):

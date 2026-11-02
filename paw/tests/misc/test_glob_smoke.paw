@@ -1,0 +1,22 @@
+"""``str.glob`` / ``bytes.glob`` 冒烟（隔离栈/堆问题）。"""
+
+from paw import *
+from paw.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
+
+class StrGlobSmokeTests(TestCaseMixin):
+  _testTag = 1
+
+  override def test(self):
+    self.assertTrue("readme.txt".glob("*.txt"))
+
+class BytesGlobSmokeTests(TestCaseMixin):
+  _testTag = 2
+
+  override def test(self):
+    self.assertTrue(b"readme.txt".glob(b"*.txt"))
+
+def main():
+  suite: TestSuite = new()
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
+    suite.addTest(Class())
+  return TextTestRunner().run(suite)

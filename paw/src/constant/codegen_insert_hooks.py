@@ -18,7 +18,7 @@ CODEGEN_INSERT_HOOKS: dict[str, CodegenInsertHook] = {
   ),
   "layout.umbrella_header": CodegenInsertHook(
     "minimal.h",
-    "``build_py2cpp_umbrella_header`` → ``generated/runtime/py2cpp/minimal.h``",
+    "``build_py2cpp_umbrella_header`` → ``generated/runtime/paw/minimal.h``",
   ),
   "translator.debug_inject": CodegenInsertHook(
     "debug.inl",

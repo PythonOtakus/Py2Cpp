@@ -1,7 +1,7 @@
 """跳一跳平台落点。"""
 from __future__ import annotations
 
-from py2cpp import *
+from paw import *
 
 from ..scene import Component
 

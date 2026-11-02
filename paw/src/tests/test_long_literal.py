@@ -22,7 +22,7 @@ class TestLongLiteral(unittest.TestCase):
         self.assertFalse(is_long_type('PyInt'))
 
     def _translate(self, body: str) -> str:
-        src = f'from py2cpp import *\n\ndef probe():\n{body}'
+        src = f'from paw import *\n\ndef probe():\n{body}'
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp)
             py = out / 'mod.py'

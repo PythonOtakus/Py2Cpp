@@ -1,8 +1,8 @@
-#include "py2cpp/core/iter_result.h"
+#include "paw/core/iter_result.h"
 
 
 // 擦除生成器句柄：``Generator[Y,S,R]`` 形参/字段/``@virtual`` 返回；具体 ``*_generator`` 经 ``makeGenerator`` 装箱。
-namespace py2cpp_generator_detail
+namespace paw_generator_detail
 {
   template<typename ST>
   ST default_send_value()

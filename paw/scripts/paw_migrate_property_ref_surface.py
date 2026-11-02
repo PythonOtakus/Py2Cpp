@@ -590,7 +590,7 @@ def migrate(source: str) -> str:
 
 def main() -> int:
   ap = argparse.ArgumentParser()
-  ap.add_argument("paths", nargs="*", default=["py2cpp", "test", "compiler"])
+  ap.add_argument("paths", nargs="*", default=["paw", "tests", "compiler"])
   ap.add_argument("--dry-run", action="store_true")
   ns = ap.parse_args()
   files: list[Path] = []

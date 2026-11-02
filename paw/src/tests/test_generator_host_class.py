@@ -226,8 +226,8 @@ class GeneratorHostClassTests(unittest.TestCase):
     )
     tr = Translator("path", "path.py", strict=False)
     tr.classes = {
-      "Path": ClassInfo(path_cls, "py2cpp/io/path"),
-      gen_cls.name: ClassInfo(gen_cls, "py2cpp/io/path"),
+      "Path": ClassInfo(path_cls, "paw/io/path"),
+      gen_cls.name: ClassInfo(gen_cls, "paw/io/path"),
     }
     tr.class_info = tr.classes[gen_cls.name]
     host = tr._static_generator_host_class_info()
@@ -377,8 +377,8 @@ class GeneratorHostClassTests(unittest.TestCase):
   def test_coroutine_slice_param_hoists_as_pointer_field(self):
     cpp = self._translate(
       '''
-from py2cpp import *
-from py2cpp.concur.task import Task
+from paw import *
+from paw.concur.task import Task
 
 async def fill(buf: byte[:]) -> int:
   await Task.sleep(0)
@@ -393,8 +393,8 @@ async def fill(buf: byte[:]) -> int:
   def test_coroutine_ref_param_hoists_as_pointer_field(self):
     cpp = self._translate(
       '''
-from py2cpp import *
-from py2cpp.concur.task import Task
+from paw import *
+from paw.concur.task import Task
 
 @copyable
 class Box:
@@ -413,8 +413,8 @@ async def fill(box: Box @ref) -> int:
   def test_coroutine_ref_param_method_await_keeps_child_coroutine_type(self):
     cpp = self._translate(
       '''
-from py2cpp import *
-from py2cpp.concur.task import Task
+from paw import *
+from paw.concur.task import Task
 
 @copyable
 class Reader:
@@ -433,7 +433,7 @@ async def outer(reader: Reader @ref) -> int:
   def test_coroutine_wrapper_await_uses_forwarded_child_type(self):
     cpp = self._translate(
       '''
-from py2cpp import *
+from paw import *
 
 @refcount
 class State:
@@ -460,8 +460,8 @@ async def outer(reader: Reader @ref) -> int:
   def test_statement_await_before_value_await_does_not_skip_value_await(self):
     cpp = self._translate(
       '''
-from py2cpp import *
-from py2cpp.concur.task import Task
+from paw import *
+from paw.concur.task import Task
 
 async def no_op() -> None:
   return None

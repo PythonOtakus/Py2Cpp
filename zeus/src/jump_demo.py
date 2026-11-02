@@ -1,7 +1,7 @@
 """有窗跳一跳：GLFW + 输入蓄力 + 立即模式渲染。"""
-from py2cpp import *
-from py2cpp.spatial.color import Color
-from py2cpp.spatial.vector import Vector3
+from paw import *
+from paw.spatial.color import Color
+from paw.spatial.vector import Vector3
 
 from .jump.game import JumpGame
 from .jump.motor import JUMP_AIR, JUMP_CHARGING, JUMP_FAILED, JUMP_IDLE, JUMP_LANDED

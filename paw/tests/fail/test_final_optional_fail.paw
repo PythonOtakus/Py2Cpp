@@ -1,0 +1,10 @@
+"""``T @final @optional`` 不可同字段（``tests/fail/``）。"""
+from paw import *
+
+@dataclass
+class Box:
+  x: int @final @optional = 0
+
+def main():
+  b: Box = new()
+  return 0

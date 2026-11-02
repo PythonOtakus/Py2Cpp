@@ -1,13 +1,13 @@
-"""``py2cpp/`` 源树路径 helper（``analysis/stubs`` 共用）。"""
+"""``paw/`` 源树路径 helper（``analysis/stubs`` 共用）。"""
 from __future__ import annotations
 
 from pathlib import Path
 
 from ...constant.stdlib_discovery import STDLIB_REL_PATHS
 
-RUNTIME_PKG = "py2cpp"
+RUNTIME_PKG = "paw"
 REPO_ROOT = Path(__file__).resolve().parents[3]
-PY2CPP = REPO_ROOT / "py2cpp"
+PY2CPP = REPO_ROOT / "paw"
 
 
 def _pick(path_no_suffix: Path) -> Path | None:

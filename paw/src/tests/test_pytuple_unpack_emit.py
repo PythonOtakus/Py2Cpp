@@ -34,7 +34,7 @@ class PyTupleUnpackEmitTests(unittest.TestCase):
     with tempfile.TemporaryDirectory() as tmp:
       out = Path(tmp)
       py = out / "mod.py"
-      py.write_text(f"from py2cpp import *\n\n{body}", encoding="utf-8")
+      py.write_text(f"from paw import *\n\n{body}", encoding="utf-8")
       _h, cpp_path = Translator.translate_file(
         str(py), output_dir=str(out / "generated"), include_stdlib=True,
       )
@@ -121,7 +121,7 @@ class TupleUnpackStrictS36Tests(unittest.TestCase):
     with tempfile.TemporaryDirectory() as tmp:
       out = Path(tmp)
       py = out / "mod.py"
-      py.write_text(f"from py2cpp import *\n\n{body}", encoding="utf-8")
+      py.write_text(f"from paw import *\n\n{body}", encoding="utf-8")
       with self.assertRaises(TranslationError) as ctx:
         Translator.translate_file(
           str(py), output_dir=str(out / "generated"), include_stdlib=True, strict=True,
@@ -145,7 +145,7 @@ def bad() -> int:
       out = Path(tmp)
       py = out / "mod.py"
       py.write_text(
-        "from py2cpp import *\n\n"
+        "from paw import *\n\n"
         "def ok() -> int:\n"
         "  a: int\n"
         "  a, _ = (1, 2)\n"

@@ -1,9 +1,9 @@
 """编辑器壳：一体主窗（顶栏 + Hierarchy + Scene View + Inspector）。"""
 from __future__ import annotations
 
-from py2cpp import *
-from py2cpp.ui.app import UIApp
-from py2cpp.ui.window import UIWindow
+from paw import *
+from paw.ui.app import UIApp
+from paw.ui.window import UIWindow
 
 from .hierarchy import HierarchyView
 from .inspector import InspectorPanel

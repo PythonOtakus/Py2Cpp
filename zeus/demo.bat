@@ -19,7 +19,7 @@ if errorlevel 1 (
 call "%ZEUS_ROOT%setup_deps.bat"
 if errorlevel 1 exit /b 1
 
-if not exist "%PY2CPP_RUNTIME_INC%\py2cpp\minimal.h" (
+if not exist "%PY2CPP_RUNTIME_INC%\paw\minimal.h" (
   echo [zeus] bootstrapping repo generated\runtime ...
   call "%PAW_ROOT%\scripts\_bootstrap_runtime.bat"
   if errorlevel 1 exit /b 1

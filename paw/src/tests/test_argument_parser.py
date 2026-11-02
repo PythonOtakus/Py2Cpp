@@ -11,8 +11,8 @@ from src.translation_error import TranslationError
 
 
 _PREAMBLE = """
-from py2cpp import *
-from py2cpp.console.parse import ArgumentParserMixin, FlagArgMeta, OptArgMeta, PosArgMeta
+from paw import *
+from paw.console.parse import ArgumentParserMixin, FlagArgMeta, OptArgMeta, PosArgMeta
 """
 
 

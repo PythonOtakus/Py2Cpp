@@ -1,10 +1,10 @@
 """Phase 3：命令总线 + 场景 JSON + Hierarchy/Inspector 烟雾。"""
-from py2cpp import *
-from py2cpp.math import almost
-from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
-from py2cpp.test.test_temp import _TestTemp, ensureTestTemp
-from py2cpp.io.path import Path
-from py2cpp.ui.app import UIApp
+from paw import *
+from paw.math import almost
+from paw.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
+from paw.test.test_temp import _TestTemp, ensureTestTemp
+from paw.io.path import Path
+from paw.ui.app import UIApp
 
 from .command import CommandBus, CommandResult, ZeusCommandUnion
 from .editor.inspector import InspectorPanel
@@ -13,7 +13,7 @@ from .editor.shell import EditorShell
 from .jump.motor import JumpMotor
 from .scene import GameObject
 from .world import WORLD_PLAYING, WORLD_STOPPED
-from py2cpp.spatial.vector import Vector3
+from paw.spatial.vector import Vector3
 
 
 class CommandObjectTests(TestCaseMixin):

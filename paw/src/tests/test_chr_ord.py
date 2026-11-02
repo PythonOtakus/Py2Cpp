@@ -11,7 +11,7 @@ from src.translator import Translator
 def _emit_return(body: str, *, entry: str = "mod") -> str:
   from pathlib import Path
 
-  mod_src = f"from py2cpp import char, byte\n\ndef probe():\n{body}"
+  mod_src = f"from paw import char, byte\n\ndef probe():\n{body}"
   tree = ast.parse(mod_src)
   func = tree.body[1]
   assert isinstance(func, ast.FunctionDef)
@@ -54,7 +54,7 @@ class ChrOrdEmitTests(unittest.TestCase):
   def test_ord_non_literal_raises(self):
     from pathlib import Path
 
-    mod_src = 'from py2cpp import char\n\ndef probe():\n  c: char = 65\n  return ord(c)\n'
+    mod_src = 'from paw import char\n\ndef probe():\n  c: char = 65\n  return ord(c)\n'
     tree = ast.parse(mod_src)
     func = tree.body[1]
     ret = func.body[-1]

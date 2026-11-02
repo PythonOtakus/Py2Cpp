@@ -7,16 +7,16 @@ from pathlib import Path
 def main() -> int:
   root = Path(__file__).resolve().parent.parent
   rows = [
-    ("stdlib", list((root / "py2cpp").rglob("*.paw")) + list((root / "py2cpp").rglob("*.py"))),
+    ("stdlib", list((root / "paw").rglob("*.paw")) + list((root / "paw").rglob("*.py"))),
     (
       "tests",
       [
         p
-        for p in (root / "test").rglob("test_*.py")
+        for p in (root / "tests").rglob("test_*.py")
         if "_fail" not in p.name and "fail" not in p.parts and "perf" not in p.parts
       ],
     ),
-    ("fails", list((root / "test").rglob("*_fail.py"))),
+    ("fails", list((root / "tests").rglob("*_fail.py"))),
     (
       "examples",
       list((root / "examples").rglob("*.py")) if (root / "examples").is_dir() else [],
@@ -28,7 +28,7 @@ def main() -> int:
     ),
     (
       "paw_tests",
-      list((root / "test").rglob("test_*.paw")) if (root / "test").is_dir() else [],
+      list((root / "tests").rglob("test_*.paw")) if (root / "tests").is_dir() else [],
     ),
   ]
   print("| 集合 | 数量 |")

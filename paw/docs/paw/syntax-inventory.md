@@ -8,7 +8,7 @@
 
 | 轨 | 含义 | 主要代码 |
 |---|---|---|
-| **C0 生产** | 宿主 `compiler/py`：Lexer→Parser→HIR→MidIR→emit；stdlib/test/`*.paw` 主路径 | `compiler/py/**`、`src/**` |
+| **C0 生产** | 宿主 `compiler/py`：Lexer→Parser→HIR→MidIR→emit；stdlib/tests/`*.paw` 主路径 | `compiler/py/**`、`src/**` |
 | **C1 薄 seed** | `compiler/paw` 竖切 parser/emit：能自解析并发射 seed 语料 | `compiler/paw/frontend/parser.paw`、`mid/emit_cpp.paw`；门闩 `paw_stage1_c1_link.bat` |
 | **规范拟定** | 表面已定案或仍为候选，不等于已全部接通语义/发射 | `docs/syntax-migration.md` |
 
@@ -91,7 +91,7 @@
 | 项 | 状态 | 依据 |
 |---|---|---|
 | stdlib `mid_emit_ok` | **153/153** | debridge / baseline |
-| `test/` build-all | **155/155** | baseline §7 |
+| `tests/` build-all | **155/155** | baseline §7 |
 | seed Mid MSVC 竖切 | **6/6～8/8** | debridge |
 | 删 `materialize_ast`；`ast_from_mid` | 已完成 | P5 |
 

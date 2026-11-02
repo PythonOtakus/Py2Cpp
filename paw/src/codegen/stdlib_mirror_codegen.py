@@ -28,19 +28,19 @@ STDLIB_MIRROR_CODEGEN_SPECS: dict[str, MirrorCodegenSpec] = {
   "weak/ref": MirrorCodegenSpec(header_inl_include=False),
   "core/delegate": MirrorCodegenSpec(
     header_inl_include=False,
-    inl_source_note="py2cpp/delegate.py（模板实现）",
+    inl_source_note="paw/delegate.py（模板实现）",
   ),
   "core/generator": MirrorCodegenSpec(
     header_inl_include=False,
-    inl_source_note="py2cpp/core/generator.py（模板实现）",
+    inl_source_note="paw/core/generator.py（模板实现）",
   ),
   "core/coroutine": MirrorCodegenSpec(
     header_inl_include=False,
-    inl_source_note="py2cpp/core/coroutine.py（模板实现）",
+    inl_source_note="paw/core/coroutine.py（模板实现）",
   ),
   "core/async_generator": MirrorCodegenSpec(
     header_inl_include=False,
-    inl_source_note="py2cpp/core/async_generator.py（模板实现）",
+    inl_source_note="paw/core/async_generator.py（模板实现）",
   ),
 }
 
@@ -48,12 +48,12 @@ STDLIB_MIRROR_CODEGEN_RELS: frozenset[str] = frozenset(STDLIB_MIRROR_CODEGEN_SPE
 
 # ``layout_emit`` / ``umbrella_gen`` 写盘的独立整文件模板（非 mirror 扫描）。
 STANDALONE_WHOLE_FILE_HEADER_SPECS: dict[str, tuple[str, str]] = {
-  "char.h": ("py2cpp/char", "py2cpp/__init__.py"),
-  "byte.h": ("py2cpp/byte", "py2cpp/__init__.py"),
-  "c_str.h": ("py2cpp/c_str", "py2cpp/__init__.py"),
-  "py_types.h": ("py2cpp/py_types", "py2cpp/__init__.py"),
-  "member_access.h": ("py2cpp/member_access", "py2cpp/__init__.py"),
-  "operators.h": ("py2cpp/operators", "py2cpp/__init__.py"),
+  "char.h": ("paw/char", "paw/__init__.py"),
+  "byte.h": ("paw/byte", "paw/__init__.py"),
+  "c_str.h": ("paw/c_str", "paw/__init__.py"),
+  "py_types.h": ("paw/py_types", "paw/__init__.py"),
+  "member_access.h": ("paw/member_access", "paw/__init__.py"),
+  "operators.h": ("paw/operators", "paw/__init__.py"),
 }
 
 STANDALONE_WHOLE_FILE_INL_GUARD: dict[str, str] = {
@@ -129,7 +129,7 @@ def wrap_mirror_codegen_header(body: str, module_rel: str, generated_at: str) ->
 
   module_path = stdlib_module_path(module_rel)
   spec = _mirror_spec(module_rel)
-  include_inl = f"py2cpp/{module_rel}.inl" if spec.header_inl_include else None
+  include_inl = f"paw/{module_rel}.inl" if spec.header_inl_include else None
   return wrap_codegen_header(
     body,
     guard=module_path_to_guard(module_path),

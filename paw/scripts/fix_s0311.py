@@ -139,7 +139,7 @@ def fix_file(path: Path) -> int:
 
 
 def main(argv: list[str]) -> int:
-    targets = [Path(p) for p in argv[1:]] if len(argv) > 1 else [ROOT / 'py2cpp']
+    targets = [Path(p) for p in argv[1:]] if len(argv) > 1 else [ROOT / 'paw']
     total = 0
     for target in targets:
         files = [target] if target.is_file() else sorted(target.rglob('*.py'))

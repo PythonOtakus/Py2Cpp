@@ -1,9 +1,9 @@
 """Scene View：GLFW 无边框窗 + ``GLDevice`` + 平移 gizmo。"""
 from __future__ import annotations
 
-from py2cpp import *
-from py2cpp.spatial.color import Color
-from py2cpp.spatial.vector import Vector3
+from paw import *
+from paw.spatial.color import Color
+from paw.spatial.vector import Vector3
 
 from ..command import CommandBus, ZeusCommandUnion
 from ..platform.window import Window

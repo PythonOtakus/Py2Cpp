@@ -53,7 +53,7 @@ class TestFfiLayout(unittest.TestCase):
     self.assertTrue(is_ffi_module_path("ffi/windows"))
     self.assertTrue(is_ffi_module_path("ffi/crt/stdio"))
     self.assertTrue(is_ffi_module_path("ffi/sqlite/sqlite3"))
-    self.assertFalse(is_ffi_module_path("py2cpp/ffi/windows"))
+    self.assertFalse(is_ffi_module_path("paw/ffi/windows"))
     self.assertEqual(
       absolute_dotted_to_module_path("ffi.windows"),
       "ffi/windows",
@@ -157,7 +157,7 @@ class TestFfiTranslateGlue(unittest.TestCase):
       self.assertIn("namespace ffi", text)
       self.assertIn("namespace sqlite3", text)
       self.assertNotIn("namespace lib", text)
-      self.assertNotIn("namespace py2cpp\n{\n  namespace ffi", text)
+      self.assertNotIn("namespace paw\n{\n  namespace ffi", text)
       self.assertIn('#include "ffi/sqlite/sqlite3.inl"', text)
       self.assertIn("#include <sqlite3.h>", text)
       self.assertNotIn("class sqlite3", text)
@@ -190,7 +190,7 @@ class TestFfiTranslateGlue(unittest.TestCase):
       out = Path(tmp)
       entry = out / "entry.py"
       entry.write_text(
-        "from py2cpp import *\n"
+        "from paw import *\n"
         "from ffi.crt.io import pyiIsatty\n"
         "from ffi.crt.stdio import PyiIobuf, pyiFileno, pyiFflush\n"
         "\n"
@@ -225,7 +225,7 @@ class TestFfiTranslateGlue(unittest.TestCase):
       out = Path(tmp)
       entry = out / "entry.py"
       entry.write_text(
-        "from py2cpp import *\n"
+        "from paw import *\n"
         "from ffi.crt.stdio import pyiSnprintf, pyiVsnprintf\n"
         "\n"
         "def format_value(buf: utf8ptr, value: int) -> int:\n"
@@ -254,7 +254,7 @@ class TestFfiTranslateGlue(unittest.TestCase):
       out = Path(tmp)
       entry = out / "entry.py"
       entry.write_text(
-        "from py2cpp import *\n"
+        "from paw import *\n"
         "from ffi.crt.direct import pyiChdir\n"
         "from ffi.crt.stat import PyiSIfdir\n"
         "from ffi.crt.stdio import pyiFileno\n"
@@ -286,7 +286,7 @@ class TestFfiTranslateGlue(unittest.TestCase):
       out = Path(tmp)
       entry = out / "entry.py"
       entry.write_text(
-        "from py2cpp import *\n"
+        "from paw import *\n"
         "from ffi.crt.stdlib import pyiExit\n"
         "\n"
         "def exit_now(code: int) -> None:\n"

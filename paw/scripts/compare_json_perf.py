@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CPython ``json.dumps`` 基线（与 ``test/perf/test_json_serde.py`` 规模对齐）。"""
+"""CPython ``json.dumps`` 基线（与 ``tests/perf/test_json_serde.py`` 规模对齐）。"""
 import json
 import time
 

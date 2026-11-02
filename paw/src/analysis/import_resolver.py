@@ -3,7 +3,7 @@
 - 绝对/相对路径解析（PEP 328）
 - 自入口与用户模块起传递闭包加载
 - 标准库 ``from . import …`` 相对依赖
-- ``#include "py2cpp/minimal.h"`` 仍由翻译器自动注入，用户无需手写
+- ``#include "paw/minimal.h"`` 仍由翻译器自动注入，用户无需手写
 """
 from __future__ import annotations
 
@@ -47,7 +47,7 @@ class ImportRequest:
 
 
 def dotted_import_to_module_path(dotted: str | None) -> str:
-  """``py2cpp.util.list`` → ``py2cpp/util/list``；``ffi.windows`` → ``ffi/windows``；``py2cpp`` → 包根。"""
+  """``paw.util.list`` → ``paw/util/list``；``ffi.windows`` → ``ffi/windows``；``py2cpp`` → 包根。"""
   if not dotted:
     return RUNTIME_PKG
   parts = dotted.split(".")
@@ -82,7 +82,7 @@ def _import_anchor_package(
 
   - 包目录 ``…/pkg/__init__.py``：锚点为 ``…/pkg``（``importer_path``）。
   - 单文件 ``…/pkg/mod.py``：锚点为 **父包** ``…/pkg``，而非 ``…/pkg/mod``。
-    故 ``py2cpp/serde/json.py`` 上 ``from ..util``（level=2）到 ``py2cpp``，
+    故 ``paw/serde/json.py`` 上 ``from ..util``（level=2）到 ``py2cpp``，
     ``from ...util``（level=3）应视为越界（勿与 level=2 解析到同一模块）。
   """
   if importer_path == RUNTIME_PKG:
@@ -116,7 +116,7 @@ def resolve_relative_module_path(
   runtime_root: Path | None = None,
   project_root: Path | None = None,
 ) -> str:
-  """将 ``ImportFrom`` 的 level/module 解析为 ``py2cpp/…`` 或 ``test/…`` 路径。"""
+  """将 ``ImportFrom`` 的 level/module 解析为 ``paw/…`` 或 ``tests/…`` 路径。"""
   if level < 0:
     raise ValueError("import level must be non-negative")
   base = _import_anchor_package(
@@ -388,7 +388,7 @@ def resolve_import_target_path(
     return path
   if _find_user_py_file(path, project_root=project_root, runtime_root=runtime_root):
     return path
-  # 绝对 import 默认落在 ``py2cpp/…``；标准库未命中时再试仓库顶层用户包
+  # 绝对 import 默认落在 ``paw/…``；标准库未命中时再试仓库顶层用户包
   # （如 ``compiler.paw.frontend.source`` → C0 自举种子）。
   prefix = f"{RUNTIME_PKG}/"
   if path.startswith(prefix):

@@ -8,13 +8,13 @@ from src.analysis.ir import ClassInfo
 class TestBoxingStorage(unittest.TestCase):
   def test_generic_template_args_become_pointer(self):
     src = '''
-from py2cpp import DictKeyType, Self, boxing
+from paw import DictKeyType, Self, boxing
 
 @boxing
 class DictEntryUnsafe[Key: DictKeyType, Value]:
   pass
 '''
-    info = ClassInfo(ast.parse(src).body[-1], module_path="py2cpp/util/dict.py")
+    info = ClassInfo(ast.parse(src).body[-1], module_path="paw/util/dict.py")
     classes = {"DictEntryUnsafe": info}
     t = "PyDictEntryUnsafe<Key, Value>"
     self.assertEqual(

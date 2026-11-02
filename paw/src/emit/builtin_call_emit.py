@@ -80,7 +80,7 @@ def emit_scalar_cmp_ternary(left: str, right: str) -> str:
     return f'({left} < {right} ? -1 : ({left} > {right} ? 1 : 0))'
 
 def emit_cmp_call(tr: Translator, left: ast.expr, right: ast.expr) -> str:
-    """``__cmp__(a, b)``：标量三目；有 ``__cmp__`` 的类 → ``a.__cmp__(b)``；其余 ``::py2cpp::py_cmp``。"""
+    """``__cmp__(a, b)``：标量三目；有 ``__cmp__`` 的类 → ``a.__cmp__(b)``；其余 ``::paw::py_cmp``。"""
     left_t = tr._infer_expr_cpp_type(left)
     right_t = tr._infer_expr_cpp_type(right)
     if (is_int_type(left_t) or is_int64_type(left_t) or is_float_type(left_t) or is_float64_type(left_t)) and (is_int_type(right_t) or is_int64_type(right_t) or is_float_type(right_t) or is_float64_type(right_t)):
@@ -90,10 +90,10 @@ def emit_cmp_call(tr: Translator, left: ast.expr, right: ast.expr) -> str:
     left_info = tr._class_info_for_expr(left)
     if left_info and '__cmp__' in left_info.methods:
         return tr._member_call_with_arg(left, '__cmp__', right)
-    return f'::py2cpp::py_cmp({tr._visit_value_expr(left)}, {tr._visit_value_expr(right)})'
+    return f'::paw::py_cmp({tr._visit_value_expr(left)}, {tr._visit_value_expr(right)})'
 
 def emit_abs_call(tr: Translator, arg: ast.expr) -> str:
-    """``abs(x)``：标量内联三目；类实例 ``__abs__``；其余 ``::py2cpp::abs``（与包根桩一致）。"""
+    """``abs(x)``：标量内联三目；类实例 ``__abs__``；其余 ``::paw::abs``（与包根桩一致）。"""
     if isinstance(arg, ast.Name) and arg.id == 'self':
         return 'this->__abs__()'
     arg_t = tr._infer_expr_cpp_type(arg)
@@ -105,7 +105,7 @@ def emit_abs_call(tr: Translator, arg: ast.expr) -> str:
     info = tr._class_info_for_expr(arg)
     if info and tr._class_info_has_method_resolved(info, '__abs__'):
         return emit_instance_dunder_call(tr, '__abs__', arg)
-    return f'::py2cpp::py_abs({tr._visit_value_expr(arg)})'
+    return f'::paw::py_abs({tr._visit_value_expr(arg)})'
 
 def emit_instance_dunder_call(tr: Translator, method: str, arg: ast.expr, *, extra_args: tuple[ast.expr, ...]=()) -> str:
     """``len(x)`` / ``repr(x)`` 等：按接收者类型选 ``.`` 或 ``->``（含 ``this->_lst`` 指针字段）。"""
@@ -132,7 +132,7 @@ def emit_instance_dunder_call(tr: Translator, method: str, arg: ast.expr, *, ext
     return f'{tr._paren_expr(inner)}{sep}{call_inner}'
 
 def try_emit_builtin_dunder_forward(tr: Translator, name: str, node: ast.Call) -> str | None:
-    """由 ``py2cpp/__init__.py`` 桩 ``return recv.__dunder__(...)`` 推导的内建转发。"""
+    """由 ``paw/__init__.py`` 桩 ``return recv.__dunder__(...)`` 推导的内建转发。"""
     fwd = builtin_dunder_forward(name)
     if fwd is None:
         return None
@@ -162,7 +162,7 @@ def try_emit_scandir_ctor_call(tr: Translator, name: str, node: ast.Call) -> str
         return None
     from ..analysis.module_namespace import namespace_qualifier_for_module
     path = tr._visit_value_expr(node.args[0])
-    ns = namespace_qualifier_for_module(binding.module_path) or 'py2cpp::io::file'
+    ns = namespace_qualifier_for_module(binding.module_path) or 'paw::io::file'
     return f'::{ns}::{cpp_ident("ScandirIterator")}({path})'
 
 def format_spec_literal(node: ast.expr) -> str | None:

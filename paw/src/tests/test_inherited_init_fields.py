@@ -24,7 +24,7 @@ def _class_body(header: str, name: str) -> str:
 class InheritedInitFieldTests(unittest.TestCase):
   def test_subclass_init_assigns_base_str_field(self):
     src = """
-from py2cpp import *
+from paw import *
 
 @refcount
 class Base:
@@ -63,7 +63,7 @@ class Child(Base):
   def test_subclass_new_inherited_refcount_field(self):
     """子类 ``__init__`` 对基类字段 ``self.f = new(...)`` 须沿 MRO 取类型。"""
     src = """
-from py2cpp import *
+from paw import *
 
 @refcount
 class Inner:
@@ -102,7 +102,7 @@ class Child(Base):
   def test_mixin_method_fields_do_not_drop_host_typed_fields(self):
     """mixin 方法体 ``self.x = …`` 不得导致宿主带注解字段被当作遮蔽删掉。"""
     src = """
-from py2cpp import *
+from paw import *
 
 @mixin
 class HostMixin:

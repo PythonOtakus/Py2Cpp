@@ -1,0 +1,10 @@
+"""``@optional`` 仅允许用于 ``@dataclass`` 字段（``tests/fail/``）。"""
+from paw import *
+
+@copyable
+class Box:
+  items: list[int] @optional = []
+
+def main() -> int:
+  b: Box = new()
+  return len(b.items)

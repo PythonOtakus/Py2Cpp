@@ -13,7 +13,7 @@ from src.translator import Translator
 class OperatorFromDunderTests(unittest.TestCase):
   def test_non_immutable_add_emits_operator_plus(self):
     src = """
-from py2cpp import copyable
+from paw import copyable
 
 @copyable
 class Widget:
@@ -37,7 +37,7 @@ def use(a: Widget, b: Widget) -> Self:
 
   def test_ne_method_body_uses_eq_negation_not_pointer_compare(self):
     src = """
-from py2cpp import immutable, new, Self
+from paw import immutable, new, Self
 
 class Widget:
   @immutable
@@ -67,7 +67,7 @@ def main():
 
   def test_emit_class_operator_overloads_direct(self):
     src = """
-from py2cpp import copyable, immutable, Self
+from paw import copyable, immutable, Self
 
 @copyable
 class Num:
@@ -94,7 +94,7 @@ class Num:
 
   def test_copyable_self_param_no_double_const_on_operator(self):
     src = """
-from py2cpp import copyable, Self
+from paw import copyable, Self
 
 @copyable
 class Num:

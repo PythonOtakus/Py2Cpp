@@ -5,11 +5,11 @@ set "ROOT=%~dp0.."
 cd /d "%ROOT%"
 
 set "PY=python"
-set "EXE_OK=%CD%\generated\test\lang\test_protocol.exe"
+set "EXE_OK=%CD%\generated\tests\lang\test_protocol.exe"
 
 echo [py2cpp] Protocol constraint compile tests
-echo   OK:   test\lang\test_protocol.py
-echo   FAIL: test\fail\test_*_fail.py via scripts\build_fail.bat
+echo   OK:   tests\lang\test_protocol.py
+echo   FAIL: tests\fail\test_*_fail.py via scripts\build_fail.bat
 echo.
 
 %PY% -c "import sys" 2>nul
@@ -29,10 +29,10 @@ if errorlevel 1 exit /b 1
 
 echo === expect compile OK ===
 call "%~dp0_build_timing.bat" start
-%PY% main.py test\lang\test_protocol.py -o generated -c --compiler cl --exe "%EXE_OK%" %*
+%PY% main.py tests\lang\test_protocol.py -o generated -c --compiler cl --exe "%EXE_OK%" %*
 set BUILD_ERR=%ERRORLEVEL%
-call "%~dp0_build_timing.bat" end "test\lang\test_protocol.py"
-call "%~dp0_clean_obj.bat" "%CD%\generated\test\lang" "test_protocol"
+call "%~dp0_build_timing.bat" end "tests\lang\test_protocol.py"
+call "%~dp0_clean_obj.bat" "%CD%\generated\tests\lang" "test_protocol"
 if %BUILD_ERR% neq 0 goto :FailOk
 
 echo.
@@ -46,5 +46,5 @@ exit /b 0
 
 :FailOk
 echo.
-echo FAILED: test\lang\test_protocol.py should compile ^(protocol constraints satisfied^).
+echo FAILED: tests\lang\test_protocol.py should compile ^(protocol constraints satisfied^).
 exit /b 1

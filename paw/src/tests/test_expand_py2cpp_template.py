@@ -36,13 +36,13 @@ class ExpandPy2CppTemplateTests(unittest.TestCase):
     impl = expanded_inject_template("util/+memory.inl")
     self.assertIn("copy_buf(PyChar* dst", impl)
     self.assertIn("load_u64_le_bytes(PyByte* p", impl)
-    self.assertIn("namespace py2cpp", impl)
+    self.assertIn("namespace paw", impl)
 
   def test_bytes_inject_template(self):
     impl = expanded_inject_template("text/+bytes.inl")
     self.assertIn("bytes_from_literal", impl)
     self.assertIn("PyArray<PyByte> buf(n)", impl)
-    self.assertNotIn("#include \"py2cpp/text/bytes.h\"", impl)
+    self.assertNotIn("#include \"paw/text/bytes.h\"", impl)
 
   def test_ignore_region_stripped_before_expand(self):
     impl = expanded_inject_template("text/+bytes.inl")
@@ -51,7 +51,7 @@ class ExpandPy2CppTemplateTests(unittest.TestCase):
 
   def test_scope_from_template_path(self):
     impl = expanded_inject_template("text/+bytes.inl")
-    self.assertIn("namespace py2cpp", impl)
+    self.assertIn("namespace paw", impl)
     self.assertIn("namespace text", impl)
     self.assertIn("namespace bytes", impl)
     self.assertIn("} // namespace bytes", impl)
@@ -73,7 +73,7 @@ class ExpandPy2CppTemplateTests(unittest.TestCase):
     self.assertIn("PySqliteConnection connect(const PyStr& path)", impl)
     self.assertIn("PySqliteCursor::~PySqliteCursor()", impl)
     self.assertNotIn("PY2CPP_NAMESPACE", impl)
-    self.assertNotIn("py2cpp::sql::sqlite::connect", impl)
+    self.assertNotIn("paw::sql::sqlite::connect", impl)
 
   def test_paste_short_form_class_paste(self):
     out = expand_template("text/+str.inl", apply_allman=False)
@@ -90,7 +90,7 @@ class ExpandPy2CppTemplateTests(unittest.TestCase):
       apply_allman=False,
     )
     self.assertIn("__truediv__(PyInt a, PyInt b)", h)
-    self.assertIn("py2cpp::text::str::PyStr", h)
+    self.assertIn("paw::text::str::PyStr", h)
     self.assertIn("__mod__(PyInt64 a, PyInt64 b)", h)
     self.assertIn("chr(PyInt i)", h)
     self.assertIn("#ifndef TEST_OPERATORS_H", h)
@@ -126,7 +126,7 @@ class ExpandPy2CppTemplateTests(unittest.TestCase):
   def test_syntax_showcase_ignore_and_include(self):
     out = _expand_showcase()
     self.assertNotIn("PY2CPP_IGNORE", out)
-    self.assertNotIn("#include \"py2cpp/text/str.h\"", out)
+    self.assertNotIn("#include \"paw/text/str.h\"", out)
     self.assertIn("snippet_marker = 42;", out)
 
   def test_syntax_showcase_scope(self):
@@ -158,7 +158,7 @@ class ExpandPy2CppTemplateTests(unittest.TestCase):
 
   def test_type_index_error_throw(self):
     out = _expand_showcase()
-    self.assertIn("throw py2cpp::core::exceptions::IndexError();", out)
+    self.assertIn("throw paw::core::exceptions::IndexError();", out)
 
   def test_echo_inserts_lines(self):
     out = _expand_showcase()
@@ -181,15 +181,15 @@ class ExpandPy2CppTemplateTests(unittest.TestCase):
     out = _expand_showcase()
     self.assertIn("class PySized {};", out)
     self.assertIn(
-      "void catch_(const py2cpp::core::exceptions::ValueError& e);",
+      "void catch_(const paw::core::exceptions::ValueError& e);",
       out,
     )
     self.assertIn(
-      "void handle(const py2cpp::core::exceptions::ValueError& e);",
+      "void handle(const paw::core::exceptions::ValueError& e);",
       out,
     )
     self.assertIn(
-      "void handle(const py2cpp::core::exceptions::KeyError& e);",
+      "void handle(const paw::core::exceptions::KeyError& e);",
       out,
     )
 
@@ -227,7 +227,7 @@ class ExpandPy2CppTemplateTests(unittest.TestCase):
   def test_tuple_codegen_template(self):
     out = expand_template("util/tuple.inl", apply_allman=False)
     self.assertIn("PyTuple<Args...>::__getitem__(int index)", out)
-    self.assertIn("throw py2cpp::core::exceptions::IndexError();", out)
+    self.assertIn("throw paw::core::exceptions::IndexError();", out)
 
   def test_class_header_inject_templates(self):
     from src.codegen.expand_py2cpp_template import (
@@ -241,7 +241,7 @@ class ExpandPy2CppTemplateTests(unittest.TestCase):
     self.assertEqual(len(blocks["PyStr"]), 2)
     joined = "\n".join(blocks["PyStr"])
     self.assertIn("format(PyUtf8Ptr fmt", joined)
-    self.assertIn("py2cpp::text::str::PyStr", joined)
+    self.assertIn("paw::text::str::PyStr", joined)
     self.assertIn("__mod__(const PyTuple", joined)
     self.assertIn("PyArray<PyChar>&& data", joined)
     self.assertNotIn("PY2CPP_INJECT_CLASS", joined)
@@ -258,11 +258,11 @@ class ExpandPy2CppTemplateTests(unittest.TestCase):
     joined_h = "\n".join(blocks["Exception"])
     self.assertIn("__cause__", joined_h)
     self.assertIn("explicit Exception() : __cause__(nullptr) {}", joined_h)
-    self.assertIn("explicit Exception(const py2cpp::core::exceptions::AssertionError& o)", joined_h)
+    self.assertIn("explicit Exception(const paw::core::exceptions::AssertionError& o)", joined_h)
     self.assertNotIn("PY2CPP_INLINE_ECHO", joined_h)
     self.assertNotIn("PY2CPP_DYNAMIC_TYPE", joined_h)
     inl = expand_template("core/+exceptions.inl", apply_allman=False)
-    self.assertIn("Exception::Exception(const py2cpp::core::exceptions::KeyError& o)", inl)
+    self.assertIn("Exception::Exception(const paw::core::exceptions::KeyError& o)", inl)
     self.assertNotIn("PY2CPP_INLINE_ECHO", inl)
     self.assertNotIn("PY2CPP_DYNAMIC_TYPE", inl)
 
@@ -305,13 +305,13 @@ class ExpandPy2CppTemplateTests(unittest.TestCase):
     header = build_py2cpp_umbrella_header(
       "PY2CPP_MINIMAL_H",
       "2026-06-15 00:00:00",
-      "py2cpp",
+      "paw",
       ["util/list"],
     )
     self.assertIn("#ifndef PY2CPP_MINIMAL_H", header)
     self.assertIn("#define PY2CPP_MINIMAL_H", header)
     self.assertIn("#endif // PY2CPP_MINIMAL_H", header)
-    self.assertIn("templates/minimal.h（运行时万能头，聚合 py2cpp/*.h）", header)
+    self.assertIn("templates/minimal.h（运行时万能头，聚合 paw/*.h）", header)
     self.assertIn("// 2026-06-15 00:00:00", header)
     self.assertNotIn("PY2CPP_EVAL(guard)", header)
     self.assertNotIn("PY2CPP_ECHO(guard)", header)

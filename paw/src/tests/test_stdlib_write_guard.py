@@ -20,7 +20,7 @@ class StdlibWriteGuardTests(unittest.TestCase):
     self.assertTrue(tr._can_write_stdlib_artifact(f"{RUNTIME_PKG}/spatial/matrix"))
 
   def test_test_entry_writes_no_stdlib(self):
-    tr = _tr("test/misc/test_containers")
+    tr = _tr("tests/misc/test_containers")
     self.assertFalse(tr._can_write_stdlib_artifact(f"{RUNTIME_PKG}/util/list"))
     self.assertFalse(tr._can_write_stdlib_artifact(f"{RUNTIME_PKG}/member_access"))
     self.assertFalse(tr._can_write_stdlib_artifact(f"{RUNTIME_PKG}/test/unittest"))
@@ -36,10 +36,10 @@ class StdlibWriteGuardTests(unittest.TestCase):
     self.assertFalse(tr._can_write_stdlib_artifact(f"{RUNTIME_PKG}/util/list"))
 
   def test_user_entry_should_not_emit_stdlib_modules(self):
-    tr = _tr("test/misc/test_containers")
-    tr.entry_module_path = "test/misc/test_containers"
+    tr = _tr("tests/misc/test_containers")
+    tr.entry_module_path = "tests/misc/test_containers"
     self.assertFalse(tr._should_emit_module(f"{RUNTIME_PKG}/util/list"))
-    self.assertTrue(tr._should_emit_module("test/misc/test_containers"))
+    self.assertTrue(tr._should_emit_module("tests/misc/test_containers"))
 
   def test_mirror_modules_skip_stub_header_write(self):
     from src.codegen.stdlib_mirror_codegen import (

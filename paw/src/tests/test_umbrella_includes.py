@@ -27,7 +27,7 @@ def _unwrap_umbrella_path(p: str) -> str:
 
 class UmbrellaIncludesTests(unittest.TestCase):
   def setUp(self):
-    self.runtime_prefix = "py2cpp"
+    self.runtime_prefix = "paw"
     self.modules = STDLIB_REL_PATHS
 
   def test_expand_prefix_order(self):

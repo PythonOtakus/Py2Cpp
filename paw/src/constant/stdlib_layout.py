@@ -1,13 +1,13 @@
-"""标准库逻辑模块路径（``py2cpp/util/list`` → ``#include`` / ``::`` 命名空间）。"""
+"""标准库逻辑模块路径（``paw/util/list`` → ``#include`` / ``::`` 命名空间）。"""
 from __future__ import annotations
 
 from .paths import PY2CPP_ROOT
 from .stdlib_discovery import STDLIB_REL_PATHS, STDLIB_REL_PATH_SET
 from .stdlib_modules import STDLIB_SKIP_PREFIXES, STDLIB_SKIP_REL_PATHS
 
-RUNTIME_PKG = "py2cpp"
+RUNTIME_PKG = "paw"
 RUNTIME_BUILTINS_MODULE = f"{RUNTIME_PKG}/builtins"
-# ``operators.h`` 全局 ``len``/``iter``/…；``builtins`` 勿再生成 ``py2cpp::`` 同名桩
+# ``operators.h`` 全局 ``len``/``iter``/…；``builtins`` 勿再生成 ``paw::`` 同名桩
 BUILTINS_OPERATORS_FUNCS: frozenset[str] = frozenset({
   "len",
   "iter",
@@ -42,7 +42,7 @@ def _on_demand_stdlib_py_exists(rel: str) -> bool:
 
 
 def is_on_demand_stdlib_rel(rel: str) -> bool:
-  """跳过 bootstrap 发现、但 ``py2cpp/`` 下仍有源文件的标准库路径。"""
+  """跳过 bootstrap 发现、但 ``paw/`` 包下仍有源文件的标准库路径。"""
   if rel in STDLIB_SKIP_REL_PATHS:
     return False
   if not any(rel.startswith(p) for p in STDLIB_SKIP_PREFIXES):
@@ -71,7 +71,7 @@ def list_on_demand_stdlib_rels() -> list[str]:
 
 
 def stdlib_rel_path(name: str) -> str:
-  """``util/list`` 或 ``py2cpp/util/list`` → 相对 ``py2cpp/`` 的路径。"""
+  """``util/list`` 或 ``paw/util/list`` → 相对 ``paw/`` 包的路径。"""
   rel = name
   if rel.startswith(f"{RUNTIME_PKG}/"):
     rel = rel[len(f"{RUNTIME_PKG}/") :]
@@ -79,14 +79,14 @@ def stdlib_rel_path(name: str) -> str:
     if is_on_demand_stdlib_rel(rel):
       return rel
     raise ValueError(
-      f"stdlib module {name!r}: expected a path under py2cpp/ "
+      f"stdlib module {name!r}: expected a path under paw/ "
       f"(e.g. util/list)"
     )
   return rel
 
 
 def stdlib_module_path(name: str) -> str:
-  """→ ``py2cpp/util/list`` 等翻译模块路径。"""
+  """→ ``paw/util/list`` 等翻译模块路径。"""
   if name == RUNTIME_PKG:
     return RUNTIME_PKG
   rel = stdlib_rel_path(name)
@@ -101,7 +101,7 @@ def stdlib_header_include(name: str, *, suffix: str = ".h") -> str:
 
 
 def stdlib_cpp_namespace(name: str) -> str:
-  """``util/list`` → ``py2cpp::util::list``。"""
+  """``util/list`` → ``paw::util::list``。"""
   return stdlib_module_path(name).replace("/", "::")
 
 
@@ -129,7 +129,7 @@ def cpp_exception_ctor(name: str) -> str:
 
 
 def stdlib_rel_from_import_segment(name: str) -> str | None:
-  """``from py2cpp import io`` 等单段名 → 标准库相对路径；歧义或未知名返回 ``None``。"""
+  """``from paw import io`` 等单段名 → 标准库相对路径；歧义或未知名返回 ``None``。"""
   if name in _STDLIB_REL_PATHS:
     return name
   matches = [p for p in STDLIB_REL_PATHS if p == name or p.endswith(f"/{name}")]
@@ -139,7 +139,7 @@ def stdlib_rel_from_import_segment(name: str) -> str | None:
 
 
 def resolve_stdlib_import_parts(parts: list[str]) -> str | None:
-  """``['collections', 'list']`` / ``['list']`` → ``py2cpp/…``；域包 ``util`` 等返回 ``None``（由调用方拼路径）。"""
+  """``['collections', 'list']`` / ``['list']`` → ``paw/…``；域包 ``util`` 等返回 ``None``（由调用方拼路径）。"""
   if not parts:
     return RUNTIME_PKG
   if parts[0] == RUNTIME_PKG:

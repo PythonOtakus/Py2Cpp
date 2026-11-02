@@ -1,7 +1,7 @@
 """交互式 Panel 演示（Win32 窗口；关闭窗口退出）。"""
-from py2cpp import *
-from py2cpp.ui.meta import UIButtonMeta, UIInvisibleMeta, UILabelMeta, UISliderMeta
-from py2cpp.ui.panel import UIPanelMixin
+from paw import *
+from paw.ui.meta import UIButtonMeta, UIInvisibleMeta, UILabelMeta, UISliderMeta
+from paw.ui.panel import UIPanelMixin
 
 
 @dataclass

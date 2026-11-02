@@ -33,7 +33,7 @@ using compiler::paw::frontend::syntax_nodes::PyEnumBundle;
 using compiler::paw::frontend::syntax_nodes::PyEnumMember;
 using compiler::paw::frontend::syntax_nodes::PyItemKindEnum;
 using compiler::paw::frontend::syntax_nodes::PySyntaxModule;
-using py2cpp::PyStr;
+using paw::PyStr;
 
 static const char* kSmokeSrc =
   "def foo(x: int) -> int:\n"

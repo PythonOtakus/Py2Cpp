@@ -59,7 +59,7 @@ def _rel_from_module_path(module_path: str) -> str:
 
 
 def module_link_kind(module_path: str) -> LinkKind:
-  """标准库模块链接类别；非 ``py2cpp/…`` 路径视为 ``header_only``。"""
+  """标准库模块链接类别；非 ``paw/…`` 路径视为 ``header_only``。"""
   if header_only_mode():
     return "header_only"
   rel = _rel_from_module_path(module_path)
@@ -73,7 +73,7 @@ def is_library_module(module_path: str) -> bool:
 
 
 def library_module_paths() -> tuple[str, ...]:
-  """``py2cpp/<rel>`` 形式的 library 模块路径（稳定排序）。"""
+  """``paw/<rel>`` 形式的 library 模块路径（稳定排序）。"""
   out = [
     stdlib_module_path(rel)
     for rel in sorted(_LIBRARY_REL_PATHS)

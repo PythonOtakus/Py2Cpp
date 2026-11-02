@@ -16,7 +16,7 @@ from src.translator import Translator
 
 
 _RENAME_FIELD_SRC = '''\
-from py2cpp import dataclass
+from paw import dataclass
 
 @dataclass
 class Widget:
@@ -166,16 +166,16 @@ class Team:
   def test_rename_field_updates_select_literals(self):
     with tempfile.TemporaryDirectory() as tmp:
       root = Path(tmp)
-      py2cpp = root / "py2cpp"
-      test_dir = root / "test"
-      py2cpp.mkdir()
+      py2cpp = root / "paw"
+      test_dir = root / "tests"
+      paw.mkdir()
       test_dir.mkdir()
       owner = py2cpp / "widget.py"
       user = test_dir / "use_widget.py"
       owner.write_text(_RENAME_FIELD_SRC, encoding="utf-8")
       user.write_text(
         '''\
-from py2cpp.widget import Widget
+from paw.widget import Widget
 
 def pick(w: Widget) -> int:
   rows = w.select('.score')
@@ -189,7 +189,7 @@ def pick(w: Widget) -> int:
         "ops": [{
           "op": "rename_symbol",
           "kind": "field",
-          "module": "py2cpp/widget",
+          "module": "paw/widget",
           "owner": "Widget",
           "from": "score",
           "to": "points",
@@ -210,7 +210,7 @@ class ArchitectGraphTests(unittest.TestCase):
       py = out / "graph_snip.py"
       py.write_text(
         '''\
-from py2cpp import *
+from paw import *
 
 @dataclass
 class Item:

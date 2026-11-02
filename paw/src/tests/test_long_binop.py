@@ -10,7 +10,7 @@ from src.translator import Translator
 
 class LongBinopEmitTests(unittest.TestCase):
   def _translate(self, body: str) -> str:
-    src = f"""from py2cpp import *
+    src = f"""from paw import *
 
 def probe():
 {body}"""

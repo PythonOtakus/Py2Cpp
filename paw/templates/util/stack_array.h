@@ -1,12 +1,12 @@
-#include "py2cpp/core/exceptions.h"
-#include "py2cpp/core/iter_result.h"
-#include "py2cpp/util/slice.h"
-#include "py2cpp/util/span.h"
-#include "py2cpp/util/tuple.h"
-#include "py2cpp/minimal.h"
-#include "py2cpp/py_types.h"
+#include "paw/core/exceptions.h"
+#include "paw/core/iter_result.h"
+#include "paw/util/slice.h"
+#include "paw/util/span.h"
+#include "paw/util/tuple.h"
+#include "paw/minimal.h"
+#include "paw/py_types.h"
 
-namespace py2cpp
+namespace paw
 {
   namespace util
   {

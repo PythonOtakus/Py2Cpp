@@ -32,7 +32,7 @@ pkg-pyml.bat
 1. 打开 `plugins/py2cpp-pyml`
 2. 直接编辑 `out/*.js`（无 TypeScript 编译）
 3. F5 启动 Extension Development Host
-4. 在新窗口打开含 `.pyml` 的工作区（可用 `test/serde/pyml_modules/`）
+4. 在新窗口打开含 `.pyml` 的工作区（可用 `tests/serde/pyml_modules/`）
 
 ## 设置
 

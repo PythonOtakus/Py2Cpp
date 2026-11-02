@@ -13,7 +13,7 @@ class TemplateScopeTests(unittest.TestCase):
   def test_namespace_qualifier_sqlite(self):
     self.assertEqual(
       namespace_qualifier_for_module_rel("sql/sqlite"),
-      "py2cpp::sql::sqlite",
+      "paw::sql::sqlite",
     )
 
   def test_macro_header_includes_namespace_define(self):
@@ -22,7 +22,7 @@ class TemplateScopeTests(unittest.TestCase):
       "sql/sqlite",
       has_begin_scope=False,
     )
-    self.assertIn("#define PY2CPP_NAMESPACE py2cpp::sql::sqlite", text)
+    self.assertIn("#define PY2CPP_NAMESPACE paw::sql::sqlite", text)
 
 
 if __name__ == "__main__":

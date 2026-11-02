@@ -2,7 +2,7 @@
 
 nested c1_emit 落 ``c1_emit/hir/nodes.h``。
 """
-from py2cpp import *
+from paw import *
 from ..frontend.source import SourceSpan
 
 enum ObjectModel:

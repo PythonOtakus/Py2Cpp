@@ -11,7 +11,7 @@ from src.translator import Translator
 class KwargsReturnNewTests(unittest.TestCase):
   def test_return_new_kw_with_subscript_return_ann(self):
     src = '''
-from py2cpp import *
+from paw import *
 
 @copyable
 class Task:
@@ -35,7 +35,7 @@ def make() -> Task[int]:
 
   def test_new_ctor_default_keeps_delegate_generic(self):
     src = '''
-from py2cpp import *
+from paw import *
 
 @copyable
 class Delegate[Element]:

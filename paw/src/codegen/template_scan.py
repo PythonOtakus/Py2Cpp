@@ -13,7 +13,7 @@ _IGNORE_RE = re.compile(r"^\s*PY2CPP_IGNORE\s*$")
 _BEGIN_SCOPE_RE = re.compile(r"^\s*PY2CPP_BEGIN_SCOPE\s*$")
 _END_SCOPE_RE = re.compile(r"^\s*PY2CPP_END_SCOPE\s*$")
 _INCLUDE_RE = re.compile(r"^\s*PY2CPP_INCLUDE\s*\(\s*\"([^\"]+)\"\s*\)\s*$")
-_PY2CPP_INCLUDE_LINE_RE = re.compile(r'^\s*#\s*include\s*"py2cpp/')
+_PY2CPP_INCLUDE_LINE_RE = re.compile(r'^\s*#\s*include\s*"paw/')
 _CTX_DEFINE_OUTSIDE_RE = re.compile(r"^\s*#\s*define\s+(ctx_[A-Za-z0-9_]+)")
 _CTX_DEFINE_RE = re.compile(r"^\s*#\s*define\s+(ctx_[A-Za-z0-9_]+)")
 _PY2CPP_ECHO_CTX_RE = re.compile(r"PY2CPP_ECHO\s*\(\s*(ctx_[A-Za-z0-9_]+)\s*\)")
@@ -30,7 +30,7 @@ _INCLUDE_GUARD_ENDIF_RE = re.compile(
   r"^\s*#\s*endif\s*(?://|/\*)\s*(PY2CPP_[A-Z0-9_]+|[A-Z][A-Z0-9_]*_(?:H|HPP|INL))",
 )
 _QUALIFIED_CUT_TYPE_RE = re.compile(
-  r"\bpy2cpp::(?:core|util|text)::(?:[a-z_][a-z0-9_]*::)*[A-Z][A-Za-z0-9_]*\b",
+  r"\bpaw::(?:core|util|text)::(?:[a-z_][a-z0-9_]*::)*[A-Z][A-Za-z0-9_]*\b",
 )
 
 
@@ -362,7 +362,7 @@ def scan_inject_ignore_violations(
   for i, line in enumerate(lines, start=1):
     if check_py2cpp_include and _PY2CPP_INCLUDE_LINE_RE.match(line):
       if not line_in_ignore(i, regions):
-        errors.append((i, 'paste inject 模板须在 PY2CPP_IGNORE 内 #include "py2cpp/…"'))
+        errors.append((i, 'paste inject 模板须在 PY2CPP_IGNORE 内 #include "paw/…"'))
     if check_ctx_define:
       m = _CTX_DEFINE_OUTSIDE_RE.match(line)
       if m and not line_in_ignore(i, regions):
@@ -461,7 +461,7 @@ def scan_inject_class_shell_violations(lines: list[str]) -> list[tuple[int, str]
 
   outer_text = "\n".join(lines)
   if not _NAMESPACE_PY2CPP_RE.search(outer_text):
-    errors.append((1, "+*.h inject 模板须在 IGNORE 内声明 namespace py2cpp"))
+    errors.append((1, "+*.h inject 模板须在 IGNORE 内声明 namespace paw"))
 
   inject_spans: list[tuple[int, str, int]] = []
   i = 0

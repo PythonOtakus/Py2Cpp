@@ -1,4 +1,4 @@
-"""硬切：``test/**/*.py`` → ``.paw``；``ffi/**/*.pyi``（及 zeus/ffi）→ ``.paw``。
+"""硬切：``tests/**/*.py`` → ``.paw``；``ffi/**/*.pyi``（及 zeus/ffi）→ ``.paw``。
 
 对测试走 legacy_to_paw + method/property 表面迁移；对 FFI 仅 method 表面
 （``@native``→``native``，保留 ``@native_name``）。
@@ -105,7 +105,7 @@ def main() -> int:
 
   if not args.skip_test:
     ok, fail, notes = _cut_tree(
-      root=ROOT / "test",
+      root=ROOT / "tests",
       pattern="*.py",
       new_suffix=".paw",
       transform=_transform_test,

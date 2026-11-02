@@ -7,7 +7,7 @@ from src.analysis.module_namespace import splice_before_innermost_namespace_clos
 class TestNamespaceSplice(unittest.TestCase):
   def test_splice_before_innermost_close(self):
     body = [
-      "namespace py2cpp",
+      "namespace paw",
       "{",
       "  namespace io",
       "  {",
@@ -16,7 +16,7 @@ class TestNamespaceSplice(unittest.TestCase):
       "      void foo();",
       "    } // namespace file",
       "  } // namespace io",
-      "} // namespace py2cpp",
+      "} // namespace paw",
     ]
     insert = ["      class walk_generator;", ""]
     out = splice_before_innermost_namespace_close(body, insert)

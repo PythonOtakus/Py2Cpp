@@ -1,9 +1,9 @@
 """Hierarchy：自绘 ``UICanvas`` 对象树（无 Win32 Tree 控件时的最小替代）。"""
 from __future__ import annotations
 
-from py2cpp import *
-from py2cpp.ui.canvas import UICanvas, UIPaintContext
-from py2cpp.ui.events import UIValueChangedDelegate
+from paw import *
+from paw.ui.canvas import UICanvas, UIPaintContext
+from paw.ui.events import UIValueChangedDelegate
 
 from .session import HierarchyRow
 from ..command import CommandBus, ZeusCommandUnion

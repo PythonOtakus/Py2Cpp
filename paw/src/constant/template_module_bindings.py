@@ -144,7 +144,7 @@ def validate_template_module_bindings(
   *,
   stdlib_rel_paths: frozenset[str] = STDLIB_REL_PATH_SET,
 ) -> None:
-  """无前缀 / ``+`` 模板必须有对应 ``py2cpp/<module_rel>.py``（在 ``STDLIB_REL_PATH_SET`` 内）。"""
+  """无前缀 / ``+`` 模板必须有对应 ``paw/<module_rel>.py``（在 ``STDLIB_REL_PATH_SET`` 内）。"""
   from ..codegen.template_conventions import validate_template_module_bindings as _validate
 
   _validate(stdlib_rel_paths=stdlib_rel_paths)

@@ -2,8 +2,8 @@
 
 Python：``import ffi.windows`` / ``from ffi.crt.stdio import …`` / ``from ffi.sqlite.sqlite3 import …``
 内部 module_path：``ffi/windows``、``ffi/crt/stdio``、``ffi/sqlite/sqlite3``、``ffi/glfw/glfw3``
-生成物：``generated/runtime/ffi/…``（``#include "ffi/…"``；与 ``py2cpp/`` 并列）
-C++ 命名空间：``ffi::…``（见 ``module_namespace``；不挂 ``py2cpp::``）
+生成物：``generated/runtime/ffi/…``（``#include "ffi/…"``；与 ``paw/`` 并列）
+C++ 命名空间：``ffi::…``（见 ``module_namespace``；不挂 ``paw::``）
 
 ``.paw`` **一律**由 ``ffi.bat`` / ``src.tools.c_ffi_pyi`` 生成，禁止手写。
 不进 ``STDLIB_REL_PATHS`` / ``minimal.h`` 默认 bulk；仅被 import 时参与翻译。

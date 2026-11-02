@@ -1,4 +1,4 @@
-"""``constant.stdlib_discovery``：``py2cpp/`` 遍历发现标准库模块。"""
+"""``constant.stdlib_discovery``：``paw/`` 遍历发现标准库模块。"""
 from __future__ import annotations
 
 import unittest
@@ -34,7 +34,7 @@ class StdlibRegistryTests(unittest.TestCase):
 
   def test_package_root_not_listed(self):
     self.assertNotIn("", STDLIB_REL_PATH_SET)
-    self.assertNotIn("py2cpp", STDLIB_REL_PATH_SET)
+    self.assertNotIn("paw", STDLIB_REL_PATH_SET)
 
   def test_core_util_samples_present(self):
     for rel in (

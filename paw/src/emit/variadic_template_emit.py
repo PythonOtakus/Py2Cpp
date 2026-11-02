@@ -231,7 +231,7 @@ def _is_pack_for_node(node: ast.For, vt: "VariadicTemplateInfo") -> bool:
 
 
 def _loop_helper_base(tr: "Translator") -> str:
-  from ..analysis.patterns import py2cpp_emit_symbol
+  from ..analysis.patterns import paw_emit_symbol
 
   fn = tr.current_method
   if fn is None:

@@ -1,9 +1,9 @@
 """跳一跳：蓄力跳跃电机（``Component``）。"""
 from __future__ import annotations
 
-from py2cpp import *
-from py2cpp.spatial.vector import Vector3
-from py2cpp.ui.meta import UIInvisibleMeta, UILabelMeta
+from paw import *
+from paw.spatial.vector import Vector3
+from paw.ui.meta import UIInvisibleMeta, UILabelMeta
 
 from ..scene import Component
 from ..simple_world import SimpleBody

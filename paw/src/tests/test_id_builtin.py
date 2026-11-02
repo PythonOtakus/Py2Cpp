@@ -32,7 +32,7 @@ def take_addr(w: Widget) -> Pointer[Widget]:
 
   def test_refcount_emits_deref_address(self):
     src = """
-from py2cpp import refcount
+from paw import refcount
 
 @refcount
 class Node:
@@ -87,7 +87,7 @@ def same(a: Widget, b: Widget) -> bool:
 
   def test_pointer_field_from_self_is_this_not_address_of_this(self):
     src = """
-from py2cpp import *
+from paw import *
 
 class Doc:
   peer: Pointer[Self] = None

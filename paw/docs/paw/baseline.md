@@ -35,9 +35,9 @@
 
 | 集合 | 约数 | 路径 |
 |---|---:|---|
-| 标准库 | 153 | `py2cpp/**/*.paw` |
-| 正向测试 | ~200 | `test/**/test_*.paw`（排除 fail/perf） |
-| 负向测试 | ~37 | `test/**/*_fail.paw` |
+| 标准库 | 153 | `paw/**/*.paw` |
+| 正向测试 | ~200 | `tests/**/test_*.paw`（排除 fail/perf） |
+| 负向测试 | ~37 | `tests/**/*_fail.paw` |
 | 示例 | 3 | `examples/**/*.py`（尚未硬切） |
 | FFI 桩 | 34 | `ffi/**/*.paw` |
 | Paw 高亮预览 | 1 | `lexer_preview.paw` |
@@ -82,7 +82,7 @@ stdlib mid-emit 覆盖：`python scripts/paw_mid_emit_coverage.py`。
 |---|---|
 | seed MidIR 直 emit | **完成**（含 `hir/nodes`/`mid/nodes`/`emit_cpp`） |
 | stdlib `can_emit_mid` | **153/153（100%）**（见 `scripts/paw_mid_emit_coverage.py`） |
-| `test/` build-all | **155/155 绿**（2026-11-02） |
+| `tests/` build-all | **155/155 绿**（2026-11-02） |
 | 删除 `materialize_ast` | **已删**；mid_ok **默认空树** + 回填 |
 | PRIMARY | 默认仅 `compiler/paw/**`；stdlib/test 需 `MID_PRIMARY=1` |
 | passes 迁出 `ast.*` | 进行中（enum/record/union/protocol/mixin Mid；其余仍 C0） |

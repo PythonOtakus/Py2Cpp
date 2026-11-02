@@ -1,8 +1,8 @@
-# `py2cpp.ui.flow` — 蓝图式工作流编辑器
+# `paw.ui.flow` — 蓝图式工作流编辑器
 
 Py2Cpp 标准库扩展：在 Win32 画布上编辑**节点图**（类似 UE5 Blueprint）。节点由宿主类上 **`@annotation` 标注的方法** 译期注册；引脚由**方法签名**自动生成。
 
-- **Panel 对照**：[`py2cpp/ui/panel.py`](../py2cpp/ui/panel.py) 用 `@UILabelMeta` / `@UIButtonMeta` + `Self.iterFields` / `Self.iterMethods`；Flow 用 `@FlowNodeMeta` 等 + **新增**方法签名反射 API。
+- **Panel 对照**：[`paw/ui/panel.py`](../paw/ui/panel.py) 用 `@UILabelMeta` / `@UIButtonMeta` + `Self.iterFields` / `Self.iterMethods`；Flow 用 `@FlowNodeMeta` 等 + **新增**方法签名反射 API。
 - **架构总览**：[参考手册 §10.10](./参考手册.md#1010-uiflow蓝图编辑器)（摘要 + 链接本文）。
 - **状态**：**P0/P1 已落地**（画布、壳层、palette、JSON、`UIFlowMixin`）；**P2.1 已落地**（内置 Branch/ForLoop、`FlowRuntime`、Run 菜单启用）。
 
@@ -12,7 +12,7 @@ Py2Cpp 标准库扩展：在 Win32 画布上编辑**节点图**（类似 UE5 Blu
 
 | 项 | 说明 |
 |----|------|
-| **模块路径** | `py2cpp/ui/flow/`（`meta`、`model`、`catalog`、`builtins`、`runtime`、`layout`、`style`、`canvas`、`panel`、`shell`、`palette`、`serialize`）；基础设施 `py2cpp/ui/` 含 `menu`、`tooltip`、`canvas` |
+| **模块路径** | `paw/ui/flow/`（`meta`、`model`、`catalog`、`builtins`、`runtime`、`layout`、`style`、`canvas`、`panel`、`shell`、`palette`、`serialize`）；基础设施 `paw/ui/` 含 `menu`、`tooltip`、`canvas` |
 | **P0** | 可视化编辑器：网格画布、节点框、Exec/Data 引脚、贝塞尔连线、平移缩放、拖拽与连线；**方法 → 节点** 译期目录 ✅ |
 | **P1** | 编辑器壳（顶菜单 + 左 palette + 中画布）、palette 拖拽创建、tooltip、Delete/Esc、JSON 存盘 ✅ |
 | **P2.1** | `flow/runtime.py` + 内置 Branch/ForLoop；Exec walk + Pure 求值；宿主 `flow_invoke_*`（译期 `getattr`）；**Run** Play / Play from Selected / Stop ✅ |
@@ -34,7 +34,7 @@ Py2Cpp 用三个注解表达上述语义（见 §3）。
 
 ---
 
-## 3. 注解语义（`py2cpp/ui/flow/meta.py`）
+## 3. 注解语义（`paw/ui/flow/meta.py`）
 
 ### 3.1 `@FlowNodeMeta` — 默认「可调用节点」（≈ BlueprintCallable）
 
@@ -168,7 +168,7 @@ for method in Self.iterMethods[FlowNodeMeta](mro=True):
 ## 5. 模块与文件
 
 ```text
-py2cpp/ui/
+paw/ui/
   canvas.py         # UICanvas / UIPaintContext（通用 GDI 画布；flow 继承）
   menu.py           # UIMenuBar（P1）
   tooltip.py        # UITooltipHost（P1）
@@ -193,7 +193,7 @@ templates/ui/
   +tooltip.inl      # ToolTip 控件（P1）
   +file_dialog.inl  # GetOpenFileName / GetSaveFileName（P1）
 
-test/ui/test_flow.py
+tests/ui/test_flow.py
 examples/ui_flow_demo.py
 ```
 
@@ -324,7 +324,7 @@ class UIFlowMixin:
 
 ### 8.2 菜单栏（P1）
 
-命令 ID 由 `FlowMenuIdEnum`（`py2cpp/ui/menu.py` 或 `flow/shell.py`）枚举；`WM_COMMAND` 的 `LOWORD(wParam)` 映射到 `UIFlowShell.onMenuCommand`。
+命令 ID 由 `FlowMenuIdEnum`（`paw/ui/menu.py` 或 `flow/shell.py`）枚举；`WM_COMMAND` 的 `LOWORD(wParam)` 映射到 `UIFlowShell.onMenuCommand`。
 
 | 菜单 | 项 | 快捷键 | 行为 | 阶段 |
 |------|-----|--------|------|------|
@@ -396,9 +396,9 @@ Open 时未知 `kindId` 跳过该节点；`UIFlowShell._doc_path` 供 Save / Sav
 ## 10. 完整用法示例
 
 ```python
-from py2cpp import *
-from py2cpp.ui.flow.meta import FlowEventMeta, FlowNodeMeta, FlowPureMeta
-from py2cpp.ui.flow.panel import UIFlowMixin
+from paw import *
+from paw.ui.flow.meta import FlowEventMeta, FlowNodeMeta, FlowPureMeta
+from paw.ui.flow.panel import UIFlowMixin
 
 
 @dataclass
@@ -450,11 +450,11 @@ P1 起：左侧 palette 按 `category` 分组（`Events` / `Combat` / 类名等�
 | 层 | 路径 | 内容 |
 |----|------|------|
 | 译器单测 | `src/tests/test_method_meta.py` | `iterMethodParams` / `get_param_type` / `get_return_type` / `is not None` 折叠 |
-| 集成测 | `test/ui/test_flow.py` | `FlowGraph.connect` 规则、`catalog` 引脚数、`createFlow` 句柄非 0 |
+| 集成测 | `tests/ui/test_flow.py` | `FlowGraph.connect` 规则、`catalog` 引脚数、`createFlow` 句柄非 0 |
 | 演示 | `examples/ui_flow_demo.py` | 交互式三节点图 |
 
 ```bat
-python main.py py2cpp\__init__.py -o generated --no-main
+python main.py paw\__init__.py -o generated --no-main
 build.bat ui/test_flow --seq
 ```
 
@@ -487,7 +487,7 @@ build.bat ui/test_flow --seq
 - [x] `flow/builtins.py`：Branch / For Loop 内置模板
 - [x] `flow/runtime.py`：`FlowRuntime` Exec walk + Pure 求值 + Branch/ForLoop
 - [x] `UIFlowMixin.flow_invoke_*` + Run → Play / Play from Selected / Stop
-- [x] `test/ui/test_flow.py` 线性 / Branch / ForLoop 图执行用例
+- [x] `tests/ui/test_flow.py` 线性 / Branch / ForLoop 图执行用例
 
 ### P2 后续（可选）
 

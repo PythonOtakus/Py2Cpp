@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""统计 ``py2cpp/**/*.paw`` 的 ``can_emit_mid`` 覆盖与阻塞原因。
+"""统计 ``paw/**/*.paw`` 的 ``can_emit_mid`` 覆盖与阻塞原因。
 
 用法::
 
@@ -78,7 +78,7 @@ def main() -> int:
   ap.add_argument(
     "--root",
     type=Path,
-    default=ROOT / "py2cpp",
+    default=ROOT / "paw",
     help="扫描根目录（默认 py2cpp）",
   )
   args = ap.parse_args()

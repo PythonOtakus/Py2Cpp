@@ -6,11 +6,11 @@ MSVC / 翻译构建与仓库维护脚本；在仓库根目录执行（脚本内�
 
 | 脚本 | 说明 |
 |------|------|
-| `build_all.bat` | 全量集成测：bootstrap runtime + **并行**编译 `test/**/test_*.py`（跳过 `fail`/`perf`） |
+| `build_all.bat` | 全量集成测：bootstrap runtime + **并行**编译 `tests/**/test_*.py`（跳过 `fail`/`perf`） |
 | `build_protocol.bat` | 协议正向 + 负向 |
 | `build_fail.bat` | 负向编译用例（并行） |
 | `build.bat` | 按模式**并行**编译匹配用例（例：`build vararg`、`build spatial --jobs 8`） |
-| `run.bat` | 同 `build.bat` 的 PATTERN，只运行已编译的 `generated\test\...\*.exe` |
+| `run.bat` | 同 `build.bat` 的 PATTERN，只运行已编译的 `generated\tests\...\*.exe` |
 | `build_perf_json.bat` | JSON 功能/性能用例 + CPython 基线对比 |
 | `build.bat file` | 编译并运行 `test_file` |
 | `run_core_tests.bat` | 在 `build_all` 后运行若干核心 stdlib `.exe` |
@@ -22,8 +22,8 @@ MSVC / 翻译构建与仓库维护脚本；在仓库根目录执行（脚本内�
 | 脚本 | 说明 |
 |------|------|
 | `_init_msvc.bat` | 探测并 `call vcvars64.bat` |
-| `_bootstrap_runtime.bat` | 翻译 `py2cpp/__init__.py`；输入未变则 skip（`.bootstrap.stamp`）；`PY2CPP_FORCE_BOOTSTRAP=1` 强制 |
-| `_clean_obj.bat` | 删除链接残留的 `.obj`（默认仅 STEM；bootstrap 用 `--global-py2cpp`） |
+| `_bootstrap_runtime.bat` | 翻译 `paw/__init__.py`；输入未变则 skip（`.bootstrap.stamp`）；`PY2CPP_FORCE_BOOTSTRAP=1` 强制 |
+| `_clean_obj.bat` | 删除链接残留的 `.obj`（默认仅 STEM；bootstrap 用 `--global-paw`） |
 | `_build_timing.bat` / `_build_timing.py` | 耗时统计 |
 
 ## Python 工具

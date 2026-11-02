@@ -1,6 +1,6 @@
 PY2CPP_IGNORE
-#include "py2cpp/text/str.h"
-#include "py2cpp/util/tuple.h"
+#include "paw/text/str.h"
+#include "paw/util/tuple.h"
 PY2CPP_END
 
 #include <cstdarg>

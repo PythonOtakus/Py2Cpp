@@ -92,7 +92,7 @@ class TestUInt64TypeAlias(unittest.TestCase):
 
   def test_module_alias_is_visible_in_class_method_body(self):
     src = """
-from py2cpp import *
+from paw import *
 
 type Ints = list[int]
 

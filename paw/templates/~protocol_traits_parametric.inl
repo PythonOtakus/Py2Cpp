@@ -1,6 +1,6 @@
 PY2CPP_IGNORE
 #include <type_traits>
-#include "py2cpp/py_types.h"
+#include "paw/py_types.h"
 #define ctx_ProtocolName Navigatable
 #define ctx_ImplTpl Impl
 #define ctx_NodeTpl Node

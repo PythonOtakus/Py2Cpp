@@ -5,9 +5,9 @@
 | 方向 | 典型场景 |
 |------|----------|
 | **Python → C++** | `class Foo` / `def bar` / 字段 → 对应 `.h` 声明或 `.inl`/`.cpp` 实现 |
-| **C++ → Python** | `PyList::append`、`class ChrOrdTests` → `py2cpp/util/list.py` 或 `test/.../*.py` |
+| **C++ → Python** | `PyList::append`、`class ChrOrdTests` → `paw/util/list.py` 或 `tests/.../*.py` |
 
-覆盖范围（索引 **v3**）：类 / 方法 / 字段 / `@property`·`@staticproperty`（含 setter）/ 模块函数 / `type` 别名 / `@enum` 成员 / `@union` `@variant` / `@delegate` / `@protocol`（仅 Python）/ `@mixin`（方法可附宿主实现）。不含函数体内逐行映射。标准库 `py2cpp/**` 与 `test/**`、`examples/**` 均支持；索引由译器写入，扩展只读 JSON。
+覆盖范围（索引 **v3**）：类 / 方法 / 字段 / `@property`·`@staticproperty`（含 setter）/ 模块函数 / `type` 别名 / `@enum` 成员 / `@union` `@variant` / `@delegate` / `@protocol`（仅 Python）/ `@mixin`（方法可附宿主实现）。不含函数体内逐行映射。标准库 `paw/**` 与 `tests/**`、`examples/**` 均支持；索引由译器写入，扩展只读 JSON。
 
 完整方案（格式、覆盖矩阵、已决议开放问题）：[`docs/py2cpp-nav.md`](../../docs/py2cpp-nav.md)。
 
@@ -42,7 +42,7 @@ pkg-nav.bat
 | 文件 | 内容 |
 |------|------|
 | `manifest.json` | 全库模块清单、各 shard 路径、`.h`/`.inl`/`.cpp` 路径 |
-| `modules/<module_path>.json` | 符号表（路径与 Python 模块一致，如 `modules/py2cpp/util/list.json`） |
+| `modules/<module_path>.json` | 符号表（路径与 Python 模块一致，如 `modules/paw/util/list.json`） |
 
 **首次使用 / 全量标准库跳转**（bootstrap，会更新大量 runtime shard）：
 
@@ -56,7 +56,7 @@ python main.py py2cpp\__init__.py -o generated --no-main
 python main.py test\concur\test_task.py -o generated
 ```
 
-扩展监视 `generated/.cache/nav/**` 变更并自动 reload；保存 `py2cpp/`、`test/`、`examples/` 下的 `.py` 时默认防抖 1s 后调用 `main.py` 翻译当前文件并刷新索引。
+扩展监视 `generated/.cache/nav/**` 变更并自动 reload；保存 `paw/`、`tests/`、`examples/` 下的 `.py` 时默认防抖 1s 后调用 `main.py` 翻译当前文件并刷新索引。
 
 ## 使用
 
@@ -73,7 +73,7 @@ python main.py test\concur\test_task.py -o generated
 2. 扩展源码为 **纯 JavaScript**（`out/*.js`），直接编辑即可，无需 TypeScript / npm 编译
 3. 本目录 `package.json` 为 VS Code 扩展清单（非 Node 工程）；仓库根 `npm.autoDetect` 为 `off`，并已 `npm.exclude` 插件路径
 4. 按 F5 启动 Extension Development Host
-5. 在新窗口打开 Py2Cpp 仓库，打开 `test/` 或 `py2cpp/` 下文件验证跳转
+5. 在新窗口打开 Py2Cpp 仓库，打开 `tests/` 或 `paw/` 下文件验证跳转
 
 打包：`python package.py` 或 `package.bat`（`package.json` 的 `scripts.package` 同义）。
 
@@ -95,7 +95,7 @@ python main.py test\concur\test_task.py -o generated
 | `py2cpp-nav.translateDebounceMs` | `1000` | 自动翻译防抖（毫秒，≥200） |
 | `py2cpp-nav.jumpPreference` | `implementation` | Python→C++：`implementation` / `declaration` / `both` |
 
-`py2cpp/` 下模块翻译时扩展会附加 `--no-main`；`test/`、`examples/` 保留 `main()` 入口。
+`paw/` 下模块翻译时扩展会附加 `--no-main`；`tests/`、`examples/` 保留 `main()` 入口。
 
 ## 架构
 
@@ -119,7 +119,7 @@ out/extension.js  →  translateRunner.js  →  python main.py（仓库根）
 
 ## 范围与限制
 
-- **含**：`generated/runtime` 标准库、`test/`、`examples/`、`py2cpp/` 用户可见符号
+- **含**：`generated/runtime` 标准库、`tests/`、`examples/`、`paw/` 用户可见符号
 - **不含**：`templates/**`（请用 [py2cpp-template](../py2cpp-template/)）、函数体内任意行级映射、Rename/Reference（归 [py2cpp-architect](../../docs/py2cpp-architect.md)）
 - 索引随翻译增量更新；未翻译过的模块无法跳转
 

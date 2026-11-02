@@ -21,7 +21,7 @@ class DefaultIterSubscriptTests(unittest.TestCase):
 
   def test_host_ptr_uses_getitem_in_iterator_next(self):
     cpp = self._translate(
-      '''from py2cpp import *
+      '''from paw import *
 
 class Box:
   @immutable

@@ -67,12 +67,12 @@ class ProtocolEraseStubTests(unittest.TestCase):
     candidates = load_protocol_runtime_erase_candidates()
     ann = ast.parse("long").body[0].value
     cpp = _protocol_ann_to_cpp(ann, (), {}, runtime_erase=candidates)
-    self.assertEqual(cpp, "py2cpp::numeric::py_long::PyLong")
+    self.assertEqual(cpp, "paw::numeric::py_long::PyLong")
     ann2 = ast.parse("list[long]").body[0].value
     cpp2 = _protocol_ann_to_cpp(ann2, (), {}, runtime_erase=candidates)
     self.assertEqual(
       cpp2,
-      "PyList<py2cpp::numeric::py_long::PyLong>",
+      "PyList<paw::numeric::py_long::PyLong>",
     )
 
   def test_domain_protocol_erase_specs(self):

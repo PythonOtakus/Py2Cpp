@@ -1,7 +1,7 @@
 """GLFW 输入：纯 Python 组合 ``ffi.glfw.glfw3``。"""
 from __future__ import annotations
 
-from py2cpp import *
+from paw import *
 from ffi.glfw.glfw3 import (
   PyiGlfwKeySpace,
   PyiGlfwMouseButtonLeft,

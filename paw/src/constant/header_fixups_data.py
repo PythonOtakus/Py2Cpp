@@ -1,56 +1,56 @@
 """头文件破环：C++ 前向声明与 ``apply_header_fixups`` 动作表。"""
 
 HEADER_FORWARD_DECLS: dict[str, str] = {
-  "pystr": "namespace py2cpp { namespace text { namespace str { class PyStr; } } }",
+  "pystr": "namespace paw { namespace text { namespace str { class PyStr; } } }",
   "py_iter_result": (
-    "namespace py2cpp { namespace core { namespace iter_result { "
+    "namespace paw { namespace core { namespace iter_result { "
     "template<typename YieldType, typename ReturnType> class PyIterResult; } } }"
   ),
-  "pybytes": "namespace py2cpp { namespace text { namespace bytes { class PyBytes; } } }",
+  "pybytes": "namespace paw { namespace text { namespace bytes { class PyBytes; } } }",
   "pylist_tpl": (
-    "namespace py2cpp { namespace util { namespace list { "
+    "namespace paw { namespace util { namespace list { "
     "template<typename T, PyInt _StackLength> class PyList; } } }"
   ),
   "pyfrozenlist_tpl": (
-    "namespace py2cpp { namespace util { namespace list { "
+    "namespace paw { namespace util { namespace list { "
     "template<typename T, PyInt _StackLength> class PyFrozenList; } } }"
   ),
   "pydict_tpl": (
-    "namespace py2cpp { namespace util { namespace dict { "
+    "namespace paw { namespace util { namespace dict { "
     "template<typename K, typename V> class PyDict; } } }"
   ),
   "pyfrozendict_tpl": (
-    "namespace py2cpp { namespace util { namespace dict { "
+    "namespace paw { namespace util { namespace dict { "
     "template<typename K, typename V> class PyFrozenDict; } } }"
   ),
   "pydeque_tpl": (
-    "namespace py2cpp { namespace util { namespace deque { "
+    "namespace paw { namespace util { namespace deque { "
     "template<typename T> class PyDeque; } } }"
   ),
   "pyset_tpl": (
-    "namespace py2cpp { namespace util { namespace py_set { "
+    "namespace paw { namespace util { namespace py_set { "
     "template<typename T> class PySet; } } }"
   ),
   "pyfrozenset_tpl": (
-    "namespace py2cpp { namespace util { namespace py_set { "
+    "namespace paw { namespace util { namespace py_set { "
     "template<typename T> class PyFrozenSet; } } }"
   ),
   "ecs_component_table_tpl": (
-    "namespace py2cpp { namespace design { namespace ecs { "
+    "namespace paw { namespace design { namespace ecs { "
     "template<typename T> class PyECSComponentTable; } } }"
   ),
   "json_doc_cursor_tpl": (
-    "namespace py2cpp { namespace serde { namespace json { "
+    "namespace paw { namespace serde { namespace json { "
     "template<typename T> class PyJsonDocCursor; } } }"
   ),
   "pytuple_tpl": "template<typename... Args> class PyTuple;",
   "path_walk_step": (
-    "namespace py2cpp { namespace io { namespace path { class PyWalkStep; } } }"
+    "namespace paw { namespace io { namespace path { class PyWalkStep; } } }"
   ),
   "file_walk_generator": (
-    "namespace py2cpp { namespace io { namespace file { class PyWalk_generator; } } }"
+    "namespace paw { namespace io { namespace file { class PyWalk_generator; } } }"
   ),
-  "task_slot_friend": "namespace py2cpp_concur_task_detail { struct TaskSlotFriend; }",
+  "task_slot_friend": "namespace paw_concur_task_detail { struct TaskSlotFriend; }",
 }
 
 HEADER_FORWARD_GROUPS: dict[str, tuple[str, ...]] = {
@@ -87,7 +87,7 @@ MODULE_HEADER_FIXUPS: dict[str, tuple[tuple, ...]] = {
     ("remove_pre_traits",),
     ("insert_mod_after_mod", "core/iter_result", "text/str"),
   ),
-  "py2cpp": (
+  "paw": (
     ("move_pre_to_post_mod", "text/str"),
     ("remove_pre_key", "operators"),
     ("remove_post_key", "operators"),

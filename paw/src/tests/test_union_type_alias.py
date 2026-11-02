@@ -23,7 +23,7 @@ class UnionTypeAliasTests(unittest.TestCase):
   def test_union_class_type_alias_using(self):
     text = self._translate(
       '''
-from py2cpp import *
+from paw import *
 
 @union
 class Box[Value]:

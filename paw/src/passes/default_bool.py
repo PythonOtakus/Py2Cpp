@@ -1,6 +1,6 @@
 """为未实现 ``__bool__`` 的用户类注入默认 ``__bool__``（``@immutable``）。
 
-- 无 ``__len__``：``return True``（对齐 ``py2cpp.object.object``）
+- 无 ``__len__``：``return True``（对齐 ``paw.object.object``）
 - 有 ``__len__``：``return len(self) > 0``
 - 跳过 ``@protocol`` / ``@mixin`` / ``@descriptor`` / ``@refcount`` / ``@boxing`` 等
 

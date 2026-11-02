@@ -55,7 +55,7 @@ MAP: dict[str, str] = {
   # 勿批量改 gmtime/localtime/mktime/copysign：templates 内含 C 库同名调用
 }
 
-DIRS = ("py2cpp", "test", "examples", "docs", "templates", ".cursor")
+DIRS = ("paw", "tests", "examples", "docs", "templates", ".cursor")
 EXTS = {".py", ".md", ".inl", ".h", ".cpp", ".txt"}
 # 勿改 scripts/：其中 ``pathlib.Path.iterdir`` 等为 CPython API
 

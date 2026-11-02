@@ -180,7 +180,7 @@ def main() -> None:
   )
   fix_text_replace(
     ROOT / "src/constant/primitive_headers.py",
-    [("py2cpp/utf8ptr.h", "py2cpp/c_str.h")],
+    [("paw/utf8ptr.h", "paw/c_str.h")],
   )
   fix_text_replace(ROOT / "src/constant/umbrella.py", [("utf8ptr.h", "c_str.h")])
   fix_text_replace(ROOT / "src/constant/inject_specs.py", [("utf8ptr.h", "c_str.h")])
@@ -189,7 +189,7 @@ def main() -> None:
     [
       ("util/StackArray", "util/stack_array"),
       ("utf8ptr.h", "c_str.h"),
-      ("py2cpp/utf8ptr", "py2cpp/c_str"),
+      ("paw/utf8ptr", "paw/c_str"),
     ],
   )
   fix_text_replace(

@@ -53,7 +53,7 @@ UMBRELLA_SUFFIX_PRIMITIVE_SPECS: tuple[str, ...] = (
 def _umbrella_modules_from_specs() -> frozenset[str]:
   mods: set[str] = set()
   for kind, name in UMBRELLA_PREFIX_SPECS:
-    if kind == "module" and name != "py2cpp":
+    if kind == "module" and name != "paw":
       mods.add(name)
   for kind, payload in UMBRELLA_EARLY_SPECS:
     if kind == "always":
@@ -176,7 +176,7 @@ def expand_umbrella_include_paths(
     if mod in stdlib_set:
       paths.append(stdlib_header_include(mod))
 
-  # 包根 ``py2cpp/__init__.py`` 再导出须在各子模块声明之后
+  # 包根 ``paw/__init__.py`` 再导出须在各子模块声明之后
   paths.append(stdlib_header_include(RUNTIME_PKG))
 
   for name in UMBRELLA_SUFFIX_PRIMITIVE_SPECS:

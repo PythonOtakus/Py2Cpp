@@ -1,13 +1,13 @@
-# `py2cpp.serde.html` 设计方案
+# `paw.serde.html` 设计方案
 
 > **状态**：设计阶段，尚未实现。  
-> **实现文件**：仅 `py2cpp/serde/html.py`。  
+> **实现文件**：仅 `paw/serde/html.py`。  
 > **参考方向**：借鉴 Beautiful Soup 的文档树、导航、搜索与修改体验；查询复用项目既有 [`select("路径")`](selector.md) 语法；复用 PyML 的变量、条件、循环、函数、inline fragment 与模块机制生成 HTML 结构。  
 > **非目标**：浏览器 DOM、CSS 布局、JavaScript、网络加载、XPath、完整 HTML5 浏览器解析器。
 
 ## 1. 定位与目标
 
-`py2cpp.serde.html` 是一个静态 HTML 文档树库：它能将 HTML 文本解析成可安全持有、查询和修改的节点树，也能将同一棵树稳定渲染为 HTML 文本。
+`paw.serde.html` 是一个静态 HTML 文档树库：它能将 HTML 文本解析成可安全持有、查询和修改的节点树，也能将同一棵树稳定渲染为 HTML 文本。
 
 它适用于：
 
@@ -24,7 +24,7 @@
 3. 支持节点导航、增删改换与文本提取；
 4. 安全且稳定地渲染 HTML；
 5. 让 PyML 只负责声明式构建，不在 HTML 内新增另一套模板语法；
-6. 全部逻辑落在单个 `py2cpp/serde/html.py` 中，避免第一版过早拆包。
+6. 全部逻辑落在单个 `paw/serde/html.py` 中，避免第一版过早拆包。
 
 不支持：
 
@@ -40,7 +40,7 @@
 只新增：
 
 ```text
-py2cpp/serde/html.py
+paw/serde/html.py
 ```
 
 文件内部按逻辑段组织：
@@ -61,7 +61,7 @@ Html 静态入口
 模块级只导出类型；操作入口统一属于 `Html`：
 
 ```python
-from py2cpp.serde.html import Html
+from paw.serde.html import Html
 
 document = Html.parse(source)
 fragment = Html.parse_fragment(source)
@@ -268,7 +268,7 @@ first_link: HtmlNode = links[0]
 - 路径中的 HTML 公开字段为 `HtmlDocument.root`、`HtmlNode.parent`、`HtmlNode.children`、`HtmlNode.tag`、`HtmlNode.attrs`、`HtmlNode.value`、`HtmlNode.text` 与 `HtmlNode.html`；属性访问使用 `.attrs['href']`；
 - `find` / `find_all` 保留为真实的便利方法，但不属于 selector DSL。
 
-实现只扩展现有 `src/passes/selector_parse.py` 已产生的 `SelectorPlan` 的 emitter backend：为 `HtmlDocument` / `HtmlNode` receiver 增加 HTML 节点遍历与 handle 保活分支。不得在 `py2cpp/serde/html.py` 再写第二套 selector parser、CSS AST、matcher 或字符串解释器。
+实现只扩展现有 `src/passes/selector_parse.py` 已产生的 `SelectorPlan` 的 emitter backend：为 `HtmlDocument` / `HtmlNode` receiver 增加 HTML 节点遍历与 handle 保活分支。不得在 `paw/serde/html.py` 再写第二套 selector parser、CSS AST、matcher 或字符串解释器。
 
 HTML backend 必须保持 selector.md 的编译期校验、类型推导与错误信息；`children` 遍历的结果按 document order 保持稳定。`parent` 是可选单节点，须经现有 `?` 可选导航规则处理。
 
@@ -445,7 +445,7 @@ class HtmlWarning:
 新增：
 
 ```text
-test/serde/
+tests/serde/
   test_html_parse.py
   test_html_tree.py
   test_html_select.py

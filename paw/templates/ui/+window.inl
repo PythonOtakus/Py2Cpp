@@ -1,6 +1,6 @@
 PY2CPP_IGNORE
-#include "py2cpp/ui/window.h"
-#include "py2cpp/ui/layout.h"
+#include "paw/ui/window.h"
+#include "paw/ui/layout.h"
 PY2CPP_END
 
 #include "ffi/crt/stdio.h"
@@ -19,7 +19,7 @@ PY2CPP_END
 
 #pragma comment(linker,"\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
-namespace py2cpp {
+namespace paw {
 namespace ui {
 namespace layout {
 PyBool ui_form_on_bn_clicked(window::PyUIWindow& win, UINT_PTR ctrl_id);
@@ -32,7 +32,7 @@ PyBool ui_menu_on_command(window::PyUIWindow& win, UINT_PTR cmd_id);
 PyBool ui_flow_on_key(window::PyUIWindow& win, PyInt vk);
 void ui_flow_shell_on_resize(window::PyUIWindow& win);
 } // namespace ui
-} // namespace py2cpp
+} // namespace paw
 
 PY2CPP_BEGIN_SCOPE
 
@@ -105,7 +105,7 @@ static PyBool _ui_cstr_equal(const char* lhs, const char* rhs)
     }
   }
 }
-static void _ui_theme_ensure_font(const py2cpp::ui::style::PyUIStyle& style)
+static void _ui_theme_ensure_font(const paw::ui::style::PyUIStyle& style)
 {
   if (_ui_theme_font)
   {
@@ -221,7 +221,7 @@ void ui_theme_layout_metrics(
     PyInt* slider_w,
     PyInt* formSpacing)
 {
-  const py2cpp::ui::style::PyUIStyle& st = ctx.style;
+  const paw::ui::style::PyUIStyle& st = ctx.style;
   if (pad_x)
   {
     *pad_x = ui_theme_scale(st.margin.template get<0>() + st.formOriginX);
@@ -368,19 +368,19 @@ static LRESULT CALLBACK _ui_panel_wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARAM
 PyUIWindow* ctx = (PyUIWindow*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
       if (ctx)
       {
-        if (py2cpp::ui::ui_menu_on_command(*ctx, (UINT_PTR)LOWORD(wp)))
+        if (paw::ui::ui_menu_on_command(*ctx, (UINT_PTR)LOWORD(wp)))
         {
           return 0;
         }
         if (HIWORD(wp) == BN_CLICKED)
         {
-          if (py2cpp::ui::layout::ui_form_on_bn_clicked(*ctx, (UINT_PTR)LOWORD(wp)))
+          if (paw::ui::layout::ui_form_on_bn_clicked(*ctx, (UINT_PTR)LOWORD(wp)))
           {
             return 0;
           }
         } else if (HIWORD(wp) == EN_CHANGE)
         {
-          if (py2cpp::ui::layout::ui_form_on_en_change(*ctx, (UINT_PTR)LOWORD(wp)))
+          if (paw::ui::layout::ui_form_on_en_change(*ctx, (UINT_PTR)LOWORD(wp)))
           {
             return 0;
           }
@@ -392,7 +392,7 @@ PyUIWindow* ctx = (PyUIWindow*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
       PyUIWindow* ctx = (PyUIWindow*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
       if (ctx)
       {
-        if (py2cpp::ui::ui_flow_on_key(*ctx, (PyInt)(UINT)wp))
+        if (paw::ui::ui_flow_on_key(*ctx, (PyInt)(UINT)wp))
         {
           return 0;
         }
@@ -403,7 +403,7 @@ PyUIWindow* ctx = (PyUIWindow*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
 PyUIWindow* ctx = (PyUIWindow*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
       if (ctx)
       {
-        if (py2cpp::ui::layout::ui_form_on_hscroll(*ctx, (HWND)lp))
+        if (paw::ui::layout::ui_form_on_hscroll(*ctx, (HWND)lp))
         {
           return 0;
         }
@@ -414,7 +414,7 @@ PyUIWindow* ctx = (PyUIWindow*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
 PyUIWindow* ctx = (PyUIWindow*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
       if (ctx)
       {
-        py2cpp::ui::ui_flow_shell_on_resize(*ctx);
+        paw::ui::ui_flow_shell_on_resize(*ctx);
       }
       break;
     }
@@ -481,7 +481,7 @@ void PyUIWindow::_applyTitle()
 
 void PyUIWindow::show(PyInt width, PyInt height)
 {
-  py2cpp::ui::layout::ui_form_session_reset();
+  paw::ui::layout::ui_form_session_reset();
   _ui_ensure_class();
   char tbuf[512];
   title__value.copyToSpanUtf8(PySpan<PyByte>((PyByte*)tbuf, (PyInt)sizeof(tbuf), 1));
@@ -630,7 +630,7 @@ void PyUIWindow::resize(PyInt width, PyInt height)
 
 void PyUIWindow::close()
 {
-  py2cpp::ui::layout::ui_form_on_window_end(*this);
+  paw::ui::layout::ui_form_on_window_end(*this);
   HWND panel = _ui_ctx_hwnd(*this);
   if (panel)
   {

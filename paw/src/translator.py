@@ -8,16 +8,16 @@
 
 约定摘要
 --------
-- 运行时标准库在仓库根 ``py2cpp/*.py`` 用 Python 描述，与用户代码一同翻译；不依赖 STL。
+- 运行时标准库在仓库根 ``paw/*.py`` 用 Python 描述，与用户代码一同翻译；不依赖 STL。
 - ``__next__``：Python 仍写 ``raise StopIteration`` / ``return value``，C++ 侧为 ``PyIterResult<Y,R>``。
-- ``@refcount``：``A(...)`` → ``RefCount<A>(...)``（类型见 ``refcount.py``，装饰器见 ``py2cpp/__init__.py``）。
+- ``@refcount``：``A(...)`` → ``RefCount<A>(...)``（类型见 ``refcount.py``，装饰器见 ``paw/__init__.py``）。
 - ``@boxing``：``A(...)`` / ``A[T](...)`` → ``new A<...>(...)``（无引用计数的堆节点，如 ``DictEntryUnsafe``）。
-- ``@descriptor`` / ``@mixin`` / ``@annotation`` 等：见 ``py2cpp/__init__.py`` 与 ``passes`` 下 ``mixins`` / ``descriptors`` 展开模块。
-- ``@immutable`` / ``@copyable`` / ``@decorator`` / ``@context``：声明见 ``py2cpp/__init__.py``；``@context`` 亦可作函数装饰器。
+- ``@descriptor`` / ``@mixin`` / ``@annotation`` 等：见 ``paw/__init__.py`` 与 ``passes`` 下 ``mixins`` / ``descriptors`` 展开模块。
+- ``@immutable`` / ``@copyable`` / ``@decorator`` / ``@context``：声明见 ``paw/__init__.py``；``@context`` 亦可作函数装饰器。
 - 用户类算术/位运算/比较：映射为 ``__add__`` / ``__radd__`` / ``__iadd__`` 等；``+=`` 等增强赋值同理。
 - ``for`` / ``while`` 的 ``else``：无 ``break`` 时执行；迭代器耗尽导致的内部 ``break`` 不算用户 ``break``。
 - ``with``：调用 ``__enter__`` / ``__exit__``；``__exit__`` 无 ``exc_type`` / ``exc_val`` / ``exc_tb``；``as x`` 绑定 ``__enter__()`` 返回值。
-- ``@staticproperty`` / ``Self`` 见 ``py2cpp/__init__.py``。
+- ``@staticproperty`` / ``Self`` 见 ``paw/__init__.py``。
 - ``a.__copy__(b)``：显式复制；``c = b`` 对含 ``__move__`` 的类（标准库容器等）走移动；``@copyable`` 类走 ``__copy__``；``+b`` 为复制构造。
 - ``@refcount`` 变量赋值仍走引用计数拷贝。
 - ``alloc[T]()`` / ``free(p)``：单对象；``allocArray[T](n)`` / ``freeArray(p)``：数组；``init(ptr, ...)``：placement new；``id(x)`` → ``&x``（``@refcount`` 为 ``&(*x)``）。
@@ -276,7 +276,7 @@ class Translator(ast.NodeVisitor):
 
     @classmethod
     def _repo_root(cls) -> Path:
-        """Paw 工程根（与 ``main.py``、``py2cpp/``、``generated/`` 同级）。"""
+        """Paw 工程根（与 ``main.py``、``paw/``、``generated/`` 同级）。"""
         return cls._package_root().parent
 
     @classmethod
@@ -290,7 +290,7 @@ class Translator(ast.NodeVisitor):
 
     @classmethod
     def runtime_dir(cls, out_dir: Path) -> Path:
-        """标准库头与 ``py2cpp.cpp`` 的 -I 根目录（``generated/runtime/``，其下为 ``py2cpp/*.h``）。"""
+        """标准库头与 ``paw.cpp`` 的 -I 根目录（``generated/runtime/``，其下为 ``paw/*.h``）。"""
         out = out_dir.resolve()
         if out.name == RUNTIME_OUTPUT_SUBDIR:
             return out
@@ -323,7 +323,7 @@ class Translator(ast.NodeVisitor):
 
     @classmethod
     def default_output_dir(cls, input_path: Path) -> Path:
-        """生成物统一写入仓库根下的 ``generated/``，不与根目录 ``py2cpp/*.py`` 标准库混放。"""
+        """生成物统一写入仓库根下的 ``generated/``，不与根目录 ``paw/*.py`` 标准库混放。"""
         path = input_path.resolve()
         pkg_root = cls._package_root()
         repo_generated = cls._repo_root() / GENERATED_DIR
@@ -1002,7 +1002,7 @@ class Translator(ast.NodeVisitor):
         return is_on_demand_stdlib_rel(self._stdlib_rel_from_module_path(module_path))
 
     def _entry_imports_io_module(self) -> bool:
-        """仅显式 ``from py2cpp.io import …`` 时拉 ``io.h``（``from py2cpp import *`` 不重导出实现头）。"""
+        """仅显式 ``from paw.io import …`` 时拉 ``io.h``（``from paw import *`` 不重导出实现头）。"""
         tree = self.module_asts.get(self.entry_module_path)
         if tree is None:
             return False
@@ -1069,7 +1069,7 @@ class Translator(ast.NodeVisitor):
             self.write_line()
 
     def _umbrella_has_debug_helpers(self) -> bool:
-        """``py2cpp.h`` 已在 bootstrap ``--debug`` 时注入跟踪辅助（须在 include 之前）。"""
+        """``paw.h`` 已在 bootstrap ``--debug`` 时注入跟踪辅助（须在 include 之前）。"""
         hpath = self.runtime_output_dir / UMBRELLA_HEADER
         if not hpath.is_file():
             return False
@@ -1116,7 +1116,7 @@ class Translator(ast.NodeVisitor):
         else:
             global_traits = self.per_module_global_traits_lines.pop(self.entry_module_path, [])
         if global_traits:
-            entry_body = entry_body + ['', '#include "py2cpp/core/refcount.h"', '', *global_traits, '']
+            entry_body = entry_body + ['', '#include "paw/core/refcount.h"', '', *global_traits, '']
         if self.per_module_inl_lines.get(self.entry_module_path):
             entry_body = [*entry_body, '', f'#include "{self.module_name}.inl"', '']
         if self._stdlib_entry_header_stays_in_per_module():
@@ -1249,7 +1249,7 @@ class Translator(ast.NodeVisitor):
     def _should_emit_module(self, module_path: str) -> bool:
         """增量 bootstrap：仅重生成脏模块的 ``.h`` / ``.inl``。
 
-        用户 ``test/`` / ``examples/`` 入口永不写出标准库产物（见 ``_can_write_stdlib_artifact``）。
+        用户 ``tests/`` / ``examples/`` 入口永不写出标准库产物（见 ``_can_write_stdlib_artifact``）。
         """
         if self._is_stdlib_module(module_path) and not self._can_write_stdlib_artifact(module_path):
             return False
@@ -2575,22 +2575,22 @@ class Translator(ast.NodeVisitor):
         recv_ty = self._member_dispatch_receiver_cpp_type(receiver)
         if kind == 'getattr':
             msg = compile_diag_py2cpp_getattr(cpp_name)
-            self.write_line(f'static_assert(::py2cpp::access::can_get_{cpp_name}<{recv_ty}>::value, {compile_diag_c_utf8_literal(msg)});')
+            self.write_line(f'static_assert(::paw::access::can_get_{cpp_name}<{recv_ty}>::value, {compile_diag_c_utf8_literal(msg)});')
         elif kind == 'setattr':
             val_ty = (arg_types or ['decltype(v)'])[0]
             msg = compile_diag_py2cpp_setattr(cpp_name)
-            self.write_line(f'static_assert(::py2cpp::access::can_set_{cpp_name}<{recv_ty}, {val_ty}>::value, {compile_diag_c_utf8_literal(msg)});')
+            self.write_line(f'static_assert(::paw::access::can_set_{cpp_name}<{recv_ty}, {val_ty}>::value, {compile_diag_c_utf8_literal(msg)});')
         elif kind == 'call':
             n = len(arg_types or [])
             msg = compile_diag_py2cpp_call(cpp_name, arg_count=n)
             if n == 0:
-                self.write_line(f'static_assert(::py2cpp::access::can_call0_{cpp_name}<{recv_ty}>::value, {compile_diag_c_utf8_literal(msg)});')
+                self.write_line(f'static_assert(::paw::access::can_call0_{cpp_name}<{recv_ty}>::value, {compile_diag_c_utf8_literal(msg)});')
             elif n == 1:
-                self.write_line(f'static_assert(::py2cpp::access::can_call1_{cpp_name}<{recv_ty}, {arg_types[0]}>::value, {compile_diag_c_utf8_literal(msg)});')
+                self.write_line(f'static_assert(::paw::access::can_call1_{cpp_name}<{recv_ty}, {arg_types[0]}>::value, {compile_diag_c_utf8_literal(msg)});')
             elif n == 2:
-                self.write_line(f'static_assert(::py2cpp::access::can_call2_{cpp_name}<{recv_ty}, {arg_types[0]}, {arg_types[1]}>::value, {compile_diag_c_utf8_literal(msg)});')
+                self.write_line(f'static_assert(::paw::access::can_call2_{cpp_name}<{recv_ty}, {arg_types[0]}, {arg_types[1]}>::value, {compile_diag_c_utf8_literal(msg)});')
             elif n == 3:
-                self.write_line(f'static_assert(::py2cpp::access::can_call3_{cpp_name}<{recv_ty}, {arg_types[0]}, {arg_types[1]}, {arg_types[2]}>::value, {compile_diag_c_utf8_literal(msg)});')
+                self.write_line(f'static_assert(::paw::access::can_call3_{cpp_name}<{recv_ty}, {arg_types[0]}, {arg_types[1]}, {arg_types[2]}>::value, {compile_diag_c_utf8_literal(msg)});')
 
     def _emit_py2cpp_dispatch_stmt_lines(self) -> None:
         if self._py2cpp_stmt_dispatch_prepped:
@@ -2673,13 +2673,13 @@ class Translator(ast.NodeVisitor):
             if not any((inc in line for line in target[:40])):
                 insert.extend([inc, ''])
             if attrs or calls:
-                block = ['namespace py2cpp', '{', '  namespace access', '  {']
+                block = ['namespace paw', '{', '  namespace access', '  {']
                 for name in sorted(attrs):
                     block.append(f'    PY2CPP_DECLARE_GETATTR({name})')
                     block.append(f'    PY2CPP_DECLARE_SETATTR({name})')
                 for name in sorted(calls):
                     block.append(f'    PY2CPP_DECLARE_CALL({name})')
-                block.extend(['  } // namespace access', '} // namespace py2cpp', ''])
+                block.extend(['  } // namespace access', '} // namespace paw', ''])
                 insert.extend(block)
             if insert:
                 self._insert_lines_after_includes(target, insert)
@@ -3513,7 +3513,7 @@ class Translator(ast.NodeVisitor):
         return is_ffi_module_path(module_path)
 
     def _is_runtime_bootstrap(self) -> bool:
-        """仅翻译 ``py2cpp/__init__.py`` 时写 runtime 标准库头/实现，避免测试覆盖共享产物。"""
+        """仅翻译 ``paw/__init__.py`` 时写 runtime 标准库头/实现，避免测试覆盖共享产物。"""
         return self.entry_module_path == RUNTIME_PKG
 
     def _module_output_dir(self, module_path: str) -> Path:
@@ -3522,11 +3522,11 @@ class Translator(ast.NodeVisitor):
         return self.entry_output_dir
 
     def _stdlib_artifact_path(self, module_path: str, suffix: str) -> Path:
-        """``py2cpp/array`` + ``.h`` → ``<runtime>/py2cpp/array.h``（相对 ``runtime_output_dir``）。"""
+        """``paw/array`` + ``.h`` → ``<runtime>/paw/array.h``（相对 ``runtime_output_dir``）。"""
         return self.runtime_output_dir / f'{module_path}{suffix}'
 
     def _ffi_artifact_path(self, module_path: str, suffix: str) -> Path:
-        """``ffi/windows`` + ``.h`` → ``<runtime>/ffi/windows.h``（与 ``py2cpp/`` 并列）。"""
+        """``ffi/windows`` + ``.h`` → ``<runtime>/ffi/windows.h``（与 ``paw/`` 并列）。"""
         return self.runtime_output_dir / f'{ffi_runtime_module_path(module_path)}{suffix}'
 
     def _can_write_ffi_artifact(self, module_path: str) -> bool:
@@ -3582,7 +3582,7 @@ class Translator(ast.NodeVisitor):
             for ns, sym in idx.get(stdlib_header_include(RUNTIME_PKG), ()):
                 if sym in RUNTIME_PKG_QUALIFIED_SYMBOLS:
                     continue
-                if ns == 'py2cpp':
+                if ns == 'paw':
                     continue
                 line = using_symbol_line(ns, sym)
                 if line not in seen_umbrella:
@@ -3624,7 +3624,7 @@ class Translator(ast.NodeVisitor):
             for ns, sym in usings_for_headers(headers, self.header_usings_index):
                 if any((symbols is not None and sym not in symbols for symbols in ffi_symbol_filters)):
                     continue
-                if module_path == _ITER_RESULT_MODULE and ns == 'py2cpp::text::str' and sym != 'PyStr':
+                if module_path == _ITER_RESULT_MODULE and ns == 'paw::text::str' and sym != 'PyStr':
                     continue
                 line = using_symbol_line(ns, sym)
                 if line not in seen and sym not in seen_symbols:
@@ -3648,7 +3648,7 @@ class Translator(ast.NodeVisitor):
         if not ma:
             return
         if module_path == RUNTIME_PKG:
-            line = using_symbol_line('py2cpp::text::str', 'PyStr')
+            line = using_symbol_line('paw::text::str', 'PyStr')
             self.write_line(line)
         headers = list(ma.includes)
         pystr_forward_only = module_path in frozenset((_stdlib_mp(m) for m in PYSTR_FORWARD_ONLY_MODULES))
@@ -3660,7 +3660,7 @@ class Translator(ast.NodeVisitor):
         }
         if pystr_forward_only and any(('namespace str' in d for d in ma.forward_decls)):
             if module_path != _ITER_RESULT_MODULE:
-                line = using_symbol_line('py2cpp::text::str', 'PyStr')
+                line = using_symbol_line('paw::text::str', 'PyStr')
                 seen.add(line)
                 seen_symbols.add("PyStr")
                 self.write_line(line)
@@ -3733,7 +3733,7 @@ class Translator(ast.NodeVisitor):
     def _can_write_stdlib_artifact(self, module_path: str) -> bool:
         """允许写 ``generated/runtime`` 下标准库产物（bootstrap 或单模块 runtime 翻译）。
 
-    用户/测试入口仅分析标准库、读已有头文件；勿并行重写 ``test/unittest.h`` 等 on-demand 模块。
+    用户/测试入口仅分析标准库、读已有头文件；勿并行重写 ``tests/unittest.h`` 等 on-demand 模块。
     """
         if not self._is_stdlib_module(module_path):
             return False
@@ -4369,7 +4369,7 @@ class Translator(ast.NodeVisitor):
         self.write_line()
 
     def _emit_stdlib_module_implementations(self) -> None:
-        """标准库实现：非模板自由函数与类方法/模板 → 各模块 ``.inl``（测试 TU 只含 ``py2cpp.h``，不链 ``py2cpp.cpp``）。"""
+        """标准库实现：非模板自由函数与类方法/模板 → 各模块 ``.inl``（测试 TU 只含 ``paw.h``，不链 ``paw.cpp``）。"""
         for module_path in self.module_order:
             if not self._should_emit_module(module_path):
                 continue
@@ -7114,7 +7114,7 @@ class Translator(ast.NodeVisitor):
 
         - ``PY2CPP_MID_PRIMARY=1``：全部 ``mid_emit_ok`` 模块
         - ``PY2CPP_MID_PRIMARY=0``：关闭
-        - 未设置：仅 ``compiler/paw/**``（P6 seed）；stdlib/ffi/`test/`/`examples/`
+        - 未设置：仅 ``compiler/paw/**``（P6 seed）；stdlib/ffi/`tests/`/`examples/`
           仍 AST（Mid 尚未覆盖 mixin/unittest 基类等）
         """
         import os
@@ -7715,7 +7715,7 @@ class Translator(ast.NodeVisitor):
     def _needs_process_worker_hook(self) -> bool:
         """入口依赖 ``concur.process`` 时，为 Windows RVA 子进程注入 ``tryWorker``。"""
         return any(
-            mp.replace('\\', '/').rstrip('/') == 'py2cpp/concur/process'
+            mp.replace('\\', '/').rstrip('/') == 'paw/concur/process'
             for mp in self.module_order
         )
 
@@ -7737,7 +7737,7 @@ class Translator(ast.NodeVisitor):
                     with self._use_block(sig):
                         if need_process_worker:
                             self.write_line('{')
-                            self.write_line('  int __py2cpp_worker = ::py2cpp::concur::process::tryWorker(argc, (PyUIntPtr)(uintptr_t)argv);')
+                            self.write_line('  int __py2cpp_worker = ::paw::concur::process::tryWorker(argc, (PyUIntPtr)(uintptr_t)argv);')
                             self.write_line('  if (__py2cpp_worker >= 0) return __py2cpp_worker;')
                             self.write_line('}')
                         self._emit_body(func.body)
@@ -7747,7 +7747,7 @@ class Translator(ast.NodeVisitor):
                 if need_process_worker:
                     with self._use_block('int main(int argc, char** argv)'):
                         self.write_line('{')
-                        self.write_line('  int __py2cpp_worker = ::py2cpp::concur::process::tryWorker(argc, (PyUIntPtr)(uintptr_t)argv);')
+                        self.write_line('  int __py2cpp_worker = ::paw::concur::process::tryWorker(argc, (PyUIntPtr)(uintptr_t)argv);')
                         self.write_line('  if (__py2cpp_worker >= 0) return __py2cpp_worker;')
                         self.write_line('}')
                         self.write_line('return 0;')

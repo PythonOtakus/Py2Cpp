@@ -11,7 +11,7 @@ from src.translator import Translator
 class RefcountDataclassEmptyListTests(unittest.TestCase):
   def test_mixin_dataclass_empty_list_children_init(self):
     src = """
-from py2cpp import *
+from paw import *
 
 @dataclass(eq=False, repr=False)
 @mixin

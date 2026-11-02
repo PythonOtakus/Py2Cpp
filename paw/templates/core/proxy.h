@@ -1,4 +1,4 @@
-// PyProxy<StorageT>：组合 ``_target``；成员转发与 ``super`` 由译器剥壳（见 py2cpp/core/proxy.py）。
+// PyProxy<StorageT>：组合 ``_target``；成员转发与 ``super`` 由译器剥壳（见 paw/core/proxy.py）。
 
 template<typename StorageT>
 class PyProxy {

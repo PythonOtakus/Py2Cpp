@@ -11,7 +11,7 @@ from src.translator import Translator
 class StdlibSingleModuleInlTests(unittest.TestCase):
   def test_flow_model_inl_no_duplicate_copy(self):
     repo = Path(__file__).resolve().parents[2]
-    model_py = repo / "py2cpp" / "ui" / "flow" / "model.py"
+    model_py = repo / "paw" / "ui" / "flow" / "model.py"
     with tempfile.TemporaryDirectory() as tmp:
       out = Path(tmp)
       Translator.translate_file(
@@ -20,7 +20,7 @@ class StdlibSingleModuleInlTests(unittest.TestCase):
         include_stdlib=False,
         emit_main=False,
       )
-      inl = out / "runtime" / "py2cpp" / "ui" / "flow" / "model.inl"
+      inl = out / "runtime" / "paw" / "ui" / "flow" / "model.inl"
       self.assertTrue(inl.is_file(), f"missing {inl}")
       text = inl.read_text(encoding="utf-8")
       self.assertEqual(text.count("FlowGraph::__copy__"), 1)

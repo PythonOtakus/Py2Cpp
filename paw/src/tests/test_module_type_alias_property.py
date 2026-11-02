@@ -10,8 +10,8 @@ from src.translator import Translator
 
 class ModuleTypeAliasPropertyTests(unittest.TestCase):
   def _translate(self, body: str) -> str:
-    src = f"""from py2cpp import new
-from py2cpp.numeric.modint import ModInt
+    src = f"""from paw import new
+from paw.numeric.modint import ModInt
 
 type Int = ModInt[int, 1000000007]
 

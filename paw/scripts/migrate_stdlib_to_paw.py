@@ -1,4 +1,4 @@
-"""将 ``py2cpp/**/*.py`` 转为 Paw 表面语法并重命名为 ``.paw``。
+"""将 ``paw/**/*.py`` 转为 Paw 表面语法并重命名为 ``.paw``。
 
 用法（仓库根）::
   python scripts/migrate_stdlib_to_paw.py [--dry-run]
@@ -57,8 +57,8 @@ def main() -> int:
   ap.add_argument(
     "--root",
     type=Path,
-    default=ROOT / "py2cpp",
-    help="仅迁移该目录下 .py（默认 py2cpp/）",
+    default=ROOT / "paw",
+    help="仅迁移该目录下 .py（默认 paw/）",
   )
   ns = ap.parse_args()
   root: Path = ns.root.resolve()

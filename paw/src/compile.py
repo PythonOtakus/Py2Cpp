@@ -1,7 +1,7 @@
 """将翻译生成的 C++ 源文件编译为目标文件或可执行文件。
 
 支持 g++、clang++、MSVC（``cl``）；Windows 上 ``auto`` 可优先调用输出目录下的 ``build.bat``。
-用户入口在 ``generated/<源路径>/``；标准库在 ``generated/runtime/``（含 ``py2cpp.cpp``）。
+用户入口在 ``generated/<源路径>/``；标准库在 ``generated/runtime/``（含 ``paw.cpp``）。
 编译时会自动添加 ``-I`` 入口目录与 ``runtime`` 目录。
 非模板标准库默认编入 ``py2cpp_runtime.lib``（见 ``docs/runtime-libs.md``）；``PY2CPP_HEADER_ONLY=1`` 回滚。
 """
@@ -48,8 +48,8 @@ def source_needs_sqlite(source: Path) -> bool:
   if not text:
     return False
   markers = (
-    "py2cpp/sql/sqlite",
-    "py2cpp/ffi/sqlite",
+    "paw/sql/sqlite",
+    "paw/ffi/sqlite",
     "ffi/sqlite/sqlite3",
     "ffi::sqlite::sqlite3",
     "ffi::sqlite::sqlite3",
@@ -67,11 +67,11 @@ def runtime_has_sqlite_inl(source: Path) -> bool:
   for parent in source.parents:
     runtime_dir = parent / RUNTIME_OUTPUT_SUBDIR
     if (runtime_dir / umbrella).is_file():
-      if (runtime_dir / "py2cpp/sql/sqlite.inl").is_file():
+      if (runtime_dir / "paw/sql/sqlite.inl").is_file():
         return True
       if (runtime_dir / "ffi/sqlite/sqlite3.inl").is_file():
         return True
-      if (runtime_dir / "py2cpp/ffi/sqlite/sqlite3.inl").is_file():
+      if (runtime_dir / "paw/ffi/sqlite/sqlite3.inl").is_file():
         return True
   return False
 
@@ -134,7 +134,7 @@ def default_exe_path(source: Path) -> Path:
 
 
 def runtime_cpp_path(source: Path) -> Path | None:
-  """查找标准库实现 ``runtime/py2cpp.cpp``（或同目录遗留的 ``py2cpp.cpp``）。"""
+  """查找标准库实现 ``runtime/paw.cpp``（或同目录遗留的 ``paw.cpp``）。"""
   if source.name == RUNTIME_CPP:
     return None
   same_dir = source.parent / RUNTIME_CPP
@@ -148,7 +148,7 @@ def runtime_cpp_path(source: Path) -> Path | None:
 
 
 def discover_include_dirs(source: Path, explicit: Path | None = None) -> list[Path]:
-  """入口目录 + ``generated/runtime``（供 ``#include \"py2cpp/...\"``）+ ``generated/``（``compiler/...`` 等旁路头）。"""
+  """入口目录 + ``generated/runtime``（供 ``#include \"paw/...\"``）+ ``generated/``（``compiler/...`` 等旁路头）。"""
   dirs: list[Path] = []
 
   def add(path: Path) -> None:
@@ -218,7 +218,7 @@ def _write_minimal_pch_header(runtime_dir: Path) -> Path:
     "// PCH 入口：由 compile.py 生成，勿手改\n"
     "#ifndef PY2CPP_MINIMAL_PCH_H\n"
     "#define PY2CPP_MINIMAL_PCH_H\n"
-    '#include "py2cpp/minimal.h"\n'
+    '#include "paw/minimal.h"\n'
     "#endif\n"
   )
   pch_dir = minimal_pch_include_dir(runtime_dir)
@@ -322,7 +322,7 @@ def _msvc_pch_use_flags(runtime_dir: Path) -> list[str]:
 
 def _source_may_use_msvc_pch(source: Path) -> bool:
   parts = source.resolve().parts
-  return "test" in parts or "examples" in parts
+  return "tests" in parts or "examples" in parts
 
 
 @contextlib.contextmanager
@@ -377,7 +377,7 @@ def discover_library_cpp_sources(runtime_dir: Path) -> list[Path]:
   """已生成的 library 模块 ``.cpp``（须存在对应 ``.inl``）。"""
   out: list[Path] = []
   for module_path in library_module_paths():
-    # module_path = py2cpp/system/time
+    # module_path = paw/system/time
     rel = module_path.replace("\\", "/").strip("/")
     cpp = runtime_dir / f"{rel}.cpp"
     inl = runtime_dir / f"{rel}.inl"
@@ -392,17 +392,19 @@ def _should_link_fat_lib(source: Path) -> bool:
   if source.name == RUNTIME_CPP:
     return False
   parts = source.resolve().parts
-  return "test" in parts or "examples" in parts
+  return "tests" in parts or "examples" in parts
 
 
 def _library_obj_path(cpp: Path, obj_dir: Path) -> Path:
-  # py2cpp/system/time.cpp → system__time.obj
-  rel = cpp
+  # runtime/paw/system/time.cpp → system__time.obj（勿匹配工程根目录名 ``paw/``）
   try:
-    # …/runtime/py2cpp/system/time.cpp → system/time
     parts = cpp.resolve().parts
-    if "py2cpp" in parts:
-      i = parts.index("py2cpp")
+    i = -1
+    for idx in range(len(parts) - 1):
+      if parts[idx] == "runtime" and parts[idx + 1] == "paw":
+        i = idx + 1
+        break
+    if i >= 0:
       stem = "__".join(parts[i + 1 : -1] + (parts[-1].removesuffix(".cpp"),))
     else:
       stem = cpp.stem
@@ -412,12 +414,12 @@ def _library_obj_path(cpp: Path, obj_dir: Path) -> Path:
 
 
 def _newest_runtime_codegen_mtime(runtime_dir: Path, sources: list[Path]) -> float:
-  """library ``.cpp`` 与 ``py2cpp/**/*.h|.inl|.cpp`` 的最新 mtime。"""
+  """library ``.cpp`` 与 ``paw/**/*.h|.inl|.cpp`` 的最新 mtime。"""
   newest = max((s.stat().st_mtime for s in sources), default=0.0)
-  py2cpp = runtime_dir / "py2cpp"
-  if not py2cpp.is_dir():
+  py2cpp = runtime_dir / "paw"
+  if not paw.is_dir():
     return newest
-  for p in py2cpp.rglob("*"):
+  for p in paw.rglob("*"):
     if not p.is_file() or p.suffix.lower() not in {".h", ".inl", ".cpp"}:
       continue
     try:
@@ -594,12 +596,12 @@ def ensure_runtime_fat_lib(
 
 
 def _links_runtime_cpp(source: Path) -> bool:
-  """测试/示例入口通过 ``minimal.h`` 拉入 ``*.inl``；再链接 ``py2cpp.cpp`` 会重复定义。"""
+  """测试/示例入口通过 ``minimal.h`` 拉入 ``*.inl``；再链接 ``paw.cpp`` 会重复定义。"""
   if source.name == RUNTIME_CPP:
     return False
   parts = source.resolve().parts
-  # ``test/``、``examples/`` 与集成测相同：仅 ``minimal.h`` + ``*.inl``，勿链 runtime TU
-  if "test" in parts or "examples" in parts:
+  # ``tests/``、``examples/`` 与集成测相同：仅 ``minimal.h`` + ``*.inl``，勿链 runtime TU
+  if "tests" in parts or "examples" in parts:
     return False
   return True
 
@@ -607,11 +609,11 @@ def _links_runtime_cpp(source: Path) -> bool:
 def discover_mid_emit_extra_sources(source: Path) -> list[Path]:
   """入口旁路 MidIR emit 的 ``.cpp``（文件头含 ``MidIR emit``）。
 
-  ``test/`` / ``examples/`` 不自动链同目录 Mid 旁路（默认走 AST；残留 Mid 头会污染编译）。
+  ``tests/`` / ``examples/`` 不自动链同目录 Mid 旁路（默认走 AST；残留 Mid 头会污染编译）。
   """
   primary = source.resolve()
   parts = primary.parts
-  if "test" in parts or "examples" in parts:
+  if "tests" in parts or "examples" in parts:
     return []
   root = primary.parent
   found: list[Path] = []
@@ -658,7 +660,7 @@ def discover_imported_module_extra_sources(source: Path) -> list[Path]:
   while pending:
     rel = pending.pop()
     if (
-      rel.startswith("py2cpp/")
+      rel.startswith("paw/")
       or rel.startswith("ffi/")
       or "/" not in rel
       or rel.startswith("../")
@@ -1048,7 +1050,7 @@ def _msvc_object_file_flags(sources: list[Path]) -> list[str]:
 
 
 def cleanup_msvc_objects(sources: list[Path], *, primary: Path | None = None) -> None:
-  """删除 MSVC ``cl`` 链接后残留的 ``.obj``（含 ``py2cpp.cpp`` → ``py2cpp.obj``）。"""
+  """删除 MSVC ``cl`` 链接后残留的 ``.obj``（含 ``paw.cpp`` → ``paw.obj``）。"""
   stems = {src.stem for src in sources}
   stems.add(Path(RUNTIME_CPP).stem)
   dirs: set[Path] = {src.parent.resolve() for src in sources}
@@ -1156,9 +1158,9 @@ def _cmd_msvc_cl(
 
 
 def try_build_bat(source: Path) -> CompileResult | None:
-  """若输出目录存在 build.bat 且源文件为 py2cpp.cpp，则调用之。"""
+  """若输出目录存在 build.bat 且源文件为 paw.cpp，则调用之。"""
   bat = source.parent / "build.bat"
-  if not bat.is_file() or source.name != "py2cpp.cpp":
+  if not bat.is_file() or source.name != "paw.cpp":
     return None
   r = _run(["cmd", "/c", str(bat)], cwd=source.parent)
   cleanup_msvc_objects([source.resolve()], primary=source)

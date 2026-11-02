@@ -1,4 +1,4 @@
-"""标准库模块路径字面量表（相对 ``py2cpp/``）。"""
+"""标准库模块路径字面量表（相对 ``paw/``）。"""
 
 STDLIB_SKIP_REL_PATHS: frozenset[str] = frozenset({
   "reflect",
@@ -6,7 +6,7 @@ STDLIB_SKIP_REL_PATHS: frozenset[str] = frozenset({
 })
 
 STDLIB_SKIP_PREFIXES: frozenset[str] = frozenset({
-  "test/",
+  "test/",  # 标准库包内 ``paw/test/``（unittest 等），非集成测试目录 ``tests/``
 })
 
 STDLIB_SKIP_DOMAIN_PACKAGE_INITS: frozenset[str] = frozenset({
@@ -163,7 +163,7 @@ HEADER_SKIP_OPERATORS_BEFORE_INL_REL: frozenset[str] = frozenset({
   "builtins",
 })
 
-HEADER_INL_BEFORE_NS_CLOSE_PKG: frozenset[str] = frozenset({"py2cpp"})
+HEADER_INL_BEFORE_NS_CLOSE_PKG: frozenset[str] = frozenset({"paw"})
 
 JSON_API_MODULE_REL = "serde/json"
 JSON_API_EXTRA_HEADER_INCLUDE_RELS: tuple[str, ...] = ("io", "io/path")

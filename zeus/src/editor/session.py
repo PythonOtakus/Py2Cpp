@@ -1,7 +1,7 @@
 """编辑器会话：选中同步、Hierarchy 行表。"""
 from __future__ import annotations
 
-from py2cpp import *
+from paw import *
 
 from ..command import CommandBus, CommandResult, ZeusCommandUnion
 from ..scene import GameObject

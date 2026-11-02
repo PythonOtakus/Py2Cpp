@@ -1,10 +1,10 @@
-# py2cpp.serde.pyml（PyML）设计
+# paw.serde.pyml（PyML）设计
 
 ## 1. 目标与边界
 
-`py2cpp.serde.pyml` 定义新的标记语言 **PyML**（Py2Cpp Markup Language），面向游戏配置、UI 主题、关卡参数与插件清单等存在重复和按环境差异生成的场景。PyML 是受限、确定性、Py2Cpp 风格的模板标记语言；它展开为普通 YAML，再交给 `py2cpp.serde.yaml.Yaml` 和 `py2cpp.serde.json.Json` 完成静态类型解码。
+`paw.serde.pyml` 定义新的标记语言 **PyML**（Py2Cpp Markup Language），面向游戏配置、UI 主题、关卡参数与插件清单等存在重复和按环境差异生成的场景。PyML 是受限、确定性、Py2Cpp 风格的模板标记语言；它展开为普通 YAML，再交给 `paw.serde.yaml.Yaml` 和 `paw.serde.json.Json` 完成静态类型解码。
 
-PyML 不是 Sass 方言，也不是可执行 Python：它只借用 Py2Cpp 的表达式、控制流与调用习惯，最后输出普通 YAML。`py2cpp.serde.yaml` 因此保持纯 YAML；PyML 不会改变 `Yaml.loads[T]` 的行为。
+PyML 不是 Sass 方言，也不是可执行 Python：它只借用 Py2Cpp 的表达式、控制流与调用习惯，最后输出普通 YAML。`paw.serde.yaml` 因此保持纯 YAML；PyML 不会改变 `Yaml.loads[T]` 的行为。
 
 ```text
 .pyml / PyML 字符串
@@ -35,7 +35,7 @@ Json.loads[T]
 所有 PyML API 属于 `Pyml` 类，不增加模块级函数。YAML 读写 API 仍只属于 `Yaml` 类。
 
 ```python
-from py2cpp.serde.pyml import Pyml, PymlContext
+from paw.serde.pyml import Pyml, PymlContext
 
 expanded: str = Pyml.expand(source)
 config: GameConfig = Pyml.loads[GameConfig](source)
@@ -400,7 +400,7 @@ class PymlContext:
 路径解析必须先将 Python 模块路径标准化为逻辑模块名，再映射到文件系统；禁止接受 `../`、反斜杠、盘符、绝对路径或扩展名作为 `@from` 的输入。
 ## 7. 解析与实现架构
 
-在 `py2cpp/serde/pyml.py` 中分层实现，复用现有 `_stripComment`、缩进分析、引用处理和 YAML parser；不在 `serde.json` 中增加模板语义。
+在 `paw/serde/pyml.py` 中分层实现，复用现有 `_stripComment`、缩进分析、引用处理和 YAML parser；不在 `serde.json` 中增加模板语义。
 
 ```text
 Pyml
@@ -493,7 +493,7 @@ _PymlExpander
 
 ## 10. 测试矩阵
 
-新增 `test/serde/test_pyml.py`，覆盖：
+新增 `tests/serde/test_pyml.py`，覆盖：
 
 - `$x: literal`、`$x: = expr` 与 `$x: += expr` 等增强赋值的区分；
 - 表达式值、动态 key、f-string、非法表达式；

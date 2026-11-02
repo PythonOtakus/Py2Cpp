@@ -1,4 +1,4 @@
-from py2cpp import *
+from paw import *
 from ..frontend.syntax_nodes import (
   ClassBundle,
   ConstField,
@@ -2220,7 +2220,7 @@ def emitModuleHeader(mod: SyntaxModule, modulePath: str, st: EnumEmitState) -> s
     stem = modulePath[slash + 1 :]
   out: str = "// seed mid_emit - " + modulePath + "\n"
   out = out + "#ifndef " + guard + "\n#define " + guard + "\n\n"
-  out = out + "#include \"py2cpp/minimal.h\"\n"
+  out = out + "#include \"paw/minimal.h\"\n"
   out = out + _emitRelativeIncludes(mod, modulePath) + "\n"
   i: int = 0
   while i < len(mod.enums):

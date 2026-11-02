@@ -1,4 +1,4 @@
-"""全局 ``abs``：标量三目、``::py2cpp::abs``、``__abs__``。"""
+"""全局 ``abs``：标量三目、``::paw::abs``、``__abs__``。"""
 from __future__ import annotations
 
 import tempfile
@@ -10,7 +10,7 @@ from src.translator import Translator
 
 class AbsBuiltinEmitTests(unittest.TestCase):
   def _translate(self, body: str, *, extra: str = "") -> str:
-    src = f"""from py2cpp import *
+    src = f"""from paw import *
 {extra}
 
 def probe():
@@ -27,7 +27,7 @@ def probe():
   def test_abs_pyint_ternary(self):
     cpp = self._translate("  n: int = -3\n  return abs(n)\n")
     self.assertIn("n < 0 ? -n : n", cpp)
-    self.assertNotIn("::py2cpp::py_abs", cpp)
+    self.assertNotIn("::paw::py_abs", cpp)
 
   def test_abs_long_dunder(self):
     cpp = self._translate("  v: long = long('-5')\n  return abs(v)\n")

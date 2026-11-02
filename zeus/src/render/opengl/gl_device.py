@@ -1,8 +1,8 @@
 """OpenGL 清屏 / 立即模式：纯 Python 组合 ``ffi.gl.gl``。"""
 from __future__ import annotations
 
-from py2cpp import *
-from py2cpp.spatial.color import Color
+from paw import *
+from paw.spatial.color import Color
 from ffi.gl.gl import (
   PyiGlColorBufferBit,
   PyiGlDepthBufferBit,

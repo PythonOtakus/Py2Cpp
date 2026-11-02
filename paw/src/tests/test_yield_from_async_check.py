@@ -12,7 +12,7 @@ from src.translator import Translator
 def _check_body(body: str, *, run_expand: bool = False) -> Translator:
   tr = Translator("mod", "mod.py")
   tr.entry_module_path = "mod"
-  tr._parse_modules([("mod", f"from py2cpp import *\n\n{body}")])
+  tr._parse_modules([("mod", f"from paw import *\n\n{body}")])
   check_yield_from_in_async_def(tr)
   if run_expand:
     expand_generators(tr)

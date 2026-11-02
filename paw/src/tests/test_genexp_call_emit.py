@@ -23,7 +23,7 @@ class GenexpCallEmitTests(unittest.TestCase):
   def test_total_genexp_inline(self):
     cpp = self._translate(
       '''
-from py2cpp import IterableType
+from paw import IterableType
 
 def total[T](xs: IterableType[T], start: int = 0) -> int:
   acc: int = start
@@ -49,7 +49,7 @@ def run(data: list[int]) -> int:
   def test_total_list_normal_call(self):
     cpp = self._translate(
       '''
-from py2cpp import IterableType
+from paw import IterableType
 
 def total[T](xs: IterableType[T]) -> int:
   acc: int = 0
@@ -84,7 +84,7 @@ def run(data: list[int]) -> int:
     with self.assertRaises(TranslationError):
       self._translate(
         '''
-from py2cpp import IterableType
+from paw import IterableType
 
 def bad[T](xs: IterableType[T]) -> int:
   if xs:
@@ -100,7 +100,7 @@ def run(data: list[int]) -> int:
     with self.assertRaises(TranslationError):
       self._translate(
         '''
-from py2cpp import IterableType
+from paw import IterableType
 
 def merge_first[T](a: IterableType[T], b: IterableType[T]) -> int:
   s: int = 0

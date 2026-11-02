@@ -1,6 +1,6 @@
 """打开 Zeus 编辑器：加载跳一跳示例场景 ``main.zas``。"""
-from py2cpp import *
-from py2cpp.io.path import Path
+from paw import *
+from paw.io.path import Path
 
 from .command import CommandResult, ZeusCommandUnion
 from .editor.shell import EditorShell

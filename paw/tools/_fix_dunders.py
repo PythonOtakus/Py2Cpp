@@ -35,7 +35,7 @@ def fix_text(text: str) -> str:
 
 
 def main() -> int:
-  roots = sys.argv[1:] or ["py2cpp/console"]
+  roots = sys.argv[1:] or ["paw/console"]
   n = 0
   for root in roots:
     base = ROOT / root

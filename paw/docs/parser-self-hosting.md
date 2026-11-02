@@ -139,7 +139,7 @@ TypeId -> NullableValueType / NullabilityAnnotation  // 可空值与引用注解
 ExprId + FlowPoint -> NullState                     // 不挂到共享类型上
 ```
 
-NodeId 在一次编译内稳定，不能直接当作跨版本缓存身份。首版用整数 ID 与按节点种类存储的 list，子节点也用 ID，避免递归值类型、AST 环和容器扩容造成的引用失效。所有权归 Module/Compilation；禁止动态 setattr 挂载编译状态。新建节点保留 origin，克隆操作显式处理来源及语义信息失效。`py2cpp/util/arena.py` 目前是 char 临时缓冲池，不能直接作为已有 AST arena 使用。
+NodeId 在一次编译内稳定，不能直接当作跨版本缓存身份。首版用整数 ID 与按节点种类存储的 list，子节点也用 ID，避免递归值类型、AST 环和容器扩容造成的引用失效。所有权归 Module/Compilation；禁止动态 setattr 挂载编译状态。新建节点保留 origin，克隆操作显式处理来源及语义信息失效。`paw/util/arena.py` 目前是 char 临时缓冲池，不能直接作为已有 AST arena 使用。
 
 泛型应用在绑定后以构造头及有序的嵌套 `TypeId` 列表确定身份：`A[T, U]` 是 `GenericApplication(A, [T, U])`，`A[(T, U)]` 是 `GenericApplication(A, [TupleType(T, U)])`，两者永不因实参数量、C++ 模板文本或可推导性而互相改写。后者与既有 `A[tuple[T, U]]` 是同一个“单个元组类型实参”的类型，`A[(T,)]` 也同样是单个一元元组实参；相对地 `A[T,]` 仍是单个 T 实参。`ParenthesizedTypeSyntax(T)` 在绑定后可归约为 T，但只移除纯分组层，不能移除 `TupleTypeSyntax`。声明的固定/可变形参规则据此检查实参数量和形状；不匹配报告诊断，不自动把两个实参打包为 tuple 或把 tuple 解包成多个实参。
 
@@ -273,13 +273,13 @@ parse_pattern(source_slice, dialect) -> PatternId
 | `src/frontend/legacy_lowering.py` | 自有语法模型到旧 AST/元数据的单向兼容桥 |
 | `compiler/py/frontend/source.py`、`tokens.py`、`lexer.py` | 使用可编译子集实现源文本、Token 和词法状态机 |
 | `compiler/py/frontend/syntax_nodes.py`、`parser.py`、`diagnostic.py` | 节点存储、语法解析、错误位置与输出协议 |
-| `src/tests/test_frontend_*.py`、`test/frontend/` | 宿主差分测试、原生 parser 程序与正反语料 |
+| `src/tests/test_frontend_*.py`、`tests/frontend/` | 宿主差分测试、原生 parser 程序与正反语料 |
 
 `src/frontend` 只承担宿主适配，不另写一套语法实现；新解析器代码置于可自举的 `compiler` 源码树。后续按模块把语义与发射能力迁入该树，宿主 `src` 保留为冻结参考，最终退出生产构建路径。节点协议/schema 只有一份定义，避免双模型漂移。
 
 自举实现语言需要另行冻结一个小而足够的 bootstrap profile。编译器实现源码先保持旧编译器可接受的语法，显式类型、普通函数/类、enum/union、list/dict、稳定 ID 和显式循环优先；避免动态 getattr/setattr、裸 object/Any、任意 Python callable、dataclasses.replace、Python 异构变长 tuple、动态 import 和隐含闭包。少数代码写法也有真实差异：src 中大量 `x in (...)`，目标语言当前却拒绝该形式；Options(**dict) 也不等同于目标的结构化 kwargs。应逐模块改写或为确实必要的特性独立实现支持。
 
-现有库提供可用基础：`py2cpp/serde/pyml.py` 已有语言内 Value 联合、解析及求值逻辑，`py2cpp/io/path.py` 有读写文本，`py2cpp/console/parse.py` 有参数解析，`py2cpp/console/popen.py` 可驱动外部编译器。它们需要编译器规模的容量、生命周期、错误路径与性能验证，不能仅因 API 存在就假定足够。
+现有库提供可用基础：`paw/serde/pyml.py` 已有语言内 Value 联合、解析及求值逻辑，`paw/io/path.py` 有读写文本，`paw/console/parse.py` 有参数解析，`paw/console/popen.py` 可驱动外部编译器。它们需要编译器规模的容量、生命周期、错误路径与性能验证，不能仅因 API 存在就假定足够。
 
 模板执行器是必须明确处理的一条依赖。`docs/codegen-templates.md:42` 承诺“任意合法 CPython 表达式或语句”；若继续保留这个完整承诺，原生工具仍要携带 CPython 或等价解释能力。建议把承诺收敛为版本化的编译期模板子集，并迁移已有用法。早期可以预生成模板作为 seed 输入，但从模板源码全量重建的验收必须使用原生执行器。
 

@@ -1,10 +1,10 @@
-"""GPU 计算（``py2cpp/gpu``）译器约定。"""
+"""GPU 计算（``paw/gpu``）译器约定。"""
 
 GPU_KERNEL_MIXIN = "GpuKernelMixin"
 GPU_MAP_METHOD = "map"
 GPU_DEVICE_META = "GpuDeviceMeta"
 GPU_FIELD_CLASS = "Field"
-GPU_RUNTIME_PKG_PREFIX = "py2cpp/gpu"
+GPU_RUNTIME_PKG_PREFIX = "paw/gpu"
 GPU_BACKEND_OMP = "omp"
 GPU_BACKEND_CUDA = "cuda"
 GPU_BACKENDS = frozenset({GPU_BACKEND_OMP, GPU_BACKEND_CUDA})

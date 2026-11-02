@@ -1,8 +1,8 @@
 """Phase 1：World / GameObject / Component / Transform headless 测例。"""
-from py2cpp import *
-from py2cpp.math import almost
-from py2cpp.spatial.vector import Vector3
-from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
+from paw import *
+from paw.math import almost
+from paw.spatial.vector import Vector3
+from paw.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 from .scene import CameraComponent, Component, GameObject, MeshComponent, Transform
 from .simple_world import SimpleBody, SimpleWorld

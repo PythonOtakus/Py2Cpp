@@ -1,4 +1,4 @@
-# `py2cpp.concur.thread` 线程库设计方案
+# `paw.concur.thread` 线程库设计方案
 
 > 状态：增量实施中；已落地 Thread / registry / Lock / RLock / Condition / Event / Semaphore / BoundedSemaphore / Barrier / Future / ThreadPool / `atomic[T]` / `Queue[T]` / `T @thread_local` 字段基础能力  
 > 语义基线：CPython 3.13 `threading` / `_thread`  
@@ -9,10 +9,10 @@
 
 Py2Cpp 当前有两种并发相关能力，但都不能代替线程库：
 
-- `py2cpp.concur.task` 是单线程协作式协程调度器；
-- `py2cpp.concur.parallel.prange` 由译器发射 OpenMP 数据并行循环。
+- `paw.concur.task` 是单线程协作式协程调度器；
+- `paw.concur.parallel.prange` 由译器发射 OpenMP 数据并行循环。
 
-`py2cpp.concur.thread` 补充 OS 抢占式线程、阻塞同步原语和线程局部状态：
+`paw.concur.thread` 补充 OS 抢占式线程、阻塞同步原语和线程局部状态：
 
 | 能力 | 调度方式 | 适合场景 |
 |---|---|---|
@@ -74,7 +74,7 @@ C++11 runtime 叶子
 - Condition waiter 队列和 timeout 循环位于 Python 层；
 - 只有无法继续拆分的阻塞、线程句柄和 TLS 操作进入 C++。
 
-单一真相源为 `py2cpp/`、`templates/`、`src/` 和 `test/`，禁止直接修改 `generated/`。
+单一真相源为 `paw/`、`templates/`、`src/` 和 `tests/`，禁止直接修改 `generated/`。
 
 ## 4. 实施前置项
 
@@ -149,11 +149,11 @@ Thread(target: Callable[[], None], name: str = "", daemon: bool = False)
 
 | 文件 | 职责 |
 |---|---|
-| `py2cpp/concur/thread.py` | 公共 API、状态机、校验、组合逻辑 |
+| `paw/concur/thread.py` | 公共 API、状态机、校验、组合逻辑 |
 | `templates/concur/-thread.inl` | 线程、锁、等待、TLS、registry native 叶子 |
 | `templates/concur/+thread.h` | 仅在必须注入 native 字段或声明时使用 |
-| `test/concur/test_thread.py` | 兼容和并发测试 |
-| `test/concur/test_thread_pool.py` | ThreadPool/Future 兼容测试 |
+| `tests/concur/test_thread.py` | 兼容和并发测试 |
+| `tests/concur/test_thread_pool.py` | ThreadPool/Future 兼容测试 |
 | `src/tests/test_thread_*.py` | 仅在新增译器能力时增加 |
 
 新模块会由 `stdlib_discovery.py` 自动发现，不应维护重复注册表。
@@ -164,8 +164,8 @@ Thread(target: Callable[[], None], name: str = "", daemon: bool = False)
 |---|---|
 | `templates/core/refcount.h` | 原子引用计数 |
 | `templates/core/delegate.h` | owning callable |
-| `py2cpp/core/exceptions.py` | `BrokenBarrierError`、`TimeoutError`、`CancelledError`、`InvalidStateError`、`BrokenThreadPoolError` 等异常 |
-| `py2cpp/util/deque.py` 或新增 queue primitive | ThreadPool 阻塞工作队列 |
+| `paw/core/exceptions.py` | `BrokenBarrierError`、`TimeoutError`、`CancelledError`、`InvalidStateError`、`BrokenThreadPoolError` 等异常 |
+| `paw/util/deque.py` 或新增 queue primitive | ThreadPool 阻塞工作队列 |
 | `src/compile.py` | GCC/Clang 编译链接增加 `-pthread` |
 | `docs/参考手册.md` | 模块和线程安全模型 |
 | `docs/编码规范.md` | 跨线程对象与同步规则 |
@@ -374,7 +374,7 @@ daemon 不能简单等同于 `std::thread::detach()`，否则 worker 可能访�
 
 ## 10. `ThreadPool` 语义
 
-`ThreadPool` 是 `py2cpp.concur.thread` 中参考 CPython 3.13 `ThreadPoolExecutor` 的线程池。对外命名采用 Py2Cpp 标准库风格，语义对齐 executor：提交任务返回 Future，worker 从共享队列取任务，shutdown 后拒绝新任务，initializer 失败后池进入 broken 状态。
+`ThreadPool` 是 `paw.concur.thread` 中参考 CPython 3.13 `ThreadPoolExecutor` 的线程池。对外命名采用 Py2Cpp 标准库风格，语义对齐 executor：提交任务返回 Future，worker 从共享队列取任务，shutdown 后拒绝新任务，initializer 失败后池进入 broken 状态。
 
 ### 10.1 公共 API
 
@@ -643,7 +643,7 @@ registry 已支撑 `Thread.current` / `Thread.main` / `Thread.activeCount` / `Th
 示例：
 
 ```python
-from py2cpp import *
+from paw import *
 
 class TLSCounter:
   value: int @thread_local = 0
@@ -808,10 +808,10 @@ native 模板预计使用：
 4. bootstrap runtime：
 
    ```bat
-   python main.py py2cpp\__init__.py -o generated --no-main
+   python main.py paw\__init__.py -o generated --no-main
    ```
 
-5. 编译并执行 `test/concur/test_thread.py` 和 `test/concur/test_thread_pool.py`；
+5. 编译并执行 `tests/concur/test_thread.py` 和 `tests/concur/test_thread_pool.py`；
 6. 回归 refcount、delegate、Task、parallel；
 7. 执行 MSVC 全量 `build_all.bat`；
 8. 条件允许时执行 GCC/Clang 编译链接；

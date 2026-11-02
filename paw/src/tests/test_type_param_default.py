@@ -22,7 +22,7 @@ class TypeParamDefaultTests(unittest.TestCase):
   def test_counter_omit_count_type_param(self):
     cpp = self._translate(
       '''
-from py2cpp import *
+from paw import *
 
 def f() -> None:
   c: Counter[str] = new()
@@ -35,7 +35,7 @@ def f() -> None:
   def test_counter_explicit_count_type_unchanged(self):
     cpp = self._translate(
       '''
-from py2cpp import *
+from paw import *
 
 def g() -> None:
   c: Counter[str, int] = new()
@@ -48,12 +48,12 @@ def g() -> None:
     with tempfile.TemporaryDirectory() as tmp:
       out = Path(tmp)
       Translator.translate_file(
-        str(root / "py2cpp" / "__init__.py"),
+        str(root / "paw" / "__init__.py"),
         output_dir=str(out),
         include_stdlib=True,
         emit_main=False,
       )
-      header = out / "runtime" / "py2cpp" / "util" / "misc.h"
+      header = out / "runtime" / "paw" / "util" / "misc.h"
       text = header.read_text(encoding="utf-8")
     self.assertRegex(
       text,
@@ -63,8 +63,8 @@ def g() -> None:
   def test_float64_binop_infers_generic_type_argument(self):
     cpp = self._translate(
       '''
-from py2cpp import *
-from py2cpp.math import safeSqrt
+from paw import *
+from paw.math import safeSqrt
 
 def magnitude(x: float64, y: float64) -> float64:
   return safeSqrt(x * x + y * y)
@@ -75,8 +75,8 @@ def magnitude(x: float64, y: float64) -> float64:
   def test_nested_generic_param_infers_inner_type_argument(self):
     cpp = self._translate(
       '''
-from py2cpp import *
-from py2cpp.math.complex import exp
+from paw import *
+from paw.math.complex import exp
 
 def transform(z: complex[float64]) -> complex[float64]:
   return exp(z)
@@ -88,8 +88,8 @@ def transform(z: complex[float64]) -> complex[float64]:
   def test_required_generic_arg_precedes_defaulted_arg(self):
     cpp = self._translate(
       '''
-from py2cpp import *
-from py2cpp.math.complex import isClose
+from paw import *
+from paw.math.complex import isClose
 
 Tol: float64 = 1e-5
 
@@ -102,8 +102,8 @@ def close(z: complex) -> bool:
   def test_nested_generic_call_specializes_return_type(self):
     cpp = self._translate(
       '''
-from py2cpp import *
-from py2cpp.math.complex import asin, isClose, sin
+from paw import *
+from paw.math.complex import asin, isClose, sin
 
 Tol: float64 = 1e-5
 
@@ -111,7 +111,7 @@ def close(z: complex) -> bool:
   return isClose(sin(asin(z)), z, Tol, Tol)
 '''
     )
-    self.assertIn("isClose<PyFloat>(::py2cpp::math::complex::sin<PyFloat>", cpp)
+    self.assertIn("isClose<PyFloat>(::paw::math::complex::sin<PyFloat>", cpp)
     self.assertNotIn("isClose<Scalar>", cpp)
 
 if __name__ == "__main__":

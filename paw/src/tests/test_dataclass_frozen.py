@@ -12,7 +12,7 @@ from src.translator import Translator
 class DataclassFrozenTests(unittest.TestCase):
   def _translate(self, extra: str) -> str:
     src = f"""
-from py2cpp import *
+from paw import *
 
 {extra}
 """
@@ -51,7 +51,7 @@ class Mixed:
 
   def test_frozen_copyable_rejected(self):
     src = """
-from py2cpp import *
+from paw import *
 
 @copyable
 @dataclass(frozen=True)

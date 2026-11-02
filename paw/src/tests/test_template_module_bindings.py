@@ -1,4 +1,4 @@
-"""``templates`` 镜像 / inject 模板须绑定 ``py2cpp/`` 模块。"""
+"""``templates`` 镜像 / inject 模板须绑定 ``paw/`` 模块。"""
 from __future__ import annotations
 
 import unittest

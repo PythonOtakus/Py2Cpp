@@ -10,7 +10,7 @@ from src.translator import Translator
 
 class CmpBuiltinEmitTests(unittest.TestCase):
   def _translate(self, body: str, *, extra: str = "") -> str:
-    src = f"""from py2cpp import *
+    src = f"""from paw import *
 {extra}
 
 def probe():
@@ -27,7 +27,7 @@ def probe():
   def test_cmp_pyint_ternary(self):
     cpp = self._translate("  return __cmp__(1, 2)\n")
     self.assertIn("1 < 2 ? -1", cpp)
-    self.assertNotIn("::py2cpp::py_cmp", cpp)
+    self.assertNotIn("::paw::py_cmp", cpp)
 
   def test_cmp_long_dunder(self):
     cpp = self._translate(
@@ -35,7 +35,7 @@ def probe():
       "  return __cmp__(a, b)\n",
     )
     self.assertIn("__cmp__(b)", cpp)
-    self.assertNotIn("::py2cpp::py_cmp", cpp)
+    self.assertNotIn("::paw::py_cmp", cpp)
 
   def test_cmp_equal_scalar(self):
     cpp = self._translate("  return __cmp__(4, 4)\n")

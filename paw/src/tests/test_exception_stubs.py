@@ -9,7 +9,7 @@ from src.analysis.stubs.class_stubs import load_stdlib_exception_types
 from src.analysis.runtime_symbols import CPP_EXCEPTION_TYPES
 
 _REPO = Path(__file__).resolve().parents[2]
-_EXCEPTIONS_PY = _REPO / "py2cpp" / "core" / "exceptions.py"
+_EXCEPTIONS_PY = _REPO / "paw" / "core" / "exceptions.py"
 
 
 class ExceptionStubTests(unittest.TestCase):

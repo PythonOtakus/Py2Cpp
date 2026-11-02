@@ -1,11 +1,11 @@
 """场景 ``.zas``（Zeus Asset）：JSON 嵌套图式往返。"""
 from __future__ import annotations
 
-from py2cpp import *
-from py2cpp.io.path import Path
-from py2cpp.serde.json import JsonDecoder, JsonEncoder
-from py2cpp.spatial.rotator import Quaternion
-from py2cpp.spatial.vector import Vector3
+from paw import *
+from paw.io.path import Path
+from paw.serde.json import JsonDecoder, JsonEncoder
+from paw.spatial.rotator import Quaternion
+from paw.spatial.vector import Vector3
 
 from .assets import ZAS_SUFFIX, ZAS_VERSION, ensure_suffix, is_fbx, is_zas
 from .jump.motor import JumpMotor

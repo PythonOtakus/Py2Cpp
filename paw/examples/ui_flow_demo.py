@@ -1,7 +1,7 @@
-"""蓝图式工作流编辑器示例（``py2cpp.ui.flow``）。"""
-from py2cpp import *
-from py2cpp.ui.flow.meta import FlowEventMeta, FlowNodeMeta, FlowPureMeta
-from py2cpp.ui.flow.panel import UIFlowMixin
+"""蓝图式工作流编辑器示例（``paw.ui.flow``）。"""
+from paw import *
+from paw.ui.flow.meta import FlowEventMeta, FlowNodeMeta, FlowPureMeta
+from paw.ui.flow.panel import UIFlowMixin
 
 
 @dataclass

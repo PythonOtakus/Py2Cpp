@@ -1,8 +1,8 @@
 """渲染网格数据。"""
 from __future__ import annotations
 
-from py2cpp import *
-from py2cpp.spatial.color import Color
+from paw import *
+from paw.spatial.color import Color
 
 
 @copyable

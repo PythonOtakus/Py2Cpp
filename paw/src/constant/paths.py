@@ -19,4 +19,6 @@ def _monorepo_root(paw: Path = PAW_ROOT) -> Path:
 
 
 MONOREPO_ROOT = _monorepo_root()
-PY2CPP_ROOT = _REPO_ROOT / "py2cpp"
+# 标准库包根：``paw/paw/``（Python/Paw 导入名 ``paw``）
+STDLIB_ROOT = _REPO_ROOT / "paw"
+PY2CPP_ROOT = STDLIB_ROOT  # 兼容旧名

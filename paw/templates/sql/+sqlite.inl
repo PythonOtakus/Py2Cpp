@@ -1,8 +1,8 @@
 PY2CPP_IGNORE
-#include "py2cpp/sql/sqlite.h"
-#include "py2cpp/text/str.h"
-#include "py2cpp/util/list.h"
-#include "py2cpp/core/optional.h"
+#include "paw/sql/sqlite.h"
+#include "paw/text/str.h"
+#include "paw/util/list.h"
+#include "paw/core/optional.h"
 #include "ffi/sqlite/sqlite3.h"
 PY2CPP_END
 

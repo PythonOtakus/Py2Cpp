@@ -23,7 +23,7 @@ def _parse_classes(src: str, module: str = "mod") -> dict[str, ClassInfo]:
 class MixinTypeParamConstraintTests(unittest.TestCase):
   def test_mixin_protocol_constraint_merged_into_host(self):
     src = """
-from py2cpp import mixin
+from paw import mixin
 
 @mixin
 class ElemMixin[T: DictKeyType]:
@@ -40,7 +40,7 @@ class Box[T](ElemMixin[T]):
 
   def test_mixin_multi_param_constraint_maps_to_host(self):
     src = """
-from py2cpp import mixin
+from paw import mixin
 
 @mixin
 class PairMixin[A, B: DictKeyType]:

@@ -1,8 +1,8 @@
 """顶栏：Play / Pause / Stop / Step（自绘按钮）。"""
 from __future__ import annotations
 
-from py2cpp import *
-from py2cpp.ui.canvas import UICanvas, UIPaintContext
+from paw import *
+from paw.ui.canvas import UICanvas, UIPaintContext
 
 from ..command import CommandBus, ZeusCommandUnion
 

@@ -11,7 +11,7 @@ from src.translator import Translator
 class IdentityCompareEmitTests(unittest.TestCase):
   def test_value_type_uses_address_compare(self):
     src = """
-from py2cpp import new, Self
+from paw import new, Self
 
 class Widget:
   pass
@@ -73,7 +73,7 @@ def check(x: int) -> bool:
 
   def test_cstr_is_none_uses_nullptr(self):
     src = """
-from py2cpp import *
+from paw import *
 
 def check(p: utf8ptr) -> bool:
   return p is None
@@ -92,7 +92,7 @@ def check(p: utf8ptr) -> bool:
 
   def test_raw_ptr_is_not_none_uses_nullptr(self):
     src = """
-from py2cpp import new, Self, boxing
+from paw import new, Self, boxing
 
 @boxing
 class NodeUnsafe:
@@ -117,7 +117,7 @@ def has_prev(n: NodeUnsafe) -> bool:
 
   def test_refcount_uses_deref_address(self):
     src = """
-from py2cpp import refcount, new, Self
+from paw import refcount, new, Self
 
 @refcount
 class Node:

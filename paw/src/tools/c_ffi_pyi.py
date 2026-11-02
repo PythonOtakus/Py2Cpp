@@ -1982,7 +1982,7 @@ def render_pyi(header: Path, model: FfiModel) -> str:
     f"# Generated: {now}",
     "# Spec: docs/c-ffi-pyi.md",
     "",
-    "from py2cpp.builtins import *",
+    "from paw.builtins import *",
     "",
     "# ---------------------------------------------------------------------------",
     "# Structs / unions（模块名 Pyi…；@native_name 为 C 标签；C++ using 别名，不生成新 struct）",
@@ -2065,7 +2065,7 @@ def run_checks(model: FfiModel, text: str, *, header: Path) -> list[str]:
   sqlite_mode = "sqlite" in header.name.lower()
   if ("native class" not in text and "native def" not in text) or "@native_name" not in text:
     errs.append("output missing @native / @native_name")
-  if "from py2cpp.builtins import *" not in text:
+  if "from paw.builtins import *" not in text:
     errs.append("missing builtins import")
   if len(model.funcs) < 1:
     errs.append(f"too few funcs: {len(model.funcs)}")

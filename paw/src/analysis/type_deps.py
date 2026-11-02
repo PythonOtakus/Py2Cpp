@@ -46,7 +46,7 @@ def _collect_base_dep(
     if header != own_header and header not in out:
       out.append(header)
     return
-  # 标量优先于包根 ``char``/``byte`` 等 ``TYPE_MARKER`` 的 ``ClassInfo``（否则误拉 ``py2cpp.h``）。
+  # 标量优先于包根 ``char``/``byte`` 等 ``TYPE_MARKER`` 的 ``ClassInfo``（否则误拉 ``paw.h``）。
   header = PRIMITIVE_HEADER_MAP.get(base)
   if header is None:
     header = load_native_cpp_base_headers().get(base)

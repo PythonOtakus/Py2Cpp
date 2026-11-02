@@ -1,6 +1,6 @@
 # SQL / ORM：DB-API + 静态反射表映射规范
 
-> **状态**：**P0 DB-API 已落地**（`protocols.py` + `sqlite.py` + `templates/sql/+sqlite.inl` + `test/sql/test_sqlite.py`）；**ORM P1+ 设计中**（尚无 `orm.py` / `session.py`）。  
+> **状态**：**P0 DB-API 已落地**（`protocols.py` + `sqlite.py` + `templates/sql/+sqlite.inl` + `tests/sql/test_sqlite.py`）；**ORM P1+ 设计中**（尚无 `orm.py` / `session.py`）。  
 > **约束**：符合 [编码规范.md](./编码规范.md)；**不新增** `@table` 等装饰器或译器 pass；ORM 仅复用既有 `@annotation` *Meta、`@dataclass`、`Self.iterFields` / `Self.getFieldAnnotation[Meta](field)`（与 `ui/panel` 同构）；Native 原子化（业务零 `@native`，C++ 仅叶子）；不引入 STL；**暂不支持** SQLAlchemy 级 Query DSL / relationship / migration 框架。
 
 ---
@@ -15,12 +15,12 @@
 4. **可插拔后端**：协议层与 SQLite 实现分离；未来可增 PostgreSQL 等后端而不改用户 ORM 类。
 5. **Pythonic 增查改删**：P1 **单行插** ``users.append(entity)``；P2+ **批量插** ``extend``、**读/删/改** ``collect``/``remove``/``execute(e.assign…)``（genexp → 内联 **`SqlQuery[T]`**；``assign`` 写入 ``set_sql``/``set_binds``）；P3 **联表读** ``session.collect[RowT](Row(…) for x in a for y in b if x.u == y.v)``（``SqlQuery[RowT]``；**方法须** ``collect[T]``）；**禁止** ``filter(eq)`` / ``touch`` / ``users.iter()`` / ``add`` / ``Join`` 工厂 / ``relationship``。
 
-与 `py2cpp.serde` 的关系：
+与 `paw.serde` 的关系：
 
 | 域 | 模块 | 职责 |
 |----|------|------|
-| 序列化格式 | `py2cpp/serde/` | JSON、base64 等 **wire 格式** |
-| 关系型持久化 | `py2cpp/sql/` | DB-API + ORM **表落盘** |
+| 序列化格式 | `paw/serde/` | JSON、base64 等 **wire 格式** |
+| 关系型持久化 | `paw/sql/` | DB-API + ORM **表落盘** |
 
 二者可叠加（P2）：同一 `@dataclass` 同时 `@serializable` 与 ORM 字段注解；P1 仅保证互不干扰。**ORM 不要求**也不提供类似 `@table` 的额外装饰器。
 
@@ -29,7 +29,7 @@
 ## 2. 目录与命名空间
 
 ```text
-py2cpp/sql/
+paw/sql/
   __init__.py          # 薄包根
   protocols.py         # @protocol：ConnectionType / CursorType / DialectType / SqlQuery[T]
   orm.py               # @annotation *Meta、ORM 静态 helper
@@ -42,9 +42,9 @@ third_party/sqlite/      # SQLite amalgamation（已 vendoring，见 README.md�
   sqlite3.h
   sqlite3ext.h
 
-templates/               # 模板根：镜像 generated/runtime/py2cpp/**（见 codegen-templates.md §8）
+templates/               # 模板根：镜像 generated/runtime/paw/**（见 codegen-templates.md §8）
   ~helpers.inl           # 跨模块；sql/sqlite.inl 内 PY2CPP_INCLUDE("../~helpers.inl")
-  sql/sqlite.inl         # → generated/runtime/py2cpp/sql/sqlite.inl
+  sql/sqlite.inl         # → generated/runtime/paw/sql/sqlite.inl
   sql/~bind.inl          # 同目录 INCLUDE：~bind.inl
 
 src/codegen/
@@ -60,10 +60,10 @@ test/sql/
 C++ 命名空间（建议）：
 
 ```text
-py2cpp::sql::sqlite::ConnectionType
-py2cpp::sql::Session
-py2cpp::sql::Table<User>              # 模板表句柄
-py2cpp::sql::protocols::DialectType       # 协议 traits，无类体
+paw::sql::sqlite::ConnectionType
+paw::sql::Session
+paw::sql::Table<User>              # 模板表句柄
+paw::sql::protocols::DialectType       # 协议 traits，无类体
 ```
 
 ---
@@ -88,7 +88,7 @@ flowchart TB
     T["session.table[User]()"]
   end
 
-  subgraph sql_pkg [py2cpp.sql]
+  subgraph sql_pkg [paw.sql]
     ORM["orm.py helpers"]
     SESS["session.py Table[T]"]
     PROTO["protocols.py"]
@@ -121,7 +121,7 @@ flowchart TB
 
 **扩展新数据库**：实现 `XxxConnection` + `XxxDialect` 满足 `protocols.py`；`orm.py` / 用户 `@dataclass` 表类 / `Session` API **不变**。
 
-**译器**：**不新增** pass、`builtins` 桩或语法。ORM 逻辑全部写在 `py2cpp/sql/` 标准库 Python 中，依赖已有 `expand_iter_fields_meta`（与 Panel 相同）。
+**译器**：**不新增** pass、`builtins` 桩或语法。ORM 逻辑全部写在 `paw/sql/` 标准库 Python 中，依赖已有 `expand_iter_fields_meta`（与 Panel 相同）。
 
 ---
 
@@ -130,11 +130,11 @@ flowchart TB
 ### 4.1 ORM 表类（Declarative，无新装饰器）
 
 ```python
-from py2cpp import *
-from py2cpp.sql.orm import TableMeta, PrimaryKeyMeta, ColumnMeta, IgnoreMeta
-from py2cpp.sql.session import Session, Table
-from py2cpp.sql.sqlite import connect
-from py2cpp.core.optional import Optional
+from paw import *
+from paw.sql.orm import TableMeta, PrimaryKeyMeta, ColumnMeta, IgnoreMeta
+from paw.sql.session import Session, Table
+from paw.sql.sqlite import connect
+from paw.core.optional import Optional
 
 @TableMeta("users")
 @copyable
@@ -206,7 +206,7 @@ session.close()
 **``Table[T]`` 增查改删（genexp 路径）**（形参 ``query: SqlQuery[T]``；参考实现体供译器分析 / 回退）：
 
 ```python
-from py2cpp.sql.protocols import SqlQuery
+from paw.sql.protocols import SqlQuery
 
 @dataclass
 class Table[T]:
@@ -295,7 +295,7 @@ session.commit()
 
 **``SqlQuery[T]`` 本身即是 genexp 的编译产物**——带占位符的 SQL 片段 + 绑定槽 + 与 **`T`** 绑定的行形态；**不是**空 protocol 标记，也**不**另造 ``OrmSqlPlan`` 等并列类型。用户**只写 genexp**，译器在调用点 desugar 为 ``SqlQuery[T]`` 内联值（无堆分配）。
 
-定义于 **`py2cpp/sql/protocols.py`**（``@protocol`` 供形参标注；字段由 ``orm_sql_query_emit`` 在调用点填充）：
+定义于 **`paw/sql/protocols.py`**（``@protocol`` 供形参标注；字段由 ``orm_sql_query_emit`` 在调用点填充）：
 
 ```python
 @protocol
@@ -479,7 +479,7 @@ WHERE o.amount > ? AND u.active = ?
 ### 4.5 底层 DB-API（公开，对齐 sqlite3 子集）
 
 ```python
-from py2cpp.sql.sqlite import connect, ConnectionType, CursorType
+from paw.sql.sqlite import connect, ConnectionType, CursorType
 
 conn: ConnectionType = connect("app.db")
 conn.execute("CREATE TABLE t(x INTEGER)")
@@ -496,13 +496,13 @@ conn.close()
 入口约定：
 
 - **主入口**：`Session.open(conn)`，`conn` 为 `protocols.ConnectionType` 实现。
-- **便捷入口**：`py2cpp.sql.sqlite.connect(path)` 返回 SQLite 连接；**不**在 Session 上硬编码路径。
+- **便捷入口**：`paw.sql.sqlite.connect(path)` 返回 SQLite 连接；**不**在 Session 上硬编码路径。
 
 ---
 
 ## 5. ORM 元数据（`orm.py`）
 
-与 `py2cpp/ui/meta.py` 对称，**全部为既有 `@annotation` 类**：
+与 `paw/ui/meta.py` 对称，**全部为既有 `@annotation` 类**：
 
 ```python
 @annotation
@@ -661,7 +661,7 @@ class DialectType:
 | **`assign``（实体 ``e.assign``）** | 已有（§7.4） | Phase A 写入 ``SqlQuery.set_sql`` / ``set_binds``；``execute`` Phase B 拼 ``UPDATE`` |
 | **`SqlQuery[T]` + ``orm_sql_query_emit``** | 新增 | genexp → 内联 ``SqlQuery[T]``（``from``/``where``/``binds``/``set_sql``/``select_sql``/…）；**单入口**；各 DML 方法 Phase B 格式化 |
 | **`Optional[T]`** | `analyzer` 已有 | ORM 读写字段是否 Optional |
-| stdlib 发现 | `stdlib_discovery.py` | 注册 `py2cpp/sql/` |
+| stdlib 发现 | `stdlib_discovery.py` | 注册 `paw/sql/` |
 | umbrella / `minimal.h` | `umbrella_gen.py` 等 | include `sql/sqlite.inl` |
 | 链接 | `compile.py` | `extra_sources`: `third_party/sqlite/sqlite3.c`；`-I third_party/sqlite` |
 
@@ -704,14 +704,14 @@ class DialectType:
 ## 12. 实施分期
 
 ```text
-P0  protocols.py + sqlite.py + templates/sql/+sqlite.inl + test/sql/test_sqlite.py
+P0  protocols.py + sqlite.py + templates/sql/+sqlite.inl + tests/sql/test_sqlite.py
 
-P1  orm.py + session.py（Session + Table[T]）+ test/sql/test_sql_orm.py
+P1  orm.py + session.py（Session + Table[T]）+ tests/sql/test_sql_orm.py
     （*Meta、iterFields helper、table[T]()、create_schema/append/get/all、Optional、IgnoreMeta）
 
-P2  extend/collect/remove/execute（SqlQuery + genexp；extend 插实体、execute 须 e.assign）+ test/sql/test_sql_orm_genexp.py
+P2  extend/collect/remove/execute（SqlQuery + genexp；extend 插实体、execute 须 e.assign）+ tests/sql/test_sql_orm_genexp.py
 
-P3  Session.collect[T] 联表（``SqlQuery[RowT]`` + 嵌套 for x in a for y in b）+ test/sql/test_sql_orm_join.py
+P3  Session.collect[T] 联表（``SqlQuery[RowT]`` + 嵌套 for x in a for y in b）+ tests/sql/test_sql_orm_join.py
 
 P4  第二后端 PoC（postgres 协议 + DialectType）
 ```
@@ -722,10 +722,10 @@ P4  第二后端 PoC（postgres 协议 + DialectType）
 
 | 路径 | 覆盖 |
 |------|------|
-| `test/sql/test_sqlite.py` | DB-API、`:memory:`、异常 |
-| `test/sql/test_sql_orm.py` | `User` dataclass 往返、`IgnoreMeta`、`ColumnMeta`、`Optional[str]` NULL、PK 写回 |
-| `test/sql/test_sql_orm_genexp.py`（P2） | ``SqlQuery[T]`` + ``extend``/``collect``/``remove``/``execute(e.assign…)`` |
-| `test/sql/test_sql_orm_join.py`（P3） | ``session.collect[OrderUserRow](Row(…) for o in orders for u in users if o.user_id==u.id)`` → ``SqlQuery[OrderUserRow]`` |
+| `tests/sql/test_sqlite.py` | DB-API、`:memory:`、异常 |
+| `tests/sql/test_sql_orm.py` | `User` dataclass 往返、`IgnoreMeta`、`ColumnMeta`、`Optional[str]` NULL、PK 写回 |
+| `tests/sql/test_sql_orm_genexp.py`（P2） | ``SqlQuery[T]`` + ``extend``/``collect``/``remove``/``execute(e.assign…)`` |
+| `tests/sql/test_sql_orm_join.py`（P3） | ``session.collect[OrderUserRow](Row(…) for o in orders for u in users if o.user_id==u.id)`` → ``SqlQuery[OrderUserRow]`` |
 
 ---
 
@@ -775,4 +775,4 @@ P4  第二后端 PoC（postgres 协议 + DialectType）
 - 谓词 lowering 参考：[selector.md §4.4](./selector.md#44-过滤步-exprpy2cpp-表达式)
 - 路径 ``select`` DSL（ORM **不**复用）：[selector.md](./selector.md)
 - 泛型入口（谁泛型谁传参）：[serde-document-crud.md](./serde-document-crud.md)（``JsonDocument[T].open`` ↔ ``session.table[T]()``）
-- 范本：`py2cpp/ui/panel.py`、`py2cpp/ui/meta.py`、`test/ui/test_panel.py`
+- 范本：`paw/ui/panel.py`、`paw/ui/meta.py`、`tests/ui/test_panel.py`

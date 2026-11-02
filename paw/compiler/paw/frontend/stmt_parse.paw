@@ -1,2 +1,2 @@
 """Stub parity with ``compiler/py/frontend/stmt_parse.py`` — not yet ported to Paw."""
-from py2cpp import *
+from paw import *

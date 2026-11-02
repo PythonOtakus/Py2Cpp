@@ -1,7 +1,7 @@
 """``Task``：World 主循环阶段槽。"""
 from __future__ import annotations
 
-from py2cpp import *
+from paw import *
 
 
 @copyable

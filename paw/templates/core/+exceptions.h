@@ -1,8 +1,8 @@
 PY2CPP_IGNORE
-#include "py2cpp/core/exceptions.h"
-#include "py2cpp/text/str.h"
+#include "paw/core/exceptions.h"
+#include "paw/text/str.h"
 
-namespace py2cpp
+namespace paw
 {
 namespace core
 {
@@ -38,5 +38,5 @@ PY2CPP_IGNORE
 
 } // namespace exceptions
 } // namespace core
-} // namespace py2cpp
+} // namespace paw
 PY2CPP_END

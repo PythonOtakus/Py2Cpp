@@ -145,7 +145,7 @@ def stdlib_header_global_using_line(module_path: str) -> str | None:
   """``.h`` 在 namespace 闭合后导出模块短名。
 
   库 TU 定义 ``PY2CPP_LIBRARY_TU`` 时跳过 header-only ``.inl``，而短名
-  ``using namespace py2cpp::util::dict`` 原先只写在 ``.inl``，会导致
+  ``using namespace paw::util::dict`` 原先只写在 ``.inl``，会导致
   ``PyDict`` / ``PyList`` 在 ``types.h``、``protocol_erase_domain.h`` 中不可见。
   """
   if module_path.replace("\\", "/").strip("/") == RUNTIME_PKG:
@@ -370,11 +370,11 @@ def sync_runtime_cpp_usings(tr: Translator) -> None:
   start = None
   end = None
   for i, line in enumerate(lines):
-    if line.startswith("using namespace py2cpp::"):
+    if line.startswith("using namespace paw::"):
       if start is None:
         start = i
       end = i + 1
-    elif start is not None and not line.startswith("using namespace py2cpp::"):
+    elif start is not None and not line.startswith("using namespace paw::"):
       break
   if start is None:
     insert_at = None
@@ -444,9 +444,9 @@ def write_per_module_headers(tr: Translator) -> None:
     ]
     # UI 等可能先于万能头 io-late ``#undef`` 拉入本头；在头内再清一轮 Win 宏（如 ``stat``）
     if module_path in (
-      "py2cpp/io/path",
-      "py2cpp/console",
-      "py2cpp/console/popen",
+      "paw/io/path",
+      "paw/console",
+      "paw/console/popen",
     ):
       from ..constant.stdlib_modules import UMBRELLA_MSVC_UNDEF_MACROS
 
@@ -463,8 +463,8 @@ def write_per_module_headers(tr: Translator) -> None:
       for inc in _JSON_API_EXTRA_HEADER_INCLUDES:
         if inc not in ma.includes:
           extra_includes.append(inc)
-    if module_path == "py2cpp/console":
-      popen_h = "py2cpp/console/popen.h"
+    if module_path == "paw/console":
+      popen_h = "paw/console/popen.h"
       if popen_h not in ma.includes and popen_h not in extra_includes:
         extra_includes.append(popen_h)
     from ..constant.ffi_layout import ffi_c_header_include
@@ -515,8 +515,8 @@ def write_per_module_headers(tr: Translator) -> None:
       content.append("")
     # stdio 等会把 ``popen`` 重新定义为宏；须在 include 之后、命名空间/声明之前再清一轮
     if module_path in (
-      "py2cpp/console",
-      "py2cpp/console/popen",
+      "paw/console",
+      "paw/console/popen",
     ):
       content.append("#ifdef _MSC_VER")
       content.append("#ifdef popen")
@@ -559,7 +559,7 @@ def write_per_module_headers(tr: Translator) -> None:
         if global_traits:
           inl_tail.extend([
             "",
-            '#include "py2cpp/core/refcount.h"',
+            '#include "paw/core/refcount.h"',
             "",
             *global_traits,
           ])
@@ -622,7 +622,7 @@ def _sanitize_core_iter_result_inl(
         includes.append(line)
         continue
       phase = "rest"
-    if stripped.startswith("using ::py2cpp::text::str::") and stripped != "using ::py2cpp::text::str::PyStr;":
+    if stripped.startswith("using ::paw::text::str::") and stripped != "using ::paw::text::str::PyStr;":
       continue
     rest.append(line)
   ops_inc = next((ln for ln in includes if "operators.h" in ln), None)
@@ -636,16 +636,16 @@ def _sanitize_core_iter_result_inl(
     ordered_includes.append(ops_inc)
   ordered_includes.extend(other_includes)
   usings = [
-    "using namespace py2cpp::core::iter_result;",
-    "using ::py2cpp::text::str::PyStr;",
+    "using namespace paw::core::iter_result;",
+    "using ::paw::text::str::PyStr;",
   ]
   rest = [
     ln
     for ln in rest
     if ln.strip()
     not in (
-      "using namespace py2cpp::core::iter_result;",
-      "using ::py2cpp::text::str::PyStr;",
+      "using namespace paw::core::iter_result;",
+      "using ::paw::text::str::PyStr;",
     )
   ]
   if rest and rest[0].strip():
@@ -728,7 +728,7 @@ def write_per_module_inl(tr: Translator) -> None:
         continue
       header = include_line_to_header_path(inc) or inc
       for ns, sym in idx.get(header, ()):
-        if module_path == _ITER_RESULT_MODULE and ns == 'py2cpp::text::str' and sym != 'PyStr':
+        if module_path == _ITER_RESULT_MODULE and ns == 'paw::text::str' and sym != 'PyStr':
           continue
         line = using_symbol_line(ns, sym)
         if line not in seen_pre:
@@ -831,4 +831,4 @@ def write_mirror_codegen_artifacts(tr: Translator) -> None:
     return
   from ..codegen.stdlib_mirror_codegen import write_mirror_codegen_artifacts as _write
 
-  _write(tr.runtime_output_dir / "py2cpp", tr.generated_at)
+  _write(tr.runtime_output_dir / "paw", tr.generated_at)

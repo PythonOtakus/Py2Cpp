@@ -1,6 +1,6 @@
 PY2CPP_IGNORE
-#include "py2cpp/ui/tooltip.h"
-#include "py2cpp/ui/window.h"
+#include "paw/ui/tooltip.h"
+#include "paw/ui/window.h"
 PY2CPP_END
 
 #ifdef _WIN32

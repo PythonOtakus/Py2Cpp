@@ -11,7 +11,7 @@ from src.translator import Translator
 class WeakRefCtorEmitTests(unittest.TestCase):
   def test_weakref_subscript_ctor_unwraps_refcount_tparam(self):
     src = """
-from py2cpp import *
+from paw import *
 
 @refcount
 class Node:

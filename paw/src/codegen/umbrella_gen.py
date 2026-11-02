@@ -1,4 +1,4 @@
-"""``py2cpp/minimal.h`` 万能头聚合（``templates/minimal.h`` + include 列表 ctx）。"""
+"""``paw/minimal.h`` 万能头聚合（``templates/minimal.h`` + include 列表 ctx）。"""
 
 from collections.abc import Sequence
 

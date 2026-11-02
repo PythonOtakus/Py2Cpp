@@ -16,7 +16,7 @@
 // | 纯 C++（无宏） | §pure-cpp |
 
 PY2CPP_IGNORE
-#include "py2cpp/text/str.h"
+#include "paw/text/str.h"
 #define ctx_Block
 #define ctx_Suffix , y(0)
 #define ctx_Base PyStr

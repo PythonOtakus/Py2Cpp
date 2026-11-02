@@ -18,8 +18,8 @@
 #include "ffi/crt/string.h"
 
 PY2CPP_IGNORE
-#include "py2cpp/web/socket.h"
-#include "py2cpp/text/str.h"
+#include "paw/web/socket.h"
+#include "paw/text/str.h"
 PY2CPP_END
 
 static bool _web_wsa_ready = false;

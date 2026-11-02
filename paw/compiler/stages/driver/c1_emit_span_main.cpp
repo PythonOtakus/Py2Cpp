@@ -33,7 +33,7 @@ int main() {
   bool threw = false;
   try {
     (void)makeSpan(1, 5, 2);
-  } catch (const py2cpp::core::exceptions::PyValueError&) {
+  } catch (const paw::core::exceptions::PyValueError&) {
     threw = true;
   } catch (...) {
     std::printf("FAIL makeSpan bad range wrong exception\n");

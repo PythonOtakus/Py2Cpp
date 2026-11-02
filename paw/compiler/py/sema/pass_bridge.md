@@ -24,7 +24,7 @@
 
 ## 验收
 
-- `python main.py py2cpp/__init__.paw -o generated --no-main` 不经过全文 `surface_rewrite`
+- `python main.py paw/__init__.paw -o generated --no-main` 不经过全文 `surface_rewrite`
 - A/B：`test_paw_a_batch` / `test_paw_record` 类体 MidIR 直构（`_class_needs_rewrite==False`）
 - `python scripts/paw_c0_seed_smoke.py`；`python scripts/paw_mid_rewrite_probe.py`
 - `build.bat lang\test_paw_seed_span lang\test_paw_seed_lexer --seq`

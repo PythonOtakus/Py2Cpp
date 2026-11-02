@@ -46,7 +46,7 @@ YamlDocument[T]   # 平行 @dataclass + YamlDecoder backend，同样实现 Docum
 
 ## 3. `DocumentType` 协议（唯一入口 + 与 Json 对称）
 
-定义于 `py2cpp/serde/protocols.py`（与 `EncoderType` / `DecoderType` 并列）：
+定义于 `paw/serde/protocols.py`（与 `EncoderType` / `DecoderType` 并列）：
 
 ```python
 @protocol
@@ -80,8 +80,8 @@ class DocumentType:
 ### 3.1 打开方式（仅此一种）
 
 ```python
-from py2cpp.io.path import Path
-from py2cpp.serde.json import JsonDocument
+from paw.io.path import Path
+from paw.serde.json import JsonDocument
 
 doc: JsonDocument[Org] = JsonDocument[Org].open(Path("org.json"), "r")
 ```
@@ -182,9 +182,9 @@ del doc.deprecated_field
 
 | 文件 | 内容 |
 |------|------|
-| `py2cpp/serde/protocols.py` | `@protocol DocumentType` |
-| `py2cpp/serde/json.py` | `@dataclass JsonDocument[T]`、`JsonDocCursor[T]`、`JsonDocStepUnion` |
-| `py2cpp/serde/json.py` | ``JsonDocument`` / ``JsonDocCursor`` navigate / patch / commit（纯 Python，译器生成 ``json.inl``） |
+| `paw/serde/protocols.py` | `@protocol DocumentType` |
+| `paw/serde/json.py` | `@dataclass JsonDocument[T]`、`JsonDocCursor[T]`、`JsonDocStepUnion` |
+| `paw/serde/json.py` | ``JsonDocument`` / ``JsonDocCursor`` navigate / patch / commit（纯 Python，译器生成 ``json.inl``） |
 | `src/translator.py` | 通用 **`__getattr__` 派发**、`set_field` 赋值、`JsonDocCursor`→标量 **`read_*` 强制**（非 JSON 特判 pass） |
 
 ### 5.2 形态（规范 Python）
@@ -281,12 +281,12 @@ class JsonDocument[T]:
 
 | 用例 | 文件 |
 |------|------|
-| 只读字段链 | `test/serde/test_json_document.py` |
+| 只读字段链 | `tests/serde/test_json_document.py` |
 | `r+` 改字段 + `commit` + 再 `load` 验证 | 同上 |
 | `append` / `del` | 同上 |
 | `load()` ≡ `Json.loads` | 同上 |
 | `dump()` ≡ `Json.dumps`（无 dirty 时） | 同上 |
-| 大文件 `read(-1)` 前置 | `test/io/` + document |
+| 大文件 `read(-1)` 前置 | `tests/io/` + document |
 
 结构：`TestCaseMixin` + `override def test`（编码规范 §10）。
 
@@ -320,4 +320,4 @@ class JsonDocument[T]:
 
 ---
 
-*版本：2026-05-19；以 `py2cpp/serde/protocols.py`、`py2cpp/serde/json.py` 为实现准绳。*
+*版本：2026-05-19；以 `paw/serde/protocols.py`、`paw/serde/json.py` 为实现准绳。*

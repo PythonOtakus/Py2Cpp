@@ -1,0 +1,28 @@
+"""映射字面量链式查表：``{k:v}[i]``、``{k:v}.get(i, default)``。"""
+
+from paw import *
+from paw.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
+
+class DictLiteralSubscriptTests(TestCaseMixin):
+  _testTag = 1
+
+  override def test(self):
+    self.assertEqual({1: 10, 2: 20}[1], 10)
+    self.assertEqual({1: 10, 2: 20}[2], 20)
+    k: int = 2
+    self.assertEqual({1: 10, 2: 20}[k], 20)
+
+class DictLiteralGetTests(TestCaseMixin):
+  _testTag = 2
+
+  override def test(self):
+    self.assertEqual({1: 10, 2: 20}.get(1, -1), 10)
+    self.assertEqual({1: 10, 2: 20}.get(9, -1), -1)
+    k: int = 2
+    self.assertEqual({1: 10, 2: 20}.get(k, 0), 20)
+
+def main():
+  suite: TestSuite = new()
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
+    suite.addTest(Class())
+  return TextTestRunner().run(suite)

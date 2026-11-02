@@ -1,5 +1,5 @@
 PY2CPP_IGNORE
-namespace py2cpp { namespace concur { namespace task {
+namespace paw { namespace concur { namespace task {
 template<typename _Value>
 class PyTask
 {

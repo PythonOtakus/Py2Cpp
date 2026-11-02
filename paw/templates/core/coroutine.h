@@ -1,9 +1,9 @@
-#include "py2cpp/core/iter_result.h"
+#include "paw/core/iter_result.h"
 #include <utility>
 
 
 // 擦除协程句柄：``Coroutine[Y,S,R]`` 形参/字段/``@virtual`` 返回；具体 ``*_coroutine`` 经 ``makeCoroutine`` 装箱。
-namespace py2cpp_coroutine_detail
+namespace paw_coroutine_detail
 {
   template<typename ST>
   ST default_send_value()
@@ -239,7 +239,7 @@ struct py2cpp_coroutine_model : py2cpp_coroutine_detail::model_hdr
   }
 };
 
-namespace py2cpp_coroutine_detail
+namespace paw_coroutine_detail
 {
   template<typename YT, typename ST, typename RT, typename G, bool = has_async_iter<G>::value>
   struct async_bind;

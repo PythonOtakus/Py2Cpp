@@ -1,6 +1,6 @@
 PY2CPP_IGNORE
-#include "py2cpp/ui/canvas.h"
-#include "py2cpp/ui/window.h"
+#include "paw/ui/canvas.h"
+#include "paw/ui/window.h"
 PY2CPP_END
 
 #include <cmath>

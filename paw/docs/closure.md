@@ -325,7 +325,7 @@ def outer():
 
 | 文件 | 覆盖 |
 |------|------|
-| `test/lang/test_closure.py` | `global` 读写模块变量；`nonlocal` 多层；无 capture / 有 capture；`f = inner` 推断；`**opts`；`@lazy`；自引用递归；类内 `[this]` |
+| `tests/lang/test_closure.py` | `global` 读写模块变量；`nonlocal` 多层；无 capture / 有 capture；`f = inner` 推断；`**opts`；`@lazy`；自引用递归；类内 `[this]` |
 | `src/tests/test_closure_analysis.py` | capture 集、global 未声明报错、mangled 名 |
 
 **首期不测**：跨栈帧 `return inner` 后调用（UB，仅文档警示）。
@@ -366,7 +366,7 @@ def outer():
 [ ] PyCallable 推断与调用（与 lambda 赋值一致）
 [ ] self → [this] capture
 [ ] 自引用递归
-[ ] test/lang/test_closure.py + src/tests/test_closure_analysis.py
+[ ] tests/lang/test_closure.py + src/tests/test_closure_analysis.py
 [ ] 参考手册 §6.6、编码规范 §7.8、reference Pass 表
 [ ] 文档注明逃逸 = C++ lambda 语义（首期）
 ```

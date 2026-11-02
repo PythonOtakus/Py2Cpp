@@ -1,12 +1,12 @@
-# `py2cpp.serde.protobuf` 设计方案
+# `paw.serde.protobuf` 设计方案
 
 > **状态**：设计阶段，尚未实现。  
-> **实现文件**：仅 `py2cpp/serde/protobuf.py`。  
+> **实现文件**：仅 `paw/serde/protobuf.py`。  
 > **范围**：静态 dataclass 消息到标准 Protocol Buffers binary wire format 的编码、解码与长度前缀帧；暂不支持 `.proto` 文件、`protoc`、descriptor、Google Protobuf C++ Runtime、gRPC。
 
 ## 1. 目标与定位
 
-`py2cpp.serde.protobuf` 为 Py2Cpp 提供与其他 protobuf 实现互操作的二进制消息格式。它服务于网络协议、存档、资源数据、跨语言服务接口和后续 Zeus 的高频结构化数据，但不改变 Py2Cpp 自己的对象、容器、引用计数或 dataclass 模型。
+`paw.serde.protobuf` 为 Py2Cpp 提供与其他 protobuf 实现互操作的二进制消息格式。它服务于网络协议、存档、资源数据、跨语言服务接口和后续 Zeus 的高频结构化数据，但不改变 Py2Cpp 自己的对象、容器、引用计数或 dataclass 模型。
 
 模块必须满足：
 
@@ -16,7 +16,7 @@
 - 基于 `Self.iterFields`、`Self.getFieldAnnotation`、`Self.getFieldType` 在翻译期展开，不依赖运行时字段反射；
 - 不依赖 STL；
 - 不依赖 Google Protobuf Runtime；
-- 单一真相源为 `py2cpp/serde/protobuf.py`、必要模板、测试和本文档，禁止修改 `generated/`。
+- 单一真相源为 `paw/serde/protobuf.py`、必要模板、测试和本文档，禁止修改 `generated/`。
 
 模块不追求完整复刻 `google.protobuf` 的动态 descriptor API。它是面向受限静态类型子集的 protobuf codec。
 
@@ -25,7 +25,7 @@
 首版只增加一个标准库文件：
 
 ```text
-py2cpp/serde/protobuf.py
+paw/serde/protobuf.py
 ```
 
 文件内按以下逻辑区域组织，不拆分 `wire.py`、`meta.py` 或子包：
@@ -42,7 +42,7 @@ Protobuf 静态入口
 所有序列化入口属于 `Protobuf`，不保留模块级 `dumps`、`loads`、`dump`、`load`：
 
 ```python
-from py2cpp.serde.protobuf import Protobuf
+from paw.serde.protobuf import Protobuf
 
 data: bytes = Protobuf.dumps(message)
 message: Player = Protobuf.loads[Player](data)
@@ -66,8 +66,8 @@ message: Player = Protobuf.read_delimited[Player](reader)
 protobuf 字段必须显式指定 field number。字段号是 wire 兼容性契约，不能依赖 dataclass 声明顺序自动分配。
 
 ```python
-from py2cpp import *
-from py2cpp.serde.protobuf import ProtoFieldMeta, Protobuf
+from paw import *
+from paw.serde.protobuf import ProtoFieldMeta, Protobuf
 
 @dataclass
 class Player:
@@ -375,7 +375,7 @@ ProtobufError
 新增：
 
 ```text
-test/serde/
+tests/serde/
   test_protobuf_wire.py
   test_protobuf_message.py
   test_protobuf_repeated.py
@@ -414,4 +414,4 @@ test/serde/
 7. P1 optional/map/oneof/unknown preservation（另行设计后实施）
 ```
 
-P0 完成标准是：不需要 `.proto`、`protoc` 或 Google Runtime，即可用单个 `py2cpp/serde/protobuf.py` 对一组静态 dataclass 消息进行稳定、可诊断且与标准 protobuf wire format 兼容的二进制编解码。
+P0 完成标准是：不需要 `.proto`、`protoc` 或 Google Runtime，即可用单个 `paw/serde/protobuf.py` 对一组静态 dataclass 消息进行稳定、可诊断且与标准 protobuf wire format 兼容的二进制编解码。

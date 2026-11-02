@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 _LOCATION_PREFIX_RE = re.compile(
   r"^(?:[A-Za-z]:)?[\\/][\w./\\-]+:\d+"
   r"|^[\w./\\-]+\.py:\d+"
-  r"|^py2cpp/[\w./\\-]+\.py:\d+",
+  r"|^paw/[\w./\\-]+\.py:\d+",
 )
 
 

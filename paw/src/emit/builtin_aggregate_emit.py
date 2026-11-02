@@ -107,7 +107,7 @@ def _values_cmp_expr(tr: Translator, left_cpp: str, right_cpp: str, elem_t: str)
         return emit_scalar_cmp_ternary(lk, rk)
     if is_long_type(elem_t) or is_str_type(elem_t):
         return f'{lk}.__cmp__({rk})'
-    return f'::py2cpp::py_cmp({lk}, {rk})'
+    return f'::paw::py_cmp({lk}, {rk})'
 
 def _emit_min_max_pick_cond(tr: Translator, left_cpp: str, right_cpp: str, elem_t: str, *, key_fn: str | None, pick_min: bool) -> str:
     """``min``/``max`` 选取条件：标量（含 ``key=`` 后的键）用 ``<``/``>``，其余 ``__cmp__``/``py_cmp``。"""

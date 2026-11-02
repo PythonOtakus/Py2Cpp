@@ -27,7 +27,7 @@ class Proxy[T]:
     self._target = target
 """
   ).body[0]
-  info = ClassInfo(node, "py2cpp/core/proxy")
+  info = ClassInfo(node, "paw/core/proxy")
   info.is_native = True
   info.is_copyable = True
   return info

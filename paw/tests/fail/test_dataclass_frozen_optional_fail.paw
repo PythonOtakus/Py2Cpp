@@ -1,0 +1,10 @@
+"""``@dataclass(frozen=True)`` 不可 ``T @optional``（``tests/fail/``）。"""
+from paw import *
+
+frozen record FrozenBox:
+  key: int
+  extra: int @optional = 99
+
+def main():
+  b: FrozenBox = new(1)
+  return 0

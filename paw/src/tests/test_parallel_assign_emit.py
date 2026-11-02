@@ -35,7 +35,7 @@ def f():
 
   def test_call_return_unpack(self):
     src = '''
-from py2cpp import *
+from paw import *
 
 def triple() -> (int, int, int):
   return (1, 2, 3)
@@ -53,7 +53,7 @@ def f():
 
   def test_subscript_swap(self):
     src = '''
-from py2cpp.util.list import list
+from paw.util.list import list
 
 def f(xs: list[int]):
   xs[0], xs[1] = xs[1], xs[0]

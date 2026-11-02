@@ -12,7 +12,7 @@ from src.translation_error import TranslationError
 class MemberCallValidationTests(unittest.TestCase):
   def test_staticproperty_empty_call_rejected(self):
     src = """
-from py2cpp import copyable, Self, int64
+from paw import copyable, Self, int64
 
 @copyable
 class Task:
@@ -36,7 +36,7 @@ def use() -> int64:
 
   def test_staticproperty_attr_read_ok(self):
     src = """
-from py2cpp import copyable, int64
+from paw import copyable, int64
 
 @copyable
 class Task:
@@ -60,7 +60,7 @@ def use() -> int64:
 
   def test_instance_property_empty_call_rejected(self):
     src = """
-from py2cpp import copyable, Self
+from paw import copyable, Self
 
 @copyable
 class Node:

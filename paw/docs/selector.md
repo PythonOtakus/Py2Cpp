@@ -56,7 +56,7 @@ all_teams: list[Team] = org.select(".teams")
 | 参数 | 关键字 / ``**opt`` | **字符串字面量** |
 | 译器集合 | ``TRANSLATOR_ONLY_METHODS`` | 同集合扩展 ``"select"`` |
 | C++ 成员 | 无 | 无 |
-| 范本参考 | [编码规范 §7.4](./编码规范.md#74-kwargsoptions关键字选项)、``test/lang/test_kwargs_options.py`` | 本文 + ``test/lang/test_selector.py`` |
+| 范本参考 | [编码规范 §7.4](./编码规范.md#74-kwargsoptions关键字选项)、``tests/lang/test_kwargs_options.py`` | 本文 + ``tests/lang/test_selector.py`` |
 
 **返回语义（G1）**：无后处理时 **恒** ``list[T]``；带 ``@sort`` / ``@group`` / ``@count`` 时由**末步后处理**与左侧注解联合校验（见 §4.15）。
 
@@ -447,11 +447,11 @@ TypeNode :=
 | 阶段 | 交付 | 路径子集 | 测试 |
 |------|------|----------|------|
 | **G0** | ``selector_parse`` + IR + 译器单测 | 解析 | ``src/tests/test_selector_parse.py`` |
-| **G1** | ``StructBackend`` + ``select`` 脱糖 | ``field``、``field[i]``、``a.b``；标量读 | ``test/lang/test_selector.py`` |
-| **G2** | ``JsonNavigateBackend`` | 同 G1；与 ``doc.field[i]`` 对照 | ``test/serde/test_json_document.py`` |
+| **G1** | ``StructBackend`` + ``select`` 脱糖 | ``field``、``field[i]``、``a.b``；标量读 | ``tests/lang/test_selector.py`` |
+| **G2** | ``JsonNavigateBackend`` | 同 G1；与 ``doc.field[i]`` 对照 | ``tests/serde/test_json_document.py`` |
 | **G3** | ``SequenceBackend`` + 链式切换 | ``[-1]``、``[lo:hi]``、``{expr}``（完整 Py2Cpp 布尔表达式）→ ``list`` | 同上 |
-| **G4** | 投影 ``.(a, b.c)`` + 后缀 | 多路径 ``list[T]``（arm 末步同型） | ``test/lang/test_selector.py`` |
-| **G4+** | 通配 ``[:]``、步长、``..`` | 同上扩展 | ``test/lang/test_selector.py`` |
+| **G4** | 投影 ``.(a, b.c)`` + 后缀 | 多路径 ``list[T]``（arm 末步同型） | ``tests/lang/test_selector.py`` |
+| **G4+** | 通配 ``[:]``、步长、``..`` | 同上扩展 | ``tests/lang/test_selector.py`` |
 | **G5** | 新 ``DocumentType`` 格式 | 注册 Backend | 不改路径语法 |
 
 **G1 优先 Struct、G2 再接 Json** 的理由：先验证 **SelectorPlan + backend 分派** 与 ``assign`` 同级机制，再复用 ``JsonDocument`` 已有 navigate 叶子。
@@ -478,10 +478,10 @@ TypeNode :=
 | 用例 | 文件 |
 |------|------|
 | 路径解析正负例（含 ``{expr}`` AST） | ``src/tests/test_selector_parse.py`` |
-| ``@dataclass`` + ``select`` 内联（含 ``{expr}``） | ``test/lang/test_selector.py`` |
-| 后处理 ``@sort`` / ``@group`` / ``@count`` | ``test/lang/test_selector_post.py`` |
-| ``JsonDocument`` vs 静态链 vs ``load()`` | ``test/serde/test_json_document.py`` |
-| 非字面量 path 译失败 | ``test/fail/test_selector_fail.py``（可选） |
+| ``@dataclass`` + ``select`` 内联（含 ``{expr}``） | ``tests/lang/test_selector.py`` |
+| 后处理 ``@sort`` / ``@group`` / ``@count`` | ``tests/lang/test_selector_post.py`` |
+| ``JsonDocument`` vs 静态链 vs ``load()`` | ``tests/serde/test_json_document.py`` |
+| 非字面量 path 译失败 | ``tests/fail/test_selector_fail.py``（可选） |
 
 结构：``TestCaseMixin`` + ``override def test``（[编码规范 §10](./编码规范.md#10-测试)）。
 

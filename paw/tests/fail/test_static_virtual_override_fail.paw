@@ -1,0 +1,21 @@
+"""``@protocol`` 静态虚实现缺 ``@override``（``tests/fail/``，译期 S1002）。"""
+from paw import *
+
+protocol IParsableType:
+  static abstract def parse(s: str) -> Self: ...
+
+class Widget:
+  value: int
+
+  def __init__(self, v: int = 0):
+    self.value = v
+
+  static def parse(s: str) -> Self:
+    return new(int(s))
+
+def tryParse[T: IParsableType](s: str) -> T:
+  return T.parse(s)
+
+def main():
+  w: Widget = tryParse[Widget]("1")
+  return w.value

@@ -12,7 +12,7 @@ from src.translator import Translator
 class NewTypeArgRejectTests(unittest.TestCase):
   def _expect_fail(self, body: str) -> None:
     src = f"""
-from py2cpp import *
+from paw import *
 
 @dataclass
 @copyable
@@ -45,7 +45,7 @@ class Box:
 
   def test_new_enum_member_ok(self):
     src = """
-from py2cpp import *
+from paw import *
 
 @enum
 class Mode:
@@ -62,7 +62,7 @@ def f() -> None:
 
   def test_new_capacity_still_ok(self):
     src = """
-from py2cpp import *
+from paw import *
 
 def f() -> None:
     buf: int[:] = new(4)
@@ -74,7 +74,7 @@ def f() -> None:
 
   def test_new_scalar_static_attr_ok(self):
     src = """
-from py2cpp import *
+from paw import *
 
 def f() -> float:
     return new(float.NaN)
@@ -86,7 +86,7 @@ def f() -> float:
 
   def test_new_complex_static_attr_ok(self):
     src = """
-from py2cpp import *
+from paw import *
 
 def f() -> complex:
     return new(complex.NaNj)

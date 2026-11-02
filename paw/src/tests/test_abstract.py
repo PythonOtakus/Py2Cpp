@@ -26,7 +26,7 @@ class AbstractRulesTests(unittest.TestCase):
 
   def test_abstract_emits_pure_virtual_decl(self):
     text = self._translate(
-      """from py2cpp import *
+      """from paw import *
 
 class Shape:
   @abstract
@@ -43,7 +43,7 @@ def main():
     with tempfile.TemporaryDirectory() as tmp:
       py = Path(tmp) / "mod.py"
       py.write_text(
-        """from py2cpp import *
+        """from paw import *
 
 class Shape:
   @abstract
@@ -65,7 +65,7 @@ def main():
     with tempfile.TemporaryDirectory() as tmp:
       py = Path(tmp) / "mod.py"
       py.write_text(
-        """from py2cpp import *
+        """from paw import *
 
 class Shape:
   @abstract

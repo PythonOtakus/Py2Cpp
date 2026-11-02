@@ -83,7 +83,7 @@ class Base:
     self.assertEqual(out, "reinterpret_cast<PyUtf16Ptr>(text)")
   def test_cast_deduced_from_ann_assign(self):
     src = """
-from py2cpp import *
+from paw import *
 
 @refcount
 class Base:

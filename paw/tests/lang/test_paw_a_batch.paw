@@ -1,0 +1,41 @@
+"""Paw A 批竖切：enum / type enum 头、final、const、ref class（经前端 lowering）。"""
+from paw import *
+from paw.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
+
+enum ModeEnum:
+  Off = 0
+  On = ...
+  Debug = ...
+
+enum PermFlag(flag=True):
+  Read = ...
+  Write = ...
+
+ref class Node:
+  value: int = 0
+
+final class Seal:
+  const MAX: int = 3
+  x: int = 0
+
+class PawABatchTests(TestCaseMixin):
+  _testTag = 1
+
+  override def test(self):
+    self.assertTrue(ModeEnum.On != ModeEnum.Off)
+    self.assertTrue(ModeEnum.Debug != ModeEnum.On)
+    flags: PermFlag = PermFlag.Read | PermFlag.Write
+    self.assertTrue(flags == (PermFlag.Read | PermFlag.Write))
+    n: Node = new()
+    n.value = 7
+    other: Node = n
+    self.assertTrue(other.value == 7)
+    s: Seal = new()
+    self.assertTrue(s.x == 0)
+    self.assertTrue(Seal.MAX == 3)
+
+def main():
+  suite: TestSuite = new()
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
+    suite.addTest(Class())
+  return TextTestRunner().run(suite)

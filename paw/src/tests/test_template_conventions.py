@@ -40,7 +40,7 @@ class TemplateConventionsTests(unittest.TestCase):
   def test_inject_include_outside_ignore_detected(self):
     from src.codegen.template_scan import scan_inject_ignore_violations
 
-    lines = ['#include "py2cpp/util/memory.h"\n']
+    lines = ['#include "paw/util/memory.h"\n']
     hits = scan_inject_ignore_violations(
       lines,
       check_py2cpp_include=True,
@@ -69,7 +69,7 @@ class TemplateConventionsTests(unittest.TestCase):
   def test_r0802_rejects_qualified_cut_type(self):
     from src.codegen.template_scan import partition_ignore_regions, scan_qualified_cut_type_violations
 
-    lines = ["py2cpp::core::iter_result::PyIterResult<A,B> fn();\n"]
+    lines = ["paw::core::iter_result::PyIterResult<A,B> fn();\n"]
     hits = scan_qualified_cut_type_violations(
       lines,
       ignore_regions=partition_ignore_regions(lines),
@@ -165,8 +165,8 @@ class TemplateConventionsTests(unittest.TestCase):
 
     lines = [
       "PY2CPP_IGNORE\n",
-      '#include "py2cpp/io/path.h"\n',
-      "namespace py2cpp { namespace io { namespace path {\n",
+      '#include "paw/io/path.h"\n',
+      "namespace paw { namespace io { namespace path {\n",
       "PY2CPP_END\n",
       "\n",
       "PY2CPP_INJECT_CLASS(PyPath)\n",
@@ -181,8 +181,8 @@ class TemplateConventionsTests(unittest.TestCase):
 
     lines = [
       "PY2CPP_IGNORE\n",
-      '#include "py2cpp/io/path.h"\n',
-      "namespace py2cpp { namespace io { namespace path {\n",
+      '#include "paw/io/path.h"\n',
+      "namespace paw { namespace io { namespace path {\n",
       "class Foo {\n",
       "PY2CPP_END\n",
       "\n",
@@ -202,8 +202,8 @@ class TemplateConventionsTests(unittest.TestCase):
 
     lines = [
       "PY2CPP_IGNORE\n",
-      '#include "py2cpp/io/path.h"\n',
-      "namespace py2cpp { namespace io { namespace path {\n",
+      '#include "paw/io/path.h"\n',
+      "namespace paw { namespace io { namespace path {\n",
       "class Path {\n",
       "PY2CPP_END\n",
       "\n",
@@ -223,8 +223,8 @@ class TemplateConventionsTests(unittest.TestCase):
 
     lines = [
       "PY2CPP_IGNORE\n",
-      '#include "py2cpp/text/str.h"\n',
-      "namespace py2cpp { namespace text { namespace str {\n",
+      '#include "paw/text/str.h"\n',
+      "namespace paw { namespace text { namespace str {\n",
       "class PyStr {\n",
       "PY2CPP_END\n",
       "\n",

@@ -22,8 +22,8 @@ class ContainerLiteralInitTests(unittest.TestCase):
   def test_counter_dict_literal_ann_assign(self):
     cpp = self._translate(
       """
-from py2cpp import *
-from py2cpp.util.misc import Counter
+from paw import *
+from paw.util.misc import Counter
 
 def f():
   c: Counter[str] = {"a": 3, "b": 1}
@@ -36,8 +36,8 @@ def f():
   def test_counter_update_dict_literal_arg(self):
     cpp = self._translate(
       """
-from py2cpp import *
-from py2cpp.util.misc import Counter
+from paw import *
+from paw.util.misc import Counter
 
 def f():
   c: Counter[str] = new()
@@ -51,7 +51,7 @@ def f():
   def test_custom_set_with_add_literal(self):
     cpp = self._translate(
       """
-from py2cpp import *
+from paw import *
 
 class Bag[T: DictKeyType]:
   def __init__(self):
@@ -70,7 +70,7 @@ def f():
   def test_custom_list_with_append_literal(self):
     cpp = self._translate(
       """
-from py2cpp import *
+from paw import *
 
 class Stack[T]:
   def __init__(self):
@@ -92,7 +92,7 @@ def f():
       py = out / "mod.py"
       py.write_text(
         """
-from py2cpp import *
+from paw import *
 
 _items: list[int] = []
 """,

@@ -22,7 +22,7 @@ class EnumerateIndexForTests(unittest.TestCase):
   def test_list_enumerate_index_for(self):
     cpp = self._translate(
       '''
-from py2cpp.util.list import list
+from paw.util.list import list
 
 def run(xs: list[int]) -> int:
   s: int = 0
@@ -39,7 +39,7 @@ def run(xs: list[int]) -> int:
   def test_enumerate_with_start(self):
     cpp = self._translate(
       '''
-from py2cpp.util.list import list
+from paw.util.list import list
 
 def run(xs: list[int]) -> int:
   i: int = 0
@@ -54,7 +54,7 @@ def run(xs: list[int]) -> int:
   def test_enumerate_reversed_list(self):
     cpp = self._translate(
       '''
-from py2cpp.util.list import list
+from paw.util.list import list
 
 def run(xs: list[int]) -> int:
   v: int = 0

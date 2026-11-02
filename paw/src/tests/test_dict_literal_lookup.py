@@ -10,8 +10,8 @@ from src.translator import Translator
 
 class DictLiteralLookupTests(unittest.TestCase):
   def _translate(self, src: str) -> str:
-    if "from py2cpp import" not in src:
-      src = "from py2cpp import *\n\n" + src
+    if "from paw import" not in src:
+      src = "from paw import *\n\n" + src
     with tempfile.TemporaryDirectory() as tmp:
       out = Path(tmp)
       py = out / "mod.py"

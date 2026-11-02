@@ -1,6 +1,6 @@
 PY2CPP_IGNORE
 #include <type_traits>
-#include "py2cpp/py_types.h"
+#include "paw/py_types.h"
 #define ctx_ProtocolName Iterable
 #define ctx_StaticAssertLit "Iterable unsatisfied"
 #define ctx_ProbePrivate

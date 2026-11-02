@@ -1388,7 +1388,7 @@ type match 语句与类型匹配表达式使用[静态分支共用规则](#stati
 
 现有命名与 strict 规则也影响源码的合法性，但不必进入词法关键字表。本轮保持类名后缀：enum → `Enum`，flag enum → `Flag`，MRO 派生 → `TypeEnum`/`TypeUnion`，union → `Union`，protocol → `Type`，mixin → `Mixin`，boxing → `Unsafe`，annotation → `Meta`，descriptor → `Var`，delegate → `Delegate`，自定义异常 → `Error`；内建类型及已有豁免继续有效。枚举成员 PascalCase，方法/参数/字段 camelCase，模块 snake_case。后续若取消类型后缀要求，应作为独立风格规则变更，不在本次关键词迁移中顺带处理。
 
-模块入口约定保持：用户模块 `from py2cpp import *`，标准库子模块相对导入 `builtins`，FFI 桩导入 `py2cpp.builtins`；用户从 FFI 导入使用具名符号。关键字转换不自动删除这些导入，因为它们同时提供类型、协议和函数。自有编译器将来若引入隐式 prelude，应另外明确导入兼容规则。
+模块入口约定保持：用户模块 `from paw import *`，标准库子模块相对导入 `builtins`，FFI 桩导入 `paw.builtins`；用户从 FFI 导入使用具名符号。关键字转换不自动删除这些导入，因为它们同时提供类型、协议和函数。自有编译器将来若引入隐式 prelude，应另外明确导入兼容规则。
 
 ## dunder 协议
 
@@ -1544,4 +1544,4 @@ FFI .pyi 语法保持声明形式。
 | `record(...)` 配置参数 | 新方言禁止 | record 固定生成构造、相等和展示；legacy `@dataclass(...)` 仅在兼容入口按历史已接受的参数语义处理 |
 | 任意 metaclass/动态 Python hook | 无完整目标模型 | 不承诺自动支持 |
 
-核查依据主要包括：`py2cpp/builtins.py`、`src/translator.py`、`src/analysis/ir.py`、`src/analysis/analyzer.py`、`src/passes/strict_style.py`、`src/passes/type_if.py`、`src/passes/type_conditional.py`、`src/passes/field_properties.py`、`src/passes/kwargs_options.py`、`src/passes/match_case.py`、`src/emit/fstring_emit.py`、`src/emit/comprehensions_emit.py`，以及 `test/lang/` 和对应 `src/tests/` 用例。模板、select、build、FFI 另对应各自实现与文档。本清单是静态审计和迁移提案，没有为所有语法重新执行编译/运行验证。
+核查依据主要包括：`paw/builtins.py`、`src/translator.py`、`src/analysis/ir.py`、`src/analysis/analyzer.py`、`src/passes/strict_style.py`、`src/passes/type_if.py`、`src/passes/type_conditional.py`、`src/passes/field_properties.py`、`src/passes/kwargs_options.py`、`src/passes/match_case.py`、`src/emit/fstring_emit.py`、`src/emit/comprehensions_emit.py`，以及 `tests/lang/` 和对应 `src/tests/` 用例。模板、select、build、FFI 另对应各自实现与文档。本清单是静态审计和迁移提案，没有为所有语法重新执行编译/运行验证。

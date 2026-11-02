@@ -23,7 +23,7 @@ class ClassFieldDefaultMakeTests(unittest.TestCase):
   def test_class_field_empty_char_heap_default(self):
     text = self._translate_class(
       '''
-from py2cpp import char
+from paw import char
 
 class Enc:
   _buf: char[:] = ""
@@ -37,7 +37,7 @@ class Enc:
   def test_class_field_new_default(self):
     text = self._translate_class(
       '''
-from py2cpp import char, new
+from paw import char, new
 
 class Enc:
   _buf: char[:] = new()
@@ -51,7 +51,7 @@ class Enc:
   def test_class_field_empty_dict_str_str_default(self):
     text = self._translate_class(
       '''
-from py2cpp import *
+from paw import *
 
 @copyable
 class Opts:

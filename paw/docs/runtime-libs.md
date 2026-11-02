@@ -10,11 +10,11 @@
 
 | 阶段 | 状态 | 说明 |
 |------|------|------|
-| **P0** mtime 跳过 | ✅ | `scripts/parallel_build.py`：exe 新于源/`minimal.h`/胖库则 skip；**翻译**：`generated/runtime/.bootstrap.stamp`，输入未变则跳过 `main.py py2cpp/__init__.py` |
+| **P0** mtime 跳过 | ✅ | `scripts/parallel_build.py`：exe 新于源/`minimal.h`/胖库则 skip；**翻译**：`generated/runtime/.bootstrap.stamp`，输入未变则跳过 `main.py paw/__init__.py` |
 | **P0.5** 写盘去重 | ✅ | 生成 `.h`/`.inl`/`.cpp` 时忽略 `// 生成时间:` 再比正文，相同则不刷新 mtime |
-| **P1** 胖库 | ✅ | 白名单非模板模块进 `py2cpp_runtime.lib`；模板/`Queue[T]` 仍 header-only；库增量看 `py2cpp/**/*.{h,inl,cpp}` mtime |
+| **P1** 胖库 | ✅ | 白名单非模板模块进 `py2cpp_runtime.lib`；模板/`Queue[T]` 仍 header-only；库增量看 `paw/**/*.{h,inl,cpp}` mtime |
 | **P1.5** bootstrap 加速 | ✅ | `ClassInfo`/`type_node` 查表；nav shard 按 `.h`/`.inl` mtime 跳过；叶子 `.py` 脏则只重分析/生成该模块，清洁模块跳过 import/expand/checks（mixin/`__init__.py`/译器/`templates/` 仍全量）。改一文件目标 **&lt;30s**；译器自身变更仍全量 |
-| **P1.6** 测例 analyze 缓存 | ✅ | `test/` / `examples/` 翻译时复用 `analyze_sigs.pkl` 中闭包内 ``py2cpp/*`` 与 ``ffi/*`` 签名（须先 bootstrap）；``PY2CPP_NO_TEST_CACHE=1`` 关闭 |
+| **P1.6** 测例 analyze 缓存 | ✅ | `tests/` / `examples/` 翻译时复用 `analyze_sigs.pkl` 中闭包内 ``paw/*`` 与 ``ffi/*`` 签名（须先 bootstrap）；``PY2CPP_NO_TEST_CACHE=1`` 关闭 |
 | **P1.7** MSVC PCH | 实验性 | ``PY2CPP_USE_PCH=1`` 时 bootstrap 生成 ``pch/minimal.pch`` 且测例 ``cl`` 使用 ``/FI``+``/Yu`` |
 | **P2** 域库 | 未做 | |
 | **P3** 链接期 DLL | 未做 | 同 TU 出 `py2cpp_*.dll` + import lib，测例 **dllimport**；**不是**进程内热更（见 [hot-reload.md](./hot-reload.md)） |
@@ -35,8 +35,8 @@ build.bat PATTERN --seq
 
 ```text
 test_foo.cpp
-  └─ #include "py2cpp/minimal.h"
-        └─ 大量 py2cpp/**/*.h → #include "*.inl"
+  └─ #include "paw/minimal.h"
+        └─ 大量 paw/**/*.h → #include "*.inl"
               └─ 非模板 + 模板实现一并编进每个 exe
 ```
 
@@ -46,7 +46,7 @@ test_foo.cpp
 |------|------|
 | 改一个小测例也「像全量编译」 | 每个 exe TU 重新编译整份标准库 `.inl` |
 | `build_all` 墙钟时间随用例数近似线性放大 | N 个 exe × 同一份 runtime 实现 |
-| `py2cpp.cpp` 几乎用不上 | 历史汇总 TU；与 `minimal.h` 同链会 **LNK2005** |
+| `paw.cpp` 几乎用不上 | 历史汇总 TU；与 `minimal.h` 同链会 **LNK2005** |
 
 「编成 DLL」想解决的是：**稳定实现只编一次，测例只编自己的 TU + 链接**。
 这与 Unity「按程序集增量编译」同精神，**不是**「每个 `.py` / 每个生成文件一个 DLL」。
@@ -104,7 +104,7 @@ test_foo.cpp
 
 库 TU（``#define PY2CPP_LIBRARY_TU``）额外约束：
 
-- 各模块 ``.h`` 在 namespace 闭合后写 ``using namespace py2cpp::…;``，短名（``PyDict`` / ``PyList``）不依赖被跳过的 ``.inl``。
+- 各模块 ``.h`` 在 namespace 闭合后写 ``using namespace paw::…;``，短名（``PyDict`` / ``PyList``）不依赖被跳过的 ``.inl``。
 - **纯模板**模块 ``.inl`` 仍须对库 TU 可见（可多 TU 实例化）。``core/iter_result.inl`` 由万能头**无条件** include（勿 ``#ifndef PY2CPP_LIBRARY_TU``），否则库内 ``walk`` / ``scandir`` 无法实例化 ``PyIterResult::Yield``。启发式只看**顶层**类：嵌套 ``@variant``（如 ``Optional.None_``）不算混模块。含非模板顶层类的模块（如 ``Queue[T]`` 与 ``Thread`` 同文件）、或模板类 + 模块级自由函数（如 ``Random[T]`` + ``seed``）整份 ``.inl`` 在库 TU 中跳过，否则自由函数 LNK2005。
 - **非模板** header-only ``.inl`` 在库 TU 中跳过；其它头里用到的 inline 叶子（如 ``bytes_from_literal``）须写在 ``.h``。
 
@@ -149,9 +149,9 @@ P1 可先落 **单一胖库** `py2cpp_runtime.lib`（上述 library 模块全进
 
 | 文件 | 内容 |
 |------|------|
-| `generated/runtime/py2cpp/<path>.h` | 类/函数声明；**不**在头尾 include 实现 `.inl` |
-| `generated/runtime/py2cpp/<path>.inl` | 实现体（与现相同，可含 templates 注入） |
-| `generated/runtime/py2cpp/<path>.cpp` | **新建**：`#define PY2CPP_LIBRARY_TU` + `#include "py2cpp/minimal.h"` + `#include "<path>.inl"` |
+| `generated/runtime/paw/<path>.h` | 类/函数声明；**不**在头尾 include 实现 `.inl` |
+| `generated/runtime/paw/<path>.inl` | 实现体（与现相同，可含 templates 注入） |
+| `generated/runtime/paw/<path>.cpp` | **新建**：`#define PY2CPP_LIBRARY_TU` + `#include "paw/minimal.h"` + `#include "<path>.inl"` |
 
 ### 5.2 `header_only` 模块
 
@@ -181,7 +181,7 @@ P1 可先落 **单一胖库** `py2cpp_runtime.lib`（上述 library 模块全进
 ```bat
 REM 每个 library 模块一个 obj，再 lib 合并（或按域分批）
 cl /c /EHsc /std:c++14 /utf-8 /I generated\runtime ^
-  generated\runtime\py2cpp\concur\thread.cpp ^
+  generated\runtime\paw\concur\thread.cpp ^
   /Fo:generated\runtime\obj\concur_thread.obj
 lib /OUT:generated\runtime\lib\py2cpp_concur.lib generated\runtime\obj\concur_*.obj
 ```
@@ -190,8 +190,8 @@ lib /OUT:generated\runtime\lib\py2cpp_concur.lib generated\runtime\obj\concur_*.
 
 ```bat
 cl /EHsc /std:c++14 /utf-8 /I generated\runtime ^
-  generated\test\concur\test_thread.cpp ^
-  /Fe:generated\test\concur\test_thread.exe ^
+  generated\tests\concur\test_thread.cpp ^
+  /Fe:generated\tests\concur\test_thread.exe ^
   /link generated\runtime\lib\py2cpp_core.lib ^
         generated\runtime\lib\py2cpp_concur.lib
 ```
@@ -214,7 +214,7 @@ cl /EHsc /std:c++14 /utf-8 /I generated\runtime ^
 | 项 | 说明 |
 |----|------|
 | mtime 跳过 | `build.bat`：源 `.py`、已生成 `.cpp`、依赖的 runtime 头/库未变 → 跳过该 exe |
-| bootstrap stamp | `_bootstrap_runtime.bat`：`py2cpp/`、`templates/`（**不含** clangd 生成的 `~macro/`）、`ffi/`、`src/translator.py` 与 `src/{analysis,passes,codegen,emit,constant}/**/*.py`（不含 `bootstrap_stamp.py` / `compile.py` / `src/tests`）、`main.py` 均不新于 `generated/runtime/.bootstrap.stamp` → **跳过全量翻译**。`PY2CPP_FORCE_BOOTSTRAP=1` 强制重译；`--debug` / `PY2CPP_HEADER_ONLY` 与 stamp 不一致也会重译 |
+| bootstrap stamp | `_bootstrap_runtime.bat`：`paw/`、`templates/`（**不含** clangd 生成的 `~macro/`）、`ffi/`、`src/translator.py` 与 `src/{analysis,passes,codegen,emit,constant}/**/*.py`（不含 `bootstrap_stamp.py` / `compile.py` / `src/tests`）、`main.py` 均不新于 `generated/runtime/.bootstrap.stamp` → **跳过全量翻译**。`PY2CPP_FORCE_BOOTSTRAP=1` 强制重译；`--debug` / `PY2CPP_HEADER_ONLY` 与 stamp 不一致也会重译 |
 | 写盘去重 | 生成文件正文不变（忽略 `// 生成时间:`）则不写盘，避免打穿 P0 编译 skip |
 | 可选 PCH | MSVC `/Yc`/`/Yu` 对 `minimal.h`（或瘦声明伞头） |
 
@@ -227,13 +227,13 @@ cl /EHsc /std:c++14 /utf-8 /I generated\runtime ^
 | 标注 `library` 模块 | 显式表 |
 | 生成模块 `.cpp` | `#include` 对应 `.inl` |
 | `.h` 不再拉实现 inl | 仅 `library` |
-| bootstrap 后编胖库 | 测例默认链接。增量：库 `.cpp` **以及** `generated/runtime/py2cpp/**/*.{h,inl,cpp}` 任一新于 obj/lib → 重编对应 obj（避免只改 `optional.h` 等 header-only 头时 `sqlite.cpp` 正文未变而漏编，导致 **LNK2019**） |
+| bootstrap 后编胖库 | 测例默认链接。增量：库 `.cpp` **以及** `generated/runtime/paw/**/*.{h,inl,cpp}` 任一新于 obj/lib → 重编对应 obj（避免只改 `optional.h` 等 header-only 头时 `sqlite.cpp` 正文未变而漏编，导致 **LNK2019**） |
 | 开关 | 如 `PY2CPP_HEADER_ONLY=1` 恢复旧路径（过渡） |
 
 **验收**：
 
 1. `build.bat concur/test_thread`（或一组代表测例）全绿。
-2. 只改 `test/.../test_*.py` 时，不重编胖库（或库 mtime 不变），测例 TU 编译时间明显下降。
+2. 只改 `tests/.../test_*.py` 时，不重编胖库（或库 mtime 不变），测例 TU 编译时间明显下降。
 3. 改某一 `library` 模块 Python 源 → 重编库 + 重链相关 exe，**不必**每个 exe 重编译整份旧 inl。
 
 ### P2 — 按域拆库
@@ -263,8 +263,8 @@ cl /EHsc /std:c++14 /utf-8 /I generated\runtime ^
 
 | 用例 | 翻译 | 翻译+编译 | 备注 |
 |------|------|-----------|------|
-| `test/misc/test_print.py` | ~8s | **~13s** | 闭包 47 模块（41×`py2cpp` + 6×`ffi`）命中 `analyze_sigs.pkl` |
-| `test/lang/test_kwargs_options.py` | — | **~16s** | 较重 lang 测例 |
+| `tests/misc/test_print.py` | ~8s | **~13s** | 闭包 47 模块（41×`py2cpp` + 6×`ffi`）命中 `analyze_sigs.pkl` |
+| `tests/lang/test_kwargs_options.py` | — | **~16s** | 较重 lang 测例 |
 | 同上（exe 已新于源） | skip | **~0s** | P0 mtime 跳过 |
 
 优化前（无 P1.6 / 未缓存 FFI）：`test_print` 翻译 ~33s、翻译+编译 ~44–60s；`func_sigs` 单独 ~22s（重复构建 ~3800 条 `ffi/*` 签名）。

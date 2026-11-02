@@ -17,7 +17,6 @@ zeus/
     zeus-engine.md     # 目标 / 对象模型 / Phase 计划
   src/                 # Python 源（译器 project_root）
   ffi/                 # 生成物：GLFW/GL .pyi（zeus\ffi.bat）
-  test/                # 说明；可执行测例入口在 src/test_*.py
   third_party/glfw/
   generated/
   build.bat
@@ -31,7 +30,7 @@ zeus/
 
 | 依赖 | 获取 |
 |------|------|
-| Py2Cpp | monorepo `paw/py2cpp/`（`Transform3D` / `Color`） |
+| Py2Cpp | monorepo `paw/paw/`（`Transform3D` / `Color`） |
 | MSVC | `opengl32.lib` |
 | GLFW 3.4 WIN64 | `zeus\setup_deps.bat` → `zeus/third_party/glfw/` |
 

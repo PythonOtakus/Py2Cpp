@@ -7,10 +7,10 @@
 - ``OPENAI_MODEL``：可选，默认 ``gpt-4o-mini``。
 - ``OPENAI_SYSTEM_PROMPT``：可选，默认英文助手提示词。
 """
-from py2cpp import *
-from py2cpp.core.exceptions import EOFError, OSError, ValueError
-from py2cpp.system.environ import environ
-from py2cpp.web.openai import OpenAI, OpenAIError
+from paw import *
+from paw.core.exceptions import EOFError, OSError, ValueError
+from paw.system.environ import environ
+from paw.web.openai import OpenAI, OpenAIError
 
 
 _DefaultModel: str = "gpt-4o-mini"

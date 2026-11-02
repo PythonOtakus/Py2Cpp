@@ -1,4 +1,4 @@
-namespace py2cpp_protocol_erase_detail
+namespace paw_protocol_erase_detail
 {
   struct model_hdr
   {

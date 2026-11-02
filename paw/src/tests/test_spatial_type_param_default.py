@@ -1,4 +1,4 @@
-"""``py2cpp.spatial`` 泛型标量类型参数默认 ``float``。"""
+"""``paw.spatial`` 泛型标量类型参数默认 ``float``。"""
 from __future__ import annotations
 
 import re
@@ -24,12 +24,12 @@ class SpatialTypeParamDefaultTests(unittest.TestCase):
       ]
       for header, classes in cases:
         Translator.translate_file(
-          str(root / "py2cpp" / "spatial" / header.replace(".h", ".py")),
+          str(root / "paw" / "spatial" / header.replace(".h", ".py")),
           output_dir=str(out),
           include_stdlib=True,
           emit_main=False,
         )
-        text = (out / "runtime" / "py2cpp" / "spatial" / header).read_text(encoding="utf-8")
+        text = (out / "runtime" / "paw" / "spatial" / header).read_text(encoding="utf-8")
         for cls in classes:
           with self.subTest(header=header, cls=cls):
             self.assertRegex(

@@ -1,6 +1,6 @@
 @echo off
-REM Regenerates generated/runtime from py2cpp/__init__.paw (or .py).
-REM Skip translate when py2cpp/templates/src/ffi are unchanged (see bootstrap_stamp).
+REM Regenerates generated/runtime from paw/__init__.paw (or .py).
+REM Skip translate when paw/templates/src/ffi are unchanged (see bootstrap_stamp).
 REM Idempotent within one cmd process via PY2CPP_RUNTIME_BOOTSTRAPPED.
 REM Optional args (e.g. --debug) are forwarded to main.py.
 REM PY2CPP_FORCE_BOOTSTRAP=1 forces a full translate.
@@ -24,19 +24,19 @@ echo bootstrap: skip translate ^(inputs unchanged^)
 goto after_translate
 
 :do_translate
-echo === bootstrap: py2cpp runtime ===
+echo === bootstrap: paw runtime ===
 call "%~dp0_build_timing.bat" start
-if exist "py2cpp\__init__.paw" (
-  %PY% main.py py2cpp\__init__.paw -o generated --no-main %*
+if exist "paw\__init__.paw" (
+  %PY% main.py paw\__init__.paw -o generated --no-main %*
 ) else (
-  %PY% main.py py2cpp\__init__.py -o generated --no-main %*
+  %PY% main.py paw\__init__.py -o generated --no-main %*
 )
 if errorlevel 1 (
-  echo ERROR: failed to translate py2cpp runtime.
+  echo ERROR: failed to translate paw runtime.
   exit /b 1
 )
 %PY% -c "from src.codegen.bootstrap_stamp import write_stamp; import sys; write_stamp(debug='--debug' in sys.argv)" %BS_DEBUG%
-call "%~dp0_build_timing.bat" end translate "bootstrap py2cpp runtime"
+call "%~dp0_build_timing.bat" end translate "bootstrap paw runtime"
 
 :after_translate
 
@@ -63,7 +63,7 @@ if /I "%PY2CPP_USE_PCH%"=="1" (
   call "%~dp0_build_timing.bat" end compile "bootstrap minimal.pch"
 )
 
-call "%~dp0_clean_obj.bat" "%CD%\generated\runtime" "py2cpp" --global-py2cpp
+call "%~dp0_clean_obj.bat" "%CD%\generated\runtime" "paw" --global-paw
 echo.
 set "PY2CPP_RUNTIME_BOOTSTRAPPED=1"
 exit /b 0

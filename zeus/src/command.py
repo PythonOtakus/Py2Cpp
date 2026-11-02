@@ -1,8 +1,8 @@
 """Zeus 命令 ADT + ``CommandBus``（Editor / 后续 MCP 共用）。"""
 from __future__ import annotations
 
-from py2cpp import *
-from py2cpp.spatial.vector import Vector3
+from paw import *
+from paw.spatial.vector import Vector3
 
 from .scene import CameraComponent, Component, GameObject, MeshComponent
 from .scene_io import scene_from_json, scene_load, scene_save, scene_to_json

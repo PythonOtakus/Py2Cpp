@@ -1,11 +1,11 @@
 PY2CPP_IGNORE
-#include "py2cpp/web/client.h"
-#include "py2cpp/web/http.h"
-#include "py2cpp/web/stream.h"
-#include "py2cpp/text/bytes.h"
-#include "py2cpp/text/str.h"
-#include "py2cpp/util/array.h"
-#include "py2cpp/core/exceptions.h"
+#include "paw/web/client.h"
+#include "paw/web/http.h"
+#include "paw/web/stream.h"
+#include "paw/text/bytes.h"
+#include "paw/text/str.h"
+#include "paw/util/array.h"
+#include "paw/core/exceptions.h"
 PY2CPP_END
 
 #include <string>
@@ -214,7 +214,7 @@ static PyClientResponse _web_client_https_request_winhttp(const PyStr& method, P
   std::wstring method_w = _web_client_utf8_to_wide(method_u8);
   std::wstring headers_w = _web_client_utf8_to_wide(headers_s);
 
-  HINTERNET session = WinHttpOpen(L"py2cpp.web/1.0",
+  HINTERNET session = WinHttpOpen(L"paw.web/1.0",
                                   WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
                                   WINHTTP_NO_PROXY_NAME,
                                   WINHTTP_NO_PROXY_BYPASS,
@@ -336,7 +336,7 @@ static PyClientResponse _web_client_https_request_winhttp(const PyStr& method, P
 }
 #endif
 
-PyClientResponse py2cpp::web::client::_httpsRequest(const PyStr& method, PyUrlData url, PyBytes payload, PyFloat timeout)
+PyClientResponse paw::web::client::_httpsRequest(const PyStr& method, PyUrlData url, PyBytes payload, PyFloat timeout)
 {
 #ifdef _WIN32
   return _web_client_https_request_winhttp(method, url, payload, timeout);
@@ -346,9 +346,9 @@ PyClientResponse py2cpp::web::client::_httpsRequest(const PyStr& method, PyUrlDa
 #endif
 }
 
-PyClientStreamResponse py2cpp::web::client::_httpsStream(const PyStr& method, PyUrlData url, PyBytes payload, PyFloat timeout)
+PyClientStreamResponse paw::web::client::_httpsStream(const PyStr& method, PyUrlData url, PyBytes payload, PyFloat timeout)
 {
-  PyClientResponse head = ::py2cpp::web::client::_httpsRequest(method, url, payload, timeout);
+  PyClientResponse head = ::paw::web::client::_httpsRequest(method, url, payload, timeout);
   if (head.headers.__contains__(PyStr("Transfer-Encoding")))
   {
     head.headers.__delitem__(PyStr("Transfer-Encoding"));

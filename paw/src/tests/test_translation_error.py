@@ -12,7 +12,7 @@ from src.translator import Translator
 class TranslationErrorFormatTests(unittest.TestCase):
   def test_emit_failure_includes_line(self):
     src = '''\
-from py2cpp import *
+from paw import *
 
 def run() -> None:
   xs: list[int] = [1, 2, 3]
@@ -33,13 +33,13 @@ def run() -> None:
       location=__import__(
         "src.translation_error", fromlist=["SourceLocation"]
       ).SourceLocation(
-        display="test/util/test_list.py",
-        absolute=Path(__file__).resolve().parents[2] / "test/util/test_list.py",
+        display="tests/util/test_list.py",
+        absolute=Path(__file__).resolve().parents[2] / "tests/util/test_list.py",
         lineno=1,
       ),
     )
     text = format_translation_failure(err)
-    self.assertIn("test/util/test_list.py:1:", text)
+    self.assertIn("tests/util/test_list.py:1:", text)
 
 
 if __name__ == "__main__":

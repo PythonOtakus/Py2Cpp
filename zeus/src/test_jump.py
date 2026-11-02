@@ -1,9 +1,9 @@
 """Phase 6：跳一跳 headless + FBX/ZAS 资产烟雾。"""
-from py2cpp import *
-from py2cpp.io.path import Path
-from py2cpp.spatial.color import Color
-from py2cpp.test.test_temp import _TestTemp, ensureTestTemp
-from py2cpp.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
+from paw import *
+from paw.io.path import Path
+from paw.spatial.color import Color
+from paw.test.test_temp import _TestTemp, ensureTestTemp
+from paw.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
 
 from .assets.fbx_ascii import mesh_to_fbx_ascii, read_fbx, write_fbx
 from .command import CommandBus, ZeusCommandUnion

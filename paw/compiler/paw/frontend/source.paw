@@ -1,8 +1,8 @@
 """Source / span / SourceManager — parity with ``compiler/py/frontend/source.py``.
 
-``SourceSpan``（非 ``Span``）避免与 ``py2cpp.util.span`` 的 C++ ``PySpan`` 冲突。
+``SourceSpan``（非 ``Span``）避免与 ``paw.util.span`` 的 C++ ``PySpan`` 冲突。
 """
-from py2cpp import *
+from paw import *
 
 @copyable
 class FileId:

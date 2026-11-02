@@ -13,7 +13,7 @@ from src.translator import Translator
 class ClassConstNttpTests(unittest.TestCase):
   def test_array_nttp_from_merged_mixin_const(self):
     src = """
-from py2cpp import mixin, const, array
+from paw import mixin, const, array
 
 @mixin
 class CapMixin:

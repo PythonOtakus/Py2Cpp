@@ -209,18 +209,18 @@ def protocol_erase_header_lines(*, generated_at: str) -> list[str]:
   # 擦除头在全局命名空间，且早于 bulk ``list.h``；库 TU 跳过 ``str.inl``
   # 后不再有 ``using PyList``。自包含声明 + using，勿依赖其它模块 ``.inl``。
   lines: list[str] = [
-    *codegen_file_header_lines("py2cpp/**/protocols.py（运行时擦除）", generated_at),
+    *codegen_file_header_lines("paw/**/protocols.py（运行时擦除）", generated_at),
     "#ifndef PY2CPP_PROTOCOL_ERASE_H",
     "#define PY2CPP_PROTOCOL_ERASE_H",
     "",
-    '#include "py2cpp/core/none.h"',
-    '#include "py2cpp/text/str.h"',
-    '#include "py2cpp/util/list.h"',
-    '#include "py2cpp/util/tuple.h"',
+    '#include "paw/core/none.h"',
+    '#include "paw/text/str.h"',
+    '#include "paw/util/list.h"',
+    '#include "paw/util/tuple.h"',
     "",
-    "using ::py2cpp::core::none::PyNone;",
-    "using ::py2cpp::text::str::PyStr;",
-    "using ::py2cpp::util::list::PyList;",
+    "using ::paw::core::none::PyNone;",
+    "using ::paw::text::str::PyStr;",
+    "using ::paw::util::list::PyList;",
     "",
     preamble,
     "",
@@ -237,7 +237,7 @@ def protocol_erase_domain_header_lines(*, generated_at: str) -> list[str]:
     return []
   lines: list[str] = [
     *codegen_file_header_lines(
-      "py2cpp/serde/protocols.py 等（运行时擦除 · long 域）",
+      "paw/serde/protocols.py 等（运行时擦除 · long 域）",
       generated_at,
     ),
     "#ifndef PY2CPP_PROTOCOL_ERASE_DOMAIN_H",

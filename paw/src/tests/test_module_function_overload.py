@@ -18,11 +18,11 @@ class JsonClassSerializeOverloadTest(unittest.TestCase):
     with tempfile.TemporaryDirectory() as tmp:
       out = Path(tmp)
       subprocess.run(
-        [sys.executable, "main.py", "py2cpp/__init__.py", "-o", str(out), "--no-main"],
+        [sys.executable, "main.py", "paw/__init__.py", "-o", str(out), "--no-main"],
         cwd=root,
         check=True,
       )
-      header = out / "runtime" / "py2cpp" / "serde" / "json.h"
+      header = out / "runtime" / "paw" / "serde" / "json.h"
       text = header.read_text(encoding="utf-8")
       self.assertIn("static PyStr dumps(PyBool obj, PyInt indent = 0);", text)
       self.assertIn(
@@ -48,7 +48,7 @@ class JsonClassSerializeOverloadTest(unittest.TestCase):
         [
           sys.executable,
           "main.py",
-          "test/serde/test_json.py",
+          "tests/serde/test_json.py",
           "-o",
           str(out),
           "--no-main",
@@ -56,7 +56,7 @@ class JsonClassSerializeOverloadTest(unittest.TestCase):
         cwd=root,
         check=True,
       )
-      cpp = out / "test" / "serde" / "test_json.cpp"
+      cpp = out / "tests" / "serde" / "test_json.cpp"
       text = cpp.read_text(encoding="utf-8")
       self.assertIn("Json::dumps(", text)
       self.assertIn("Json::dump(", text)

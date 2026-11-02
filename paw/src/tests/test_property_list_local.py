@@ -11,7 +11,7 @@ from src.translator import Translator
 class PropertyListLocalTests(unittest.TestCase):
   def test_local_from_list_subscript_property_read(self):
     src = """
-from py2cpp import *
+from paw import *
 
 @refcount
 class Slot:

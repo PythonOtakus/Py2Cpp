@@ -7,7 +7,7 @@ cd /d "%ROOT%"
 set "PY=python"
 set "EXTRA=%*"
 
-echo [py2cpp] Build all test\**\test_*.paw ^(skip test\fail\, test\perf\, *_fail.paw^)
+echo [py2cpp] Build all tests\**\test_*.paw ^(skip tests\fail\, tests\perf\, *_fail.paw^)
 echo   Parallel compile via scripts\parallel_build.py ^(default 16, PY2CPP_BUILD_JOBS / --jobs N / --seq^)
 echo.
 

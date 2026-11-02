@@ -154,7 +154,7 @@ def migrate(source: str) -> tuple[str, list[str]]:
 
 def main() -> int:
   ap = argparse.ArgumentParser()
-  ap.add_argument("paths", nargs="*", default=["py2cpp"])
+  ap.add_argument("paths", nargs="*", default=["paw"])
   ap.add_argument("--dry-run", action="store_true")
   ns = ap.parse_args()
   files: list[Path] = []
@@ -170,7 +170,7 @@ def main() -> int:
   changed = 0
   # CPython/IDE 辅助，不进 STDLIB；允许保留 @classmethod
   _classmethod_ok = frozenset(
-    {str((ROOT / "py2cpp" / "reflect" / "mixin.paw").resolve())}
+    {str((ROOT / "paw" / "reflect" / "mixin.paw").resolve())}
   )
   for f in files:
     src = f.read_text(encoding="utf-8")

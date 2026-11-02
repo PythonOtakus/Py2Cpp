@@ -10,7 +10,7 @@
 
 ## 1. 背景与动机
 
-Py2Cpp 将受限 Python **静态**译为 C++11，**无 CPython 解释器**，标准库与用户代码的单一真相源为 `py2cpp/` 与 `src/`；`generated/` 仅由 `main.py` 生成，**勿手改**。
+Py2Cpp 将受限 Python **静态**译为 C++11，**无 CPython 解释器**，标准库与用户代码的单一真相源为 `paw/` 与 `src/`；`generated/` 仅由 `main.py` 生成，**勿手改**。
 
 大规模演进（标准库域拆分、字段重命名、`@dataclass` schema 变更、`select` 路径批量更新）若依赖手工搜索替换，成本高且易漏改。业界「快速重构 + 数据迁移」的共性是：
 
@@ -53,7 +53,7 @@ Py2Cpp **已具备一半基础设施**（见 §2）；Architect 补齐 **语义�
 | 项 | 说明 |
 |----|------|
 | 运行时反射驱动重构 | 无 `eval` / 动态 `getattr`；改写须在翻译前完成 |
-| 在 `generated/` 上重构 | 派生物可删可再生；只改 `py2cpp/`、`test/`、`examples/`（及必要时 `src/`） |
+| 在 `generated/` 上重构 | 派生物可删可再生；只改 `paw/`、`tests/`、`examples/`（及必要时 `src/`） |
 | 函数体内逐行 Python↔C++ 映射 | 与 nav 非目标一致；语句级拖拽排序不在范围 |
 | 替代译器 pass | 业务语义仍由现有 pass 展开；Architect 改 **源码**，不绕过 analyze |
 | 一文件一 DLL / 进程内热更 | 见 [hot-reload.md](./hot-reload.md) |
@@ -108,9 +108,9 @@ Py2Cpp **已具备一半基础设施**（见 §2）；Architect 补齐 **语义�
 | 形态 | 用途 | 示例 |
 |------|------|------|
 | 字段 `@annotation` | schema、迁移、UI 分组 | `field: T @RefactorMeta(renamed_from="old")` |
-| 类/模块装饰器 | 废弃、域标签 | `@deprecated("use py2cpp.util.list2")` |
+| 类/模块装饰器 | 废弃、域标签 | `@deprecated("use paw.util.list2")` |
 | 类型注解 | 重构边界 | `list[Member]` 约束 `select` 末步类型 |
-| 译期注释（可选） | IDE 提示 | `# py2cpp:refactor=move_to:py2cpp/alg/foo` |
+| 译期注释（可选） | IDE 提示 | `# py2cpp:refactor=move_to:paw/alg/foo` |
 
 **判据**：能由译期 `Self.iterFields` / analyze 消费的，放源内；仅影响编辑器展示的，放侧车（§4.2）。
 
@@ -125,7 +125,7 @@ generated/.cache/architect/
   plans/<id>.preview.diff # 应用前预览
 ```
 
-侧车 **不参与 codegen**；「应用计划」必须将变更写回 `py2cpp/` / `test/` / `examples/` 并删除或归档 plan。
+侧车 **不参与 codegen**；「应用计划」必须将变更写回 `paw/` / `tests/` / `examples/` 并删除或归档 plan。
 
 ---
 
@@ -143,7 +143,7 @@ generated/.cache/architect/
   "description": "Member.score → points",
   "visual": {
     "view": "symbol",
-    "module": "py2cpp/alg/team",
+    "module": "paw/alg/team",
     "edges": [
       { "from": "Member.score", "to": "Member.points", "kind": "rename" }
     ]
@@ -168,7 +168,7 @@ generated/.cache/architect/
 {
   "op": "rename_symbol",
   "kind": "field",
-  "module": "py2cpp/alg/team.py",
+  "module": "paw/alg/team.py",
   "owner": "Member",
   "from": "score",
   "to": "points",
@@ -202,8 +202,8 @@ generated/.cache/architect/
 ```json
 {
   "op": "move_module",
-  "from": "py2cpp/util/foo.py",
-  "to": "py2cpp/alg/foo.py",
+  "from": "paw/util/foo.py",
+  "to": "paw/alg/foo.py",
   "rewrite_imports": true
 }
 ```
@@ -215,7 +215,7 @@ generated/.cache/architect/
 ```json
 {
   "op": "replace_text",
-  "glob": "py2cpp/**/*.py",
+  "glob": "paw/**/*.py",
   "from": "old_api",
   "to": "new_api",
   "word_boundary": true
@@ -231,7 +231,7 @@ generated/.cache/architect/
 2. 对每条 op 生成 AST 变更 → 合并为 per-file patch
 3. 干跑：parse + 可选单文件 translate（--no-main）预检
 4. 用户确认 diff → 写盘
-5. 提示：bootstrap（若动 py2cpp/）+ build.bat 触达模块
+5. 提示：bootstrap（若动 paw/）+ build.bat 触达模块
 ```
 
 CLI 草案：
@@ -252,8 +252,8 @@ python scripts/apply_refactor_plan.py plans/rename.arch.json --apply
   "version": 2,
   "planSuffix": ".arch.json",
   "modules": {
-    "py2cpp/util/list": {
-      "imports": ["py2cpp/core/protocols", "py2cpp/text/str"],
+    "paw/util/list": {
+      "imports": ["paw/core/protocols", "paw/text/str"],
       "exports": ["list", "PyList"],
       "symbols": [
         { "kind": "class", "name": "PyList" },
@@ -262,9 +262,9 @@ python scripts/apply_refactor_plan.py plans/rename.arch.json --apply
     }
   },
   "refs": [
-    { "from": "py2cpp/util/list", "to": "py2cpp/text/str", "kind": "import" },
+    { "from": "paw/util/list", "to": "paw/text/str", "kind": "import" },
     {
-      "from": { "module": "py2cpp/util/list", "symbol": "PyList", "kind": "class" },
+      "from": { "module": "paw/util/list", "symbol": "PyList", "kind": "class" },
       "to": { "symbol": "Iterable", "kind": "class" },
       "kind": "inherit"
     }
@@ -340,10 +340,10 @@ nav 文档中的「Rename / Find All References / 补全 → 后续可选」**�
 | 场景 | UI 操作 | 底层 | 验收 |
 |------|---------|------|------|
 | `@dataclass` 字段重命名 | 字段表改名 | `rename_symbol` + `update_select_literals` | 域内 `test_*.py` + MSVC |
-| 提取 `@mixin` | 勾选方法 → Extract | 生成新模块 + `expand_mixins` 可分析静态方法集 | `test/lang` mixin 测例 |
+| 提取 `@mixin` | 勾选方法 → Extract | 生成新模块 + `expand_mixins` 可分析静态方法集 | `tests/lang` mixin 测例 |
 | 模块搬家 | 拖拽模块节点 | `move_module` + `rewrite_imports` | **全量 bootstrap** + `build_all` |
 | API 批量替换 | 规则表 | `replace_text` 或 `migrate_*.py` | `scripts/migrate_* --check` 同等 |
-| 序列化 schema 演进 | 字段增删 + version | 源内 `@annotation` + serde pass（非 Architect 实现体） | `test/serde/*` |
+| 序列化 schema 演进 | 字段增删 + version | 源内 `@annotation` + serde pass（非 Architect 实现体） | `tests/serde/*` |
 | 废弃 API 清扫 | 引用图标红 | `graph.refs` + 可选 `@deprecated` pass（远期） | grep + build |
 
 ---

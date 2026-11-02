@@ -1,0 +1,64 @@
+"""``UIWindow`` Win32 后端：``show`` / ``drawPanel`` / ``close``。"""
+from paw import *
+from paw.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
+from paw.ui.app import UIApp
+from paw.ui.panel import UIPanelMixin
+from paw.ui.meta import UIInvisibleMeta, UILabelMeta, UISliderMeta
+from paw.ui.window import UIWindow
+
+record DemoConfig(UIPanelMixin):
+  hp: int @UILabelMeta("HP") @UISliderMeta(0, 100) = 42
+  name: str @UILabelMeta("Name") = "player"
+  enabled: bool = True
+  _secret: int @UIInvisibleMeta = 7
+
+class UIAppAvailableTests(TestCaseMixin):
+  _testTag = 1
+
+  override def test(self):
+    self.assertTrue(UIApp.isAvailable())
+
+class UIWindowBeginDrawTests(TestCaseMixin):
+  _testTag = 2
+
+  override def test(self):
+    win: UIWindow = new(title="Py2Cpp Panel")
+    win.show(480, 320)
+    self.assertTrue(win.handle != 0)
+    cfg: DemoConfig = new()
+    cfg.drawPanel(win)
+    win.close()
+    self.assertEqual(win.handle, 0)
+
+class UIWindowTitlePropertyTests(TestCaseMixin):
+  _testTag = 4
+
+  override def test(self):
+    win: UIWindow = new(title="Before")
+    win.show(320, 240)
+    self.assertEqual(win.title, "Before")
+    win.title = "After"
+    self.assertEqual(win.title, "After")
+    win.close()
+
+class UIWindowResizeTests(TestCaseMixin):
+  _testTag = 3
+
+  override def test(self):
+    win: UIWindow = new(title="Resize")
+    win.show(-1, -1)
+    self.assertTrue(win.handle != 0)
+    cfg: DemoConfig = new()
+    cfg.drawPanel(win)
+    win.resize(-1, -1)
+    win.close()
+    self.assertEqual(win.handle, 0)
+
+def main() -> int:
+  suite: TestSuite = new()
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
+    suite.addTest(Class())
+  return TextTestRunner().run(suite)
+
+if __name__ == "__main__":
+  raise SystemExit(main())

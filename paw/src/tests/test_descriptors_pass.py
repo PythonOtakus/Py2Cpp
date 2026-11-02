@@ -33,7 +33,7 @@ class DescriptorPassTests(unittest.TestCase):
 
   def test_legacy_rhs_assign_raises(self):
     src = """
-from py2cpp import descriptor
+from paw import descriptor
 
 @descriptor
 class D:
@@ -57,7 +57,7 @@ class Host:
 
   def test_matmult_field_inlines(self):
     src = '''
-from py2cpp import descriptor
+from paw import descriptor
 
 @descriptor
 class D:
@@ -84,8 +84,8 @@ class Host:
 
   def test_generic_descriptor_substitutes_value_type(self):
     src = """
-from py2cpp import descriptor
-from py2cpp.util.protocols import ComparableType
+from paw import descriptor
+from paw.util.protocols import ComparableType
 
 @descriptor
 class RangeVar[T: ComparableType]:

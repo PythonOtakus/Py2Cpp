@@ -16,9 +16,9 @@ extern "C" __declspec(dllimport) PY2CPP_WIN_BOOL __stdcall ReadConsoleW(PY2CPP_W
 #endif
 
 PY2CPP_IGNORE
-#include "py2cpp/operators.h"
-#include "py2cpp/text/str.h"
-#include "py2cpp/util/tuple.h"
+#include "paw/operators.h"
+#include "paw/text/str.h"
+#include "paw/util/tuple.h"
 PY2CPP_END
 
 inline PyInt hash(PY2CPP_TYPE(PyStr)& obj)
@@ -248,7 +248,7 @@ inline PyFloat _py_pow_float(PyFloat base, PyFloat exp)
   return (PyFloat)::ffi::crt::math::pyiPow((double)base, (double)exp);
 }
 
-namespace py2cpp {
+namespace paw {
 
 namespace detail {
 
@@ -320,7 +320,7 @@ PyInt py_cmp(T0 a, T1 b)
   return detail::py_cmp_dispatch(a, b, 0);
 }
 
-} // namespace py2cpp
+} // namespace paw
 
 inline PyInt pow(PyInt base, PyInt exp)
 {

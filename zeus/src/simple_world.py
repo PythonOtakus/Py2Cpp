@@ -1,8 +1,8 @@
 """简易重力 / 落点（不装 PhysX）。"""
 from __future__ import annotations
 
-from py2cpp import *
-from py2cpp.spatial.vector import Vector3
+from paw import *
+from paw.spatial.vector import Vector3
 
 from .scene import Transform
 

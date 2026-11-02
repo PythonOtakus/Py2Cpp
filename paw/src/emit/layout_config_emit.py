@@ -24,11 +24,11 @@ from ..constant.stdlib_methods import JSON_API_METHODS_NEED_TYPE_ARG
 from ..constant.stdlib_layout import CORE_PKG, RUNTIME_PKG, RUNTIME_BUILTINS_MODULE, stdlib_header_include, stdlib_module_path
 
 RUNTIME_PREFIX = RUNTIME_PKG
-RUNTIME_CPP = "py2cpp.cpp"
+RUNTIME_CPP = "paw.cpp"
 GENERATED_DIR = "generated"
 RUNTIME_OUTPUT_SUBDIR = "runtime"
 
-# 与 ``py2cpp/slice.py`` 中 ``SLICE_*_UNSET`` 一致
+# 与 ``paw/util/slice`` 中 ``SLICE_*_UNSET`` 一致
 SLICE_START_UNSET = -2000000001
 SLICE_STOP_UNSET = -2000000002
 

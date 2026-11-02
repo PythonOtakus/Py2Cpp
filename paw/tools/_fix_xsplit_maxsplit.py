@@ -17,7 +17,7 @@ METHOD_MAP = [
   ("xSplit", "xsplit"),
 ]
 
-DIRS = ("py2cpp", "test", "examples", "docs", "templates", ".cursor", "scripts", "tools")
+DIRS = ("paw", "tests", "examples", "docs", "templates", ".cursor", "scripts", "tools")
 EXTS = {".py", ".md", ".inl", ".h", ".cpp", ".txt"}
 
 

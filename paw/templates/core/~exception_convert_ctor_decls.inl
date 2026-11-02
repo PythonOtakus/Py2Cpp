@@ -1,5 +1,5 @@
 PY2CPP_IGNORE
-#include "py2cpp/core/exceptions.h"
+#include "paw/core/exceptions.h"
 #define var_Name PyValueError
 class PyException {
 PY2CPP_END

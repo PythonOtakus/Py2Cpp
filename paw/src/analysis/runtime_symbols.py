@@ -1,4 +1,4 @@
-"""包根 ``py2cpp/__init__.py`` AST 推导符号 + C++ 限定构造 helper。"""
+"""包根 ``paw/__init__.py`` AST 推导符号 + C++ 限定构造 helper。"""
 from __future__ import annotations
 
 from .stubs.builtin_stubs import (
@@ -15,14 +15,14 @@ from .stubs.class_stubs import (
 
 def _build_runtime_root_cpp_types() -> dict[str, str]:
   return {
-    cpp: f"::py2cpp::{cpp}"
+    cpp: f"::paw::{cpp}"
     for cpp in load_package_root_native_names().values()
   }
 
 
 TRANSLATION_ONLY_FUNCS = load_translation_only_funcs()
 
-# 包根 ``py2cpp/__init__.py`` 桩 AST → runtime 内建名（``expand_generators`` 同步）
+# 包根 ``paw/__init__.py`` 桩 AST → runtime 内建名（``expand_generators`` 同步）
 BUILTINS_CPP_RUNTIME_FUNCS = load_builtins_cpp_runtime_funcs()
 BUILTIN_EMIT_SPECIAL = load_builtin_emit_special()
 RUNTIME_PKG_QUALIFIED_SYMBOLS = load_runtime_pkg_qualified_symbols()
@@ -43,7 +43,7 @@ def qualify_runtime_root_cpp_type(cpp: str) -> str:
 
 
 def runtime_root_ctor_expr(cpp: str, args: str) -> str:
-  if cpp.startswith("::py2cpp::"):
+  if cpp.startswith("::paw::"):
     return f"({cpp})({args})" if args else f"({cpp})()"
   return f"{cpp}({args})" if args else f"{cpp}()"
 

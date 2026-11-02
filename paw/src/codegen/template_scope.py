@@ -25,13 +25,13 @@ def namespace_segments_for_module_rel(module_rel: str) -> list[str]:
 
 
 def namespace_qualifier_for_module_rel(module_rel: str) -> str:
-  """``sql/sqlite`` → ``py2cpp::sql::sqlite``（与 runtime ``.h`` 命名空间一致）。"""
-  return "py2cpp::" + "::".join(namespace_segments_for_module_rel(module_rel))
+  """``sql/sqlite`` → ``paw::sql::sqlite``（与 runtime ``.h`` 命名空间一致）。"""
+  return "paw::" + "::".join(namespace_segments_for_module_rel(module_rel))
 
 
 def namespace_open_lines(module_rel: str) -> list[str]:
   parts = namespace_segments_for_module_rel(module_rel)
-  lines = ["namespace py2cpp {"]
+  lines = ["namespace paw {"]
   for part in parts:
     lines.append(f"namespace {part} {{")
   return lines
@@ -42,7 +42,7 @@ def namespace_close_lines(module_rel: str) -> list[str]:
   lines: list[str] = []
   for part in reversed(parts):
     lines.append(f"}} // namespace {part}")
-  lines.append("} // namespace py2cpp")
+  lines.append("} // namespace paw")
   return lines
 
 
@@ -85,7 +85,7 @@ def format_macro_header(
     )
   if has_begin_scope and module_rel:
     parts = namespace_segments_for_module_rel(module_rel)
-    open_ns = " ".join(f"namespace {p} {{" for p in ["py2cpp", *parts])
+    open_ns = " ".join(f"namespace {p} {{" for p in ["paw", *parts])
     close_ns = " ".join("}" for _ in range(len(parts) + 1))
     lines.append(f"#define PY2CPP_BEGIN_SCOPE {open_ns}")
     lines.append(f"#define PY2CPP_END_SCOPE {close_ns}")

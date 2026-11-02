@@ -1,5 +1,5 @@
 """Bootstrap seed: thin name-uniqueness check over SyntaxModule (proto-bind)."""
-from py2cpp import *
+from paw import *
 from ..frontend.syntax_nodes import ClassBundle, EnumBundle, FunctionBundle, SyntaxModule
 
 def checkModule(mod: SyntaxModule) -> list[str]:

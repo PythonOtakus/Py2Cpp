@@ -1,6 +1,6 @@
 PY2CPP_IGNORE
-#include "py2cpp/numeric/ratio.h"
-#include "py2cpp/py_types.h"
+#include "paw/numeric/ratio.h"
+#include "paw/py_types.h"
 PY2CPP_END
 
 #include <cstdint>

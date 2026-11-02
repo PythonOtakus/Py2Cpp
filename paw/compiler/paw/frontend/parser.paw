@@ -3,7 +3,7 @@
 完整宿主在 ``compiler/py/frontend/parser.py``；本文件只覆盖 C0 竖切可译子集。
 Paw 禁止 ``@override`` / ``@virtual`` 等已迁出装饰器；方法修饰用 ``override def`` 等关键字。
 """
-from py2cpp import *
+from paw import *
 from .source import FileId, SourceSpan
 from .tokens import Token, TokenKindEnum
 from .lexer import Lexer

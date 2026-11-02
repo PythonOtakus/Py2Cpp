@@ -5,7 +5,7 @@ if not defined PY set "PY=python"
 if not defined ROOT set "ROOT=%~dp0.."
 cd /d "%ROOT%"
 
-if not exist "%ROOT%\generated\runtime\py2cpp\minimal.h" (
+if not exist "%ROOT%\generated\runtime\paw\minimal.h" (
   exit /b 0
 )
 

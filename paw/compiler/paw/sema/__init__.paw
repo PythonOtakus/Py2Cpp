@@ -1,2 +1,2 @@
 """Package init — parity with ``compiler/py/sema/__init__.py``."""
-from py2cpp import *
+from paw import *

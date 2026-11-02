@@ -1,5 +1,5 @@
 PY2CPP_IGNORE
-#include "py2cpp/core/delegate.h"
+#include "paw/core/delegate.h"
 #define ctx_Name _PyDelegateClangdSmoke
 #define ctx_Base PyDelegate<int, int>
 #define ctx_TplDecl

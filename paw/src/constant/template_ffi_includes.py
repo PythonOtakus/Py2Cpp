@@ -102,7 +102,7 @@ def is_forbidden_template_ab_include(header: str) -> bool:
     return False
   if h in _C_TO_CXX_HEADER:
     return True  # 须改写为 cstdint 等，禁止再写 stdint.h
-  if h.startswith("py2cpp/") or h.startswith("ffi/"):
+  if h.startswith("paw/") or h.startswith("ffi/"):
     return False
   if "/" not in h and h.endswith(".h") and h in {
     "py_types.h", "char.h", "member_access.h",

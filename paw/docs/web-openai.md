@@ -1,8 +1,8 @@
-# py2cpp.web.openai 设计与实现计划
+# paw.web.openai 设计与实现计划
 
 ## 目标
 
-`py2cpp.web.openai` 仍保持最简调用风格，不复刻完整 OpenAI Python SDK 资源树。
+`paw.web.openai` 仍保持最简调用风格，不复刻完整 OpenAI Python SDK 资源树。
 
 基础单轮接口继续保留：
 
@@ -64,11 +64,11 @@ POST {baseUrl}/responses
 
 ## TLS / HTTPS
 
-`py2cpp.web` 必须支持真实 HTTPS，不能只依赖本地 HTTP fake server。
+`paw.web` 必须支持真实 HTTPS，不能只依赖本地 HTTP fake server。
 
 实现原则：
 
-- TLS 放在通用 `py2cpp.web.client` / runtime 层，而不是写死到 `openai.py`。
+- TLS 放在通用 `paw.web.client` / runtime 层，而不是写死到 `openai.py`。
 - `ClientSession` 看到 `https://` 时自动走 TLS。
 - `http://` 仍走现有 `TcpSocket`，保持本地 fake server 与现有测试稳定。
 - Windows/MSVC 第一阶段使用 WinHTTP 原生 HTTPS；它提供系统证书校验、SNI、TLS 握手、请求发送、响应读取。
@@ -305,7 +305,7 @@ class ToolCallError(OpenAIError): ...
 不访问真实 OpenAI API，默认仍用本地 fake server：
 
 ```bat
-python main.py py2cpp\__init__.py -o generated --no-main
+python main.py paw\__init__.py -o generated --no-main
 build.bat web/test_openai --seq
 run.bat web/test_openai
 ```

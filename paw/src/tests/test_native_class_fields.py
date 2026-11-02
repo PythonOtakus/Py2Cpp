@@ -8,7 +8,7 @@ from src.translator import Translator
 class TestNativeClassFields(unittest.TestCase):
   def test_tcp_socket_state_member_in_header(self):
     root = Path(__file__).resolve().parents[2]
-    src = root / "py2cpp" / "web" / "socket.py"
+    src = root / "paw" / "web" / "socket.py"
     out = root / "generated"
     Translator.translate_file(
       str(src),
@@ -17,7 +17,7 @@ class TestNativeClassFields(unittest.TestCase):
       emit_main=False,
       strict=False,
     )
-    header = (out / "runtime" / "py2cpp" / "web" / "socket.h").read_text(encoding="utf-8")
+    header = (out / "runtime" / "paw" / "web" / "socket.h").read_text(encoding="utf-8")
     self.assertIn("PyUIntPtr _state", header)
     self.assertNotIn("PyUInt64 _sock", header)
     self.assertNotIn("PyBool _closed", header)
@@ -25,7 +25,7 @@ class TestNativeClassFields(unittest.TestCase):
 
   def test_text_io_wrapper_uintptr_bool_members_in_header(self):
     root = Path(__file__).resolve().parents[2]
-    src = root / "py2cpp" / "__init__.py"
+    src = root / "paw" / "__init__.py"
     out = root / "generated"
     Translator.translate_file(
       str(src),
@@ -34,7 +34,7 @@ class TestNativeClassFields(unittest.TestCase):
       emit_main=False,
       strict=False,
     )
-    header = (out / "runtime" / "py2cpp" / "io.h").read_text(encoding="utf-8")
+    header = (out / "runtime" / "paw" / "io.h").read_text(encoding="utf-8")
     self.assertIn("PyUIntPtr _fp", header)
     self.assertIn("PyBool _closed", header)
     self.assertNotIn("io_textiowrapper_tail", header)

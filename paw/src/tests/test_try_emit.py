@@ -10,8 +10,8 @@ from src.translator import Translator
 
 class TryEmitTests(unittest.TestCase):
   def _translate(self, body: str) -> str:
-    src = f"""from py2cpp import *
-from py2cpp.core.exceptions import KeyError, ValueError, TypeError
+    src = f"""from paw import *
+from paw.core.exceptions import KeyError, ValueError, TypeError
 
 def probe() -> int:
 {body}"""
@@ -34,7 +34,7 @@ def probe() -> int:
       "  return n\n",
     )
     self.assertIn("try\n    {", cpp)
-    self.assertIn("catch (const py2cpp::core::exceptions::PyValueError&", cpp)
+    self.assertIn("catch (const paw::core::exceptions::PyValueError&", cpp)
     self.assertIn("      n = 1;", cpp)
     self.assertIn("throw;", cpp)
 
@@ -148,7 +148,7 @@ def probe() -> int:
       "    n = 1\n"
       "  return n\n",
     )
-    self.assertIn("catch (const py2cpp::core::exceptions::PyExceptionGroup& __py2cpp_eg_in", cpp)
+    self.assertIn("catch (const paw::core::exceptions::PyExceptionGroup& __py2cpp_eg_in", cpp)
     self.assertIn("exception_group_from_single", cpp)
     self.assertIn("exception_group_split_except_star", cpp)
     self.assertIn("static_cast<PyBool>", cpp)

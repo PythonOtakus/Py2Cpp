@@ -11,7 +11,7 @@ from src.translator import Translator
 class DefaultNeTests(unittest.TestCase):
   def test_injects_ne_when_eq_only(self):
     src = """
-from py2cpp import immutable, new, Self
+from paw import immutable, new, Self
 
 class Widget:
   @immutable
@@ -37,7 +37,7 @@ def main():
 
   def test_skips_when_ne_written(self):
     src = """
-from py2cpp import immutable, new, Self
+from paw import immutable, new, Self
 
 class Widget:
   @immutable

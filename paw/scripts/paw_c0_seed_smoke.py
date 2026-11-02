@@ -30,7 +30,7 @@ def main() -> int:
     return 1
   if ns.build:
     patterns = " ".join(f"seed\\{p.stem}" for p in paws)
-    # seed 不在 test/；直接 main.py 译出后再提示用 build
+    # seed 不在 tests/；直接 main.py 译出后再提示用 build
     cmd = [
       sys.executable,
       str(ROOT / "main.py"),
@@ -44,7 +44,7 @@ def main() -> int:
     if r != 0:
       return r
     print("OK: translated", paws[0].name, flush=True)
-    print("hint: add test harness under test/ to build.bat-run", flush=True)
+    print("hint: add test harness under tests/ to build.bat-run", flush=True)
     return 0
   fail = 0
   for p in paws:

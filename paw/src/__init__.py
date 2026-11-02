@@ -2,7 +2,7 @@
 
 目录
 ----
-- 仓库根 ``py2cpp/``：标准库 Python 描述（翻译为 ``generated/runtime/py2cpp/*.h``）
+- 仓库根 ``paw/``：标准库 Python 描述（翻译为 ``generated/runtime/paw/*.h``）
 - ``analysis/``：IR、模式、语义分析
 - ``passes/``：装饰器 / 混入 / match 等 AST 展开
 - ``codegen/``：f-string、内建 C++ 片段生成

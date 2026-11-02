@@ -27,15 +27,15 @@ def _info(name: str, module_path: str, *, cpp_rename: str | None = None) -> Clas
 
 class TypeDepsTests(unittest.TestCase):
   def test_primitive_int(self):
-    h = collect_type_header_deps("PyInt", "py2cpp/util/list.h", {})
+    h = collect_type_header_deps("PyInt", "paw/util/list.h", {})
     self.assertEqual(h, [PRIMITIVE_HEADER_MAP["PyInt"]])
 
   def test_list_template_via_class_info(self):
     classes = {
-      "list": _info("list", "py2cpp/util/list", cpp_rename="PyList"),
-      "str": _info("str", "py2cpp/text/str", cpp_rename="PyStr"),
+      "list": _info("list", "paw/util/list", cpp_rename="PyList"),
+      "str": _info("str", "paw/text/str", cpp_rename="PyStr"),
     }
-    own = "py2cpp/util/dict.h"
+    own = "paw/util/dict.h"
     deps = collect_type_header_deps("PyDict<PyStr, PyList<PyInt>>", own, classes)
     self.assertIn(stdlib_header_include("util/list"), deps)
     self.assertIn(stdlib_header_include("text/str"), deps)
@@ -46,14 +46,14 @@ class TypeDepsTests(unittest.TestCase):
     self.assertNotIn("TestCase", PRIMITIVE_HEADER_MAP)
 
   def test_testcase_via_class_info(self):
-    classes = {"TestCase": _info("TestCase", "py2cpp/test/unittest")}
-    deps = collect_type_header_deps("TestCase", "py2cpp/foo.h", classes)
-    self.assertEqual(deps, [header_for_module("py2cpp/test/unittest")])
+    classes = {"TestCase": _info("TestCase", "paw/test/unittest")}
+    deps = collect_type_header_deps("TestCase", "paw/foo.h", classes)
+    self.assertEqual(deps, [header_for_module("paw/test/unittest")])
 
   def test_str_without_import_binding(self):
     """``list.py`` 式：签名含 ``str`` 但无 import，靠 ``ClassInfo`` 定位 ``text/str.h``。"""
-    classes = {"str": _info("str", "py2cpp/text/str", cpp_rename="PyStr")}
-    deps = collect_type_header_deps("PyStr", "py2cpp/util/list.h", classes)
+    classes = {"str": _info("str", "paw/text/str", cpp_rename="PyStr")}
+    deps = collect_type_header_deps("PyStr", "paw/util/list.h", classes)
     self.assertEqual(deps, [stdlib_header_include("text/str")])
 
   def test_str_callable_uses_forward_declaration(self):
@@ -64,14 +64,14 @@ class TypeDepsTests(unittest.TestCase):
     )
     self.assertNotIn(stdlib_header_include("core/delegate"), deps)
   def test_own_header_excluded(self):
-    classes = {"list": _info("list", "py2cpp/util/list", cpp_rename="PyList")}
-    own = header_for_module("py2cpp/util/list")
+    classes = {"list": _info("list", "paw/util/list", cpp_rename="PyList")}
+    own = header_for_module("paw/util/list")
     deps = collect_type_header_deps("PyList<PyInt>", own, classes)
     self.assertEqual(deps, [PRIMITIVE_HEADER_MAP["PyInt"]])
 
   def test_util_range_class(self):
-    classes = {"range": _info("range", "py2cpp/util/range", cpp_rename="PyRange")}
-    deps = collect_type_header_deps("PyRange", "py2cpp/io.h", classes)
+    classes = {"range": _info("range", "paw/util/range", cpp_rename="PyRange")}
+    deps = collect_type_header_deps("PyRange", "paw/io.h", classes)
     self.assertEqual(deps, [stdlib_header_include("util/range")])
 
   def test_py_stack_array_template_base(self):
@@ -80,9 +80,9 @@ class TypeDepsTests(unittest.TestCase):
     self.assertIn(stdlib_header_include("util/stack_array"), deps)
 
   def test_pychar_ptr_prefers_char_header(self):
-    """``PyChar*`` 须 ``char.h``，勿因包根 ``class char`` 误拉 ``py2cpp.h``。"""
+    """``PyChar*`` 须 ``char.h``，勿因包根 ``class char`` 误拉 ``paw.h``。"""
     classes = {"char": _info("char", RUNTIME_PKG, cpp_rename="PyChar")}
-    deps = collect_type_header_deps("PyChar*", "py2cpp/util/arena.h", classes)
+    deps = collect_type_header_deps("PyChar*", "paw/util/arena.h", classes)
     self.assertEqual(deps, [PRIMITIVE_HEADER_MAP["PyChar"]])
     self.assertNotIn(header_for_module(RUNTIME_PKG), deps)
 

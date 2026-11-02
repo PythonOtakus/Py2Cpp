@@ -1,0 +1,41 @@
+"""``paw.web`` 异步 HTTP：真实 non-blocking socket roundtrip。"""
+
+from paw import *
+from paw.concur.task import Task
+from paw.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
+from paw.web.client import AsyncClientSession
+from paw.web.http import ClientResponse, Request, Response, StatusCodeEnum
+from paw.web.server import AsyncServerMixin, RouteGetMeta
+
+_Port: int = 18131
+
+class HelloAsyncApp(AsyncServerMixin):
+  @RouteGetMeta("/hello")
+  def hello(self, request: Request) -> Response:
+    return new.textResponse("hello-async", StatusCodeEnum.Ok)
+
+async def asyncHttpRoundtrip() -> str:
+  app: HelloAsyncApp = new()
+  serverTask: Task[None] = Task.create(app.serveN("127.0.0.1", _Port, 1))
+  await Task.sleep(0)
+  session: AsyncClientSession = new()
+  resp: ClientResponse = await session.get(f"http://127.0.0.1:{_Port}/hello")
+  await serverTask
+  if resp.status != 200:
+    return "bad-status"
+  return resp.text()
+
+class AsyncHttpRoundtripTests(TestCaseMixin):
+  _testTag = 1
+
+  override def test(self):
+    self.assertEqual(Task.run(asyncHttpRoundtrip()), "hello-async")
+
+def main():
+  suite: TestSuite = new()
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
+    suite.addTest(Class())
+  return TextTestRunner().run(suite)
+
+if __name__ == "__main__":
+  raise SystemExit(main())

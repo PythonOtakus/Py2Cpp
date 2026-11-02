@@ -11,7 +11,7 @@ from src.translator import Translator
 class DiscardAssignEmitTests(unittest.TestCase):
   def test_mixed_type_discard_uses_void_cast(self):
     src = """
-from py2cpp import *
+from paw import *
 
 def discard_mixed(buffering: int, errors: str, newline: str) -> None:
   _ = buffering

@@ -2,7 +2,7 @@
 
 节点类型在 ``hir/nodes`` / ``mid/nodes``（nested c1_emit 已解 ``nodes.h`` 撞名）。
 """
-from py2cpp import *
+from paw import *
 from ..frontend.syntax_nodes import EnumBundle, EnumMember, SyntaxModule
 from ..hir.nodes import HirEnum, HirEnumMember, HirModule
 from ..mid.nodes import MidEnum, MidEnumMember, MidModule

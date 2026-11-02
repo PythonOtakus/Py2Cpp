@@ -27,7 +27,7 @@ class SameClassNewCtorTests(unittest.TestCase):
   def test_copy_new_self_emits_cpp_ctor_not_self(self):
     cpp = self._translate(
       '''
-from py2cpp import Self, immutable, new
+from paw import Self, immutable, new
 
 class DSU:
   @immutable
@@ -42,7 +42,7 @@ class DSU:
   def test_copy_self_call_emits_cpp_ctor(self):
     cpp = self._translate(
       '''
-from py2cpp import Self, immutable
+from paw import Self, immutable
 
 class Trie:
   @immutable
@@ -58,7 +58,7 @@ class Trie:
   def test_template_copy_new_uses_specialization(self):
     cpp = self._translate(
       '''
-from py2cpp import Self, immutable, new
+from paw import Self, immutable, new
 
 class Heap[T]:
   @immutable

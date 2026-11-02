@@ -29,8 +29,8 @@ class GpuBackendCudaEmitTests(unittest.TestCase):
   def test_cuda_backend_writes_cu(self):
     _, cpp = self._translate(
       """
-      from py2cpp import *
-      from py2cpp.gpu import Field, GpuKernelMixin, gpuSync
+      from paw import *
+      from paw.gpu import Field, GpuKernelMixin, gpuSync
 
       @dataclass
       class Add(GpuKernelMixin):
@@ -60,8 +60,8 @@ class GpuBackendCudaEmitTests(unittest.TestCase):
   def test_omp_backend_no_cu(self):
     _, cpp = self._translate(
       """
-      from py2cpp import *
-      from py2cpp.gpu import Field, GpuKernelMixin
+      from paw import *
+      from paw.gpu import Field, GpuKernelMixin
 
       @dataclass
       class Add(GpuKernelMixin):

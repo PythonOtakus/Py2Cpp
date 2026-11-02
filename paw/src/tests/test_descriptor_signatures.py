@@ -22,7 +22,7 @@ class DescriptorSignatureTests(unittest.TestCase):
   def test_param_and_return_validate_injected(self):
     cpp = self._translate(
       '''
-from py2cpp import descriptor
+from paw import descriptor
 
 @descriptor
 class ClampedIntVar:
@@ -39,7 +39,7 @@ def f(x: int @ClampedIntVar(0, 10)) -> int @ClampedIntVar(0, 10):
   return x
 '''
     )
-    self.assertIn("throw py2cpp::core::exceptions::ValueError", cpp)
+    self.assertIn("throw paw::core::exceptions::ValueError", cpp)
     self.assertIn("__py2cpp_return", cpp)
     self.assertIn("__set_f_param_x(PyInt& x)", cpp)
     self.assertIn("__set_f_return(PyInt& value)", cpp)
@@ -52,7 +52,7 @@ def f(x: int @ClampedIntVar(0, 10)) -> int @ClampedIntVar(0, 10):
   def test_nested_matmult_with_annotation_name_ignored(self):
     cpp = self._translate(
       '''
-from py2cpp import descriptor, annotation
+from paw import descriptor, annotation
 
 @annotation
 class Meta:
@@ -73,7 +73,7 @@ def g(x: int @Meta @ClampedIntVar(0, 1)) -> int:
   return x
 '''
     )
-    self.assertIn("throw py2cpp::core::exceptions::ValueError", cpp)
+    self.assertIn("throw paw::core::exceptions::ValueError", cpp)
 
   def test_if_or_compare_without_excess_parens(self):
     cpp = self._translate(
@@ -90,7 +90,7 @@ def f(v: int) -> int:
   def test_class_static_method_uses_named_helpers(self):
     cpp = self._translate(
       '''
-from py2cpp import descriptor, staticmethod
+from paw import descriptor, staticmethod
 
 @descriptor
 class ClampedIntVar:
@@ -114,12 +114,12 @@ class Svc:
     self.assertIn("Svc::__set_pick_param_n(n)", cpp)
     self.assertIn("Svc::__set_pick_return(__py2cpp_return)", cpp)
     pick_body = cpp.split("Svc::pick(PyInt n)")[1].split("Svc::")[0]
-    self.assertNotIn("throw py2cpp::core::exceptions::ValueError", pick_body)
+    self.assertNotIn("throw paw::core::exceptions::ValueError", pick_body)
 
   def test_replace_if_bad_param_helper_uses_mutable_ref(self):
     cpp = self._translate(
       '''
-from py2cpp import descriptor
+from paw import descriptor
 
 @descriptor
 class ReplaceIfBadVar:

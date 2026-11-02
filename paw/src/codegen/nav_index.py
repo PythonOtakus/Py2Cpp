@@ -44,7 +44,7 @@ def nav_cache_dir(output_dir: Path) -> Path:
 
 
 def module_shard_name(module_path: str) -> str:
-  """``py2cpp/util/list`` → ``py2cpp/util/list.json``（与 ``pyFile`` 模块路径同形）。"""
+  """``paw/util/list`` → ``paw/util/list.json``（与 ``pyFile`` 模块路径同形）。"""
   return f"{module_path.replace('\\', '/').strip('/')}.json"
 
 

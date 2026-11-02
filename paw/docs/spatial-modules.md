@@ -1,17 +1,17 @@
 # Py2Cpp `spatial` 扩展设计（Rect / Color / Image / Random·Noise / Animate）
 
-> 状态：**部分已落地**。`spatial.color`（`Color` / `ColorMatrix`）与 `spatial.rect`（`Rect`）已实现并有 `test/spatial/test_color.py`、`test_rect.py`；其余（`image` / `random` / `noise` / `animate`）仍为计划草案，实现前仍须短确认。
+> 状态：**部分已落地**。`spatial.color`（`Color` / `ColorMatrix`）与 `spatial.rect`（`Rect`）已实现并有 `tests/spatial/test_color.py`、`test_rect.py`；其余（`image` / `random` / `noise` / `animate`）仍为计划草案，实现前仍须短确认。
 
-与现有 `py2cpp.spatial`（`Vector*` / `Matrix*` / `Rotator` / `Quaternion` / `Transform2D`·`Transform3D`）配套，补齐游戏/UI 常用的矩形、颜色、**CPU 像素图**、空间随机与噪声、以及基于注解的异步属性动画。已落地的几何、矩形与颜色类型均为 `Scalar: RealType = float` 泛型类；省略类型参数时使用 `float`，需要旧双精度语义时显式写 `Vector2[float64]`、`Matrix3[float64]`、`Color[float64]` 等。风格参考仓库外 `tggame`（`rect` / `color` / `texture.Texture` / `random`·`Noise` / `action.LerpAssign`），写法遵守 [编码规范.md](./编码规范.md) 与 Py2Cpp 语法能力。
+与现有 `paw.spatial`（`Vector*` / `Matrix*` / `Rotator` / `Quaternion` / `Transform2D`·`Transform3D`）配套，补齐游戏/UI 常用的矩形、颜色、**CPU 像素图**、空间随机与噪声、以及基于注解的异步属性动画。已落地的几何、矩形与颜色类型均为 `Scalar: RealType = float` 泛型类；省略类型参数时使用 `float`，需要旧双精度语义时显式写 `Vector2[float64]`、`Matrix3[float64]`、`Color[float64]` 等。风格参考仓库外 `tggame`（`rect` / `color` / `texture.Texture` / `random`·`Noise` / `action.LerpAssign`），写法遵守 [编码规范.md](./编码规范.md) 与 Py2Cpp 语法能力。
 
-相关文档：[zeus-engine.md](../zeus/docs/zeus-engine.md)（引擎将复用本扩展，不在 `zeus` 内重写；**GPU 纹理 / OpenGL upload** 仍属 Zeus/`render`，本模块只管 CPU 侧 `Image`）；通用 GPU 计算见 [gpu-compute.md](./gpu-compute.md)（`py2cpp/gpu/`，与 `spatial` 解耦）。
+相关文档：[zeus-engine.md](../zeus/docs/zeus-engine.md)（引擎将复用本扩展，不在 `zeus` 内重写；**GPU 纹理 / OpenGL upload** 仍属 Zeus/`render`，本模块只管 CPU 侧 `Image`）；通用 GPU 计算见 [gpu-compute.md](./gpu-compute.md)（`paw/gpu/`，与 `spatial` 解耦）。
 
 ### 落地对照（Zeus 前置子集）
 
 | 模块 | 源码 | 测试 | 说明 |
 |------|------|------|------|
-| `spatial.color` | `py2cpp/spatial/color.py` | `test/spatial/test_color.py` | `Color[Scalar: RealType = float]` / `ColorMatrix[Scalar: RealType = float]`；`[0,1]` 钳制；`lerp`/`withAlpha`/`toArgb`/`fromArgb`；矩阵用 `ColorMatrix.apply(color)`（**无** `Color.applyMatrix`，避免同类前向声明） |
-| `spatial.rect` | `py2cpp/spatial/rect.py` | `test/spatial/test_rect.py` | `Rect[Scalar: RealType = float]`；轴对齐；尺寸属性 **`size`**（``Vector2[Scalar]``；S0102 对 ``Rect`` 豁免）；谓词 `contains`/`overlaps`/`embraces`；`&`/`|`；`in`；`applyMatrix(Matrix3[Scalar])`；**无** `Rect @ Rect` |
+| `spatial.color` | `paw/spatial/color.py` | `tests/spatial/test_color.py` | `Color[Scalar: RealType = float]` / `ColorMatrix[Scalar: RealType = float]`；`[0,1]` 钳制；`lerp`/`withAlpha`/`toArgb`/`fromArgb`；矩阵用 `ColorMatrix.apply(color)`（**无** `Color.applyMatrix`，避免同类前向声明） |
+| `spatial.rect` | `paw/spatial/rect.py` | `tests/spatial/test_rect.py` | `Rect[Scalar: RealType = float]`；轴对齐；尺寸属性 **`size`**（``Vector2[Scalar]``；S0102 对 ``Rect`` 豁免）；谓词 `contains`/`overlaps`/`embraces`；`&`/`|`；`in`；`applyMatrix(Matrix3[Scalar])`；**无** `Rect @ Rect` |
 | 其余 | — | — | 未实现 |
 
 ---
@@ -22,25 +22,25 @@
 
 | 模块路径 | 主要类型 | 职责 |
 |----------|----------|------|
-| `py2cpp.spatial.rect` | `Rect`（可选 `RectAnchor`） | 2D 轴对齐矩形：位置/尺寸、锚点对齐、相交并集、点包含 |
-| `py2cpp.spatial.color` | `Color`、`ColorMatrix` | 浮点 RGBA 颜色；5×5（或约定维）颜色变换矩阵 |
-| `py2cpp.spatial.image` | `Image`、可选 `ImageFilter` / 区域类型 | CPU 像素缓冲：创建/填充/读写像素、子矩形、滤镜、与 `Color`/`Rect` 协作 |
-| `py2cpp.spatial.random` | `Random2D`、`Random3D` | **空间采样**随机（圆/环/球/盒等），非 CPython `random` 替代 |
-| `py2cpp.spatial.noise` | `Noise` | Perlin/类 Perlin 噪声（1D/2D/3D 采样） |
-| `py2cpp.spatial.animate` | `AnimateMeta`、动画驱动 API | 用注解标记可动画字段/属性；异步插值驱动 |
+| `paw.spatial.rect` | `Rect`（可选 `RectAnchor`） | 2D 轴对齐矩形：位置/尺寸、锚点对齐、相交并集、点包含 |
+| `paw.spatial.color` | `Color`、`ColorMatrix` | 浮点 RGBA 颜色；5×5（或约定维）颜色变换矩阵 |
+| `paw.spatial.image` | `Image`、可选 `ImageFilter` / 区域类型 | CPU 像素缓冲：创建/填充/读写像素、子矩形、滤镜、与 `Color`/`Rect` 协作 |
+| `paw.spatial.random` | `Random2D`、`Random3D` | **空间采样**随机（圆/环/球/盒等），非 CPython `random` 替代 |
+| `paw.spatial.noise` | `Noise` | Perlin/类 Perlin 噪声（1D/2D/3D 采样） |
+| `paw.spatial.animate` | `AnimateMeta`、动画驱动 API | 用注解标记可动画字段/属性；异步插值驱动 |
 
 ### 1.2 与已有模块的关系
 
 | 已有 | 关系 |
 |------|------|
-| `py2cpp.spatial.vector` / `matrix` | `Rect` 用 `Vector2`；`ColorMatrix` 可与矩阵语义对齐但**独立类型**（颜色空间，非几何 `Matrix4`） |
-| `py2cpp.spatial.transform` | `Rect` 可提供 `applyMatrix(Matrix3)`；**不**在本扩展重做场景图 |
-| `py2cpp.spatial.color` | `Image` 像素用 `Color` 读写；`ColorMatrix` 可作为 `PixelFilter` 作用于整图 |
-| `py2cpp.spatial.rect` | 子图/裁剪/区域填充以 `Rect` 为界 |
-| `py2cpp.math.random.Random` | **标量 PRNG**（MT19937）；`Random2D`/`Random3D` **内部组合**它做 `float`/`int`，对外只暴露空间采样 API |
-| `py2cpp.concur.task` | `animate` 的「异步」优先 `async`/`await` + `Task.sleep` / 帧推进，勿另造调度器 |
+| `paw.spatial.vector` / `matrix` | `Rect` 用 `Vector2`；`ColorMatrix` 可与矩阵语义对齐但**独立类型**（颜色空间，非几何 `Matrix4`） |
+| `paw.spatial.transform` | `Rect` 可提供 `applyMatrix(Matrix3)`；**不**在本扩展重做场景图 |
+| `paw.spatial.color` | `Image` 像素用 `Color` 读写；`ColorMatrix` 可作为 `PixelFilter` 作用于整图 |
+| `paw.spatial.rect` | 子图/裁剪/区域填充以 `Rect` 为界 |
+| `paw.math.random.Random` | **标量 PRNG**（MT19937）；`Random2D`/`Random3D` **内部组合**它做 `float`/`int`，对外只暴露空间采样 API |
+| `paw.concur.task` | `animate` 的「异步」优先 `async`/`await` + `Task.sleep` / 帧推进，勿另造调度器 |
 | `py2cpp` `@annotation` | `AnimateMeta` 必须是 `*Meta` 后缀的 `@annotation`（见编码规范 §4.1.2） |
-| `py2cpp.io` | 可选二期：从文件解码/编码（PNG 等）——第一期可不做 IO，只做内存图 |
+| `paw.io` | 可选二期：从文件解码/编码（PNG 等）——第一期可不做 IO，只做内存图 |
 | Zeus `render` / GL | `Image` → GPU 纹理上传在引擎层；**禁止** `spatial.image` 直接调 OpenGL |
 
 ### 1.3 第一期不做
@@ -65,7 +65,7 @@
 ## 2. 模块与目录规划
 
 ```text
-py2cpp/spatial/
+paw/spatial/
   __init__.py          # 可再导出新符号（实现时决定是否进 __all__）
   vector.py            # 已有
   matrix.py            # 已有
@@ -87,7 +87,7 @@ test/spatial/
   test_animate.py
 ```
 
-实现时：`STDLIB_REL_PATHS` 随 `py2cpp/` 发现自动纳入；bootstrap `python main.py py2cpp\__init__.py -o generated --no-main`。
+实现时：`STDLIB_REL_PATHS` 随 `paw/` 发现自动纳入；bootstrap `python main.py paw\__init__.py -o generated --no-main`。
 ---
 
 ## 3. `spatial.rect`：`Rect`
@@ -179,7 +179,7 @@ zeus render Texture     → GPU 资源（本模块不实现）
 ### 5.4 与 IO / 引擎
 
 - **第一期**：无文件编解码；测试用程序化 `fill` / 渐变生成。
-- **二期**：`Image.load(path)` / `save` 经 `py2cpp.io` + 最小 `@native` 或 FFI（格式范围另定）。
+- **二期**：`Image.load(path)` / `save` 经 `paw.io` + 最小 `@native` 或 FFI（格式范围另定）。
 - **Zeus**：`MeshComponent` / UI 可将 `Image` 上传为 GL 纹理；上传 API 不进 `spatial.image`。
 
 ### 5.5 `@native` 边界
@@ -326,7 +326,7 @@ handle.cancel()
 ### 8.5 与 Zeus / UI 的关系
 
 - Zeus `GameObject` / `Transform` / `Color` 材质字段可标 `@AnimateMeta`，由 gameplay `await animate(...)`。
-- `py2cpp.ui` 控件位置/颜色同理。
+- `paw.ui` 控件位置/颜色同理。
 - **不**在 animate 模块内依赖 `zeus`。
 
 ### 8.6 测试要点
@@ -343,7 +343,7 @@ handle.cancel()
 
 ### Phase B：`rect` + `color`
 
-- 实现与 `test/spatial/test_rect.py`、`test_color.py`；bootstrap + MSVC。
+- 实现与 `tests/spatial/test_rect.py`、`test_color.py`；bootstrap + MSVC。
 
 ### Phase C：`image`
 

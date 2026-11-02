@@ -17,8 +17,8 @@ from src.codegen.write_if_changed import write_text_if_changed
 
 
 def _touch_layout(root: Path) -> None:
-  (root / "py2cpp").mkdir()
-  (root / "py2cpp" / "__init__.py").write_text("# runtime\n", encoding="utf-8")
+  (root / "paw").mkdir()
+  (root / "paw" / "__init__.py").write_text("# runtime\n", encoding="utf-8")
   (root / "templates").mkdir()
   (root / "templates" / "minimal.h").write_text("// t\n", encoding="utf-8")
   (root / "src").mkdir()
@@ -26,7 +26,7 @@ def _touch_layout(root: Path) -> None:
   (root / "src" / "tests").mkdir()
   (root / "src" / "tests" / "test_x.py").write_text("# test\n", encoding="utf-8")
   (root / "main.py").write_text("# cli\n", encoding="utf-8")
-  umb = root / "generated" / "runtime" / "py2cpp"
+  umb = root / "generated" / "runtime" / "paw"
   umb.mkdir(parents=True)
   (umb / "minimal.h").write_text("// umbrella\n", encoding="utf-8")
 
@@ -77,7 +77,7 @@ class BootstrapStampTests(unittest.TestCase):
       _touch_layout(root)
       write_stamp(debug=False, header_only=False, root=root)
       time.sleep(0.05)
-      (root / "py2cpp" / "__init__.py").write_text("# changed\n", encoding="utf-8")
+      (root / "paw" / "__init__.py").write_text("# changed\n", encoding="utf-8")
       self.assertFalse(
         should_skip_translate(debug=False, header_only=False, root=root)
       )

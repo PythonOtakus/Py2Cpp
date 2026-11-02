@@ -31,7 +31,7 @@ class GenCompileCommandsTests(unittest.TestCase):
     self.assertIn("~macro/text/+bytes.inl.h", norm)
     self.assertIn("PY2CPP_IGNORE", (ROOT / "templates" / "~macro" / "text" / "+bytes.inl.h").read_text(encoding="utf-8"))
     sqlite_hdr = (ROOT / "templates" / "~macro" / "sql" / "+sqlite.inl.h").read_text(encoding="utf-8")
-    self.assertIn("#define PY2CPP_NAMESPACE py2cpp::sql::sqlite", sqlite_hdr)
+    self.assertIn("#define PY2CPP_NAMESPACE paw::sql::sqlite", sqlite_hdr)
     self.assertIn("#define PY2CPP_EVAL(...) __VA_ARGS__", sqlite_hdr)
     self.assertIn("#define PY2CPP_TYPE_PyStr", sqlite_hdr)
     self.assertIn("#define PY2CPP_TYPE(Type) PY2CPP_TYPE_##Type", sqlite_hdr)
@@ -45,7 +45,7 @@ class GenCompileCommandsTests(unittest.TestCase):
     self.assertTrue(macro_path.is_file(), macro_path)
     macro_text = macro_path.read_text(encoding="utf-8")
     self.assertIn("#define PY2CPP_INJECT_CLASS(...)", macro_text)
-    self.assertIn("#define PY2CPP_NAMESPACE py2cpp::text::str", macro_text)
+    self.assertIn("#define PY2CPP_NAMESPACE paw::text::str", macro_text)
     cmd = _compile_command(ROOT / "templates" / "text" / "+str.h")
     self.assertIn("~macro/text/+str.h.h", cmd.replace("\\", "/"))
 
@@ -56,7 +56,7 @@ class GenCompileCommandsTests(unittest.TestCase):
     macro_path = ROOT / "templates" / "~macro" / "core" / "~exception_group_dynamic_impl.inl.h"
     self.assertTrue(macro_path.is_file(), macro_path)
     macro_text = macro_path.read_text(encoding="utf-8")
-    self.assertIn("#define PY2CPP_BEGIN_SCOPE namespace py2cpp", macro_text)
+    self.assertIn("#define PY2CPP_BEGIN_SCOPE namespace paw", macro_text)
     self.assertIn("core::exceptions", macro_text)
 
   def test_generated_json_lists_templates(self):

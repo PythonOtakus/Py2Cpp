@@ -52,7 +52,7 @@ def _entity_base_ast(info: ClassInfo, tr: Translator) -> ast.expr | None:
 
 
 def check_class_inheritance_bases(tr: Translator) -> None:
-  """S1006：全模块（含 ``test/fail/``）检查继承顺序与实体基类数量。"""
+  """S1006：全模块（含 ``tests/fail/``）检查继承顺序与实体基类数量。"""
   from ..translation_error import TranslationError, location_from_node
   from .strict_style import _Violation, _check_s1006_inheritance_bases
 

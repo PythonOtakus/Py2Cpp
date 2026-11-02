@@ -17,7 +17,7 @@ Zeus 是一个基于现有 Py2Cpp 能力实现的轻量 3D 游戏引擎。第一
 | `GameObject` | 世界中的可放置对象（原草案 `GameObject3D`） |
 | `Component` | 无独立世界位姿的逻辑组件（对标 `UActorComponent`） |
 | `Transform` | Zeus **场景组件**（对标 `USceneComponent`）；**不是**再实现一套数学库 |
-| `py2cpp.spatial.Transform3D` | 标准库 TRS/场景图数学；`zeus.Transform` **组合复用**其能力，源码中避免无前缀混用 |
+| `paw.spatial.Transform3D` | 标准库 TRS/场景图数学；`zeus.Transform` **组合复用**其能力，源码中避免无前缀混用 |
 
 ---
 
@@ -79,13 +79,13 @@ UI / 插件 / MCP 共用 `@union` 命令 + JSON 桥接。
 
 | 需求 | 复用 |
 |------|------|
-| 向量 / 矩阵 / 四元数 / TRS 数学与父子合成 | `py2cpp.spatial`（`Transform3D` / `TransformMixin`） |
-| 材质色 / 清屏 / 顶点色 | `py2cpp.spatial.color`（`Color` / `ColorMatrix`） |
-| 2D AABB / 编辑器矩形 | `py2cpp.spatial.rect`（`Rect`；尺寸属性 `size`） |
-| SoA / `@ref` 交集 | `py2cpp.design.ecs`（符号保持 `ECS*`） |
+| 向量 / 矩阵 / 四元数 / TRS 数学与父子合成 | `paw.spatial`（`Transform3D` / `TransformMixin`） |
+| 材质色 / 清屏 / 顶点色 | `paw.spatial.color`（`Color` / `ColorMatrix`） |
+| 2D AABB / 编辑器矩形 | `paw.spatial.rect`（`Rect`；尺寸属性 `size`） |
+| SoA / `@ref` 交集 | `paw.design.ecs`（符号保持 `ECS*`） |
 | 并行 | `prange` |
-| 序列化 | `py2cpp.serde` |
-| IO / UI / 弱引用 | `py2cpp.io` / `ui` / `weak.ref` |
+| 序列化 | `paw.serde` |
+| IO / UI / 弱引用 | `paw.io` / `ui` / `weak.ref` |
 
 禁止在 Zeus 重写 `Vector3` / `Matrix4` / `Quaternion`。
 
@@ -196,7 +196,7 @@ zeus/
 
 说明：
 
-- `zeus/transform.py` 是 **组件类型** `Transform`，内部调用 `py2cpp.spatial`，**不是**第二套数学库。
+- `zeus/transform.py` 是 **组件类型** `Transform`，内部调用 `paw.spatial`，**不是**第二套数学库。
 - 不再使用 `GameObject3D` / `SceneComponent` / `Camera3D` / `GameMesh` 作为主类型名；相机与网格以 **组件**（或对象子类 + 默认组件）表达。
 
 ---
@@ -273,7 +273,7 @@ Transform(Component)  +  局部 TRS / 附件树（能力来自 spatial.Transform
 - **禁止** `Transform` 再 `add_component`。
 - 实现：优先让 `Transform` **混入或持有** `spatial.Transform3D` 的数据与矩阵 API，Zeus 只加 `owner`、组件生命周期与序列化。
 
-命名消歧：注解与 import 写清 `from zeus.transform import Transform` 与 `from py2cpp.spatial.transform import Transform3D`；文档称前者「场景组件 Transform」，后者「spatial.Transform3D」。
+命名消歧：注解与 import 写清 `from zeus.transform import Transform` 与 `from paw.spatial.transform import Transform3D`；文档称前者「场景组件 Transform」，后者「spatial.Transform3D」。
 
 ### 4.6 MeshComponent / CameraComponent
 
@@ -376,8 +376,8 @@ Inspector：对象字段 + 组件列表字段（含 root `Transform` TRS）。
 
 | 模块 | 用途 |
 |------|------|
-| `py2cpp.spatial` | `zeus.Transform` 的数学与父子合成底座 |
-| `py2cpp.design.ecs` | 后期 SoA；保持 `ECS*` 前缀 |
+| `paw.spatial` | `zeus.Transform` 的数学与父子合成底座 |
+| `paw.design.ecs` | 后期 SoA；保持 `ECS*` 前缀 |
 | `concur` / `serde` / `io` / `ui` / `weak` | Task、序列化、资源、编辑器、弱引用 |
 
 ---
@@ -516,7 +516,7 @@ Phase 0–2（已完成）
 
 ### Editor（Phase 3）
 
-- [x] Hierarchy + Inspector + Play/Stop（`py2cpp.ui` 最小双窗；`test_editor_smoke`）
+- [x] Hierarchy + Inspector + Play/Stop（`paw.ui` 最小双窗；`test_editor_smoke`）
 - [x] 保存/加载含组件列表的场景 JSON（`scene_io`）；Inspector 可改 name/active/visible/局部位移
 - [x] 精简 `CommandBus` + 核心 `@union` 命令（完备清单与 Play 写限制见 Phase 4）
 

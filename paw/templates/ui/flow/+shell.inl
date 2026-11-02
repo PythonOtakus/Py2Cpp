@@ -1,8 +1,8 @@
 PY2CPP_IGNORE
-#include "py2cpp/ui/flow/shell.h"
-#include "py2cpp/ui/flow/canvas.h"
-#include "py2cpp/ui/flow/serialize.h"
-#include "py2cpp/ui/window.h"
+#include "paw/ui/flow/shell.h"
+#include "paw/ui/flow/canvas.h"
+#include "paw/ui/flow/serialize.h"
+#include "paw/ui/window.h"
 PY2CPP_END
 
 #ifdef _WIN32
@@ -11,7 +11,7 @@ PY2CPP_END
 #endif
 #include "ffi/windows.h"
 
-namespace py2cpp {
+namespace paw {
 namespace ui {
 
 static PyBool _ui_flow_ctrl_down()
@@ -61,8 +61,8 @@ PyBool ui_menu_on_command(window::PyUIWindow& win, UINT_PTR cmd_id)
   {
     return false;
   }
-  py2cpp::ui::flow::shell::PyUIFlowShell* sh =
-      (py2cpp::ui::flow::shell::PyUIFlowShell*)(INT_PTR)win.flowShellPtr;
+  paw::ui::flow::shell::PyUIFlowShell* sh =
+      (paw::ui::flow::shell::PyUIFlowShell*)(INT_PTR)win.flowShellPtr;
   sh->onMenuCommand((PyInt)cmd_id);
   return true;
 }
@@ -78,7 +78,7 @@ void ui_flow_shell_on_resize(window::PyUIWindow& win)
 }
 
 }  // namespace ui
-}  // namespace py2cpp
+}  // namespace paw
 
 PY2CPP_BEGIN_SCOPE
 
@@ -226,7 +226,7 @@ PY2CPP_END_SCOPE
 
 #else
 
-namespace py2cpp {
+namespace paw {
 namespace ui {
 
 PyBool ui_flow_on_key(window::PyUIWindow& win, PyInt vk)
@@ -249,7 +249,7 @@ void ui_flow_shell_on_resize(window::PyUIWindow& win)
 }
 
 }  // namespace ui
-}  // namespace py2cpp
+}  // namespace paw
 
 PY2CPP_BEGIN_SCOPE
 

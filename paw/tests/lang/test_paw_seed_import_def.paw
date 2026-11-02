@@ -1,0 +1,42 @@
+"""C0 种子回归：import / 模块 const / 顶层 def。"""
+from paw import *
+from paw.test.unittest import TestCaseMixin, TestSuite, TextTestRunner
+from compiler.paw.frontend.source import SourceManager
+from compiler.paw.frontend.parser import parseSource
+from compiler.paw.frontend.syntax_nodes import ItemKindEnum, SyntaxModule
+
+class PawSeedImportDefTests(TestCaseMixin):
+  _testTag = 1
+
+  override def test(self):
+    src: str = (
+      "from paw import *\n"
+      "import compiler.paw.frontend.lexer\n"
+      "const LIMIT: int = 10\n"
+      "def helper(x: int) -> int:\n"
+      "  return x\n"
+      "static def factory() -> int:\n"
+      "  return 1\n"
+    )
+    sm: SourceManager = new()
+    sf = sm.add("i.paw", src, "d3")
+    mod: SyntaxModule = parseSource(sf.text, sf.fileId)
+    self.assertTrue(len(mod.imports) == 2)
+    self.assertTrue(mod.items[0].kind == ItemKindEnum.Import)
+    self.assertTrue(len(mod.moduleConsts) == 1)
+    self.assertTrue(mod.moduleConsts[0].name == "LIMIT")
+    self.assertTrue(mod.moduleConsts[0].typeName == "int")
+    self.assertTrue(mod.moduleConsts[0].valueSource == "10")
+    self.assertTrue(mod.items[2].kind == ItemKindEnum.ModuleConst)
+    self.assertTrue(len(mod.functions) == 2)
+    self.assertTrue(mod.functions[0].name == "helper")
+    self.assertTrue(mod.functions[0].returnSource == "int")
+    self.assertTrue(mod.functions[1].name == "factory")
+    self.assertTrue(mod.functions[1].isStatic)
+    self.assertTrue(mod.items[3].kind == ItemKindEnum.Function)
+
+def main():
+  suite: TestSuite = new()
+  for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
+    suite.addTest(Class())
+  return TextTestRunner().run(suite)

@@ -52,7 +52,7 @@ def load_stdlib_native_names() -> dict[str, str]:
 
 @lru_cache(maxsize=1)
 def load_stdlib_exception_types() -> frozenset[str]:
-  """``py2cpp/core/exceptions`` 中异常类名（``raise X`` → ``cpp_exception_ctor``）。"""
+  """``paw/core/exceptions`` 中异常类名（``raise X`` → ``cpp_exception_ctor``）。"""
   from .paths import _pick
 
   path = _pick(PY2CPP / "core" / "exceptions")

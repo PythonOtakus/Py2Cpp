@@ -17,14 +17,14 @@
 #endif
 
 PY2CPP_IGNORE
-#include "py2cpp/concur/thread.h"
-#include "py2cpp/core/delegate.h"
-#include "py2cpp/core/exceptions.h"
-#include "py2cpp/util/deque.h"
-#include "py2cpp/util/list.h"
+#include "paw/concur/thread.h"
+#include "paw/core/delegate.h"
+#include "paw/core/exceptions.h"
+#include "paw/util/deque.h"
+#include "paw/util/list.h"
 PY2CPP_END
 
-namespace py2cpp_concur_thread_detail
+namespace paw_concur_thread_detail
 {
   typedef PyCallable<void> ThreadTarget;
   struct ThreadState;
@@ -430,7 +430,7 @@ namespace py2cpp_concur_thread_detail
 
   static double timeout_deadline(PyFloat64 timeout)
   {
-    return (double)py2cpp::system::time::monotonic() + (double)timeout;
+    return (double)paw::system::time::monotonic() + (double)timeout;
   }
 
   static PyBool lock_locked_state(LockState* st)
@@ -473,7 +473,7 @@ namespace py2cpp_concur_thread_detail
       }
       else
       {
-        double now = (double)py2cpp::system::time::monotonic();
+        double now = (double)paw::system::time::monotonic();
         double remaining = end - now;
         if (remaining <= 0.0)
         {
@@ -561,7 +561,7 @@ namespace py2cpp_concur_thread_detail
       }
       else
       {
-        double now = (double)py2cpp::system::time::monotonic();
+        double now = (double)paw::system::time::monotonic();
         double remaining = end - now;
         if (remaining <= 0.0)
         {
@@ -759,7 +759,7 @@ namespace py2cpp_concur_thread_detail
       }
       else
       {
-        double now = (double)py2cpp::system::time::monotonic();
+        double now = (double)paw::system::time::monotonic();
         double remaining = end - now;
         if (remaining <= 0.0)
         {
@@ -914,7 +914,7 @@ namespace py2cpp_concur_thread_detail
   }
 }
 
-namespace py2cpp {
+namespace paw {
 namespace concur {
 namespace thread {
 
@@ -1277,7 +1277,7 @@ PyBool PyCondition::waitFor(PyCallable<PyBool> predicate, PyFloat64 timeout)
     PyFloat64 wait_time = PY2CPP_FLOAT64_INF;
     if (timeout != PY2CPP_FLOAT64_INF)
     {
-      double now = (double)py2cpp::system::time::monotonic();
+      double now = (double)paw::system::time::monotonic();
       double remaining = end - now;
       if (remaining <= 0.0)
       {
@@ -1409,7 +1409,7 @@ void PyQueue<_Element>::put(_Element item, PyBool block, PyFloat64 timeout)
   double end = 0.0;
   if (timeout != PY2CPP_FLOAT64_INF)
   {
-    end = (double)py2cpp::system::time::monotonic() + (double)timeout;
+    end = (double)paw::system::time::monotonic() + (double)timeout;
   }
   while (st->maxsize > 0 && st->items.__len__() >= st->maxsize)
   {
@@ -1427,7 +1427,7 @@ void PyQueue<_Element>::put(_Element item, PyBool block, PyFloat64 timeout)
     }
     else
     {
-      double now = (double)py2cpp::system::time::monotonic();
+      double now = (double)paw::system::time::monotonic();
       double remaining = end - now;
       if (remaining <= 0.0)
       {
@@ -1473,7 +1473,7 @@ _Element PyQueue<_Element>::get(PyBool block, PyFloat64 timeout)
   double end = 0.0;
   if (timeout != PY2CPP_FLOAT64_INF)
   {
-    end = (double)py2cpp::system::time::monotonic() + (double)timeout;
+    end = (double)paw::system::time::monotonic() + (double)timeout;
   }
   while (st->items.__len__() == 0)
   {
@@ -1491,7 +1491,7 @@ _Element PyQueue<_Element>::get(PyBool block, PyFloat64 timeout)
     }
     else
     {
-      double now = (double)py2cpp::system::time::monotonic();
+      double now = (double)paw::system::time::monotonic();
       double remaining = end - now;
       if (remaining <= 0.0)
       {
@@ -1766,7 +1766,7 @@ PyBool _PyThreadHandle::join(PyFloat64 timeout)
       double end = 0.0;
       if (timeout != PY2CPP_FLOAT64_INF)
       {
-        end = (double)py2cpp::system::time::monotonic() + (double)timeout;
+        end = (double)paw::system::time::monotonic() + (double)timeout;
       }
       while (!st->finished)
       {
@@ -1776,7 +1776,7 @@ PyBool _PyThreadHandle::join(PyFloat64 timeout)
         }
         else
         {
-          double now = (double)py2cpp::system::time::monotonic();
+          double now = (double)paw::system::time::monotonic();
           double remaining = end - now;
           if (remaining <= 0.0)
           {
@@ -1861,4 +1861,4 @@ PyBool _PyThreadHandle::PY2CPP_GETTER(daemon)() const
 
 } // namespace thread
 } // namespace concur
-} // namespace py2cpp
+} // namespace paw

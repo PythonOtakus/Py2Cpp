@@ -27,7 +27,7 @@ def _root() -> Path:
 
 def _analyze_body(body: str) -> Translator:
   root = _root()
-  src = f"from py2cpp import *\n\n{body}"
+  src = f"from paw import *\n\n{body}"
   with tempfile.TemporaryDirectory() as tmp:
     project_root = Path(tmp)
     entry_py = project_root / "test_move_min.py"
@@ -36,7 +36,7 @@ def _analyze_body(body: str) -> Translator:
     modules = discover_translation_modules(
       entry_py,
       include_stdlib=True,
-      runtime_root=root / "py2cpp",
+      runtime_root=root / "paw",
       project_root=project_root,
     )
     tr = Translator("test_move_min", str(entry_py))

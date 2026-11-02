@@ -1,10 +1,10 @@
 
 PY2CPP_IGNORE
-#include "py2cpp/py_types.h"
+#include "paw/py_types.h"
 #include <type_traits>
 #include <utility>
-#include "py2cpp/util/tuple.h"
-#include "py2cpp/text/str.h"
+#include "paw/util/tuple.h"
+#include "paw/text/str.h"
 PY2CPP_END
 
 #include "py_types.h"
@@ -12,8 +12,8 @@ PY2CPP_END
 #include <utility>
 #include "ffi/crt/stdio.h"
 
-#include "py2cpp/util/tuple.h"
-#include "py2cpp/text/str.h"
+#include "paw/util/tuple.h"
+#include "paw/text/str.h"
 
 /* --- ``%`` / ``/`` / ``//``（标量按 Python 3 语义；``str`` 见 ``__mod__(fmt, tuple)``）--- */
 PyInt __mod__(PyInt a, PyInt b);
@@ -377,7 +377,7 @@ format(E v, PyUtf8Ptr format_spec = "")
 /// ``PyTuple``：``(a, b, …)``（实现见 ``operators.inl``，需完整 ``PyStr``）。
 template<typename... Args>
 PY2CPP_TYPE(PyStr) format(const PyTuple<Args...>& v, PyUtf8Ptr format_spec = "");
-/// C ``FILE*`` stdout（避免 ``using`` 绑到 ``py2cpp::console::stdout`` / ``PyTextIO``）。
+/// C ``FILE*`` stdout（避免 ``using`` 绑到 ``paw::console::stdout`` / ``PyTextIO``）。
 inline FILE* _py2cpp_c_stdout()
 {
 #if defined(_MSC_VER)

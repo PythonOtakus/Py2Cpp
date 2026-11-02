@@ -1,7 +1,7 @@
 PY2CPP_IGNORE
-#include "py2cpp/util/stack_array.h"
-#include "py2cpp/util/array.h"
-#include "py2cpp/util/span.h"
+#include "paw/util/stack_array.h"
+#include "paw/util/array.h"
+#include "paw/util/span.h"
 PY2CPP_END
 
 template<typename T, PyInt Length, PyInt Offset>

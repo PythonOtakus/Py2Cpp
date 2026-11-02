@@ -23,7 +23,7 @@ class TypeParamAutoAliasTests(unittest.TestCase):
   def test_class_template_underscore_and_using(self):
     text = self._translate(
       '''
-from py2cpp import *
+from paw import *
 
 class Box[Element]:
   value: Element
@@ -46,7 +46,7 @@ class Box[Element]:
       py = out / "mod.py"
       py.write_text(
         '''
-from py2cpp import *
+from paw import *
 
 class Box[T]:
   type Element = T

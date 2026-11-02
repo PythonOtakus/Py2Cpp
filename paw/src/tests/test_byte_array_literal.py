@@ -10,7 +10,7 @@ from src.translator import Translator
 
 class ByteArrayLiteralEmitTests(unittest.TestCase):
   def _translate(self, body: str) -> str:
-    src = f"""from py2cpp import byte, bytes
+    src = f"""from paw import byte, bytes
 
 def probe():
 {body}"""

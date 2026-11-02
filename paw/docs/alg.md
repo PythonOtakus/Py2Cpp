@@ -1,7 +1,7 @@
 # Py2Cpp `alg` 标准库域 — 设计与分期方案
 
 > **状态**：P0.5/P1b + P1 + P2 + **P3**（`grid2d` / `graph` / `navigate` + ``NavigatableType``）已落地；P3b `spatial_hash`、P4 见 §7。  
-> **单一真相源（实现后）**：`py2cpp/alg/*.py`  
+> **单一真相源（实现后）**：`paw/alg/*.py`  
 > **关联**：[编码规范](./编码规范.md)、[参考手册](./参考手册.md)、[py2cpp-design](../.cursor/skills/py2cpp-design/SKILL.md)
 
 ---
@@ -10,12 +10,12 @@
 
 ### 1.1 目标
 
-在 **`py2cpp/alg/`** 提供 **ACM 算法竞赛** 与 **游戏开发** 中高频使用的**数据结构**（非完整算法库）：
+在 **`paw/alg/`** 提供 **ACM 算法竞赛** 与 **游戏开发** 中高频使用的**数据结构**（非完整算法库）：
 
 - 用规范 Python（PEP 695 泛型）描述，由译器生成 C++11 模板；
 - 复用现有 `list` / `dict` / `array` / `deque` / `Pool` / `Counter` 等，**禁止 STL**；
-- 纳入 `py2cpp/alg/` 源树（``constant/stdlib_discovery`` 自动发现），支持 `from py2cpp import *`；
-- 每个模块配套 `test/alg/test_*.py` + MSVC 集成测。
+- 纳入 `paw/alg/` 源树（``constant/stdlib_discovery`` 自动发现），支持 `from paw import *`；
+- 每个模块配套 `tests/alg/test_*.py` + MSVC 集成测。
 
 ### 1.2 非目标（本期不做）
 
@@ -26,7 +26,7 @@
 | 高级平衡树 | 替罪羊、FHQ Treap、LCT、可持久化结构 |
 | 字符串进阶 | SAM、后缀数组/自动机 |
 | 3D 专用 | KD-Tree、八叉树（四叉树放 P4 可选） |
-| GPU 计算 | 属独立 **`py2cpp/gpu/`** 域，见 [gpu-compute.md](./gpu-compute.md)；`alg` 不实现 GPU 结构 |
+| GPU 计算 | 属独立 **`paw/gpu/`** 域，见 [gpu-compute.md](./gpu-compute.md)；`alg` 不实现 GPU 结构 |
 
 ### 1.3 与现有标准库的分工
 
@@ -60,7 +60,7 @@
 | **Trie 键** | 首期仅 **`str`**（码点）；`list[int]` 通用 Trie 放 P2+ |
 | **导出** | 包根 `__all__` 导出短名：`DSU`、`FenTree`、`Heap`、`MonoQueue`、`ChunkDeque` 等 |
 | **块大小** | `ChunkDeque` 默认 **`blockSize=512`**（构造可改；须写清文档） |
-| **命名空间** | C++：`py2cpp::alg::<module>::<Class>` |
+| **命名空间** | C++：`paw::alg::<module>::<Class>` |
 
 ---
 
@@ -115,7 +115,7 @@
 
 ### 测试与写法
 
-- 集成测目录：**``test/alg/``**（``TestCaseMixin`` + ``override def test``）；
+- 集成测目录：**``tests/alg/``**（``TestCaseMixin`` + ``override def test``）；
 - 构造用 ``new(...)``；循环 ``for i in range(n)``；布尔 ``not seq`` / ``if seq``。
 
 ---
@@ -123,7 +123,7 @@
 ## 3. 目录与模块
 
 ```text
-py2cpp/
+paw/
   alg/
     __init__.py          # 文档索引 + re-export
     dsu.py               # 并查集 Union-Find
@@ -149,8 +149,8 @@ py2cpp/
 
 **译器注册**（实现时同步）：
 
-- `py2cpp/alg/<mod>.py` 新增模块（``src/constant/stdlib_discovery.py`` 遍历自动发现；必要时调整 ``constant/stdlib_modules`` 的 ``UMBRELLA_PREFIX_TIERS`` / ``constant/header_fixups_data`` 的 ``MODULE_HEADER_FIXUPS``）；
-- `py2cpp/__init__.py` → 域再导出与 `__all__`（若对外暴露）；
+- `paw/alg/<mod>.py` 新增模块（``src/constant/stdlib_discovery.py`` 遍历自动发现；必要时调整 ``constant/stdlib_modules`` 的 ``UMBRELLA_PREFIX_TIERS`` / ``constant/header_fixups_data`` 的 ``MODULE_HEADER_FIXUPS``）；
+- `paw/__init__.py` → 域再导出与 `__all__`（若对外暴露）；
 - `src/codegen/umbrella_gen.py` → `minimal.h` include `alg/*.h`（注意顺序，全量 `build_all.bat` 验证）。
 
 ---
@@ -191,8 +191,8 @@ py2cpp/
 
 | 口语 / 旧称 | 公开类名 | C++ 命名空间（预期） |
 |-------------|----------|----------------------|
-| 块状 deque、分块队列 | **`ChunkDeque[T]`** | `py2cpp::alg::chunk_deque::ChunkDeque<T>` |
-| rope、Piece table | **`ChunkDeque[T]`** | `py2cpp::alg::chunk_deque::ChunkDeque<T>` |
+| 块状 deque、分块队列 | **`ChunkDeque[T]`** | `paw::alg::chunk_deque::ChunkDeque<T>` |
+| rope、Piece table | **`ChunkDeque[T]`** | `paw::alg::chunk_deque::ChunkDeque<T>` |
 
 可选别名 **`ChunkString`**：文档别名，表示 ``ChunkDeque`` 用于 ``str``/码点序列缓冲；**不**单独再实现一套 API。
 
@@ -454,7 +454,7 @@ class ChunkDeque[T]:
 | ``splice`` / ``insert`` | v1 块链表；频繁中部编辑最坏 O(n) |
 | ``__getitem__`` / ``__delitem__`` | O(B) 定位 |
 
-**导入**：``from py2cpp.alg.chunk_deque import ChunkDeque``（或 ``from py2cpp.alg import ChunkDeque``）。
+**导入**：``from paw.alg.chunk_deque import ChunkDeque``（或 ``from paw.alg import ChunkDeque``）。
 
 ---
 
@@ -481,18 +481,18 @@ class ChunkDeque[T]:
 
 | 交付 | 说明 |
 |------|------|
-| `py2cpp/alg/__init__.py` | 空壳或仅文档字符串 |
-| `constant/stdlib_discovery` | `py2cpp/alg/*.py` 自动发现 |
-| `test/alg/test_alg_smoke.py` | `from py2cpp import *` + 最小构造 |
-| 文档 | 本文件 + [编码规范 §10 测试目录表](./编码规范.md) 增 `test/alg/` 行 |
+| `paw/alg/__init__.py` | 空壳或仅文档字符串 |
+| `constant/stdlib_discovery` | `paw/alg/*.py` 自动发现 |
+| `tests/alg/test_alg_smoke.py` | `from paw import *` + 最小构造 |
+| 文档 | 本文件 + [编码规范 §10 测试目录表](./编码规范.md) 增 `tests/alg/` 行 |
 
 ### P0.5 — 序列容器基础（`ChunkDeque`）✅
 
 | 交付 | 说明 |
 |------|------|
 | `chunk_deque.py` | `ChunkDeque[T]` v1（双端 + splice/extend/insert） |
-| `constant/stdlib_discovery` | `py2cpp/alg/chunk_deque.py` 自动发现 |
-| `test/alg/test_chunk_deque.py` | 双端 append/pop、splice/extend/insert、下标 |
+| `constant/stdlib_discovery` | `paw/alg/chunk_deque.py` 自动发现 |
+| `tests/alg/test_chunk_deque.py` | 双端 append/pop、splice/extend/insert、下标 |
 
 验证：bootstrap + 单测 MSVC 全绿。**预期无需改译器**（块内用 `list[T]`）。
 
@@ -505,7 +505,7 @@ class ChunkDeque[T]:
 | `heap` | `test_heap.py` |
 | `mono_queue` | `test_mono_queue.py` |
 
-验证：`python main.py py2cpp\__init__.py -o generated --no-main` + 上述测试 MSVC 全绿。
+验证：`python main.py paw\__init__.py -o generated --no-main` + 上述测试 MSVC 全绿。
 
 ### P1b — 可拼接序列（并入 `ChunkDeque`）✅
 
@@ -566,11 +566,11 @@ test/alg/
 
 ```bat
 REM bootstrap
-python main.py py2cpp\__init__.py -o generated --no-main
+python main.py paw\__init__.py -o generated --no-main
 
 REM 单测
-python main.py test\alg\test_dsu.py -o generated -c --compiler cl --exe generated\test\alg\test_dsu.exe
-generated\test\alg\test_dsu.exe
+python main.py test\alg\test_dsu.py -o generated -c --compiler cl --exe generated\tests\alg\test_dsu.exe
+generated\tests\alg\test_dsu.exe
 
 REM 全量
 build_all.bat
@@ -592,7 +592,7 @@ build_all.bat
 |------|------|
 | [参考手册](./参考手册.md) | 新增「alg 标准库」节：模块列表、C++ 命名空间 |
 | [编码规范 §8.1](./编码规范.md) | 模块对照表增加 `alg/*` |
-| `py2cpp/__init__.py` | `__all__` 导出公开类名 |
+| `paw/__init__.py` | `__all__` 导出公开类名 |
 
 ### 9.2 建议 `__all__`（P1 后）
 
@@ -638,10 +638,10 @@ __all__ = [
 
 ```text
 [ ] 行为与本文档一致；分期范围未蔓延
-[ ] py2cpp/alg 源树 + constant 发现 + __all__
-[ ] test/alg/* 集成测 MSVC 全绿
+[ ] paw/alg 源树 + constant 发现 + __all__
+[ ] tests/alg/* 集成测 MSVC 全绿
 [ ] 未手改 generated/
-[ ] bootstrap: python main.py py2cpp\__init__.py -o generated --no-main
+[ ] bootstrap: python main.py paw\__init__.py -o generated --no-main
 [ ] 编码规范自检（new / Self / 无 STL / range）
 [ ] 参考手册 + 编码规范 §8.1 已更新
 ```

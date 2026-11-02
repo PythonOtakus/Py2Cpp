@@ -12,7 +12,7 @@ _PROTOCOL_TRAITS_H = f"{CORE_PKG}/protocol_traits.h"
 
 
 def header_path_to_stdlib_rel(header: str) -> str | None:
-  """``py2cpp/util/list.h`` → ``util/list``；非标准库头返回 ``None``。"""
+  """``paw/util/list.h`` → ``util/list``；非标准库头返回 ``None``。"""
   h = header.strip().strip('"')
   if not h or h.startswith("<"):
     return None

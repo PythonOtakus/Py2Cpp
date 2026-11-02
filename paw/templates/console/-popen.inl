@@ -1,6 +1,6 @@
 #include "ffi/windows.h"
 
-namespace py2cpp
+namespace paw
 {
   namespace console
   {
@@ -35,4 +35,4 @@ namespace py2cpp
 
     } // namespace py_popen
   } // namespace console
-} // namespace py2cpp
+} // namespace paw

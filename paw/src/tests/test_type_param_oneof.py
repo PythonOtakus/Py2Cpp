@@ -54,7 +54,7 @@ class ParseTypevarOneofTests(unittest.TestCase):
 class MixinOneofPropagationTests(unittest.TestCase):
   def test_concrete_mixin_subst_emits_on_host(self):
     src = """
-from py2cpp import mixin
+from paw import mixin
 
 @mixin
 class ElemMixin[T: oneof[char, byte]]:

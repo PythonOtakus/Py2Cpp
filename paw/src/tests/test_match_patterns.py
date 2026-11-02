@@ -13,7 +13,7 @@ class MatchPatternEmitTests(unittest.TestCase):
     with tempfile.TemporaryDirectory() as tmp:
       out = Path(tmp)
       py = out / "mod.py"
-      py.write_text(f"from py2cpp import *\n\n{body}", encoding="utf-8")
+      py.write_text(f"from paw import *\n\n{body}", encoding="utf-8")
       _h, cpp_path = Translator.translate_file(
         str(py), output_dir=str(out), include_stdlib=True,
       )
@@ -216,7 +216,7 @@ def f(p: Point) -> int:
   def test_optional_match_sugar(self):
     cpp = self._translate(
       '''
-from py2cpp.core.optional import Optional
+from paw.core.optional import Optional
 
 def f(opt: Optional[int]) -> int:
   match opt:
@@ -236,7 +236,7 @@ def f(opt: Optional[int]) -> int:
   def test_enum_match_or(self):
     cpp = self._translate(
       '''
-from py2cpp import enum
+from paw import enum
 
 @enum
 class Mode:

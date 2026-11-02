@@ -1,11 +1,11 @@
-# py2cpp.serde.yaml
+# paw.serde.yaml
 
-`py2cpp.serde.yaml` 为 Py2Cpp 提供静态类型 YAML 配置读写。Python 3.13 标准库本身不含 YAML；此模块将 YAML 先规范化为 JSON，再复用 `py2cpp.serde.json.Json` 的泛型解码、`@serializable` 与错误路径。
+`paw.serde.yaml` 为 Py2Cpp 提供静态类型 YAML 配置读写。Python 3.13 标准库本身不含 YAML；此模块将 YAML 先规范化为 JSON，再复用 `paw.serde.json.Json` 的泛型解码、`@serializable` 与错误路径。
 
 ## API
 
 ```python
-from py2cpp.serde.yaml import Yaml
+from paw.serde.yaml import Yaml
 
 config: dict[str, int] = Yaml.loads[dict[str, int]]("a: 1\nb: 2\n")
 documents: list[dict[str, int]] = Yaml.loadsAll[dict[str, int]](source)

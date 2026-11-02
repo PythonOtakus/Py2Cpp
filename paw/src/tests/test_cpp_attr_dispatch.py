@@ -12,7 +12,7 @@ from src.translator import Translator
 class CppAttrDispatchTests(unittest.TestCase):
   def test_unannotated_param_uses_py2cpp_getattr(self):
     src = """
-from py2cpp import copyable, new
+from paw import copyable, new
 
 @copyable
 class Node:
@@ -49,7 +49,7 @@ def write_any(node) -> None:
 
   def test_unannotated_param_method_uses_py2cpp_call(self):
     src = """
-from py2cpp import copyable
+from paw import copyable
 
 @copyable
 class Box:
@@ -73,7 +73,7 @@ def call_any(box) -> int:
 
   def test_template_param_only_not_plain_untyped_local(self):
     src = """
-from py2cpp import copyable
+from paw import copyable
 
 @copyable
 class Box:
@@ -99,7 +99,7 @@ def f() -> int:
 
   def test_typed_param_still_uses_getter_call(self):
     src = """
-from py2cpp import copyable, new
+from paw import copyable, new
 
 @copyable
 class Node:
@@ -144,7 +144,7 @@ def read_typed(node: Node) -> int:
 
   def test_unannotated_pointer_param_uses_py2cpp_getattr(self):
     src = """
-from py2cpp import Pointer, copyable, new
+from paw import Pointer, copyable, new
 
 @copyable
 class Node:
@@ -171,7 +171,7 @@ def use(p: Pointer[Node]) -> int:
 
   def test_chained_pointer_field_uses_arrow(self):
     src = """
-from py2cpp import Pointer, Self, boxing
+from paw import Pointer, Self, boxing
 
 @boxing
 class LinkUnsafe:

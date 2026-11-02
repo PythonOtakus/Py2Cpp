@@ -1,24 +1,24 @@
-# `py2cpp.console` 命令行应用库设计
+# `paw.console` 命令行应用库设计
 
 > **状态**：设计规格，尚未实现。  
 > **目标**：为 Py2Cpp 原生可执行程序提供统一的命令行参数解析、终端输入输出与渲染、日志、外部命令和后台任务能力。  
-> **相关模块**：`py2cpp.system`、`py2cpp.io`、`py2cpp.concur.thread`、`py2cpp.concur.task`。
+> **相关模块**：`paw.system`、`paw.io`、`paw.concur.thread`、`paw.concur.task`。
 
 ## 1. 定位与边界
 
-`py2cpp.console` 是命令行应用的上层标准库。它处理参数、终端输出、进度展示、日志、子进程与后台命令等通常需要一起使用的能力，服务于构建工具、测试工具、Web 示例，以及后续 Zeus 的工程初始化、资源构建、shader 编译和插件工具调用。
+`paw.console` 是命令行应用的上层标准库。它处理参数、终端输出、进度展示、日志、子进程与后台命令等通常需要一起使用的能力，服务于构建工具、测试工具、Web 示例，以及后续 Zeus 的工程初始化、资源构建、shader 编译和插件工具调用。
 
 它不替代底层系统库：
 
-- 文件、目录、路径、环境变量和时间仍归 `py2cpp.io` 与 `py2cpp.system`；
-- 线程、原子、队列与协程调度仍归 `py2cpp.concur`；
-- 图形窗口、控件和编辑器 UI 仍归 `py2cpp.ui` 与 Zeus；
+- 文件、目录、路径、环境变量和时间仍归 `paw.io` 与 `paw.system`；
+- 线程、原子、队列与协程调度仍归 `paw.concur`；
+- 图形窗口、控件和编辑器 UI 仍归 `paw.ui` 与 Zeus；
 - 不以完整复刻 CPython 的 `argparse`、`logging`、`subprocess`、`curses` 为目标。
 
 为避免 API 分散，只保留三个子模块：
 
 ```text
-py2cpp/console/
+paw/console/
   __init__.py       # Console（标准流 / argv / exit / 终端 / 进程）与常用再导出
   parse.py          # 参数、子命令、帮助与强类型转换
   render.py         # 样式、终端渲染、进度、日志
@@ -37,7 +37,7 @@ py2cpp/console/
 标准流、进程参数与终端能力均挂在 ``Console`` 上（``@staticproperty`` / ``@staticmethod``），不再另设 `terminal` 子模块：
 
 ```python
-from py2cpp.console import Console
+from paw.console import Console
 
 line: str = Console.stdin.readLine()
 Console.stdout.write("ready\n")
@@ -56,8 +56,8 @@ Console.stdout.flush()
 包根还提供少量公共便利入口：
 
 ```python
-from py2cpp.console import Console, ArgumentParserMixin
-from py2cpp.console.render import Progress
+from paw.console import Console, ArgumentParserMixin
+from paw.console.render import Progress
 
 width, height = Console.terminalSize()
 enabled: bool = Console.colorful
@@ -73,7 +73,7 @@ args: list[str] = Console.argv
 推荐接口接收“可执行文件 + 参数列表”，不经 shell：
 
 ```python
-from py2cpp.console import Console
+from paw.console import Console
 
 result = Console.run(["asset_compiler", "--input", source], captureOutput=True, check=True)
 Console.stdout.write(result.stdout)
@@ -98,7 +98,7 @@ Console.stdout.write(result.stdout)
 
 ### 3.4 Python 描述策略，模板实现平台叶子
 
-Python 源码负责参数校验、状态机、格式化与组合；C++ / 模板仅负责无法进一步拆分的终端模式、Unicode 控制台输出、进程创建、pipe、等待和终端尺寸。真相源只改 `py2cpp/`、`src/`、`templates/`、`test/`、`docs/`，禁止修改 `generated/`。
+Python 源码负责参数校验、状态机、格式化与组合；C++ / 模板仅负责无法进一步拆分的终端模式、Unicode 控制台输出、进程创建、pipe、等待和终端尺寸。真相源只改 `paw/`、`src/`、`templates/`、`tests/`、`docs/`，禁止修改 `generated/`。
 
 ### 3.5 复用现有并发基础
 
@@ -114,8 +114,8 @@ Python 源码负责参数校验、状态机、格式化与组合；C++ / 模板�
 首版直接以 `@dataclass` 字段与既有 `@annotation` 元数据声明参数类别；不再以逐条 `add_argument()` 作为主 API：
 
 ```python
-from py2cpp import *
-from py2cpp.console.parse import (
+from paw import *
+from paw.console.parse import (
   ArgumentParserMixin,
   FlagArgMeta,
   OptArgMeta,
@@ -133,7 +133,7 @@ class BuildArgs(ArgumentParserMixin):
 args: BuildArgs = new.parse()
 ```
 
-宿主须显式继承 ``ArgumentParserMixin``。赋值处按 S0303–S0307 写 ``new.parse()`` / ``new.parse(argv)``（语义即 ``BuildArgs.parse``）。默认读取进程参数；传入 ``argv`` 供测试和嵌入式程序使用。参数来源需由最小 `py2cpp.system.sys.argv` 支持，该能力与本模块同时实施。勿写 ``ArgumentParserMixin.parse[T]``。
+宿主须显式继承 ``ArgumentParserMixin``。赋值处按 S0303–S0307 写 ``new.parse()`` / ``new.parse(argv)``（语义即 ``BuildArgs.parse``）。默认读取进程参数；传入 ``argv`` 供测试和嵌入式程序使用。参数来源需由最小 `paw.system.sys.argv` 支持，该能力与本模块同时实施。勿写 ``ArgumentParserMixin.parse[T]``。
 
 `PosArgMeta`、`OptArgMeta`、`FlagArgMeta` 都是 `@annotation` + `@dataclass` 元数据类，字段注解必须遵循项目既有的 `Type @Meta(...)` 写法。字段名始终是 Python `snake_case`；长选项由字段名自动转换为 kebab-case，例如 `asset_root` 对应 `--asset-root`。短选项只由 `short` 指定，避免再引入重复表达同一名称的 `dest` 或 `long`。
 
@@ -166,8 +166,8 @@ args: BuildArgs = new.parse()
 ### 5.1 样式
 
 ```python
-from py2cpp.console import stdout
-from py2cpp.console.render import Color, Style, paint
+from paw.console import stdout
+from paw.console.render import Color, Style, paint
 
 error = Style(fg=Color.RED, bold=True)
 stdout.write(paint("构建失败", error))
@@ -180,7 +180,7 @@ stdout.write(paint("构建失败", error))
 ### 5.2 Progress、Spinner、Status、Table
 
 ```python
-from py2cpp.console.render import Progress
+from paw.console.render import Progress
 
 with Progress() as progress:
   task = progress.add_task("编译 shader", total=100)
@@ -203,7 +203,7 @@ with Progress() as progress:
 ### 5.3 日志
 
 ```python
-from py2cpp.console.render import LogLevelEnum, Logger
+from paw.console.render import LogLevelEnum, Logger
 
 log = Logger("asset.build", level=LogLevelEnum.INFO)
 log.info("开始构建", source=source, jobs=jobs)
@@ -228,7 +228,7 @@ log.error("构建失败", code=result.returnCode, output=result.stderr)
 ### 6.1 推荐 API
 
 ```python
-from py2cpp.console import Console
+from paw.console import Console
 
 result = Console.run(
   ["tool", "--input", source],
@@ -255,8 +255,8 @@ class ProcessResult:
 ### 6.2 Popen 与兼容接口
 
 ```python
-from py2cpp.console import Console
-from py2cpp.console.popen import Pipe, Popen, ProcessResult
+from paw.console import Console
+from paw.console.popen import Pipe, Popen, ProcessResult
 
 code: int = Console.system("git status")
 reader = Console.popen("git rev-parse --show-toplevel")
@@ -267,15 +267,15 @@ task.start()
 code = task.wait(timeout=10.0)
 ```
 
-- `Popen`（`py2cpp.console.popen`）：推荐的低层外部命令对象，接收 `list[str]`（对齐 ``subprocess.Popen`` 子集）；``Popen.run(args)`` 同步运行并默认捕获 stdout/stderr；
+- `Popen`（`paw.console.popen`）：推荐的低层外部命令对象，接收 `list[str]`（对齐 ``subprocess.Popen`` 子集）；``Popen.run(args)`` 同步运行并默认捕获 stdout/stderr；
 - `Console.run`：推荐的一站式同步接口（``list[str]``，不经 shell；支持 ``cwd`` / ``env`` / ``timeout`` / ``check``）；
 - `Console.runShell(command: str, …)`：显式 shell 同步入口，返回 ``ProcessResult``（CRT ``system`` / ``popen``；暂不支持 ``cwd`` / ``env`` / ``timeout``）；
 - `Console.system(command: str) -> int`：显式 shell 兼容入口，返回规范化退出码；
 - `Console.popen(command: str, mode: str = "r")`：显式 shell 单向文本管道，首版仅 `"r"` / `"w"`。
 
-callable 子进程（``multiprocessing.Process``）见 ``py2cpp.concur.process.Process``，与外部命令 ``Popen`` 分离。
+callable 子进程（``multiprocessing.Process``）见 ``paw.concur.process.Process``，与外部命令 ``Popen`` 分离。
 
-`Console` 定义在 `py2cpp.console` 包根。``Console.run`` / ``Console.system`` / ``Console.popen`` 以及 ``Popen.run`` 等均挂在类上，不保留同名模块级薄包装；shell 语义因此在调用点可见。
+`Console` 定义在 `paw.console` 包根。``Console.run`` / ``Console.system`` / ``Console.popen`` 以及 ``Popen.run`` 等均挂在类上，不保留同名模块级薄包装；shell 语义因此在调用点可见。
 
 ### 6.3 必须保证的语义
 
@@ -341,10 +341,10 @@ test/console/
 ## 10. 完整使用示例
 
 ```python
-from py2cpp import *
-from py2cpp.console import Console, Progress
-from py2cpp.console.parse import ArgumentParserMixin, FlagArgMeta, OptArgMeta, PosArgMeta
-from py2cpp.console.render import Logger
+from paw import *
+from paw.console import Console, Progress
+from paw.console.parse import ArgumentParserMixin, FlagArgMeta, OptArgMeta, PosArgMeta
+from paw.console.render import Logger
 
 def main() -> int:
     @dataclass
@@ -372,7 +372,7 @@ def main() -> int:
   return 0
 ```
 
-此示例的所有用户可见行为都必须由三个 `test/console` 测试文件覆盖；终端渲染、日志协调和平台进程细节不得泄漏到业务代码。
+此示例的所有用户可见行为都必须由三个 `tests/console` 测试文件覆盖；终端渲染、日志协调和平台进程细节不得泄漏到业务代码。
 
 ## 11. 明确延后或不做
 

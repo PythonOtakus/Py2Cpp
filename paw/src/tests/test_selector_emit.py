@@ -22,7 +22,7 @@ class SelectInlineCppTests(unittest.TestCase):
 
   def test_select_no_cpp_method(self):
     src = '''
-from py2cpp import dataclass
+from paw import dataclass
 
 @dataclass
 class Team:
@@ -43,7 +43,7 @@ def use(org: Org):
 
   def test_filter_emits_loop(self):
     src = '''
-from py2cpp import dataclass
+from paw import dataclass
 
 @dataclass
 class Member:
@@ -62,7 +62,7 @@ def use(t: Team):
 
   def test_projection_emits_multi_append(self):
     src = '''
-from py2cpp import dataclass
+from paw import dataclass
 
 @dataclass
 class Leaf:
@@ -89,7 +89,7 @@ def use(r: Root):
 
   def test_multi_bracket_emits(self):
     src = '''
-from py2cpp import dataclass
+from paw import dataclass
 
 @dataclass
 class Member:
@@ -108,7 +108,7 @@ def use(t: Team):
 
   def test_filter_local_binding_emits(self):
     src = '''
-from py2cpp import dataclass
+from paw import dataclass
 
 @dataclass
 class Member:
@@ -126,7 +126,7 @@ def use(t: Team, threshold: int):
 
   def test_wildcard_slice_emits(self):
     src = '''
-from py2cpp import dataclass
+from paw import dataclass
 
 @dataclass
 class Team:
@@ -145,7 +145,7 @@ def use(o: Org):
 
   def test_open_lo_slice_emits(self):
     src = '''
-from py2cpp import dataclass
+from paw import dataclass
 
 @dataclass
 class Member:
@@ -164,7 +164,7 @@ def use(t: Team):
 
   def test_slice_step_emits(self):
     src = '''
-from py2cpp import dataclass
+from paw import dataclass
 
 @dataclass
 class Member:
@@ -184,7 +184,7 @@ def use(t: Team):
 
   def test_descendant_emits(self):
     src = '''
-from py2cpp import dataclass
+from paw import dataclass
 
 @dataclass
 class Team:
@@ -202,7 +202,7 @@ def use(o: Org):
 
   def test_multi_index_names_emits(self):
     src = '''
-from py2cpp import dataclass
+from paw import dataclass
 
 @dataclass
 class Team:
@@ -220,7 +220,7 @@ def use(o: Org):
 
   def test_str_index_emits(self):
     src = '''
-from py2cpp import dataclass
+from paw import dataclass
 
 @dataclass
 class Bag:
@@ -234,7 +234,7 @@ def use(b: Bag):
 
   def test_multi_str_index_emits(self):
     src = '''
-from py2cpp import dataclass
+from paw import dataclass
 
 @dataclass
 class Bag:
@@ -250,7 +250,7 @@ def use(b: Bag):
 
   def test_optional_index_emits_guard(self):
     src = '''
-from py2cpp import dataclass
+from paw import dataclass
 
 @dataclass
 class Team:
@@ -269,7 +269,7 @@ def use(o: Org):
 
   def test_optional_dict_key_emits_guard(self):
     src = '''
-from py2cpp import dataclass
+from paw import dataclass
 
 @dataclass
 class Bag:
@@ -283,7 +283,7 @@ def use(b: Bag):
 
   def test_bind_ref_emits(self):
     src = '''
-from py2cpp import dataclass
+from paw import dataclass
 
 @dataclass
 class Team:
@@ -302,7 +302,7 @@ def use(o: Org):
 
   def test_filter_bind_ref_emits(self):
     src = '''
-from py2cpp import dataclass
+from paw import dataclass
 
 @dataclass
 class Member:
@@ -371,7 +371,7 @@ class SelectPostEmitTests(unittest.TestCase):
 
   def test_sort_emits_insertion(self):
     src = '''
-from py2cpp import dataclass
+from paw import dataclass
 
 @dataclass
 class Member:
@@ -391,7 +391,7 @@ def use(t: Team):
 
   def test_sort_parent_bind_key_emits(self):
     src = '''
-from py2cpp import dataclass
+from paw import dataclass
 
 @dataclass
 class Member:
@@ -418,7 +418,7 @@ def use(o: Org):
 
   def test_sort_expr_binop_emits(self):
     src = '''
-from py2cpp import dataclass
+from paw import dataclass
 
 @dataclass
 class Member:
@@ -445,7 +445,7 @@ def use(o: Org):
 
   def test_count_emits_len(self):
     src = '''
-from py2cpp import dataclass
+from paw import dataclass
 
 @dataclass
 class Team:
@@ -463,7 +463,7 @@ def use(o: Org):
 
   def test_count_field_emits_counter(self):
     src = '''
-from py2cpp import Counter, dataclass
+from paw import Counter, dataclass
 
 @dataclass
 class Member:
@@ -489,7 +489,7 @@ def use(t: Team):
 
   def test_group_emits_dict(self):
     src = '''
-from py2cpp import dataclass
+from paw import dataclass
 
 @dataclass
 class Member:

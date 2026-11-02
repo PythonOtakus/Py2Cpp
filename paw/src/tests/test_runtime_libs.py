@@ -53,16 +53,16 @@ class RuntimeLibsTests(unittest.TestCase):
       self.assertTrue(is_library_module(mp), msg=rel)
     paths = library_module_paths()
     self.assertEqual(len(paths), len(_LIBRARY_REL_PATHS))
-    self.assertTrue(all(p.startswith("py2cpp/") for p in paths))
+    self.assertTrue(all(p.startswith("paw/") for p in paths))
 
   def test_template_modules_stay_header_only(self):
     for rel in ("util/list", "util/dict", "text/str", "concur/thread"):
       self.assertFalse(is_library_module(stdlib_module_path(rel)), msg=rel)
 
   def test_wrap_inl_skips_in_library_tu(self):
-    lines = wrap_inl_include_for_header('#include "py2cpp/text/str.inl"')
+    lines = wrap_inl_include_for_header('#include "paw/text/str.inl"')
     self.assertEqual(lines[0], f"#ifndef {LIBRARY_TU_MACRO}")
-    self.assertEqual(lines[1], '#include "py2cpp/text/str.inl"')
+    self.assertEqual(lines[1], '#include "paw/text/str.inl"')
     self.assertEqual(lines[2], "#endif")
 
   def test_header_only_mode_env(self):
@@ -78,24 +78,24 @@ class RuntimeLibsTests(unittest.TestCase):
         os.environ["PY2CPP_HEADER_ONLY"] = old
 
   def test_optional_union_variants_do_not_block_template_inl(self):
-    opt = _cls("Optional", "py2cpp/core/optional", template=True)
-    none = _cls("None_", "py2cpp/core/optional", nested_of=opt)
-    some = _cls("Some", "py2cpp/core/optional", nested_of=opt)
+    opt = _cls("Optional", "paw/core/optional", template=True)
+    none = _cls("None_", "paw/core/optional", nested_of=opt)
+    some = _cls("Some", "paw/core/optional", nested_of=opt)
     tr = _Tr({"Optional": opt, "None_": none, "Some": some})
-    self.assertTrue(_module_template_inl_ok_in_library_tu(tr, "py2cpp/core/optional"))
+    self.assertTrue(_module_template_inl_ok_in_library_tu(tr, "paw/core/optional"))
 
   def test_mixed_thread_queue_skips_inl_in_library_tu(self):
-    queue = _cls("Queue", "py2cpp/concur/thread", template=True)
-    thread = _cls("Thread", "py2cpp/concur/thread")
+    queue = _cls("Queue", "paw/concur/thread", template=True)
+    thread = _cls("Thread", "paw/concur/thread")
     tr = _Tr({"Queue": queue, "Thread": thread})
-    self.assertFalse(_module_template_inl_ok_in_library_tu(tr, "py2cpp/concur/thread"))
+    self.assertFalse(_module_template_inl_ok_in_library_tu(tr, "paw/concur/thread"))
 
   def test_template_plus_free_functions_skips_inl_in_library_tu(self):
-    rng = _cls("Random", "py2cpp/math/random", template=True)
+    rng = _cls("Random", "paw/math/random", template=True)
     tr = _Tr({"Random": rng})
     tr.module_functions = [
       (
-        "py2cpp/math/random",
+        "paw/math/random",
         ast.FunctionDef(
           name="seed",
           args=ast.arguments(
@@ -113,7 +113,7 @@ class RuntimeLibsTests(unittest.TestCase):
         ),
       )
     ]
-    self.assertFalse(_module_template_inl_ok_in_library_tu(tr, "py2cpp/math/random"))
+    self.assertFalse(_module_template_inl_ok_in_library_tu(tr, "paw/math/random"))
 
 
 if __name__ == "__main__":

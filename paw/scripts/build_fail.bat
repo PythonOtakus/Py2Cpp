@@ -7,7 +7,7 @@ cd /d "%ROOT%"
 set "PY=python"
 set "EXTRA=%*"
 
-echo [py2cpp] Negative compile tests: test\fail\test_*_fail.py ^(expect FAILURE^)
+echo [py2cpp] Negative compile tests: tests\fail\test_*_fail.py ^(expect FAILURE^)
 echo   Parallel via scripts\parallel_build.py fail %EXTRA%
 echo.
 

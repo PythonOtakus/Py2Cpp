@@ -1,0 +1,15 @@
+"""S1006：多实体继承 / mixin 顺序（``tests/fail/``，见 ``build_fail.bat``）。"""
+from paw import *
+
+class A:
+  pass
+
+class B:
+  pass
+
+class Bad(A, B):
+  pass
+
+def main():
+  x: Bad = new()
+  return 0

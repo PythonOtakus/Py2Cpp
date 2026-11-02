@@ -1,6 +1,6 @@
 # SQLite amalgamation（Py2Cpp 内嵌）
 
-本目录 vendoring **SQLite amalgamation**，供 `py2cpp/sql/sqlite.py` 的 `@native` 叶子链接使用。
+本目录 vendoring **SQLite amalgamation**，供 `paw/sql/sqlite.py` 的 `@native` 叶子链接使用。
 
 | 文件 | 说明 |
 |------|------|
@@ -23,7 +23,7 @@ FFI 声明不写在本目录：生成到 **`ffi/sqlite/sqlite3.pyi`**（`ffi.bat
 2. 解压后覆盖本目录的 `sqlite3.c` / `sqlite3.h` / `sqlite3ext.h`
 3. 重生成 FFI 声明：`ffi third_party\sqlite\sqlite3.h`（写出 `ffi\sqlite\sqlite3.pyi`）
 4. 更新本 README 的版本号与校验和
-5. 重编 `test/sql/test_sqlite.py`（及依赖 SQL 的用例）
+5. 重编 `tests/sql/test_sqlite.py`（及依赖 SQL 的用例）
 
 ## 编译约定（实现 P0 时）
 

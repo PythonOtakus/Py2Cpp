@@ -1,10 +1,10 @@
-#include "py2cpp/core/iter_result.h"
-#include "py2cpp/core/none.h"
+#include "paw/core/iter_result.h"
+#include "paw/core/none.h"
 #include <utility>
 
 
 // 擦除异步生成器句柄：``AsyncGenerator[Y,S]`` 形参/字段/``@virtual`` 返回；具体 ``*_coroutine`` 经 ``makeAsyncGenerator`` 装箱。
-namespace py2cpp_async_generator_detail
+namespace paw_async_generator_detail
 {
   template<typename ST>
   ST default_send_value()

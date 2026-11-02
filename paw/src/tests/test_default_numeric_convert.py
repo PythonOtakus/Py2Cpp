@@ -10,7 +10,7 @@ from src.translator import Translator
 
 class DefaultNumericConvertTests(unittest.TestCase):
   def _translate(self, body: str, *, extra: str = "") -> str:
-    src = f"""from py2cpp import *
+    src = f"""from paw import *
 
 {extra}
 
@@ -49,7 +49,7 @@ def probe() -> int:
   def test_complex_ctor_uses_static_cast(self):
     cpp = self._translate(
       "  b: Box = new(5)\n  c: complex = complex(b)\n  return c.real\n",
-      extra="from py2cpp.numeric.complex import complex",
+      extra="from paw.numeric.complex import complex",
     )
     self.assertIn("static_cast<PyComplex", cpp)
     self.assertNotIn(".__complex__()", cpp)

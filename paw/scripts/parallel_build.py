@@ -1,4 +1,4 @@
-"""并行翻译+编译 test/examples（每 job 捕获输出，完成时整块打印，避免穿插）。"""
+"""并行翻译+编译 tests/examples（每 job 捕获输出，完成时整块打印，避免穿插）。"""
 from __future__ import annotations
 
 import os
@@ -72,7 +72,7 @@ def _job_deps_mtime(job: Job) -> list[Path]:
   gen_cpp = ROOT / "generated" / job.src_root / Path(job.rel).with_suffix(".cpp")
   deps.append(gen_cpp)
   rt = ROOT / "generated" / "runtime"
-  deps.append(rt / "py2cpp" / "minimal.h")
+  deps.append(rt / "paw" / "minimal.h")
   fat = rt / "lib" / "py2cpp_runtime.lib"
   if fat.is_file():
     deps.append(fat)
@@ -201,7 +201,7 @@ def _print_job_report(job: Job, res: JobResult) -> None:
 
 
 def _list_all_tests() -> list[str]:
-  test_dir = ROOT / "test"
+  test_dir = ROOT / "tests"
   out: list[str] = []
   found: list[Path] = []
   for path in sorted(test_dir.rglob("test_*.paw"), key=lambda p: str(p).lower()):
@@ -215,7 +215,7 @@ def _list_all_tests() -> list[str]:
 
 
 def _list_fail_tests() -> list[str]:
-  fail_dir = ROOT / "test" / "fail"
+  fail_dir = ROOT / "tests" / "fail"
   return sorted(p.name for p in fail_dir.glob("test_*_fail.paw") if p.is_file())
 
 
@@ -324,7 +324,7 @@ def _cl_available() -> bool:
 
 def cmd_all(extra: list[str], jobs_n: int) -> int:
   rels = _list_all_tests()
-  jobs = [Job(rel=rel, src_root="test") for rel in rels]
+  jobs = [Job(rel=rel, src_root="tests") for rel in rels]
   return _run_jobs(jobs, extra, jobs_n, "build all tests")
 
 
@@ -333,13 +333,13 @@ def cmd_match(patterns: list[str], extra: list[str], jobs_n: int) -> int:
   if not rels:
     print(f"ERROR: no test matched patterns: {patterns!r}", file=sys.stderr)
     return 1
-  jobs = [Job(rel=rel, src_root="test") for rel in rels]
+  jobs = [Job(rel=rel, src_root="tests") for rel in rels]
   return _run_jobs(jobs, extra, jobs_n, "build matched tests")
 
 
 def cmd_fail(extra: list[str], jobs_n: int) -> int:
   rels = [f"fail/{name}" for name in _list_fail_tests()]
-  jobs = [Job(rel=rel, src_root="test", expect_fail=True) for rel in rels]
+  jobs = [Job(rel=rel, src_root="tests", expect_fail=True) for rel in rels]
   return _run_jobs(jobs, extra, jobs_n, "negative compile tests")
 
 
@@ -375,7 +375,7 @@ def main(argv: list[str] | None = None) -> int:
     return cmd_fail(extra, jobs_n)
   if mode == "files":
     jobs_n, rest = _parse_jobs_and_rest(tail)
-    src_root = "test"
+    src_root = "tests"
     rels: list[str] = []
     extra: list[str] = []
     i = 0

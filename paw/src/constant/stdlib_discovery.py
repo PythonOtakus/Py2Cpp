@@ -1,4 +1,4 @@
-"""``py2cpp/`` 遍历发现与排序。"""
+"""``paw/`` 遍历发现与排序。"""
 from __future__ import annotations
 
 from pathlib import Path
@@ -15,7 +15,7 @@ from .stdlib_modules import (
 
 
 def discover_stdlib_rel_paths(runtime_root: Path | None = None) -> tuple[str, ...]:
-  """``py2cpp/`` 下可翻译 ``.py``/``.paw`` → 相对包根域路径（不含包根 ``__init__.*``）。"""
+  """``paw/`` 下可翻译 ``.py``/``.paw`` → 相对包根域路径（不含包根 ``__init__.*``）。"""
   root = (runtime_root or PY2CPP_ROOT).resolve()
   found: list[str] = []
   seen: set[str] = set()
@@ -79,16 +79,16 @@ STDLIB_REL_PATH_SET: frozenset[str] = frozenset(STDLIB_REL_PATHS)
 
 
 def is_stdlib_codegen_module(module_path: str) -> bool:
-  """``py2cpp/<域>/…`` 是否为表驱动 codegen 模块（非逐类翻译）。"""
+  """``paw/<域>/…`` 是否为表驱动 codegen 模块（非逐类翻译）。"""
   norm = module_path.replace("\\", "/").strip("/")
-  prefix = "py2cpp/"
+  prefix = "paw/"
   if not norm.startswith(prefix):
     return False
   return norm[len(prefix) :] in STDLIB_CODEGEN_MODULES
 
 
 def stdlib_module_paths_for_rel_paths(rel_paths: frozenset[str]) -> frozenset[str]:
-  """相对 ``py2cpp/`` 域路径 → ``py2cpp/<域>/…`` 译器模块路径。"""
+  """相对 ``paw/`` 域路径 → ``paw/<域>/…`` 译器模块路径。"""
   from .stdlib_layout import stdlib_module_path
 
   return frozenset(stdlib_module_path(r) for r in rel_paths)

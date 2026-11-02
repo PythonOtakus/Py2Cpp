@@ -2,7 +2,7 @@
 
 Paw 侧枚举名 ``TokenKindEnum``（编码规范）；宿主 Py 为 ``TokenKind``。
 """
-from py2cpp import *
+from paw import *
 from .source import SourceSpan, makeSpan
 
 enum TokenKindEnum:

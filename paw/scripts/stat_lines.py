@@ -41,8 +41,8 @@ class Section:
 SOURCE_SECTIONS: tuple[Section, ...] = (
   Section("译器", "src", ("**/*.py",), skip_subdirs=frozenset({"tests"})),
   Section("译器单测", "src/tests", ("**/*.py",)),
-  Section("标准库", "py2cpp", ("**/*.py",)),
-  Section("集成测试", "test", ("**/*.py",)),
+  Section("标准库", "paw", ("**/*.py",)),
+  Section("集成测试", "tests", ("**/*.py",)),
   Section("示例", "examples", ("**/*.py",)),
   Section(
     "模板",
@@ -64,7 +64,7 @@ GENERATED_SECTIONS: tuple[Section, ...] = (
   ),
   Section(
     "生成 test",
-    "generated/test",
+    "generated/tests",
     ("**/*.h", "**/*.inl", "**/*.cpp"),
     skip_dirs=GENERATED_SKIP_DIR_NAMES,
   ),

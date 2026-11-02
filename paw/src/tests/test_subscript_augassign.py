@@ -22,7 +22,7 @@ class SubscriptAugassignTests(unittest.TestCase):
   def test_dict_subscript_iadd(self):
     cpp = self._translate(
       '''
-from py2cpp.util.dict import dict
+from paw.util.dict import dict
 
 def f(d: dict[str, int], k: str, v: int) -> None:
   d[k] += v
@@ -33,7 +33,7 @@ def f(d: dict[str, int], k: str, v: int) -> None:
   def test_self_dict_field_subscript_iadd(self):
     cpp = self._translate(
       '''
-from py2cpp.util.dict import dict
+from paw.util.dict import dict
 
 class Box:
   data: dict[str, int]

@@ -22,7 +22,7 @@ class BuiltinAiterEmitTests(unittest.TestCase):
   def test_aiter_anext_call(self):
     cpp = self._translate(
       '''
-from py2cpp import aiter, anext
+from paw import aiter, anext
 
 async def gen():
   yield 1

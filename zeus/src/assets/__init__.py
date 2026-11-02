@@ -1,8 +1,8 @@
 """Zeus 资产约定：场景等用 ``.zas``，模型用 ``.fbx``。"""
 from __future__ import annotations
 
-from py2cpp import *
-from py2cpp.io.path import Path
+from paw import *
+from paw.io.path import Path
 
 
 ZAS_SUFFIX: str = ".zas"

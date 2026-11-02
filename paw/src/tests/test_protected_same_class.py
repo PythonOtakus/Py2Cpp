@@ -23,7 +23,7 @@ class SameClassProtectedAccessTests(unittest.TestCase):
 
   def test_local_self_var_may_call_protected_method(self):
     src = """
-from py2cpp import Self, copyable, immutable
+from paw import Self, copyable, immutable
 
 @copyable
 class long:
@@ -45,7 +45,7 @@ class long:
 
   def test_new_static_protected_same_class(self):
     src = """
-from py2cpp import Self, copyable, immutable
+from paw import Self, copyable, immutable
 
 @copyable
 class long:
@@ -66,7 +66,7 @@ class long:
 
   def test_abs_chain_may_call_protected_method(self):
     src = """
-from py2cpp import Self, copyable, immutable
+from paw import Self, copyable, immutable
 
 @copyable
 class long:

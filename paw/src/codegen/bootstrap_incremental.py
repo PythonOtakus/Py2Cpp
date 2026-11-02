@@ -1,9 +1,9 @@
-"""Runtime bootstrap：改少量 ``py2cpp/*.py`` 时按模块增量 analyze/emit。
+"""Runtime bootstrap：改少量 ``paw/*.py`` 时按模块增量 analyze/emit。
 
 译器 / ``templates/`` / ``ffi/`` / ``__init__.py`` / ``@mixin`` / ``@protocol``
 变更仍全量。叶子脏时清洁模块跳过 import / 部分 expand / checks，签名缓存
-``generated/runtime/.cache/analyze_sigs.pkl``。用户 ``test/`` / ``examples/`` 入口
-亦复用该缓存中的 ``py2cpp/*`` 模块（P1.6）。``PY2CPP_FORCE_BOOTSTRAP=1`` 强制全量。
+``generated/runtime/.cache/analyze_sigs.pkl``。用户 ``tests/`` / ``examples/`` 入口
+亦复用该缓存中的 ``paw/*`` 模块（P1.6）。``PY2CPP_FORCE_BOOTSTRAP=1`` 强制全量。
 """
 from __future__ import annotations
 
@@ -55,7 +55,7 @@ def translator_fingerprint(root: Path | None = None) -> str:
   parts: list[str] = []
   for f in iter_bootstrap_input_files(root):
     rel = f.relative_to(root).as_posix()
-    if rel.startswith("py2cpp/"):
+    if rel.startswith("paw/"):
       continue
     try:
       parts.append(f"{rel}:{_file_sig(f)}")
@@ -66,9 +66,9 @@ def translator_fingerprint(root: Path | None = None) -> str:
 
 
 def py_rel_to_module_path(rel: str) -> str | None:
-  """``py2cpp/io/path.py`` → ``py2cpp/io/path``。"""
+  """``paw/io/path.py`` → ``paw/io/path``。"""
   norm = rel.replace("\\", "/")
-  if not norm.startswith("py2cpp/") or not norm.endswith(".py"):
+  if not norm.startswith("paw/") or not norm.endswith(".py"):
     return None
   if norm.endswith("/__init__.py"):
     return norm[: -len("/__init__.py")]
@@ -77,7 +77,7 @@ def py_rel_to_module_path(rel: str) -> str | None:
 
 def _forces_full_py2cpp_rel(rel: str, text: str) -> bool:
   name = rel.replace("\\", "/")
-  if name == "py2cpp/__init__.py" or name.endswith("/__init__.py"):
+  if name == "paw/__init__.py" or name.endswith("/__init__.py"):
     return True
   return _DECORATOR_FORCE_FULL.search(text) is not None
 
@@ -111,7 +111,7 @@ def plan_bootstrap_incremental(
       continue
     any_changed = True
     rel = f.relative_to(root).as_posix()
-    if not rel.startswith("py2cpp/"):
+    if not rel.startswith("paw/"):
       return BootstrapPlan(full=True, reason=rel)
     try:
       text = f.read_text(encoding="utf-8")
@@ -347,16 +347,16 @@ def _profile_log(msg: str) -> None:
 
 
 def _user_entry_cacheable_closure_modules(tr: Translator) -> set[str]:
-  """用户入口 import 闭包内可由 bootstrap 缓存跳过的模块（``py2cpp/*`` + ``ffi/*``）。"""
+  """用户入口 import 闭包内可由 bootstrap 缓存跳过的模块（``paw/*`` + ``ffi/*``）。"""
   return {
     mp.replace("\\", "/")
     for mp in tr.module_order
-    if mp.replace("\\", "/").startswith(("py2cpp/", "ffi/"))
+    if mp.replace("\\", "/").startswith(("paw/", "ffi/"))
   }
 
 
 def attach_user_entry_cache_to_translator(tr: Translator) -> bool:
-  """用户 ``test/`` / ``examples/`` 入口：复用 bootstrap 写入的 ``analyze_sigs.pkl``。"""
+  """用户 ``tests/`` / ``examples/`` 入口：复用 bootstrap 写入的 ``analyze_sigs.pkl``。"""
   if _user_entry_cache_disabled():
     _profile_log("user_entry_cache: skipped (PY2CPP_NO_TEST_CACHE)")
     return False

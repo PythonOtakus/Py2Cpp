@@ -1,10 +1,10 @@
 """Scene View 平移 gizmo：投影命中 + 沿轴拖拽。"""
 from __future__ import annotations
 
-from py2cpp import *
-from py2cpp.math import safeSqrt
-from py2cpp.spatial.matrix import Matrix4
-from py2cpp.spatial.vector import Vector3
+from paw import *
+from paw.math import safeSqrt
+from paw.spatial.matrix import Matrix4
+from paw.spatial.vector import Vector3
 
 from ..platform.input import cursor_pos, mouse_left_down
 from ..platform.window import Window

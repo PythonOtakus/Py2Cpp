@@ -1,9 +1,9 @@
 """组件 Inspector 镜像面板（``UIPanelMixin`` + 字段 ``*Meta`` 静态反射）。"""
 from __future__ import annotations
 
-from py2cpp import *
-from py2cpp.ui.meta import UILabelMeta
-from py2cpp.ui.panel import UIPanelMixin
+from paw import *
+from paw.ui.meta import UILabelMeta
+from paw.ui.panel import UIPanelMixin
 
 from ..scene import Component
 

@@ -48,7 +48,7 @@ class Window:
 
   def test_emits_value_storage_in_getter(self):
     src = """
-from py2cpp import *
+from paw import *
 
 class Window:
   @property
@@ -76,7 +76,7 @@ class Window:
 
   def test_emits_static_property_getter_name(self):
     src = """
-from py2cpp import *
+from paw import *
 
 class Counter:
   @staticproperty

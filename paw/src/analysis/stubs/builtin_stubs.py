@@ -1,4 +1,4 @@
-"""从 ``py2cpp/__init__.py`` 桩函数 AST 推导内建派发元数据。"""
+"""从 ``paw/__init__.py`` 桩函数 AST 推导内建派发元数据。"""
 from __future__ import annotations
 
 import ast
@@ -195,7 +195,7 @@ def load_builtins_cpp_runtime_funcs() -> frozenset[str]:
   return frozenset(names)
 
 
-# 包根 ``from py2cpp import …`` 须全限定 ``py2cpp::…``（C++ 关键字 / 与 ``using`` 冲突）
+# 包根 ``from paw import …`` 须全限定 ``paw::…``（C++ 关键字 / 与 ``using`` 冲突）
 _PACKAGE_ROOT_QUALIFIED_DECORATORS = frozenset({"override", "overload"})
 @lru_cache(maxsize=1)
 def _package_root_global_call_cpp_aliases() -> frozenset[str]:
@@ -278,7 +278,7 @@ def _is_translation_only_package_func(func: ast.FunctionDef) -> bool:
 
 @lru_cache(maxsize=1)
 def load_translation_only_funcs() -> frozenset[str]:
-  """``py2cpp/__init__.py`` 翻译期桩（装饰器 / 内存 API / ``id`` 等），不生成模块函数 TU。"""
+  """``paw/__init__.py`` 翻译期桩（装饰器 / 内存 API / ``id`` 等），不生成模块函数 TU。"""
   names: set[str] = set()
   for func in _iter_package_root_functions():
     if _is_translation_only_package_func(func):

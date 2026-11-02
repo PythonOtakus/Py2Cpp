@@ -25,7 +25,7 @@ class MixinInlinedHostCppTypeTests(unittest.TestCase):
 
   def test_mixin_inlined_or_return_type_has_template_args(self):
     src = """
-from py2cpp import mixin, Self, immutable
+from paw import mixin, Self, immutable
 
 @mixin
 class FrozenSetMixin[T]:
@@ -51,7 +51,7 @@ class set[T](FrozenSetMixin[T]):
 
   def test_mixin_multi_type_param_substitution(self):
     src = """
-from py2cpp import mixin, Self, immutable, new
+from paw import mixin, Self, immutable, new
 
 @mixin
 class TransformMixin[Vec, Rot, Mat]:
@@ -119,8 +119,8 @@ class Matrix3:
 class Matrix3:
   _dim: int @const = 3
 """
-    tr = Translator("py2cpp/spatial/matrix", "matrix.py")
-    tr._parse_modules([("py2cpp/spatial/matrix", src)])
+    tr = Translator("paw/spatial/matrix", "matrix.py")
+    tr._parse_modules([("paw/spatial/matrix", src)])
     host = tr.classes["Matrix3"]
     tp = TypeParser()
     tp.set_classes(tr.classes)
@@ -145,7 +145,7 @@ class Matrix3:
 
   def test_self_in_subscript_and_tuple_return_types(self):
     src = """
-from py2cpp import Self, copyable, immutable
+from paw import Self, copyable, immutable
 
 @copyable
 class str:
@@ -158,8 +158,8 @@ class str:
   def partition(self, sep: Self) -> (Self, Self, Self):
     return (self, sep, self)
 """
-    tr = Translator("py2cpp/text/str", "py2cpp/text/str.py")
-    tr._parse_modules([("py2cpp/text/str", src)])
+    tr = Translator("paw/text/str", "paw/text/str.py")
+    tr._parse_modules([("paw/text/str", src)])
     info = tr.classes["str"]
     SemanticAnalyzer().analyze(tr)
     host_cpp = info.template_cpp_type()

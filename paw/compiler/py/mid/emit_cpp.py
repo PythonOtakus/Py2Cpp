@@ -411,7 +411,7 @@ def _emit_header(
     f"#ifndef {guard}",
     f"#define {guard}",
     "",
-    '#include "py2cpp/minimal.h"',
+    '#include "paw/minimal.h"',
   ]
   usings: list[str] = []
   for item in mid.items:
@@ -432,15 +432,15 @@ def _emit_header(
   # 兼容：无段时仍缩进一层
   if not segs:
     body_indent = "  "
-  lines.append(f"{body_indent}using namespace py2cpp;")
+  lines.append(f"{body_indent}using namespace paw;")
   lines.append(
-    f"{body_indent}using ::py2cpp::core::exceptions::PyValueError;"
+    f"{body_indent}using ::paw::core::exceptions::PyValueError;"
   )
   lines.append(
-    f"{body_indent}using ::py2cpp::core::exceptions::PyRuntimeError;"
+    f"{body_indent}using ::paw::core::exceptions::PyRuntimeError;"
   )
   lines.append(
-    f"{body_indent}using ::py2cpp::core::exceptions::PyAssertionError;"
+    f"{body_indent}using ::paw::core::exceptions::PyAssertionError;"
   )
   for u in usings:
     # usings 形如 ``  using ::ns::PyX;`` → 换成 body_indent
@@ -633,7 +633,7 @@ def _emit_stdlib_library_cpp(module_path: str) -> str:
     [
       f"// MidIR emit library TU — {module_path}",
       "#define PY2CPP_LIBRARY_TU",
-      '#include "py2cpp.h"',
+      '#include "paw.h"',
       f'#include "{module_path}.inl"',
       "",
     ]

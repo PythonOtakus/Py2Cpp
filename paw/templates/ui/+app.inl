@@ -1,5 +1,5 @@
 PY2CPP_IGNORE
-#include "py2cpp/ui/app.h"
+#include "paw/ui/app.h"
 PY2CPP_END
 
 #include "ffi/crt/stdio.h"

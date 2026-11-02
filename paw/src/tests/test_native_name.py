@@ -10,7 +10,7 @@ from src.translator import Translator
 
 class NativeNameTests(unittest.TestCase):
   def _translate(self, body: str) -> str:
-    src = f"""from py2cpp import native_name, new
+    src = f"""from paw import native_name, new
 
 @native_name("PyFoo")
 class Foo:

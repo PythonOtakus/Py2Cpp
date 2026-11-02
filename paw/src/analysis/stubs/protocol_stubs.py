@@ -1,4 +1,4 @@
-"""从 ``py2cpp/**/protocols.py`` AST 推导 ``ir.PROTOCOL_*`` 表。"""
+"""从 ``paw/**/protocols.py`` AST 推导 ``ir.PROTOCOL_*`` 表。"""
 from __future__ import annotations
 
 import ast

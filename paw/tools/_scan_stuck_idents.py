@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Scan py2cpp/test/examples for stuck all-lowercase / snake / expandtabsXxx names."""
+"""Scan paw/test/examples for stuck all-lowercase / snake / expandtabsXxx names."""
 from __future__ import annotations
 
 import ast
@@ -188,7 +188,7 @@ def suggest(name: str) -> str | None:
 
 def main() -> None:
   found: dict[str, dict] = {}
-  for d in ("py2cpp", "test", "examples"):
+  for d in ("paw", "tests", "examples"):
     base = ROOT / d
     if not base.exists():
       continue

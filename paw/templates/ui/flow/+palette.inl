@@ -1,6 +1,6 @@
 PY2CPP_IGNORE
-#include "py2cpp/ui/flow/palette.h"
-#include "py2cpp/ui/flow/canvas.h"
+#include "paw/ui/flow/palette.h"
+#include "paw/ui/flow/canvas.h"
 PY2CPP_END
 
 #ifdef _WIN32

@@ -1,18 +1,18 @@
-# py2cpp.web 异步接口设计
+# paw.web 异步接口设计
 
-> **状态**：核心 async socket / HTTP（`AsyncTcpSocket`、`Task.waitRead`/`waitWrite`、`test/web/test_*_async.py`）**已落地**；边界与演进见下文。
+> **状态**：核心 async socket / HTTP（`AsyncTcpSocket`、`Task.waitRead`/`waitWrite`、`tests/web/test_*_async.py`）**已落地**；边界与演进见下文。
 
 ## 目标
 
-`py2cpp.web` 的异步接口基于真正的 non-blocking socket，而不是把同步 HTTP 包进 `Task.runThread()`。异步接口与同步接口放在同一模块文件中：
+`paw.web` 的异步接口基于真正的 non-blocking socket，而不是把同步 HTTP 包进 `Task.runThread()`。异步接口与同步接口放在同一模块文件中：
 
-- `py2cpp.web.socket`
-- `py2cpp.web.stream`
-- `py2cpp.web.http`
-- `py2cpp.web.client`
-- `py2cpp.web.server`
+- `paw.web.socket`
+- `paw.web.stream`
+- `paw.web.http`
+- `paw.web.client`
+- `paw.web.server`
 
-不新增 `py2cpp.web.async_*` 文件。
+不新增 `paw.web.async_*` 文件。
 
 ## 底层机制
 

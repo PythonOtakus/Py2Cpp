@@ -104,7 +104,7 @@ Python 侧：用户模块写规范 Python；译器或薄 `@native` 叶子只负�
 | Live++ / MSVC `/hotpatch` | 不在本仓库发明函数级热补丁 |
 | 模板类进 DLL | 见 §4 |
 | 一文件一 DLL | 见 §4 |
-| `py2cpp/` 标准库热更 | 改 runtime 仍重启 |
+| `paw/` 标准库热更 | 改 runtime 仍重启 |
 | 链接期 P3 `dllimport` 冒充热更 | 见 §2 |
 | 完整 Zeus 插件 + MCP | 仍 Phase 5 暂不做 |
 

@@ -1,7 +1,7 @@
 """带 ``*ArgMeta`` 的 dataclass：校验；须显式继承 ``ArgumentParserMixin``。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 

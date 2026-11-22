@@ -1,7 +1,7 @@
 """``iterator_return_stubs``：``__iter__`` / ``__reversed__`` 返回类型表驱动。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.analysis.ir import ClassInfo

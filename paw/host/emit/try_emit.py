@@ -1,7 +1,7 @@
 """``try`` / ``except`` / ``else`` / ``finally`` → C++ ``try`` / ``catch``。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 
 from ..constant.stdlib_layout import cpp_exception_type, EXCEPTIONS_NS

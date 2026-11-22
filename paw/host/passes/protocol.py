@@ -1,7 +1,7 @@
 """``@protocol``：标记协议类并收集抽象方法名（``...`` 体）。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 
 from ..analysis.ir import (
@@ -52,6 +52,9 @@ def expand_protocol(tr: Translator) -> None:
       info.is_protocol = has_named_decorator(info.node, "protocol")
     if info.is_protocol:
       info.protocol_methods = _collect_protocol_methods(info.node)
+      # Zero-AST：``from_mid_class`` 方法在 ``mid_methods``，未必进 ``node.body``
+      if not info.protocol_methods and getattr(info, "mid_methods", None):
+        info.protocol_methods = list(info.mid_methods.keys())
       for prop in info.properties.values():
         if not prop.getter or not is_stub_function_body(prop.getter.body):
           continue

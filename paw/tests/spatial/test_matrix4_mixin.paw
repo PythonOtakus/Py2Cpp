@@ -34,8 +34,8 @@ class GetSetAxisTests(TestCaseMixin):
 
 def main() -> int:
     suite: TestSuite = new()
-    for Class in TestCaseMixin.iterSubclasses(sortConst='_testTag'):
+    for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
         suite.addTest(Class())
     return TextTestRunner().run(suite)
-if __name__ == '__main__':
+if __name__ == "__main__":
     raise SystemExit(main())

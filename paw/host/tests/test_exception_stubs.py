@@ -1,7 +1,7 @@
 """``load_stdlib_exception_types`` 与 ``exceptions.py`` 一致。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import unittest
 from pathlib import Path
 
@@ -14,7 +14,7 @@ _EXCEPTIONS_PY = _REPO / "lib" / "paw" / "core" / "exceptions.py"
 
 class ExceptionStubTests(unittest.TestCase):
   def test_matches_exceptions_module(self):
-    tree = ast.parse(_EXCEPTIONS_PY.read_text(encoding="utf-8"))
+    tree = ast._stdlib_parse(_EXCEPTIONS_PY.read_text(encoding="utf-8"))
     expected = frozenset(
       node.name for node in tree.body if isinstance(node, ast.ClassDef)
     )

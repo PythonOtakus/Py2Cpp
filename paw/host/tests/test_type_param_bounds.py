@@ -1,5 +1,5 @@
 """PEP 695 形参协议约束：单协议与 ``A & B`` 交集。"""
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.analysis.ir import (
@@ -23,7 +23,7 @@ class ParseTypevarProtocolBoundsTests(unittest.TestCase):
     self.assertEqual(parse_typevar_protocol_bounds(node), ("ComparableType", "DictKeyType"))
 
   def test_class_type_params_intersection(self):
-    mod = ast.parse("class C[T: ComparableType & DictKeyType]:\n  pass\n")
+    mod = ast._stdlib_parse("class C[T: ComparableType & DictKeyType]:\n  pass\n")
     cls = mod.body[0]
     _, _, _, constraints, oneof, _, nttp, _ = parse_class_type_params(cls)
     self.assertEqual(constraints["T"], ("ComparableType", "DictKeyType"))
@@ -31,7 +31,7 @@ class ParseTypevarProtocolBoundsTests(unittest.TestCase):
     self.assertEqual(nttp, {})
 
   def test_class_type_param_nttp(self):
-    mod = ast.parse("class ModInt[T: IntegralType, Mod: T]:\n  pass\n")
+    mod = ast._stdlib_parse("class ModInt[T: IntegralType, Mod: T]:\n  pass\n")
     cls = mod.body[0]
     params, _, _, constraints, oneof, _, nttp, _ = parse_class_type_params(cls)
     self.assertEqual(params, ["T", "Mod"])

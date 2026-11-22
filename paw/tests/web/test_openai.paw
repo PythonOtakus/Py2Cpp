@@ -36,26 +36,26 @@ class OpenAIChatBodyTests(TestCaseMixin):
 
   override def test(self):
     body: str = _buildChatBody("gpt-test", "ping", "be brief", 16, 0.5, False)
-    self.assertTrue('"model":"gpt-test"' in body)
-    self.assertTrue('"role":"system"' in body)
-    self.assertTrue('"role":"user"' in body)
-    self.assertTrue('"maxTokens":16' in body)
-    self.assertTrue('"temperature":0.5' in body)
-    self.assertFalse('"stream":true' in body)
+    self.assertTrue("\"model\":\"gpt-test\"" in body)
+    self.assertTrue("\"role\":\"system\"" in body)
+    self.assertTrue("\"role\":\"user\"" in body)
+    self.assertTrue("\"maxTokens\":16" in body)
+    self.assertTrue("\"temperature\":0.5" in body)
+    self.assertFalse("\"stream\":true" in body)
 
     streamBody: str = _buildChatBody("gpt-test", "ping", "", 0, -1.0, True)
-    self.assertTrue('"stream":true' in streamBody)
-    self.assertFalse('"role":"system"' in streamBody)
+    self.assertTrue("\"stream\":true" in streamBody)
+    self.assertFalse("\"role\":\"system\"" in streamBody)
 
 class OpenAIChatParseTests(TestCaseMixin):
   _testTag = 20
 
   override def test(self):
-    text: str = _chatContent('{"choices":[{"message":{"content":"pong"}}]}')
+    text: str = _chatContent("{\"choices\":[{\"message\":{\"content\":\"pong\"}}]}")
     self.assertEqual(text, "pong")
-    top: str = _chatContent('{"content":"pong-top"}')
+    top: str = _chatContent("{\"content\":\"pong-top\"}")
     self.assertEqual(top, "pong-top")
-    nested: str = _chatContent('{"id":"x","choices":[{"index":0,"message":{"role":"assistant","content":"nested"}}]}')
+    nested: str = _chatContent("{\"id\":\"x\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"nested\"}}]}")
     self.assertEqual(nested, "nested")
 
 class OpenAIStreamParseTests(TestCaseMixin):
@@ -64,9 +64,9 @@ class OpenAIStreamParseTests(TestCaseMixin):
   override def test(self):
     streamed: str = ""
     for token in _iterSseTokens(
-      'data: {"choices":[{"delta":{"content":"pong"}}]}\n\n'
-      'data: {"choices":[{"delta":{"content":"-stream"}}]}\n\n'
-      'data: [DONE]\n\n'
+      "data: {\"choices\":[{\"delta\":{\"content\":\"pong\"}}]}\n\n"
+      "data: {\"choices\":[{\"delta\":{\"content\":\"-stream\"}}]}\n\n"
+      "data: [DONE]\n\n"
     ):
       streamed += token
     self.assertEqual(streamed, "pong-stream")
@@ -75,7 +75,7 @@ class OpenAIDeltaParseTests(TestCaseMixin):
   _testTag = 35
 
   override def test(self):
-    token: str = _deltaContent('{"id":"x","choices":[{"index":0,"delta":{"content":"tok"}}]}')
+    token: str = _deltaContent("{\"id\":\"x\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"tok\"}}]}")
     self.assertEqual(token, "tok")
 
 class OpenAIResponsesBodyTests(TestCaseMixin):
@@ -107,33 +107,33 @@ class OpenAIResponsesBodyTests(TestCaseMixin):
       0.25,
       True,
     )
-    self.assertTrue('"model":"gpt-test"' in body)
-    self.assertTrue('"previous_response_id":"resp_1"' in body)
-    self.assertTrue('"max_output_tokens":32' in body)
-    self.assertTrue('"stream":true' in body)
-    self.assertTrue('"type":"mcp"' in body)
-    self.assertTrue('"server_label":"docs"' in body)
-    self.assertTrue('"requireApproval":"never"' in body)
-    self.assertTrue('"type":"function"' in body)
-    self.assertTrue('"name":"echo"' in body)
-    self.assertEqual(fn.call('{"x":1}'), 'echo:{"x":1}')
+    self.assertTrue("\"model\":\"gpt-test\"" in body)
+    self.assertTrue("\"previous_response_id\":\"resp_1\"" in body)
+    self.assertTrue("\"max_output_tokens\":32" in body)
+    self.assertTrue("\"stream\":true" in body)
+    self.assertTrue("\"type\":\"mcp\"" in body)
+    self.assertTrue("\"server_label\":\"docs\"" in body)
+    self.assertTrue("\"requireApproval\":\"never\"" in body)
+    self.assertTrue("\"type\":\"function\"" in body)
+    self.assertTrue("\"name\":\"echo\"" in body)
+    self.assertEqual(fn.call("{\"x\":1}"), "echo:{\"x\":1}")
     self.assertTrue("Conversation summary" in body)
 
 class OpenAIResponsesParseTests(TestCaseMixin):
   _testTag = 37
 
   override def test(self):
-    raw: str = '{"id":"resp_1","output_text":"pong"}'
+    raw: str = "{\"id\":\"resp_1\",\"output_text\":\"pong\"}"
     self.assertEqual(_responseId(raw), "resp_1")
     self.assertEqual(_responseText(raw), "pong")
-    nested: str = '{"output":[{"content":[{"type":"output_text","text":"he"},{"type":"output_text","text":"llo"}]}]}'
+    nested: str = "{\"output\":[{\"content\":[{\"type\":\"output_text\",\"text\":\"he\"},{\"type\":\"output_text\",\"text\":\"llo\"}]}]}"
     self.assertEqual(_responseText(nested), "hello")
-    self.assertEqual(_responsesDelta('{"type":"response.output_text.delta","delta":"tok"}'), "tok")
+    self.assertEqual(_responsesDelta("{\"type\":\"response.output_text.delta\",\"delta\":\"tok\"}"), "tok")
     streamed: str = ""
     for token in _iterResponsesSseTokens(
-      'data: {"type":"response.output_text.delta","delta":"a"}\n\n'
-      'data: {"type":"response.output_text.delta","delta":"b"}\n\n'
-      'data: [DONE]\n\n'
+      "data: {\"type\":\"response.output_text.delta\",\"delta\":\"a\"}\n\n"
+      "data: {\"type\":\"response.output_text.delta\",\"delta\":\"b\"}\n\n"
+      "data: [DONE]\n\n"
     ):
       streamed += token
     self.assertEqual(streamed, "ab")
@@ -142,7 +142,7 @@ class OpenAIErrorTextTests(TestCaseMixin):
   _testTag = 39
 
   override def test(self):
-    msg: str = _statusErrorText(401, '{"error":{"message":"bad key"}}')
+    msg: str = _statusErrorText(401, "{\"error\":{\"message\":\"bad key\"}}")
     self.assertTrue("HTTP 401 Unauthorized" in msg)
     self.assertTrue("bad key" in msg)
 
@@ -175,7 +175,7 @@ class OpenAIConversationLocalTests(TestCaseMixin):
     conv.addMcp(fn)
     self.assertEqual(conv.model, "gpt-test")
     self.assertEqual(len(conv.mcps), 2)
-    self.assertEqual(conv.callMcp("local", '{"x":1}'), 'echo:{"x":1}')
+    self.assertEqual(conv.callMcp("local", "{\"x\":1}"), "echo:{\"x\":1}")
     msg1: OpenAIMessage = new("user", "first")
     msg2: OpenAIMessage = new("assistant", "second")
     msg3: OpenAIMessage = new("user", "third")
@@ -232,7 +232,7 @@ async def _serveOpenaiChat(listener: AsyncTcpSocket) -> None:
   reader: AsyncStreamReader = new.fromSocket(conn)
   writer: AsyncStreamWriter = new.fromSocket(conn)
   req: Request = await new.readAsync(reader)
-  resp: Response = new.textResponse('{"choices":[{"message":{"content":"pong-async"}}]}', StatusCodeEnum.Ok)
+  resp: Response = new.textResponse("{\"choices\":[{\"message\":{\"content\":\"pong-async\"}}]}", StatusCodeEnum.Ok)
   await resp.writeAsync(writer)
   reader.close()
   writer.close()

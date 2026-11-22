@@ -1,7 +1,7 @@
 """``oneof[…]`` 泛型约束：解析、混入传播与 C++ ``static_assert`` 生成。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.analysis.ir import (
@@ -15,7 +15,7 @@ from host.translator import Translator
 
 
 def _parse_classes(src: str) -> dict[str, ClassInfo]:
-  mod = ast.parse(src)
+  mod = ast._stdlib_parse(src)
   out: dict[str, ClassInfo] = {}
   for node in mod.body:
     if isinstance(node, ast.ClassDef):
@@ -27,19 +27,19 @@ def _parse_classes(src: str) -> dict[str, ClassInfo]:
 
 class ParseTypevarOneofTests(unittest.TestCase):
   def test_oneof_char_byte(self):
-    mod = ast.parse("class M[T: oneof[char, byte]]:\n  pass\n")
+    mod = ast._stdlib_parse("class M[T: oneof[char, byte]]:\n  pass\n")
     cls = mod.body[0]
     tp = cls.type_params[0]
     self.assertEqual(parse_typevar_oneof_bounds(tp.bound), ("char", "byte"))
 
   def test_class_type_params_oneof(self):
-    mod = ast.parse("class M[T: oneof[char, byte]]:\n  pass\n")
+    mod = ast._stdlib_parse("class M[T: oneof[char, byte]]:\n  pass\n")
     _, _, _, proto, oneof, _, _, _ = parse_class_type_params(mod.body[0])
     self.assertEqual(oneof["T"], ("char", "byte"))
     self.assertNotIn("T", proto)
 
   def test_oneof_with_protocol_intersection(self):
-    mod = ast.parse("class M[T: DictKeyType & oneof[int, str]]:\n  pass\n")
+    mod = ast._stdlib_parse("class M[T: DictKeyType & oneof[int, str]]:\n  pass\n")
     _, _, _, proto, oneof, _, _, _ = parse_class_type_params(mod.body[0])
     self.assertEqual(oneof["T"], ("int", "str"))
     self.assertEqual(proto["T"], ("DictKeyType",))

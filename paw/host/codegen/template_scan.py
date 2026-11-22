@@ -1,10 +1,11 @@
 """``templates/**`` 轻量扫描（译期校验与展开器共用，不 ``exec``）。"""
 from __future__ import annotations
 
-import ast
 import re
 from dataclasses import dataclass
 from pathlib import Path
+
+from .template_profile import TemplateProfileError, parse_def_header
 
 _BEGIN_RE = re.compile(r"^\s*PY2CPP_BEGIN\s*\(\s*(.*?)\s*\)\s*$")
 _END_RE = re.compile(r"^\s*PY2CPP_END\s*$")
@@ -164,20 +165,16 @@ def scan_def_naming(header: str, lineno: int) -> list[tuple[int, str]]:
   text = header.strip()
   if not text.startswith("def "):
     return []
-  stmt = f"{text}: pass"
   try:
-    tree = ast.parse(stmt).body[0]
-  except SyntaxError:
-    return [(lineno, f"PY2CPP_BEGIN(def) 无法解析: {text}")]
-  if not isinstance(tree, ast.FunctionDef):
-    return [(lineno, f"PY2CPP_BEGIN(def) 非法: {text}")]
+    name, args = parse_def_header(text)
+  except TemplateProfileError as exc:
+    return [(lineno, str(exc))]
   errors: list[tuple[int, str]] = []
-  name = tree.name
   if not name.startswith("fn_") or not _PASCAL_SUFFIX_RE.match(name[3:]):
     errors.append((lineno, f"BEGIN(def) helper 须 fn_PascalCase，当前: {name}"))
-  for arg in tree.args.args:
-    if not arg.arg.startswith("in_") or not _PASCAL_SUFFIX_RE.match(arg.arg[3:]):
-      errors.append((lineno, f"BEGIN(def) 形参须 in_PascalCase，当前: {arg.arg}"))
+  for arg in args:
+    if not arg.startswith("in_") or not _PASCAL_SUFFIX_RE.match(arg[3:]):
+      errors.append((lineno, f"BEGIN(def) 形参须 in_PascalCase，当前: {arg}"))
   return errors
 
 
@@ -375,7 +372,7 @@ _CLASS_SHELL_OPEN_RE = re.compile(
   re.MULTILINE,
 )
 _CLOSE_SHELL_RE = re.compile(r"^\s*\};\s*(?://.*)?$")
-_NAMESPACE_PY2CPP_RE = re.compile(r"\bnamespace\s+py2cpp\b")
+_NAMESPACE_PY2CPP_RE = re.compile(r"\bnamespace\s+(?:paw|py2cpp)\b")
 
 
 def _line_index_of_char_offset(lines: list[str], offset: int) -> int:

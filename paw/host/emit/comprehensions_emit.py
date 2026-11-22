@@ -1,7 +1,7 @@
 """列表/字典字面量（含 ``*`` 解包）与推导式（``[... for ...]`` / ``{... for ...}``）代码生成。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING, Callable
 
 from ..analysis.ir import (
@@ -293,7 +293,7 @@ def emit_sequence_literal(
       _emit_list_literal_init(tr, tmp, inner_et, elt.elts, declare=True)
       tr.write_line(f"{pname}.append({cpp_param(tmp)});")
     else:
-      tr.write_line(f"{pname}.append({tr.visit(elt)});")
+      tr.write_line(f"{pname}.append({tr._visit_value_for_type(elt, elem_t)});")
 
 
 def emit_list_comprehension(

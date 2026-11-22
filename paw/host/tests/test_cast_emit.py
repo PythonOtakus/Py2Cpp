@@ -1,7 +1,7 @@
 """``cast[T](obj)`` / ``cast(obj)`` → ``static_cast`` emit。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import tempfile
 import unittest
 from pathlib import Path
@@ -22,16 +22,16 @@ class Base:
     from host.analysis.analyzer import TypeParser
 
     tr.type_parser = TypeParser()
-    base_cls = ast.parse(cls_src).body[0]
+    base_cls = ast._stdlib_parse(cls_src).body[0]
     assert isinstance(base_cls, ast.ClassDef)
     info = ClassInfo(base_cls, "test/mod")
     tr.classes["Base"] = info
     tr.classes["Derived"] = info  # same cpp for smoke; only checks & form
 
-    node = ast.parse("cast[Derived](b)", mode="eval").body
+    node = ast._stdlib_parse("cast[Derived](b)", mode="eval").body
     assert isinstance(node, ast.Call)
     target = tr._parse_type(ast.Name(id="Derived"), set())
-    tr.scope = Scope(ast.parse("pass").body[0])
+    tr.scope = Scope(ast._stdlib_parse("pass").body[0])
     tr.scope.param_types = {"b": "Base&"}
     out = _emit_cast_call(tr, target, node)
     self.assertEqual(out, "static_cast<PyDerived>(b)")
@@ -41,10 +41,10 @@ class Base:
     from host.analysis.analyzer import TypeParser
 
     tr.type_parser = TypeParser()
-    node = ast.parse("cast[Pointer[byte]](handle)", mode="eval").body
+    node = ast._stdlib_parse("cast[Pointer[byte]](handle)", mode="eval").body
     assert isinstance(node, ast.Call)
     target = tr._parse_type(ast.Subscript(value=ast.Name(id="Pointer"), slice=ast.Name(id="byte")), set())
-    tr.scope = Scope(ast.parse("pass").body[0])
+    tr.scope = Scope(ast._stdlib_parse("pass").body[0])
     tr.scope.param_types = {"handle": "PyInt64"}
     out = _emit_cast_call(tr, target, node)
     self.assertEqual(out, "reinterpret_cast<PyByte*>(handle)")
@@ -61,10 +61,10 @@ class Base:
     from host.analysis.analyzer import TypeParser
 
     tr.type_parser = TypeParser()
-    node = ast.parse("cast[uintptr](text)", mode="eval").body
+    node = ast._stdlib_parse("cast[uintptr](text)", mode="eval").body
     assert isinstance(node, ast.Call)
     target = tr._parse_type(ast.Name(id="uintptr"), set())
-    tr.scope = Scope(ast.parse("pass").body[0])
+    tr.scope = Scope(ast._stdlib_parse("pass").body[0])
     tr._infer_expr_cpp_type = lambda _node: "PyUtf8Ptr"
     out = _emit_cast_call(tr, target, node)
     self.assertEqual(out, "reinterpret_cast<PyUIntPtr>(text)")
@@ -74,10 +74,10 @@ class Base:
     from host.analysis.analyzer import TypeParser
 
     tr.type_parser = TypeParser()
-    node = ast.parse("cast[utf16ptr](text)", mode="eval").body
+    node = ast._stdlib_parse("cast[utf16ptr](text)", mode="eval").body
     assert isinstance(node, ast.Call)
     target = tr._parse_type(ast.Name(id="utf16ptr"), set())
-    tr.scope = Scope(ast.parse("pass").body[0])
+    tr.scope = Scope(ast._stdlib_parse("pass").body[0])
     tr._infer_expr_cpp_type = lambda _node: "PyUInt16*"
     out = _emit_cast_call(tr, target, node)
     self.assertEqual(out, "reinterpret_cast<PyUtf16Ptr>(text)")

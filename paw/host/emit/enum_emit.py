@@ -1,6 +1,6 @@
 """``@enum`` → C++11 ``enum class``（底层 ``PyInt`` / ``PyInt64``）及 Flag 运算 / 表示。"""
 from __future__ import annotations
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from ..analysis.ir import ClassInfo

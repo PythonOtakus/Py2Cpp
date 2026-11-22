@@ -1,7 +1,7 @@
 """``"NAME" in __macro__`` if 链 → C 预编译指令。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import tempfile
 import unittest
 from pathlib import Path
@@ -17,22 +17,22 @@ from host.translator import Translator
 class MacroIfParseTests(unittest.TestCase):
   def test_parses_in_and_not_in(self):
     self.assertEqual(
-      parse_macro_if_test(ast.parse('"_WIN32" in __macro__', mode="eval").body),
+      parse_macro_if_test(ast._stdlib_parse('"_WIN32" in __macro__', mode="eval").body),
       ("_WIN32", True),
     )
     self.assertEqual(
-      parse_macro_if_test(ast.parse('"_WIN32" not in __macro__', mode="eval").body),
+      parse_macro_if_test(ast._stdlib_parse('"_WIN32" not in __macro__', mode="eval").body),
       ("_WIN32", False),
     )
 
   def test_rejects_not_name_in_macro(self):
     with self.assertRaises(ValueError) as ctx:
-      parse_macro_if_test(ast.parse('not "_WIN32" in __macro__', mode="eval").body, loc="t")
+      parse_macro_if_test(ast._stdlib_parse('not "_WIN32" in __macro__', mode="eval").body, loc="t")
     self.assertIn("not in __macro__", str(ctx.exception))
 
   def test_rejects_non_literal(self):
     with self.assertRaises(ValueError):
-      parse_macro_if_test(ast.parse("name in __macro__", mode="eval").body, loc="t")
+      parse_macro_if_test(ast._stdlib_parse("name in __macro__", mode="eval").body, loc="t")
 
   def test_collects_elif_else_chain(self):
     src = """
@@ -45,7 +45,7 @@ elif "_WIN32" not in __macro__:
 else:
   x = 0
 """
-    tree = ast.parse(src)
+    tree = ast._stdlib_parse(src)
     stmt = tree.body[0]
     assert isinstance(stmt, ast.If)
     self.assertTrue(looks_like_macro_if_head(stmt.test))
@@ -64,7 +64,7 @@ if "_WIN32" in __macro__:
 elif True:
   x = 2
 """
-    tree = ast.parse(src)
+    tree = ast._stdlib_parse(src)
     stmt = tree.body[0]
     assert isinstance(stmt, ast.If)
     with self.assertRaises(ValueError):

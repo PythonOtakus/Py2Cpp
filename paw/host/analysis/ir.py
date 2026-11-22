@@ -12,7 +12,7 @@
 """
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import copy
 import json
 from collections.abc import Callable
@@ -1718,7 +1718,7 @@ class TypeAliasInfo:
   """``type Alias = rhs`` 或 ``type Alias[T: Proto] = rhs``（PEP 695）。"""
 
   name: str
-  value: ast.expr
+  value: ast.expr  # TODO Zero-AST: 迁 ``value_source: str`` / TypeSyntax
   type_params: tuple[str, ...] = ()
   type_param_constraints: dict[str, tuple[str, ...]] = field(default_factory=dict)
   type_param_oneof_constraints: dict[str, tuple[str, ...]] = field(default_factory=dict)
@@ -1730,6 +1730,8 @@ class TypeAliasInfo:
   is_conditional: bool = False
   """RHS 为 ``X if T is … else Y`` 类型三目。"""
   lineno: int = 0
+  value_source: str = ""
+  """RHS 源文本（Zero-AST 真源；``value`` 仍为 emit 过渡桥）。"""
 
   @property
   def call_params(self) -> tuple[str, ...]:
@@ -1743,7 +1745,8 @@ class ProtocolMemberConstraint:
 
   name: str
   kind: str  # "field" | "property" | "type_alias"
-  annotation: ast.expr | None = None
+  annotation: ast.expr | None = None  # TODO Zero-AST: 迁 str / TypeSyntax
+  annotation_source: str = ""
 
 
 def type_alias_rhs_is_ellipsis(value: ast.expr) -> bool:
@@ -1932,6 +1935,10 @@ def parse_type_alias_stmt(stmt: ast.TypeAlias) -> TypeAliasInfo:
       bounds = parse_typevar_protocol_bounds(tp.bound)
       if bounds:
         constraints[tp.name] = bounds
+  try:
+    value_source = ast.unparse(stmt.value)
+  except (TypeError, ValueError, RecursionError):
+    value_source = "..."
   if type_alias_rhs_is_ellipsis(stmt.value):
     return TypeAliasInfo(
       name,
@@ -1942,6 +1949,7 @@ def parse_type_alias_stmt(stmt: ast.TypeAlias) -> TypeAliasInfo:
       type_param_nttp=nttp,
       member_constraint=True,
       lineno=getattr(stmt, "lineno", 0),
+      value_source=value_source,
     )
   used = collect_type_names_in_expr(stmt.value) & set(type_params)
   constraints = {k: v for k, v in constraints.items() if k in used}
@@ -1957,6 +1965,7 @@ def parse_type_alias_stmt(stmt: ast.TypeAlias) -> TypeAliasInfo:
     capture_params=tuple(capture_params),
     is_conditional=is_conditional,
     lineno=getattr(stmt, "lineno", 0),
+    value_source=value_source,
   )
 
 
@@ -2795,9 +2804,13 @@ class PropertyDef:
   """``@property`` / ``@property.setter`` / ``@property.postsetter`` 对应方法。"""
 
   name: str
+  # TODO Zero-AST: getter/setter/postsetter 迁 MidFunction；AST 仅 emit 过渡桥
   getter: ast.FunctionDef | None = None
   setter: ast.FunctionDef | None = None
   postsetter: ast.FunctionDef | None = None
+  mid_getter: object | None = None  # MidFunction | None
+  mid_setter: object | None = None
+  mid_postsetter: object | None = None
   getter_sig: MethodSig | None = None
   setter_sig: MethodSig | None = None
   postsetter_sig: MethodSig | None = None
@@ -2863,7 +2876,9 @@ class UnionVariantInfo:
 
   name: str
   fields: list[str]
+  # TODO Zero-AST: field_annotations 迁 str / TypeSyntax（emit 可再 parse）
   field_annotations: dict[str, ast.expr] = field(default_factory=dict)
+  field_annotation_sources: dict[str, str] = field(default_factory=dict)
   field_cpp_types: dict[str, str] = field(default_factory=dict)
 
   @property
@@ -2880,15 +2895,21 @@ class EnumMemberInfo:
 
 
 class ClassInfo:
-  """一个 ``class`` 定义的布局与成员元数据。"""
+  """一个 ``class`` 定义的布局与成员元数据。
+
+  生产登记：``ClassInfo.from_mid_class`` / ``from_mid_enum``（经
+  ``register_module_from_mid``）。``ClassInfo(ast.ClassDef)`` 仅为
+  MID_PRIMARY=0 host emit / 同步过渡路径。
+  """
 
   def __init__(
     self,
-    node: ast.ClassDef,
+    node: ast.ClassDef,  # TODO Zero-AST: 非主构造；见 from_mid_class
     module_path: str = "",
     *,
     outer_class: ClassInfo | None = None,
   ):
+    # TODO Zero-AST: 占位 / 同步用 ClassDef；真源在 ``mid``
     self.node = node
     self.name = node.name
     self.module_path = module_path
@@ -2917,9 +2938,15 @@ class ClassInfo:
     self.fields: list[str] = []
     self.field_types: dict[str, str] = {}
     self.field_type_nodes: dict[str, "TypeNode"] = {}
+    # TODO Zero-AST: methods/overloads/inits 为 emit 可选 AST 桥；真源 ``mid_methods``
     self.methods: dict[str, ast.FunctionDef] = {}
     self.method_overloads: dict[str, list[ast.FunctionDef]] = {}
     self.method_overload_sigs: dict[str, list[MethodSig]] = {}
+    # Zero-AST：Mid 锚点（``from_mid_class``）；AST ``__init__`` 路径保持空
+    self.mid: object | None = None  # MidClass | MidEnum | None
+    # name → MidFunction | list[MidFunction]（property getter/setter 等同名多项）
+    self.mid_methods: dict[str, object] = {}
+    # TODO Zero-AST: inits 同 methods，emit 过渡桥
     self.inits: list[ast.FunctionDef] = []
     self.init_sigs: list[MethodSig] = []
     self.has_copy: bool = False
@@ -2967,11 +2994,13 @@ class ClassInfo:
     self.is_variant_mixin: bool = (
       has_named_decorator(node, "variant") and not self.is_union
     )
+    # TODO Zero-AST: 注解迁 str / TypeSyntax
     self.variant_mixin_fields: list[tuple[str, ast.expr]] = []
     self.union_variants: list[UnionVariantInfo] = []
     self.union_family_names: frozenset[str] = frozenset()
     self.protocol_methods: list[str] = []
     self.protocol_members: list[ProtocolMemberConstraint] = []
+    # 已是 str（类名 / 注解文本）；非 ast.expr
     self.field_annotations: dict[str, str] = {}
     self.field_annotation_markers: dict[str, list[str]] = {}
     self.field_annotation_kwargs: dict[str, dict[str, str]] = {}
@@ -2982,17 +3011,23 @@ class ClassInfo:
     # ``@staticproperty`` 存储 ``{name}__value`` → C++ ``static`` 可变成员
     self.static_property_storage: set[str] = set()
     # 类体 ``name: T @const = <编译期常量>`` → C++ ``static const`` 成员
+    # TODO Zero-AST: 迁 (ann_src, val_src) 元组；emit 再 parse
     self.static_class_fields: dict[str, ast.AnnAssign] = {}
     # 类体 ``name: T @thread_local = v`` → C++ ``static thread_local`` 成员
+    # TODO Zero-AST: 同上
     self.thread_local_fields: dict[str, ast.AnnAssign] = {}
     # 类体 ``name: T = <默认>``（无 ``@const``）→ 实例字段默认值（供 dataclass 等）
+    # TODO Zero-AST: emit 改读 ``field_default_sources`` 后删本字段
     self.field_defaults: dict[str, ast.expr] = {}
+    # Mid / 源文本默认值（与 field_defaults 并行；Zero-AST 真源）
+    self.field_default_sources: dict[str, str] = {}
     # 类体 ``name: T`` 显式实例字段注解（``__init__`` 赋值推断不得覆盖）
     self.class_body_field_anns: set[str] = set()
     # ``name: T @optional``：不参与 ``__init__`` / ``assign`` 关键字（由 ``expand_dataclass`` 填充）
     self.optional_fields: set[str] = set()
     # ``name: T @final``：实例 const 成员；``__init__`` 赋值 → C++ ctor 初始化列表
     self.final_fields: set[str] = set()
+    # TODO Zero-AST: 迁 str 源文本
     self.final_ctor_inits: dict[str, ast.expr] = {}
     self.final_ctor_inits_by_init: dict[int, dict[str, ast.expr]] = {}
     # ``name: T @property = …``：对外 ``get_<name>()``，类内 ``self.name`` 仍访问存储字段
@@ -3029,9 +3064,16 @@ class ClassInfo:
           and isinstance(stmt.target, ast.Name)
           and type_alias_rhs_is_ellipsis(stmt.value)
         ):
+          ann_src = ""
+          if stmt.annotation is not None:
+            try:
+              ann_src = ast.unparse(stmt.annotation)
+            except (TypeError, ValueError, RecursionError):
+              ann_src = ""
           self.protocol_members.append(
             ProtocolMemberConstraint(
               stmt.target.id, "field", stmt.annotation,
+              annotation_source=ann_src,
             ),
           )
         else:
@@ -3146,6 +3188,600 @@ class ClassInfo:
           self._collect_fields(stmt)
 
     self._strip_type_param_forward_aliases()
+
+  @staticmethod
+  def _minimal_classdef(name: str) -> ast.ClassDef:
+    """兼容仍读 ``info.node`` 的 passes：空体占位，不经 ``ast_from_mid``。"""
+    return ast.ClassDef(
+      name=name,
+      bases=[],
+      keywords=[],
+      body=[ast.Pass()],
+      decorator_list=[],
+      type_params=[],
+    )
+
+  def _init_mid_shell(self, name: str, module_path: str) -> None:
+    """``from_mid_*``：填充与 ``__init__`` 对齐的默认字段（无扫 ClassDef 体）。"""
+    self.node = self._minimal_classdef(name)
+    self.name = name
+    self.module_path = module_path
+    self.outer_class = None
+    self.nested_classes = []
+    self.type_params = []
+    self.capture_params = ()
+    self.typevar_tuple = None
+    self.type_param_constraints = {}
+    self.type_param_oneof_constraints = {}
+    self.type_param_defaults = {}
+    self.type_param_nttp = {}
+    self.type_param_decorator_constraints = {}
+    self.concrete_oneof_constraints = {}
+    self.type_alias_list = []
+    self.type_aliases = {}
+    self.bases = []
+    self.friend_classes = []
+    self.cpp_rename = None
+    self.fields = []
+    self.field_types = {}
+    self.field_type_nodes = {}
+    self.methods = {}
+    self.method_overloads = {}
+    self.method_overload_sigs = {}
+    self.mid = None
+    self.mid_methods = {}
+    self.inits = []
+    self.init_sigs = []
+    self.has_copy = False
+    self.has_move = False
+    self.is_refcount = False
+    self.is_descriptor = False
+    self.is_mixin = False
+    self.is_annotation = False
+    self.is_copyable = False
+    self.is_uncopyable = False
+    self.is_final = False
+    self.is_boxing = False
+    self.is_native = False
+    self.is_protocol = False
+    self.is_dataclass = False
+    self.dataclass_options = None
+    self.annotation_options = None
+    self.dataclass_field_specs = None
+    self.is_serializable = False
+    self.is_union = False
+    self.is_enum = False
+    self.is_enum_mro = False
+    self.is_union_mro = False
+    self.enum_mro_base = None
+    self.union_mro_base = None
+    self.enum_mro_member_classes = {}
+    self.union_mro_member_classes = {}
+    self.union_enum_members = []
+    self.union_enum_underlying_cpp = cpp_ident("int")
+    self.enum_members = []
+    self.enum_underlying_cpp = cpp_ident("int")
+    self.enum_is_flag = False
+    self.enum_parent = None
+    self.class_id = None
+    self.class_id_root = None
+    self.inject_type_id = False
+    self.force_virtual_class_id = False
+    self.inject_type_base = False
+    self.is_proxy = False
+    self.is_proxy_derived = False
+    self.is_variant_mixin = False
+    self.variant_mixin_fields = []
+    self.union_variants = []
+    self.union_family_names = frozenset()
+    self.protocol_methods = []
+    self.protocol_members = []
+    self.field_annotations = {}
+    self.field_annotation_markers = {}
+    self.field_annotation_kwargs = {}
+    self.doc_lines = []
+    self.method_sigs = {}
+    self.properties = {}
+    self.static_properties = {}
+    self.static_property_storage = set()
+    self.static_class_fields = {}
+    self.thread_local_fields = {}
+    self.field_defaults = {}
+    self.field_default_sources = {}
+    self.class_body_field_anns = set()
+    self.optional_fields = set()
+    self.final_fields = set()
+    self.final_ctor_inits = {}
+    self.final_ctor_inits_by_init = {}
+    self.field_properties = set()
+    self.postsetter_properties = set()
+    self.member_access = {}
+    self.member_cpp_names = {}
+    self.field_native_names = {}
+    self.owned_fields = {}
+    self.owned_array_sizes = {}
+    self.repr_aliases_str = False
+    self.seq_iterator_name = None
+    self.class_type_if_plan = None
+    self.class_type_if_specs = []
+    self.descriptor_method_protocol_bounds = {}
+
+  @staticmethod
+  def _parse_paw_stub_module(stub: str, *, path: str) -> ast.Module:
+    """合成 Paw 片段 → ``ast.Module``（经 Mid 桥；生产 parse 空树时用 ``module_tree_from_mid``）。"""
+    from compiler.py.mid.tree_from_mid import module_tree_from_mid
+    from host.frontend.api import parse_module
+    from host.frontend.dialect import Dialect
+
+    parsed = parse_module(
+      stub, path=path, dialect=Dialect.PAW, use_cache=False,
+    )
+    if parsed.mid is None:
+      return parsed.tree
+    return module_tree_from_mid(parsed.mid, filename=path)
+
+  @staticmethod
+  def _expr_from_source(source: str) -> ast.expr | None:
+    """表达式源文本 → ``ast.expr``（Paw ``parse_expression`` + IR→AST 桥）。"""
+    text = (source or "").strip()
+    if not text:
+      return None
+    if text in ("...", "Ellipsis"):
+      return ast.Constant(value=Ellipsis)
+    from host.frontend.api import parse_expression_as_ast
+
+    try:
+      return parse_expression_as_ast(text)
+    except (SyntaxError, ValueError, TypeError, NotImplementedError):
+      return None
+
+  @staticmethod
+  def _type_expr_from_source(
+    source: str | None,
+    *,
+    legacy: str | None = None,
+    fallback_name: str | None = None,
+  ) -> ast.expr:
+    """类型源文本 → ``ast.expr``（Paw ``parse_type`` / 表达式桥，无 ``ast.parse``）。"""
+    from host.frontend.api import parse_expression_as_ast, parse_type_as_ast
+
+    candidates: list[str] = []
+    for cand in ((source or "").strip(), (legacy or "").strip()):
+      if cand and cand not in candidates:
+        candidates.append(cand)
+    for text in candidates:
+      try:
+        return parse_type_as_ast(text)
+      except (SyntaxError, ValueError, TypeError, NotImplementedError):
+        try:
+          return parse_expression_as_ast(text)
+        except (SyntaxError, ValueError, TypeError, NotImplementedError):
+          continue
+    fb = fallback_name or (candidates[0].split("[", 1)[0] if candidates else "object")
+    return ast.Name(id=fb or "object", ctx=ast.Load())
+
+  @staticmethod
+  def _parse_mid_class_header(
+    name: str, type_params_source: str, bases_source: str | None,
+  ) -> ast.ClassDef:
+    """仅解析类头（PEP695 / bases / friends=）；失败则退回空头。"""
+    tp = type_params_source or ""
+    bases = bases_source or ""
+    stub = f"class {name}{tp}{bases}:\n  pass\n"
+    try:
+      mod = ClassInfo._parse_paw_stub_module(
+        stub, path=f"<mid_class_header:{name}>.paw",
+      )
+    except (SyntaxError, ValueError, TypeError, NotImplementedError):
+      return ClassInfo._minimal_classdef(name)
+    if not mod.body or not isinstance(mod.body[0], ast.ClassDef):
+      return ClassInfo._minimal_classdef(name)
+    return mod.body[0]
+
+  @staticmethod
+  def _decorator_exprs_from_source(text: str) -> list[ast.expr]:
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip().startswith("@")]
+    if not lines:
+      return []
+    stub = "\n".join(lines) + "\ndef __paw_deco_stub():\n  pass\n"
+    try:
+      mod = ClassInfo._parse_paw_stub_module(
+        stub, path="<mid_class_decorators>.paw",
+      )
+    except (SyntaxError, ValueError, TypeError, NotImplementedError):
+      return []
+    for stmt in mod.body:
+      if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+        return list(stmt.decorator_list)
+    return []
+
+  @staticmethod
+  def _iter_mid_methods_entries(mid_methods: dict) -> list[tuple[str, object]]:
+    """展开 ``name → MidFunction | list[MidFunction]``。"""
+    out: list[tuple[str, object]] = []
+    for name, mid_fn in mid_methods.items():
+      if isinstance(mid_fn, list):
+        for item in mid_fn:
+          out.append((name, item))
+      else:
+        out.append((name, mid_fn))
+    return out
+
+  def _store_mid_method(self, meth: object) -> None:
+    """同名 Mid 方法追加（property getter/setter 不互相覆盖）。"""
+    name = getattr(meth, "name", None)
+    if not name:
+      return
+    existing = self.mid_methods.get(name)
+    if existing is None:
+      self.mid_methods[name] = meth
+    elif isinstance(existing, list):
+      existing.append(meth)
+    else:
+      self.mid_methods[name] = [existing, meth]
+
+  def ensure_methods_bridged_from_mid(self) -> None:
+    """TODO Zero-AST: 按需把 ``mid_methods`` 桥到 ``methods`` / ``inits`` / ``properties``。
+
+    ``from_mid_class`` 故意不填 AST 方法；host emit / mixin 需要时再调。
+    """
+    from compiler.py.mid.nodes import MidFunction
+    from host.passes.mid_method_parse import bridge_mid_method_to_ast
+
+    for name, mid_fn in self._iter_mid_methods_entries(self.mid_methods):
+      if not isinstance(mid_fn, MidFunction):
+        continue
+      try:
+        ast_fn = bridge_mid_method_to_ast(
+          mid_fn, filename=self.module_path or "<from_mid>",
+        )
+      except (SyntaxError, ValueError, TypeError, NotImplementedError):
+        continue
+
+      # Mid 常把 ``property name:`` 的 getter 标成 ``@immutable`` 而无 ``@property``
+      if (
+        mid_fn.is_property
+        and self._property_decorator_kind(ast_fn) is None
+        and self._static_property_decorator_kind(ast_fn) is None
+      ):
+        deco = ast.Name(id="staticproperty" if mid_fn.is_static else "property", ctx=ast.Load())
+        ast_fn.decorator_list = [deco, *list(ast_fn.decorator_list)]
+
+      sp_kind = self._static_property_decorator_kind(ast_fn)
+      if sp_kind is not None:
+        kind, sp_name = sp_kind
+        prop = self.static_properties.setdefault(sp_name, PropertyDef(name=sp_name))
+        if kind == "getter" and prop.getter is None:
+          prop.getter = self._normalize_static_property_method(ast_fn)
+          self._collect_fields(prop.getter)
+        elif kind == "setter" and prop.setter is None:
+          prop.setter = self._normalize_static_property_method(ast_fn)
+          self._collect_fields(prop.setter)
+        elif kind == "postsetter" and prop.postsetter is None:
+          prop.postsetter = self._normalize_static_property_method(ast_fn)
+          self._collect_fields(prop.postsetter)
+        continue
+
+      prop_kind = self._property_decorator_kind(ast_fn)
+      if prop_kind is not None:
+        kind, pname = prop_kind
+        prop = self.properties.setdefault(pname, PropertyDef(name=pname))
+        if kind == "getter" and prop.getter is None:
+          prop.getter = ast_fn
+        elif kind == "setter" and prop.setter is None:
+          prop.setter = ast_fn
+        elif kind == "postsetter" and prop.postsetter is None:
+          prop.postsetter = ast_fn
+        self._collect_fields(ast_fn)
+        continue
+
+      if name == "__init__":
+        # 跳过与已有 init 签名完全相同的重复桥接
+        sig_key = (
+          ast.dump(ast_fn.args, include_attributes=False),
+          ast.dump(ast_fn.returns, include_attributes=False) if ast_fn.returns else "",
+        )
+        dup = False
+        for prev in self.inits:
+          prev_key = (
+            ast.dump(prev.args, include_attributes=False),
+            ast.dump(prev.returns, include_attributes=False) if prev.returns else "",
+          )
+          if prev_key == sig_key:
+            dup = True
+            break
+        if dup:
+          continue
+        self.inits.append(ast_fn)
+        self._collect_fields_from_init(ast_fn)
+        if len(self.inits) > 1:
+          self.method_overloads.setdefault("__init__", [])
+          for it in self.inits:
+            if it not in self.method_overloads["__init__"]:
+              self.method_overloads["__init__"].append(it)
+        continue
+      # 同名 Mid 方法 = overload（与 ClassInfo AST 收集一致）。
+      # 旧逻辑在 ``name in methods`` 时直接 skip，导致 xsplit/xrsplit 等
+      # 仅桥接无 yield 的薄转发，generator ClassInfo 永不登记。
+      sig_key = (
+        ast.dump(ast_fn.args, include_attributes=False),
+        ast.dump(ast_fn.returns, include_attributes=False) if ast_fn.returns else "",
+      )
+
+      def _fn_sig_key(fn: ast.FunctionDef) -> tuple[str, str]:
+        return (
+          ast.dump(fn.args, include_attributes=False),
+          ast.dump(fn.returns, include_attributes=False) if fn.returns else "",
+        )
+
+      if name in self.method_overloads:
+        if any(_fn_sig_key(prev) == sig_key for prev in self.method_overloads[name]):
+          continue
+        self.method_overloads[name].append(ast_fn)
+        self._collect_fields(ast_fn)
+        continue
+      if name in self.methods:
+        prev = self.methods[name]
+        if _fn_sig_key(prev) == sig_key:
+          continue
+        self.methods.pop(name)
+        self.method_overloads[name] = [prev, ast_fn]
+        self._collect_fields(ast_fn)
+        continue
+      self.methods[name] = ast_fn
+      self._collect_fields(ast_fn)
+
+  @classmethod
+  def from_mid_class(
+    cls,
+    mid_class: "MidClass",
+    module_path: str = "",
+  ) -> "ClassInfo":
+    """``MidClass`` → ``ClassInfo``（不经 ``ast.ClassDef`` / ``ast_from_mid``）。
+
+    - ``mid`` / ``mid_methods``：Mid 真源
+    - ``methods`` / ``inits``：保持空；emit/同步/``ensure_methods_bridged_from_mid`` 再填
+    - ``node``：字段 AnnAssign 占位 + 空方法，供尚未迁完的 passes 读写装饰器/体
+    """
+    from compiler.py.frontend.syntax_nodes import ObjectModel
+    from compiler.py.mid.nodes import MidFunction
+    from compiler.py.mid.tree_from_mid import (
+      opaque_member_stmts,
+      type_to_legacy_annotation as _type_to_legacy_annotation,
+    )
+
+    self = object.__new__(cls)
+    self._init_mid_shell(mid_class.name, module_path)
+    self.mid = mid_class
+    self.mid_methods = {}
+
+    header = cls._parse_mid_class_header(
+      mid_class.name, mid_class.type_params_source, mid_class.bases_source,
+    )
+    (
+      self.type_params,
+      self.capture_params,
+      self.typevar_tuple,
+      self.type_param_constraints,
+      self.type_param_oneof_constraints,
+      self.type_param_defaults,
+      self.type_param_nttp,
+      self.type_param_decorator_constraints,
+    ) = parse_class_type_params(header)
+    for base in header.bases:
+      bname = class_base_name(base)
+      if bname is not None:
+        self.bases.append(bname)
+    self.friend_classes = parse_class_friends(header)
+
+    deco_exprs = cls._decorator_exprs_from_source(mid_class.decorators_source)
+    self.node.decorator_list = list(deco_exprs)
+    self.node.bases = list(header.bases)
+    self.node.keywords = list(header.keywords)
+    self.node.type_params = list(getattr(header, "type_params", None) or [])
+
+    self.cpp_rename = decorator_string_arg(self.node, "native_name")
+    self.is_copyable = has_named_decorator(self.node, "copyable")
+    self.is_uncopyable = has_named_decorator(self.node, "uncopyable")
+    self.is_boxing = has_named_decorator(self.node, "boxing")
+    self.is_serializable = has_named_decorator(self.node, "serializable")
+
+    self.is_final = bool(mid_class.is_final)
+    self.is_native = bool(mid_class.is_native)
+    self.is_protocol = bool(mid_class.is_protocol)
+    self.is_mixin = bool(mid_class.is_mixin)
+    if mid_class.is_mixin and not any(
+      isinstance(d, ast.Name) and d.id == "mixin" for d in self.node.decorator_list
+    ):
+      self.node.decorator_list.append(ast.Name(id="mixin", ctx=ast.Load()))
+    if mid_class.is_protocol and not any(
+      isinstance(d, ast.Name) and d.id == "protocol" for d in self.node.decorator_list
+    ):
+      self.node.decorator_list.append(ast.Name(id="protocol", ctx=ast.Load()))
+    if mid_class.is_final and not any(
+      isinstance(d, ast.Name) and d.id == "final" for d in self.node.decorator_list
+    ):
+      self.node.decorator_list.append(ast.Name(id="final", ctx=ast.Load()))
+    if mid_class.is_native and not any(
+      isinstance(d, ast.Name) and d.id == "native" for d in self.node.decorator_list
+    ):
+      self.node.decorator_list.append(ast.Name(id="native", ctx=ast.Load()))
+    self.is_union = bool(mid_class.is_union)
+    if mid_class.is_union and mid_class.bases_source and "base=" in mid_class.bases_source:
+      self.is_union_mro = True
+      # expand_union_mro 仍认 ``@union.mro`` 装饰器
+      self.node.decorator_list.append(
+        ast.Attribute(
+          value=ast.Name(id="union", ctx=ast.Load()),
+          attr="mro",
+          ctx=ast.Load(),
+        )
+      )
+    elif mid_class.is_union:
+      self.node.decorator_list.append(ast.Name(id="union", ctx=ast.Load()))
+    self.is_variant_mixin = bool(mid_class.is_variant) and not mid_class.is_union
+    if self.is_variant_mixin:
+      setattr(self, "variant_from_mid", True)
+      if not any(
+        isinstance(d, ast.Name) and d.id == "variant" for d in self.node.decorator_list
+      ):
+        self.node.decorator_list.append(ast.Name(id="variant", ctx=ast.Load()))
+    self.is_refcount = mid_class.object_model is ObjectModel.REF_COUNT or (
+      mid_class.is_lazy and mid_class.object_model is not ObjectModel.REF_COUNT
+    )
+    if self.is_refcount and not any(
+      isinstance(d, ast.Name) and d.id == "refcount" for d in self.node.decorator_list
+    ):
+      self.node.decorator_list.append(ast.Name(id="refcount", ctx=ast.Load()))
+    if mid_class.is_record:
+      setattr(self, "is_record_from_mid", True)
+      setattr(self, "record_frozen_from_mid", bool(mid_class.is_frozen))
+      setattr(self, "record_ordered_from_mid", bool(mid_class.is_ordered))
+
+    # 字段仍经 AnnAssign 写入 static/defaults（emit 过渡）；默认值源文本并行存
+    # opaque：type_if 须在体首；嵌套 ``@variant class`` 等亦须进 node.body（union_mro）
+    body_stmts: list[ast.stmt] = []
+    type_if_opaques: list[str] = []
+    other_opaques: list[str] = []
+    for mem in mid_class.opaque_members:
+      stripped_lines = [
+        ln for ln in mem.splitlines()
+        if ln.strip() and not ln.lstrip().startswith("#")
+      ]
+      if stripped_lines and stripped_lines[0].lstrip().startswith("if "):
+        type_if_opaques.append(mem)
+      else:
+        other_opaques.append(mem)
+    for mem in type_if_opaques:
+      body_stmts.extend(opaque_member_stmts(mem, module_path or "<from_mid>"))
+    for name, typ, value in mid_class.const_fields:
+      legacy = _type_to_legacy_annotation(typ) if typ else None
+      inner = cls._type_expr_from_source(
+        typ, legacy=legacy, fallback_name=typ or "object",
+      )
+      annotation = ast.BinOp(
+        left=inner, op=ast.MatMult(), right=ast.Name(id="const", ctx=ast.Load()),
+      )
+      val_src = value if value else "None"
+      val_expr = cls._expr_from_source(val_src) or ast.Constant(value=None)
+      stmt = ast.AnnAssign(
+        target=ast.Name(id=name, ctx=ast.Store()),
+        annotation=annotation,
+        value=val_expr,
+        simple=1,
+      )
+      body_stmts.append(stmt)
+      self._field_from_class_ann(stmt)
+      if value and str(value).strip():
+        self.field_default_sources[name] = str(value).strip()
+
+    for name, typ, value in mid_class.fields:
+      legacy = _type_to_legacy_annotation(typ) if typ else None
+      annotation = cls._type_expr_from_source(
+        typ, legacy=legacy, fallback_name=typ or "object",
+      )
+      val_expr = None
+      if value and str(value).strip():
+        self.field_default_sources[name] = str(value).strip()
+        val_expr = cls._expr_from_source(str(value).strip())
+      stmt = ast.AnnAssign(
+        target=ast.Name(id=name, ctx=ast.Store()),
+        annotation=annotation,
+        value=val_expr,
+        simple=1,
+      )
+      body_stmts.append(stmt)
+      self._field_from_class_ann(stmt)
+
+    from compiler.py.mid.tree_from_mid import _rewrite_optional_field_line
+
+    for mem in other_opaques:
+      rewritten = _rewrite_optional_field_line(mem)
+      stmts = opaque_member_stmts(rewritten, module_path or "<from_mid>")
+      for stmt in stmts:
+        if isinstance(stmt, ast.AnnAssign):
+          self._field_from_class_ann(stmt)
+          body_stmts.append(stmt)
+        elif isinstance(stmt, ast.Assign):
+          if not self._try_repr_alias_str(stmt):
+            self._field_from_class_assign(stmt)
+          body_stmts.append(stmt)
+        elif isinstance(stmt, ast.FunctionDef):
+          # opaque 里偶发嵌套 def（property 块残留等）— 留给 ensure 桥接
+          body_stmts.append(stmt)
+        elif not isinstance(stmt, ast.Pass):
+          body_stmts.append(stmt)
+
+    for meth in mid_class.methods:
+      if not isinstance(meth, MidFunction):
+        continue
+      self._store_mid_method(meth)
+      if meth.name == "__copy__":
+        self.has_copy = True
+      elif meth.name == "__move__":
+        self.has_move = True
+      # 不急于 bridge_mid_method_to_ast：methods/inits 留给 sync / ensure_*
+
+    self.node.body = body_stmts if body_stmts else [ast.Pass()]
+    # opaque ``type X = ...`` / 协议字段 AnnAssign：须进 type_aliases / protocol_members
+    # （AST ``ClassInfo.__init__`` 扫 body；from_mid 先前只挂了 AnnAssign 字段）
+    for stmt in self.node.body:
+      if isinstance(stmt, ast.TypeAlias):
+        if stmt.name.id in self.type_aliases:
+          continue
+        alias = parse_type_alias_stmt(stmt)
+        self.type_alias_list.append(alias)
+        self.type_aliases[alias.name] = alias
+      elif (
+        self.is_protocol
+        and isinstance(stmt, ast.AnnAssign)
+        and isinstance(stmt.target, ast.Name)
+        and type_alias_rhs_is_ellipsis(stmt.value)
+      ):
+        if any(m.name == stmt.target.id for m in self.protocol_members):
+          continue
+        ann_src = ""
+        if stmt.annotation is not None:
+          try:
+            ann_src = ast.unparse(stmt.annotation)
+          except (TypeError, ValueError, RecursionError):
+            ann_src = ""
+        self.protocol_members.append(
+          ProtocolMemberConstraint(
+            stmt.target.id, "field", stmt.annotation,
+            annotation_source=ann_src,
+          ),
+        )
+    self._strip_type_param_forward_aliases()
+    return self
+
+  @classmethod
+  def from_mid_enum(
+    cls,
+    mid_enum: "MidEnum",
+    module_path: str = "",
+  ) -> "ClassInfo":
+    """``MidEnum`` → ``ClassInfo``（不经 ``classdef_from_mid_enum``）。"""
+    self = object.__new__(cls)
+    self._init_mid_shell(mid_enum.name, module_path)
+    self.is_enum = True
+    self.is_enum_mro = bool(mid_enum.is_type_enum)
+    self.enum_is_flag = bool(mid_enum.flag)
+    if mid_enum.flag:
+      setattr(self, "enum_flag_from_mid", True)
+    # 成员值由 ``expand_enums_from_mid`` 填充；此处仅占位 Assign 供仍扫 node.body 者
+    body: list[ast.stmt] = []
+    for name, val in mid_enum.members:
+      if val is None:
+        continue
+      target = ast.Name(id=name, ctx=ast.Store())
+      value = cls._expr_from_source(str(val))
+      if value is None:
+        value = ast.Constant(value=val)
+      body.append(ast.Assign(targets=[target], value=value))
+    self.node.body = body if body else [ast.Pass()]
+    self.node.decorator_list = [ast.Name(id="enum", ctx=ast.Load())]
+    return self
 
   def _strip_type_param_forward_aliases(self) -> None:
     if not self.type_params:
@@ -3568,6 +4204,11 @@ class ClassInfo:
         write_field_ann_ast(self, name, copy.deepcopy(base_ann))
       if stmt.value is not None:
         self.field_defaults[name] = copy.deepcopy(stmt.value)
+        if name not in self.field_default_sources:
+          try:
+            self.field_default_sources[name] = ast.unparse(stmt.value)
+          except (TypeError, ValueError, RecursionError):
+            pass
     else:
       self._field_from_target(stmt.target, base_ann)
 

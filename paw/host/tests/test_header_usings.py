@@ -1,7 +1,7 @@
 """``header_usings``：由 ``ClassInfo`` 推导 ``using``，无 ``TestCase`` 硬编码表。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.analysis.header_usings import build_header_usings_index, usings_for_headers

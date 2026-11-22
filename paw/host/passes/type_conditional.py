@@ -1,7 +1,7 @@
 """``type A[T, U = …] = U if T is list[U] else T`` → C++ ``pick`` 分派 + 编译期展开。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 def _pick_name(alias: TypeAliasInfo) -> str:
   from ..analysis.patterns import paw_emit_symbol
 
-  return py2cpp_emit_symbol("type_cond", alias.name, str(alias.lineno), "pick")
+  return paw_emit_symbol("type_cond", alias.name, str(alias.lineno), "pick")
 
 
 def _parse_conditional_pattern(

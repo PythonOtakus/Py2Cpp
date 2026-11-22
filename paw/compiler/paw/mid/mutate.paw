@@ -1,0 +1,31 @@
+"""MidIR 就地变更助手（与 ``compiler/py/mid/mutate.py`` 对位；Paw MidModule 分表）。"""
+from paw import *
+from .nodes import MidClass, MidFunction, MidModule
+
+def findMidClass(mid: MidModule, name: str) -> MidClass | None:
+  i: int = 0
+  while i < len(mid.classes):
+    cls: MidClass = mid.classes[i]
+    if cls.name == name:
+      return cls
+    i += 1
+  return None
+
+def appendMidMethod(midClass: MidClass, fn: MidFunction) -> None:
+  i: int = 0
+  while i < len(midClass.methods):
+    existing: MidFunction = midClass.methods[i]
+    if existing.name == fn.name:
+      midClass.methods[i] = fn
+      return
+    i += 1
+  midClass.methods.append(fn)
+
+def findMidClassInList(mids: list[MidModule], name: str) -> MidClass | None:
+  i: int = 0
+  while i < len(mids):
+    found: MidClass | None = findMidClass(mids[i], name)
+    if found is not None:
+      return found
+    i += 1
+  return None

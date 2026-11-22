@@ -1,5 +1,5 @@
 """``PyCoroutine`` 类型映射与 ``makePyCoroutine`` 表达式。"""
-import ast
+import host.tree_nodes as ast
 import unittest
 from host.analysis.analyzer import TypeParser
 from host.analysis.type_pred import is_concrete_coroutine_type, is_py_coroutine_type
@@ -10,7 +10,7 @@ class PyCoroutineTypeTests(unittest.TestCase):
 
     def test_parse_coroutine_ann_storage(self):
         tp = TypeParser()
-        ann = ast.parse('CoroutineType[int, None, None]').body[0].value
+        ann = ast._stdlib_parse('CoroutineType[int, None, None]').body[0].value
         cpp = tp.parse_storage_type(ann, set())
         self.assertEqual(cpp, 'PyCoroutine<PyInt, PyNone, PyNone>')
 

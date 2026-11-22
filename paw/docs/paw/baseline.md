@@ -1,6 +1,6 @@
 # Paw P0 / 原生编译器冻结基线
 
-更新 2026-11-02。对应 [parser-self-hosting.md](../parser-self-hosting.md) 与 **Paw 原生编译器方案（Syntax→HIR→MidIR）**。  
+更新 2026-11-05。对应 [parser-self-hosting.md](../parser-self-hosting.md) 与 **Paw 原生编译器方案（Syntax→HIR→MidIR）**。  
 **语法已实现/未实现总表**：[syntax-inventory.md](./syntax-inventory.md)。
 
 ## 1. 语言身份
@@ -84,19 +84,23 @@ stdlib mid-emit 覆盖：`python tools/paw_mid_emit_coverage.py`。
 | stdlib `can_emit_mid` | **153/153（100%）**（见 `tools/paw_mid_emit_coverage.py`） |
 | `tests/` build-all | **155/155 绿**（2026-11-02） |
 | 删除 `materialize_ast` | **已删**；mid_ok **默认空树** + 回填 |
-| PRIMARY | 默认仅 `compiler/paw/**`；stdlib/test 需 `MID_PRIMARY=1` |
+| PRIMARY | 默认全部 `mid_emit_ok`（同 `MID_PRIMARY=1`）；`MID_PRIMARY=0` 关闭 |
 | passes 迁出 `ast.*` | 进行中（enum/record/union/protocol/mixin Mid；其余仍 C0） |
-| 模板执行器去 CPython | 未完成 |
+| 模板执行器去 CPython | **绿（生产）**：冻结子集 + for-list；`minimal.h` 无 EXEC/def；`paw_native_template_expand.bat` 生产 0 SKIP（`~test` showcase 仍宿主） |
 | 编译器源码 Paw 化（完整 S） | seed 竖切 + `emit-seed`→stage1；`compiler/**/*.py` 仍宿主 |
 | C0 Mid 定点 | **绿**：stage1==stage2==stage3 seed `.h/.cpp`（同宿主三次 emit） |
 | C1 parse→emit→run | **绿**：薄 mid_emit nested `c1_emit/<pkg>/…`；含薄 emit 全量 `emit_cpp.paw` + **D5/D6 薄 parse→emit** + **D7 薄 reseed** |
 | Py×Paw dual | **D0–D7 绿**：含 seed 薄 C1→C2→C3 定点；[dual-impl.md](./dual-impl.md) |
 | C1 thin check | **绿**：薄 emit `checkModule` 重名检测链跑 |
 | 真 C1→C2→C3（seed 薄栈） | **绿**：`c2_thin`≡`c3_thin`（source/lexer/parser/emit_cpp/…）；C2 span/parser 竖切；门闩 `paw_stage1_c1_link.bat` + `paw_c2_c3_thin_reseed.bat` |
-| 全量自举（完整 S / 模板离 CPython） | 未通：生产仍宿主 Mid；模板执行器仍 CPython |
+| 全量自举（完整 S / 模板离 CPython） | **绿（编译器）**：`paw_native_self_host` c2≡c3；生产模板 0 SKIP；nopy 胖库。**进行中**：自举驱动 `build_all` → `tools\paw_native_build_all.bat`（**146/155**，2026-11-22） |
+| 自举驱动 `build_all`（原生） | **146/155**（`out/_native_full2.txt`，2026-11-22；`tools\paw_native_build_all.bat` + `paw_native_parallel_build.py`；宿主 ClassInfo 路径仍 **155/155**） |
 
 ## 8. 已知失败 / 延后
 
-- stdlib / 测试经 `ast_module_from_mid` 供尚未迁完的 passes；见 [debridge-roadmap.md](./debridge-roadmap.md)
-- 模板执行器仍依赖宿主 CPython（见 parser-self-hosting §5）
+- **编译器自举已闭合**（`tools\paw_self_host_accept.bat`）；**自举跑 `build_all` 146/155**（2026-11-22；fail=9）
+- 原生测例剩余（9）：`concur/test_task`（gather 完成顺序 LIFO）、`core/test_delegate`（成员函数委托 thunk）、`lang/test_varstack`（VarStack 译期展开）、`spatial/test_transform`（`.parent` 赋值 AV）、`weak/test_weak`（ref record 局部取回类型）、`web/test_openai`（函数→Callable / ref 泛型实参）、`web/{http,socket,stream}_async`（协作式 await 仍为同步薄路径）
+- stdlib 须 `tree_from_mid` 骨架（union.mro / ExcTypeUnion）；仅 `compiler/paw/**` 薄生产跳过
+- Mid emit ≪ host ClassInfo（variant/unittest/`main` 入口/模板 inject…）；nopy 仅重建已有 `out/runtime`
+- `templates/~test/~exec_def_host.inl` 保留 EXEC/def 宿主单测
 - GPU Host/CUDA 与 Paw 前端解耦，不阻塞本基线

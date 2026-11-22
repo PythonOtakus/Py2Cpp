@@ -1,14 +1,14 @@
 """``FuncTypeParams``：``@protocol`` 形参注解与 PEP 695 模板形参映射。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.analysis.ir import FuncTypeParametricBound, FuncTypeParams
 
 
 def _collect(src: str) -> FuncTypeParams:
-  tree = ast.parse(src)
+  tree = ast._stdlib_parse(src)
   func = tree.body[0]
   assert isinstance(func, ast.FunctionDef)
   return FuncTypeParams.collect(func)

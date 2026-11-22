@@ -7,8 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, NoReturn
 
 if TYPE_CHECKING:
-  import ast
-
+  import host.tree_nodes as ast
   from .translator import Translator
 
 # 已有 ``path:line`` / ``path:line:col`` 前缀时不再重复包装

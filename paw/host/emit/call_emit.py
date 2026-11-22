@@ -1,6 +1,6 @@
 """函数调用表达式 emit（自 ``translator.py`` 拆出）。"""
 from __future__ import annotations
-import ast
+import host.tree_nodes as ast
 import copy
 from typing import TYPE_CHECKING
 from ..analysis.imports import binding_cpp_name, resolve_class_ref_cpp, resolve_ctor_cpp_type, resolve_import_attribute_chain
@@ -187,7 +187,9 @@ def specialize_param_cpp_types_from_context(tr: 'Translator', info: ClassInfo, p
                 rendered = ast.unparse(raw)
                 for host_name, concrete in host_bindings.items():
                     rendered = re.sub(rf'\b{re.escape(host_name)}\b', concrete, rendered)
-                bindings[name] = tr._parse_type(ast.parse(rendered, mode='eval').body, set())
+                from ..frontend.api import parse_type_as_ast
+
+                bindings[name] = tr._parse_type(parse_type_as_ast(rendered), set())
         for name, concrete in bindings.items():
             specialized = [re.sub(rf'\b{re.escape(name)}\b', concrete, value) for value in specialized]
     return specialized
@@ -198,10 +200,17 @@ def _specialize_call_param_cpp_types(tr: Translator, func: ast.expr, param_cpp_t
     match func:
         case ast.Attribute(value=recv, attr=_):
             info = class_info_from_receiver(tr, recv)
-            if info is None:
-                return param_cpp_types
-            recv_cpp = receiver_cpp_type_for_call(tr, recv)
-            if not recv_cpp:
+            recv_cpp = ''
+            if info is not None:
+                try:
+                    recv_cpp = receiver_cpp_type_for_call(tr, recv) or ''
+                except Exception:
+                    recv_cpp = ''
+            if info is None or not recv_cpp:
+                # 局部变量容器（``parts: list[str]``）：用其 C++ 类型特化模板形参
+                local_ty = _local_container_cpp_type(tr, recv)
+                if local_ty:
+                    return _specialize_from_concrete_receiver(tr, local_ty, param_cpp_types)
                 return param_cpp_types
             specialized = specialize_param_cpp_types_from_context(tr, info, param_cpp_types, recv_cpp)
             from ..analysis.ir import cpp_template_base_and_args, strip_cpp_ref
@@ -233,6 +242,42 @@ def _specialize_call_param_cpp_types(tr: Translator, func: ast.expr, param_cpp_t
             return specialized
         case _:
             return param_cpp_types
+
+
+def _local_container_cpp_type(tr: Translator, recv: ast.expr) -> str:
+    """局部/形参变量的 C++ 存储类型（``PyList<PyStr, 0>``）；未知返回空。"""
+    if not isinstance(recv, ast.Name):
+        return ''
+    getter = getattr(tr, '_scope_storage', None)
+    if getter is None:
+        return ''
+    try:
+        return getter(recv.id) or ''
+    except Exception:
+        return ''
+
+
+def _specialize_from_concrete_receiver(
+    tr: Translator, recv_cpp: str, param_cpp_types: list[str]
+) -> list[str]:
+    """``PyList<PyStr, 0>.append(x)``：把形参里的 ``_Element``（及 ``Element``）换成 ``PyStr``。"""
+    import re
+    from ..analysis.ir import cpp_template_base_and_args, strip_cpp_ref
+
+    parsed = cpp_template_base_and_args(strip_cpp_ref(recv_cpp))
+    if parsed is None or not parsed[1]:
+        return param_cpp_types
+    elem = parsed[1][0].strip()
+    if not elem:
+        return param_cpp_types
+    bindings = {'_Element': elem, 'Element': elem}
+    out: list[str] = []
+    for value in param_cpp_types:
+        v = value
+        for name, concrete in bindings.items():
+            v = re.sub(rf'\b{re.escape(name)}\b', concrete, v)
+        out.append(v)
+    return out
 
 def call_param_names(tr: Translator, func: ast.expr, *, call: ast.Call | None=None) -> list[str] | None:
     match func:
@@ -600,15 +645,17 @@ def emit_call_args(tr: Translator, node: ast.Call, *, param_cpp_types: list[str]
             v = tr._visit_value_for_type(arg, param_cpp_types[i])
         else:
             v = tr._visit_value_expr(arg)
-            if isinstance(node.func, ast.Attribute) and node.func.attr in ('__add__', '__radd__') and len(node.args) == 1 and i == 0:
+            # 二元 dunder 实参：对侧是 str（``Path / "a"`` / ``"a" + c``）时 char 提升为 str
+            if isinstance(node.func, ast.Attribute) and len(node.args) == 1 and i == 0:
                 recv_ty = tr._infer_expr_cpp_type(node.func.value)
                 arg_ty = tr._infer_expr_cpp_type(arg)
                 from ..analysis.type_pred import is_char_type, is_str_type
                 from ..analysis.ir import cpp_ident
-                if node.func.attr == '__add__' and is_str_type(recv_ty, classes=tr.classes) and is_char_type(arg_ty, classes=tr.classes):
-                    v = f'{cpp_ident("str")}({v})'
-                elif node.func.attr == '__radd__' and is_str_type(arg_ty, classes=tr.classes) and is_char_type(recv_ty, classes=tr.classes):
-                    v = f'{cpp_ident("str")}({v})'
+                ps = cpp_ident('str')
+                recv_str = is_str_type(recv_ty, classes=tr.classes) or recv_ty in (ps, 'PyPath') or 'Path' in (recv_ty or '')
+                if recv_str and is_char_type(arg_ty, classes=tr.classes):
+                    if not v.startswith(f'{ps}('):
+                        v = f'{ps}({v})'
         parts.append(v)
     if isinstance(node.func, ast.Attribute) and node.func.attr == '__add__' and len(node.args) == 1 and parts:
         from ..analysis.type_pred import is_char_type, is_str_type
@@ -1131,7 +1178,9 @@ def _resolve_mixin_type_param_ann(tr: 'Translator', name: str) -> ast.expr | Non
             if isinstance(bound, ast.expr):
                 return bound
             try:
-                parsed = ast.parse(bound, mode='eval').body
+                from ..frontend.api import parse_type_as_ast
+
+                parsed = parse_type_as_ast(bound)
                 if isinstance(parsed, ast.expr):
                     return parsed
             except SyntaxError:

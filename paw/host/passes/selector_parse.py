@@ -1,7 +1,7 @@
 """路径字符串 DSL → ``SelectorPlan`` IR（``select("…")`` 译期专用）。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import re
 from dataclasses import dataclass, field
 
@@ -283,10 +283,12 @@ def _parse_filter_expr(src: str) -> tuple[ast.expr, frozenset[str]]:
   desugared_bind, bind_refs = _desugar_filter_bind_src(src)
   desugared = _desugar_filter_member_src(desugared_bind)
   try:
-    tree = ast.parse(desugared, mode="eval")
+    from ..frontend.api import parse_expression_as_ast
+
+    body = parse_expression_as_ast(desugared)
   except SyntaxError as e:
     raise SelectorParseError(f"过滤表达式语法错误: {e}") from e
-  return tree.body, bind_refs
+  return body, bind_refs
 
 
 def _parse_slice_tail(path: str, i: int) -> tuple[int | None, int | None, int]:

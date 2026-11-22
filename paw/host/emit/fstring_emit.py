@@ -1,6 +1,6 @@
 """f-string / ``str.format``：``{}`` 占位 + 实参用 ``str(...)`` 构造。"""
 from __future__ import annotations
-import ast
+import host.tree_nodes as ast
 import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING

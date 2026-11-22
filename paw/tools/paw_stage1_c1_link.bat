@@ -353,7 +353,7 @@ if errorlevel 1 (
   compiler\paw\hir\nodes.paw ^
   compiler\paw\mid\nodes.paw ^
   compiler\paw\mid\structure.paw ^
-  compiler\paw\mid\ast_from_mid.paw ^
+  compiler\paw\mid\tree_from_mid.paw ^
   compiler\paw\sema\bind.paw ^
   compiler\paw\mid\emit_cpp.paw
 if errorlevel 1 (

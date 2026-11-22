@@ -1,7 +1,7 @@
 """``@final`` 类/方法/字段译期约束（继承、覆盖、``__init__`` 外赋值）。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 
 from ..analysis.ir import ClassInfo, has_named_decorator

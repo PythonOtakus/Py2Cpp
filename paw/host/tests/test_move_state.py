@@ -1,7 +1,7 @@
 """``expand_move_state``：剥除手写 ``__moved__`` 赋值。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.analysis.ir import ClassInfo
@@ -16,7 +16,7 @@ from host.translator import Translator
 
 class MoveStatePassTests(unittest.TestCase):
   def test_strip_move_assigns(self):
-    body = ast.parse(
+    body = ast._stdlib_parse(
       """def __move__(self, other):
   self.x = other.x
   self.__moved__ = False
@@ -28,7 +28,7 @@ class MoveStatePassTests(unittest.TestCase):
     self.assertIsInstance(stripped[0], ast.Assign)
 
   def test_detect_legacy_moved(self):
-    stmt = ast.parse("self.moved = True").body[0]
+    stmt = ast._stdlib_parse("self.moved = True").body[0]
     self.assertTrue(_is_move_state_bool_assign(stmt))
 
   def test_expand_strips_init_and_move(self):
@@ -42,7 +42,7 @@ class Box:
     self.__moved__ = False
     other.__moved__ = True
 """
-    mod = ast.parse(src)
+    mod = ast._stdlib_parse(src)
     cls = mod.body[0]
     assert isinstance(cls, ast.ClassDef)
     info = ClassInfo(cls, "test/box")

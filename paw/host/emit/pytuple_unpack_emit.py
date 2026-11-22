@@ -1,7 +1,7 @@
 """``PyTuple<…>`` 多目标解包：前缀非负 ``get<N>``、后缀负 ``get<-N>``、``*_`` 丢弃中间。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 

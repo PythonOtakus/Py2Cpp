@@ -7,7 +7,7 @@
 """
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import copy
 
 from ..analysis.ir import (
@@ -60,6 +60,8 @@ def _migrate_field_property_storage(info: ClassInfo, field: str, base_ann: ast.e
     info.fields.append(storage)
   if field in info.field_defaults:
     info.field_defaults[storage] = info.field_defaults.pop(field)
+  if field in getattr(info, "field_default_sources", {}):
+    info.field_default_sources[storage] = info.field_default_sources.pop(field)
   ann = field_ann_ast(info, field)
   if ann is not None:
     write_field_ann_ast(
@@ -221,6 +223,8 @@ def _migrate_static_postsetter_storage(
   info.static_property_storage.add(storage)
   if field in info.field_defaults:
     info.field_defaults[storage] = info.field_defaults.pop(field)
+  if field in getattr(info, "field_default_sources", {}):
+    info.field_default_sources[storage] = info.field_default_sources.pop(field)
   ann = field_ann_ast(info, field)
   if ann is not None:
     write_field_ann_ast(

@@ -1,7 +1,7 @@
 """``VarStack``：``@mixin`` 内 ``s: VarStack = new()`` + ``s.push`` / ``s.pop`` / ``s.top()`` + ``new(*s)`` / ``fn(*s)`` 译期展开。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import copy
 from dataclasses import dataclass, field
 

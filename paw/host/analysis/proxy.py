@@ -1,7 +1,7 @@
 """``Proxy[T]`` / ``super`` / ``Super`` 分析辅助。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import copy
 from typing import TYPE_CHECKING
 

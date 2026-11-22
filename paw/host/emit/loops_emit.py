@@ -1,6 +1,6 @@
 """``for`` / ``while`` / ``range`` / ``enumerate`` / ``zip`` 语句 emit（自 ``translator.py`` 拆出）。"""
 from __future__ import annotations
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING, Callable
 from ..analysis.type_pred import is_array_type, is_bytes_type, is_char_heap_array_type, is_chunk_deque_type, is_dict_type, is_frozendict_type, is_frozenlist_type, is_list_type, is_py_iterable_type, is_span_type, is_stack_array_type, is_str_type
 from ..analysis.type_extract import chunk_deque_elem_type, frozenlist_elem_type, list_elem_type, iterable_elem_type, dict_type_args, frozendict_type_args

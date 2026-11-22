@@ -1,7 +1,7 @@
 """``.map(...)` → OpenMP 点wise 或 CUDA launch（由 ``gpu_backend`` 选择）。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 
 from ..analysis.patterns import temp_name

@@ -27,9 +27,9 @@ record Org:
   teams: list[Team] @optional = []
 
 _Sample: str = (
-  '{"title":"acme","teams":[{"name":"eng","members":'
-  '[{"id":1,"name":"bob","active":true,"tags":[]}'
-  ']}]}'
+  "{\"title\":\"acme\",\"teams\":[{\"name\":\"eng\",\"members\":"
+  "[{\"id\":1,\"name\":\"bob\",\"active\":true,\"tags\":[]}"
+  "]}]}"
 )
 
 class JsonDocumentLoadTests(TestCaseMixin):

@@ -1,7 +1,7 @@
 """``T @final``：从 ``__init__`` 提取 ``self.f = …`` 供 C++ 构造初始化列表；类体默认进 ``final_ctor_inits``。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import copy
 from typing import TYPE_CHECKING
 

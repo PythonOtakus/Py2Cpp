@@ -1,7 +1,7 @@
 """``@noexcept``：静态收集 ``raise`` 类型、校验装饰器形态。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 
 from ..analysis.ir import has_named_decorator

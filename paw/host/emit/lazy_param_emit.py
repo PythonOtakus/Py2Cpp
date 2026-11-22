@@ -1,6 +1,6 @@
 """``@lazy`` 形参：call site 包壳、first-touch memo、supplier 透传。"""
 from __future__ import annotations
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 from ..analysis.type_pred import is_py_callable_type, is_dict_type, is_frozendict_type
 from ..analysis.type_extract import dict_type_args, frozendict_type_args

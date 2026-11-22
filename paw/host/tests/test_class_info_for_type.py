@@ -1,7 +1,7 @@
 """``_class_info_for_type``：带 ``::`` 的模板实参不误伤类名解析。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import unittest
 from pathlib import Path
 
@@ -37,11 +37,10 @@ class ClassInfoForTypeTests(unittest.TestCase):
     self.assertEqual(info.name, "list")
 
   def test_template_args_match_cpp_name(self):
-    import ast
-
+    import host.tree_nodes as ast
     from host.analysis.ir import ClassInfo, class_info_for_cpp_type, clear_class_cpp_index
 
-    node = ast.parse("class list: pass").body[0]
+    node = ast._stdlib_parse("class list: pass").body[0]
     info = ClassInfo(node, "paw/util/list")
     info.cpp_rename = "PyList"
     classes = {"list": info}

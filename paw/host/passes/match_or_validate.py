@@ -1,7 +1,7 @@
 """``MatchOr``：各支捕获名集合相同，且同名捕获的绑定 C++ 类型一致（不限制槽位顺序）。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 

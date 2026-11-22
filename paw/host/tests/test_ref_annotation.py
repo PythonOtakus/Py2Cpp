@@ -1,7 +1,7 @@
 """``T @ref`` → C++ ``T&``。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.analysis.analyzer import SignatureBuilder, TypeParser
@@ -14,7 +14,7 @@ class RefAnnotationTypeParseTests(unittest.TestCase):
 def f(x: ECSComponentTable[int] @ref) -> int @ref:
   pass
 """
-    tree = ast.parse(src)
+    tree = ast._stdlib_parse(src)
     func = tree.body[0]
     tp = TypeParser()
     tparams: set[str] = set()

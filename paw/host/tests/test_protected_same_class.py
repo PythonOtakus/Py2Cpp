@@ -1,7 +1,7 @@
 """同类 protected 访问：局部 ``Self`` 变量与 ``abs(self)`` 接收者。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.analysis.access import collect_external_protected_accesses
@@ -13,7 +13,7 @@ from host.translator import Translator
 
 class SameClassProtectedAccessTests(unittest.TestCase):
   def _build(self, src: str) -> Translator:
-    mod = ast.parse(src)
+    mod = ast._stdlib_parse(src)
     tr = Translator("test/long_access", "test/long_access.py")
     for node in mod.body:
       if isinstance(node, ast.ClassDef):

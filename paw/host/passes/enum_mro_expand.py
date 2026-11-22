@@ -1,7 +1,7 @@
 """``@enum.mro`` + ``class E(base=…)``：MRO 闭集枚举 + 手动特殊成员。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 
 from ..analysis.ir import (

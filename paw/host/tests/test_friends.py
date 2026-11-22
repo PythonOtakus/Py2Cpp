@@ -1,7 +1,7 @@
 """``class B(friends=(A,))``：友元类与 protected 访问检查。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.analysis.access import (
@@ -17,17 +17,17 @@ from host.translator import Translator
 
 class ParseFriendsTests(unittest.TestCase):
   def test_parse_tuple(self):
-    node = ast.parse("class Vault(friends=(Reader, Op)): pass").body[0]
+    node = ast._stdlib_parse("class Vault(friends=(Reader, Op)): pass").body[0]
     self.assertEqual(parse_class_friends(node), ["Reader", "Op"])
 
   def test_parse_single(self):
-    node = ast.parse("class Vault(friends=Reader): pass").body[0]
+    node = ast._stdlib_parse("class Vault(friends=Reader): pass").body[0]
     self.assertEqual(parse_class_friends(node), ["Reader"])
 
 
 class FriendAccessTests(unittest.TestCase):
   def _build(self, src: str) -> Translator:
-    mod = ast.parse(src)
+    mod = ast._stdlib_parse(src)
     tr = Translator("test/friends", "test/friends.py")
     for node in mod.body:
       if isinstance(node, ast.ClassDef):
@@ -69,7 +69,7 @@ class Stranger:
     self.assertIn(("Stranger", "Vault", "_code"), ext)
 
   def test_parse_forward_friend_class_name(self):
-    node = ast.parse("class Host(friends=(Later,)): pass").body[0]
+    node = ast._stdlib_parse("class Host(friends=(Later,)): pass").body[0]
     self.assertEqual(parse_class_friends(node), ["Later"])
 
   def test_forward_friend_same_module(self):
@@ -89,7 +89,7 @@ class Later:
     self.assertTrue(class_grants_friend_access("Later", "Host", tr.classes))
 
   def test_string_friend_rejected(self):
-    node = ast.parse('class Host(friends=("Later",)): pass').body[0]
+    node = ast._stdlib_parse('class Host(friends=("Later",)): pass').body[0]
     with self.assertRaises(SyntaxError) as ctx:
       parse_class_friends(node)
     self.assertIn("勿用字符串", str(ctx.exception))

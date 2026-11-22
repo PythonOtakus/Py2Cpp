@@ -1,7 +1,7 @@
 """``expand_inline_range``：``@mixin`` 内 ``inline_range`` 完全展开（无 ``for`` / ``range``）。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import textwrap
 import unittest
 
@@ -11,10 +11,10 @@ from host.passes.inline_range import expand_inline_range
 
 class ExpandInlineRangeTests(unittest.TestCase):
   def _host(self, src: str) -> ClassInfo:
-    return ClassInfo(ast.parse(textwrap.dedent(src)).body[0])
+    return ClassInfo(ast._stdlib_parse(textwrap.dedent(src)).body[0])
 
   def _method(self, src: str) -> ast.FunctionDef:
-    mod = ast.parse(textwrap.dedent(src))
+    mod = ast._stdlib_parse(textwrap.dedent(src))
     return mod.body[0].body[0]
 
   def _assert_no_for_range(self, expanded: ast.FunctionDef) -> None:

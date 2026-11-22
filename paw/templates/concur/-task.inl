@@ -21,7 +21,7 @@ PY2CPP_END
 #include "ffi/posix/unistd.h"
 #endif
 
-namespace paw_concur_task_detail
+namespace py2cpp_concur_task_detail
 {
   inline bool io_ready(PyInt64 handle, PyInt events)
   {

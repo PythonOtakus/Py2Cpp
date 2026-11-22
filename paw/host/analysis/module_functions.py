@@ -1,7 +1,7 @@
 """模块级 ``def`` 索引：``@overload`` 分组与普通实现分离。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 
 from .delegates import is_delegate_definition

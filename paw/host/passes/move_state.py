@@ -1,7 +1,7 @@
 """含 ``__move__`` 的类自动注入 ``__moved__`` 字段，并剥除手写初始化/赋值。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 
 from ..analysis.ir import ClassInfo, cpp_ident, cpp_param

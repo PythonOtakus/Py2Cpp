@@ -1,7 +1,7 @@
 """GPU kernel / Device 辅助：类与函数判定。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 
 from ..analysis.ir import ClassInfo, has_named_decorator

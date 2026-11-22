@@ -1,7 +1,7 @@
 """``Self.iter_methods`` / ``Self.iter_methods[Ann]`` 展开。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import textwrap
 import unittest
 
@@ -33,7 +33,7 @@ class MethodMetaTests(unittest.TestCase):
           pass
       '''
     )
-    host = ClassInfo(ast.parse(host_src).body[0])
+    host = ClassInfo(ast._stdlib_parse(host_src).body[0])
     self.assertEqual(annotated_methods(host, "UIButtonMeta"), ["go", "apply"])
 
   def test_method_meta_label(self):
@@ -48,7 +48,7 @@ class MethodMetaTests(unittest.TestCase):
           pass
       '''
     )
-    host = ClassInfo(ast.parse(host_src).body[0])
+    host = ClassInfo(ast._stdlib_parse(host_src).body[0])
     self.assertEqual(method_meta_label(host, "save", "UIButtonMeta"), "保存")
     self.assertEqual(method_meta_label(host, "apply", "UIButtonMeta"), "apply")
 
@@ -70,8 +70,8 @@ class MethodMetaTests(unittest.TestCase):
           pass
       '''
     )
-    method = ast.parse(mixin_src).body[0].body[0]
-    host = ClassInfo(ast.parse(host_src).body[0])
+    method = ast._stdlib_parse(mixin_src).body[0].body[0]
+    host = ClassInfo(ast._stdlib_parse(host_src).body[0])
     expanded = expand_iter_methods_loop(method, host, {"P": host})
     self.assertIsNotNone(expanded)
     assert expanded is not None
@@ -97,8 +97,8 @@ class MethodMetaTests(unittest.TestCase):
           pass
       '''
     )
-    method = ast.parse(mixin_src).body[0].body[0]
-    host = ClassInfo(ast.parse(host_src).body[0])
+    method = ast._stdlib_parse(mixin_src).body[0].body[0]
+    host = ClassInfo(ast._stdlib_parse(host_src).body[0])
     expanded = expand_iter_methods_loop(method, host, {"P": host})
     self.assertIsNotNone(expanded)
     assert expanded is not None
@@ -128,8 +128,8 @@ class MethodMetaTests(unittest.TestCase):
           pass
       '''
     )
-    method = ast.parse(mixin_src).body[0].body[0]
-    host = ClassInfo(ast.parse(host_src).body[0])
+    method = ast._stdlib_parse(mixin_src).body[0].body[0]
+    host = ClassInfo(ast._stdlib_parse(host_src).body[0])
     expanded = expand_iter_methods_subscript_meta(method, host)
     self.assertIsNotNone(expanded)
     assert expanded is not None
@@ -159,8 +159,8 @@ class MethodMetaTests(unittest.TestCase):
           pass
       '''
     )
-    method = ast.parse(mixin_src).body[0].body[0]
-    host = ClassInfo(ast.parse(host_src).body[0])
+    method = ast._stdlib_parse(mixin_src).body[0].body[0]
+    host = ClassInfo(ast._stdlib_parse(host_src).body[0])
     expanded = expand_iter_methods_subscript_meta(method, host)
     self.assertIsNotNone(expanded)
     assert expanded is not None
@@ -176,7 +176,7 @@ class MethodMetaTests(unittest.TestCase):
           return True
       '''
     )
-    host = ClassInfo(ast.parse(host_src).body[0])
+    host = ClassInfo(ast._stdlib_parse(host_src).body[0])
     self.assertEqual(method_param_names(host, "fire"), ["shots", "target"])
 
   def test_method_type_ids(self):
@@ -189,7 +189,7 @@ class MethodMetaTests(unittest.TestCase):
           pass
       '''
     )
-    host = ClassInfo(ast.parse(host_src).body[0])
+    host = ClassInfo(ast._stdlib_parse(host_src).body[0])
     self.assertEqual(method_param_type_id(host, "fire", "shots"), "int")
     self.assertEqual(method_return_type_id(host, "fire"), "bool")
     self.assertIsNone(method_return_type_id(host, "tick"))
@@ -213,8 +213,8 @@ class MethodMetaTests(unittest.TestCase):
           return True
       '''
     )
-    method = ast.parse(mixin_src).body[0].body[0]
-    host = ClassInfo(ast.parse(host_src).body[0])
+    method = ast._stdlib_parse(mixin_src).body[0].body[0]
+    host = ClassInfo(ast._stdlib_parse(host_src).body[0])
     expanded = expand_method_signature_reflect(method, host)
     self.assertIsNotNone(expanded)
     assert expanded is not None

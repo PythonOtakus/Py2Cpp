@@ -1,7 +1,7 @@
 """模板函数 / 方法返回类型：decltype 与 -> None 策略。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.analysis.analyzer import SignatureBuilder, TypeParser
@@ -11,7 +11,7 @@ from host.analysis.type_emit import sig_return_storage_cpp
 
 class TemplateReturnTypeTests(unittest.TestCase):
   def _sig(self, src: str) -> tuple[ClassInfo, SignatureBuilder]:
-    cls = ast.parse(src).body[0]
+    cls = ast._stdlib_parse(src).body[0]
     assert isinstance(cls, ast.ClassDef)
     info = ClassInfo(cls, "test/mod")
     tp = TypeParser()

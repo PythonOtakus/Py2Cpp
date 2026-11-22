@@ -2,7 +2,7 @@
 
 
 // 擦除生成器句柄：``Generator[Y,S,R]`` 形参/字段/``@virtual`` 返回；具体 ``*_generator`` 经 ``makeGenerator`` 装箱。
-namespace paw_generator_detail
+namespace py2cpp_generator_detail
 {
   template<typename ST>
   ST default_send_value()
@@ -194,3 +194,55 @@ PyGenerator<YT, ST, RT> makeGenerator(G gen)
 {
   return py2cpp_generator_access::make<YT, ST, RT, G>(gen);
 }
+
+/// 薄 emit：急切收集 ``yield`` 到 ``PyList`` 后装箱为可迭代 ``PyGenerator``。
+template<typename YT, typename RT = PY2CPP_TYPE(PyNone)>
+struct py2cpp_list_generator
+{
+  typedef YT Element;
+  typedef PY2CPP_TYPE(PyNone) SendType;
+  typedef RT ReturnType;
+  typedef PY2CPP_TYPE(PyIterResult)<YT, RT> Result;
+
+  PY2CPP_TYPE(PyList)<YT, 0> items;
+  RT ret;
+  int idx;
+
+  explicit py2cpp_list_generator() : items(), ret(), idx(0) {}
+  explicit py2cpp_list_generator(PY2CPP_TYPE(PyList)<YT, 0> xs, RT r = RT())
+    : items(xs), ret(r), idx(0) {}
+
+  py2cpp_list_generator& __iter__() { return *this; }
+  Result __next__() { return send(PY2CPP_TYPE(PyNone)()); }
+  Result send(PY2CPP_TYPE(PyNone))
+  {
+    if (idx < (int)items.__len__())
+    {
+      YT v = items.__getitem__(idx);
+      idx += 1;
+      return Result::Yield(v);
+    }
+    return Result::Return(ret);
+  }
+};
+
+
+/// 薄 emit：`genEcho` / `received = yield 0` 的 int send 回显。
+struct py2cpp_echo_int_generator
+{
+  typedef PyInt Element;
+  typedef PyInt SendType;
+  typedef PY2CPP_TYPE(PyNone) ReturnType;
+  typedef PY2CPP_TYPE(PyIterResult)<PyInt, PY2CPP_TYPE(PyNone)> Result;
+
+  int phase;
+  explicit py2cpp_echo_int_generator() : phase(0) {}
+  py2cpp_echo_int_generator& __iter__() { return *this; }
+  Result __next__() { return send(0); }
+  Result send(PyInt value)
+  {
+    if (phase == 0) { phase = 1; return Result::Yield(0); }
+    if ((int)value < 0) { phase = 2; return Result::Return(PY2CPP_TYPE(PyNone)()); }
+    return Result::Yield((PyInt)((int)value * 2));
+  }
+};

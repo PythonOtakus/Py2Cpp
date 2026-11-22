@@ -1,7 +1,7 @@
 """``@union`` / ``@variant``：Rust 式 ADT 元数据（构造仅 ``Self.<Variant>(…)``，判别仅 ``match``）。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 

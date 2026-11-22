@@ -6,7 +6,7 @@
 内部 helper 前缀 ``_sXXXX_`` / ``_check_sXXXX_`` 与 §1.1 规则 ID 一致。
 """
 from __future__ import annotations
-import ast
+import host.tree_nodes as ast
 import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -231,6 +231,55 @@ def check_refcount_source_style(tr: TranslatorState) -> None:
     raise TranslationError('\n'.join(parts), location=first_loc)
 _S1102_PYNONE_NAME = re.compile('\\bPyNone\\b')
 
+
+def _mask_string_literals(source: str) -> str:
+  """把字符串字面量与 ``#`` 注释替换为等长空白（保留换行与列号）。
+
+  S1102 查的是「源码里写了 ``PyNone``」；而代码生成器（如 ``compiler/paw/mid/emit_cpp``）
+  需要在**字符串字面量**里产出 ``"PyNone"`` 这段 C++ 文本，或只在注释里提到该名字，
+  这类用法合法，不应被判违规。
+  """
+  out: list[str] = []
+  i = 0
+  n = len(source)
+  quote = ''
+  while i < n:
+    ch = source[i]
+    if quote:
+      if ch == '\\' and i + 1 < n:
+        out.append('  ')
+        i += 2
+        continue
+      if source.startswith(quote, i):
+        out.append(' ' * len(quote))
+        i += len(quote)
+        quote = ''
+        continue
+      out.append('\n' if ch == '\n' else ' ')
+      i += 1
+      continue
+    if ch == '#':
+      # 行注释到行尾
+      while i < n and source[i] != '\n':
+        out.append(' ')
+        i += 1
+      continue
+    if ch in ('"', "'"):
+      triple = source[i : i + 3]
+      if triple in ('"""', "'''"):
+        quote = triple
+        out.append('   ')
+        i += 3
+        continue
+      quote = ch
+      out.append(' ')
+      i += 1
+      continue
+    out.append(ch)
+    i += 1
+  return ''.join(out)
+
+
 def check_pynone_source_style(tr: TranslatorState) -> None:
     """S1102：全模块（含 ``tests/fail/``）禁止显式 ``PyNone``（查源码，非脱糖 AST）。"""
     if not getattr(tr, 'strict', True):
@@ -245,8 +294,10 @@ def check_pynone_source_style(tr: TranslatorState) -> None:
         source = _module_source(tr, module_path)
         if not source or _STRICT_OFF_FILE.search(source):
             continue
+        # 字符串字面量里的 ``PyNone`` 是「要生成的 C++ 文本」，不是类型注解
+        masked = _mask_string_literals(source)
         seen_lines: set[int] = set()
-        for m in _S1102_PYNONE_NAME.finditer(source):
+        for m in _S1102_PYNONE_NAME.finditer(masked):
             lineno = source.count('\n', 0, m.start()) + 1
             if lineno in seen_lines:
                 continue
@@ -2325,22 +2376,8 @@ def _s0804_check_union_case_order(checker: _StrictStyleChecker, node: ast.Match)
                     checker._add(S0804, cases[j], _s0804_shadowed_case_msg(variant_name))
 
 def _s0901_check_char_literal_compare(checker: _StrictStyleChecker, node: ast.Compare) -> None:
-    if checker._context_has('match') and (not checker._context_has('match_guard')):
-        return
-    left: ast.expr = node.left
-    for op, right in zip(node.ops, node.comparators):
-        if not isinstance(op, (ast.Eq, ast.NotEq)):
-            left = right
-            continue
-        for char_expr, lit_expr in ((left, right), (right, left)):
-            if not is_single_char_str_constant(lit_expr):
-                continue
-            if not _s0901_expr_is_char_typed(checker, char_expr):
-                continue
-            assert isinstance(lit_expr, ast.Constant) and isinstance(lit_expr.value, str)
-            checker._add(S0901, node, _s0901_char_literal_compare_msg(lit_expr.value))
-            return
-        left = right
+    """C 系引号规则：``'a'`` 即 ``char``，``s[i] == 'a'`` 天然合法，无需此规则。"""
+    return
 
 def _s0802_check_compare_chain(checker: _StrictStyleChecker, node: ast.BoolOp) -> None:
     if isinstance(node.op, ast.Or):
@@ -3051,6 +3088,9 @@ def check_s0403_field_annotation_markers(tr: Translator) -> None:
     violations: list[_Violation] = []
     for info in tr.classes.values():
         opts = _parse_dataclass_options(info.node)
+        if opts is None and getattr(info, "is_record_from_mid", False):
+            from .dataclass_expand import _options_from_mid_record
+            opts = _options_from_mid_record(info)
         frozen = opts is not None and opts.frozen
         is_dc = opts is not None
         for stmt in info.node.body:
@@ -3477,6 +3517,27 @@ def _module_protocol_static_virtual_methods(tr: Translator, module_path: str) ->
     from .protocol import is_protocol_static_virtual_method
     merged: dict[str, dict[str, str]] = {}
 
+    def iter_method_defs(info: ClassInfo) -> list[ast.FunctionDef]:
+        ensure = getattr(info, "ensure_methods_bridged_from_mid", None)
+        if callable(ensure):
+            ensure()
+        out: list[ast.FunctionDef] = []
+        seen: set[int] = set()
+        for fn in info.methods.values():
+            if id(fn) not in seen:
+                seen.add(id(fn))
+                out.append(fn)
+        for overs in info.method_overloads.values():
+            for fn in overs:
+                if id(fn) not in seen:
+                    seen.add(id(fn))
+                    out.append(fn)
+        for stmt in info.node.body:
+            if isinstance(stmt, ast.FunctionDef) and id(stmt) not in seen:
+                seen.add(id(stmt))
+                out.append(stmt)
+        return out
+
     def collect(info: ClassInfo) -> dict[str, str]:
         if info.name in merged:
             return merged[info.name]
@@ -3485,9 +3546,7 @@ def _module_protocol_static_virtual_methods(tr: Translator, module_path: str) ->
             parent = tr.classes.get(base_name)
             if parent is not None and parent.is_protocol and (parent.module_path == module_path):
                 methods.update(collect(parent))
-        for stmt in info.node.body:
-            if not isinstance(stmt, ast.FunctionDef):
-                continue
+        for stmt in iter_method_defs(info):
             if not is_protocol_static_virtual_method(stmt):
                 continue
             tag = '@abstract' if has_named_decorator(stmt, 'abstract') else '@virtual'

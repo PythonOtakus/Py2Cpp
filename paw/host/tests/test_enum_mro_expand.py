@@ -1,12 +1,12 @@
 """``@enum.mro`` 类参数 ``base=`` 解析。"""
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.analysis.ir import parse_enum_mro_base
 
 
 def _cls(src: str) -> ast.ClassDef:
-  mod = ast.parse(src)
+  mod = ast._stdlib_parse(src)
   node = mod.body[0]
   assert isinstance(node, ast.ClassDef)
   return node

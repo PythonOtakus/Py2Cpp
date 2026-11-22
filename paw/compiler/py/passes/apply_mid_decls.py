@@ -1,7 +1,7 @@
 """从 ``MidModule`` 预填 / 展开声明（expand_* 之前或之中）。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 
 from compiler.py.frontend.syntax_nodes import ObjectModel
@@ -20,13 +20,13 @@ if TYPE_CHECKING:
 def register_module_from_mid(
   tr: Translator, mid: MidModule, module_path: str
 ) -> int:
-  """``NO_MATERIALIZE`` / 空 ``tree`` 时：MidIR → ``ClassInfo`` / 模块函数登记。
+  """生产路径：MidIR → ``ClassInfo`` / 模块函数登记（translator 在有 ``parsed.mid`` 时优先调用）。
 
-  用 ``ast_from_mid`` 单声明直构，不跑 span 物化。返回登记的类数。
+  类经 ``ClassInfo.from_mid_class`` / ``from_mid_enum``（不经 ``classdef_from_mid_*``；
+  ``methods`` 保持空，真源在 ``mid_methods``）。
+  模块常量/函数仍临时走 ``stmt(s)_from_mid_*`` 桥。返回登记的类数。
   """
-  from compiler.py.mid.ast_from_mid import (
-    classdef_from_mid_class,
-    classdef_from_mid_enum,
+  from compiler.py.mid.tree_from_mid import (
     stmt_from_mid_module_const,
     stmts_from_mid_function,
   )
@@ -37,20 +37,18 @@ def register_module_from_mid(
   for item in mid.items:
     if isinstance(item, MidEnum):
       try:
-        node = classdef_from_mid_enum(item)
+        info = ClassInfo.from_mid_enum(item, module_path)
       except (SyntaxError, ValueError, TypeError):
         continue
-      info = ClassInfo(node, module_path)
       tr._all_class_infos.append(info)
       tr.classes[info.name] = info
       tr._register_nested_classes(info)
       n += 1
     elif isinstance(item, MidClass):
       try:
-        node = classdef_from_mid_class(item, filename)
+        info = ClassInfo.from_mid_class(item, module_path)
       except (SyntaxError, ValueError, TypeError):
         continue
-      info = ClassInfo(node, module_path)
       tr._all_class_infos.append(info)
       tr.classes[info.name] = info
       tr._register_nested_classes(info)
@@ -171,7 +169,7 @@ def nested_variant_classdefs_from_mid(tr: Translator, info: object) -> list[ast.
     if not text:
       continue
     try:
-      frag = ast.parse(text + "\n", mode="exec")
+      frag = ast._stdlib_parse(text + "\n", mode="exec")
     except SyntaxError:
       continue
     for stmt in frag.body:
@@ -186,7 +184,7 @@ def record_field_specs_from_mid(tr: Translator, info: object) -> list | None:
   仅处理已结构化进 ``fields`` 的实例字段；``optional name:`` 前缀等仍在
   ``opaque_members`` 时回退 ``_collect_dataclass_fields``。
   """
-  from compiler.py.mid.ast_from_mid import _type_to_legacy_annotation
+  from compiler.py.mid.tree_from_mid import type_to_legacy_annotation as _type_to_legacy_annotation
   from host.analysis.ir import (
     is_const_type_annotation,
     is_optional_type_annotation,
@@ -213,7 +211,7 @@ def record_field_specs_from_mid(tr: Translator, info: object) -> list | None:
     legacy = _type_to_legacy_annotation(typ) if typ else None
     if legacy:
       try:
-        annotation = ast.parse(legacy, mode="eval").body
+        annotation = ast._stdlib_parse(legacy, mode="eval").body
       except SyntaxError:
         return None
     else:
@@ -233,7 +231,7 @@ def record_field_specs_from_mid(tr: Translator, info: object) -> list | None:
     val_expr: ast.expr | None = None
     if value is not None and str(value).strip():
       try:
-        val_expr = ast.parse(str(value).strip(), mode="eval").body
+        val_expr = ast._stdlib_parse(str(value).strip(), mode="eval").body
       except SyntaxError as e:
         raise ValueError(f"{item.name}.{name}: 非法默认值 {value!r}") from e
     param_def, body_init = _parse_class_default(
@@ -286,7 +284,7 @@ def _mid_enum_member_specs(
       own_specs.append((name, None))
       continue
     try:
-      expr = ast.parse(val, mode="eval").body
+      expr = ast._stdlib_parse(val, mode="eval").body
     except SyntaxError as e:
       raise ValueError(f"{item.name}.{name}: 非法枚举值 {val!r}") from e
     if not (

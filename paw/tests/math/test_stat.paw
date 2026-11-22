@@ -91,6 +91,6 @@ class StatNormalDistTests(TestCaseMixin):
 
 def main():
     suite: TestSuite = new()
-    for Class in TestCaseMixin.iterSubclasses(sortConst='_testTag'):
+    for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
         suite.addTest(Class())
     return TextTestRunner().run(suite)

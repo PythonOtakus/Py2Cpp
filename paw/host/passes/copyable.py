@@ -1,7 +1,7 @@
 """``@copyable``：``c = b`` 翻译为 ``c.__copy__(b)``；与 ``__copy__`` 联用生成复制构造/赋值。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 
 from ..analysis.ir import ClassInfo, has_named_decorator

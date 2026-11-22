@@ -13,9 +13,7 @@ from host.passes.type_if import (
   plan_type_if_chain,
 )
 from host.translator import Translator
-import ast
-
-
+import host.tree_nodes as ast
 class TypeIfParseTests(unittest.TestCase):
   def test_rejects_not_t_is_int(self):
     src = """
@@ -25,7 +23,7 @@ def f[T](x: T) -> int:
   else:
     return 0
 """
-    tree = ast.parse(src)
+    tree = ast._stdlib_parse(src)
     func = tree.body[0]
     assert isinstance(func, ast.FunctionDef)
     tr = Translator("mod", "mod.py")
@@ -43,7 +41,7 @@ def f[T](x: T) -> int:
     return 2
   return 3
 """
-    tree = ast.parse(src)
+    tree = ast._stdlib_parse(src)
     func = tree.body[0]
     assert isinstance(func, ast.FunctionDef)
     tr = Translator("mod", "mod.py")
@@ -61,7 +59,7 @@ def f[T](x: T) -> int:
   else:
     return 0
 """
-    tree = ast.parse(src)
+    tree = ast._stdlib_parse(src)
     func = tree.body[0]
     assert isinstance(func, ast.FunctionDef)
     tr = Translator("mod", "mod.py")
@@ -77,7 +75,7 @@ def f[T](x: T) -> int:
   else:
     return 0
 """
-    tree = ast.parse(src)
+    tree = ast._stdlib_parse(src)
     func = tree.body[0]
     tr = Translator("mod", "mod.py")
     tr.type_parser = TypeParser()
@@ -92,7 +90,7 @@ def f[T](x: T) -> int:
   else:
     return 0
 """
-    tree = ast.parse(src)
+    tree = ast._stdlib_parse(src)
     func = tree.body[0]
     tr = Translator("mod", "mod.py")
     tr.type_parser = TypeParser()
@@ -110,7 +108,7 @@ def f[T](x: T) -> int:
   else:
     return 0
 """
-    tree = ast.parse(src)
+    tree = ast._stdlib_parse(src)
     func = tree.body[0]
     tr = Translator("mod", "mod.py")
     tr.type_parser = TypeParser()
@@ -130,7 +128,7 @@ def tally[T]() -> int:
       pass
   return n
 """
-    tree = ast.parse(src)
+    tree = ast._stdlib_parse(src)
     func = tree.body[0]
     assert isinstance(func, ast.FunctionDef)
     tr = Translator("mod", "mod.py")
@@ -148,7 +146,7 @@ def f[T, _U = ...](x: T) -> int:
   else:
     return 0
 """
-    tree = ast.parse(src)
+    tree = ast._stdlib_parse(src)
     func = tree.body[0]
     tr = Translator("mod", "mod.py")
     tr.type_parser = TypeParser()
@@ -169,7 +167,7 @@ def f[T]() -> int:
   else:
     return 0
 """
-    tree = ast.parse(src)
+    tree = ast._stdlib_parse(src)
     func = tree.body[0]
     tr = Translator("mod", "mod.py")
     tr.type_parser = TypeParser()
@@ -188,7 +186,7 @@ def f[T, _U = ...](x: T) -> int:
   else:
     return 0
 """
-    tree = ast.parse(src)
+    tree = ast._stdlib_parse(src)
     func = tree.body[0]
     tr = Translator("mod", "mod.py")
     tr.type_parser = TypeParser()

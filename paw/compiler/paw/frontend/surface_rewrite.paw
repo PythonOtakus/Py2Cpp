@@ -1,2 +1,5 @@
-"""Stub parity with ``compiler/py/frontend/surface_rewrite.py`` — not yet ported to Paw."""
+"""Surface rewrite — Zero-AST identity（生产自举路径不做改写）。"""
 from paw import *
+
+def rewriteSurface(source: str) -> str:
+  return source

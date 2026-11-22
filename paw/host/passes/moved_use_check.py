@@ -1,6 +1,6 @@
 """移动后使用：翻译期数据流检查（``dst = src`` 移动语义）。"""
 from __future__ import annotations
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 from ..analysis.type_pred import is_container_type
 from ..analysis.ir import CPP_DEQUE_PREFIX, CPP_DICT_PREFIX, CPP_FROZENSET_PREFIX, CPP_LIST_PREFIX, CPP_SET_PREFIX, ClassInfo, FuncTypeParams, strip_cpp_type_qualifiers

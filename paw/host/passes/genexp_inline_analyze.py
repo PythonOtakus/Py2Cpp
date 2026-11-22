@@ -1,7 +1,7 @@
 """分析 ``IterableType`` 形参 + ``for param in …`` 循环体，供 genexp 调用点内联。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from dataclasses import dataclass
 
 from ..analysis.ir import protocol_param_template_from_annotation

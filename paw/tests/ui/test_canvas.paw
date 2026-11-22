@@ -54,7 +54,7 @@ class PaintContextTests(TestCaseMixin):
 
     override def test(self):
         ctx: UIPaintContext = new()
-        font: UICanvasFont = new(name='Arial', size=12)
+        font: UICanvasFont = new(name="Arial", size=12)
         ctx.beginFrame(0, 640, 480, font)
         ctx.fillRect(0, 0, 100, 50, (255, 0, 0))
         ctx.drawLine(0, 0, 10, 10, (0, 255, 0), 2)
@@ -69,7 +69,7 @@ class RoundRectCmdTests(TestCaseMixin):
         ctx.fillRoundRect(10, 20, 100, 80, 8, (0, 122, 204))
         ctx.strokeRoundRect(10, 20, 100, 80, 8, (255, 198, 0), 2)
         ctx.fillRectInRoundClip(10, 20, 100, 28, 100, 80, 8, (0, 122, 204))
-        ctx.drawText(14, 20, 90, 28, 'Title', (240, 240, 240), 1)
+        ctx.drawText(14, 20, 90, 28, "Title", (240, 240, 240), 1)
         self.assertEqual(ctx.cmdCount(), 4)
 
 class BezierControlsTests(TestCaseMixin):
@@ -99,8 +99,8 @@ class CommitDispatchTests(TestCaseMixin):
 
 def main() -> int:
     suite: TestSuite = new()
-    for Class in TestCaseMixin.iterSubclasses(sortConst='_testTag'):
+    for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
         suite.addTest(Class())
     return TextTestRunner().run(suite)
-if __name__ == '__main__':
+if __name__ == "__main__":
     raise SystemExit(main())

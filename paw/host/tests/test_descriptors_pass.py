@@ -1,7 +1,7 @@
 """``expand_descriptors``：``T @Desc(...) = default`` 与 ``__get__``/``__set__`` 形参校验。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.analysis.ir import ClassInfo
@@ -45,7 +45,7 @@ class D:
 class Host:
   x: int = D()
 """
-    tree = ast.parse(src)
+    tree = ast._stdlib_parse(src)
     tr = Translator.__new__(Translator)
     tr.classes = {}
     for node in tree.body:
@@ -69,7 +69,7 @@ class D:
 class Host:
   x: int @D() = 7
 '''
-    tree = ast.parse(src)
+    tree = ast._stdlib_parse(src)
     tr = Translator.__new__(Translator)
     tr.classes = {}
     for node in tree.body:
@@ -102,7 +102,7 @@ class RangeVar[T: ComparableType]:
 class Host:
   level: int @RangeVar(0, 10) = 0
 """
-    tree = ast.parse(src)
+    tree = ast._stdlib_parse(src)
     tr = Translator.__new__(Translator)
     tr.classes = {}
     for node in tree.body:

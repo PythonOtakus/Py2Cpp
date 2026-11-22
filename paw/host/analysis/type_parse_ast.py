@@ -1,7 +1,7 @@
 """AST 类型注解 → TypeNode（直 lower；复杂形态回退 C++ 字符串桥接）。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 
 from .ir import cpp_ident, resolve_host_cpp_type

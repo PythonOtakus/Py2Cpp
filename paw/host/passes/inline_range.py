@@ -1,7 +1,7 @@
 """``inline_range``：译期完全展开循环体（无 ``for`` / ``range`` 残留）。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import copy
 from typing import TYPE_CHECKING
 

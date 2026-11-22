@@ -1,7 +1,7 @@
 """``@abstract`` 纯虚方法译期约束（桩体、抽象类 ``new()``）。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 
 from ..analysis.ir import (

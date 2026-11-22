@@ -1,7 +1,7 @@
 """MRO 闭集扫描（``@enum.mro`` / ``@union.mro`` 共用）。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:

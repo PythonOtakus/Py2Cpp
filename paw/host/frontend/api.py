@@ -1,4 +1,4 @@
-"""统一解析入口（原生 Syntax → HIR → MidIR；生产路径禁止 Paw→legacy 全文改写）。
+"""统一解析入口（原生 Syntax → HIR → MidIR；生产路径禁止 Paw→legacy / CPython ast.parse）。
 
 用途登记（须经本 API）：
 - 模块发现 / 入口装载
@@ -7,7 +7,7 @@
 """
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -17,12 +17,10 @@ from compiler.py.frontend.lexer import Lexer
 from compiler.py.frontend.parser import parse_tokens
 from compiler.py.frontend.syntax_nodes import SyntaxModule
 from compiler.py.hir.nodes import HirModule
-from compiler.py.mid.ast_from_mid import ast_module_from_mid
 from compiler.py.mid.emit_cpp import can_emit_mid
 from compiler.py.mid.nodes import MidModule
 from compiler.py.sema.bind import bind_module, lower_to_mid
 
-from .cpython_adapter import from_cpython
 from .dialect import Dialect, dialect_from_path
 from .source import SourceManager, digest_text
 
@@ -46,28 +44,12 @@ class ParsedModule:
   diagnostics: list[str] = field(default_factory=list)
   # 已废弃：不再保存 rewrite 后的源码
   legacy_source: str = ""
-  # P3：MidIR 可直 emit（无 opaque 体）；为 True 时走 ast_from_mid / 可空树
+  # MidIR 可直 emit（无 opaque 体）；生产保持空 tree，ClassInfo 经 Mid 登记
   mid_emit_ok: bool = False
 
 
 def clear_parse_cache() -> None:
   _CACHE.clear()
-
-
-def _no_materialize_mode(path: str, *, mid_ok: bool) -> bool:
-  """是否空树（跳过 AST 直构；ClassInfo 靠回填 / ``register_module_from_mid``）。
-
-  - ``PY2CPP_NO_MATERIALIZE=1`` / 未设置：全部 ``mid_emit_ok`` 空树（P6）
-  - ``=0``：关闭（``mid_ok`` 仍走 ``ast_from_mid``，非 span materialize）
-  """
-  if not mid_ok:
-    return False
-  flag = os.environ.get("PY2CPP_NO_MATERIALIZE", "").strip().lower()
-  if flag in ("0", "false", "no", "off"):
-    return False
-  # 未设置或 =1：mid_ok 一律空树（translator 再 ast_from_mid 回填）
-  _ = path
-  return True
 
 
 def parse_module(
@@ -77,9 +59,16 @@ def parse_module(
   dialect: Dialect | None = None,
   use_cache: bool = True,
 ) -> ParsedModule:
+  """Paw/Mid 解析。``tree`` 生产路径恒为空（``ClassInfo`` 靠 Mid 登记）。
+
+  ``.py`` / ``.pyi`` 亦走本路径；语法不被 Paw 接受时抛出清晰 ``SyntaxError``，
+  **绝不**回退 ``ast.parse``。
+  """
   dial = dialect if dialect is not None else dialect_from_path(path)
+  if dial is not Dialect.PAW:
+    raise ValueError(f"生产仅支持 Dialect.PAW，得 {dial!r}（{path}）")
   digest = digest_text(source)
-  # 物化模式进缓存键，避免 NO_MATERIALIZE 与物化结果串味
+  # 缓存键保留 NO_MATERIALIZE 槽位，避免与旧结果串味（现恒空树）
   mat_flag = os.environ.get("PY2CPP_NO_MATERIALIZE", "").strip().lower() or "default"
   key = (digest, dial.value, SCHEMA_VERSION, mat_flag, path.replace("\\", "/"))
   if use_cache and key in _CACHE:
@@ -87,35 +76,39 @@ def parse_module(
 
   sf = _SOURCE_MANAGER.add(path, source, digest)
   diagnostics: list[str] = []
-  hir: HirModule | None = None
-  mid: MidModule | None = None
-  mid_ok = False
 
-  if dial is Dialect.LEGACY:
-    tree = ast.parse(source, filename=path)
-    syntax = from_cpython(tree, source, file_id=sf.file_id)
-    legacy_source = source
+  _diagnose_paw_banned_decorators(source, path, diagnostics)
+  bans = [d for d in diagnostics if "禁止" in d]
+  if bans:
+    raise SyntaxError("\n".join(bans))
+
+  suf = Path(path).suffix.lower()
+  if suf in (".py", ".pyi"):
+    diagnostics.append(
+      f"{path}: 兼容后缀 {suf} 按 Dialect.PAW 解析（无 LEGACY/ast.parse）"
+    )
+
+  try:
+    # Lexer 归一 ``\r\n``/BOM 到 ``_text``；parse 切片必须用同一份（Win CRLF 否则 span 错位）。
+    _lex = Lexer(source, sf.file_id)
+    tokens = _lex.tokenize()
+    syntax = parse_tokens(tokens, _lex._text)
+  except Exception as e:
+    raise SyntaxError(
+      f"{path}: Paw 前端拒绝该源（已无 CPython ast.parse 回退）: {e}"
+    ) from e
+
+  diagnostics.extend(f"P3-pending: {u}" for u in syntax.unsupported)
+  hir = bind_module(syntax, path=path)
+  diagnostics.extend(hir.diagnostics)
+  mid = lower_to_mid(hir)
+  mid_ok = can_emit_mid(mid)
+  # Zero-AST Phase 4：生产 tree 恒空；ClassInfo / import 发现走 Mid 桥
+  tree = ast.Module(body=[], type_ignores=[])
+  if mid_ok:
+    diagnostics.append(f"{path}: mid-emit（空 tree；ClassInfo←Mid）")
   else:
-    _diagnose_paw_banned_decorators(source, path, diagnostics)
-    bans = [d for d in diagnostics if "禁止" in d]
-    if bans:
-      raise SyntaxError("\n".join(bans))
-    tokens = Lexer(source, sf.file_id).tokenize()
-    syntax = parse_tokens(tokens, source)
-    diagnostics.extend(f"P3-pending: {u}" for u in syntax.unsupported)
-    hir = bind_module(syntax, path=path)
-    diagnostics.extend(hir.diagnostics)
-    mid = lower_to_mid(hir)
-    mid_ok = can_emit_mid(mid)
-    if _no_materialize_mode(path, mid_ok=mid_ok):
-      tree = ast.Module(body=[], type_ignores=[])
-      diagnostics.append(f"{path}: mid-emit（跳过 materialize_ast）")
-    else:
-      # P5：生产路径一律 MidIR 直构（已删 span ``materialize_ast``）
-      tree = ast_module_from_mid(mid, filename=path)
-      tag = "mid_ok" if mid_ok else "!mid_ok"
-      diagnostics.append(f"{path}: {tag} → ast_from_mid")
-    legacy_source = ""
+    diagnostics.append(f"{path}: !mid_ok（空 tree；ClassInfo←Mid）")
 
   parsed = ParsedModule(
     dialect=dial,
@@ -127,8 +120,8 @@ def parse_module(
     mid=mid,
     digest=digest,
     diagnostics=diagnostics,
-    legacy_source=legacy_source,
-    mid_emit_ok=mid_ok if dial is not Dialect.LEGACY else False,
+    legacy_source="",
+    mid_emit_ok=mid_ok,
   )
   if use_cache:
     _CACHE[key] = parsed
@@ -146,29 +139,62 @@ def parse_module_file(path: str | Path, *, use_cache: bool = True) -> ParsedModu
   )
 
 
-def parse_expression(source: str, *, mode: str = "eval") -> ast.AST:
-  """子表达式登记入口。
+def parse_expression(source: str, *, mode: str = "eval"):
+  """子表达式 → ``ExprSyntax``（生产路径无 CPython AST 解析）。"""
+  from compiler.py.frontend.lexer import Lexer
+  from compiler.py.frontend.source import FileId
+  from compiler.py.frontend.stmt_parse import parse_expr
+  from compiler.py.frontend.tokens import TokenKind
 
-  N4：简单标识符走原生 Lexer 校验后仍物化为 ``ast``（C0）；
-  复杂式暂用 ``ast.parse``。完整原生 Expr 节点见后续 schema。
-  """
+  if mode != "eval":
+    raise ValueError(f"parse_expression 仅支持 mode='eval'，得 {mode!r}")
   text = source.strip()
-  if mode == "eval" and text.isidentifier():
-    from compiler.py.frontend.lexer import Lexer
-    from compiler.py.frontend.source import FileId
-    from compiler.py.frontend.tokens import TokenKind
+  if not text:
+    raise SyntaxError("空表达式")
+  toks = Lexer(text, FileId(0)).tokenize()
+  expr, i = parse_expr(toks, 0, source=text)
+  if expr is None:
+    raise SyntaxError(f"无法解析表达式: {source!r}")
+  while i < len(toks) and toks[i].kind in (TokenKind.NEWLINE, TokenKind.END):
+    i += 1
+  if i < len(toks) and toks[i].kind is not TokenKind.END:
+    raise SyntaxError(f"表达式未完全消费: {source!r}")
+  return expr
 
-    toks = Lexer(text, FileId(0)).tokenize()
-    names = [t for t in toks if t.kind not in (TokenKind.NEWLINE, TokenKind.END)]
-    if len(names) == 1 and names[0].kind is TokenKind.NAME:
-      return ast.Name(id=names[0].text, ctx=ast.Load())
-  tree = ast.parse(source, mode=mode)
-  return tree.body if mode == "eval" else tree
+
+def parse_type(source: str):
+  """类型子表达式 → ``TypeSyntax``（原生 ``type_parse``，无 CPython AST 解析）。"""
+  from compiler.py.frontend.lexer import Lexer
+  from compiler.py.frontend.source import FileId
+  from compiler.py.frontend import type_parse as _type_parse
+  from compiler.py.frontend.tokens import TokenKind
+
+  text = source.strip()
+  if not text:
+    raise SyntaxError("空类型")
+  toks = Lexer(text, FileId(0)).tokenize()
+  ty, i = _type_parse.parse_type(toks, 0, source=text)
+  if ty is None:
+    raise SyntaxError(f"无法解析类型: {source!r}")
+  while i < len(toks) and toks[i].kind in (TokenKind.NEWLINE, TokenKind.END):
+    i += 1
+  if i < len(toks) and toks[i].kind is not TokenKind.END:
+    raise SyntaxError(f"类型未完全消费: {source!r}")
+  return ty
 
 
-def parse_type(source: str) -> ast.AST:
-  """类型子表达式：与 ``parse_expression`` 同入口（N4 收口）。"""
-  return parse_expression(source, mode="eval")
+def parse_expression_as_ast(source: str) -> ast.expr:
+  """``parse_expression`` + Syntax→AST（供仍消费 ``ast.expr`` 的 emit 过渡）。"""
+  from compiler.py.mid.tree_from_mid import expr_syntax_to_ast
+
+  return expr_syntax_to_ast(parse_expression(source))
+
+
+def parse_type_as_ast(source: str) -> ast.expr:
+  """``parse_type`` + Syntax→AST。"""
+  from compiler.py.mid.tree_from_mid import type_syntax_to_ast
+
+  return type_syntax_to_ast(parse_type(source))
 
 
 def _diagnose_paw_banned_decorators(
@@ -177,11 +203,14 @@ def _diagnose_paw_banned_decorators(
   """``.paw`` 禁止旧装饰器 / 类型标记写法（``@native_name`` 除外）。
 
   ``paw/reflect/mixin.paw`` 为 CPython/IDE 桩，允许 ``@classmethod``。
+  合成片段路径（``<…>``）跳过：pass 回写 Mid 的临时源，不是用户表面。
   """
   from compiler.py.frontend.source import FileId
   from compiler.py.frontend.tokens import TokenKind
 
   norm = path.replace("\\", "/")
+  if "<" in norm:
+    return
   allow_classmethod = norm.endswith("paw/reflect/mixin.paw")
   for i, line in enumerate(source.splitlines(), start=1):
     s = line.lstrip()
@@ -226,7 +255,6 @@ def _diagnose_paw_banned_decorators(
         f"{path}:{i}: 禁止 @union / @union.mro，改用 union Name: / type union Name:"
       )
 
-  # 旧 Subscript 表面 Function[[…],R] / Callable[[…],R]
   for i, line in enumerate(source.splitlines(), start=1):
     if "Function[[" in line:
       diagnostics.append(
@@ -237,7 +265,6 @@ def _diagnose_paw_banned_decorators(
         f"{path}:{i}: 禁止 Callable[[…], R]，改用 Callable[(Args) -> R]"
       )
 
-  # 类型位旧标记 ``T @ref`` / ``T @lazy``；以及 ``async static`` 序
   tokens = Lexer(source, FileId(0)).tokenize()
   n = len(tokens)
   line_starts = [0]
@@ -272,7 +299,6 @@ def _diagnose_paw_banned_decorators(
     tok = tokens[i]
     if tok.kind is TokenKind.END:
       break
-    # ``enum``/``union`` 硬关键字不可作导入名（声明头除外）
     if tok.kind is TokenKind.NAME and tok.text == "import":
       j = i + 1
       while j < n and tokens[j].kind not in (
@@ -301,7 +327,6 @@ def _diagnose_paw_banned_decorators(
         if tokens[j].kind is TokenKind.NEWLINE:
           saw_nl = True
         j -= 1
-      # 逻辑行首（含 class 体 INDENT 后）：行首装饰器已由文本扫描处理
       at_stmt_start = j < 0 or saw_nl
       if name in ("ref", "lazy"):
         if name == "ref":
@@ -313,7 +338,6 @@ def _diagnose_paw_banned_decorators(
             f"{path}:{ln}: 禁止类型标记 @lazy，改用 lazy T（组合写 lazy ref T）"
           )
       elif name in ("property", "staticproperty") and not at_stmt_start:
-        # 字段简写 ``T @property`` / ``T @property.postsetter``
         if name == "staticproperty":
           diagnostics.append(
             f"{path}:{ln}: 禁止字段标记 @staticproperty，改用 static property 块"

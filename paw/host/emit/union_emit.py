@@ -472,7 +472,7 @@ def emit_union_user_methods(tr: Translator, info: ClassInfo) -> None:
             _emit_method(tr, info, method, sig)
 
 def try_emit_union_enum_member(tr: Translator, node) -> str | None:
-    import ast
+    import host.tree_nodes as ast
     from ..analysis.module_namespace import qualify_symbol_in_module
     from ..passes.union_expand import union_variant_names
     if not isinstance(node, ast.Attribute):

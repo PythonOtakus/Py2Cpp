@@ -1,8 +1,7 @@
 """``1.25j`` / ``3+4j`` 等复数字面量 → ``PyComplex`` 构造。"""
 from __future__ import annotations
 
-import ast
-
+import host.tree_nodes as ast
 from ..analysis.type_pred import is_complex_type
 from ..analysis.ir import format_cpp_complex_literal
 

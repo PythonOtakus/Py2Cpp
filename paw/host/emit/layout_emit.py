@@ -397,7 +397,7 @@ def write_per_module_headers(tr: Translator) -> None:
   for module_path in tr.module_order:
     if not tr._should_emit_module(module_path):
       continue
-    if getattr(tr, "_module_mid_emit_primary", lambda _p: False)(module_path):
+    if getattr(tr, "_module_mid_thin_production", lambda _p: False)(module_path):
       continue
     if module_path == tr.entry_module_path and not (
       tr._is_runtime_bootstrap() and module_path == RUNTIME_PKG
@@ -656,7 +656,7 @@ def write_per_module_inl(tr: Translator) -> None:
   for module_path in tr.module_order:
     if not tr._should_emit_module(module_path):
       continue
-    if getattr(tr, "_module_mid_emit_primary", lambda _p: False)(module_path):
+    if getattr(tr, "_module_mid_thin_production", lambda _p: False)(module_path):
       continue
     if tr._is_stdlib_module(module_path) and not tr._can_write_stdlib_artifact(module_path):
       continue

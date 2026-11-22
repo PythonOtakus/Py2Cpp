@@ -1,7 +1,7 @@
 """从 ``paw/**/protocols.py`` 推导运行时擦除协议（``Py{Name}`` / ``make{Name}``）。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from dataclasses import dataclass
 from functools import lru_cache
 

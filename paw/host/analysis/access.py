@@ -1,8 +1,7 @@
 """按 Python 命名约定推断 C++ 访问级别（``_`` → protected，``__`` → private）。"""
 from __future__ import annotations
 
-import ast
-
+import host.tree_nodes as ast
 from .ir import ClassInfo, strip_type_annotation_markers
 from .type_emit import field_ann_ast
 

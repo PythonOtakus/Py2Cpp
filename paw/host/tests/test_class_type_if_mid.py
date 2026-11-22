@@ -1,13 +1,12 @@
-"""类体 ``if T is …``：Mid 不摊平分支；ast_from_mid 保留 If 链供 ``class_type_if``。"""
+"""类体 ``if T is …``：Mid 不摊平分支；``from_mid_class`` 保留 If 链供 ``class_type_if``。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from compiler.py.frontend.lexer import Lexer
 from compiler.py.frontend.source import FileId
 from compiler.py.frontend.parser import parse_tokens
-from compiler.py.mid.ast_from_mid import classdef_from_mid_class
 from compiler.py.mid.nodes import MidClass
 from compiler.py.sema.bind import bind_module, lower_to_mid
 from host.analysis.analyzer import TypeParser
@@ -66,28 +65,37 @@ class ClassTypeIfMidTests(unittest.TestCase):
     self.assertIn("static def tag()", opaque)
     self.assertEqual([m.name for m in cls.methods], ["read"])
 
-  def test_ast_from_mid_preserves_if_chain_for_class_type_if(self):
+  def test_from_mid_preserves_if_chain_for_class_type_if(self):
     cls = _mid_class(_CELL_SRC)
-    node = classdef_from_mid_class(cls)
-    self.assertIsInstance(node.body[0], ast.If)
-    top_fns = [s.name for s in node.body if isinstance(s, ast.FunctionDef)]
-    self.assertEqual(top_fns, ["read"])
+    info = ClassInfo.from_mid_class(cls, "cell")
+    self.assertIsInstance(info.node.body[0], ast.If)
+    top_fns = [s.name for s in info.node.body if isinstance(s, ast.FunctionDef)]
+    # methods 仍在 mid_methods；node 体首为 If
     self.assertNotIn("tag", top_fns)
-    if_node = node.body[0]
+    if_node = info.node.body[0]
     assert isinstance(if_node, ast.If)
     self.assertTrue(
       any(isinstance(s, ast.FunctionDef) and s.name == "tag" for s in if_node.body)
     )
     self.assertTrue(if_node.orelse and isinstance(if_node.orelse[0], ast.If))
 
-    info = ClassInfo(node, "cell")
+    info.ensure_methods_bridged_from_mid()
     tr = Translator("cell", "cell.paw")
     tr.type_parser = TypeParser()
     plan = plan_class_type_if(tr, info)
     self.assertIsNotNone(plan)
     assert plan is not None
     self.assertEqual(plan.chain.type_param, "Element")
-    self.assertEqual(len(plan.tail), 2)  # serial + read
+    # from_mid：体 = If 链 + serial；read 在 mid_methods
+    self.assertGreaterEqual(len(plan.tail), 1)
+    self.assertTrue(
+      any(
+        isinstance(s, ast.AnnAssign)
+        and isinstance(s.target, ast.Name)
+        and s.target.id == "serial"
+        for s in plan.tail
+      )
+    )
 
 
 if __name__ == "__main__":

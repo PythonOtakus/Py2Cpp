@@ -1,7 +1,7 @@
 """条件类型别名 RHS 的编译期求值（结构模式匹配 + 捕获绑定）。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 

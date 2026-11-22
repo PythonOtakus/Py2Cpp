@@ -1,7 +1,7 @@
 """类方法体 / 属性 / 特殊成员 emit（自 ``translator.py`` 拆出）。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from contextlib import nullcontext
 from typing import TYPE_CHECKING
 

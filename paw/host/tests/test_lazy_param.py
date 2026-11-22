@@ -1,7 +1,7 @@
 """``T @lazy`` 注解解析。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.analysis.analyzer import SignatureBuilder, TypeParser
@@ -15,7 +15,7 @@ from host.analysis.lazy_param import (
 
 class LazyParamAnnotationTests(unittest.TestCase):
   def _ann(self, src: str) -> ast.expr:
-    func = ast.parse(f"def f({src}): pass").body[0]
+    func = ast._stdlib_parse(f"def f({src}): pass").body[0]
     return func.args.args[0].annotation
 
   def test_lazy_marker(self):
@@ -41,7 +41,7 @@ class LazyParamAnnotationTests(unittest.TestCase):
 def f(default: int @lazy = None) -> int:
   return default
 """
-    func = ast.parse(src).body[0]
+    func = ast._stdlib_parse(src).body[0]
     arg = func.args.args[0]
     tp = TypeParser()
     sb = SignatureBuilder(tp)

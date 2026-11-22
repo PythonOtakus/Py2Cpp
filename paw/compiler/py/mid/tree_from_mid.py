@@ -1,8 +1,15 @@
-"""MidIR → ``ast.Module`` 直构（生产路径；无 span / 全文 rewrite）。"""
+"""临时 Mid / Syntax → ``ast`` 桥（非生产整模块回填）。
+
+生产 ``parse_module`` / translator 保持空 ``tree``；``ClassInfo`` 来自
+``register_module_from_mid``。本模块仅供：
+- ``bridge_mid_method_to_ast`` / 模块函数常量登记
+- stubs 扫描（``module_tree_from_mid``）
+- ``parse_expression_as_ast`` / ``parse_type_as_ast``（Syntax→ast）
+- 空树时 import 发现（``import_stmts_from_mid``）
+"""
 from __future__ import annotations
 
-import ast
-
+import host.tree_nodes as ast
 from compiler.py.frontend.syntax_nodes import ObjectModel
 
 from .nodes import (
@@ -15,9 +22,12 @@ from .nodes import (
   MidOpaque,
 )
 
+# Syntax→ast（原 host/frontend/ir_to_ast）
+from ._syntax_to_ast import expr_syntax_to_ast, type_syntax_to_ast  # noqa: F401
 
-def ast_module_from_mid(mid: MidModule, *, filename: str = "<paw>") -> ast.Module:
-  """逐项直构整模块 AST（不读源码 Span、不 ``rewrite_paw_to_legacy``）。"""
+
+def module_tree_from_mid(mid: MidModule, *, filename: str = "<paw>") -> ast.Module:
+  """整模块 Mid→AST（stubs / 对照；生产 translator 勿用于回填）。"""
   body: list[ast.stmt] = []
   for item in mid.items:
     if isinstance(item, MidImport):
@@ -37,15 +47,24 @@ def ast_module_from_mid(mid: MidModule, *, filename: str = "<paw>") -> ast.Modul
   return ast.Module(body=body, type_ignores=[])
 
 
+def import_stmts_from_mid(mid: MidModule) -> list[ast.stmt]:
+  """仅 ``MidImport`` → Import/ImportFrom（空树依赖发现）。"""
+  body: list[ast.stmt] = []
+  for item in mid.items:
+    if isinstance(item, MidImport):
+      body.extend(_parse_stmts(item.source, "<mid-import>"))
+  return body
+
+
 def classdef_from_mid_enum(item: MidEnum) -> ast.ClassDef:
-  """MidEnum → ``ast.ClassDef``（供 Mid→ClassInfo）。"""
+  """MidEnum → ``ast.ClassDef``（过渡对照）。"""
   return _enum_class(item)
 
 
 def classdef_from_mid_class(
   item: MidClass, filename: str = "<paw>"
 ) -> ast.ClassDef:
-  """MidClass → ``ast.ClassDef``（供 Mid→ClassInfo）。"""
+  """MidClass → ``ast.ClassDef``（过渡对照）。"""
   return _class_def(item, filename)
 
 
@@ -59,6 +78,16 @@ def stmts_from_mid_function(
 def stmt_from_mid_module_const(item: MidModuleConst) -> ast.stmt:
   """MidModuleConst → ``ast.AnnAssign``。"""
   return _module_const_stmt(item)
+
+
+def opaque_member_stmts(mem: str, filename: str = "<paw>") -> list[ast.stmt]:
+  """类体 opaque 片段 → AST（含 type_if 链）。"""
+  return _opaque_member_stmts(mem, filename)
+
+
+def type_to_legacy_annotation(typ: str | None) -> str | None:
+  """Paw 类型表面 → 物化用 ``Function``/``Callable`` Subscript。"""
+  return _type_to_legacy_annotation(typ)
 
 
 def _rewrite_optional_field_line(line: str) -> str:
@@ -110,7 +139,7 @@ def _parse_class_header(
   bases = bases_source or ""
   stub = f"class {name}{tp}{bases}:\n  pass\n"
   try:
-    mod = ast.parse(stub, mode="exec")
+    mod = ast._stdlib_parse(stub, mode="exec")
   except SyntaxError:
     return [], [], []
   if not mod.body or not isinstance(mod.body[0], ast.ClassDef):
@@ -119,6 +148,30 @@ def _parse_class_header(
   return list(getattr(node, "type_params", None) or []), list(node.bases), list(
     node.keywords
   )
+
+
+def _annotate_string_literal_quotes(tree: ast.AST, source: str) -> None:
+  """把源码原文回填到 ``ast.Constant._paw_raw``。
+
+  C 系引号规则（``'a'`` = char / ``"a"`` = str）需要引号种类，而 ``ast.Constant``
+  只有解码后的值。这里用 ``ast.get_source_segment`` 取原文（它按字节列正确切片，
+  手写 span 切片会在含中文的行上错位）。
+  """
+  get_segment = getattr(ast, "get_source_segment", None)
+  for node in ast.walk(tree):
+    if not isinstance(node, ast.Constant):
+      continue
+    if not isinstance(node.value, str):
+      continue
+    raw = ""
+    if get_segment is not None:
+      try:
+        raw = get_segment(source, node) or ""
+      except Exception:
+        raw = ""
+    raw = raw.strip()
+    if raw:
+      node._paw_raw = raw
 
 
 def _parse_stmts(source: str, filename: str) -> list[ast.stmt]:
@@ -138,9 +191,10 @@ def _parse_stmts(source: str, filename: str) -> list[ast.stmt]:
     if m > 0:
       text = "\n".join(ln[m:] if len(ln) >= m else ln for ln in lines) + "\n"
   try:
-    tree = ast.parse(text, filename=filename, mode="exec")
+    tree = ast._stdlib_parse(text, filename=filename, mode="exec")
   except SyntaxError as e:
     raise SyntaxError(f"{filename}: MidOpaque fragment: {e}") from e
+  _annotate_string_literal_quotes(tree, text)
   return list(tree.body)
 
 
@@ -178,7 +232,7 @@ def _enum_bases_and_keywords(
       if not key.isidentifier():
         continue
       try:
-        value: ast.expr = ast.parse(raw, mode="eval").body
+        value: ast.expr = ast._stdlib_parse(raw, mode="eval").body
       except SyntaxError:
         value = ast.Constant(value=raw)
       keywords.append(ast.keyword(arg=key, value=value))
@@ -218,7 +272,7 @@ def _enum_class(item: MidEnum) -> ast.ClassDef:
       value: ast.expr = ast.Constant(value=Ellipsis)
     else:
       try:
-        value = ast.parse(val, mode="eval").body
+        value = ast._stdlib_parse(val, mode="eval").body
       except SyntaxError:
         value = ast.Constant(value=val)
     body.append(ast.Assign(targets=[target], value=value))
@@ -244,7 +298,7 @@ def _const_field(name: str, typ: str | None, value: str) -> ast.stmt:
   if typ:
     legacy = _type_to_legacy_annotation(typ) or typ
     try:
-      inner = ast.parse(legacy, mode="eval").body
+      inner = ast._stdlib_parse(legacy, mode="eval").body
     except SyntaxError:
       inner = ast.Name(id=typ, ctx=ast.Load())
   else:
@@ -255,7 +309,7 @@ def _const_field(name: str, typ: str | None, value: str) -> ast.stmt:
     right=ast.Name(id="const", ctx=ast.Load()),
   )
   try:
-    val_expr = ast.parse(value if value else "None", mode="eval").body
+    val_expr = ast._stdlib_parse(value if value else "None", mode="eval").body
   except SyntaxError:
     val_expr = ast.Constant(value=None)
   return ast.AnnAssign(
@@ -271,7 +325,7 @@ def _instance_field(name: str, typ: str | None, value: str) -> ast.stmt:
   if typ:
     legacy = _type_to_legacy_annotation(typ) or typ
     try:
-      annotation = ast.parse(legacy, mode="eval").body
+      annotation = ast._stdlib_parse(legacy, mode="eval").body
     except SyntaxError:
       annotation = ast.Name(id=typ, ctx=ast.Load())
   else:
@@ -279,7 +333,7 @@ def _instance_field(name: str, typ: str | None, value: str) -> ast.stmt:
   val_expr = None
   if value.strip():
     try:
-      val_expr = ast.parse(value, mode="eval").body
+      val_expr = ast._stdlib_parse(value, mode="eval").body
     except SyntaxError:
       val_expr = ast.Constant(value=None)
   return ast.AnnAssign(
@@ -297,7 +351,7 @@ def _parse_decorator_lines(text: str) -> list[ast.expr]:
     return out
   stub = "\n".join(lines) + "\ndef __paw_deco_stub():\n  pass\n"
   try:
-    mod = ast.parse(stub, mode="exec")
+    mod = ast._stdlib_parse(stub, mode="exec")
   except SyntaxError:
     return out
   for stmt in mod.body:
@@ -475,7 +529,7 @@ def _body_parses(body: str) -> bool:
       candidates.append(soft)
   for text in candidates:
     try:
-      ast.parse(f"def __paw_indent_probe():\n{text}", mode="exec")
+      ast._stdlib_parse(f"def __paw_indent_probe():\n{text}", mode="exec")
       return True
     except SyntaxError:
       continue

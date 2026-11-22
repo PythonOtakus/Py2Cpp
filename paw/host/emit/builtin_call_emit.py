@@ -1,6 +1,6 @@
 """内建函数调用、构造与 slice 表达式 emit（自 ``translator.py`` 拆出）。"""
 from __future__ import annotations
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 from ..analysis.type_pred import is_array_type, is_float64_type, is_float_type, is_int64_type, is_int_type, is_long_type
 from ..analysis.ir import cpp_ident, quote_cpp_string

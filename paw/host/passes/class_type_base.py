@@ -1,7 +1,7 @@
 """为自定义类注入 ``type __base__``：实体基类或 ``void``（须在 ``expand_mixins`` 之后）。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import copy
 from typing import TYPE_CHECKING
 

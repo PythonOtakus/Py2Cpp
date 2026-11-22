@@ -1,7 +1,7 @@
 """``@annotation`` 选项、MRO 展开与 ``repeatable`` 校验。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import textwrap
 import unittest
 
@@ -28,7 +28,7 @@ class AnnotationOptionsParseTests(unittest.TestCase):
         pass
       '''
     )
-    node = ast.parse(src).body[0]
+    node = ast._stdlib_parse(src).body[0]
     opts = parse_annotation_options(node)
     self.assertIsNotNone(opts)
     assert opts is not None
@@ -42,7 +42,7 @@ class AnnotationOptionsParseTests(unittest.TestCase):
         pass
       '''
     )
-    node = ast.parse(src).body[0]
+    node = ast._stdlib_parse(src).body[0]
     opts = parse_annotation_options(node)
     assert opts is not None
     self.assertTrue(opts.inheritable)
@@ -51,7 +51,7 @@ class AnnotationOptionsParseTests(unittest.TestCase):
 
 class AnnotationMroTests(unittest.TestCase):
   def _classes(self, src: str) -> dict[str, ClassInfo]:
-    mod = ast.parse(src)
+    mod = ast._stdlib_parse(src)
     return {ci.name: ci for ci in (ClassInfo(n) for n in mod.body if isinstance(n, ast.ClassDef))}
 
   def test_walk_entity_bases_skips_mixin(self):
@@ -148,7 +148,7 @@ class AnnotationMroTests(unittest.TestCase):
     self.assertEqual(names, ["alpha", "beta"])
 
   def test_parse_iter_glob_option(self):
-    node = ast.parse('Self.iter_fields(glob="on_*")').body[0].value
+    node = ast._stdlib_parse('Self.iter_fields(glob="on_*")').body[0].value
     opts = parse_self_iter_call_options(
       node,
       allowed=frozenset({"public_only", "mro", "glob"}),
@@ -179,7 +179,7 @@ class AnnotationRepeatableTests(unittest.TestCase):
         x: int @DupMeta @DupMeta = 0
       '''
     )
-    mod = ast.parse(src)
+    mod = ast._stdlib_parse(src)
     classes = {ci.name: ci for ci in (ClassInfo(n) for n in mod.body if isinstance(n, ast.ClassDef))}
     for ci in classes.values():
       ci.is_annotation = is_annotation_class(ci)

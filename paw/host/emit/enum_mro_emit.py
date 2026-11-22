@@ -75,8 +75,7 @@ def emit_enum_mro_inl(tr: Translator, info: ClassInfo) -> None:
 
 
 def try_emit_enum_mro_static_call(tr: Translator, node) -> str | None:
-  import ast
-
+  import host.tree_nodes as ast
   if not isinstance(node, ast.Call):
     return None
   if not isinstance(node.func, ast.Attribute):

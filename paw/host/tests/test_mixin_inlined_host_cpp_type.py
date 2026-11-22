@@ -1,7 +1,7 @@
 """mixin 内联后 ``PySet``/``PyFrozenSet`` 注解按宿主 ``template_cpp_type()`` 解析。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.analysis.analyzer import SemanticAnalyzer, TypeParser
@@ -89,13 +89,13 @@ class Matrix3:
 
   def test_host_subscript_uses_slice_type_args_not_host_instantiation(self):
     tp = TypeParser()
-    node = ast.parse("ECSComponentTable[U]", mode="eval").body
+    node = ast._stdlib_parse("ECSComponentTable[U]", mode="eval").body
     out = tp.parse_type(node, {"T", "U"}, self_class="ECSComponentTable<T>")
     self.assertEqual(out, "ECSComponentTable<U>")
 
   def test_self_stack_array_open_slice_resolves_host_type(self):
     tp = TypeParser()
-    node = ast.parse("Self[:]", mode="eval").body
+    node = ast._stdlib_parse("Self[:]", mode="eval").body
     self.assertEqual(tp.parse_type(node, set()), "PyArray<Self>")
     self.assertEqual(
       tp.parse_type(node, set(), self_class="PyStr"),
@@ -108,7 +108,7 @@ class Matrix3:
 
   def test_self_fixed_stack_array_resolves_host_elem(self):
     tp = TypeParser()
-    node = ast.parse("Self[:4]", mode="eval").body
+    node = ast._stdlib_parse("Self[:4]", mode="eval").body
     self.assertEqual(
       tp.parse_type(node, set(), self_class="PyStr"),
       "PyStackArray<PyStr, 4, 0>",
@@ -124,12 +124,12 @@ class Matrix3:
     host = tr.classes["Matrix3"]
     tp = TypeParser()
     tp.set_classes(tr.classes)
-    node = ast.parse("float64[:Self._dim, :Self._dim]", mode="eval").body
+    node = ast._stdlib_parse("float64[:Self._dim, :Self._dim]", mode="eval").body
     self.assertEqual(
       tp.parse_type(node, set(), self_class=host.template_cpp_type()),
       "PyStackArray2D<PyFloat64, 3, 3, 0, 0>",
     )
-    node2 = ast.parse("float64[:Self._dim, :Self._dim * 2]", mode="eval").body
+    node2 = ast._stdlib_parse("float64[:Self._dim, :Self._dim * 2]", mode="eval").body
     self.assertEqual(
       tp.parse_type(node2, set(), self_class=host.template_cpp_type()),
       "PyStackArray2D<PyFloat64, 3, 6, 0, 0>",
@@ -137,7 +137,7 @@ class Matrix3:
 
   def test_list_self_type_arg_resolves_host(self):
     tp = TypeParser()
-    node = ast.parse("list[Self]", mode="eval").body
+    node = ast._stdlib_parse("list[Self]", mode="eval").body
     self.assertEqual(
       tp.parse_type(node, set(), self_class="PyStr"),
       "PyList<PyStr>",

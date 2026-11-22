@@ -1,7 +1,7 @@
 """``@GpuDeviceMeta`` / ``GpuKernelMixin.run``：Device 子集与 Host 调用禁令。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 
 from ..constant.gpu import GPU_KERNEL_MIXIN

@@ -1,7 +1,7 @@
 """``propagate_mixin_type_param_constraints``：混入泛型约束并入宿主。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.analysis.ir import ClassInfo
@@ -10,7 +10,7 @@ from host.translator import Translator
 
 
 def _parse_classes(src: str, module: str = "mod") -> dict[str, ClassInfo]:
-  mod = ast.parse(src)
+  mod = ast._stdlib_parse(src)
   out: dict[str, ClassInfo] = {}
   for node in mod.body:
     if isinstance(node, ast.ClassDef):

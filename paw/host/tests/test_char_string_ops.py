@@ -1,7 +1,7 @@
 """``PyChar`` 与 ``int``/``float`` 同级的 ``str`` / ``repr`` / ``format`` 降级。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.translator import Translator
@@ -9,7 +9,7 @@ from host.translator import Translator
 
 def _emit_return(body: str, *, entry: str = "mod") -> str:
   mod_src = f"from paw import char\n\ndef probe():\n{body}"
-  tree = ast.parse(mod_src)
+  tree = ast._stdlib_parse(mod_src)
   func = tree.body[1]
   assert isinstance(func, ast.FunctionDef)
   ret = func.body[-1]

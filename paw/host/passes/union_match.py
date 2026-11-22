@@ -1,7 +1,7 @@
 """``@union`` 的 ``match`` 模式解析（含 ``MatchOr``）。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from dataclasses import dataclass
 
 from ..analysis.ir import ClassInfo

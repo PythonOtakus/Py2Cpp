@@ -1,0 +1,65 @@
+"""模板冻结子集门闩（对位 ``host/codegen/template_profile.py``）。
+
+禁止 import/lambda/推导式/裸属性；BEGIN 仅 def/for/if/elif/else。
+"""
+from paw import *
+
+class TemplateProfileError:
+  message: str = ""
+
+  def __init__(self, message: str):
+    self.message = message
+
+def _hasWord(text: str, word: str) -> bool:
+  # 粗边界：前后非标识符字符
+  i: int = 0
+  n: int = len(text)
+  wlen: int = len(word)
+  while i + wlen <= n:
+    if text[i : i + wlen] == word:
+      beforeOk: bool = True
+      afterOk: bool = True
+      if i > 0:
+        c: str = text[i - 1]
+        if (c >= "A" and c <= "Z") or (c >= "a" and c <= "z") or (c >= "0" and c <= "9") or c == "_":
+          beforeOk = False
+      if i + wlen < n:
+        c2: str = text[i + wlen]
+        if (c2 >= "A" and c2 <= "Z") or (c2 >= "a" and c2 <= "z") or (c2 >= "0" and c2 <= "9") or c2 == "_":
+          afterOk = False
+      if beforeOk and afterOk:
+        return True
+    i += 1
+  return False
+
+def assertSafeExpr(expr: str, where: str) -> str:
+  text: str = expr.strip()
+  if text == "":
+    return ""
+  if _hasWord(text, "import") or _hasWord(text, "from") or _hasWord(text, "lambda"):
+    return "模板子集禁止 import/lambda：" + where + ": " + expr
+  # 裸属性：含 ``.`` 且非字符串字面量
+  if ("." in text) and ('"' not in text) and ("'" not in text):
+    return "模板子集禁止属性访问：" + where + ": " + expr
+  if ("[" in text) and _hasWord(text, "for") and _hasWord(text, "in"):
+    return "模板子集禁止推导式：" + where + ": " + expr
+  return ""
+
+def assertSafeBeginHeader(header: str, where: str) -> str:
+  text: str = header.strip()
+  if (len(text) >= len(":") and text[len(text)-len(":"):] == ":"):
+    text = text[: len(text) - 1]
+  text = text.strip()
+  if text == "else":
+    return ""
+  if (len(text) >= len("def ") and text[:len("def ")] == "def "):
+    if not (len(text) >= len("def fn_") and text[:len("def fn_")] == "def fn_"):
+      return "BEGIN(def) 须为 def fn_Name(…)：" + where + ": " + header
+    return ""
+  if (len(text) >= len("for ") and text[:len("for ")] == "for "):
+    if " in " not in text:
+      return "BEGIN(for) 仅单变量：" + where + ": " + header
+    return ""
+  if (len(text) >= len("if ") and text[:len("if ")] == "if ") or (len(text) >= len("elif ") and text[:len("elif ")] == "elif "):
+    return ""
+  return "BEGIN 头不在冻结子集内：" + where + ": " + header

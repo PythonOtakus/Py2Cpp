@@ -1,7 +1,7 @@
 """``PyTuple`` 解包：``*_`` / 负 ``get`` / S1202。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import tempfile
 import unittest
 from pathlib import Path

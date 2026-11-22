@@ -11,7 +11,7 @@
 """
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import copy
 from ..passes.descriptors import storage_field_for
 from .delegates import collect_delegates
@@ -449,6 +449,24 @@ class TypeParser:
       return cpp_template_type("array2d", elem)
     return cpp_template_type("array3d", elem)
 
+  @staticmethod
+  def _is_none_type_expr(node: ast.expr | None) -> bool:
+    """``None`` / ``NoneType``（Constant 或 Name；Mid ``type_syntax_to_ast`` 曾产出 Name）。"""
+    if isinstance(node, ast.Constant) and node.value is None:
+      return True
+    return isinstance(node, ast.Name) and node.id in ("None", "NoneType")
+
+  @staticmethod
+  def _optional_union_inner(node: ast.expr) -> ast.expr | None:
+    """``T | None`` → ``T``；否则 ``None``。"""
+    if (
+      isinstance(node, ast.BinOp)
+      and isinstance(node.op, ast.BitOr)
+      and TypeParser._is_none_type_expr(node.right)
+    ):
+      return node.left
+    return None
+
   def parse_type(
     self,
     node: ast.expr | None,
@@ -728,10 +746,10 @@ class TypeParser:
         else:
           args = self.parse_type(sl, type_params, self_class=self_class)
         return f"{base}<{args}>"
-      case ast.BinOp(left=left, op=ast.BitOr(), right=ast.Constant(value=None)):
+      case ast.BinOp() if (opt_inner := self._optional_union_inner(node)) is not None:
         from .ir import ClassInfo, cpp_optional_type
 
-        inner = self.parse_type(left, type_params, self_class=self_class)
+        inner = self.parse_type(opt_inner, type_params, self_class=self_class)
         stored = ClassInfo.apply_refcount_storage_cpp_type(inner, self._classes)
         if is_refcount_type(stored):
           return stored
@@ -837,16 +855,12 @@ class TypeParser:
     dec = decorator_constraints or {}
     if node is None:
       return "void"
-    if (
-      isinstance(node, ast.BinOp)
-      and isinstance(node.op, ast.BitOr)
-      and isinstance(node.right, ast.Constant)
-      and node.right.value is None
-    ):
+    opt_inner = self._optional_union_inner(node)
+    if opt_inner is not None:
       from .ir import ClassInfo, cpp_optional_type
 
       inner = self.parse_storage_type(
-        node.left,
+        opt_inner,
         type_params,
         decorator_constraints=dec,
         self_class=self_class,
@@ -1147,6 +1161,24 @@ class TypeParser:
             return format_cpp_long(v)
           return format_cpp_int(v)
         raise NotImplementedError(f"NTTP literal: {ast.dump(node)}")
+      case ast.Name(id=nid) if isinstance(nid, str) and (
+        nid.lstrip("+-").isdigit()
+        or nid.startswith(("0x", "0X", "0o", "0O", "0b", "0B"))
+      ):
+        # Mid/Syntax→AST 桥可能把 NTTP ``0`` 落成 Name；按整型常量处理
+        try:
+          v = int(nid, 0)
+        except ValueError as e:
+          raise NotImplementedError(f"NTTP literal: {ast.dump(node)}") from e
+        if cpp_type and is_uint_type(cpp_type):
+          return format_cpp_uint(v)
+        if cpp_type and is_uint64_type(cpp_type):
+          return format_cpp_uint64(v)
+        if cpp_type and is_uintptr_type(cpp_type):
+          return format_cpp_uintptr(v)
+        if cpp_type and is_long_type(cpp_type):
+          return format_cpp_long(v)
+        return format_cpp_int(v)
       case ast.UnaryOp(op=ast.USub(), operand=ast.Constant(value=v)) if isinstance(v, int):
         if cpp_type and is_uint_type(cpp_type):
           raise NotImplementedError("uint NTTP 不支持一元负号")

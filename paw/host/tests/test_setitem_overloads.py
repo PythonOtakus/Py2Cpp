@@ -1,7 +1,7 @@
 """``__setitem__`` 自动生成 const/按值重载。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.analysis.analyzer import SignatureBuilder, TypeParser
@@ -40,7 +40,7 @@ class dict[Key, Value]:
   def __setitem__(self, key: Key, value: Value):
     pass
 """
-    dict_node = ast.parse(dict_src).body[0]
+    dict_node = ast._stdlib_parse(dict_src).body[0]
     dinfo = ClassInfo(dict_node, "paw/util/dict")
     method = dinfo.methods["__setitem__"]
     tp = TypeParser()
@@ -58,8 +58,8 @@ class dict[Key, ValueType]:
     pass
 """
     union_src = "class ValueType[T]: pass"
-    dict_node = ast.parse(dict_src).body[0]
-    union_node = ast.parse(union_src).body[0]
+    dict_node = ast._stdlib_parse(dict_src).body[0]
+    union_node = ast._stdlib_parse(union_src).body[0]
     dinfo = ClassInfo(dict_node, "paw/util/dict")
     vinfo = ClassInfo(union_node, "tests/lang/test_union")
     method = dinfo.methods["__setitem__"]

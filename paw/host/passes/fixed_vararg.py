@@ -1,7 +1,7 @@
 """``*axis: T[:Self._dim-1]`` — ``@mixin`` 注入时展开为 ``__arg_axis0``、``__arg_axis1`` …"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import copy
 from typing import TYPE_CHECKING
 

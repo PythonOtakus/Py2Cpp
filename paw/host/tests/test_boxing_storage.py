@@ -1,5 +1,5 @@
 """``@boxing`` 存储类型：泛型 ``Self`` 须与 ``cpp_specialization()`` 形参名无关地转为指针。"""
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.analysis.ir import ClassInfo
@@ -14,7 +14,7 @@ from paw import DictKeyType, Self, boxing
 class DictEntryUnsafe[Key: DictKeyType, Value]:
   pass
 '''
-    info = ClassInfo(ast.parse(src).body[-1], module_path="paw/util/dict.py")
+    info = ClassInfo(ast._stdlib_parse(src).body[-1], module_path="paw/util/dict.py")
     classes = {"DictEntryUnsafe": info}
     t = "PyDictEntryUnsafe<Key, Value>"
     self.assertEqual(

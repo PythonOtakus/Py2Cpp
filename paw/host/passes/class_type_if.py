@@ -1,6 +1,6 @@
 """泛型类体内编译期 ``if T is int:`` / ``elif`` / ``else`` → C++ 类模板（全/部分）特化。"""
 from __future__ import annotations
-import ast
+import host.tree_nodes as ast
 import copy
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING

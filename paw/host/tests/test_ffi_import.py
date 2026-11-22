@@ -22,9 +22,7 @@ from host.constant.ffi_layout import (
 from host.constant.paths import _REPO_ROOT
 from host.constant.stdlib_layout import RUNTIME_PKG
 from host.analysis.ir import ClassInfo
-import ast
-
-
+import host.tree_nodes as ast
 class TestFfiStructUsing(unittest.TestCase):
   def test_using_target(self) -> None:
     node = ast.ClassDef(

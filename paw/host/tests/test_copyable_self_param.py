@@ -1,7 +1,7 @@
 """``@copyable`` 类实例方法 ``Self`` 形参须 ``const T&``（避免按值拷贝递归）。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import tempfile
 import unittest
 from pathlib import Path
@@ -21,7 +21,7 @@ class Widget:
   def touch(self, other: Self) -> None:
     pass
 """
-    tree = ast.parse(src)
+    tree = ast._stdlib_parse(src)
     cls = tree.body[1]
     method = cls.body[0]
     info = ClassInfo(cls, module_path="t/w")
@@ -44,7 +44,7 @@ class Widget:
   def clone(src: Self) -> Self:
     return src
 """
-    tree = ast.parse(src)
+    tree = ast._stdlib_parse(src)
     cls = tree.body[1]
     method = cls.body[0]
     info = ClassInfo(cls, module_path="t/w")

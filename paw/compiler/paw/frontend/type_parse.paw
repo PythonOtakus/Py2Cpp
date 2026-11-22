@@ -1,2 +1,665 @@
-"""Stub parity with ``compiler/py/frontend/type_parse.py`` — not yet ported to Paw."""
+"""类型表面递归下降（Paw）：``TypeNode`` + ``TokenKindEnum``。
+
+与 ``compiler/py/frontend/type_parse.py`` 对位；停止集用 ``_isTypeStop``（无 frozenset）。
+"""
 from paw import *
+from .source import SourceSpan
+from .syntax_nodes import TypeAttr, TypeKindEnum, TypeNode
+from .tokens import Token, TokenKindEnum
+
+class ParseTypeResult:
+  ok: bool = False
+  ty: TypeNode = new()
+  nextI: int = 0
+
+def _failAt(i: int) -> ParseTypeResult:
+  # 薄 emit 对 ``return new(ok=False, ty=new(), …)`` soft-skip；字段赋值可译。
+  out: ParseTypeResult = new()
+  out.ok = False
+  out.nextI = i
+  return out
+
+def _okAt(ty: TypeNode, nextI: int) -> ParseTypeResult:
+  out: ParseTypeResult = new()
+  out.ok = True
+  out.ty = ty
+  out.nextI = nextI
+  return out
+
+def parseType(tokens: list[Token], i: int, source: str) -> ParseTypeResult:
+  n: int = len(tokens)
+  if i >= n:
+    return _failAt(i)
+  if _isTypeStop(tokens[i].kind):
+    return _failAt(i)
+  return _parseTypeExpr(tokens, i, source, False, False)
+
+def typeNodeToSource(ty: TypeNode) -> str:
+  match ty.kind:
+    case TypeKindEnum.Name:
+      return ty.name
+    case TypeKindEnum.Generic:
+      if len(ty.children) == 0:
+        return ""
+      head: str = typeNodeToSource(ty.children[0])
+      parts: list[str] = []
+      ai: int = 1
+      while ai < len(ty.children):
+        parts.append(typeNodeToSource(ty.children[ai]))
+        ai += 1
+      inner: str = ", ".join(parts)
+      return head + "[" + inner + "]"
+    case TypeKindEnum.Ref:
+      if len(ty.children) == 0:
+        return "ref"
+      return "ref " + typeNodeToSource(ty.children[0])
+    case TypeKindEnum.Lazy:
+      if len(ty.children) == 0:
+        return "lazy"
+      return "lazy " + typeNodeToSource(ty.children[0])
+    case TypeKindEnum.Nullable:
+      if len(ty.children) == 0:
+        return "?"
+      return typeNodeToSource(ty.children[0]) + "?"
+    case TypeKindEnum.Paren:
+      if len(ty.children) == 0:
+        return "()"
+      return "(" + typeNodeToSource(ty.children[0]) + ")"
+    case TypeKindEnum.Tuple:
+      tparts: list[str] = []
+      ti: int = 0
+      while ti < len(ty.children):
+        tparts.append(typeNodeToSource(ty.children[ti]))
+        ti += 1
+      body: str = ", ".join(tparts)
+      if ty.trailingComma or len(ty.children) == 1:
+        body = body + ","
+      return "(" + body + ")"
+    case TypeKindEnum.Callable:
+      return _callableToSource(ty)
+    case TypeKindEnum.Union:
+      uparts: list[str] = []
+      ui: int = 0
+      while ui < len(ty.children):
+        uparts.append(typeNodeToSource(ty.children[ui]))
+        ui += 1
+      return " | ".join(uparts)
+    case TypeKindEnum.Attr:
+      if len(ty.children) == 0:
+        return ty.attr
+      return typeNodeToSource(ty.children[0]) + "." + ty.attr
+    case TypeKindEnum.Attributed:
+      if len(ty.children) == 0:
+        return ""
+      s: str = typeNodeToSource(ty.children[0])
+      aj: int = 0
+      while aj < len(ty.attrs):
+        a: TypeAttr = ty.attrs[aj]
+        if a.argsSource != "":
+          s += " @" + a.name + "(" + a.argsSource + ")"
+        else:
+          s += " @" + a.name
+        aj += 1
+      return s
+    case _:
+      return ""
+
+def _callableToSource(ty: TypeNode) -> str:
+  if len(ty.children) == 0:
+    return ""
+  ret: TypeNode = ty.children[len(ty.children) - 1]
+  ps: list[TypeNode] = []
+  pi: int = 0
+  while pi < len(ty.children) - 1:
+    ps.append(ty.children[pi])
+    pi += 1
+  arrow: str = _arrowSource(ps, ret)
+  if ty.isPyCallable:
+    return "Callable[" + arrow + "]"
+  return arrow
+
+def _arrowSource(ps: list[TypeNode], ret: TypeNode) -> str:
+  r: str = typeNodeToSource(ret)
+  if len(ps) == 0:
+    return "() -> " + r
+  if len(ps) == 1:
+    p: str = typeNodeToSource(ps[0])
+    if (len(p) >= len("(") and p[:len("(")] == "(") or "->" in p or "[" in p:
+      return "(" + p + ") -> " + r
+    return p + " -> " + r
+  params: list[str] = []
+  k: int = 0
+  while k < len(ps):
+    params.append(typeNodeToSource(ps[k]))
+    k += 1
+  return "(" + ", ".join(params) + ") -> " + r
+
+def _isTypeStop(kind: TokenKindEnum) -> bool:
+  if kind == TokenKindEnum.Newline:
+    return True
+  if kind == TokenKindEnum.Dedent:
+    return True
+  if kind == TokenKindEnum.Indent:
+    return True
+  if kind == TokenKindEnum.End:
+    return True
+  if kind == TokenKindEnum.Colon:
+    return True
+  if kind == TokenKindEnum.Eq:
+    return True
+  if kind == TokenKindEnum.Comma:
+    return True
+  if kind == TokenKindEnum.Rpar:
+    return True
+  if kind == TokenKindEnum.Rsqb:
+    return True
+  if kind == TokenKindEnum.Rbrace:
+    return True
+  return False
+
+def _isBracketArgStop(kind: TokenKindEnum) -> bool:
+  if kind == TokenKindEnum.Colon:
+    return False
+  return _isTypeStop(kind)
+
+def _isParenItemStop(kind: TokenKindEnum) -> bool:
+  if kind == TokenKindEnum.Rarrow:
+    return True
+  return _isTypeStop(kind)
+
+def _typeSpanJoin(a: SourceSpan, b: SourceSpan) -> SourceSpan:
+  out: SourceSpan = new()
+  out.fileId = a.fileId
+  out.start = a.start
+  out.end = b.end
+  return out
+
+def _mkName(name: str, span: SourceSpan) -> TypeNode:
+  t: TypeNode = new()
+  t.kind = TypeKindEnum.Name
+  t.name = name
+  t.span = span
+  return t
+
+def _parseTypeExpr(
+  tokens: list[Token],
+  i: int,
+  source: str,
+  parenItem: bool,
+  bracketArg: bool,
+) -> ParseTypeResult:
+  n: int = len(tokens)
+  fail: ParseTypeResult = new()
+  fail.ok = False
+  fail.nextI = i
+  if i >= n:
+    return fail
+  if parenItem:
+    if _isParenItemStop(tokens[i].kind):
+      return fail
+  elif bracketArg:
+    if _isBracketArgStop(tokens[i].kind):
+      return fail
+  elif _isTypeStop(tokens[i].kind):
+    return fail
+
+  left: ParseTypeResult = _parseTypeExprNoUnion(tokens, i, source, parenItem, bracketArg)
+  if not left.ok:
+    return left
+  opts: list[TypeNode] = []
+  opts.append(left.ty)
+  i = left.nextI
+  while (
+    i < n
+    and tokens[i].kind == TokenKindEnum.Op
+    and tokens[i].text == "|"
+  ):
+    i += 1
+    right: ParseTypeResult = _parseTypeExprNoUnion(tokens, i, source, parenItem, bracketArg)
+    if not right.ok:
+      break
+    opts.append(right.ty)
+    i = right.nextI
+  if len(opts) == 1:
+    return _okAt(opts[0], i)
+  uni: TypeNode = new()
+  uni.kind = TypeKindEnum.Union
+  uni.children = opts
+  uni.span = _typeSpanJoin(opts[0].span, opts[len(opts) - 1].span)
+  return _okAt(uni, i)
+
+def _parseTypeExprNoUnion(
+  tokens: list[Token],
+  i: int,
+  source: str,
+  parenItem: bool,
+  bracketArg: bool,
+) -> ParseTypeResult:
+  n: int = len(tokens)
+  fail: ParseTypeResult = new()
+  fail.ok = False
+  fail.nextI = i
+  if i >= n:
+    return fail
+  if parenItem:
+    if _isParenItemStop(tokens[i].kind):
+      return fail
+  elif bracketArg:
+    if _isBracketArgStop(tokens[i].kind):
+      return fail
+  elif _isTypeStop(tokens[i].kind):
+    return fail
+
+  if tokens[i].kind == TokenKindEnum.Name and tokens[i].text == "lazy":
+    start: SourceSpan = tokens[i].span
+    i += 1
+    if (
+      i < n
+      and tokens[i].kind == TokenKindEnum.Name
+      and tokens[i].text == "ref"
+    ):
+      i += 1
+      inner1: ParseTypeResult = _parseTypePrimary(tokens, i, source, parenItem, bracketArg)
+      if not inner1.ok:
+        return inner1
+      refN: TypeNode = new()
+      refN.kind = TypeKindEnum.Ref
+      refN.children.append(inner1.ty)
+      refN.span = _typeSpanJoin(start, inner1.ty.span)
+      lazyN: TypeNode = new()
+      lazyN.kind = TypeKindEnum.Lazy
+      lazyN.children.append(refN)
+      lazyN.span = _typeSpanJoin(start, refN.span)
+      return _okAt(lazyN, inner1.nextI)
+    if i < n and tokens[i].kind == TokenKindEnum.Name and tokens[i].text == "lazy":
+      return fail
+    inner2: ParseTypeResult = _parseTypePrimary(tokens, i, source, parenItem, bracketArg)
+    if not inner2.ok:
+      return inner2
+    lazy2: TypeNode = new()
+    lazy2.kind = TypeKindEnum.Lazy
+    lazy2.children.append(inner2.ty)
+    lazy2.span = _typeSpanJoin(start, inner2.ty.span)
+    return _okAt(lazy2, inner2.nextI)
+
+  if tokens[i].kind == TokenKindEnum.Name and tokens[i].text == "ref":
+    startR: SourceSpan = tokens[i].span
+    i += 1
+    if i < n and tokens[i].kind == TokenKindEnum.Name and tokens[i].text == "lazy":
+      return fail
+    if i < n and tokens[i].kind == TokenKindEnum.Name and tokens[i].text == "class":
+      return _failAt(i - 1)
+    innerR: ParseTypeResult = _parseTypePrimary(tokens, i, source, parenItem, bracketArg)
+    if not innerR.ok:
+      return innerR
+    ref2: TypeNode = new()
+    ref2.kind = TypeKindEnum.Ref
+    ref2.children.append(innerR.ty)
+    ref2.span = _typeSpanJoin(startR, innerR.ty.span)
+    return _okAt(ref2, innerR.nextI)
+
+  return _parseTypePrimary(tokens, i, source, parenItem, bracketArg)
+
+def _parseTypePrimary(
+  tokens: list[Token],
+  i: int,
+  source: str,
+  parenItem: bool,
+  bracketArg: bool,
+) -> ParseTypeResult:
+  base: ParseTypeResult = _parseTypeAtom(tokens, i, source, parenItem, bracketArg)
+  if not base.ok:
+    return base
+  ty: TypeNode = base.ty
+  i = base.nextI
+  n: int = len(tokens)
+
+  while i < n and tokens[i].kind == TokenKindEnum.Lsqb:
+    i += 1
+    if i < n and tokens[i].kind == TokenKindEnum.Rsqb:
+      return _failAt(i)
+    args: list[TypeNode] = []
+    while True:
+      arg: ParseTypeResult = _parseTypeBracketArg(tokens, i, source)
+      if not arg.ok:
+        return arg
+      args.append(arg.ty)
+      i = arg.nextI
+      if i < n and tokens[i].kind == TokenKindEnum.Comma:
+        i += 1
+        continue
+      break
+    if i >= n or tokens[i].kind != TokenKindEnum.Rsqb:
+      return _failAt(i)
+    endSp: SourceSpan = tokens[i].span
+    i += 1
+    gen: TypeNode = new()
+    gen.kind = TypeKindEnum.Generic
+    gen.children.append(ty)
+    ai: int = 0
+    while ai < len(args):
+      gen.children.append(args[ai])
+      ai += 1
+    gen.span = _typeSpanJoin(ty.span, endSp)
+    ty = gen
+
+  while (
+    i + 1 < n
+    and tokens[i].kind == TokenKindEnum.Dot
+    and tokens[i + 1].kind == TokenKindEnum.Name
+  ):
+    attr: str = tokens[i + 1].text
+    endA: SourceSpan = tokens[i + 1].span
+    i += 2
+    atn: TypeNode = new()
+    atn.kind = TypeKindEnum.Attr
+    atn.attr = attr
+    atn.children.append(ty)
+    atn.span = _typeSpanJoin(ty.span, endA)
+    ty = atn
+
+  while i < n and tokens[i].kind == TokenKindEnum.Question:
+    endQ: SourceSpan = tokens[i].span
+    i += 1
+    nul: TypeNode = new()
+    nul.kind = TypeKindEnum.Nullable
+    nul.children.append(ty)
+    nul.span = _typeSpanJoin(ty.span, endQ)
+    ty = nul
+
+  attrs: list[TypeAttr] = []
+  while i < n and tokens[i].kind == TokenKindEnum.At:
+    atSp: SourceSpan = tokens[i].span
+    i += 1
+    if i >= n or tokens[i].kind != TokenKindEnum.Name:
+      return _failAt(i)
+    aname: str = tokens[i].text
+    aEnd: SourceSpan = tokens[i].span
+    i += 1
+    argsSrc: str = ""
+    if i < n and tokens[i].kind == TokenKindEnum.Lpar:
+      depth: int = 0
+      ps: int = tokens[i].span.end
+      if i + 1 < n:
+        ps = tokens[i + 1].span.start
+      j: int = i
+      while j < n:
+        if tokens[j].kind == TokenKindEnum.Lpar:
+          depth += 1
+        elif tokens[j].kind == TokenKindEnum.Rpar:
+          depth -= 1
+          if depth == 0:
+            break
+        j += 1
+      if j >= n:
+        return _failAt(i)
+      if j > i + 1:
+        argsSrc = source[ps : tokens[j - 1].span.end]
+      aEnd = tokens[j].span
+      i = j + 1
+    ta: TypeAttr = new()
+    ta.name = aname
+    ta.argsSource = argsSrc
+    ta.span = _typeSpanJoin(atSp, aEnd)
+    attrs.append(ta)
+  if len(attrs) > 0:
+    att: TypeNode = new()
+    att.kind = TypeKindEnum.Attributed
+    att.children.append(ty)
+    att.attrs = attrs
+    att.span = _typeSpanJoin(ty.span, attrs[len(attrs) - 1].span)
+    ty = att
+
+  if (
+    ty.kind == TypeKindEnum.Generic
+    and len(ty.children) > 0
+    and ty.children[0].kind == TypeKindEnum.Name
+    and ty.children[0].name == "Callable"
+  ):
+    argc: int = len(ty.children) - 1
+    if argc == 1 and ty.children[1].kind == TypeKindEnum.Callable:
+      innerC: TypeNode = ty.children[1]
+      pyC: TypeNode = new()
+      pyC.kind = TypeKindEnum.Callable
+      pyC.isPyCallable = True
+      pyC.span = ty.span
+      ci: int = 0
+      while ci < len(innerC.children):
+        pyC.children.append(innerC.children[ci])
+        ci += 1
+      ty = pyC
+    elif argc == 1 and ty.children[1].kind == TypeKindEnum.Name and ty.children[1].name == "...":
+      pass
+    else:
+      return _failAt(i)
+
+  if (
+    ty.kind == TypeKindEnum.Generic
+    and len(ty.children) > 0
+    and ty.children[0].kind == TypeKindEnum.Name
+    and ty.children[0].name == "Function"
+  ):
+    return _failAt(i)
+
+  if i < n and tokens[i].kind == TokenKindEnum.Rarrow:
+    i += 1
+    retR: ParseTypeResult = _parseTypeExpr(tokens, i, source, parenItem, bracketArg)
+    if not retR.ok:
+      return retR
+    callN: TypeNode = new()
+    callN.kind = TypeKindEnum.Callable
+    callN.isPyCallable = False
+    callN.children.append(ty)
+    callN.children.append(retR.ty)
+    callN.span = _typeSpanJoin(ty.span, retR.ty.span)
+    return _okAt(callN, retR.nextI)
+
+  return _okAt(ty, i)
+
+def _parseTypeDimPiece(
+  tokens: list[Token],
+  i: int,
+  source: str,
+) -> ParseTypeResult:
+  n: int = len(tokens)
+  fail: ParseTypeResult = new()
+  fail.ok = False
+  fail.nextI = i
+  if i >= n:
+    return fail
+  k0: TokenKindEnum = tokens[i].kind
+  if k0 == TokenKindEnum.Comma or k0 == TokenKindEnum.Rsqb or k0 == TokenKindEnum.Colon or k0 == TokenKindEnum.Rpar or k0 == TokenKindEnum.Rbrace:
+    return fail
+  start: SourceSpan = tokens[i].span
+  depth: int = 0
+  j: int = i
+  while j < n:
+    k: TokenKindEnum = tokens[j].kind
+    if (
+      k == TokenKindEnum.Lsqb
+      or k == TokenKindEnum.Lpar
+      or k == TokenKindEnum.Lbrace
+    ):
+      depth += 1
+    elif (
+      k == TokenKindEnum.Rsqb
+      or k == TokenKindEnum.Rpar
+      or k == TokenKindEnum.Rbrace
+    ):
+      if depth == 0:
+        break
+      depth -= 1
+    elif depth == 0 and (k == TokenKindEnum.Comma or k == TokenKindEnum.Colon):
+      break
+    j += 1
+  if j == i:
+    return fail
+  end: SourceSpan = tokens[j - 1].span
+  text: str = source[start.start : end.end].strip()
+  return _okAt(_mkName(text, _typeSpanJoin(start, end)), j)
+
+def _parseTypeBracketArg(
+  tokens: list[Token],
+  i: int,
+  source: str,
+) -> ParseTypeResult:
+  n: int = len(tokens)
+  fail: ParseTypeResult = new()
+  fail.ok = False
+  fail.nextI = i
+  if i >= n or _isBracketArgStop(tokens[i].kind):
+    return fail
+
+  if tokens[i].kind == TokenKindEnum.Colon:
+    startC: SourceSpan = tokens[i].span
+    i += 1
+    upper: ParseTypeResult = _parseTypeDimPiece(tokens, i, source)
+    endC: SourceSpan = startC
+    textC: str = ":"
+    if upper.ok:
+      endC = upper.ty.span
+      textC = ":" + typeNodeToSource(upper.ty)
+      i = upper.nextI
+    return _okAt(_mkName(textC, _typeSpanJoin(startC, endC)), i)
+
+  lower: ParseTypeResult = _parseTypeDimPiece(tokens, i, source)
+  if not lower.ok:
+    return fail
+  j: int = lower.nextI
+  if j < n and tokens[j].kind == TokenKindEnum.Colon:
+    i2: int = j + 1
+    upper2: ParseTypeResult = _parseTypeDimPiece(tokens, i2, source)
+    end2: SourceSpan = tokens[j].span
+    up: str = ""
+    if upper2.ok:
+      end2 = upper2.ty.span
+      up = typeNodeToSource(upper2.ty)
+      i2 = upper2.nextI
+    lo: str = typeNodeToSource(lower.ty)
+    return _okAt(_mkName(lo + ":" + up, _typeSpanJoin(lower.ty.span, end2)), i2,
+    )
+  return _parseTypeExpr(tokens, i, source, False, True)
+
+def _parseTypeAtom(
+  tokens: list[Token],
+  i: int,
+  source: str,
+  parenItem: bool,
+  bracketArg: bool,
+) -> ParseTypeResult:
+  n: int = len(tokens)
+  fail: ParseTypeResult = new()
+  fail.ok = False
+  fail.nextI = i
+  if i >= n:
+    return fail
+  if parenItem:
+    if _isParenItemStop(tokens[i].kind):
+      return fail
+  elif bracketArg:
+    if _isBracketArgStop(tokens[i].kind):
+      return fail
+  elif _isTypeStop(tokens[i].kind):
+    return fail
+
+  if tokens[i].kind == TokenKindEnum.Name:
+    startN: SourceSpan = tokens[i].span
+    name: str = tokens[i].text
+    i += 1
+    while (
+      i + 1 < n
+      and tokens[i].kind == TokenKindEnum.Dot
+      and tokens[i + 1].kind == TokenKindEnum.Name
+    ):
+      name = name + "." + tokens[i + 1].text
+      i += 2
+    endN: SourceSpan = tokens[i - 1].span
+    return _okAt(_mkName(name, _typeSpanJoin(startN, endN)), i)
+
+  if (
+    tokens[i].kind == TokenKindEnum.Op
+    and tokens[i].text == "*"
+    and i + 1 < n
+    and tokens[i + 1].kind == TokenKindEnum.Name
+  ):
+    startS: SourceSpan = tokens[i].span
+    endS: SourceSpan = tokens[i + 1].span
+    return _okAt(_mkName("*" + tokens[i + 1].text, _typeSpanJoin(startS, endS)), i + 2,
+    )
+
+  if tokens[i].kind == TokenKindEnum.Number:
+    spNum: SourceSpan = tokens[i].span
+    return _okAt(_mkName(tokens[i].text, spNum), i + 1)
+
+  if tokens[i].kind == TokenKindEnum.Ellipsis:
+    spEl: SourceSpan = tokens[i].span
+    return _okAt(_mkName("...", spEl), i + 1)
+
+  if tokens[i].kind == TokenKindEnum.Lpar:
+    startP: SourceSpan = tokens[i].span
+    i += 1
+    if i < n and tokens[i].kind == TokenKindEnum.Rpar:
+      i += 1
+      if i < n and tokens[i].kind == TokenKindEnum.Rarrow:
+        i += 1
+        ret0: ParseTypeResult = _parseTypeExpr(tokens, i, source, parenItem, bracketArg)
+        if not ret0.ok:
+          return ret0
+        c0: TypeNode = new()
+        c0.kind = TypeKindEnum.Callable
+        c0.children.append(ret0.ty)
+        c0.span = _typeSpanJoin(startP, ret0.ty.span)
+        return _okAt(c0, ret0.nextI)
+      return fail
+
+    items: list[TypeNode] = []
+    trailing: bool = False
+    while True:
+      item: ParseTypeResult = _parseTypeExpr(tokens, i, source, True, False)
+      if not item.ok:
+        return item
+      items.append(item.ty)
+      i = item.nextI
+      if i < n and tokens[i].kind == TokenKindEnum.Comma:
+        trailing = True
+        i += 1
+        if i < n and tokens[i].kind == TokenKindEnum.Rpar:
+          break
+        trailing = False
+        continue
+      break
+    if i >= n or tokens[i].kind != TokenKindEnum.Rpar:
+      return _failAt(i)
+    rpar: SourceSpan = tokens[i].span
+    i += 1
+    if i < n and tokens[i].kind == TokenKindEnum.Rarrow:
+      i += 1
+      ret1: ParseTypeResult = _parseTypeExpr(tokens, i, source, parenItem, bracketArg)
+      if not ret1.ok:
+        return ret1
+      c1: TypeNode = new()
+      c1.kind = TypeKindEnum.Callable
+      ii: int = 0
+      while ii < len(items):
+        c1.children.append(items[ii])
+        ii += 1
+      c1.children.append(ret1.ty)
+      c1.span = _typeSpanJoin(startP, ret1.ty.span)
+      return _okAt(c1, ret1.nextI)
+    if len(items) == 1 and not trailing:
+      paren: TypeNode = new()
+      paren.kind = TypeKindEnum.Paren
+      paren.children.append(items[0])
+      paren.span = _typeSpanJoin(startP, rpar)
+      return _okAt(paren, i)
+    tup: TypeNode = new()
+    tup.kind = TypeKindEnum.Tuple
+    tup.trailingComma = trailing
+    ti: int = 0
+    while ti < len(items):
+      tup.children.append(items[ti])
+      ti += 1
+    tup.span = _typeSpanJoin(startP, rpar)
+    return _okAt(tup, i)
+
+  return fail

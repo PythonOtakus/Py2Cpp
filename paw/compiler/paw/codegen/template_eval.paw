@@ -1,0 +1,151 @@
+"""模板冻结子集求值器（对位 ``host/codegen/template_eval.py`` 的整数核）。
+
+BEGIN/ECHO/EVAL 展开见同目录 ``template_expand.paw``；本模块供自举链跑 ``evalIntExpr``。
+"""
+from paw import *
+from .template_profile import assertSafeExpr
+
+class EvalCtx:
+  names: list[str]
+  values: list[int]
+
+  def __init__(self):
+    self.names = []
+    self.values = []
+
+  def put(self, name: str, value: int) -> None:
+    # 薄 emit 会 soft-skip ``values[i]=``；整表重建。
+    i: int = 0
+    while i < len(self.names):
+      if self.names[i] == name:
+        newVals: list[int] = []
+        j: int = 0
+        while j < len(self.values):
+          if j == i:
+            newVals.append(value)
+          else:
+            newVals.append(self.values[j])
+          j += 1
+        self.values = newVals
+        return
+      i += 1
+    self.names.append(name)
+    self.values.append(value)
+
+  def get(self, name: str) -> int:
+    i: int = 0
+    while i < len(self.names):
+      if self.names[i] == name:
+        return self.values[i]
+      i += 1
+    return 0
+
+class _IntParser:
+  s: str = ""
+  i: int = 0
+  n: int = 0
+  ctx: EvalCtx = new()
+
+  def reset(self, expr: str, ctx: EvalCtx) -> None:
+    self.s = expr.strip()
+    self.i = 0
+    self.n = len(self.s)
+    self.ctx = ctx
+
+  def peek(self) -> str:
+    if self.i >= self.n:
+      return ""
+    return self.s[self.i]
+
+  def skipWs(self) -> None:
+    while self.i < self.n:
+      c: str = self.s[self.i]
+      if c == " " or c == "\t":
+        self.i += 1
+      else:
+        return
+
+  def parsePrimary(self) -> int:
+    self.skipWs()
+    c: str = self.peek()
+    if c == "":
+      return 0
+    if c == "(":
+      self.i += 1
+      v: int = self.parseAdd()
+      self.skipWs()
+      if self.peek() == ")":
+        self.i += 1
+      return v
+    if c == "-":
+      self.i += 1
+      return 0 - self.parsePrimary()
+    if c >= "0" and c <= "9":
+      v2: int = 0
+      while self.i < self.n:
+        d: str = self.s[self.i]
+        if d < "0" or d > "9":
+          break
+        v2 = v2 * 10 + (ord(d) - ord("0"))
+        self.i += 1
+      return v2
+    if (c >= "A" and c <= "Z") or (c >= "a" and c <= "z") or c == "_":
+      start: int = self.i
+      self.i += 1
+      while self.i < self.n:
+        d2: str = self.s[self.i]
+        ok: bool = (d2 >= "A" and d2 <= "Z") or (d2 >= "a" and d2 <= "z") or (d2 >= "0" and d2 <= "9") or d2 == "_"
+        if not ok:
+          break
+        self.i += 1
+      name: str = self.s[start : self.i]
+      if name == "True":
+        return 1
+      if name == "False":
+        return 0
+      return self.ctx.get(name)
+    return 0
+
+  def parseMul(self) -> int:
+    left: int = self.parsePrimary()
+    while True:
+      self.skipWs()
+      op: str = self.peek()
+      if op == "*" or op == "/" or op == "%":
+        self.i += 1
+        right: int = self.parsePrimary()
+        if op == "*":
+          left = left * right
+        elif op == "/":
+          if right == 0:
+            return 0
+          left = left // right
+        else:
+          if right == 0:
+            return 0
+          left = left % right
+      else:
+        return left
+
+  def parseAdd(self) -> int:
+    left: int = self.parseMul()
+    while True:
+      self.skipWs()
+      op: str = self.peek()
+      if op == "+" or op == "-":
+        self.i += 1
+        right: int = self.parseMul()
+        if op == "+":
+          left = left + right
+        else:
+          left = left - right
+      else:
+        return left
+
+def evalIntExpr(expr: str, ctx: EvalCtx) -> int:
+  err: str = assertSafeExpr(expr, "EVAL")
+  if err != "":
+    return 0
+  p: _IntParser = new()
+  p.reset(expr, ctx)
+  return p.parseAdd()

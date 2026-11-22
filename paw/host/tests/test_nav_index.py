@@ -276,8 +276,7 @@ def UIEventDelegate() -> None: ...
     shard["_tmp"].cleanup()
 
   def test_class_decl_skips_forward_declaration(self):
-    import ast
-
+    import host.tree_nodes as ast
     from host.analysis.ir import ClassInfo
 
     header = """
@@ -301,14 +300,13 @@ namespace paw
 }
 """
     lines = header.splitlines()
-    node = ast.parse("class list: pass").body[0]
+    node = ast._stdlib_parse("class list: pass").body[0]
     info = ClassInfo(node, "paw/util/list")
     info.cpp_rename = "PyList"
     self.assertEqual(_class_decl_line(lines, info), 12)
 
   def test_enum_class_decl_line(self):
-    import ast
-
+    import host.tree_nodes as ast
     from host.analysis.ir import ClassInfo
 
     header = """
@@ -321,7 +319,7 @@ namespace paw
 }
 """
     lines = header.splitlines()
-    node = ast.parse("class AggModeEnum: pass").body[0]
+    node = ast._stdlib_parse("class AggModeEnum: pass").body[0]
     info = ClassInfo(node, "paw/alg/agg_mode")
     self.assertEqual(_class_decl_line(lines, info), 4)
 

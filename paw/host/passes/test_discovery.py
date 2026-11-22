@@ -1,7 +1,7 @@
 """翻译期展开 ``Mixin.iterSubclasses()`` / ``addTestsFromMixin``。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 
 from ..constant.mixin import ITER_SUBCLASSES, ITER_SUBCLASSES_SORT_CONST

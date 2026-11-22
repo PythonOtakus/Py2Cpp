@@ -1,7 +1,7 @@
 """``T @lazy`` / ``T @ref @lazy`` 形参：惰性实参 supplier（``PyCallable<V>``）。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import copy
 from dataclasses import dataclass
 

@@ -3,7 +3,7 @@
 用法（仓库根）::
   python tools/paw_debridge_accept.py
 
-``PY2CPP_NO_MATERIALIZE`` / seed 默认 PRIMARY 见 ``src/tests/test_paw_debridge_p1_p3.py``。
+``PY2CPP_NO_MATERIALIZE`` / seed 默认 PRIMARY 见 ``host/tests/test_paw_debridge_p1_p3.py``。
 """
 from __future__ import annotations
 

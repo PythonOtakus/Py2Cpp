@@ -127,7 +127,7 @@ def poolBlockGlobal() -> int:
     return _poolBlockValue.load()
 
 def poolRaise() -> int:
-    raise RuntimeError('pool boom')
+    raise RuntimeError("pool boom")
     return 0
 
 class TLSBox:
@@ -200,7 +200,7 @@ class ThreadRegistryTests(TestCaseMixin):
         current: Thread = Thread.current
         self.assertEqual(main.ident, current.ident)
         self.assertEqual(current.ident, Thread.current.ident)
-        self.assertEqual(main.name, 'MainThread')
+        self.assertEqual(main.name, "MainThread")
         self.assertTrue(Thread.activeCount >= 1)
         foundMain: bool = False
         threads: list[Thread] = Thread.actives
@@ -634,8 +634,8 @@ class ThreadPoolTests(TestCaseMixin):
 
 def main():
     suite: TestSuite = new()
-    for Class in TestCaseMixin.iterSubclasses(sortConst='_testTag'):
+    for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
         suite.addTest(Class())
     return TextTestRunner().run(suite)
-if __name__ == '__main__':
+if __name__ == "__main__":
     raise SystemExit(main())

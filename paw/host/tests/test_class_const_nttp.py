@@ -1,7 +1,7 @@
 """类 ``@const`` 用于 NTTP / 默认形参。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.analysis.analyzer import TypeParser
@@ -24,7 +24,7 @@ class Box(CapMixin):
 """
     tr = Translator("mod", "mod.py")
     tr.classes = {}
-    mod = ast.parse(src)
+    mod = ast._stdlib_parse(src)
     for node in mod.body:
       if isinstance(node, ast.ClassDef):
         info = ClassInfo(node, "mod")
@@ -53,7 +53,7 @@ class Box:
 """
     tr = Translator("mod", "mod.py")
     tr.classes = {}
-    mod = ast.parse(src)
+    mod = ast._stdlib_parse(src)
     for node in mod.body:
       if isinstance(node, ast.ClassDef):
         tr.classes[node.name] = ClassInfo(node, "mod")

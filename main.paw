@@ -1,0 +1,4 @@
+from paw import *
+
+def main():
+    print("Hello, World!")

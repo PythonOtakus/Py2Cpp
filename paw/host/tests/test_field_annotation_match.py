@@ -1,7 +1,7 @@
 """字段多 ``@`` 注解：``match`` 优先级与 ``UILabelMeta`` kwargs 合并。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.passes.match_case import (
@@ -13,7 +13,7 @@ from host.passes.match_case import (
 
 class MultiFieldAnnotationTests(unittest.TestCase):
   def test_markers_and_kwargs(self):
-    mod = ast.parse('hp: int @UILabelMeta("HP") @UISliderMeta(0, 100) = 0')
+    mod = ast._stdlib_parse('hp: int @UILabelMeta("HP") @UISliderMeta(0, 100) = 0')
     ann = mod.body[0]
     assert isinstance(ann, ast.AnnAssign)
     markers = field_annotation_markers_from_ann(ann.annotation)
@@ -24,7 +24,7 @@ class MultiFieldAnnotationTests(unittest.TestCase):
     self.assertEqual(kwargs["slider_hi"], "100")
 
   def test_invisible_marker_without_call(self):
-    mod = ast.parse("_seed: int @UIInvisibleMeta = 0")
+    mod = ast._stdlib_parse("_seed: int @UIInvisibleMeta = 0")
     ann = mod.body[0]
     assert isinstance(ann, ast.AnnAssign)
     markers = field_annotation_markers_from_ann(ann.annotation)

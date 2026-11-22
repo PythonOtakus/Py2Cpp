@@ -1,6 +1,6 @@
 """TypeNode Phase 0：往返、storage、结构匹配。"""
 from __future__ import annotations
-import ast
+import host.tree_nodes as ast
 import unittest
 from host.analysis.analyzer import SignatureBuilder, TypeParser
 from host.analysis.ir import ClassInfo
@@ -12,7 +12,7 @@ from host.analysis.type_storage import apply_full_storage_type_node, apply_stora
 
 def _parser_with_dict_entry() -> tuple[TypeParser, dict[str, ClassInfo]]:
     src = '\nfrom paw import DictKeyType, Self, boxing\n\n@boxing\n@native_name("PyDictEntryUnsafe")\nclass DictEntryUnsafe[Key: DictKeyType, Value]:\n  def __init__(self, key: Key, value: Value, next_entry: Self):\n    self.next: Self = next_entry\n'
-    tree = ast.parse(src)
+    tree = ast._stdlib_parse(src)
     info = ClassInfo(tree.body[-1], module_path='paw/util/dict.py')
     classes = {'DictEntryUnsafe': info}
     parser = TypeParser()
@@ -24,7 +24,7 @@ class TestTypeNodeRoundtrip(unittest.TestCase):
     def test_scalar_and_template_roundtrip(self):
         parser = TypeParser()
         for src, expect_cpp in (('int', cpp_ident('int')), ('str', cpp_ident('str')), ('list[int]', f"{cpp_ident('list')}<{cpp_ident('int')}>")):
-            node = ast.parse(src).body[0].value
+            node = ast._stdlib_parse(src).body[0].value
             tn = parser.parse_type_node(node, set())
             self.assertEqual(tn.render(CLASS_BODY), expect_cpp)
             self.assertEqual(type_node_to_cpp_string(type_node_from_cpp_string(expect_cpp)), expect_cpp)
@@ -85,7 +85,7 @@ class TestTypeNodeParseBridge(unittest.TestCase):
             'Pointer[list[int]]',
             'int | None',
         ):
-            ann = ast.parse(src).body[0].value
+            ann = ast._stdlib_parse(src).body[0].value
             self.assertEqual(
                 parser.parse_type_node(ann, set()).render(CLASS_BODY),
                 parser.parse_type(ann, set()),
@@ -95,7 +95,7 @@ class TestTypeNodeParseBridge(unittest.TestCase):
     def test_parse_storage_type_node_matches_parse_storage_type(self):
         parser, classes = _parser_with_dict_entry()
         for src in ('list[int]', 'dict[str, int]', 'Self'):
-            ann = ast.parse(src).body[0].value
+            ann = ast._stdlib_parse(src).body[0].value
             tparams = set(classes['DictEntryUnsafe'].type_params)
             self_class = classes['DictEntryUnsafe'].template_cpp_type()
             got = parser.parse_storage_type_node(
@@ -136,7 +136,7 @@ class TestTypeNodePhase1DualWrite(unittest.TestCase):
 
     def test_dict_entry_field_type_nodes_match_strings(self):
         src = '\nfrom paw import DictKeyType, Self, boxing\n\n@boxing\n@native_name("PyDictEntryUnsafe")\nclass DictEntryUnsafe[Key: DictKeyType, Value]:\n  def __init__(self, key: Key, value: Value, next_entry: Self):\n    self.key: Key = key\n    self.value: Value = value\n    self.next: Self = next_entry\n'
-        tree = ast.parse(src)
+        tree = ast._stdlib_parse(src)
         info = ClassInfo(tree.body[-1], module_path='paw/util/dict.py')
         classes = {'DictEntryUnsafe': info}
         parser = TypeParser()
@@ -158,13 +158,13 @@ class TestTypeNodePhase1DualWrite(unittest.TestCase):
 class TestParseStorageStackArrayAliasImport(unittest.TestCase):
 
     def test_float64_slice_not_type_alias_subscript(self):
-        import ast
+        import host.tree_nodes as ast
         from host.analysis.analyzer import TypeParser
         from host.analysis.imports import ImportBinding
         from host.analysis.type_pred import is_stack_array_type
         tp = TypeParser()
         tp.set_import_bindings({'float64': ImportBinding(local_name='float64', symbol='float64', module_path='paw/builtins.py', kind='type_alias', cpp_name='float64')})
-        ann = ast.parse('u: float64[:3] = [1.0]').body[0].annotation
+        ann = ast._stdlib_parse('u: float64[:3] = [1.0]').body[0].annotation
         cpp = tp.parse_storage_type(ann, set())
         self.assertTrue(is_stack_array_type(cpp))
         self.assertIn('PyStackArray', cpp)
@@ -173,7 +173,7 @@ class TestTypeNodePhase3EmitBoundary(unittest.TestCase):
 
     def _dict_entry_setup(self):
         src = '\nfrom paw import DictKeyType, Self, boxing\n\n@boxing\n@native_name("PyDictEntryUnsafe")\nclass DictEntryUnsafe[Key: DictKeyType, Value]:\n  def __init__(self, key: Key, value: Value, next_entry: Self):\n    self.key: Key = key\n    self.value: Value = value\n    self.next: Self = next_entry\n'
-        tree = ast.parse(src)
+        tree = ast._stdlib_parse(src)
         info = ClassInfo(tree.body[-1], module_path='paw/util/dict.py')
         classes = {'DictEntryUnsafe': info}
         parser = TypeParser()
@@ -194,7 +194,7 @@ class TestTypeNodePhase3EmitBoundary(unittest.TestCase):
 
     def test_function_param_type_nodes_match_strings(self):
         src = '\ndef add(a: int, b: int) -> int:\n  return a + b\n'
-        func = ast.parse(src).body[0]
+        func = ast._stdlib_parse(src).body[0]
         parser = TypeParser()
         sigs = SignatureBuilder(parser)
         fsig = sigs.build_function_sig(func)
@@ -223,7 +223,7 @@ class TestTypeNodePhase20ScopeStorage(unittest.TestCase):
         from host.analysis.ir import cpp_ident
         from host.translator import Scope
 
-        scope = Scope(ast.parse('pass').body[0])
+        scope = Scope(ast._stdlib_parse('pass').body[0])
         node = type_node_from_cpp_string(cpp_ident('int'))
         scope.param_type_nodes['x'] = node
         scope.param_types['x'] = 'PyStr'
@@ -241,7 +241,7 @@ class TestTypeNodePhase20ScopeStorage(unittest.TestCase):
         from host.analysis.ir import cpp_ident
         from host.translator import Scope
 
-        scope = Scope(ast.parse('pass').body[0])
+        scope = Scope(ast._stdlib_parse('pass').body[0])
         scope.param_type_nodes['p'] = type_node_from_cpp_string(cpp_ident('float'))
         self.assertTrue(scope_has_param(scope, 'p'))
 
@@ -250,7 +250,7 @@ class TestTypeNodePhase20ScopeStorage(unittest.TestCase):
         from host.analysis.ir import cpp_ident
         from host.translator import Scope, Translator
 
-        scope = Scope(ast.parse('pass').body[0])
+        scope = Scope(ast._stdlib_parse('pass').body[0])
         tr = Translator('m', 'm.py')
         tr.scope = scope
         bind_scope_var(scope, 'x', cpp_ident('int'), classes=tr.classes)
@@ -265,7 +265,7 @@ class TestTypeNodePhase4Helpers(unittest.TestCase):
         from host.analysis.type_emit import write_field_storage
         from host.analysis.ir import ClassInfo, cpp_ident
         from host.analysis.type_compat import type_node_from_cpp_string
-        info = ClassInfo(ast.parse('class C: pass').body[0], module_path='m.py')
+        info = ClassInfo(ast._stdlib_parse('class C: pass').body[0], module_path='m.py')
         write_field_storage(info, 'x', type_node_from_cpp_string(cpp_ident('int')))
         self.assertIn('x', info.field_type_nodes)
         self.assertNotIn('x', info.field_types)
@@ -274,7 +274,7 @@ class TestTypeNodePhase4Helpers(unittest.TestCase):
         from host.analysis.type_emit import field_storage_cpp, write_field_storage
         from host.analysis.ir import ClassInfo, cpp_ident
         from host.analysis.type_compat import type_node_from_cpp_string
-        info = ClassInfo(ast.parse('class C: pass').body[0], module_path='m.py')
+        info = ClassInfo(ast._stdlib_parse('class C: pass').body[0], module_path='m.py')
         write_field_storage(info, 'x', type_node_from_cpp_string(cpp_ident('int')))
         info.field_types['x'] = 'void*'
         self.assertEqual(field_storage_cpp(info, 'x'), cpp_ident('int'))
@@ -284,7 +284,7 @@ class TestTypeNodePhase4Helpers(unittest.TestCase):
         from host.analysis.type_emit import method_param_storage_cpp, method_param_types_map
         from host.analysis.type_compat import type_node_from_cpp_string
         node = type_node_from_cpp_string('PyInt')
-        sig = MethodSig(func_ft=FuncTypeParams.collect(ast.parse('def f(x: int): pass').body[0]), ret_lead='void', ret_trail='', params_decl='PyInt x', params_def='PyInt x', param_types={'x': 'void*', 'y': 'void*'}, param_type_nodes={'x': node}, doc_lines=(), is_next=False, result_cpp_type='void*')
+        sig = MethodSig(func_ft=FuncTypeParams.collect(ast._stdlib_parse('def f(x: int): pass').body[0]), ret_lead='void', ret_trail='', params_decl='PyInt x', params_def='PyInt x', param_types={'x': 'void*', 'y': 'void*'}, param_type_nodes={'x': node}, doc_lines=(), is_next=False, result_cpp_type='void*')
         self.assertEqual(method_param_storage_cpp(sig, 'x'), 'PyInt')
         self.assertEqual(method_param_types_map(sig), {'x': 'PyInt'})
 
@@ -292,7 +292,7 @@ class TestTypeNodePhase4Helpers(unittest.TestCase):
         from host.analysis.type_emit import field_storage_values, write_field_storage
         from host.analysis.ir import ClassInfo, cpp_ident
         from host.analysis.type_compat import type_node_from_cpp_string
-        info = ClassInfo(ast.parse('class C: pass').body[0], module_path='m.py')
+        info = ClassInfo(ast._stdlib_parse('class C: pass').body[0], module_path='m.py')
         info.fields = ['x', 'y']
         write_field_storage(info, 'x', type_node_from_cpp_string(cpp_ident('int')))
         info.field_types['x'] = 'void*'
@@ -305,7 +305,7 @@ class TestTypeNodePhase4Helpers(unittest.TestCase):
         from host.analysis.type_emit import sig_return_storage_cpp
         from host.analysis.type_node import TypeKind
         src = 'class Box:\n  def items(self) -> list[int]:\n    pass'
-        info = ClassInfo(ast.parse(src).body[0], module_path='m.py')
+        info = ClassInfo(ast._stdlib_parse(src).body[0], module_path='m.py')
         sb = SignatureBuilder(TypeParser())
         sb.set_classes({info.name: info})
         sig = sb.build_method_sig(info, info.methods['items'])
@@ -322,7 +322,7 @@ class TestTypeNodePhase4Helpers(unittest.TestCase):
         from host.analysis.type_emit import sig_return_storage_cpp
         node = type_node_from_cpp_string('PyList<PyInt>')
         sig = MethodSig(
-            func_ft=FuncTypeParams.collect(ast.parse('def f(x: int) -> list[int]: pass').body[0]),
+            func_ft=FuncTypeParams.collect(ast._stdlib_parse('def f(x: int) -> list[int]: pass').body[0]),
             ret_lead='void*',
             ret_trail='',
             params_decl='PyInt x',
@@ -338,21 +338,21 @@ class TestTypeNodePhase4Helpers(unittest.TestCase):
 
     def test_write_field_ann_ast_roundtrip(self):
         from host.analysis.type_emit import clear_field_ann_ast, field_ann_ast, write_field_ann_ast
-        info = ClassInfo(ast.parse('class C: pass').body[0], module_path='m.py')
-        ann = ast.parse('int', mode='eval').body
+        info = ClassInfo(ast._stdlib_parse('class C: pass').body[0], module_path='m.py')
+        ann = ast._stdlib_parse('int', mode='eval').body
         write_field_ann_ast(info, 'x', ann)
         self.assertIs(field_ann_ast(info, 'x'), ann)
         clear_field_ann_ast(info, 'x')
         self.assertIsNone(field_ann_ast(info, 'x'))
 
     def test_method_param_node_reconciles_boxing_pointer(self):
-        import ast
+        import host.tree_nodes as ast
         from host.analysis.analyzer import SignatureBuilder, TypeParser
         from host.analysis.ir import ClassInfo
         from host.analysis.type_render import CLASS_BODY
         with open('paw/util/deque.py', encoding='utf-8') as f:
             src = f.read()
-        tree = ast.parse(src)
+        tree = ast._stdlib_parse(src)
         rev_cls = next((n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == 'DequeReverseIterator'))
         info = ClassInfo(rev_cls, module_path='paw/util/deque.py')
         classes = {n.name: ClassInfo(n, module_path='paw/util/deque.py') for n in tree.body if isinstance(n, ast.ClassDef)}
@@ -365,12 +365,12 @@ class TestTypeNodePhase4Helpers(unittest.TestCase):
         self.assertEqual(msig.param_type_nodes['dq'].render(CLASS_BODY), msig.param_types['dq'])
 
     def test_sync_sig_cache_aligns_ret_and_params(self):
-        import ast
+        import host.tree_nodes as ast
         from host.analysis.type_emit import collect_sig_type_texts, sync_sig_cache
         from host.analysis.ir import FuncTypeParams, MethodSig
         from host.analysis.type_compat import type_node_from_cpp_string
         node = type_node_from_cpp_string('PyList<PyInt>')
-        sig = MethodSig(func_ft=FuncTypeParams.collect(ast.parse('def f(x: int) -> list[int]: pass').body[0]), ret_lead='void', ret_trail='&', params_decl='PyInt x', params_def='PyInt x', param_types={'x': 'void*'}, param_type_nodes={'x': type_node_from_cpp_string('PyInt')}, return_type_node=node, doc_lines=(), is_next=False, result_cpp_type='void*')
+        sig = MethodSig(func_ft=FuncTypeParams.collect(ast._stdlib_parse('def f(x: int) -> list[int]: pass').body[0]), ret_lead='void', ret_trail='&', params_decl='PyInt x', params_def='PyInt x', param_types={'x': 'void*'}, param_type_nodes={'x': type_node_from_cpp_string('PyInt')}, return_type_node=node, doc_lines=(), is_next=False, result_cpp_type='void*')
         synced = sync_sig_cache(sig)
         self.assertEqual(synced.ret_lead, 'PyList<PyInt>')
         self.assertEqual(synced.param_types['x'], 'PyInt')
@@ -481,7 +481,7 @@ class TestTypeExtractInvokable(unittest.TestCase):
 
     def test_resolve_delegate_by_cpp_name(self):
         """``delegates`` 以 Python 名为键；存储类型为 ``Py*Delegate`` 时须能解析。"""
-        import ast
+        import host.tree_nodes as ast
         from host.analysis.delegates import DelegateInfo, DelegateParam
         from host.emit.delegate_emit import resolve_delegate_for_type
 

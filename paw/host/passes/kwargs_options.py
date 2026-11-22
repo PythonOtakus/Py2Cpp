@@ -9,19 +9,17 @@
 """
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import copy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-  import ast
-
+  import host.tree_nodes as ast
   from ..analysis.ir import ClassInfo
   from ..translator import Translator
 else:
-  import ast
-
+  import host.tree_nodes as ast
 from ..analysis.patterns import temp_name
 
 _ASSIGN_NAME = "assign"

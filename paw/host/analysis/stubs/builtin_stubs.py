@@ -1,7 +1,7 @@
 """从 ``paw/__init__.py`` 桩函数 AST 推导内建派发元数据。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from dataclasses import dataclass
 from functools import lru_cache
 

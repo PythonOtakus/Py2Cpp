@@ -1,6 +1,6 @@
 """生成器 ``__resume``：``switch (_state)`` 状态机（``yield`` / ``yield from`` / ``return``）。"""
 from __future__ import annotations
-import ast
+import host.tree_nodes as ast
 import copy
 from contextlib import contextmanager
 from typing import TYPE_CHECKING

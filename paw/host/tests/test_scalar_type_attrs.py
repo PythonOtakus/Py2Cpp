@@ -9,9 +9,7 @@ from host.analysis.ir import (
   scalar_type_static_attr_from_expr,
   scalar_type_static_method_cpp,
 )
-import ast
-
-
+import host.tree_nodes as ast
 class ScalarTypeStaticAttrTests(unittest.TestCase):
   def test_float_inf_nan(self):
     self.assertEqual(scalar_type_static_attr_cpp("float", "Inf"), "PY2CPP_FLOAT_INF")
@@ -46,7 +44,7 @@ class ScalarTypeStaticAttrTests(unittest.TestCase):
     self.assertIsNone(scalar_type_static_attr_cpp("float", "inf"))
 
   def test_int_min_from_expr(self):
-    node = ast.parse("int.Min", mode="eval").body
+    node = ast._stdlib_parse("int.Min", mode="eval").body
     self.assertEqual(scalar_type_static_attr_from_expr(node), "PY2CPP_INT_MIN")
 
   def test_legacy_min_value_not_mapped(self):

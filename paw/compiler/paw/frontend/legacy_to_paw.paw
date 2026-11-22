@@ -1,2 +1,5 @@
-"""Stub parity with ``compiler/py/frontend/legacy_to_paw.py`` — not yet ported to Paw."""
+"""Legacy → Paw — Zero-AST identity（生产自举路径不做转换）。"""
 from paw import *
+
+def legacyToPaw(source: str) -> str:
+  return source

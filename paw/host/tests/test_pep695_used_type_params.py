@@ -1,5 +1,5 @@
 """``pep695_used_type_params``：未使用形参检测辅助。"""
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.analysis.ir import pep695_declared_type_params, pep695_used_type_params
@@ -7,7 +7,7 @@ from host.analysis.ir import pep695_declared_type_params, pep695_used_type_param
 
 class Pep695UsedTypeParamsTests(unittest.TestCase):
   def test_navigatable_header_node_only(self):
-    mod = ast.parse(
+    mod = ast._stdlib_parse(
       "def f[Node: DictKeyType](nav: NavigatableType[Node], start: Node) -> Node: return start\n"
     )
     fn = mod.body[0]
@@ -17,7 +17,7 @@ class Pep695UsedTypeParamsTests(unittest.TestCase):
     self.assertEqual(used, {"Node"})
 
   def test_unused_nav_in_header(self):
-    mod = ast.parse(
+    mod = ast._stdlib_parse(
       "def f[Nav, Node: DictKeyType](nav: NavigatableType[Node], start: Node) -> Node: return start\n"
     )
     fn = mod.body[0]

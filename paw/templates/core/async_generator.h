@@ -4,7 +4,7 @@
 
 
 // 擦除异步生成器句柄：``AsyncGenerator[Y,S]`` 形参/字段/``@virtual`` 返回；具体 ``*_coroutine`` 经 ``makeAsyncGenerator`` 装箱。
-namespace paw_async_generator_detail
+namespace py2cpp_async_generator_detail
 {
   template<typename ST>
   ST default_send_value()
@@ -235,3 +235,35 @@ PyAsyncGenerator<YT, ST> makeAsyncGenerator(G gen)
 {
   return py2cpp_async_generator_access::make<YT, ST, G>(gen);
 }
+
+/// 薄 emit：急切收集 ``yield`` 后装箱为 ``PyAsyncGenerator``。
+template<typename YT, typename ST = PY2CPP_TYPE(PyNone)>
+struct py2cpp_list_async_generator
+{
+  typedef YT Element;
+  typedef ST SendType;
+  typedef PY2CPP_TYPE(PyNone) ReturnType;
+  typedef PY2CPP_TYPE(PyIterResult)<YT, PY2CPP_TYPE(PyNone)> Result;
+
+  PY2CPP_TYPE(PyList)<YT, 0> items;
+  int idx;
+
+  explicit py2cpp_list_async_generator() : items(), idx(0) {}
+  explicit py2cpp_list_async_generator(PY2CPP_TYPE(PyList)<YT, 0> xs)
+    : items(xs), idx(0) {}
+
+  py2cpp_list_async_generator& __aiter__() { return *this; }
+  Result __anext__() { return asend(py2cpp_async_generator_detail::default_send_value<ST>()); }
+  Result send(ST v) { return asend(v); }
+  Result asend(ST)
+  {
+    if (idx < (int)items.__len__())
+    {
+      YT v = items.__getitem__(idx);
+      idx += 1;
+      return Result::Yield(v);
+    }
+    return Result::Return(PY2CPP_TYPE(PyNone)());
+  }
+};
+

@@ -416,7 +416,7 @@ def _library_obj_path(cpp: Path, obj_dir: Path) -> Path:
 def _newest_runtime_codegen_mtime(runtime_dir: Path, sources: list[Path]) -> float:
   """library ``.cpp`` 与 ``paw/**/*.h|.inl|.cpp`` 的最新 mtime。"""
   newest = max((s.stat().st_mtime for s in sources), default=0.0)
-  py2cpp = runtime_dir / "paw"
+  paw = runtime_dir / "paw"
   if not paw.is_dir():
     return newest
   for p in paw.rglob("*"):

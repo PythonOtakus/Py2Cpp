@@ -1,7 +1,7 @@
 """``if "…" in __macro__`` / ``elif "…" not in __macro__`` → C 预编译指令。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING

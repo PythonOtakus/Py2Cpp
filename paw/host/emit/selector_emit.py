@@ -1,6 +1,6 @@
 """``obj.select("path")`` 译期内联；返回类型由导航 + 后处理推断。"""
 from __future__ import annotations
-import ast
+import host.tree_nodes as ast
 import copy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING

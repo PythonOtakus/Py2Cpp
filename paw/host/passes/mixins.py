@@ -1,7 +1,7 @@
 """混入类与字段注解展开：``@mixin`` / ``@annotation`` 类不生成 C++，方法内联到宿主类。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import copy
 from typing import TYPE_CHECKING
 
@@ -33,6 +33,13 @@ from .method_meta import (
   expand_method_signature_reflect,
   expand_mixin_method_meta_closures,
 )
+from compiler.py.mid.nodes import MidFunction
+
+from .mid_method_parse import (
+  append_method_mid,
+  ast_function_to_mid,
+  bridge_mid_method_to_ast,
+)
 from .static_reflect import fold_static_reflect
 from .varstack import expand_varstack, method_uses_varstack, method_has_unexpanded_varstack
 
@@ -48,7 +55,10 @@ def is_annotation_class(info: ClassInfo) -> bool:
 
 
 def is_mixin_class(info: ClassInfo) -> bool:
-  return _has_decorator(info.node, MIXIN_DECORATOR)
+  """装饰器或 Mid ``is_mixin`` 标志（from_mid_class 可能未挂 ``@mixin``）。"""
+  return bool(getattr(info, "is_mixin", False)) or _has_decorator(
+    info.node, MIXIN_DECORATOR
+  )
 
 
 def _has_decorator(node: ast.ClassDef, name: str) -> bool:
@@ -423,7 +433,9 @@ class _MixinTypeParamSubstituter(ast.NodeTransformer):
     if repl is not None:
       if repl.isidentifier():
         return ast.copy_location(ast.Name(id=repl, ctx=node.ctx), node)
-      parsed = ast.parse(repl, mode="eval").body
+      from ..frontend.api import parse_type_as_ast
+
+      parsed = parse_type_as_ast(repl)
       return ast.copy_location(parsed, node)
     return self.generic_visit(node)
 
@@ -766,6 +778,8 @@ def propagate_mixin_instance_fields(host: ClassInfo, mixin: ClassInfo) -> None:
       if substituter is not None and isinstance(default, ast.expr):
         default = substituter.visit(default)
       host.field_defaults[name] = default
+    if name in getattr(mixin, "field_default_sources", {}):
+      host.field_default_sources[name] = mixin.field_default_sources[name]
     if name in mixin.field_annotations:
       host.field_annotations[name] = mixin.field_annotations[name]
     if name in mixin.field_annotation_markers:
@@ -881,22 +895,76 @@ def _host_has_method_name(host: ClassInfo, name: str) -> bool:
   )
 
 
+def _register_cloned_method_mid(
+  tr: Translator | None,
+  host: ClassInfo,
+  cloned: ast.FunctionDef | ast.AsyncFunctionDef,
+  *,
+  source_mid: MidFunction | None = None,
+) -> None:
+  """内联方法挂到宿主 ``MidClass``；优先复制已有 ``MidFunction``，避免 legacy ``@lazy`` 回灌。"""
+  if tr is None:
+    return
+  if source_mid is not None:
+    mid_fn = copy.deepcopy(source_mid)
+  else:
+    mid_fn = ast_function_to_mid(
+      cloned,
+      path=f"<mixin:{host.module_path or '_'}.{host.name}.{cloned.name}>",
+    )
+  append_method_mid(tr, host, mid_fn)
+  # 同名 overload 追加，勿覆盖（与 ClassInfo._store_mid_method 一致）
+  host._store_mid_method(mid_fn)
+
+
+def _ensure_mixin_ast_methods(mixin: ClassInfo) -> None:
+  """Mid-first：把 ``mid_methods`` 桥到 ``methods`` / ``inits``（含同名 overload）。"""
+  ensure = getattr(mixin, "ensure_methods_bridged_from_mid", None)
+  if callable(ensure):
+    ensure()
+    return
+  mid_methods = getattr(mixin, "mid_methods", None) or {}
+  if not mid_methods:
+    return
+  for name, mid_fn in ClassInfo._iter_mid_methods_entries(mid_methods):
+    if not isinstance(mid_fn, MidFunction):
+      continue
+    ast_fn = bridge_mid_method_to_ast(
+      mid_fn, filename=mixin.module_path or "<mixin>",
+    )
+    if name == "__init__":
+      if not mixin.inits:
+        mixin.inits.append(ast_fn)
+      continue
+    if name in mixin.method_overloads:
+      mixin.method_overloads[name].append(ast_fn)
+    elif name in mixin.methods:
+      prev = mixin.methods.pop(name)
+      mixin.method_overloads[name] = [prev, ast_fn]
+    else:
+      mixin.methods[name] = ast_fn
+
+
 def _apply_mixin_async_method_defs(
   host: ClassInfo,
   mixin: ClassInfo,
   classes: dict[str, ClassInfo],
   *,
   _seen: set[str],
+  tr: Translator | None = None,
 ) -> None:
   """将混入 ``async def`` 并入宿主类体，供 ``expand_generators`` 展开为 ``*_coroutine``。"""
   if mixin.name in _seen:
     return
   _seen.add(mixin.name)
+  _ensure_mixin_ast_methods(mixin)
 
   for base_name in mixin.bases:
     carrier = classes.get(base_name)
     if carrier is not None and carrier.is_mixin:
-      _apply_mixin_async_method_defs(host, carrier, classes, _seen=_seen)
+      _apply_mixin_async_method_defs(
+        host, carrier, classes, _seen=_seen, tr=tr,
+      )
 
   inliner = _MixinInliner(host)
   for stmt in mixin.node.body:
@@ -912,6 +980,10 @@ def _apply_mixin_async_method_defs(
       cloned.returns = ast.Name(id=host.cpp_name(), ctx=ast.Load())
     ast.fix_missing_locations(cloned)
     host.node.body.append(cloned)
+    src_mid = getattr(mixin, "mid_methods", {}).get(name)
+    _register_cloned_method_mid(
+      tr, host, cloned, source_mid=src_mid if isinstance(src_mid, MidFunction) else None,
+    )
 
 
 def _apply_mixin_method_defs(
@@ -920,16 +992,20 @@ def _apply_mixin_method_defs(
   classes: dict[str, ClassInfo],
   *,
   _seen: set[str],
+  tr: Translator | None = None,
 ) -> None:
   """将混入（含其 ``@mixin`` 基类）的方法并入宿主；``@overload`` 组写入 ``method_overloads``。"""
   if mixin.name in _seen:
     return
   _seen.add(mixin.name)
+  _ensure_mixin_ast_methods(mixin)
 
   for base_name in mixin.bases:
     carrier = classes.get(base_name)
     if carrier is not None and carrier.is_mixin:
-      _apply_mixin_method_defs(host, carrier, classes, _seen=_seen)
+      _apply_mixin_method_defs(
+        host, carrier, classes, _seen=_seen, tr=tr,
+      )
 
   for name, overloads in mixin.method_overloads.items():
     if name in MIXIN_METHODS_NOT_INLINED:
@@ -944,8 +1020,15 @@ def _apply_mixin_method_defs(
     if not cloned_overloads:
       continue
     host.method_overloads[name] = cloned_overloads
+    src_mid = getattr(mixin, "mid_methods", {}).get(name)
     for cloned in cloned_overloads:
       host._collect_fields(cloned)
+      _register_cloned_method_mid(
+        tr,
+        host,
+        cloned,
+        source_mid=src_mid if isinstance(src_mid, MidFunction) else None,
+      )
       if name == "__copy__":
         host.has_copy = True
       elif name == "__move__":
@@ -961,13 +1044,22 @@ def _apply_mixin_method_defs(
       continue
     host.methods[name] = cloned
     host._collect_fields(cloned)
+    src_mid = getattr(mixin, "mid_methods", {}).get(name)
+    _register_cloned_method_mid(
+      tr,
+      host,
+      cloned,
+      source_mid=src_mid if isinstance(src_mid, MidFunction) else None,
+    )
     if name == "__copy__":
       host.has_copy = True
     elif name == "__move__":
       host.has_move = True
 
   _drop_property_names_from_fields(host)
-  _apply_mixin_async_method_defs(host, mixin, classes, _seen=set())
+  _apply_mixin_async_method_defs(
+    host, mixin, classes, _seen=set(), tr=tr,
+  )
 
 
 def _apply_mixin_init_def(
@@ -976,16 +1068,20 @@ def _apply_mixin_init_def(
   classes: dict[str, ClassInfo],
   *,
   _seen: set[str],
+  tr: Translator | None = None,
 ) -> None:
   """宿主无手写 ``__init__`` 时，并入混入类（含其 ``@mixin`` 基类）的 ``__init__``。"""
   if mixin.name in _seen:
     return
   _seen.add(mixin.name)
+  _ensure_mixin_ast_methods(mixin)
 
   for base_name in mixin.bases:
     carrier = classes.get(base_name)
     if carrier is not None and carrier.is_mixin:
-      _apply_mixin_init_def(host, carrier, classes, _seen=_seen)
+      _apply_mixin_init_def(
+        host, carrier, classes, _seen=_seen, tr=tr,
+      )
 
   if host.inits or not mixin.inits:
     return
@@ -995,22 +1091,33 @@ def _apply_mixin_init_def(
   ast.fix_missing_locations(cloned)
   host.inits.append(cloned)
   host._collect_fields(cloned)
+  src_mid = getattr(mixin, "mid_methods", {}).get("__init__")
+  _register_cloned_method_mid(
+    tr,
+    host,
+    cloned,
+    source_mid=src_mid if isinstance(src_mid, MidFunction) else None,
+  )
 
 
 def propagate_mixin_init(
   host: ClassInfo,
   mixin: ClassInfo,
   classes: dict[str, ClassInfo],
+  tr: Translator | None = None,
 ) -> None:
-  _apply_mixin_init_def(host, mixin, classes, _seen=set())
+  _apply_mixin_init_def(host, mixin, classes, _seen=set(), tr=tr)
 
 
 def apply_mixin_methods(
   host: ClassInfo,
   mixin: ClassInfo,
   classes: dict[str, ClassInfo] | None = None,
+  tr: Translator | None = None,
 ) -> None:
-  _apply_mixin_method_defs(host, mixin, classes or {}, _seen=set())
+  _apply_mixin_method_defs(
+    host, mixin, classes or {}, _seen=set(), tr=tr,
+  )
 
 
 def expand_static_reflect(tr: Translator) -> None:
@@ -1079,8 +1186,8 @@ def expand_mixins(tr: Translator) -> None:
       propagate_mixin_properties(host, mixin, tr.classes)
       propagate_mixin_instance_fields(host, mixin)
       propagate_mixin_dataclass(host, mixin)
-      propagate_mixin_init(host, mixin, tr.classes)
-      apply_mixin_methods(host, mixin, tr.classes)
+      propagate_mixin_init(host, mixin, tr.classes, tr=tr)
+      apply_mixin_methods(host, mixin, tr.classes, tr=tr)
     _expand_reflect_loops_on_class(host, tr.classes)
 
   check_annotation_repeatable(tr)

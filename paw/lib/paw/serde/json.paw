@@ -99,7 +99,7 @@ class JsonEncoder:
     n: int = len(s)
     for i in range(n):
       if s[i] in '"':
-        parts.append('\\"')
+        parts.append("\\\"")
       elif s[i] in "\\":
         parts.append("\\\\")
       elif s[i] in "\n":

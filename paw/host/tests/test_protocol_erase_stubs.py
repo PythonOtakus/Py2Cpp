@@ -1,5 +1,5 @@
 """协议运行时擦除表与 ``makeGenerator`` 命名。"""
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.analysis.ir import cpp_make_generator_expr
@@ -13,9 +13,9 @@ from host.analysis.stubs.protocol_erase_stubs import (
 
 class ProtocolEraseStubTests(unittest.TestCase):
   def test_self_detection(self):
-    ann = ast.parse("list[Self]").body[0].value
+    ann = ast._stdlib_parse("list[Self]").body[0].value
     self.assertTrue(annotation_uses_self(ann))
-    self.assertFalse(annotation_uses_self(ast.parse("IteratorType[T]").body[0].value))
+    self.assertFalse(annotation_uses_self(ast._stdlib_parse("IteratorType[T]").body[0].value))
 
   def test_runtime_erase_includes_generator_not_comparable(self):
     rt = load_protocol_runtime_erase()
@@ -49,8 +49,7 @@ class ProtocolEraseStubTests(unittest.TestCase):
       load_protocol_runtime_erase_candidates,
     )
 
-    import ast
-
+    import host.tree_nodes as ast
     candidates = load_protocol_runtime_erase_candidates()
     aliases = {"Element": ast.Constant(value=Ellipsis)}
     cpp = _protocol_ann_to_cpp(
@@ -65,10 +64,10 @@ class ProtocolEraseStubTests(unittest.TestCase):
     )
 
     candidates = load_protocol_runtime_erase_candidates()
-    ann = ast.parse("long").body[0].value
+    ann = ast._stdlib_parse("long").body[0].value
     cpp = _protocol_ann_to_cpp(ann, (), {}, runtime_erase=candidates)
     self.assertEqual(cpp, "paw::numeric::py_long::PyLong")
-    ann2 = ast.parse("list[long]").body[0].value
+    ann2 = ast._stdlib_parse("list[long]").body[0].value
     cpp2 = _protocol_ann_to_cpp(ann2, (), {}, runtime_erase=candidates)
     self.assertEqual(
       cpp2,

@@ -1,7 +1,7 @@
 """函数形参 / 返回值上的 ``T @Desc(...)``：生成 ``__set_<fn>_param_<arg>`` / ``__set_<fn>_return`` 校验辅助函数并调用。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import copy
 import re
 from typing import TYPE_CHECKING

@@ -1,7 +1,7 @@
 """``@GpuDeviceMeta`` 模块函数 → static 设备辅助（P1 Host sim）。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 
 from ..analysis.ir import cpp_param

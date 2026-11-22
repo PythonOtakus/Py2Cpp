@@ -1,15 +1,25 @@
 @echo off
-REM Regenerates out/runtime from lib/paw/__init__.paw (or .py).
-REM Skip translate when paw/templates/src/ffi are unchanged (see bootstrap_stamp).
+REM Regenerates out/runtime from lib/paw/__init__.paw or .py.
+REM Skip translate when paw/templates/src/ffi are unchanged; see bootstrap_stamp.
 REM Idempotent within one cmd process via PY2CPP_RUNTIME_BOOTSTRAPPED.
-REM Optional args (e.g. --debug) are forwarded to main.py.
+REM Optional args such as --debug are forwarded to main.py.
 REM PY2CPP_FORCE_BOOTSTRAP=1 forces a full translate.
+REM PY2CPP_RUNTIME_NOPY=1：不调用 Python；仅用已有 out\runtime 源重建胖库（见 paw_runtime_nopy.bat）。
 if defined PY2CPP_RUNTIME_BOOTSTRAPPED exit /b 0
+
+if /I "%PY2CPP_RUNTIME_NOPY%"=="1" (
+  echo === bootstrap: nopy fat lib rebuild ===
+  call "%~dp0paw_runtime_nopy.bat"
+  if errorlevel 1 exit /b 1
+  set "PY2CPP_RUNTIME_BOOTSTRAPPED=1"
+  exit /b 0
+)
+
 if not defined PY set "PY=python"
 
 %PY% -c "import sys" 2>nul
 if errorlevel 1 (
-  echo ERROR: Python not found in PATH.
+  echo ERROR: Python not found in PATH. For rebuild-only use PY2CPP_RUNTIME_NOPY=1.
   exit /b 1
 )
 

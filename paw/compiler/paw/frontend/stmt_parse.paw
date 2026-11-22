@@ -1,2 +1,564 @@
-"""Stub parity with ``compiler/py/frontend/stmt_parse.py`` — not yet ported to Paw."""
+"""函数体语句子集（Paw 薄自举）：表达式以源串保存，不对位完整 expr AST。
+
+对位 ``compiler/py/frontend/stmt_parse.py`` 的 seed 子集：
+pass/break/continue/return/raise/assert、assign、annassign、if/elif/else、while、for、expr。
+其余 → Opaque。
+"""
 from paw import *
+from .source import SourceSpan
+from .syntax_nodes import StmtKindEnum, StmtNode
+from .tokens import Token, TokenKindEnum
+from .type_parse import ParseTypeResult, parseType
+
+class ParseSuiteResult:
+  stmts: list[StmtNode]
+  nextI: int = 0
+
+  def __init__(self):
+    self.stmts = []
+
+class ParseStmtResult:
+  ok: bool = False
+  stmt: StmtNode = new()
+  nextI: int = 0
+
+
+def _stmtFail(i: int) -> ParseStmtResult:
+  out: ParseStmtResult = new()
+  out.ok = False
+  out.nextI = i
+  return out
+
+def _stmtOk(stmt: StmtNode, nextI: int) -> ParseStmtResult:
+  out: ParseStmtResult = new()
+  out.ok = True
+  out.stmt = stmt
+  out.nextI = nextI
+  return out
+
+@copyable
+class ScanResult:
+  ok: bool = False
+  text: str = ""
+  nextI: int = 0
+  span: SourceSpan = new()
+
+def _scanFail(i: int) -> ScanResult:
+  out: ScanResult = new()
+  out.ok = False
+  out.nextI = i
+  return out
+
+def _scanOk(text: str, nextI: int, span: SourceSpan) -> ScanResult:
+  out: ScanResult = new()
+  out.ok = True
+  out.text = text
+  out.nextI = nextI
+  out.span = span
+  return out
+
+def parseSuite(
+  tokens: list[Token],
+  i: int,
+  endI: int,
+  source: str,
+) -> ParseSuiteResult:
+  out: ParseSuiteResult = new()
+  while i < endI:
+    if tokens[i].kind == TokenKindEnum.Newline:
+      i += 1
+      continue
+    if tokens[i].kind == TokenKindEnum.Indent:
+      i += 1
+      continue
+    if tokens[i].kind == TokenKindEnum.Dedent:
+      out.nextI = i
+      return out
+    if tokens[i].kind == TokenKindEnum.Comment:
+      i += 1
+      continue
+    startI: int = i
+    one: ParseStmtResult = parseStmt(tokens, i, endI, source)
+    if one.ok:
+      out.stmts.append(one.stmt)
+    # 防死循环：任何 stmt 未前进则强制 +1（Colon/坏路径等）
+    if one.nextI > startI:
+      i = one.nextI
+    else:
+      i = startI + 1
+  out.nextI = i
+  return out
+
+def parseStmt(
+  tokens: list[Token],
+  i: int,
+  endI: int,
+  source: str,
+) -> ParseStmtResult:
+  n: int = endI
+  fail: ParseStmtResult = _stmtFail(i)
+  if i >= n:
+    return fail
+  start: SourceSpan = tokens[i].span
+
+  if tokens[i].kind == TokenKindEnum.Name and tokens[i].text == "pass":
+    return _stmtOk(_mkSimple(StmtKindEnum.Pass, start), i + 1)
+
+  if tokens[i].kind == TokenKindEnum.Ellipsis:
+    return _stmtOk(_mkSimple(StmtKindEnum.Pass, start), i + 1)
+
+  if tokens[i].kind == TokenKindEnum.Name and tokens[i].text == "break":
+    return _stmtOk(_mkSimple(StmtKindEnum.Break, start), i + 1)
+
+  if tokens[i].kind == TokenKindEnum.Name and tokens[i].text == "continue":
+    return _stmtOk(_mkSimple(StmtKindEnum.Continue, start), i + 1)
+
+  if tokens[i].kind == TokenKindEnum.Name and tokens[i].text == "return":
+    return _parseReturnRaise(tokens, i, n, source, True)
+
+  if tokens[i].kind == TokenKindEnum.Name and tokens[i].text == "raise":
+    return _parseReturnRaise(tokens, i, n, source, False)
+
+  if tokens[i].kind == TokenKindEnum.Name and tokens[i].text == "if":
+    return _parseIf(tokens, i, endI, source)
+
+  if tokens[i].kind == TokenKindEnum.Name and tokens[i].text == "while":
+    return _parseWhile(tokens, i, endI, source)
+
+  if tokens[i].kind == TokenKindEnum.Name and tokens[i].text == "for":
+    return _parseFor(tokens, i, endI, source)
+
+  if tokens[i].kind == TokenKindEnum.Name and tokens[i].text == "assert":
+    return _parseAssert(tokens, i, endI, source)
+
+  # AnnAssign: name/attr : T [= v]（薄：目标与注解均为源串）
+  annJ: int = _scanPostfixName(tokens, i, n)
+  if annJ > i and annJ < n and tokens[annJ].kind == TokenKindEnum.Colon:
+    tgtSrc: str = source[tokens[i].span.start : tokens[annJ - 1].span.end]
+    j: int = annJ + 1
+    tr: ParseTypeResult = parseType(tokens, j, source)
+    annSrc: str = ""
+    if tr.ok:
+      annSrc = source[tokens[j].span.start : tokens[tr.nextI - 1].span.end]
+      j = tr.nextI
+    valSrc: str = ""
+    endSp: SourceSpan = tokens[annJ].span
+    if tr.ok:
+      endSp = tr.ty.span
+    if j < n and tokens[j].kind == TokenKindEnum.Eq:
+      j += 1
+      vs: ScanResult = _scanExpr(tokens, j, n, source)
+      j = vs.nextI
+      valSrc = vs.text
+      if vs.ok:
+        endSp = vs.span
+    stA: StmtNode = new()
+    stA.kind = StmtKindEnum.AnnAssign
+    stA.targetSource = tgtSrc
+    stA.source = annSrc
+    stA.valueSource = valSrc
+    stA.span = _stmtSpanJoin(start, endSp)
+    return _stmtOk(stA, j)
+
+  # Assign: target = value
+  tgtScan: ScanResult = _scanAssignTarget(tokens, i, n, source)
+  if tgtScan.ok and tgtScan.nextI < n and tokens[tgtScan.nextI].kind == TokenKindEnum.Eq:
+    j2: int = tgtScan.nextI + 1
+    rhs: ScanResult = _scanExprList(tokens, j2, n, source)
+    if not rhs.ok:
+      return _opaqueSlice(tokens, i, rhs.nextI, n, source)
+    stAs: StmtNode = new()
+    stAs.kind = StmtKindEnum.Assign
+    stAs.targetSource = tgtScan.text
+    stAs.valueSource = rhs.text
+    stAs.span = _stmtSpanJoin(start, rhs.span)
+    return _stmtOk(stAs, rhs.nextI)
+
+  # Expr stmt
+  ex: ScanResult = _scanExpr(tokens, i, n, source)
+  if not ex.ok:
+    return _opaqueToNewline(tokens, i, n, source)
+  stE: StmtNode = new()
+  stE.kind = StmtKindEnum.Expr
+  stE.valueSource = ex.text
+  stE.source = ex.text
+  stE.span = ex.span
+  return _stmtOk(stE, ex.nextI)
+
+def _mkSimple(kind: StmtKindEnum, span: SourceSpan) -> StmtNode:
+  st: StmtNode = new()
+  st.kind = kind
+  st.span = span
+  return st
+
+def _stmtSpanJoin(a: SourceSpan, b: SourceSpan) -> SourceSpan:
+  out: SourceSpan = new()
+  out.fileId = a.fileId
+  out.start = a.start
+  out.end = b.end
+  return out
+
+def _parseReturnRaise(
+  tokens: list[Token],
+  i: int,
+  n: int,
+  source: str,
+  isReturn: bool,
+) -> ParseStmtResult:
+  start: SourceSpan = tokens[i].span
+  i += 1
+  kind: StmtKindEnum = StmtKindEnum.Raise
+  if isReturn:
+    kind = StmtKindEnum.Return
+  if i < n and not _stmtLineStop(tokens[i].kind):
+    sc: ScanResult = _scanExprList(tokens, i, n, source)
+    st: StmtNode = new()
+    st.kind = kind
+    st.valueSource = sc.text
+    if sc.ok:
+      st.span = _stmtSpanJoin(start, sc.span)
+    else:
+      st.span = start
+    return _stmtOk(st, sc.nextI)
+  return _stmtOk(_mkSimple(kind, start), i)
+
+def _stmtLineStop(kind: TokenKindEnum) -> bool:
+  if kind == TokenKindEnum.Newline:
+    return True
+  if kind == TokenKindEnum.Dedent:
+    return True
+  if kind == TokenKindEnum.End:
+    return True
+  return False
+
+def _parseBlockBody(
+  tokens: list[Token],
+  i: int,
+  endI: int,
+  source: str,
+) -> ParseSuiteResult:
+  out: ParseSuiteResult = new()
+  while i < endI and tokens[i].kind == TokenKindEnum.Newline:
+    i += 1
+  if i < endI and tokens[i].kind == TokenKindEnum.Indent:
+    i += 1
+    body: ParseSuiteResult = parseSuite(tokens, i, endI, source)
+    i = body.nextI
+    if i < endI and tokens[i].kind == TokenKindEnum.Dedent:
+      i += 1
+    out.stmts = body.stmts
+  out.nextI = i
+  return out
+
+def _parseIf(
+  tokens: list[Token],
+  i: int,
+  endI: int,
+  source: str,
+) -> ParseStmtResult:
+  start: SourceSpan = tokens[i].span
+  i += 1
+  test: ScanResult = _scanExpr(tokens, i, endI, source)
+  if not test.ok or test.nextI >= endI or tokens[test.nextI].kind != TokenKindEnum.Colon:
+    return _stmtOk(_opaqueText("if …", start), test.nextI)
+  i = test.nextI + 1
+  body: ParseSuiteResult = _parseBlockBody(tokens, i, endI, source)
+  i = body.nextI
+  st: StmtNode = new()
+  st.kind = StmtKindEnum.If
+  st.testSource = test.text
+  bi: int = 0
+  while bi < len(body.stmts):
+    st.children.append(body.stmts[bi])
+    bi += 1
+  endSp: SourceSpan = test.span
+  if len(body.stmts) > 0:
+    endSp = body.stmts[len(body.stmts) - 1].span
+
+  if i < endI and tokens[i].kind == TokenKindEnum.Name and tokens[i].text == "elif":
+    nested: ParseStmtResult = _parseIf(tokens, i, endI, source)
+    st.children.append(nested.stmt)
+    i = nested.nextI
+    endSp = nested.stmt.span
+  elif i < endI and tokens[i].kind == TokenKindEnum.Name and tokens[i].text == "else":
+    i += 1
+    if i < endI and tokens[i].kind == TokenKindEnum.Colon:
+      i += 1
+    els: ParseSuiteResult = _parseBlockBody(tokens, i, endI, source)
+    i = els.nextI
+    elseMark: StmtNode = new()
+    elseMark.kind = StmtKindEnum.Opaque
+    elseMark.source = "__else__"
+    ei: int = 0
+    while ei < len(els.stmts):
+      elseMark.children.append(els.stmts[ei])
+      ei += 1
+    if len(els.stmts) > 0:
+      elseMark.span = els.stmts[len(els.stmts) - 1].span
+      endSp = elseMark.span
+    else:
+      elseMark.span = start
+    st.children.append(elseMark)
+  st.span = _stmtSpanJoin(start, endSp)
+  return _stmtOk(st, i)
+
+def _parseWhile(
+  tokens: list[Token],
+  i: int,
+  endI: int,
+  source: str,
+) -> ParseStmtResult:
+  start: SourceSpan = tokens[i].span
+  i += 1
+  test: ScanResult = _scanExpr(tokens, i, endI, source)
+  if not test.ok or test.nextI >= endI or tokens[test.nextI].kind != TokenKindEnum.Colon:
+    return _stmtOk(_opaqueText("while …", start), test.nextI)
+  i = test.nextI + 1
+  body: ParseSuiteResult = _parseBlockBody(tokens, i, endI, source)
+  st: StmtNode = new()
+  st.kind = StmtKindEnum.While
+  st.testSource = test.text
+  wi: int = 0
+  while wi < len(body.stmts):
+    st.children.append(body.stmts[wi])
+    wi += 1
+  endSp: SourceSpan = test.span
+  if len(body.stmts) > 0:
+    endSp = body.stmts[len(body.stmts) - 1].span
+  st.span = _stmtSpanJoin(start, endSp)
+  return _stmtOk(st, body.nextI)
+
+def _parseFor(
+  tokens: list[Token],
+  i: int,
+  endI: int,
+  source: str,
+) -> ParseStmtResult:
+  start: SourceSpan = tokens[i].span
+  i += 1
+  tgt: ScanResult = _scanAssignTarget(tokens, i, endI, source)
+  if (
+    not tgt.ok
+    or tgt.nextI >= endI
+    or tokens[tgt.nextI].kind != TokenKindEnum.Name
+    or tokens[tgt.nextI].text != "in"
+  ):
+    return _stmtOk(_opaqueText("for …", start), tgt.nextI)
+  i = tgt.nextI + 1
+  it: ScanResult = _scanExpr(tokens, i, endI, source)
+  if not it.ok or it.nextI >= endI or tokens[it.nextI].kind != TokenKindEnum.Colon:
+    return _stmtOk(_opaqueText("for …", start), it.nextI)
+  i = it.nextI + 1
+  body: ParseSuiteResult = _parseBlockBody(tokens, i, endI, source)
+  st: StmtNode = new()
+  st.kind = StmtKindEnum.For
+  st.targetSource = tgt.text
+  st.iterSource = it.text
+  fi: int = 0
+  while fi < len(body.stmts):
+    st.children.append(body.stmts[fi])
+    fi += 1
+  endSp: SourceSpan = it.span
+  if len(body.stmts) > 0:
+    endSp = body.stmts[len(body.stmts) - 1].span
+  st.span = _stmtSpanJoin(start, endSp)
+  return _stmtOk(st, body.nextI)
+
+def _parseAssert(
+  tokens: list[Token],
+  i: int,
+  endI: int,
+  source: str,
+) -> ParseStmtResult:
+  start: SourceSpan = tokens[i].span
+  i += 1
+  test: ScanResult = _scanExpr(tokens, i, endI, source)
+  if not test.ok:
+    return _stmtOk(_opaqueText("assert …", start), test.nextI)
+  i = test.nextI
+  msg: str = ""
+  endSp: SourceSpan = test.span
+  if i < endI and tokens[i].kind == TokenKindEnum.Comma:
+    i += 1
+    m: ScanResult = _scanExpr(tokens, i, endI, source)
+    i = m.nextI
+    if m.ok:
+      msg = m.text
+      endSp = m.span
+  st: StmtNode = new()
+  st.kind = StmtKindEnum.Assert
+  st.testSource = test.text
+  st.valueSource = msg
+  st.span = _stmtSpanJoin(start, endSp)
+  return _stmtOk(st, i)
+
+def _opaqueText(text: str, span: SourceSpan) -> StmtNode:
+  st: StmtNode = new()
+  st.kind = StmtKindEnum.Opaque
+  st.source = text
+  st.span = span
+  return st
+
+def _opaqueSlice(
+  tokens: list[Token],
+  i: int,
+  j: int,
+  n: int,
+  source: str,
+) -> ParseStmtResult:
+  endI: int = j
+  if endI >= n:
+    endI = n - 1
+  if endI < i:
+    endI = i
+  src: str = source[tokens[i].span.start : tokens[endI].span.end]
+  span: SourceSpan = new()
+  span.fileId = tokens[i].span.fileId
+  span.start = tokens[i].span.start
+  span.end = tokens[endI].span.end
+  return _stmtOk(_opaqueText(src, span), j)
+
+def _opaqueToNewline(
+  tokens: list[Token],
+  i: int,
+  n: int,
+  source: str,
+) -> ParseStmtResult:
+  vs: int = i
+  while i < n and not _stmtLineStop(tokens[i].kind):
+    i += 1
+  if i > vs:
+    src: str = source[tokens[vs].span.start : tokens[i - 1].span.end]
+    span: SourceSpan = new()
+    span.fileId = tokens[vs].span.fileId
+    span.start = tokens[vs].span.start
+    span.end = tokens[i - 1].span.end
+    return _stmtOk(_opaqueText(src, span), i)
+  return _stmtFail(i + 1)
+
+def _scanPostfixName(tokens: list[Token], i: int, n: int) -> int:
+  """``name`` / ``a.b`` / ``a.b.c`` — 供 annassign 目标窥视。"""
+  if i >= n or tokens[i].kind != TokenKindEnum.Name:
+    return i
+  i += 1
+  while (
+    i + 1 < n
+    and tokens[i].kind == TokenKindEnum.Dot
+    and tokens[i + 1].kind == TokenKindEnum.Name
+  ):
+    i += 2
+  return i
+
+def _scanAssignTarget(
+  tokens: list[Token],
+  i: int,
+  n: int,
+  source: str,
+) -> ScanResult:
+  """赋值 / for 目标（源串）；遇 ``in``/``=``/``:`` 停止。"""
+  fail: ScanResult = _scanFail(i)
+  if i >= n:
+    return fail
+  start: SourceSpan = tokens[i].span
+  depth: int = 0
+  j: int = i
+  while j < n:
+    k: TokenKindEnum = tokens[j].kind
+    if k == TokenKindEnum.Lpar or k == TokenKindEnum.Lsqb or k == TokenKindEnum.Lbrace:
+      depth += 1
+    elif k == TokenKindEnum.Rpar or k == TokenKindEnum.Rsqb or k == TokenKindEnum.Rbrace:
+      if depth == 0:
+        break
+      depth -= 1
+    elif depth == 0:
+      if _stmtLineStop(k) or k == TokenKindEnum.Colon or k == TokenKindEnum.Eq:
+        break
+      if k == TokenKindEnum.Name and tokens[j].text == "in":
+        break
+    j += 1
+  if j == i:
+    return fail
+  text: str = source[start.start : tokens[j - 1].span.end].strip()
+  return _scanOk(text, j, _stmtSpanJoin(start, tokens[j - 1].span))
+
+def _scanExpr(
+  tokens: list[Token],
+  i: int,
+  n: int,
+  source: str,
+) -> ScanResult:
+  """扫描一个表达式源串（括号深度；顶层遇 stop 停）。"""
+  fail: ScanResult = _scanFail(i)
+  if i >= n or _isExprStop(tokens[i].kind):
+    return fail
+  start: SourceSpan = tokens[i].span
+  depth: int = 0
+  j: int = i
+  while j < n:
+    k: TokenKindEnum = tokens[j].kind
+    if k == TokenKindEnum.Lpar or k == TokenKindEnum.Lsqb or k == TokenKindEnum.Lbrace:
+      depth += 1
+    elif k == TokenKindEnum.Rpar or k == TokenKindEnum.Rsqb or k == TokenKindEnum.Rbrace:
+      if depth == 0:
+        break
+      depth -= 1
+    elif depth == 0 and _isExprStop(k):
+      break
+    elif depth == 0 and k == TokenKindEnum.Name and tokens[j].text == "elif":
+      break
+    elif depth == 0 and k == TokenKindEnum.Name and tokens[j].text == "else":
+      # ternary ``a if b else c``：仅当已见 if 才继续；薄扫描无法区分，
+      # 语句级 else 在 block 外，此处若顶层 else 则停（for/if 头不用 _scanExpr 扫到 else）
+      break
+    j += 1
+  if j == i:
+    return fail
+  text: str = source[start.start : tokens[j - 1].span.end].strip()
+  return _scanOk(text, j, _stmtSpanJoin(start, tokens[j - 1].span))
+
+def _scanExprList(
+  tokens: list[Token],
+  i: int,
+  n: int,
+  source: str,
+) -> ScanResult:
+  first: ScanResult = _scanExpr(tokens, i, n, source)
+  if not first.ok:
+    return first
+  j: int = first.nextI
+  if j >= n or tokens[j].kind != TokenKindEnum.Comma:
+    return first
+  start: SourceSpan = first.span
+  while j < n and tokens[j].kind == TokenKindEnum.Comma:
+    j += 1
+    if j < n and _isExprStop(tokens[j].kind):
+      break
+    nxt: ScanResult = _scanExpr(tokens, j, n, source)
+    if not nxt.ok:
+      break
+    j = nxt.nextI
+  text: str = source[start.start : tokens[j - 1].span.end].strip()
+  return _scanOk(text, j, _stmtSpanJoin(start, tokens[j - 1].span))
+
+def _isExprStop(kind: TokenKindEnum) -> bool:
+  if kind == TokenKindEnum.Newline:
+    return True
+  if kind == TokenKindEnum.Dedent:
+    return True
+  if kind == TokenKindEnum.Indent:
+    return True
+  if kind == TokenKindEnum.End:
+    return True
+  if kind == TokenKindEnum.Colon:
+    return True
+  if kind == TokenKindEnum.Eq:
+    return True
+  if kind == TokenKindEnum.Comma:
+    return True
+  if kind == TokenKindEnum.Rpar:
+    return True
+  if kind == TokenKindEnum.Rsqb:
+    return True
+  if kind == TokenKindEnum.Rbrace:
+    return True
+  return False

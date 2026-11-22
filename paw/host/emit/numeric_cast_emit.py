@@ -1,6 +1,6 @@
 """``int()`` / ``float()`` / ``complex()`` 与 ``char()`` / ``byte()`` 等标量转换 emit。"""
 from __future__ import annotations
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 from ..analysis.type_pred import is_byte_type, is_char_type, is_long_type
 from ..analysis.type_pred import is_complex_type

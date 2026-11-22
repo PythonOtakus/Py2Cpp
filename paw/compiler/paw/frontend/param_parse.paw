@@ -1,2 +1,179 @@
-"""Stub parity with ``compiler/py/frontend/param_parse.py`` — not yet ported to Paw."""
+"""函数参数表 → ``ParamDecl``（Paw；对位 ``compiler/py/frontend/param_parse.py``）。"""
 from paw import *
+from .source import SourceSpan
+from .syntax_nodes import ParamDecl, ParamKindEnum, TypeNode
+from .tokens import Token, TokenKindEnum
+from .type_parse import ParseTypeResult, parseType, typeNodeToSource
+
+class ParseParamsResult:
+  params: list[ParamDecl]
+  nextI: int = 0
+
+  def __init__(self):
+    self.params = []
+
+def parseParams(tokens: list[Token], i: int, source: str) -> ParseParamsResult:
+  """从 ``(`` 之后解析到匹配 ``)``（含消费 ``)``）。"""
+  n: int = len(tokens)
+  out: ParseParamsResult = new()
+  seenStar: bool = False
+  while i < n and tokens[i].kind != TokenKindEnum.Rpar:
+    if tokens[i].kind == TokenKindEnum.Comma:
+      i += 1
+      continue
+    if tokens[i].kind == TokenKindEnum.Op and tokens[i].text == "/":
+      i += 1
+      continue
+    if tokens[i].kind == TokenKindEnum.Op and tokens[i].text == "*":
+      starSp: SourceSpan = tokens[i].span
+      i += 1
+      if i < n and tokens[i].kind == TokenKindEnum.Name:
+        nameS: str = tokens[i].text
+        nsp: SourceSpan = tokens[i].span
+        i += 1
+        hasTy: bool = False
+        tyS: TypeNode = new()
+        if i < n and tokens[i].kind == TokenKindEnum.Colon:
+          i += 1
+          tr: ParseTypeResult = parseType(tokens, i, source)
+          i = tr.nextI
+          if tr.ok:
+            hasTy = True
+            tyS = tr.ty
+        spanS: SourceSpan = new()
+        spanS.fileId = starSp.fileId
+        spanS.start = starSp.start
+        spanS.end = nsp.end
+        pdS: ParamDecl = new()
+        pdS.name = nameS
+        pdS.hasType = hasTy
+        pdS.typeNode = tyS
+        pdS.hasDefault = False
+        pdS.defaultSource = ""
+        pdS.isVararg = True
+        pdS.isKwarg = False
+        pdS.kind = ParamKindEnum.Star
+        pdS.span = spanS
+        out.params.append(pdS)
+        seenStar = True
+      else:
+        seenStar = True
+      continue
+    if tokens[i].kind == TokenKindEnum.Op and tokens[i].text == "**":
+      starSp2: SourceSpan = tokens[i].span
+      i += 1
+      if i >= n or tokens[i].kind != TokenKindEnum.Name:
+        break
+      nameD: str = tokens[i].text
+      nspD: SourceSpan = tokens[i].span
+      i += 1
+      hasTyD: bool = False
+      tyD: TypeNode = new()
+      if i < n and tokens[i].kind == TokenKindEnum.Colon:
+        i += 1
+        trD: ParseTypeResult = parseType(tokens, i, source)
+        i = trD.nextI
+        if trD.ok:
+          hasTyD = True
+          tyD = trD.ty
+      spanD: SourceSpan = new()
+      spanD.fileId = starSp2.fileId
+      spanD.start = starSp2.start
+      spanD.end = nspD.end
+      pdD: ParamDecl = new()
+      pdD.name = nameD
+      pdD.hasType = hasTyD
+      pdD.typeNode = tyD
+      pdD.hasDefault = False
+      pdD.defaultSource = ""
+      pdD.isVararg = False
+      pdD.isKwarg = True
+      pdD.kind = ParamKindEnum.DStar
+      pdD.span = spanD
+      out.params.append(pdD)
+      continue
+    if tokens[i].kind != TokenKindEnum.Name:
+      break
+    name: str = tokens[i].text
+    start: SourceSpan = tokens[i].span
+    i += 1
+    hasTyP: bool = False
+    tyP: TypeNode = new()
+    if i < n and tokens[i].kind == TokenKindEnum.Colon:
+      i += 1
+      trP: ParseTypeResult = parseType(tokens, i, source)
+      i = trP.nextI
+      if trP.ok:
+        hasTyP = True
+        tyP = trP.ty
+    hasDef: bool = False
+    default: str = ""
+    if i < n and tokens[i].kind == TokenKindEnum.Eq:
+      i += 1
+      vs: int = i
+      depth: int = 0
+      while i < n:
+        k: TokenKindEnum = tokens[i].kind
+        if (
+          k == TokenKindEnum.Lpar
+          or k == TokenKindEnum.Lsqb
+          or k == TokenKindEnum.Lbrace
+        ):
+          depth += 1
+        elif (
+          k == TokenKindEnum.Rpar
+          or k == TokenKindEnum.Rsqb
+          or k == TokenKindEnum.Rbrace
+        ):
+          if depth == 0 and k == TokenKindEnum.Rpar:
+            break
+          depth -= 1
+        elif depth == 0 and k == TokenKindEnum.Comma:
+          break
+        i += 1
+      if i > vs:
+        default = source[tokens[vs].span.start : tokens[i - 1].span.end]
+        hasDef = True
+    endSp: SourceSpan = start
+    if i > 0:
+      endSp = tokens[i - 1].span
+    spanP: SourceSpan = new()
+    spanP.fileId = start.fileId
+    spanP.start = start.start
+    spanP.end = endSp.end
+    kindP: ParamKindEnum = ParamKindEnum.Pos
+    if seenStar:
+      kindP = ParamKindEnum.KwOnly
+    pd: ParamDecl = new()
+    pd.name = name
+    pd.hasType = hasTyP
+    pd.typeNode = tyP
+    pd.hasDefault = hasDef
+    pd.defaultSource = default
+    pd.isVararg = False
+    pd.isKwarg = False
+    pd.kind = kindP
+    pd.span = spanP
+    out.params.append(pd)
+  if i < n and tokens[i].kind == TokenKindEnum.Rpar:
+    i += 1
+  out.nextI = i
+  return out
+
+def paramsToSource(params: list[ParamDecl]) -> str:
+  parts: list[str] = []
+  pi: int = 0
+  while pi < len(params):
+    p: ParamDecl = params[pi]
+    s: str = p.name
+    if p.isKwarg:
+      s = "**" + p.name
+    elif p.isVararg:
+      s = "*" + p.name
+    if p.hasType:
+      s += ": " + typeNodeToSource(p.typeNode)
+    if p.hasDefault:
+      s += " = " + p.defaultSource
+    parts.append(s)
+    pi += 1
+  return ", ".join(parts)

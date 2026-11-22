@@ -1,7 +1,7 @@
 """翻译完成后写入 ``out/.cache/architect/graph.json`` 语义图。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import json
 import re
 from datetime import datetime, timezone
@@ -191,32 +191,6 @@ def _class_names_in_module(tr: Translator, module_path: str) -> set[str]:
 def _scan_select_refs(source: str, module_path: str) -> list[dict[str, Any]]:
   refs: list[dict[str, Any]] = []
   seen: set[str] = set()
-  try:
-    tree = ast.parse(source)
-  except SyntaxError:
-    tree = None
-  if tree is not None:
-    for node in ast.walk(tree):
-      if not isinstance(node, ast.Call):
-        continue
-      func = node.func
-      if not (
-        isinstance(func, ast.Attribute)
-        and func.attr == "select"
-        and node.args
-        and isinstance(node.args[0], ast.Constant)
-        and isinstance(node.args[0].value, str)
-      ):
-        continue
-      path = node.args[0].value
-      if path in seen:
-        continue
-      seen.add(path)
-      refs.append({
-        "from": _sym_endpoint(module_path, symbol="<module>", kind="module"),
-        "to": {"path": path},
-        "kind": "select_path",
-      })
   for m in _SELECT_RE.finditer(source):
     path = m.group(2)
     if path in seen:

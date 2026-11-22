@@ -1,7 +1,7 @@
 """AST 类型注解 → TypeNode（语义层；存储层见 ``type_storage``）。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 
 from .type_node import TypeKind, TypeNode

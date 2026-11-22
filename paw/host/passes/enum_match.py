@@ -1,7 +1,7 @@
 """``match`` 中 ``Enum.MEMBER`` 模式；``MatchOr`` 仅逻辑或，**不**表示 Flag 位运算。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 
 from ..analysis.ir import ClassInfo

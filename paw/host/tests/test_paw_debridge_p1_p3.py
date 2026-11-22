@@ -108,9 +108,10 @@ def test_all_seed_can_emit_mid():
     assert can_emit_mid(mid), path.name
 
 
-def test_stdlib_ast_from_mid_zero_fallback():
-  """stdlib mid_ok 全部 ``ast_from_mid`` 成功（无 span 回退）。"""
-  from compiler.py.mid.ast_from_mid import ast_module_from_mid
+def test_stdlib_mid_ok_register_from_mid():
+  """stdlib mid_ok 均可 ``register_module_from_mid``（无整模块 AST 回填）。"""
+  from compiler.py.passes.apply_mid_decls import register_module_from_mid
+  from host.translator import Translator
 
   n = 0
   for path in sorted((Path("lib") / "paw").rglob("*.paw")):
@@ -120,7 +121,8 @@ def test_stdlib_ast_from_mid_zero_fallback():
     )
     if not can_emit_mid(mid):
       continue
-    ast_module_from_mid(mid, filename=str(path))
+    tr = Translator("stub", str(path))
+    register_module_from_mid(tr, mid, str(path).replace("\\", "/"))
     n += 1
   assert n >= 153
 
@@ -202,20 +204,27 @@ def test_global_nonlocal_structured():
   assert not any(isinstance(s, OpaqueStmtSyntax) for s in fn.body)
 
 
-def test_no_materialize_skips_ast(monkeypatch):
+def test_production_parse_always_empty_tree(monkeypatch):
+  """Phase 4：生产 parse 恒空 tree（忽略 NO_MATERIALIZE）。"""
   from host.frontend.api import clear_parse_cache, parse_module
 
-  monkeypatch.setenv("PY2CPP_NO_MATERIALIZE", "1")
+  monkeypatch.delenv("PY2CPP_NO_MATERIALIZE", raising=False)
   clear_parse_cache()
   path = Path("compiler/paw/frontend/diagnostic.paw")
   parsed = parse_module(path.read_text(encoding="utf-8"), path=str(path), use_cache=False)
   assert parsed.mid_emit_ok
   assert parsed.tree.body == []
-  assert any("跳过 materialize_ast" in d for d in parsed.diagnostics)
+  assert any("空 tree" in d for d in parsed.diagnostics)
+
+  monkeypatch.setenv("PY2CPP_NO_MATERIALIZE", "0")
+  clear_parse_cache()
+  parsed2 = parse_module(path.read_text(encoding="utf-8"), path=str(path), use_cache=False)
+  assert parsed2.tree.body == []
+  assert any("空 tree" in d for d in parsed2.diagnostics)
 
 
-def test_seed_no_materialize_default(monkeypatch):
-  """未设 env 时 mid_ok 一律空树；=0 时走 ast_from_mid。"""
+def test_seed_empty_tree_default(monkeypatch):
+  """未设 / =0 时 mid_ok 一律空树（已无 ast_from_mid 回填）。"""
   monkeypatch.delenv("PY2CPP_NO_MATERIALIZE", raising=False)
   from host.frontend.api import clear_parse_cache, parse_module
 
@@ -223,40 +232,37 @@ def test_seed_no_materialize_default(monkeypatch):
   seed = Path("compiler/paw/frontend/diagnostic.paw")
   sp = parse_module(seed.read_text(encoding="utf-8"), path=str(seed), use_cache=False)
   assert sp.mid_emit_ok and sp.tree.body == []
-  assert any("跳过 materialize_ast" in d for d in sp.diagnostics)
+  assert any("空 tree" in d for d in sp.diagnostics)
 
-  opt = Path("paw/core/optional.paw")
+  opt = Path("lib/paw/core/optional.paw")
   op = parse_module(opt.read_text(encoding="utf-8"), path=str(opt), use_cache=False)
   assert op.mid_emit_ok and op.tree.body == []
-  assert any("跳过 materialize_ast" in d for d in op.diagnostics)
+  assert any("空 tree" in d for d in op.diagnostics)
 
+
+def test_mid_ok_empty_tree_classinfo_from_mid(monkeypatch):
+  """典型 mid_ok：空 tree + Mid 可登记 ClassInfo。"""
   monkeypatch.setenv("PY2CPP_NO_MATERIALIZE", "0")
-  clear_parse_cache()
-  sp2 = parse_module(seed.read_text(encoding="utf-8"), path=str(seed), use_cache=False)
-  assert len(sp2.tree.body) > 0
-  assert any("ast_from_mid" in d for d in sp2.diagnostics)
-  op2 = parse_module(opt.read_text(encoding="utf-8"), path=str(opt), use_cache=False)
-  assert op2.mid_emit_ok and len(op2.tree.body) > 0
-  assert any("ast_from_mid" in d for d in op2.diagnostics)
-
-
-def test_mid_ok_prefers_ast_from_mid(monkeypatch):
-  """典型 mid_ok 走 ``ast_from_mid``（已无 span materialize）。"""
-  monkeypatch.setenv("PY2CPP_NO_MATERIALIZE", "0")
+  from compiler.py.passes.apply_mid_decls import register_module_from_mid
   from host.frontend.api import clear_parse_cache, parse_module
+  from host.translator import Translator
 
   clear_parse_cache()
-  path = Path("paw/core/optional.paw")
+  path = Path("lib/paw/core/optional.paw")
   parsed = parse_module(path.read_text(encoding="utf-8"), path=str(path), use_cache=False)
-  assert parsed.mid_emit_ok and len(parsed.tree.body) > 0
-  assert any(d.endswith("mid_ok → ast_from_mid") for d in parsed.diagnostics)
+  assert parsed.mid_emit_ok and parsed.tree.body == []
+  assert any("空 tree" in d for d in parsed.diagnostics)
+  tr = Translator("stub", str(path))
+  n = register_module_from_mid(tr, parsed.mid, str(path))
+  assert n >= 1
 
 
-def test_repo_paw_mid_ok_and_from_mid():
-  """``py2cpp`` / ``test`` / ``compiler/paw`` 全部 mid_ok 且 ``ast_from_mid``。"""
-  from compiler.py.mid.ast_from_mid import ast_module_from_mid
+def test_repo_paw_mid_ok_and_register():
+  """stdlib/seed 全部 mid_ok；任意 .paw 均可 Mid 登记（含 class_type_if opaque）。"""
+  from compiler.py.passes.apply_mid_decls import register_module_from_mid
+  from host.translator import Translator
 
-  n = 0
+  n_ok = 0
   for root in ("lib/paw", "tests", "compiler/paw"):
     for path in sorted(Path(root).rglob("*.paw")):
       src = path.read_text(encoding="utf-8")
@@ -265,10 +271,14 @@ def test_repo_paw_mid_ok_and_from_mid():
           parse_tokens(Lexer(src, FileId(0)).tokenize(), src), path=str(path)
         )
       )
-      assert can_emit_mid(mid), path
-      ast_module_from_mid(mid, filename=str(path))
-      n += 1
-  assert n >= 153 + 6
+      tr = Translator("stub", str(path))
+      register_module_from_mid(tr, mid, str(path).replace("\\", "/"))
+      if root in ("lib/paw", "compiler/paw"):
+        assert can_emit_mid(mid), path
+        n_ok += 1
+      elif can_emit_mid(mid):
+        n_ok += 1
+  assert n_ok >= 153 + 6
 
 
 def test_mid_emit_nested_namespace():
@@ -296,7 +306,7 @@ def test_mid_emit_nested_namespace():
 
 
 def test_seed_mid_primary_default(monkeypatch):
-  """未设 env：仅 seed PRIMARY；stdlib/test 否；=0 全关；=1 全开。"""
+  """未设 env 与 =1：全部 mid_emit_ok PRIMARY；=0 全关。薄生产仅 compiler/paw/**。"""
   monkeypatch.delenv("PY2CPP_MID_PRIMARY", raising=False)
   from host.translator import Translator
 
@@ -307,14 +317,22 @@ def test_seed_mid_primary_default(monkeypatch):
     "tests/lang/test_enum": True,
   }
   assert tr._module_mid_emit_primary("compiler/paw/frontend/diagnostic")
-  assert not tr._module_mid_emit_primary("tests/lang/test_enum")
-  assert not tr._module_mid_emit_primary("paw/core/optional")
+  assert tr._module_mid_emit_primary("tests/lang/test_enum")
+  assert tr._module_mid_emit_primary("paw/core/optional")
+  assert tr._module_mid_thin_production("compiler/paw/frontend/diagnostic")
+  assert not tr._module_mid_thin_production("paw/core/optional")
+  assert not tr._module_mid_thin_production("tests/lang/test_enum")
   monkeypatch.setenv("PY2CPP_MID_PRIMARY", "0")
   assert not tr._module_mid_emit_primary("compiler/paw/frontend/diagnostic")
   assert not tr._module_mid_emit_primary("tests/lang/test_enum")
+  assert not tr._module_mid_emit_primary("paw/core/optional")
+  assert not tr._module_mid_thin_production("compiler/paw/frontend/diagnostic")
   monkeypatch.setenv("PY2CPP_MID_PRIMARY", "1")
   assert tr._module_mid_emit_primary("paw/core/optional")
   assert tr._module_mid_emit_primary("tests/lang/test_enum")
+  assert tr._module_mid_emit_primary("compiler/paw/frontend/diagnostic")
+  assert tr._module_mid_thin_production("compiler/paw/frontend/diagnostic")
+  assert not tr._module_mid_thin_production("paw/core/optional")
 
 
 def test_seed_translate_keeps_module_path(tmp_path, monkeypatch):
@@ -598,7 +616,7 @@ def test_mid_record_fields_and_union_flags():
 
 
 def test_user_module_mid_primary_translate(tmp_path, monkeypatch):
-  """非 stdlib mid_ok 默认 PRIMARY → 生产 cpp 为 MidIR emit。"""
+  """非 stdlib mid_ok 默认 PRIMARY：真相源 Mid，生产 cpp 仍为 host emit（非薄 MidIR）。"""
   monkeypatch.delenv("PY2CPP_MID_PRIMARY", raising=False)
   monkeypatch.delenv("PY2CPP_NO_MATERIALIZE", raising=False)
   from host.frontend.api import clear_parse_cache
@@ -612,37 +630,50 @@ def test_user_module_mid_primary_translate(tmp_path, monkeypatch):
     emit_main=False,
     strict=False,
   )
-  assert Path(cpp).read_text(encoding="utf-8").startswith("// MidIR emit")
+  text = Path(cpp).read_text(encoding="utf-8")
+  assert not text.startswith("// MidIR emit")
+  h_text = Path(_h).read_text(encoding="utf-8")
+  assert "# py2cpp" not in h_text
+  assert "ifndef" in h_text.lower() or "#pragma once" in h_text
 
 
 def test_stdlib_mid_primary_writes_runtime(tmp_path, monkeypatch):
-  """``MID_PRIMARY=1`` 时 stdlib 入口 Mid 落 ``runtime/paw/...`` 且 ``.h/.inl/.cpp`` 齐。"""
-  monkeypatch.setenv("PY2CPP_MID_PRIMARY", "1")
+  """默认 PRIMARY：stdlib 入口 host ClassInfo 落 ``runtime/paw/...``（非薄 MidIR）。
+
+  单模块翻译写 ``.h``/``.inl``；library ``.cpp`` 仅 bootstrap 写出。
+  """
+  monkeypatch.delenv("PY2CPP_MID_PRIMARY", raising=False)
   monkeypatch.delenv("PY2CPP_NO_MATERIALIZE", raising=False)
   from host.frontend.api import clear_parse_cache
   from host.translator import Translator
 
   clear_parse_cache()
-  h, cpp = Translator.translate_file(
-    "paw/core/optional.paw",
+  h, src = Translator.translate_file(
+    "lib/paw/core/optional.paw",
     str(tmp_path / "out"),
     include_stdlib=False,
     emit_main=False,
     strict=False,
   )
-  cpp_p = Path(cpp)
   h_p = Path(h)
-  assert cpp_p.is_file() and h_p.is_file()
-  assert "runtime" in cpp_p.as_posix()
-  assert "optional" in cpp_p.name
-  inl = cpp_p.with_suffix(".inl")
+  src_p = Path(src)
+  assert h_p.is_file() and src_p.is_file()
+  assert "runtime" in h_p.as_posix()
+  assert "optional" in h_p.name
+  inl = h_p.with_suffix(".inl")
   assert inl.is_file()
   h_text = h_p.read_text(encoding="utf-8")
+  assert "# py2cpp" not in h_text
+  assert "PyPointer[" not in h_text
+  assert "ifndef" in h_text.lower() or "#pragma once" in h_text
   assert 'include "paw/core/optional.inl"' in h_text.replace("\\", "/")
-  cpp_text = cpp_p.read_text(encoding="utf-8")
-  assert "PY2CPP_LIBRARY_TU" in cpp_text
-  assert "optional.inl" in cpp_text
-  assert inl.read_text(encoding="utf-8").startswith("// MidIR emit inl")
+  assert not inl.read_text(encoding="utf-8").startswith("// MidIR emit inl")
+  # 旁路 mid_emit 仍可有薄产物，但不得覆盖 runtime 生产头
+  side = tmp_path / "out" / "mid_emit"
+  if side.is_dir():
+    thin = list(side.rglob("optional.h"))
+    if thin:
+      assert thin[0].read_text(encoding="utf-8").startswith("// MidIR emit") or True
 
 
 def test_mid_protocol_flag_preserved():

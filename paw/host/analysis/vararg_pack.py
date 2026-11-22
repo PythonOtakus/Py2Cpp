@@ -4,8 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-import ast
-
+import host.tree_nodes as ast
 from .ir import cpp_array_elem_type, cpp_array_ndim
 from .type_pred import is_array_type
 

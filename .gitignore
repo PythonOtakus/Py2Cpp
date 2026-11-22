@@ -58,6 +58,37 @@ htmlcov/
 /paw/compiler/stages/stage3/manifest.json
 /paw/compiler/stages/stage3/seed_sources.json
 
+# Paw native self-host / debug scratch（原生自举产物与调试目录）
+/paw/compiler/stages/stage1/c2_native/
+/paw/compiler/stages/stage1/c2_native_probe/
+/paw/compiler/stages/stage1/c3_native/
+/paw/compiler/stages/stage1/mid_emit/
+/paw/compiler/stages/stage1/native_tmpl/
+/paw/compiler/stages/stage1/.cache/
+/paw/compiler/stages/stage1/_dbg*/
+/paw/compiler/stages/stage1/_t[0-9]*/
+/paw/compiler/stages/stage1/_native_out.txt
+/paw/compiler/stages/stage1/_tmpl_cl*.txt
+/paw/compiler/stages/_probe/
+/paw/compiler/stages/*/seed_sources.json
+
+# 一次性探针 / 临时脚本（下划线前缀，勿入库）
+/paw/_tmp_*
+/paw/_probe_*
+/paw/_tf.txt
+/paw/_path_out.txt
+/paw/dbg*.log
+/paw/tools/_tmp_*
+/paw/tests/**/_probe_*.paw
+/paw/tests/**/test_zz_*.paw
+/paw/tests/misc/out/
+
+# Windows 清单文件（链接器生成）
+*.manifest
+
+# 仓库根演示入口的生成物（main.paw / main.bat 入库，main.cpp 为生成）
+/main.cpp
+
 # Zeus engine build outputs
 /zeus/generated/
 /zeus/out/

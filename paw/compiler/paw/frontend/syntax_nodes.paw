@@ -10,6 +10,86 @@ enum ItemKindEnum:
   ModuleConst = ...
   Opaque = ...
 
+enum TypeKindEnum:
+  Invalid = 0
+  Name = ...
+  Generic = ...
+  Ref = ...
+  Lazy = ...
+  Nullable = ...
+  Tuple = ...
+  Paren = ...
+  Callable = ...
+  Union = ...
+  Attr = ...
+  Attributed = ...
+
+@copyable
+class TypeAttr:
+  name: str = ""
+  argsSource: str = ""
+  span: SourceSpan = new()
+
+class TypeNode:
+  kind: TypeKindEnum = TypeKindEnum.Invalid
+  name: str = ""
+  attr: str = ""
+  trailingComma: bool = False
+  isPyCallable: bool = False
+  children: list[TypeNode]
+  attrs: list[TypeAttr]
+  span: SourceSpan = new()
+
+  def __init__(self):
+    self.children = []
+    self.attrs = []
+
+enum ParamKindEnum:
+  Pos = 0
+  KwOnly = ...
+  Star = ...
+  DStar = ...
+
+class ParamDecl:
+  """非 ``@copyable``：内嵌 ``TypeNode``（含 list 子节点）。"""
+  name: str = ""
+  hasType: bool = False
+  typeNode: TypeNode = new()
+  hasDefault: bool = False
+  defaultSource: str = ""
+  isVararg: bool = False
+  isKwarg: bool = False
+  kind: ParamKindEnum = ParamKindEnum.Pos
+  span: SourceSpan = new()
+
+enum StmtKindEnum:
+  Opaque = 0
+  Pass = ...
+  Break = ...
+  Continue = ...
+  Return = ...
+  Assign = ...
+  AnnAssign = ...
+  Expr = ...
+  If = ...
+  While = ...
+  For = ...
+  Raise = ...
+  Assert = ...
+
+class StmtNode:
+  kind: StmtKindEnum = StmtKindEnum.Opaque
+  source: str = ""
+  targetSource: str = ""
+  valueSource: str = ""
+  testSource: str = ""
+  iterSource: str = ""
+  children: list[StmtNode]
+  span: SourceSpan = new()
+
+  def __init__(self):
+    self.children = []
+
 @copyable
 class EnumMember:
   name: str = ""
@@ -23,12 +103,16 @@ class ConstField:
   valueSource: str = ""
   span: SourceSpan = new()
 
-@copyable
 class FunctionBundle:
+  """非 ``@copyable``：可挂结构化 ``params`` / ``bodyStmts`` / ``returnType``。"""
   name: str = ""
   paramsSource: str = ""
   returnSource: str = ""
   bodySource: str = ""
+  params: list[ParamDecl]
+  hasReturnType: bool = False
+  returnType: TypeNode = new()
+  bodyStmts: list[StmtNode]
   isAsync: bool = False
   isStatic: bool = False
   isNative: bool = False
@@ -36,8 +120,14 @@ class FunctionBundle:
   isFinal: bool = False
   isAbstract: bool = False
   isVirtual: bool = False
+  isProperty: bool = False
   decoratorsSource: str = ""
+  typeParamsSource: str = ""
   span: SourceSpan = new()
+
+  def __init__(self):
+    self.params = []
+    self.bodyStmts = []
 
 @copyable
 class ModuleItem:
@@ -59,6 +149,7 @@ class EnumBundle:
   name: str = ""
   isTypeEnum: bool = False
   flag: bool = False
+  basesSource: str = ""
   members: list[EnumMember]
   span: SourceSpan = new()
 

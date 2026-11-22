@@ -2,9 +2,9 @@
 
 架构概览
 --------
-1. **解析**：``ast.parse`` 收集模块、类（``ClassInfo``）、函数。
+1. **解析**：``frontend.api.parse_module``（Syntax→HIR→Mid）收集模块、类（``ClassInfo``）、函数。
 2. **预处理**：``SemanticAnalyzer`` 解析类型与签名（见 ``analyzer``、``ir``）。
-3. **生成**：``Translator``（``ast.NodeVisitor``）输出 ``.h`` / ``.cpp`` / ``.inl``。
+3. **生成**：``Translator``（手动 ``visit_*`` 分发，不继承 ``ast.NodeVisitor``）输出 ``.h`` / ``.cpp`` / ``.inl``。
 
 约定摘要
 --------
@@ -24,7 +24,7 @@
 - 文档字符串经 ``ast.get_docstring`` 转为头文件中的 ``///`` 注释。
 """
 from __future__ import annotations
-import ast
+import host.tree_nodes as ast
 import copy
 from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
@@ -159,15 +159,15 @@ class Scope:
     def __contains__(self, name: str) -> bool:
         return name in self.vars
 
-class Translator(ast.NodeVisitor):
+class Translator:
     """遍历 AST 并写入 C++ 源码行缓冲。
 
   对外入口为类方法 ``translate_file``；实例方法 ``_emit_*`` / ``visit_*``
-  负责具体语句与表达式的降级规则。
+  负责具体语句与表达式的降级规则。分发仿 ``ast.NodeVisitor.visit``，
+  不继承 ``NodeVisitor``（Zero-AST：译器宿主与 CPython visitor 基类解耦）。
   """
 
     def __init__(self, module_name: str, source_path: str, *, debug: bool=False, strict: bool=True, openmp_enabled: bool=True, gpu_enabled: bool=False, gpu_backend: str='omp'):
-        super().__init__()
         self.module_name = module_name
         self.source_path = source_path
         self.debug = debug
@@ -503,6 +503,7 @@ class Translator(ast.NodeVisitor):
         translator.emit_main = emit_main
         translator._import_project_root_cache = project_root
         translator._parse_modules(modules)
+        translator._bridge_all_mid_methods()
         prof.mark('parse')
         if translator._is_runtime_bootstrap():
             from .codegen.bootstrap_incremental import (
@@ -590,6 +591,7 @@ class Translator(ast.NodeVisitor):
             expand_lazy_params(translator)
             from .passes.final_expand import expand_final_ctor_inits
             expand_final_ctor_inits(translator)
+            # 勿在 expand_decorators 后再全量 bridge：会把已摘掉的 @context 工厂写回 methods
             prof.mark('expand_passes')
             SemanticAnalyzer().analyze(translator)
             prof.mark('analyze')
@@ -626,7 +628,7 @@ class Translator(ast.NodeVisitor):
         reorder_stdlib_modules_for_umbrella(translator)
         translator._write_umbrella_header()
         translator._write_per_module_inl()
-        # Mid emit 须在 AST 头/inl 写出之后；PRIMARY 写到 base_output_dir/<module_path>/
+        # Mid emit 旁路；仅 compiler/paw/** thin PRIMARY 写生产路径
         translator._emit_mid_capable_modules()
         runtime_cpp = runtime_out / RUNTIME_CPP
         umbrella_header = runtime_out / UMBRELLA_HEADER
@@ -638,14 +640,12 @@ class Translator(ast.NodeVisitor):
         if emit_user_entry:
             header_path = entry_out / f'{out_stem}.h'
             entry_cpp = entry_out / f'{out_stem}.cpp'
-            # PRIMARY：Mid 已写生产路径，禁止 AST source_lines 覆盖
-            if translator._module_mid_emit_primary(entry_path):
+            # thin PRIMARY（compiler/paw/**）：Mid 已写生产路径，禁止 host source_lines 覆盖
+            if translator._module_mid_thin_production(entry_path):
                 mp = entry_path.replace('\\', '/')
                 parent = Path(mp).parent
                 stem = Path(mp).name or out_stem
-                if translator._is_stdlib_module(mp) or translator._is_ffi_module(mp):
-                    prod_dir = runtime_out if str(parent) in ('.', '') else runtime_out / parent
-                elif str(parent) in ('.', ''):
+                if str(parent) in ('.', ''):
                     prod_dir = entry_out
                 else:
                     prod_dir = Path(out_dir) / parent
@@ -676,18 +676,30 @@ class Translator(ast.NodeVisitor):
         else:
             header_path = umbrella_header
             source_path = runtime_cpp if has_stdlib_body else umbrella_header
-            # stdlib/ffi 单模块入口（emit_user_entry=False）PRIMARY：返回 Mid 落盘路径
-            if translator._module_mid_emit_primary(entry_path):
-                mp = entry_path.replace('\\', '/')
-                parent = Path(mp).parent
-                stem = Path(mp).name
-                if translator._is_stdlib_module(mp) or translator._is_ffi_module(mp):
-                    prod_dir = runtime_out if str(parent) in ('.', '') else runtime_out / parent
-                    mid_cpp = prod_dir / f'{stem}.cpp'
-                    mid_h = prod_dir / f'{stem}.h'
-                    if mid_cpp.is_file():
-                        source_path = mid_cpp
-                        header_path = mid_h
+            mp = entry_path.replace('\\', '/')
+            parent = Path(mp).parent
+            stem = Path(mp).name
+            # seed thin PRIMARY：返回 Mid 落盘路径
+            if translator._module_mid_thin_production(entry_path):
+                prod_dir = entry_out if str(parent) in ('.', '') else Path(out_dir) / parent
+                mid_cpp = prod_dir / f'{stem}.cpp'
+                mid_h = prod_dir / f'{stem}.h'
+                if mid_cpp.is_file():
+                    source_path = mid_cpp
+                    header_path = mid_h
+            # 单模块 stdlib/ffi：返回 host ClassInfo 产物（非薄 Mid）
+            # library ``.cpp`` 仅 bootstrap 写出；单模块常仅有 ``.h``/``.inl``
+            elif translator._is_stdlib_module(mp) or translator._is_ffi_module(mp):
+                prod_dir = runtime_out if str(parent) in ('.', '') else runtime_out / parent
+                host_cpp = prod_dir / f'{stem}.cpp'
+                host_h = prod_dir / f'{stem}.h'
+                host_inl = prod_dir / f'{stem}.inl'
+                if host_h.is_file():
+                    header_path = host_h
+                if host_cpp.is_file():
+                    source_path = host_cpp
+                elif host_inl.is_file():
+                    source_path = host_inl
         prof.mark('write')
         from .codegen.nav_index import write_nav_index
         write_nav_index(translator)
@@ -795,13 +807,26 @@ class Translator(ast.NodeVisitor):
     def visit(self, node: ast.AST):
         self._ast_node_stack.append(node)
         try:
-            return super().visit(node)
+            method = getattr(self, "visit_" + type(node).__name__, None)
+            if method is not None:
+                return method(node)
+            return self.generic_visit(node)
         except TranslationError:
             raise
         except Exception as exc:
             raise enhance_translation_exception(exc, self, node=node) from exc
         finally:
             self._ast_node_stack.pop()
+
+    def generic_visit(self, node: ast.AST):
+        """与 ``ast.NodeVisitor.generic_visit`` 同形：递归未单独覆盖的子节点。"""
+        for _field, value in ast.iter_fields(node):
+            if isinstance(value, list):
+                for item in value:
+                    if isinstance(item, ast.AST):
+                        self.visit(item)
+            elif isinstance(value, ast.AST):
+                self.visit(value)
 
     @contextmanager
     def _use_type_context_ann(self, ann: ast.expr | None):
@@ -887,19 +912,111 @@ class Translator(ast.NodeVisitor):
             self.module_mid_emit_ok[module_path] = bool(
               getattr(parsed, "mid_emit_ok", False)
             )
-            # P6：空树 → ``ast_from_mid`` 回填后走统一 ClassInfo/函数登记
-            # （discover 已能从 MidImport 拉相对依赖；勿再 ``continue`` 跳过）
+            # Zero-AST Phase 2：生产登记 = register_module_from_mid（from_mid_class）
+            mid_class_names: set[str] = set()
+            if parsed.mid is not None:
+              from compiler.py.passes.apply_mid_decls import register_module_from_mid
+              from compiler.py.mid.nodes import MidClass, MidEnum
+
+              register_module_from_mid(self, parsed.mid, module_path)
+              mid_class_names = {
+                it.name
+                for it in parsed.mid.items
+                if isinstance(it, (MidClass, MidEnum))
+              }
+            # Zero-AST Phase 4：生产不整模块 materialize；但 class_id / MRO 仍扫
+            # ``module_asts`` 的 ClassDef —— 用 Mid 登记后的 ``ClassInfo.node`` 骨架占位
+            # （非 ``ast_from_mid``；方法体仍靠 ensure_methods_bridged_from_mid）。
+            # ``compiler/paw/**`` 薄生产：空树保留，passes/emit 只读 Mid（host-pass-mid）。
+            # stdlib mid_primary 仍须填树：union.mro / ExcTypeUnion 等 pass 依赖 module_asts。
             if (
               not tree.body
               and parsed.mid is not None
-              and self.module_mid_emit_ok.get(module_path)
+              and not self._module_mid_thin_production(module_path)
             ):
-              from compiler.py.mid.ast_from_mid import ast_module_from_mid
+              from compiler.py.mid.nodes import MidClass as _MidClass
+              from compiler.py.mid.nodes import MidEnum as _MidEnum
+              from compiler.py.mid.nodes import MidOpaque as _MidOpaque
+              from compiler.py.mid.tree_from_mid import (
+                import_stmts_from_mid,
+                opaque_member_stmts,
+              )
 
-              tree = ast_module_from_mid(parsed.mid, filename=path_s)
+              body: list[ast.AST] = []
+              # import 绑定 / except 可见性依赖 Import* 节点
+              body.extend(import_stmts_from_mid(parsed.mid))
+              # ``type Alias = …`` / 模块级 opaque 常量等
+              for it in parsed.mid.items:
+                if isinstance(it, _MidOpaque):
+                  for stmt in opaque_member_stmts(it.source, path_s):
+                    if isinstance(
+                      stmt,
+                      (ast.TypeAlias, ast.AnnAssign, ast.Assign, ast.FunctionDef, ast.ClassDef),
+                    ):
+                      body.append(stmt)
+              for it in parsed.mid.items:
+                if isinstance(it, (_MidClass, _MidEnum)):
+                  info = self.classes.get(it.name)
+                  if info is not None and info.module_path == module_path:
+                    body.append(info.node)
+              for mp, fn in self.module_functions:
+                if mp == module_path:
+                  body.append(fn)
+              for mp, stmt in self.module_constants:
+                if mp == module_path:
+                  body.append(stmt)
+              tree = ast.Module(body=body, type_ignores=[])
               self.module_asts[module_path] = tree
+            if parsed.mid is not None and tree.body:
+              # 有完整 tree 时函数/常量只走 AST 登记，避免与 register_module_from_mid 双份
+              # （math 等无 MidClass 的模块原先 mid_class_names 为空会漏清）
+              self.module_functions = [
+                (mp, fn) for mp, fn in self.module_functions if mp != module_path
+              ]
+              self.module_constants = [
+                (mp, stmt) for mp, stmt in self.module_constants if mp != module_path
+              ]
             for node in tree.body:
                 if isinstance(node, ast.ClassDef):
+                    if node.name in mid_class_names and node.name in self.classes:
+                      # Mid 身份/mid_methods 保留；MID_PRIMARY=0 host emit 用 ClassDef 补 AST 桥
+                      existing = self.classes[node.name]
+                      existing.node = node
+                      synced = ClassInfo(node, module_path)
+                      existing.methods = synced.methods
+                      existing.method_overloads = synced.method_overloads
+                      existing.inits = synced.inits
+                      existing.properties = synced.properties
+                      existing.static_properties = synced.static_properties
+                      existing.has_copy = existing.has_copy or synced.has_copy
+                      existing.has_move = existing.has_move or synced.has_move
+                      if not existing.nested_classes:
+                        existing.nested_classes = synced.nested_classes
+                      for f in synced.fields:
+                        if f not in existing.fields:
+                          existing.fields.append(f)
+                      existing.field_types.update(synced.field_types)
+                      existing.field_type_nodes.update(synced.field_type_nodes)
+                      for k, v in synced.field_defaults.items():
+                        existing.field_defaults.setdefault(k, v)
+                      for k, v in synced.field_default_sources.items():
+                        existing.field_default_sources.setdefault(k, v)
+                      existing.class_body_field_anns |= synced.class_body_field_anns
+                      existing.optional_fields |= synced.optional_fields
+                      existing.final_fields |= synced.final_fields
+                      existing.field_properties |= synced.field_properties
+                      existing.postsetter_properties |= synced.postsetter_properties
+                      for k, v in synced.static_class_fields.items():
+                        existing.static_class_fields.setdefault(k, v)
+                      for k, v in synced.thread_local_fields.items():
+                        existing.thread_local_fields.setdefault(k, v)
+                      for k, v in synced.owned_fields.items():
+                        existing.owned_fields.setdefault(k, v)
+                      for k, v in synced.owned_array_sizes.items():
+                        existing.owned_array_sizes.setdefault(k, v)
+                      for k, v in synced.field_native_names.items():
+                        existing.field_native_names.setdefault(k, v)
+                      continue
                     info = ClassInfo(node, module_path)
                     self._all_class_infos.append(info)
                     self.classes[info.name] = info
@@ -1436,7 +1553,7 @@ class Translator(ast.NodeVisitor):
             return True
         for base in info.bases:
             bi = self.classes.get(base)
-            if bi is not None and (bi.is_mixin or bi.is_annotation):
+            if bi is None or bi.is_mixin or bi.is_annotation:
                 continue
             if self._inherits_virtual_polymorphic(bi):
                 return True
@@ -1961,6 +2078,13 @@ class Translator(ast.NodeVisitor):
         if tgt and is_char_type(tgt) and (not expr.startswith('PyChar(')):
             if rhs_node is not None and is_char_type(self._infer_expr_cpp_type(rhs_node)):
                 return expr
+            # ``c: char = 'a'`` → 码点直构（勿 ``PyChar(PyStr("a"))``）
+            if rhs_node is not None and isinstance(rhs_node, ast.Constant) and isinstance(rhs_node.value, str):
+                from .analysis.char_literal import literal_char_codepoint
+                raw = getattr(rhs_node, '_paw_raw', None) or ''
+                cp = literal_char_codepoint(raw) if raw else None
+                if cp is not None:
+                    return f'PyChar({cp})'
             return f'PyChar({expr})'
         if tgt and is_byte_type(tgt) and (not expr.startswith('PyByte(')):
             return f'PyByte({expr})'
@@ -1968,6 +2092,9 @@ class Translator(ast.NodeVisitor):
             rhs_t = strip_cpp_ref(self._infer_expr_cpp_type(rhs_node) or '')
             if rhs_t and is_char_type(rhs_t, classes=self.classes):
                 ps = cpp_ident('str')
+                # 已是 ``PyStr(…)`` 就别再包一层（``'a'`` 在 str 上下文由 _literal 直发 PyStr）
+                if expr.startswith(f'{ps}('):
+                    return expr
                 return f'{ps}({expr})'
             if rhs_t and is_byte_heap_array_type(rhs_t, classes=self.classes):
                 pb = cpp_ident('bytes')
@@ -2293,7 +2420,32 @@ class Translator(ast.NodeVisitor):
         recv = self._paren_expr(self.visit(receiver))
         sep = self._member_access(recv)
         rhs = self._coerce_dunder_other_for_str_add(dunder, receiver, other)
+        if rhs == self._visit_value_expr(other):
+            # 通用：对侧接收者期望 str（``Path / 'a'`` / ``s.replace('a', 'b')``）时，
+            # char 实参提升为 ``PyStr(…)``（C 系规则下 ``'a'`` 是 char）。
+            rhs = self._promote_char_arg_for_str_receiver(recv_ty, other, rhs)
         return f'{recv}{sep}{dunder}({rhs})'
+
+    def _promote_char_arg_for_str_receiver(self, recv_ty: str, other: ast.expr, rhs: str) -> str:
+        """接收者是 ``str`` / ``Path`` 等字符串语义类型时，把 char 实参提升为 str。"""
+        from .analysis.type_pred import is_char_type, is_str_type
+        t = strip_cpp_ref(recv_ty or '')
+        ps = cpp_ident('str')
+        recv_is_strish = (
+            is_str_type(t, classes=self.classes)
+            or t == ps
+            or t.startswith(f'{ps}<')
+            or t.startswith('PyPath')
+            or t.startswith('PyFrozenList')
+        )
+        if not recv_is_strish:
+            return rhs
+        arg_t = strip_cpp_ref(self._infer_expr_cpp_type(other) or '')
+        if not is_char_type(arg_t, classes=self.classes):
+            return rhs
+        if rhs.startswith(f'{ps}('):
+            return rhs
+        return f'{ps}({rhs})'
 
     def _try_enum_binop(self, node: ast.BinOp) -> str | None:
         """``@enum(flag=True)`` 的 ``|`` / ``&`` / ``^``（底层整型位运算后转回枚举）。"""
@@ -2843,7 +2995,9 @@ class Translator(ast.NodeVisitor):
                     mixin_subst[key] = bound
                 else:
                     try:
-                        parsed = ast.parse(bound, mode='eval').body
+                        from .frontend.api import parse_type_as_ast
+
+                        parsed = parse_type_as_ast(bound)
                         if isinstance(parsed, ast.expr):
                             mixin_subst[key] = parsed
                     except SyntaxError:
@@ -2883,11 +3037,20 @@ class Translator(ast.NodeVisitor):
                         continue
                     seen.add(cur.name)
                     prop = cur.properties.get(attr)
-                    if prop is not None and prop.getter is not None and prop.getter.returns is not None:
-                        ret = self._specialize_member_annotation(prop.getter.returns, cur, val)
-                        if isinstance(ret, ast.Name) and ret.id == 'Self':
-                            return self._self_annotation_for_receiver(cur, val)
-                        return ret
+                    if prop is not None:
+                        if prop.getter is not None and prop.getter.returns is not None:
+                            ret = self._specialize_member_annotation(prop.getter.returns, cur, val)
+                            if isinstance(ret, ast.Name) and ret.id == 'Self':
+                                return self._self_annotation_for_receiver(cur, val)
+                            return ret
+                        # 仅有 setter 时用形参注解作 ``new.方法`` 类型上下文
+                        if prop.setter is not None and prop.setter.args.args:
+                            for a in prop.setter.args.args:
+                                if a.arg in ('self', 'cls'):
+                                    continue
+                                if a.annotation is not None:
+                                    return self._specialize_member_annotation(a.annotation, cur, val)
+                                break
                     sp = cur.static_properties.get(attr)
                     if sp is not None and sp.getter is not None and sp.getter.returns is not None:
                         ret = self._specialize_member_annotation(sp.getter.returns, cur, val)
@@ -4433,7 +4596,7 @@ class Translator(ast.NodeVisitor):
                 continue
             if not self._is_stdlib_module(module_path):
                 continue
-            if self._module_mid_emit_primary(module_path):
+            if self._module_mid_thin_production(module_path):
                 continue
             if module_path == RUNTIME_PKG and self.entry_module_path == RUNTIME_PKG and self._is_runtime_bootstrap():
                 continue
@@ -6448,7 +6611,23 @@ class Translator(ast.NodeVisitor):
         return v
 
     def visit_Constant(self, node: ast.Constant):
-        return self._literal(node.value)
+        if isinstance(node.value, str):
+            self._check_char_literal_width(node)
+        return self._literal(node.value, _paw_raw=getattr(node, '_paw_raw', None))
+
+    def _check_char_literal_width(self, node: ast.Constant) -> None:
+        """C 系引号规则：单引号只能单字符（``'ab'`` 译期报错）。"""
+        raw = getattr(node, '_paw_raw', None)
+        if not isinstance(raw, str) or not raw:
+            return
+        from .analysis.char_literal import literal_single_quote_body_len
+
+        n = literal_single_quote_body_len(raw)
+        if n is not None and n != 1:
+            raise NotImplementedError(
+                f"单引号字面量 {raw!r} 只能包含单个字符（C 系规则：``'a'`` 为 char，"
+                "多字符请用双引号 ``\"...\"``）"
+            )
 
     def _union_ctor_class_cpp(self, info: ClassInfo, *, type_args_slice: ast.expr | None=None, context_cpp: str | None=None) -> str:
         if context_cpp and '<' in context_cpp:
@@ -6572,7 +6751,9 @@ class Translator(ast.NodeVisitor):
         if complex_lit is not None:
             return complex_lit
         if isinstance(node, ast.Constant):
-            lit = self._literal(node.value, cpp_type=cpp_type)
+            lit = self._literal(
+                node.value, cpp_type=cpp_type, _paw_raw=getattr(node, '_paw_raw', None),
+            )
             return self._coerce_expr_to_cpp_type(lit, cpp_type, rhs_node=node)
         if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub) and isinstance(node.operand, ast.Constant) and isinstance(node.operand.value, int):
             lit = self._literal(-node.operand.value, cpp_type=cpp_type)
@@ -6597,7 +6778,7 @@ class Translator(ast.NodeVisitor):
             return option_is_not_none_expr(left_cpp, lt)
         return option_is_none_expr(left_cpp, lt)
 
-    def _literal(self, value, *, cpp_type: str | None=None):
+    def _literal(self, value, *, cpp_type: str | None=None, _paw_raw: str | None=None):
         match value:
             case None:
                 tgt = strip_cpp_ref(cpp_type) if cpp_type else ''
@@ -6637,6 +6818,15 @@ class Translator(ast.NodeVisitor):
             case str():
                 if cpp_type in (cpp_ident('utf8ptr'), 'const char*'):
                     return quote_cpp_string(value)
+                # C 系引号规则：``'a'``（单引号单字符）→ char 码点；其余 → ``PyStr``。
+                # 目标类型为 str/容器等时不由这里决定，而由 ``_coerce_expr_to_cpp_type`` 包转换。
+                tgt = strip_cpp_ref(cpp_type) if cpp_type else ''
+                want_char = (not tgt) or is_char_type(tgt, classes=self.classes)
+                if _paw_raw and want_char:
+                    from .analysis.char_literal import literal_char_codepoint
+                    cp = literal_char_codepoint(_paw_raw)
+                    if cp is not None:
+                        return f'{cpp_ident("char")}({cp})'
                 return str_cpp_from_literal(value)
             case bytes():
                 return bytes_cpp_from_literal(value)
@@ -6788,6 +6978,11 @@ class Translator(ast.NodeVisitor):
                 if isinstance(v, float):
                     return cpp_ident('float')
                 if isinstance(v, str):
+                    # C 系引号规则：``'a'`` 是 char，``"a"`` / 多字符是 str
+                    from .analysis.char_literal import literal_is_char
+                    raw = getattr(node, '_paw_raw', None) or ''
+                    if raw and literal_is_char(raw):
+                        return cpp_ident('char')
                     return cpp_ident('str')
                 if isinstance(v, bytes):
                     return cpp_ident('bytes')
@@ -7164,16 +7359,30 @@ class Translator(ast.NodeVisitor):
     def visit_IfExp(self, node: ast.IfExp):
         return f'({self.visit(node.test)} ? {self.visit(node.body)} : {self.visit(node.orelse)})'
 
+    def _bridge_all_mid_methods(self) -> None:
+        """空 ``module_asts`` 后：把各 ``ClassInfo.mid_methods`` 桥到 AST ``methods``/``inits``。
+
+        ``compiler/paw/**`` 薄生产跳过：不经 tree_nodes，只读 Mid。
+        """
+        for info in self._all_class_infos:
+            mp = getattr(info, "module_path", "") or ""
+            if self._module_mid_thin_production(mp):
+                continue
+            ensure = getattr(info, "ensure_methods_bridged_from_mid", None)
+            if callable(ensure):
+                ensure()
+
     def _module_mid_emit_ok(self, module_path: str) -> bool:
         return bool((getattr(self, "module_mid_emit_ok", None) or {}).get(module_path))
 
     def _module_mid_emit_primary(self, module_path: str) -> bool:
-        """``mid_emit_ok`` 模块是否走 Mid 生产写出（跳过 AST emit）。
+        """``mid_emit_ok`` 模块是否以 Mid 为真相源（ClassInfo / register_module_from_mid）。
 
-        - ``PY2CPP_MID_PRIMARY=1``：全部 ``mid_emit_ok`` 模块
+        - 未设置或 ``PY2CPP_MID_PRIMARY=1``：全部 ``mid_emit_ok``
         - ``PY2CPP_MID_PRIMARY=0``：关闭
-        - 未设置：仅 ``compiler/paw/**``（P6 seed）；stdlib/ffi/`tests/`/`examples/`
-          仍 AST（Mid 尚未覆盖 mixin/unittest 基类等）
+
+        生产 C++：stdlib/ffi/user 仍走 host ``ClassInfo`` emit；仅 ``compiler/paw/**``
+        由 ``_module_mid_thin_production`` 写薄 ``emit_mid_module`` 并跳过 host。
         """
         import os
         if not self._module_mid_emit_ok(module_path):
@@ -7181,19 +7390,20 @@ class Translator(ast.NodeVisitor):
         flag = os.environ.get("PY2CPP_MID_PRIMARY", "").strip().lower()
         if flag in ("0", "false", "no", "off"):
             return False
-        if flag in ("1", "true", "yes", "on"):
-            return True
-        mp = module_path.replace("\\", "/")
-        if mp.startswith("compiler/paw/"):
-            return True
-        return False
+        return True
+
+    def _module_mid_thin_production(self, module_path: str) -> bool:
+        """PRIMARY 且 ``compiler/paw/**``：薄 Mid emit 写生产路径并跳过 host emit。"""
+        if not self._module_mid_emit_primary(module_path):
+            return False
+        return module_path.replace("\\", "/").startswith("compiler/paw/")
 
     def _emit_mid_capable_modules(self) -> None:
         """P4/P5：对 ``mid_emit_ok`` 模块写出 MidIR→C++（不经 materialize/ast）。
 
         默认旁路到 ``{base_output_dir}/mid_emit/<module_path 父目录>/``。
-        PRIMARY 时另写 ``{base_output_dir}/<module_path 父目录>/{stem}.*``
-        （与 AST 入口 ``entry_rel`` 布局一致；勿叠 ``entry_output_dir``）。
+        仅 ``compiler/paw/**`` PRIMARY 另写生产路径（seed 竖切）；stdlib/ffi/user
+        生产树由 host ClassInfo emit，勿用薄 ``emit_mid_module`` 覆盖。
         设 ``PY2CPP_MID_EMIT=0`` 可关闭旁路。
         """
         import os
@@ -7221,12 +7431,9 @@ class Translator(ast.NodeVisitor):
             # 旁路：按模块路径落盘（嵌套 ns）
             side = out_root if str(parent) in (".", "") else out_root / parent
             emit_mid_module(mid, out_dir=side, module_path=mp)
-            if self._module_mid_emit_primary(mp):
-              # stdlib/ffi → runtime_output_dir；裸 stem → entry_output_dir；其余 → base/<parent>
-              if self._is_stdlib_module(mp) or self._is_ffi_module(mp):
-                runtime = _Path(self.runtime_output_dir)
-                prod_dir = runtime if str(parent) in (".", "") else runtime / parent
-              elif str(parent) in (".", ""):
+            if self._module_mid_thin_production(mp):
+              # seed：裸 stem → entry_output_dir；嵌套 → base/<parent>
+              if str(parent) in (".", ""):
                 prod_dir = _Path(self.entry_output_dir)
               else:
                 prod_dir = base / parent
@@ -7234,7 +7441,7 @@ class Translator(ast.NodeVisitor):
                 mid,
                 out_dir=prod_dir,
                 module_path=mp,
-                stdlib_layout=self._is_stdlib_module(mp),
+                stdlib_layout=False,
               )
               artifacts.append(str(c))
         self.mid_emit_artifacts = artifacts
@@ -7245,17 +7452,19 @@ class Translator(ast.NodeVisitor):
         for module_path in self.module_order:
             if not self._should_emit_module(module_path):
                 continue
-            if self._module_mid_emit_primary(module_path):
-                continue
+            # PRIMARY 仍写 protocol traits → ``write_protocol_traits_header`` 拆出；
+            # 类体/文档串由 Mid emit，跳过 AST visit。
             with self._use_module_decl(module_path):
                 _emit_module_protocol_traits(self, module_path)
+                if self._module_mid_thin_production(module_path):
+                    continue
                 if self._skip_module_classes(module_path):
                     continue
                 self._emit_module_docstring(module_path)
         for module_path in self.module_order:
             if not self._should_emit_module(module_path):
                 continue
-            if self._module_mid_emit_primary(module_path):
+            if self._module_mid_thin_production(module_path):
                 continue
             if self._skip_module_classes(module_path):
                 continue
@@ -7323,7 +7532,7 @@ class Translator(ast.NodeVisitor):
                         _emit_class_declaration(self, info)
                     if module_path == self.entry_module_path:
                         self._emit_module_function_decls(module_path, skip_main=True)
-        if not self._module_mid_emit_primary(self.entry_module_path):
+        if not self._module_mid_thin_production(self.entry_module_path):
             with self._use_header():
                 entry_funcs = [f for f in self._entry_functions() if f.name == 'main']
                 if entry_funcs:
@@ -7359,15 +7568,15 @@ class Translator(ast.NodeVisitor):
             emit_all_ffi_glue(self)
         self._emit_user_module_functions()
         self._emit_user_module_class_methods()
-        entry_primary = self._module_mid_emit_primary(self.entry_module_path)
-        if self._should_emit_module(self.entry_module_path) and not entry_primary:
+        entry_thin = self._module_mid_thin_production(self.entry_module_path)
+        if self._should_emit_module(self.entry_module_path) and not entry_thin:
             self._emit_entry_module_implementations()
         if getattr(self, 'gpu_enabled', False) and getattr(self, 'gpu_backend', 'omp') != 'cuda':
             from .emit.gpu_device_emit import emit_gpu_device_functions
             mp = self.entry_module_path
             with self._use_module_inl(mp), self._use_source(), self._use_import_bindings(mp), self._use_inl_namespace(mp):
                 emit_gpu_device_functions(self, mp)
-        if not entry_primary:
+        if not entry_thin:
             self._emit_module_functions()
         self._inject_cpp_attr_dispatch_definitions()
         self._inject_py_callable_thunks()
@@ -7615,7 +7824,7 @@ class Translator(ast.NodeVisitor):
 
     def _emit_user_module_functions(self) -> None:
         for module_path in self._entry_imported_user_modules():
-            if self._module_mid_emit_primary(module_path):
+            if self._module_mid_thin_production(module_path):
                 continue
             funcs = self._module_functions_emit_order(self._module_emit_functions_for(module_path))
             if not funcs:
@@ -7667,7 +7876,7 @@ class Translator(ast.NodeVisitor):
     def _emit_user_module_class_methods(self) -> None:
         """导入的用户模块类方法 → 各模块 ``.inl``（与自由函数同路径；此前仅入口类有实现）。"""
         for module_path in self._entry_imported_user_modules():
-            if self._module_mid_emit_primary(module_path):
+            if self._module_mid_thin_production(module_path):
                 continue
             classes = [
                 info for info in self.classes.values()
@@ -7688,7 +7897,7 @@ class Translator(ast.NodeVisitor):
 
     def _emit_entry_module_implementations(self) -> None:
         """入口实现：用户模块 → ``source_lines``；bootstrap ``py2cpp`` → ``.cpp`` / ``.inl``。"""
-        if self._module_mid_emit_primary(self.entry_module_path):
+        if self._module_mid_thin_production(self.entry_module_path):
             return
         entry_classes = [info for info in self.classes.values() if info.module_path == self.entry_module_path and (not info.is_descriptor) and (not info.is_mixin) and (not info.is_annotation) and (not info.is_variant_mixin) and (not self._is_type_marker(info))]
         entry_funcs = [f for f in self._entry_functions() if not (f.name == 'main' and (not self.emit_main)) and f.name != 'main' and (f.name not in self.delegates)]

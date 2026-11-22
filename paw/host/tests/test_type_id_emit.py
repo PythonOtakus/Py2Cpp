@@ -1,5 +1,5 @@
 """``__class_id__get`` 虚函数声明（仅当类含其它虚函数）。"""
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.analysis.ir import ClassInfo, FuncTypeParams, MethodSig

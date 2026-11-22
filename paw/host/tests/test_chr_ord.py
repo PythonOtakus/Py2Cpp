@@ -1,7 +1,7 @@
 """``chr`` / ``ord`` 与 ``byte`` / ``PyByte`` 译器发射。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.analysis.analyzer import SemanticAnalyzer
@@ -12,7 +12,7 @@ def _emit_return(body: str, *, entry: str = "mod") -> str:
   from pathlib import Path
 
   mod_src = f"from paw import char, byte\n\ndef probe():\n{body}"
-  tree = ast.parse(mod_src)
+  tree = ast._stdlib_parse(mod_src)
   func = tree.body[1]
   assert isinstance(func, ast.FunctionDef)
   ret = func.body[-1]
@@ -55,7 +55,7 @@ class ChrOrdEmitTests(unittest.TestCase):
     from pathlib import Path
 
     mod_src = 'from paw import char\n\ndef probe():\n  c: char = 65\n  return ord(c)\n'
-    tree = ast.parse(mod_src)
+    tree = ast._stdlib_parse(mod_src)
     func = tree.body[1]
     ret = func.body[-1]
     assert isinstance(ret, ast.Return) and ret.value is not None
@@ -86,7 +86,7 @@ class ChrOrdEmitTests(unittest.TestCase):
       "  def probe(self) -> bool:\n"
       "    return self.s[self.pos] == '\"'\n"
     )
-    tree = ast.parse(mod_src)
+    tree = ast._stdlib_parse(mod_src)
     cls = tree.body[0]
     assert isinstance(cls, ast.ClassDef)
     func = next(n for n in cls.body if isinstance(n, ast.FunctionDef))

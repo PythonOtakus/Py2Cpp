@@ -13,8 +13,7 @@ from host.constant.stdlib_layout import RUNTIME_PKG, stdlib_header_include
 
 
 def _info(name: str, module_path: str, *, cpp_rename: str | None = None) -> ClassInfo:
-  import ast
-
+  import host.tree_nodes as ast
   decs = []
   if cpp_rename:
     decs = [ast.Call(func=ast.Name(id="native_name", ctx=ast.Load()), args=[ast.Constant(cpp_rename)])]

@@ -1,7 +1,7 @@
 """``parse_selector_path`` 译器单测。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.passes.selector_parse import (

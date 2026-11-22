@@ -1,7 +1,7 @@
 """``header_only`` / ``library`` 链接模型表。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import os
 import unittest
 

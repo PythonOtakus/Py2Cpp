@@ -1,7 +1,7 @@
 """解析 ``import`` / ``from … import``，建立模块级与入口别名字典。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 

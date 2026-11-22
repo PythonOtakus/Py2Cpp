@@ -1,6 +1,6 @@
 """``match`` / ``case`` 翻译（字面量、``_``、捕获、静态类模式、字段注解模式）。"""
 from __future__ import annotations
-import ast
+import host.tree_nodes as ast
 import copy
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING

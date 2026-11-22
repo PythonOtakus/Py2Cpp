@@ -1,7 +1,7 @@
 """生成器 ``__resume``：``if`` 与 ``while`` 分态（勿在 ``if`` 块内截断 ``switch case``）。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.passes.generator_emit import GeneratorSwitchEmitter
@@ -10,7 +10,7 @@ from host.translator import Translator
 
 
 def _resume_body_from_source(src: str) -> list[ast.stmt]:
-  tree = ast.parse(src)
+  tree = ast._stdlib_parse(src)
   fn = tree.body[0]
   assert isinstance(fn, ast.FunctionDef)
   _, gen_cls = _transform_function(fn, "g_generator", Translator("mod", "mod.py"))
@@ -141,7 +141,7 @@ def g() -> GeneratorType[int, None, None]:
   \"\"\"doc on wrapper\"\"\"
   yield 1
 """
-    tree = ast.parse(src)
+    tree = ast._stdlib_parse(src)
     fn = tree.body[0]
     assert isinstance(fn, ast.FunctionDef)
     wrapper, _ = _transform_function(fn, "g_generator", Translator("mod", "mod.py"))

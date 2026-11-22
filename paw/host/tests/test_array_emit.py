@@ -3,14 +3,13 @@ from __future__ import annotations
 
 import unittest
 from pathlib import Path
-import ast
-
+import host.tree_nodes as ast
 from host.translator import Scope, Translator
 
 class ArrayEmitTests(unittest.TestCase):
   def test_array2d_subscript_infers_element_type(self):
     tr = Translator("test/mod", "test/mod.py")
-    tr.scope = Scope(ast.parse("pass").body[0])
+    tr.scope = Scope(ast._stdlib_parse("pass").body[0])
     tr.scopes.append(tr.scope)
     for grid_type in (
       "PyArray2D<PyFloat>",
@@ -18,7 +17,7 @@ class ArrayEmitTests(unittest.TestCase):
       "PyStackArray2D<Scalar, _dim, 2 * _dim, 0, 0>",
     ):
       tr.scope.var_types["grid"] = grid_type
-      expr = ast.parse("grid[0, 0]", mode="eval").body
+      expr = ast._stdlib_parse("grid[0, 0]", mode="eval").body
       expected = "Scalar" if grid_type.startswith("PyStackArray2D<Scalar") else "PyFloat"
       self.assertEqual(tr._infer_expr_cpp_type(expr), expected)
 

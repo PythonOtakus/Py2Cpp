@@ -1,7 +1,7 @@
 """``PyTuple`` 定长切片 ``s[i:j]`` → ``get_slice``（含负索引）。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import tempfile
 import unittest
 from pathlib import Path

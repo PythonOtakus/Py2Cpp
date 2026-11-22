@@ -11,6 +11,9 @@
 #include "frontend/diagnostic.cpp"
 #include "frontend/syntax_nodes.cpp"
 #include "frontend/lexer.cpp"
+#include "frontend/type_parse.cpp"
+#include "frontend/param_parse.cpp"
+#include "frontend/stmt_parse.cpp"
 #include "frontend/parser.cpp"
 #include "mid/emit_cpp.cpp"
 

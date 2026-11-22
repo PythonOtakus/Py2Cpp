@@ -87,7 +87,7 @@ class UnionMatchTests(TestCaseMixin):
         self.assertEqual(dispatch(MessageUnion.Quit()), 0)
         m: MessageUnion = new.Move(3, 4)
         self.assertEqual(dispatch(m), 7)
-        self.assertEqual(dispatch(MessageUnion.Write('hi')), 2)
+        self.assertEqual(dispatch(MessageUnion.Write("hi")), 2)
         m2: MessageUnion = m
         self.assertEqual(dispatch(m2), 7)
         self.assertEqual(dispatch(MessageUnion.Move(1, y=2)), 3)
@@ -120,7 +120,7 @@ class UnionKeywordMatchTests(TestCaseMixin):
 
     override def test(self):
         self.assertEqual(dispatchKw(MessageUnion.Move(2, 3)), 23)
-        self.assertEqual(dispatchKw(MessageUnion.Write('ab')), 2)
+        self.assertEqual(dispatchKw(MessageUnion.Write("ab")), 2)
         self.assertEqual(dispatchKw(MessageUnion.Quit()), -1)
 
 class UnionLiteralWildcardTests(TestCaseMixin):
@@ -166,7 +166,7 @@ class UnionInheritTests(TestCaseMixin):
         self.assertEqual(dispatchExt(ExtendedUnion.Quit()), 0)
         self.assertEqual(dispatchExt(ExtendedUnion.Ping(9)), 9)
         self.assertEqual(dispatchExt(ExtendedUnion.Ping(3)), 3)
-        self.assertEqual(dispatchExt(ExtendedUnion.Write('ab')), 2)
+        self.assertEqual(dispatchExt(ExtendedUnion.Write("ab")), 2)
 
 union CoreTUnion[Element]:
 
@@ -191,12 +191,12 @@ class UnionGenericInheritTests(TestCaseMixin):
     override def test(self):
         self.assertEqual(dispatchBox(BoxTUnion[int].Unit(7)), 7)
         self.assertEqual(dispatchBox(BoxTUnion[int].Unit(5)), 5)
-        self.assertEqual(dispatchBox(BoxTUnion[int].Payload('xy')), 2)
+        self.assertEqual(dispatchBox(BoxTUnion[int].Payload("xy")), 2)
 
 def main():
     suite: TestSuite = new()
-    for Class in TestCaseMixin.iterSubclasses(sortConst='_testTag'):
+    for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
         suite.addTest(Class())
     return TextTestRunner().run(suite)
-if __name__ == '__main__':
+if __name__ == "__main__":
     raise SystemExit(main())

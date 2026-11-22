@@ -1,7 +1,7 @@
 """``expand_iter_fields_meta``：``Self.get_field_annotation[Meta](field)`` 折叠。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import textwrap
 import unittest
 
@@ -11,7 +11,7 @@ from host.passes.match_case import expand_iter_fields_meta, parse_self_get_field
 
 class ExpandIterFieldsMetaTests(unittest.TestCase):
   def test_parse_get_field_annotation_subscript(self):
-    mod = ast.parse("Self.get_field_annotation[UILabelMeta](field)")
+    mod = ast._stdlib_parse("Self.get_field_annotation[UILabelMeta](field)")
     expr = mod.body[0].value
     parsed = parse_self_get_field_annotation_meta(expr)
     self.assertIsNotNone(parsed)
@@ -48,8 +48,8 @@ class ExpandIterFieldsMetaTests(unittest.TestCase):
         _seed: int @UIInvisibleMeta = 0
       '''
     )
-    mixin_method = ast.parse(mixin_src).body[0].body[0]
-    host = ClassInfo(ast.parse(host_src).body[0])
+    mixin_method = ast._stdlib_parse(mixin_src).body[0].body[0]
+    host = ClassInfo(ast._stdlib_parse(host_src).body[0])
     expanded = expand_iter_fields_meta(mixin_method, host)
     self.assertIsNotNone(expanded)
     assert expanded is not None
@@ -76,8 +76,8 @@ class ExpandIterFieldsMetaTests(unittest.TestCase):
         _seed: int @UIInvisibleMeta = 0
       '''
     )
-    mixin_method = ast.parse(mixin_src).body[0].body[0]
-    host = ClassInfo(ast.parse(host_src).body[0])
+    mixin_method = ast._stdlib_parse(mixin_src).body[0].body[0]
+    host = ClassInfo(ast._stdlib_parse(host_src).body[0])
     expanded = expand_iter_fields_meta(mixin_method, host)
     self.assertIsNotNone(expanded)
     assert expanded is not None
@@ -103,8 +103,8 @@ class ExpandIterFieldsMetaTests(unittest.TestCase):
         _seed: int = 0
       '''
     )
-    mixin_method = ast.parse(mixin_src).body[0].body[0]
-    host = ClassInfo(ast.parse(host_src).body[0])
+    mixin_method = ast._stdlib_parse(mixin_src).body[0].body[0]
+    host = ClassInfo(ast._stdlib_parse(host_src).body[0])
     expanded = expand_iter_fields_meta(mixin_method, host)
     self.assertIsNotNone(expanded)
     assert expanded is not None

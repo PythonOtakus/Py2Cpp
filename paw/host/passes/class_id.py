@@ -1,7 +1,7 @@
 """为所有自定义类分配 ``__id__`` / ``__class_id__``（各继承树根内唯一整型）。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:

@@ -1,5 +1,5 @@
 """``expand_class_type_base``：``__base__`` 注入与实体基类解析。"""
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.analysis.ir import ClassInfo, class_base_name
@@ -8,7 +8,7 @@ from host.passes.mixins import is_mixin_class
 
 
 def _parse_class(src: str) -> ast.ClassDef:
-  return ast.parse(src).body[0]  # type: ignore[return-value]
+  return ast._stdlib_parse(src).body[0]  # type: ignore[return-value]
 
 
 def _mixin_info(name: str, bases: list[str] | None = None) -> ClassInfo:
@@ -66,7 +66,7 @@ class TestClassTypeBase(unittest.TestCase):
   def test_generic_entity_base_ast(self):
     container_node = _parse_class("class ContainerType[T]: pass")
     container = ClassInfo(container_node, "m")
-    box_node = ast.parse("class Box[T](ContainerType[T]): pass").body[0]
+    box_node = ast._stdlib_parse("class Box[T](ContainerType[T]): pass").body[0]
     box = ClassInfo(box_node, "m")
     tr = _TrStub({"ContainerType": container, "Box": box})
     box.bases = ["ContainerType"]

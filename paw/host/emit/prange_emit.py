@@ -1,7 +1,7 @@
 """``for i in prange(...)`` → OpenMP ``parallel for``（无 OpenMP 时降级为 ``range`` 原生 ``for``）。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable
 

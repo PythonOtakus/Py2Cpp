@@ -1,5 +1,5 @@
 """``int64`` 注解须映射 ``PyInt64``，勿被 ``type int64 = int`` 别名展开为 ``PyInt``。"""
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.analysis.analyzer import TypeParser

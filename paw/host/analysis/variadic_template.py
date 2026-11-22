@@ -4,8 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-import ast
-
+import host.tree_nodes as ast
 from .patterns import auto_template_type_param_name
 from .ir import strip_type_annotation_markers
 

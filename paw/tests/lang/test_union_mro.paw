@@ -39,8 +39,8 @@ class UnionMroEnumTests(TestCaseMixin):
         self.assertEqual(ErrorTypeUnion.Enum.of(made), ErrorTypeUnion.Enum.AlphaError)
         created: Exception = ErrorTypeUnion.Enum.create(ErrorTypeUnion.Enum.AlphaError)
         self.assertTrue(created)
-        self.assertEqual(str(ErrorTypeUnion.Enum.BetaError), 'ErrorTypeUnion.Enum.BetaError')
-        self.assertEqual(repr(ErrorTypeUnion.Enum.Unknown), '<ErrorTypeUnion.Enum.Unknown: -1>')
+        self.assertEqual(str(ErrorTypeUnion.Enum.BetaError), "ErrorTypeUnion.Enum.BetaError")
+        self.assertEqual(repr(ErrorTypeUnion.Enum.Unknown), "<ErrorTypeUnion.Enum.Unknown: -1>")
 
 class UnionMroDunderTests(TestCaseMixin):
     _testTag = 10
@@ -57,8 +57,8 @@ class UnionMroDunderTests(TestCaseMixin):
 
 def main():
     suite: TestSuite = new()
-    for Class in TestCaseMixin.iterSubclasses(sortConst='_testTag'):
+    for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
         suite.addTest(Class())
     return TextTestRunner().run(suite)
-if __name__ == '__main__':
+if __name__ == "__main__":
     raise SystemExit(main())

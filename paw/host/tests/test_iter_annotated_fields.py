@@ -1,7 +1,7 @@
 """``Self.iter_fields`` 混入展开：``@Ann`` 容器类 / 字段 ``@Ann``。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.analysis.ir import ClassInfo
@@ -23,10 +23,10 @@ class World:
   position: Table[Position] @property = new()
   other: int = 0
 '''
-    mod = ast.parse(src)
+    mod = ast._stdlib_parse(src)
     table = ClassInfo(mod.body[0])
     world = ClassInfo(mod.body[1])
-    world.field_types["__ann__position"] = ast.parse("Table[Position]", mode="eval").body
+    world.field_types["__ann__position"] = ast._stdlib_parse("Table[Position]", mode="eval").body
     world.field_types["position"] = world.field_types["__ann__position"]
     world.fields = ["position", "other"]
     classes = {"Table": table, "World": world}
@@ -49,7 +49,7 @@ class Host(Mixin):
   position: Table[Position] @property = new()
   velocity: Table[Velocity] @property = new()
 '''
-    mod = ast.parse(mixin_src + host_src)
+    mod = ast._stdlib_parse(mixin_src + host_src)
     mixin = ClassInfo(mod.body[0])
     mixin.is_mixin = is_mixin_class(mixin)
     table = ClassInfo(mod.body[1])
@@ -60,7 +60,7 @@ class Host(Mixin):
       ("position", "Table[Position]"),
       ("velocity", "Table[Velocity]"),
     ):
-      ann = ast.parse(ann_src, mode="eval").body
+      ann = ast._stdlib_parse(ann_src, mode="eval").body
       host.field_types[fname] = ann
       host.field_types[f"__ann__{fname}"] = ann
     classes = {

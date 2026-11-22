@@ -1,8 +1,7 @@
 """``T @final`` → C++ ``const`` 成员与构造初始化列表。"""
 from __future__ import annotations
 
-import ast
-
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:

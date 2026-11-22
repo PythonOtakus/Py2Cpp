@@ -1,7 +1,7 @@
 """``Self.iter_methods`` / ``Self.iter_methods[Ann]`` 译期展开。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import copy
 
 from ..analysis.ir import ClassInfo, decorator_string_arg, has_named_decorator

@@ -1,7 +1,7 @@
 """MidIR：发射器可消费的结构化 IR（无 ast.AST 字段）。"""
 from __future__ import annotations
 
-from .ast_from_mid import ast_module_from_mid
+from .mutate import append_mid_method, find_mid_class, mid_class_for_info, replace_module_mid
 from .nodes import MidClass, MidEnum, MidFunction, MidImport, MidModule, MidOpaque
 
 SCHEMA_VERSION = "paw-mid-0.1.0"
@@ -14,5 +14,8 @@ __all__ = [
   "MidImport",
   "MidModule",
   "MidOpaque",
-  "ast_module_from_mid",
+  "append_mid_method",
+  "find_mid_class",
+  "mid_class_for_info",
+  "replace_module_mid",
 ]

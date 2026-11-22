@@ -1,2 +1,38 @@
-"""Stub parity with ``compiler/py/passes/apply_mid_decls.py`` — not yet ported to Paw."""
+"""Mid 声明登记助手（自举轨；对位 ``compiler/py/passes/apply_mid_decls.py`` 的 Mid 侧）。
+
+宿主 ClassInfo 仍由 Python ``apply_mid_decls`` 服务；本模块供原生驱动在
+``MidModule`` 上查询/合并，不依赖 ``ast`` / ClassInfo。
+"""
 from paw import *
+from ..mid.nodes import MidClass, MidEnum, MidFunction, MidModule
+from ..mid.mutate import appendMidMethod, findMidClass
+
+def countMidClasses(mid: MidModule) -> int:
+  return len(mid.classes)
+
+def countMidEnums(mid: MidModule) -> int:
+  return len(mid.enums)
+
+def countMidFunctions(mid: MidModule) -> int:
+  return len(mid.functions)
+
+def findClass(mid: MidModule, name: str) -> MidClass | None:
+  return findMidClass(mid, name)
+
+def applyEnumNameFlags(mid: MidModule, name: str, isTypeEnum: bool, flag: bool) -> bool:
+  i: int = 0
+  while i < len(mid.enums):
+    en: MidEnum = mid.enums[i]
+    if en.name == name:
+      en.isTypeEnum = isTypeEnum
+      en.flag = flag
+      return True
+    i += 1
+  return False
+
+def registerSyntheticMethod(mid: MidModule, className: str, fn: MidFunction) -> bool:
+  cls: MidClass | None = findMidClass(mid, className)
+  if cls is None:
+    return False
+  appendMidMethod(cls, fn)
+  return True

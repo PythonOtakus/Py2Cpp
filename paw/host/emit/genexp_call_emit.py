@@ -1,7 +1,7 @@
 """``IterableType[T]`` 形参 + genexp 实参：调用点 IIFE 内联（非内建五函数）。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Iterator

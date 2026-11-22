@@ -1,6 +1,6 @@
 """内建聚合：``min`` / ``max`` / ``sum`` / ``any`` / ``all``（译期内联 IIFE）。"""
 from __future__ import annotations
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 from ..analysis.type_pred import is_scalar_float_type, is_scalar_int_type, is_str_type, is_long_type
 from ..analysis.ir import cpp_ident, cpp_iterator_type, cpp_result_type, iter_result_done_cpp, iter_result_value_cpp

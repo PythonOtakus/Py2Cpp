@@ -1,15 +1,14 @@
 """构建期展开 ``templates/**`` 中的 ``PY2CPP_*`` 宏（BEGIN/END、EVAL、EXEC、ECHO、INCLUDE、TYPE）。"""
 from __future__ import annotations
 
-import ast
 import re
 from pathlib import Path
 from typing import Any, Callable
 
 from ..constant.stdlib_layout import cpp_stdlib_class, EXCEPTIONS_NS
-from ..passes.inline_range import _const_int_expr
-from ..passes.static_reflect import _const_compare_result
+from . import template_eval as _teval
 from .brace_style import kr_to_allman
+from .template_profile import assert_safe_begin_header
 from .template_scope import namespace_close_lines, namespace_open_lines, namespace_qualifier_for_module_rel
 
 _TEMPLATE_ROOT = Path(__file__).resolve().parents[2] / "templates"
@@ -222,64 +221,6 @@ def _replace_py2cpp_type(text: str) -> str:
   return cur
 
 
-def _extract_paren_arg(line: str, prefix: str) -> str | None:
-  marker = f"PY2CPP_{prefix}("
-  idx = line.find(marker)
-  if idx < 0:
-    return None
-  start = idx + len(marker)
-  depth = 1
-  i = start
-  while i < len(line):
-    ch = line[i]
-    if ch == "(":
-      depth += 1
-    elif ch == ")":
-      depth -= 1
-      if depth == 0:
-        return line[start:i].strip()
-    i += 1
-  return None
-
-
-def _escape_fstring_literal(chunk: str) -> str:
-  return chunk.replace("\\", "\\\\").replace("{", "{{").replace("}", "}}")
-
-
-def _cpp_line_to_emit_stmt(line: str) -> str:
-  m_exec = _EXEC_RE.match(line)
-  if m_exec:
-    return m_exec.group(1).strip()
-  out: list[str] = []
-  i = 0
-  while i < len(line):
-    eval_at = line.find("PY2CPP_EVAL(", i)
-    echo_at = line.find("PY2CPP_ECHO(", i)
-    candidates = [(eval_at, "eval"), (echo_at, "echo")]
-    candidates = [(pos, kind) for pos, kind in candidates if pos >= 0]
-    if not candidates:
-      out.append(_escape_fstring_literal(line[i:]))
-      break
-    pos, kind = min(candidates, key=lambda x: x[0])
-    out.append(_escape_fstring_literal(line[i:pos]))
-    if kind == "eval":
-      expr = _extract_paren_arg(line[pos:], "EVAL")
-      if expr is None:
-        raise ValueError(f"PY2CPP_EVAL 括号不匹配: {line}")
-      consumed = len("PY2CPP_EVAL(") + len(expr) + 1
-      out.append(f"{{{expr}}}")
-      i = pos + consumed
-      continue
-    expr = _extract_paren_arg(line[pos:], "ECHO")
-    if expr is None:
-      raise ValueError(f"PY2CPP_ECHO 括号不匹配: {line}")
-    consumed = len("PY2CPP_ECHO(") + len(expr) + 1
-    out.append(f"{{__py2cpp_echo_val({expr!r})}}")
-    i = pos + consumed
-  body = "".join(out)
-  return f"__py2cpp_echo(f'{body}')"
-
-
 def _expand_macro_calls(
   text: str,
   macro: str,
@@ -315,148 +256,17 @@ def _expand_macro_calls(
   return "".join(out)
 
 
-def _resolve_echo_string(text: str) -> str:
-  registry = _type_registry()
-  if text in registry:
-    return registry[text]
-  return text
-
-
-def _format_echo_value(val: Any) -> str:
-  if val is None:
-    return ""
-  if isinstance(val, str):
-    return _resolve_echo_string(val)
-  if isinstance(val, (list, tuple)):
-    return "\n".join(
-      _resolve_echo_string(item) for item in val if isinstance(item, str)
-    )
-  raise ValueError(
-    f"PY2CPP_ECHO 须返回 str 或 list[str]，得 {type(val).__name__}"
-  )
-
-
 def _eval_echo_expr(
   expr: str,
   ctx: dict[str, Any],
   helpers: dict[str, Any],
 ) -> str:
-  """``PY2CPP_ECHO(expr)``：构建期 CPython 表达式 → 原样粘贴的 C++ 文本。"""
-  expr = expr.strip()
-  if not expr:
-    return ""
-  ns: dict[str, Any] = dict(helpers)
-  ns.update(ctx)
-  try:
-    val = eval(expr, {"__builtins__": {}}, ns)
-  except Exception as exc:
-    raise ValueError(f"PY2CPP_ECHO({expr}) 求值失败: {exc}") from exc
-  return _format_echo_value(val)
-
-
-def _python_value_to_cpp_literal(val: Any) -> str | None:
-  """构建期 Python 常量 → 与译器 ``ir`` 一致的 C++ 字面量。"""
-  from ..analysis.ir import bytes_cpp_from_literal, format_cpp_float, str_cpp_from_literal
-
-  if isinstance(val, bool):
-    return "true" if val else "false"
-  if isinstance(val, int):
-    return str(val)
-  if isinstance(val, float):
-    return format_cpp_float(val)
-  if isinstance(val, str):
-    return str_cpp_from_literal(val)
-  if isinstance(val, bytes):
-    return bytes_cpp_from_literal(val)
-  return None
+  """PY2CPP_ECHO: frozen-subset expr -> pasted C++ text."""
+  return _teval.eval_echo(expr, ctx, helpers, type_registry=_type_registry())
 
 
 def _eval_cpp_slot(expr: str, ctx: dict[str, Any]) -> str:
-  try:
-    tree = ast.parse(expr, mode="eval")
-  except SyntaxError:
-    return expr
-  body = tree.body
-  if isinstance(body, ast.Constant):
-    lit = _python_value_to_cpp_literal(body.value)
-    if lit is not None:
-      return lit
-  lit = _const_int_expr(body)
-  if lit is not None:
-    return str(lit)
-  if isinstance(body, ast.Name) and body.id in ctx:
-    val = ctx[body.id]
-    if isinstance(val, str):
-      if len(val) >= 2 and val[0] == '"' and val[-1] == '"':
-        return val
-    lit = _python_value_to_cpp_literal(val)
-    if lit is not None:
-      return lit
-  safe_ctx = {k: v for k, v in ctx.items() if isinstance(v, (int, bool, str, float, bytes))}
-  try:
-    val = eval(expr, {"__builtins__": {}}, safe_ctx)
-    lit = _python_value_to_cpp_literal(val)
-    if lit is not None:
-      return lit
-  except Exception:
-    pass
-  return ast.unparse(body)
-
-
-def _transform_line_for_cpp_fallback(line: str, ctx: dict[str, Any]) -> str:
-  line = _expand_macro_calls(
-    line,
-    "ECHO",
-    lambda expr: _eval_echo_expr(expr, ctx, {}),
-  )
-
-  def repl_eval(m: re.Match[str]) -> str:
-    expr = m.group(1).strip()
-    return _eval_cpp_slot(expr, ctx)
-
-  return re.sub(r"PY2CPP_EVAL\s*\(\s*(.*?)\s*\)", repl_eval, line)
-
-
-def _bind_py2cpp_echo_val(
-  loc: dict[str, Any],
-  ctx: dict[str, Any],
-  helpers: dict[str, Any],
-) -> None:
-  def __py2cpp_echo_val(expr: str) -> str:
-    return _eval_echo_expr(expr, loc, helpers)
-
-  loc["__py2cpp_echo_val"] = __py2cpp_echo_val
-
-
-def _parse_range_bounds(iter_node: ast.expr, ctx: dict[str, Any]) -> tuple[Any, Any, Any] | None:
-  if not isinstance(iter_node, ast.Call):
-    return None
-  func = iter_node.func
-  if not isinstance(func, ast.Name) or func.id != "range":
-    return None
-  args = iter_node.args
-  if len(args) == 1:
-    start, stop, step = ast.Constant(value=0), args[0], ast.Constant(value=1)
-  elif len(args) == 2:
-    start, stop, step = args[0], args[1], ast.Constant(value=1)
-  elif len(args) == 3:
-    start, stop, step = args[0], args[1], args[2]
-  else:
-    return None
-
-  def bound(expr: ast.expr) -> int | str | None:
-    lit = _const_int_expr(expr)
-    if lit is not None:
-      return lit
-    if isinstance(expr, ast.Name):
-      if expr.id in ctx and isinstance(ctx[expr.id], int):
-        return ctx[expr.id]
-      if expr.id in ctx and isinstance(ctx[expr.id], str):
-        return ctx[expr.id]
-      return expr.id
-    return None
-
-  return bound(start), bound(stop), bound(step)
+  return _teval.eval_to_cpp_slot(expr, ctx)
 
 
 def _builtin_template_ctx() -> dict[str, Any]:
@@ -503,174 +313,33 @@ _EXCEPTION_PYSTR_CTOR_SKIP = frozenset({
 })
 
 
-def _parse_for_iter_names(for_node: ast.For, ctx: dict[str, Any]) -> list[str] | None:
-  if not isinstance(for_node.iter, ast.Name):
-    return None
-  val = ctx.get(for_node.iter.id)
-  if not isinstance(val, (list, tuple)):
-    return None
-  if not all(isinstance(x, str) for x in val):
-    return None
-  return list(val)
+def _expand_for_block(
+  header: str,
+  body_lines: list[str],
+  ctx: dict[str, Any],
+  helpers: dict[str, Any],
+) -> str:
+  assert_safe_begin_header(header, where="for")
+  return _teval.expand_for_block(
+    header,
+    body_lines,
+    ctx,
+    helpers,
+    type_registry=_type_registry(),
+  )
 
 
-def _range_length(start: int, stop: int, step: int) -> int:
-  if step == 0:
-    raise ValueError("range step 不能为 0")
-  if step > 0:
-    n = max(0, (stop - start + step - 1) // step)
-  else:
-    n = max(0, (start - stop - step - 1) // (-step))
-  return n
-
-
-def _expand_for_block(header: str, body_lines: list[str], ctx: dict[str, Any]) -> str:
-  stmt = f"{header.strip()}: pass"
-  for_node = ast.parse(stmt).body[0]
-  if not isinstance(for_node, ast.For):
-    raise ValueError(f"PY2CPP_BEGIN 非 for: {header}")
-  loop_var = for_node.target
-  if not isinstance(loop_var, ast.Name):
-    raise ValueError("PY2CPP_BEGIN(for) 仅支持单变量")
-  var = loop_var.id
-  emit_stmts = [_cpp_line_to_emit_stmt(ln) for ln in body_lines if ln.strip()]
-
-  list_items = _parse_for_iter_names(for_node, ctx)
-  if list_items is not None:
-    lines_out: list[str] = []
-    loc: dict[str, Any] = dict(ctx)
-    loc["__py2cpp_code"] = lines_out
-    loc["__py2cpp_echo"] = lines_out.append
-    _bind_py2cpp_echo_val(loc, ctx, helpers={})
-    emit_src = "\n".join(emit_stmts)
-    for item in list_items:
-      loc[var] = item
-      exec(emit_src, loc)
-    return "\n".join(lines_out)
-
-  bounds = _parse_range_bounds(for_node.iter, ctx)
-
-  if bounds is None:
-    raise ValueError(f"PY2CPP_BEGIN(for) 仅支持 range(...) 或 ctx 中的名称列表: {header}")
-
-  start_b, stop_b, step_b = bounds
-  static = all(isinstance(b, int) for b in bounds)
-  if static:
-    start_i, stop_i, step_i = start_b, stop_b, step_b
-    lines_out: list[str] = []
-    loc: dict[str, Any] = dict(ctx)
-    loc["__py2cpp_code"] = lines_out
-    loc["__py2cpp_echo"] = lines_out.append
-    _bind_py2cpp_echo_val(loc, ctx, helpers={})
-    emit_src = "\n".join(emit_stmts)
-    for i in range(start_i, stop_i, step_i):
-      loc[var] = i
-      exec(emit_src, loc)
-    return "\n".join(lines_out)
-
-  if not isinstance(start_b, int) or not isinstance(step_b, int):
-    raise ValueError(f"range 回退要求 start/step 为编译期 int: {header}")
-  if not isinstance(stop_b, str):
-    raise ValueError(f"range 回退要求 stop 为 C++ 标识符: {header}")
-
-  indent = "  "
-  out: list[str] = []
-  out.append(f"int {var} = {start_b};")
-  out.append(f"while (({var} < {stop_b}))")
-  out.append("{")
-  for ln in body_lines:
-    if ln.strip():
-      out.append(indent + _transform_line_for_cpp_fallback(ln, ctx))
-  if step_b == 1:
-    out.append(f"{indent}{var} = ({var} + 1);")
-  else:
-    out.append(f"{indent}{var} = ({var} + {step_b});")
-  out.append("}")
-  return "\n".join(out)
-
-
-def _if_test_expr(header: str) -> ast.expr:
-  text = header.strip()
-  if text.startswith("if "):
-    text = text[3:]
-  elif text.startswith("elif "):
-    text = text[5:]
-  else:
-    raise ValueError(f"PY2CPP_BEGIN 非 if/elif: {header}")
-  if text.endswith(":"):
-    text = text[:-1]
-  return ast.parse(text, mode="eval").body
-
-
-def _static_bool(test: ast.expr, ctx: dict[str, Any]) -> bool | None:
-  if isinstance(test, ast.Compare) and len(test.ops) == 1 and len(test.comparators) == 1:
-    r = _const_compare_result(test.left, test.ops[0], test.comparators[0])
-    if r is not None:
-      return r
-  safe = {k: v for k, v in ctx.items() if isinstance(v, (int, bool))}
-  try:
-    return bool(eval(ast.unparse(test), {"__builtins__": {}}, safe))
-  except Exception:
-    return None
-
-
-def _expand_if_chain(chunks: list[tuple[str, list[str]]], ctx: dict[str, Any]) -> str:
-  tests: list[tuple[ast.expr | None, list[str]]] = []
-  for header, body in chunks:
-    h = header.strip()
-    if h == "else" or h == "else:":
-      tests.append((None, body))
-    else:
-      tests.append((_if_test_expr(header), body))
-
-  static_results: list[bool | None] = []
-  all_static = True
-  for test, _ in tests:
-    if test is None:
-      static_results.append(None)
-      continue
-    r = _static_bool(test, ctx)
-    if r is None:
-      all_static = False
-      static_results.append(None)
-    else:
-      static_results.append(r)
-
-  if all_static:
-    picked: list[str] | None = None
-    for i, (test, body) in enumerate(tests):
-      if test is None:
-        picked = body
-        break
-      if static_results[i]:
-        picked = body
-        break
-    if picked is None:
-      return ""
-    lines_out: list[str] = []
-    loc: dict[str, Any] = dict(ctx)
-    loc["__py2cpp_code"] = lines_out
-    loc["__py2cpp_echo"] = lines_out.append
-    _bind_py2cpp_echo_val(loc, ctx, helpers={})
-    emit_src = "\n".join([_cpp_line_to_emit_stmt(ln) for ln in picked if ln.strip()])
-    exec(emit_src, loc)
-    return "\n".join(lines_out)
-
-  indent = "  "
-  out: list[str] = []
-  for i, (test, body) in enumerate(tests):
-    if test is None:
-      out.append("else")
-    elif i == 0:
-      out.append(f"if (({ast.unparse(test)}))")
-    else:
-      out.append(f"else if (({ast.unparse(test)}))")
-    out.append("{")
-    for ln in body:
-      if ln.strip():
-        out.append(indent + _transform_line_for_cpp_fallback(ln, ctx))
-    out.append("}")
-  return "\n".join(out)
+def _expand_if_chain(
+  chunks: list[tuple[str, list[str]]],
+  ctx: dict[str, Any],
+  helpers: dict[str, Any],
+) -> str:
+  return _teval.expand_if_chain(
+    chunks,
+    ctx,
+    helpers,
+    type_registry=_type_registry(),
+  )
 
 
 def _is_def_header(header: str) -> bool:
@@ -678,24 +347,8 @@ def _is_def_header(header: str) -> bool:
 
 
 def _run_exec(stmt: str, ctx: dict[str, Any], helpers: dict[str, Any]) -> str:
-  """构建期 ``exec`` / ``eval``；模板 ``def`` 调用返回 C++ 文本时内联到调用点。"""
-  ns: dict[str, Any] = dict(helpers)
-  ns.update(ctx)
-  text = stmt.strip()
-  try:
-    tree = ast.parse(text, mode="eval")
-    val = eval(compile(tree, "<py2cpp exec>", "eval"), {"__builtins__": {}}, ns)
-    if isinstance(val, str):
-      return val
-  except SyntaxError:
-    pass
-  exec(text, ns)
-  for key, val in ns.items():
-    if key.startswith("__"):
-      continue
-    helpers[key] = val
-    ctx[key] = val
-  return ""
+  """Native EXEC; in-template def calls inline returned C++ text."""
+  return _teval.run_exec(stmt, ctx, helpers)
 
 
 def _expand_template_fragment(
@@ -718,23 +371,16 @@ def _register_template_def(
   ctx: dict[str, Any],
   helpers: dict[str, Any],
 ) -> None:
-  stmt = f"{header.strip()}: pass"
-  tree = ast.parse(stmt).body[0]
-  if not isinstance(tree, ast.FunctionDef):
-    raise ValueError(f"PY2CPP_BEGIN(def) 非法: {header}")
-  name = tree.name
-  arg_names = [a.arg for a in tree.args.args]
+  def expand_fragment(fragment: str, local: dict[str, Any], hl: dict[str, Any]) -> str:
+    return _expand_template_fragment(fragment, base_dir, local, hl)
 
-  def invoke(*args: Any) -> str:
-    if len(args) != len(arg_names):
-      raise ValueError(f"{name} 参数个数不匹配: {len(arg_names)} != {len(args)}")
-    local: dict[str, Any] = dict(ctx)
-    for an, av in zip(arg_names, args):
-      local[an] = av
-    return _expand_template_fragment("\n".join(body_lines), base_dir, local, helpers)
-
-  helpers[name] = invoke
-  ctx[name] = invoke
+  _teval.register_template_def(
+    header,
+    body_lines,
+    expand_fragment,
+    ctx,
+    helpers,
+  )
 
 
 def _scan_def_blocks(lines: list[str]) -> list[_Block]:
@@ -874,14 +520,14 @@ def _expand_blocks_in_text(text: str, ctx: dict[str, Any], helpers: dict[str, An
   for kind, group in groups:
     if kind == "if_chain":
       chunks = [(b.header, b.body_lines) for b in group]
-      repl = _expand_if_chain(chunks, ctx)
+      repl = _expand_if_chain(chunks, ctx, helpers)
       replacements.append((group[0].start, group[-1].end, repl))
     else:
       b = group[0]
       if b.header.strip().startswith("for "):
-        repl = _expand_for_block(b.header, b.body_lines, ctx)
+        repl = _expand_for_block(b.header, b.body_lines, ctx, helpers)
       else:
-        repl = _expand_if_chain([(b.header, b.body_lines)], ctx)
+        repl = _expand_if_chain([(b.header, b.body_lines)], ctx, helpers)
       replacements.append((b.start, b.end, repl))
 
   for start, end, repl in sorted(replacements, key=lambda x: x[0], reverse=True):
@@ -1096,10 +742,7 @@ def _expand_template_text(
 
 
 def _expand_standalone_eval(text: str, ctx: dict[str, Any]) -> str:
-  def repl(m: re.Match[str]) -> str:
-    return _eval_cpp_slot(m.group(1).strip(), ctx)
-
-  return re.sub(r"PY2CPP_EVAL\s*\(\s*(.*?)\s*\)", repl, text)
+  return _expand_macro_calls(text, "EVAL", lambda expr: _eval_cpp_slot(expr, ctx))
 
 
 def expand_template(

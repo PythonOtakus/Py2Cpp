@@ -1,7 +1,7 @@
 """``expand_test_discovery``：入口 ``main`` 内测试类自动注入。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.passes.test_discovery import (
@@ -20,7 +20,7 @@ class _FakeTr:
 
 
 def _parse_main(code: str) -> ast.FunctionDef:
-  tree = ast.parse(code)
+  tree = ast._stdlib_parse(code)
   for node in tree.body:
     if isinstance(node, ast.FunctionDef) and node.name == "main":
       return node
@@ -85,7 +85,7 @@ class B(TestCaseMixin):
     self.assertEqual(adds, ["A", "B"])
 
   def test_parse_loop_pattern(self):
-    loop = ast.parse(
+    loop = ast._stdlib_parse(
       "for Cls in TestCaseMixin.iterSubclasses():\n"
       "  suite.addTest(Cls())\n"
     ).body[0]

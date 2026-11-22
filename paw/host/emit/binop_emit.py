@@ -1,6 +1,6 @@
 """一元/二元/比较表达式 emit（自 ``translator.py`` 拆出）。"""
 from __future__ import annotations
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 from ..analysis.type_pred import is_byte_type, is_char_type, is_int_type, is_refcount_type, is_str_type, is_long_type
 from ..analysis.type_pred import is_complex_type
@@ -11,12 +11,33 @@ from .literal_sequence_lookup_emit import try_emit_list_literal_contains, try_em
 if TYPE_CHECKING:
     from ..translator import Translator
 
+def _literal_source(node: ast.expr) -> str:
+  """取字符串字面量的源码原文（含引号/前缀）。
+
+  ``ast.Constant`` 只保留解码后的值，引号种类须从 ``node._paw_raw``
+  （前端填写）或回退到内容重建。本方言下 ``'a'`` 与 ``"a"`` 语义不同，
+  故原文是必要信息。
+  """
+  raw = getattr(node, '_paw_raw', None)
+  if isinstance(raw, str) and raw:
+    return raw
+  if isinstance(node, ast.Constant) and isinstance(node.value, str):
+    # 回退：无原文时按双引号处理（保守 = str），避免误判成 char
+    return '"' + node.value.replace('\\', '\\\\').replace('"', '\\"') + '"'
+  return ''
+
+
 def is_single_char_str_constant(node: ast.expr) -> bool:
-    return isinstance(node, ast.Constant) and isinstance(node.value, str) and (len(node.value) == 1)
+  """单引号单字符字面量（``'a'``）→ ``char``；``"a"`` 不算。"""
+  from ..analysis.char_literal import literal_is_char
+  return literal_is_char(_literal_source(node))
+
 
 def emit_single_char_pychar_literal(node: ast.Constant) -> str:
-    assert isinstance(node.value, str) and len(node.value) == 1
-    return f'PyChar({ord(node.value)})'
+  from ..analysis.char_literal import literal_char_codepoint
+  cp = literal_char_codepoint(_literal_source(node))
+  assert cp is not None, f'非单引号单字符字面量: {_literal_source(node)!r}'
+  return f'PyChar({cp})'
 
 def _coerce_pychar_to_pystr(tr: Translator, expr: str, ty: str) -> str:
     """``PyChar`` 实参传给 ``PyStr`` 形参时显式构造（``explicit PyStr``）。"""
@@ -119,30 +140,38 @@ def try_emit_char_scalar_compare(tr: Translator, left_expr: ast.expr, comp: ast.
     """``char``/``int`` 与单字符 ``str``/``ord``/ASCII ``int`` 比较。
 
   ``char == 'x'`` → ``PyChar`` 对 ``PyChar``；``int == 'x'`` / ``int == ord('x')`` → 整型码点。
+
+  类型不确定时**保守**按 ``PyStr`` 发：Python 语义里 ``"_"`` 是 ``str``，
+  而 ``list[str]`` 元素等容器取值若类型推断失败，误发 ``PyChar`` 会让
+  ``PyStr != PyChar`` 无法编译。
   """
     if op not in ('==', '!='):
         return None
     left_ty = tr._infer_expr_cpp_type(left_expr)
     comp_ty = tr._infer_expr_cpp_type(comp)
-    if is_char_type(left_ty) and is_single_char_str_constant(comp):
+    # 单字符字面量一侧：仅当另一侧**确定**是 char 时才发 PyChar
+    if is_single_char_str_constant(comp):
         assert isinstance(comp, ast.Constant)
-        return f'{tr.visit(left_expr)} {op} {emit_single_char_pychar_literal(comp)}'
-    if is_char_type(comp_ty) and is_single_char_str_constant(left_expr):
+        if is_char_type(left_ty):
+            return f'{tr.visit(left_expr)} {op} {emit_single_char_pychar_literal(comp)}'
+        if is_int_type(left_ty):
+            code = ord(comp.value)
+            return f'({tr.visit(left_expr)} {op} {format_cpp_int(code)})'
+        # 左值非 char/int（含推断失败）→ 保持 str 语义
+        return None
+    if is_single_char_str_constant(left_expr):
         assert isinstance(left_expr, ast.Constant)
-        return f'{emit_single_char_pychar_literal(left_expr)} {op} {tr.visit(comp)}'
+        if is_char_type(comp_ty):
+            return f'{emit_single_char_pychar_literal(left_expr)} {op} {tr.visit(comp)}'
+        if is_int_type(comp_ty):
+            code = ord(left_expr.value)
+            return f'({format_cpp_int(code)} {op} {tr.visit(comp)})'
+        return None
     ps = cpp_ident('str')
     if is_str_type(left_ty, classes=tr.classes) and is_char_type(comp_ty, classes=tr.classes):
         return f'{tr.visit(left_expr)} {op} {ps}({tr.visit(comp)})'
     if is_char_type(left_ty, classes=tr.classes) and is_str_type(comp_ty, classes=tr.classes):
         return f'{ps}({tr.visit(left_expr)}) {op} {tr.visit(comp)}'
-    if is_int_type(left_ty) and is_single_char_str_constant(comp):
-        assert isinstance(comp, ast.Constant)
-        code = ord(comp.value)
-        return f'({tr.visit(left_expr)} {op} {format_cpp_int(code)})'
-    if is_int_type(comp_ty) and is_single_char_str_constant(left_expr):
-        assert isinstance(left_expr, ast.Constant)
-        code = ord(left_expr.value)
-        return f'({format_cpp_int(code)} {op} {tr.visit(comp)})'
     code = _ascii_int_char_code(comp)
     if is_char_type(left_ty) and code is not None:
         return f'{tr.visit(left_expr)} {op} PyChar({code})'

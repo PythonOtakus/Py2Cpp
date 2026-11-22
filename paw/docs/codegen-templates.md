@@ -38,12 +38,24 @@ Py2Cpp 标准库中大量 `@native` 实现写在仓库根 `templates/**`（`+*.i
 ## 2. 目标
 
 1. **模板源**：仓库根 `templates/**`（相对路径与后缀与 `out/runtime/paw/**` 一致，见 [§8](#8-目录与路径镜像)）为 **合法 C++ 骨架** + `PY2CPP_*` 宏孔洞，供 clangd 粗解析。
-2. **展开语义**：`PY2CPP_BEGIN` / `END` / `EVAL` 块 **逻辑等价** 于将其降为下方 Python 并在 **codegen 时** 用 CPython 执行，收集发射的 C++ 行。
-3. **表达式/语句**：宏参数内允许 **任意合法 CPython 表达式或语句**（非自定义 mini-语言）。
+2. **展开语义**：`PY2CPP_BEGIN` / `END` / `EVAL` / `ECHO` / `EXEC` 由 **`template_eval` 原生求值**（无生产路径 `ast.parse` / `eval` / `exec`）；仅冻结子集，见 [§2.1](#21-冻结模板子集profile)。
+3. **表达式/语句**：宏参数 **不是** 任意 CPython；越界由 `template_profile` 诊断。
 4. **输出**：展开后的纯 C++ 经 `kr_to_allman` → 现有 `paste_cpp_to_inl_target` 流水线 → `out/*.inl`；**MSVC 只编译展开结果**，不含 `PY2CPP_*`。
 5. **边界与分支**：
    - `for` / `range`：编译期可求界 → 完全展开；运行时界 → 回退 C++ `while`。
-   - `if` / `elif` / `else`：编译期可求值条件 → `exec` 时死分支消除（不发射）；运行时条件 → 回退 C++ `if` / `else if` / `else`。
+   - `if` / `elif` / `else`：编译期可求值条件 → 死分支消除（不发射）；运行时条件 → 回退 C++ `if` / `else if` / `else`。
+
+### 2.1 冻结模板子集（profile）
+
+| 允许 | 说明 |
+|------|------|
+| `ECHO` / `EVAL` | 标识符、字面量、简单算术与比较；`ECHO` 短名可经 type registry 限定 |
+| `BEGIN(for …)` | `for name in range(...)` 或 `for name in ctx_list` |
+| `BEGIN(if/elif/else)` | 条件为上述安全表达式 |
+| `BEGIN(def fn_*(in_*…))` + `EXEC(fn_*(…))` | 仅模板内注册的 helper；`EXEC` 亦允许 `NAME = expr` 与 showcase 形 `if …: __py2cpp_echo(…)` |
+| 拒绝 | 属性访问、推导式、`import`/`lambda`、任意 `ast`/`eval`/`exec` |
+
+对照语料：`templates/~test/~syntax_showcase.inl`。实现：`host/codegen/template_profile.py`、`template_eval.py`。
 
 ---
 
@@ -61,7 +73,7 @@ PY2CPP_END
 
 ### 3.2 模板写法（`if` / `elif` / `else` 链）
 
-`PY2CPP_BEGIN` 参数除 `for …` 外，支持完整 CPython **`if` / `elif` / `else` 头语句**（带冒号语义，参数内可省略末尾 `:`，展开器规范化后 `ast.parse`）。
+`PY2CPP_BEGIN` 参数除 `for …` 外，支持冻结子集内的 **`if` / `elif` / `else` 头**（带冒号语义，参数内可省略末尾 `:`；由 `template_profile` / `template_eval` 解析，**不** `ast.parse`）。
 
 按类型分派多路 C++（编译期 `typ` 为字面量时只发射命中分支）：
 
@@ -108,15 +120,15 @@ for i in range(10):
 
 | 模板 | 展开侧 |
 |------|--------|
-| `PY2CPP_BEGIN( for … )` | 参数为完整 `for` 语句（`ast.parse` 为 `ast.For`），原样嵌入生成的 Python |
-| `PY2CPP_BEGIN( if … )` | 参数为 `if` 测试表达式或完整 `if cond:` 行（`ast.If`，`orelse` 为空） |
-| `PY2CPP_BEGIN( elif … )` | 须紧接 `if` / `elif` 链；参数为 `elif cond:`；与前一分支合并为同一 `if` 链 |
-| `PY2CPP_BEGIN( else )` | 须紧接 `if` / `elif` 链；参数为 `else` 或 `else:` |
-| `PY2CPP_BEGIN( def fn_Name(…) )` | 注册构建期 helper（不向 `out/` 发射 C++）；helper 名 ``fn_`` + PascalCase；**形参** ``in_`` + PascalCase（如 ``in_Items``）；体内可嵌套 `BEGIN(for|if)`、`Exec` |
+| `PY2CPP_BEGIN( for … )` | `for` + `range` / ctx 名称列表；`template_eval.expand_for_block` |
+| `PY2CPP_BEGIN( if … )` | 安全条件表达式；静态可判定则只发射命中分支 |
+| `PY2CPP_BEGIN( elif … )` | 须紧接 `if` / `elif` 链；与前一分支合并 |
+| `PY2CPP_BEGIN( else )` | 须紧接 `if` / `elif` 链 |
+| `PY2CPP_BEGIN( def fn_Name(…) )` | 注册构建期 helper（不向 `out/` 发射 C++）；helper 名 ``fn_`` + PascalCase；**形参** ``in_`` + PascalCase；体内可嵌套 `BEGIN(for|if)` |
 | `PY2CPP_END` | 结束当前 `for` / `if` / `def` 分支体；亦配对 ``PY2CPP_IGNORE`` / ``PY2CPP_INJECT_CLASS`` 块尾 |
-| `PY2CPP_EVAL(expr)` | C++ 行内 **CPython 表达式**；构建期可求值的常量 → 与译器 `ir` 一致的 **C++ 字面量**（如 `"abc"` → `PyStr("abc")`）；其余 → f-string `{expr}` 或 C++ 标识符 |
-| `PY2CPP_EXEC(stmt)` | **独立一行** CPython 语句或已注册 `def` 调用；构建期 `exec` / `eval` 内联 |
-| `PY2CPP_ECHO(expr)` | 构建期 **CPython 表达式** → 求值为 `str` / `list[str]` 后**原样粘贴**（整行、多块或行内片段；``expr`` 在 registry 的短名 → 限定 C++ 类型）；IGNORE 内 ``#define ctx_* …`` 供 clangd |
+| `PY2CPP_EVAL(expr)` | 冻结子集表达式；字面量 → 与译器 `ir` 一致的 **C++ 字面量**；ctx 字符串 → 原样 C++ 片段/标识符 |
+| `PY2CPP_EXEC(stmt)` | **独立一行**：赋值、已注册 `def` 调用、或 `if …: __py2cpp_echo(…)`；**无** CPython `exec` |
+| `PY2CPP_ECHO(expr)` | 冻结子集 → `str` / `list[str]` **原样粘贴**；registry 短名 → 限定 C++ 类型；IGNORE 内 ``#define ctx_*`` 供 clangd |
 | `PY2CPP_INCLUDE("path")` | 相对当前模板目录展开另一片段；`~` 文件仅内联、不落盘 |
 | `PY2CPP_TYPE(Name)` | 短名 → 限定 C++ 类型（``_type_registry``）；模板写 ``PY2CPP_TYPE(PyStr)``；clangd 经 ``#define PY2CPP_TYPE(Type) PY2CPP_TYPE_##Type`` 展开 |
 | `PY2CPP_IGNORE` | 与 ``PY2CPP_END`` 配对；块内 **仅 IDE/clangd**（``#include``、类壳、``using``、``#define ctx键``）；展开时整段剔除 |

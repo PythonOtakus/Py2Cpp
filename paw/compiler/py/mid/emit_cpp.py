@@ -197,6 +197,15 @@ def emit_mid_module(
   """
   mp = _module_path_of(mid, module_path)
   stem = Path(mp).name or "module"
+  # 形参可变性：整模块固定点传播（直接写 + 转发给会写的被调函数）
+  all_funcs: list[MidFunction] = [
+    it for it in mid.items if isinstance(it, MidFunction)
+  ]
+  for it in mid.items:
+    if isinstance(it, MidClass):
+      all_funcs.extend(it.methods)
+  _MUTABILITY.clear()
+  _MUTABILITY.update(_compute_param_mutability(all_funcs))
   package_dir = "/".join(mp.split("/")[:-1])
   segs = _ns_segments(mp, module_ns)
   inl_rel = f"{mp}.inl" if stdlib_layout and mp else (f"{stem}.inl" if stdlib_layout else None)
@@ -287,27 +296,188 @@ def _cpp_type(name: str | None) -> str:
   return "Py" + n[0].upper() + n[1:] if n else "void"
 
 
-# 就地突变的类形参（Python 对象引用）；其余非标量用 ``const&`` 以绑定临时量。
-_MUTABLE_REF_CPP = frozenset(
+# ``@dataclass`` 类字段的原地写（``st.xs.append`` / ``st.xs[i] = v``）→ 形参须 ``T&``。
+# 判据来自函数体，不再维护「可变类名」白名单（库新增状态类无需改编译器）。
+_MUTATING_METHODS = frozenset(
   {
-    "PySyntaxModule",
-    "PyEnumBundle",
-    "PyClassBundle",
-    "PyLexer",
-    "PySourceManager",
+    "append", "appendleft", "extend", "extendleft", "insert", "pop",
+    "popleft", "remove", "discard", "clear", "update", "add", "setdefault",
+    "popitem", "sort", "reverse", "resize", "reserve", "fill", "push",
+    "pushBack", "pushFront", "enqueue", "dequeue", "put", "set",
   }
 )
 
 
-def _param_sig(ty: str, name: str) -> str:
-  """对齐 Python 对象语义：标量按值；可变类 ``T&``；其它非标量 ``const T&``。"""
+def _expr_root_name(node: object) -> str:
+  """``st.xs[i]`` / ``st.name`` / ``st`` → 根标识符 ``st``；非此类返回空。"""
+  cur = node
+  while True:
+    if isinstance(cur, NameExpr):
+      return cur.name
+    if isinstance(cur, (SubscriptExpr, AttributeExpr)):
+      cur = cur.value
+      continue
+    return ""
+
+
+def _body_mutates_param(body: list[StmtSyntax], name: str) -> bool:
+  """函数体是否原地修改形参 ``name``（字段写 / 下标写 / 原地可变方法 / 增强赋值）。
+
+  供 ``_param_sig`` 判定 ``T&`` 与 ``const T&``：判据是**函数体的实际写法**，
+  不依赖「哪些类是可变状态」的类名白名单。
+  """
+  def walk(nodes: object) -> bool:
+    if isinstance(nodes, list):
+      return any(walk(n) for n in nodes)
+    if nodes is None or isinstance(nodes, (str, int, float, bool)):
+      return False
+    if isinstance(nodes, (AugAssignStmt, AssignStmt, AnnAssignStmt)):
+      tgt = getattr(nodes, "target", None)
+      if tgt is not None and _expr_root_name(tgt) == name:
+        return True
+    if isinstance(nodes, ExprStmt):
+      call = nodes.value
+      if isinstance(call, CallExpr) and isinstance(call.func, AttributeExpr):
+        if call.func.attr in _MUTATING_METHODS:
+          if _expr_root_name(call.func.value) == name:
+            return True
+    for fld in ("body", "orelse", "finalbody", "handlers", "cases"):
+      sub = getattr(nodes, fld, None)
+      if sub and walk(sub):
+        return True
+    return False
+
+  return walk(body)
+
+
+def _param_sig(ty: str, name: str, *, mutated: bool = False) -> str:
+  """对齐 Python 对象语义：标量按值；有写入的类 ``T&``；其余非标量 ``const T&``。
+
+  ``mutated`` 由 ``_body_mutates_param`` 从函数体推导，**不是**类名白名单。
+  """
   if ty in _SCALAR_CPP or (ty.startswith("Py") and ty.endswith("Enum")):
     return f"{ty} {name}"
-  if ty in _MUTABLE_REF_CPP:
-    return f"{ty}& {name}"
   if ty.startswith("Py") or "<" in ty:
-    return f"const {ty}& {name}"
+    return f"{ty}& {name}" if mutated else f"const {ty}& {name}"
   return f"{ty} {name}"
+
+
+_MUTABILITY: dict[int, frozenset[str]] = {}
+"""``id(MidFunction)`` → 可变形参名集合（由 ``emit_mid_module`` 每模块重算）。"""
+
+_CALLEE_KW_MUTATES: dict[str, set[str]] = {}
+"""函数名 → 会写的形参名集合（固定点迭代内按轮重建）。"""
+
+_CALLEE_PARAM_ORDER: dict[str, tuple[str, ...]] = {}
+"""函数名 → 形参名顺序（跳过 self），供位置实参映射到形参名。"""
+
+
+def _params_decl(
+  fn: MidFunction,
+  *,
+  with_defaults: bool = False,
+  mutated_names: frozenset[str] | None = None,
+) -> list[str]:
+  """按函数体推导每个形参的可变性，生成 ``.h``/``.cpp`` 一致的形参声明。
+
+  ``with_defaults=True`` 只用于 ``.h`` 声明（``.cpp`` 定义重复默认实参 → MSVC C2572）。
+  ``mutated_names`` 由 ``_compute_param_mutability`` 做跨函数传播后传入；缺省时退化为
+  单函数内推导。
+  """
+  out: list[str] = []
+  for p in fn.params:
+    if p.name == "self":
+      continue
+    ty = _cpp_type(type_syntax_to_source(p.type_syntax) if p.type_syntax else None)
+    if mutated_names is not None:
+      mutated = p.name in mutated_names
+    else:
+      mutated = _body_mutates_param(fn.body, p.name)
+    head = _param_sig(ty, p.name, mutated=mutated)
+    if with_defaults and p.default_source is not None:
+      head += _default_cpp(p.default_source, ty)
+    out.append(head)
+  return out
+
+
+def _body_forwards_param(
+  body: list[StmtSyntax],
+  name: str,
+  callee_mut_names: dict[str, set[str]],
+) -> bool:
+  """函数体是否把 ``name`` 传给某个「会写形参」的被调函数，且落在该函数的可变形参上。
+
+  ``callee_mut_names``：函数名 → 会写的**形参名**集合。按形参名匹配（与实参位置无关），
+  因此 ``_emitBody(..., st, ...)`` 能正确识别 ``st`` 被传给 ``_emitBody`` 的可变 ``st``。
+  位置与关键字实参都覆盖。
+  """
+  def walk(nodes: object, depth: int = 0) -> bool:
+    if depth > 40:
+      return False
+    if isinstance(nodes, list) or isinstance(nodes, tuple):
+      return any(walk(n, depth + 1) for n in nodes)
+    if nodes is None or isinstance(nodes, (str, int, float, bool)):
+      return False
+    if isinstance(nodes, CallExpr) and isinstance(nodes.func, NameExpr):
+      mut_names = callee_mut_names.get(nodes.func.name)
+      if mut_names:
+        order = _CALLEE_PARAM_ORDER.get(nodes.func.name, ())
+        for i, a in enumerate(nodes.args):
+          if i < len(order) and order[i] in mut_names:
+            if isinstance(a, NameExpr) and a.name == name:
+              return True
+        for kw, a in dict(nodes.keywords or []).items():
+          if kw in mut_names and isinstance(a, NameExpr) and a.name == name:
+            return True
+    # 遍历节点自身所有容器/对象字段（语句嵌套、表达式树都覆盖）
+    for fld in getattr(nodes, "__dataclass_fields__", {}) or {}:
+      if fld == "span":
+        continue
+      if walk(getattr(nodes, fld, None), depth + 1):
+        return True
+    return False
+
+  return walk(body)
+
+
+def _compute_param_mutability(all_funcs: list[MidFunction]) -> dict[int, frozenset[str]]:
+  """跨函数传播形参可变性（固定点迭代）。
+
+  直接写（``_body_mutates_param``）或**转发给会写的被调函数**（``_body_forwards_param``）
+  都算可变。返回 ``id(fn)`` → 可变形参名集合。
+  """
+  free_funcs = {f.name: f for f in all_funcs}
+  direct: dict[int, set[str]] = {}
+  for f in all_funcs:
+    names = {p.name for p in f.params if p.name != "self"}
+    direct[id(f)] = {n for n in names if _body_mutates_param(f.body, n)}
+
+  while True:
+    # 每轮重建「函数名 → 可变形参名 / 形参顺序」表
+    callee_names: dict[str, set[str]] = {}
+    order: dict[str, tuple[str, ...]] = {}
+    for f in all_funcs:
+      names_seq = tuple(p.name for p in f.params if p.name != "self")
+      order[f.name] = names_seq
+      hit = {n for n in names_seq if n in direct[id(f)]}
+      if hit:
+        callee_names[f.name] = hit
+    _CALLEE_KW_MUTATES.clear()
+    _CALLEE_KW_MUTATES.update(callee_names)
+    _CALLEE_PARAM_ORDER.clear()
+    _CALLEE_PARAM_ORDER.update(order)
+    changed = False
+    for f in all_funcs:
+      names = [p.name for p in f.params if p.name != "self"]
+      for n in names:
+        if n in direct[id(f)]:
+          continue
+        if _body_forwards_param(f.body, n, callee_names):
+          direct[id(f)].add(n)
+          changed = True
+    if not changed:
+      break
+  return {k: frozenset(v) for k, v in direct.items()}
 
 
 def _relative_import_include(
@@ -521,13 +691,9 @@ def _default_cpp(default_source: str | None, ty: str) -> str:
 
 def _fn_decl(fn: MidFunction, *, method: bool = False) -> str:
   ret = _cpp_type(fn.return_source)
-  params = []
-  for p in fn.params:
-    if p.name == "self":
-      continue
-    ty = _cpp_type(type_syntax_to_source(p.type_syntax) if p.type_syntax else None)
-    head = _param_sig(ty, p.name) + _default_cpp(p.default_source, ty)
-    params.append(head)
+  params = _params_decl(
+    fn, with_defaults=True, mutated_names=_MUTABILITY.get(id(fn))
+  )
   ps = ", ".join(params)
   return f"{ret} {fn.name}({ps})"
 
@@ -558,12 +724,7 @@ def _class_decl(cls: MidClass) -> list[str]:
   if has_init:
     init = next(m for m in cls.methods if m.name == "__init__")
     # 构造函数声明（跳过 self）
-    iparams = []
-    for p in init.params:
-      if p.name == "self":
-        continue
-      ty = _cpp_type(type_syntax_to_source(p.type_syntax) if p.type_syntax else None)
-      iparams.append(_param_sig(ty, p.name))
+    iparams = _params_decl(init, mutated_names=_MUTABILITY.get(id(init)))
     lines.append(f"    explicit Py{cls.name}({', '.join(iparams)});")
   else:
     lines.append(f"    explicit Py{cls.name}() = default;")
@@ -642,12 +803,7 @@ def _emit_stdlib_library_cpp(module_path: str) -> str:
 
 def _fn_def(fn: MidFunction, *, indent: str) -> list[str]:
   ret = _cpp_type(fn.return_source)
-  params = []
-  for p in fn.params:
-    if p.name == "self":
-      continue
-    ty = _cpp_type(type_syntax_to_source(p.type_syntax) if p.type_syntax else None)
-    params.append(_param_sig(ty, p.name))
+  params = _params_decl(fn, mutated_names=_MUTABILITY.get(id(fn)))
   sig = f"{indent}{ret} {fn.name}({', '.join(params)})"
   lines = [sig, indent + "{"]
   declared = {p.name for p in fn.params if p.name != "self"}
@@ -659,12 +815,7 @@ def _fn_def(fn: MidFunction, *, indent: str) -> list[str]:
 
 
 def _method_def(cls: str, fn: MidFunction, *, indent: str) -> list[str]:
-  params = []
-  for p in fn.params:
-    if p.name == "self":
-      continue
-    ty = _cpp_type(type_syntax_to_source(p.type_syntax) if p.type_syntax else None)
-    params.append(_param_sig(ty, p.name))
+  params = _params_decl(fn, mutated_names=_MUTABILITY.get(id(fn)))
   ps = ", ".join(params)
   if fn.name == "__init__":
     # 构造函数：``PyCls::PyCls(...)``
@@ -707,8 +858,7 @@ _SLICE_STOP_UNSET = -2000000002
 def _str_literal_value(text: str) -> str | None:
   """``\"a\"`` / ``'\\n'`` → 解码后的 Python str；失败返回 None。"""
   try:
-    import ast as _ast
-
+    import host.tree_nodes as _ast
     v = _ast.literal_eval(text)
     return v if isinstance(v, str) else None
   except Exception:
@@ -898,6 +1048,10 @@ def _emit_stmt_body(
         return _emit_list_assign(lt, v.elts, indent, in_method=in_method)
       return [indent + f"{lt} = {_emit_expr(v, in_method=in_method)};"]
     case ExprStmt(value=v):
+      # 裸字符串字面量语句 = docstring（无副作用），跳过；否则多行 """…""" 会变成
+      # 含真实换行的 C++ 字符串常量（MSVC C2001）。
+      if isinstance(v, LiteralExpr) and v.kind == "str":
+        return []
       return [indent + f"(void)({_emit_expr(v, in_method=in_method)});"]
     case IfStmt(test=test, body=body, orelse=orelse):
       lines = [indent + f"if ({_emit_expr(test, in_method=in_method)}) {{"]

@@ -1,6 +1,6 @@
 """下标 / 切片 / ``.view`` emit（自 ``translator.py`` 拆出）。"""
 from __future__ import annotations
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 from ..passes.descriptors import property_getter_method_for, storage_field_for
 from ..analysis.type_emit import field_storage_cpp, scope_binding_storage_cpp, scope_storage_cpp

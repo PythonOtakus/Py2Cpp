@@ -1,7 +1,7 @@
 """RefactorPlan 解析、校验与 AST 改写（P0：单模块 ``rename_symbol``；P1：``update_select_path`` / select 联动）。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import difflib
 import json
 import re
@@ -278,7 +278,7 @@ def _apply_update_select_path(repo_root: Path, op: dict[str, Any]) -> FileChange
       f"update_select_path 未产生变更: {path} ({op['from']!r})",
     )
   try:
-    ast.parse(new_text)
+    ast._stdlib_parse(new_text)
   except SyntaxError as exc:
     raise PlanError(f"改写后语法错误 {path}: {exc}") from exc
   return FileChange(path=path, old_text=old_text, new_text=new_text)
@@ -386,7 +386,7 @@ class _RenameFunctionTransformer(ast.NodeTransformer):
 
 
 def _rename_symbol_in_source(source: str, op: dict[str, Any]) -> str:
-  tree = ast.parse(source)
+  tree = ast._stdlib_parse(source)
   kind = op["kind"]
   old = op["from"]
   new = op["to"]
@@ -412,7 +412,7 @@ def _apply_rename_op(repo_root: Path, op: dict[str, Any]) -> FileChange:
   if new_text == old_text:
     raise PlanError(f"rename 未产生变更: {path}")
   try:
-    ast.parse(new_text)
+    ast._stdlib_parse(new_text)
   except SyntaxError as exc:
     raise PlanError(f"改写后语法错误 {path}: {exc}") from exc
   return FileChange(path=path, old_text=old_text, new_text=new_text)

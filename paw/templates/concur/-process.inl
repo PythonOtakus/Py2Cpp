@@ -24,7 +24,7 @@ PY2CPP_IGNORE
 #include "paw/text/str.h"
 PY2CPP_END
 
-namespace paw_concur_process_detail
+namespace py2cpp_concur_process_detail
 {
   typedef PyCallable<void> ProcessTarget;
 

@@ -1,7 +1,7 @@
 """``def f[*Ts](*args: Ts)`` 译器：签名、递归 peel、调用展开、非法注解。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import re
 import tempfile
 import unittest
@@ -201,7 +201,7 @@ def main():
     from host.analysis.analyzer import TypeParser
 
     parser = TypeParser()
-    ann = ast.parse("tuple[*Ts]", mode="eval").body
+    ann = ast._stdlib_parse("tuple[*Ts]", mode="eval").body
     cpp = parser.parse_type(ann, {"Ts"}, typevar_tuple_names=frozenset({"Ts"}))
     self.assertEqual(cpp, "PyTuple<Ts...>")
 

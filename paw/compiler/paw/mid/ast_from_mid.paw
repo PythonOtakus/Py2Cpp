@@ -1,2 +1,0 @@
-"""Stub parity with ``compiler/py/mid/ast_from_mid.py`` — not yet ported to Paw."""
-from paw import *

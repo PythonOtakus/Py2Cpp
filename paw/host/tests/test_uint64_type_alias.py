@@ -1,5 +1,5 @@
 """``uint`` / ``uint64`` / ``uintptr`` 注解须映射 ``PyUInt`` / ``PyUInt64`` / ``PyUIntPtr``，勿被 ``type … = int`` 别名展开为 ``PyInt``。"""
-import ast
+import host.tree_nodes as ast
 import tempfile
 import unittest
 from pathlib import Path

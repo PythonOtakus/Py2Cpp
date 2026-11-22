@@ -106,7 +106,7 @@
 | 声明 | `enum`、`class`/`record`（含字段+方法）、`const`、`import`/`from`、`def`（含前缀）、装饰器类入口 | 完整 `union`/`protocol`/`mixin`/`variant`/`type enum` 语义展开、完整 property 块语法树 |
 | 函数体发射 | assign / if-else / while / for-range / return / raise / match 子集 / call / 切片 / `new` kwargs / plus 等（D4–D7；真实 soft-skip≈0） | 与宿主 Mid 字节不等价；复杂 HIR 全量语句仍靠 C0 |
 | 模块 | source/tokens/diagnostic/lexer/parser/check/emit_cpp/bind/nodes… | `param_parse` / `stmt_parse` / `type_parse` / `surface_rewrite` / `legacy_to_paw` / `ast_from_mid` / `structure` / `apply_mid_decls` 现为 **stub**（仅 docstring） |
-| 自举 | D0–D7；**c2_thin ≡ c3_thin** | 生产仍宿主 Mid；模板仍 CPython |
+| 自举 | D0–D7；**c2≡c3 native**；`paw_self_host_accept`；原生 `paw_native_build_all` **107/155**（2026-11-05） | 编译器自举绿；stdlib 宿主 emit 仍 `tree_nodes` 桥；正向测例冲 155 |
 
 门闩：`tools/paw_stage1_c1_link.bat`、`compare-host-thin`、`paw_c2_c3_thin_reseed.bat`。
 

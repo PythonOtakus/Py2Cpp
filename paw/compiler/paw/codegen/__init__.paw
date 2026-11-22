@@ -1,0 +1,5 @@
+"""Package init — parity with future ``compiler/py/codegen`` (模板子集自举轨).
+
+Sibling modules: ``template_profile`` / ``template_eval`` / ``template_expand``.
+"""
+from paw import *

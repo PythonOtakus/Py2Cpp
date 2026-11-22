@@ -1,7 +1,7 @@
 """``delegate`` 声明解析（C# 风格多播委托；物化后仍见 ``@delegate`` AST）。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from dataclasses import dataclass
 
 from .ir import FuncTypeParams, has_named_decorator

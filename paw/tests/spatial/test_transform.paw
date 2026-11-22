@@ -21,15 +21,15 @@ class Transform2DHierarchyTests(TestCaseMixin):
     _testTag = 1
 
     override def test(self):
-        root: Transform2D = _t2('root')
-        child: Transform2D = _t2('cam')
+        root: Transform2D = _t2("root")
+        child: Transform2D = _t2("cam")
         child.parent = root
-        self.assertEqual(child.parent.name, 'root')
+        self.assertEqual(child.parent.name, "root")
         self.assertEqual(root.childCount, 1)
-        self.assertEqual(root.root.name, 'root')
-        self.assertEqual(child.root.name, 'root')
-        found: Transform2D = root.find('cam')
-        self.assertEqual(found.name, 'cam')
+        self.assertEqual(root.root.name, "root")
+        self.assertEqual(child.root.name, "root")
+        found: Transform2D = root.find("cam")
+        self.assertEqual(found.name, "cam")
         child.parent = None
         self.assertTrue(child.parent is None)
         self.assertEqual(root.childCount, 0)
@@ -38,9 +38,9 @@ class Transform2DWorldTests(TestCaseMixin):
     _testTag = 2
 
     override def test(self):
-        root: Transform2D = _t2('root')
+        root: Transform2D = _t2("root")
         root.localPosition = Vector2(10.0, 0.0)
-        child: Transform2D = _t2('child')
+        child: Transform2D = _t2("child")
         child.parent = root
         child.localPosition = Vector2(2.0, 3.0)
         world: Vector2 = child.position
@@ -76,9 +76,9 @@ class Transform3DWorldTests(TestCaseMixin):
     _testTag = 10
 
     override def test(self):
-        root: Transform3D = _t3('root')
+        root: Transform3D = _t3("root")
         root.localPosition = Vector3(1.0, 0.0, 0.0)
-        child: Transform3D = _t3('child')
+        child: Transform3D = _t3("child")
         child.parent = root
         child.localPosition = Vector3(0.0, 2.0, 0.0)
         world: Vector3 = child.position
@@ -109,8 +109,8 @@ class Transform3DQuaternionTests(TestCaseMixin):
 
 def main() -> int:
     suite: TestSuite = new()
-    for Class in TestCaseMixin.iterSubclasses(sortConst='_testTag'):
+    for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
         suite.addTest(Class())
     return TextTestRunner().run(suite)
-if __name__ == '__main__':
+if __name__ == "__main__":
     raise SystemExit(main())

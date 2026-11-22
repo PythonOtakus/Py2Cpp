@@ -20,8 +20,8 @@ class BuildStructRootTests(TestCaseMixin):
 
   override def test(self):
     org: Org = Org.build(
-      'teams[:1] > name="alpha", minScore=5, '
-      'members[:2] > score=10,name="amy"'
+      "teams[:1] > name=\"alpha\", minScore=5, "
+      "members[:2] > score=10,name=\"amy\""
     )
     self.assertEqual(len(org.teams), 1)
     t: Team = org.teams[0]
@@ -80,7 +80,7 @@ class BuildMatchesHandWrittenTests(TestCaseMixin):
 
   override def test(self):
     viaBuild: Org = Org.build(
-      'teams[:1] > name="alpha", minScore=5, members[:2] > score=10,name="amy"'
+      "teams[:1] > name=\"alpha\", minScore=5, members[:2] > score=10,name=\"amy\""
     )
     m1: Member = new(score=10, name="amy")
     m2: Member = new(score=10, name="amy")

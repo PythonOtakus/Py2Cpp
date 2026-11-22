@@ -1,7 +1,7 @@
 """从标准库 Python 源 AST 扫描 ``@native_name``。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from functools import lru_cache
 from pathlib import Path
 

@@ -3,7 +3,7 @@
 常量下标 / 小表查表直接展开；否则 IIFE 内临时 ``PyList`` / ``PyStr``。见 reference §8.3.2。
 """
 from __future__ import annotations
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 from ..analysis.type_pred import is_char_type
 from ..analysis.ir import cpp_ident, cpp_template_type, str_cpp_from_literal

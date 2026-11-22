@@ -1,10 +1,10 @@
 """``@serializable``：为 ``@dataclass`` / ``@union`` 生成 ``serialize`` / ``deserialize``。"""
 from __future__ import annotations
 
-import ast
-import copy
-import textwrap
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
+
+from compiler.py.mid.nodes import MidFunction
 
 from ..analysis.ir import ClassInfo, UnionVariantInfo, has_named_decorator
 from ..analysis.module_namespace import (
@@ -12,12 +12,12 @@ from ..analysis.module_namespace import (
   qualify_symbol_in_module,
 )
 from .dataclass_expand import DataclassFieldSpec, _collect_dataclass_fields
+from .mid_method_parse import parse_mid_method, register_mid_method_on_classinfo
 
 if TYPE_CHECKING:
   from ..translator import Translator
 
 SERIALIZABLE_DECORATOR = "serializable"
-_STATICMETHOD_DEC = ast.Name(id="staticmethod", ctx=ast.Load())
 
 
 def _is_serializable_decorator(dec: ast.expr) -> bool:
@@ -73,23 +73,14 @@ def _strip_serializable_decorators(node: ast.ClassDef) -> None:
   ]
 
 
-def _parse_method(src: str) -> ast.FunctionDef:
-  dedented = textwrap.dedent(src)
-  mod = ast.parse(dedented)
-  if len(mod.body) != 1 or not isinstance(mod.body[0], ast.FunctionDef):
-    raise SyntaxError(
-      f"@serializable generated invalid method AST ({len(mod.body)} top-level nodes):\n"
-      f"{dedented}"
-    )
-  fn = mod.body[0]
-  ast.fix_missing_locations(fn)
-  return fn
+def _parse_method(src: str) -> MidFunction:
+  """生成方法源（Paw 表面）→ ``MidFunction``。"""
+  return parse_mid_method(src, path="<serializable>.paw")
 
 
-def _register_method(info: ClassInfo, method: ast.FunctionDef) -> None:
-  info.methods[method.name] = method
-  info.node.body.append(method)
-  info._collect_fields(method)
+def _register_method(tr: Translator, info: ClassInfo, method: MidFunction) -> None:
+  """回写 ``module_mids``；ClassInfo 暂仍桥接 AST。"""
+  register_mid_method_on_classinfo(tr, info, method)
 
 
 def _ann_name(ann: ast.expr) -> str | None:
@@ -1234,7 +1225,7 @@ def serialize(self, encoder: JsonEncoder) -> None:
   encoder.endObject()
 """
   ser_fn = _parse_method(serialize_src)
-  _register_method(info, ser_fn)
+  _register_method(tr, info, ser_fn)
 
   init_lines: list[str] = []
   parse_branches: list[str] = []
@@ -1271,8 +1262,7 @@ def serialize(self, encoder: JsonEncoder) -> None:
       ],
     )
     deserialize_src = f"""
-@staticmethod
-def deserialize(decoder: JsonDecoder) -> {class_name}:
+static def deserialize(decoder: JsonDecoder) -> {class_name}:
 {chr(10).join(init_lines)}
 {chr(10).join(ordered_lines)}
 {chr(10).join(generic_loop)}
@@ -1280,8 +1270,7 @@ def deserialize(decoder: JsonDecoder) -> {class_name}:
 """
   else:
     deserialize_src = f"""
-@staticmethod
-def deserialize(decoder: JsonDecoder) -> {class_name}:
+static def deserialize(decoder: JsonDecoder) -> {class_name}:
 {chr(10).join(init_lines)}
   decoder.beginRootObject()
   while True:
@@ -1293,8 +1282,7 @@ def deserialize(decoder: JsonDecoder) -> {class_name}:
 {chr(10).join(ret_lines)}
 """
   des_fn = _parse_method(deserialize_src)
-  des_fn.decorator_list = [copy.deepcopy(_STATICMETHOD_DEC)]
-  _register_method(info, des_fn)
+  _register_method(tr, info, des_fn)
 
 
 def _union_case_serialize(
@@ -1383,7 +1371,7 @@ def serialize(self, encoder: JsonEncoder) -> None:
 {cases_ser}
 """
   ser_fn = _parse_method(serialize_src)
-  _register_method(info, ser_fn)
+  _register_method(tr, info, ser_fn)
 
   fallback_variant_info = info.union_variants[0]
   for variant in info.union_variants:
@@ -1408,8 +1396,7 @@ def serialize(self, encoder: JsonEncoder) -> None:
 
   unreachable = _union_unreachable_return(class_name, fallback_variant_info, tr)
   deserialize_src = f"""
-@staticmethod
-def deserialize(decoder: JsonDecoder) -> {class_name}:
+static def deserialize(decoder: JsonDecoder) -> {class_name}:
   decoder.beginRootObject()
   tag: str = decoder.loadTagField()
   decoder.beginPayloadObject()
@@ -1418,8 +1405,7 @@ def deserialize(decoder: JsonDecoder) -> {class_name}:
 {unreachable}
 """
   des_fn = _parse_method(deserialize_src)
-  des_fn.decorator_list = [copy.deepcopy(_STATICMETHOD_DEC)]
-  _register_method(info, des_fn)
+  _register_method(tr, info, des_fn)
 
 
 def expand_serializable(tr: Translator) -> None:

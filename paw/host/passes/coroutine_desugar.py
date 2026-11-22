@@ -1,7 +1,7 @@
 """``async def`` / ``await`` / ``async with``：脱糖为 ``yield from .__await__()``（对齐 Python 3.13）。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import copy
 from typing import TYPE_CHECKING
 

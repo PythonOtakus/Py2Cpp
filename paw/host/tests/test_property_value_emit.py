@@ -1,7 +1,7 @@
 """``@property`` getter/setter 内 ``self.__value__`` → 存储字段 ``{name}__value``。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import tempfile
 import unittest
 from pathlib import Path
@@ -13,7 +13,7 @@ from host.translator import Translator
 
 class PropertyStorageFieldTests(unittest.TestCase):
   def test_field_property_uses_value_suffix(self):
-    info = ClassInfo(ast.parse("class Holder: pass").body[0])
+    info = ClassInfo(ast._stdlib_parse("class Holder: pass").body[0])
     info.fields.append("value")
     info.field_properties.add("value")
     self.assertEqual(property_storage_field(info, "value"), "value__value")
@@ -23,7 +23,7 @@ class PropertyStorageFieldTests(unittest.TestCase):
 class Window:
   pass
 """
-    info = ClassInfo(ast.parse(src).body[0])
+    info = ClassInfo(ast._stdlib_parse(src).body[0])
     self.assertEqual(property_storage_field(info, "title"), "title__value")
 
 
@@ -39,7 +39,7 @@ class Window:
   def title(self, value: str) -> None:
     self.__value__ = value
 """
-    tree = ast.parse(src)
+    tree = ast._stdlib_parse(src)
     cls = tree.body[0]
     assert isinstance(cls, ast.ClassDef)
     with self.assertRaises(ValueError) as ctx:
@@ -105,7 +105,7 @@ class Window:
   def title(self) -> str:
     return self.__value__
 """
-    tree = ast.parse(src)
+    tree = ast._stdlib_parse(src)
     cls = tree.body[0]
     assert isinstance(cls, ast.ClassDef)
     info = ClassInfo(cls)

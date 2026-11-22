@@ -1,7 +1,7 @@
 """``def f[*Args](*args: Args)`` 调用与 ``for x in args`` 递归展开（MSVC：命名空间级 struct）。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
@@ -235,9 +235,9 @@ def _loop_helper_base(tr: "Translator") -> str:
 
   fn = tr.current_method
   if fn is None:
-    return py2cpp_emit_symbol("vt_loop")
+    return paw_emit_symbol("vt_loop")
   safe = "".join(c if c.isalnum() else "_" for c in fn.name)
-  return py2cpp_emit_symbol("vt_loop", safe)
+  return paw_emit_symbol("vt_loop", safe)
 
 
 def _loop_struct_name(tr: "Translator", node: ast.For) -> str:

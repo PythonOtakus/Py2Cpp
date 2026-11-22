@@ -1,7 +1,7 @@
 """C++ 模板类型前缀 ``PyList<`` 等：由 ``@native_name`` / 默认 ``Py`` 前缀 + overrides 推导。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from functools import lru_cache
 from pathlib import Path
 

@@ -86,7 +86,9 @@ class Trie(ContainerMixin):
       self._pass[u] += 1
       c: char = word[i]
       if c not in self._next[u]:
-        self._next[u][c] = self._newNode()
+        # 先建节点再下标写：否则 _newNode 扩容会使旧引用失效
+        newNode: int = self._newNode()
+        self._next[u][c] = newNode
       u = self._next[u][c]
     self._pass[u] += 1
     self._end[u] += 1

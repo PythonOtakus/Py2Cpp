@@ -1,7 +1,7 @@
 """翻译完成后写入 ``out/.cache/nav/`` 符号索引（Python ↔ C++ 双向跳转）。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import json
 import re
 from datetime import datetime, timezone

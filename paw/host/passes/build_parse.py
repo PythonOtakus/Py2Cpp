@@ -1,7 +1,6 @@
 """Build DSL 字符串 → ``BuildPlan`` IR（``Type.build("…")`` / ``list[T].build("…")`` 译期专用）。"""
 from __future__ import annotations
 
-import ast
 from dataclasses import dataclass
 
 BUILD_INDEX_PREFIX = "_bidx_"
@@ -20,7 +19,7 @@ class LiteralValue:
 @dataclass(frozen=True)
 class ExprValue:
   src: str
-  expr: ast.expr
+  expr: object  # ast.expr（由 parse_expression_as_ast 物化，供 emit visit）
   index_refs: frozenset[str]
 
 
@@ -212,10 +211,12 @@ def _parse_brace_expr(path: str, i: int) -> tuple[ExprValue, int]:
         expr_src = path[start:j]
         desugared, index_refs = _desugar_expr_index_refs(expr_src)
         try:
-          tree = ast.parse(desugared, mode="eval")
+          from ..frontend.api import parse_expression_as_ast
+
+          body = parse_expression_as_ast(desugared)
         except SyntaxError as e:
           raise BuildParseError(f"表达式语法错误: {e}") from e
-        return ExprValue(expr_src, tree.body, index_refs), j + 1
+        return ExprValue(expr_src, body, index_refs), j + 1
     j += 1
   raise BuildParseError("表达式缺少 '}'")
 

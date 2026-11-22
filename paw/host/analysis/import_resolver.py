@@ -7,7 +7,7 @@
 """
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -514,16 +514,12 @@ def discover_translation_modules(
       dialect=dialect_from_path(src_path) if src_path else None,
     )
     tree = parsed.tree
-    # seed ``NO_MATERIALIZE`` 空树：从 MidIR 直构补 import，否则相对依赖发现断裂
-    if (
-      not tree.body
-      and parsed.mid is not None
-      and getattr(parsed, "mid_emit_ok", False)
-    ):
-      from compiler.py.mid.ast_from_mid import ast_module_from_mid
+    # 空 tree：仅从 MidImport 抽 import，不整模块 materialize
+    if not tree.body and parsed.mid is not None:
+      from compiler.py.mid.tree_from_mid import import_stmts_from_mid
 
-      tree = ast_module_from_mid(
-        parsed.mid, filename=src_path or f"<{mp}>"
+      tree = ast.Module(
+        body=import_stmts_from_mid(parsed.mid), type_ignores=[],
       )
     for req in iter_module_import_requests(tree):
       for target in discover_import_targets(

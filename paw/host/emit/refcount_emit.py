@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from contextlib import nullcontext
 from typing import TYPE_CHECKING
 

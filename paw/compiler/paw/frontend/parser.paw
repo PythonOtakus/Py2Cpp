@@ -16,7 +16,11 @@ from .syntax_nodes import (
   ItemKindEnum,
   ModuleItem,
   SyntaxModule,
+  TypeNode,
 )
+from .type_parse import ParseTypeResult, parseType, typeNodeToSource
+from .param_parse import ParseParamsResult, parseParams, paramsToSource
+from .stmt_parse import ParseSuiteResult, parseSuite
 
 @copyable
 class DeclTail:
@@ -31,8 +35,9 @@ class ParseAdvance:
   endI: int = 0
 
 def parseSource(text: str, fileId: FileId) -> SyntaxModule:
+  # Lexer 会把 ``\r\n``/BOM 归一到 ``_text``；切片必须用同一份，否则 Win 源码 span 错位。
   lx: Lexer = new(text, fileId)
-  return parseTokens(lx.tokenize(), text)
+  return parseTokens(lx.tokenize(), lx._text)
 
 def parseTokens(tokens: list[Token], source: str) -> SyntaxModule:
   mod: SyntaxModule = new()
@@ -50,6 +55,8 @@ def parseTokens(tokens: list[Token], source: str) -> SyntaxModule:
     match tokens[i].kind:
       case TokenKindEnum.At:
         adv = _tryDecoratedClass(mod, tokens, source, i, startSpan)
+        if not adv.ok:
+          adv = _tryDecoratedFunction(mod, tokens, source, i, startSpan)
       case TokenKindEnum.Name | TokenKindEnum.KwEnum | TokenKindEnum.KwUnion:
         adv = _tryNamedDecl(mod, tokens, source, i, startSpan)
       case _:
@@ -112,8 +119,24 @@ def _tryNamedDecl(
         spanT.fileId = startSpan.fileId
         spanT.start = startSpan.start
         spanT.end = blockEnd
-        _appendEnum(mod, tail.name, True, False, membersT, spanT)
+        _appendEnum(mod, tail.name, True, False, membersT, spanT, tail.basesSource)
         return new(ok=True, endI=endI)
+      # ``type union Name(base=T):`` → ClassBundle(isUnion) + basesSource
+      if i + 1 < n and tokens[i + 1].kind == TokenKindEnum.KwUnion:
+        tailU: DeclTail = _parseDeclTail(tokens, source, i + 2)
+        endIU: int = _skipBlock(tokens, tailU.bodyStart)
+        blockEndU: int = _blockEnd(tokens, endIU, tailU.endSpan.end)
+        bodySrcU: str = ""
+        if endIU > tailU.bodyStart:
+          bodySrcU = source[tokens[tailU.bodyStart].span.start : tokens[endIU - 1].span.end]
+        spanU: SourceSpan = new()
+        spanU.fileId = startSpan.fileId
+        spanU.start = startSpan.start
+        spanU.end = blockEndU
+        # 单行调用；勿 ``[]``/多行（薄 emit soft-skip）
+        prefixesU: list[str] = []
+        _appendClass(mod, tailU.name, "union", prefixesU, tailU.basesSource, bodySrcU, "", spanU, tailU.bodyStart, endIU, tokens, source)
+        return new(ok=True, endI=endIU)
     case "enum":
       if i + 1 < n and tokens[i + 1].kind != TokenKindEnum.Name:
         return fail
@@ -127,7 +150,7 @@ def _tryNamedDecl(
       spanE.fileId = startSpan.fileId
       spanE.start = startSpan.start
       spanE.end = blockEnd2
-      _appendEnum(mod, tail2.name, False, flagE, membersE, spanE)
+      _appendEnum(mod, tail2.name, False, flagE, membersE, spanE, tail2.basesSource)
       return new(ok=True, endI=endI2)
     case "const":
       if i + 1 < n and tokens[i + 1].kind == TokenKindEnum.Name:
@@ -137,7 +160,7 @@ def _tryNamedDecl(
     case _:
       pass
 
-  fnAdv: ParseAdvance = _tryParseFunction(mod, tokens, source, i, startSpan, True)
+  fnAdv: ParseAdvance = _tryParseFunction(mod, tokens, source, i, startSpan, True, "")
   if fnAdv.ok:
     return fnAdv
 
@@ -261,6 +284,7 @@ def _tryParseFunction(
   i: int,
   startSpan: SourceSpan,
   asModuleItem: bool,
+  decoratorsSource: str,
 ) -> ParseAdvance:
   n: int = len(tokens)
   fail: ParseAdvance = new(ok=False, endI=0)
@@ -289,6 +313,8 @@ def _tryParseFunction(
   fn: FunctionBundle = _extractFunction(tokens, source, i, startSpan, n)
   if fn.name == "":
     return fail
+  if decoratorsSource != "":
+    fn.decoratorsSource = decoratorsSource
   jj: int = i
   while (
     jj < n
@@ -301,6 +327,18 @@ def _tryParseFunction(
     jj += 1
   if jj < n and tokens[jj].kind == TokenKindEnum.Name:
     jj += 1
+  # 与 ``_extractFunction`` 对齐：跳过 ``[T: Bound]``
+  if jj < n and tokens[jj].kind == TokenKindEnum.Lsqb:
+    depthTp2: int = 0
+    while jj < n:
+      if tokens[jj].kind == TokenKindEnum.Lsqb:
+        depthTp2 += 1
+      elif tokens[jj].kind == TokenKindEnum.Rsqb:
+        depthTp2 -= 1
+        if depthTp2 == 0:
+          jj += 1
+          break
+      jj += 1
   if jj < n and tokens[jj].kind == TokenKindEnum.Lpar:
     depth: int = 0
     jj_p: int = jj
@@ -314,10 +352,11 @@ def _tryParseFunction(
           jj = jj_p + 1
           break
       jj_p += 1
+  # 返回类型须走 parseType：``-> int[:]`` 内的 ``:`` 不能当成函数体冒号。
   if jj < n and tokens[jj].kind == TokenKindEnum.Rarrow:
     jj += 1
-    while jj < n and tokens[jj].kind not in {TokenKindEnum.Colon, TokenKindEnum.Newline, TokenKindEnum.End}:
-      jj += 1
+    trRet: ParseTypeResult = parseType(tokens, jj, source)
+    jj = trRet.nextI
   if jj < n and tokens[jj].kind == TokenKindEnum.Colon:
     jj += 1
   while jj < n and tokens[jj].kind == TokenKindEnum.Newline:
@@ -378,6 +417,7 @@ def _extractFunction(
   isFinal: bool = False
   isAbstract: bool = False
   isVirtual: bool = False
+  isProperty: bool = False
   mi: int = 0
   while mi < len(mods):
     if mods[mi] == "async":
@@ -394,42 +434,46 @@ def _extractFunction(
       isAbstract = True
     if mods[mi] == "virtual":
       isVirtual = True
+    if mods[mi] == "property":
+      isProperty = True
     mi += 1
   j += 1
   if j >= limit or tokens[j].kind != TokenKindEnum.Name:
     return empty
   name: str = tokens[j].text
   j += 1
+  # ``def f[T: Bound](…)`` / ``def f[T](…)``：跳过类型参数表
+  typeParamsSrc: str = ""
+  if j < limit and tokens[j].kind == TokenKindEnum.Lsqb:
+    tpStart: int = tokens[j].span.start
+    depthTp: int = 0
+    while j < limit:
+      if tokens[j].kind == TokenKindEnum.Lsqb:
+        depthTp += 1
+      elif tokens[j].kind == TokenKindEnum.Rsqb:
+        depthTp -= 1
+        if depthTp == 0:
+          typeParamsSrc = source[tpStart : tokens[j].span.end]
+          j += 1
+          break
+      j += 1
   if j >= limit or tokens[j].kind != TokenKindEnum.Lpar:
     return empty
-  depth: int = 0
-  ps: int = j + 1
-  jj: int = j
-  while jj < limit:
-    j = jj
-    if tokens[jj].kind == TokenKindEnum.Lpar:
-      depth += 1
-    if tokens[jj].kind == TokenKindEnum.Rpar:
-      depth -= 1
-      if depth == 0:
-        break
-    jj += 1
-  params: str = ""
-  if j > ps:
-    params = source[tokens[ps].span.start : tokens[j - 1].span.end]
-  if j < limit and tokens[j].kind == TokenKindEnum.Rpar:
-    j += 1
+  j += 1
+  pr: ParseParamsResult = parseParams(tokens, j, source)
+  j = pr.nextI
+  params: str = paramsToSource(pr.params)
   ret: str = ""
+  hasRet: bool = False
+  retTy: TypeNode = new()
   if j < limit and tokens[j].kind == TokenKindEnum.Rarrow:
     j += 1
-    rs: int = j
-    while j < limit:
-      kindR: TokenKindEnum = tokens[j].kind
-      if kindR == TokenKindEnum.Colon or kindR == TokenKindEnum.Newline or kindR == TokenKindEnum.End:
-        break
-      j += 1
-    if j > rs:
-      ret = source[tokens[rs].span.start : tokens[j - 1].span.end]
+    tr: ParseTypeResult = parseType(tokens, j, source)
+    j = tr.nextI
+    if tr.ok:
+      hasRet = True
+      retTy = tr.ty
+      ret = typeNodeToSource(tr.ty)
   if j < limit and tokens[j].kind == TokenKindEnum.Colon:
     j += 1
   while j < limit and tokens[j].kind == TokenKindEnum.Newline:
@@ -444,6 +488,8 @@ def _extractFunction(
   bodySrc: str = "pass"
   if endI > bodyStart:
     bodySrc = source[tokens[bodyStart].span.start : tokens[endI - 1].span.end]
+  # 大函数体跳过 suite（防薄路径死循环/超长）；签名侧 params/return 始终结构化。
+  bodyToks: int = endI - bodyStart
   spanEnd: int = startSpan.end
   if endI > 0:
     spanEnd = tokens[endI - 1].span.end
@@ -452,6 +498,19 @@ def _extractFunction(
   out.paramsSource = params
   out.returnSource = ret
   out.bodySource = bodySrc
+  out.typeParamsSource = typeParamsSrc
+  pi: int = 0
+  while pi < len(pr.params):
+    out.params.append(pr.params[pi])
+    pi += 1
+  out.hasReturnType = hasRet
+  out.returnType = retTy
+  if bodyToks > 0 and bodyToks <= 400:
+    suite: ParseSuiteResult = parseSuite(tokens, bodyStart, endI, source)
+    si: int = 0
+    while si < len(suite.stmts):
+      out.bodyStmts.append(suite.stmts[si])
+      si += 1
   out.isAsync = isAsync
   out.isStatic = isStatic
   out.isNative = isNative
@@ -459,6 +518,7 @@ def _extractFunction(
   out.isFinal = isFinal
   out.isAbstract = isAbstract
   out.isVirtual = isVirtual
+  out.isProperty = isProperty
   out.decoratorsSource = ""
   out.span.fileId = startSpan.fileId
   out.span.start = startSpan.start
@@ -511,6 +571,35 @@ def _tryDecoratedClass(
   _appendClass(mod, tail.name, head, prefixes, tail.basesSource, bodySrc, decoSrc, decoSpan, tail.bodyStart, endI, tokens, source)
   return new(ok=True, endI=endI)
 
+def _tryDecoratedFunction(
+  mod: SyntaxModule,
+  tokens: list[Token],
+  source: str,
+  i: int,
+  startSpan: SourceSpan,
+) -> ParseAdvance:
+  """``@noexcept`` / ``@copyable`` 等装饰的顶层 ``def``。"""
+  n: int = len(tokens)
+  decoStart: int = i
+  while i < n and tokens[i].kind == TokenKindEnum.At:
+    while i < n and tokens[i].kind != TokenKindEnum.Newline and tokens[i].kind != TokenKindEnum.End:
+      i += 1
+    while i < n and tokens[i].kind == TokenKindEnum.Newline:
+      i += 1
+  fail: ParseAdvance = new(ok=False, endI=0)
+  if decoStart >= i:
+    return fail
+  decoSrc: str = source[tokens[decoStart].span.start : tokens[i - 1].span.end]
+  # 方法修饰关键字装饰器已迁出；勿抢类装饰路径已失败的 ``@override`` 等
+  if "@override" in decoSrc or "@virtual" in decoSrc or "@abstract" in decoSrc:
+    return fail
+  if "@staticmethod" in decoSrc or "@classmethod" in decoSrc:
+    return fail
+  advFn: ParseAdvance = _tryParseFunction(mod, tokens, source, i, startSpan, True, decoSrc)
+  if not advFn.ok:
+    return fail
+  return advFn
+
 def _isDeclPrefix(text: str) -> bool:
   match text:
     case "frozen" | "ordered" | "final" | "ref" | "lazy" | "native":
@@ -534,7 +623,7 @@ def _isDeclHeadTok(tok: Token) -> bool:
 
 def _isFnPrefix(text: str) -> bool:
   match text:
-    case "static" | "native" | "final" | "override" | "abstract" | "virtual" | "lazy" | "async":
+    case "static" | "native" | "final" | "override" | "abstract" | "virtual" | "lazy" | "async" | "property":
       return True
     case _:
       return False
@@ -551,6 +640,7 @@ def _appendEnum(
   flag: bool,
   members: list[EnumMember],
   sourceSpan: SourceSpan,
+  basesSource: str = "",
 ) -> None:
   it: ModuleItem = new(
     kind=ItemKindEnum.Enum,
@@ -572,6 +662,7 @@ def _appendEnum(
     name=name,
     isTypeEnum=isType,
     flag=flag,
+    basesSource=basesSource,
     members=members,
     span=sourceSpan,
   )
@@ -684,6 +775,43 @@ def _fillClassMembers(
       bun.constFields.append(fieldC)
       i = jc
       continue
+    # ``@ActionMeta("Go")`` / 堆叠装饰器 + ``def`` / ``override def``
+    if tokens[i].kind == TokenKindEnum.At:
+      decoStartM: int = i
+      while i < bodyEnd and tokens[i].kind == TokenKindEnum.At:
+        while (
+          i < bodyEnd
+          and tokens[i].kind != TokenKindEnum.Newline
+          and tokens[i].kind != TokenKindEnum.Dedent
+          and tokens[i].kind != TokenKindEnum.End
+        ):
+          i += 1
+        while i < bodyEnd and _isNlKind(tokens[i].kind):
+          i += 1
+      decoSrcM: str = ""
+      if i > decoStartM:
+        decoSrcM = source[tokens[decoStartM].span.start : tokens[i - 1].span.end]
+      if (
+        i < bodyEnd
+        and tokens[i].kind == TokenKindEnum.Name
+        and (_isFnPrefix(tokens[i].text) or tokens[i].text == "def")
+      ):
+        fnSpanM: SourceSpan = tokens[decoStartM].span
+        fnM: FunctionBundle = _extractFunction(tokens, source, i, fnSpanM, bodyEnd)
+        if fnM.name != "":
+          fnM.decoratorsSource = decoSrcM
+          bun.methods.append(fnM)
+          kM: int = i
+          while kM < bodyEnd and tokens[kM].span.end < fnM.span.end:
+            kM += 1
+          while kM < bodyEnd and tokens[kM].span.end <= fnM.span.end:
+            kM += 1
+          if kM <= i:
+            kM = i + 1
+          i = kM
+          continue
+      # 装饰器后非 def：已消费装饰行，继续
+      continue
     if tokens[i].kind == TokenKindEnum.Name and (
       _isFnPrefix(tokens[i].text) or tokens[i].text == "def"
     ):
@@ -732,6 +860,13 @@ def _fillClassMembers(
                 jf += 1
                 break
             jf += 1
+      # ``x: int @final = 11`` — 跳过字段尾注解再取默认值
+      while (
+        jf + 1 < bodyEnd
+        and tokens[jf].kind == TokenKindEnum.At
+        and tokens[jf + 1].kind == TokenKindEnum.Name
+      ):
+        jf += 2
       valF: str = ""
       if jf < bodyEnd and tokens[jf].kind == TokenKindEnum.Eq:
         jf += 1

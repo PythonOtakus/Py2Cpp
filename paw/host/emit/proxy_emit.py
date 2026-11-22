@@ -1,7 +1,7 @@
 """``super`` / ``Proxy[T]`` 成员访问 emit。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 
 from ..analysis.ir import ClassInfo, property_getter_method_for, strip_cpp_ref, cpp_template_inner_args

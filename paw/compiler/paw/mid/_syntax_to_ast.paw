@@ -1,0 +1,5 @@
+"""_syntax_to_ast — Zero-AST：syntax→AST 桥禁用。"""
+from paw import *
+
+def syntaxToAstBanned() -> bool:
+  return True

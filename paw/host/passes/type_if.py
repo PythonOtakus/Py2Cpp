@@ -1,7 +1,7 @@
 """泛型形参编译期 ``if T is int`` / ``T is not int`` / ``T in [int, str]`` / ``T not in {…}`` → C++ 分派 struct。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import copy
 import re
 from dataclasses import dataclass
@@ -1234,7 +1234,7 @@ def _dispatch_pick_name(func: ast.FunctionDef) -> str:
   from ..analysis.patterns import paw_emit_symbol
 
   safe = "".join(c if c.isalnum() else "_" for c in func.name)
-  return py2cpp_emit_symbol("type_if", safe, str(func.lineno), "pick")
+  return paw_emit_symbol("type_if", safe, str(func.lineno), "pick")
 
 
 def _type_if_instance_receiver(

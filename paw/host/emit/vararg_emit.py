@@ -1,7 +1,7 @@
 """``*args: T[:]`` 调用侧打包（空包 ``T()``；非空与堆数组字面量相同）。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 

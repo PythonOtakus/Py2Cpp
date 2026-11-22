@@ -1,5 +1,5 @@
 """类方法 ``*_generator`` 宿主类解析（``Self._…`` 静态调用）。"""
-import ast
+import host.tree_nodes as ast
 import copy
 import re
 import tempfile

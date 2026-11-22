@@ -8,7 +8,7 @@ class ArenaAdoptTests(TestCaseMixin):
     override def test(self):
         ar: Arena = new()
         p: Pointer[char] = ar.acquire(5)
-        s: str = ''
+        s: str = ""
         owned: span[char] = new(p, 5, 1)
         h: char = ord('h')
         e: char = ord('e')
@@ -30,14 +30,14 @@ class ArenaEmptyAdoptTests(TestCaseMixin):
     _testTag = 20
 
     override def test(self):
-        s: str = ''
+        s: str = ""
         s.adoptSpan(span[char](None, 0, 1))
         self.assertEqual(len(s), 0)
 
 def main():
     suite: TestSuite = new()
-    for Class in TestCaseMixin.iterSubclasses(sortConst='_testTag'):
+    for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
         suite.addTest(Class())
     return TextTestRunner().run(suite)
-if __name__ == '__main__':
+if __name__ == "__main__":
     raise SystemExit(main())

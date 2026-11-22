@@ -1,0 +1,610 @@
+"""模板冻结子集展开（对位 ``host/codegen/template_eval.py`` 的 BEGIN/ECHO/EVAL）。
+
+``def fn_*`` 模板块仍由宿主 ``expand_py2cpp_template`` 注册；本模块遇到
+``PY2CPP_BEGIN(def …)`` 时整段剥除（返回空），不注册 helper。
+名称列表 ``for x in names`` 经 ``ListCtx``（对位宿主 ctx 中的 ``list[str]``）。
+"""
+from paw import *
+from .template_profile import assertSafeBeginHeader
+from .template_eval import EvalCtx, evalIntExpr
+
+class StringCtx:
+  names: list[str]
+  values: list[str]
+
+  def __init__(self):
+    self.names = []
+    self.values = []
+
+  def put(self, name: str, value: str) -> None:
+    # 薄 emit 会 soft-skip ``values[i]=``；整表重建。
+    i: int = 0
+    while i < len(self.names):
+      if self.names[i] == name:
+        newVals: list[str] = []
+        j: int = 0
+        while j < len(self.values):
+          if j == i:
+            newVals.append(value)
+          else:
+            newVals.append(self.values[j])
+          j += 1
+        self.values = newVals
+        return
+      i += 1
+    self.names.append(name)
+    self.values.append(value)
+
+  def get(self, name: str) -> str:
+    i: int = 0
+    while i < len(self.names):
+      if self.names[i] == name:
+        return self.values[i]
+      i += 1
+    return ""
+
+  def has(self, name: str) -> bool:
+    i: int = 0
+    while i < len(self.names):
+      if self.names[i] == name:
+        return True
+      i += 1
+    return False
+
+class ListCtx:
+  """扁平存储的名称→``list[str]``（避免薄 emit 对 ``list[list[str]]`` soft-skip）。"""
+  names: list[str]
+  starts: list[int]
+  ends: list[int]
+  items: list[str]
+  curIdx: int
+
+  def __init__(self):
+    self.names = []
+    self.starts = []
+    self.ends = []
+    self.items = []
+    self.curIdx = 0 - 1
+
+  def start(self, name: str) -> None:
+    i: int = 0
+    while i < len(self.names):
+      if self.names[i] == name:
+        nItems: int = len(self.items)
+        newStarts: list[int] = []
+        newEnds: list[int] = []
+        j: int = 0
+        while j < len(self.starts):
+          if j == i:
+            newStarts.append(nItems)
+            newEnds.append(nItems)
+          else:
+            newStarts.append(self.starts[j])
+            newEnds.append(self.ends[j])
+          j += 1
+        self.starts = newStarts
+        self.ends = newEnds
+        self.curIdx = i
+        return
+      i += 1
+    self.names.append(name)
+    self.starts.append(len(self.items))
+    self.ends.append(len(self.items))
+    self.curIdx = len(self.names) - 1
+
+  def add(self, value: str) -> None:
+    if self.curIdx < 0:
+      return
+    self.items.append(value)
+    nItems: int = len(self.items)
+    newEnds: list[int] = []
+    j: int = 0
+    while j < len(self.ends):
+      if j == self.curIdx:
+        newEnds.append(nItems)
+      else:
+        newEnds.append(self.ends[j])
+      j += 1
+    self.ends = newEnds
+
+  def has(self, name: str) -> bool:
+    i: int = 0
+    while i < len(self.names):
+      if self.names[i] == name:
+        return True
+      i += 1
+    return False
+
+  def lenOf(self, name: str) -> int:
+    i: int = 0
+    while i < len(self.names):
+      if self.names[i] == name:
+        s: int = self.starts[i]
+        e: int = self.ends[i]
+        return e - s
+      i += 1
+    return 0
+
+  def at(self, name: str, index: int) -> str:
+    i: int = 0
+    while i < len(self.names):
+      if self.names[i] == name:
+        s: int = self.starts[i]
+        e: int = self.ends[i]
+        pos: int = s + index
+        if pos < s or pos >= e:
+          return ""
+        return self.items[pos]
+      i += 1
+    return ""
+
+def _isIdent(text: str) -> bool:
+  if text == "":
+    return False
+  c0: str = text[0]
+  ok0: bool = (c0 >= "A" and c0 <= "Z") or (c0 >= "a" and c0 <= "z") or c0 == "_"
+  if not ok0:
+    return False
+  i: int = 1
+  while i < len(text):
+    c: str = text[i]
+    ok: bool = (c >= "A" and c <= "Z") or (c >= "a" and c <= "z") or (c >= "0" and c <= "9") or c == "_"
+    if not ok:
+      return False
+    i += 1
+  return True
+
+def _strCtxLookup(names: list[str], values: list[str], name: str) -> str:
+  i: int = 0
+  while i < len(names):
+    if names[i] == name:
+      return values[i]
+    i += 1
+  return ""
+
+def _strCtxHas(names: list[str], name: str) -> bool:
+  i: int = 0
+  while i < len(names):
+    if names[i] == name:
+      return True
+    i += 1
+  return False
+
+def _unwrapStrLit(expr: str) -> str:
+  """若为 ``\"...\"`` / ``'...'`` 返回内文（简单去引号）；否则返回空串且由调用方用长度判断。"""
+  e: str = expr.strip()
+  if len(e) < 2:
+    return ""
+  # 单码点先收成 str，避免薄 emit 把 ``char != str`` 编成非法 C++。
+  q: str = e[:1]
+  if q != '"' and q != "'":
+    return ""
+  last: str = e[len(e) - 1 :]
+  if last != q:
+    return ""
+  return e[1 : len(e) - 1]
+
+def _isStrLit(expr: str) -> bool:
+  e: str = expr.strip()
+  if len(e) < 2:
+    return False
+  q: str = e[:1]
+  if q != '"' and q != "'":
+    return False
+  last: str = e[len(e) - 1 :]
+  return last == q
+
+def _splitLines(text: str) -> list[str]:
+  out: list[str] = []
+  if text == "":
+    return out
+  start: int = 0
+  i: int = 0
+  n: int = len(text)
+  while i < n:
+    if text[i] == "\n":
+      out.append(text[start:i])
+      i += 1
+      start = i
+    else:
+      i += 1
+  out.append(text[start:n])
+  return out
+
+def _joinLines(parts: list[str]) -> str:
+  if len(parts) == 0:
+    return ""
+  out: str = parts[0]
+  i: int = 1
+  while i < len(parts):
+    out = out + "\n" + parts[i]
+    i += 1
+  return out
+
+def _parseBeginHeader(line: str) -> str:
+  """整行 ``PY2CPP_BEGIN(...)`` → 头内文；否则 ``\"\"``。"""
+  t: str = line.strip()
+  prefix: str = "PY2CPP_BEGIN("
+  if not (len(t) >= len(prefix) and t[:len(prefix)] == prefix):
+    return ""
+  if not (len(t) >= len(")") and t[len(t)-len(")"):] == ")"):
+    return ""
+  return t[len(prefix) : len(t) - 1].strip()
+
+def _isEndLine(line: str) -> bool:
+  return line.strip() == "PY2CPP_END"
+
+def _normHeader(header: str) -> str:
+  text: str = header.strip()
+  if (len(text) >= len(":") and text[len(text)-len(":"):] == ":"):
+    text = text[: len(text) - 1]
+  return text.strip()
+
+def _findCmpOp(expr: str) -> int:
+  """深度 0 处 ``== != <= >= < >`` 的起始下标；无则 -1。优先多字符。"""
+  depth: int = 0
+  i: int = 0
+  n: int = len(expr)
+  while i < n:
+    c: str = expr[i]
+    if c == "(":
+      depth += 1
+      i += 1
+    elif c == ")":
+      depth -= 1
+      i += 1
+    elif depth == 0:
+      if i + 1 < n:
+        two: str = expr[i : i + 2]
+        if two == "==" or two == "!=" or two == "<=" or two == ">=":
+          return i
+      if c == "<" or c == ">":
+        return i
+      i += 1
+    else:
+      i += 1
+  return -1
+
+def evalBoolExpr(expr: str, ctx: EvalCtx) -> int:
+  """比较 / 整值真值；真→1 假→0。"""
+  text: str = expr.strip()
+  if text == "":
+    return 0
+  opAt: int = _findCmpOp(text)
+  if opAt < 0:
+    v: int = evalIntExpr(text, ctx)
+    if v != 0:
+      return 1
+    return 0
+  left: str = text[:opAt].strip()
+  rest: str = text[opAt:]
+  op: str = ""
+  right: str = ""
+  if (len(rest) >= len("==") and rest[:len("==")] == "==") or (len(rest) >= len("!=") and rest[:len("!=")] == "!=") or (len(rest) >= len("<=") and rest[:len("<=")] == "<=") or (len(rest) >= len(">=") and rest[:len(">=")] == ">="):
+    op = rest[:2]
+    right = rest[2:].strip()
+  else:
+    op = rest[:1]
+    right = rest[1:].strip()
+  a: int = evalIntExpr(left, ctx)
+  b: int = evalIntExpr(right, ctx)
+  if op == "==":
+    if a == b:
+      return 1
+    return 0
+  if op == "!=":
+    if a != b:
+      return 1
+    return 0
+  if op == "<":
+    if a < b:
+      return 1
+    return 0
+  if op == ">":
+    if a > b:
+      return 1
+    return 0
+  if op == "<=":
+    if a <= b:
+      return 1
+    return 0
+  if op == ">=":
+    if a >= b:
+      return 1
+    return 0
+  return 0
+
+def _evalMacroExpr(expr: str, macro: str, ctx: EvalCtx, strCtxNames: list[str], strCtxValues: list[str]) -> str:
+  e: str = expr.strip()
+  if e == "":
+    return ""
+  if macro == "EVAL":
+    if _isStrLit(e):
+      return _unwrapStrLit(e)
+    # 对位宿主：ctx 中的 str 为 C++ 标识符/片段，优先于整求值
+    if _strCtxHas(strCtxNames, e):
+      return _strCtxLookup(strCtxNames, strCtxValues, e)
+    return str(evalIntExpr(e, ctx))
+  if macro == "ECHO":
+    if _strCtxHas(strCtxNames, e):
+      return _strCtxLookup(strCtxNames, strCtxValues, e)
+    v: int = evalIntExpr(e, ctx)
+    if v != 0:
+      return str(v)
+    if _isIdent(e):
+      if _strCtxHas(strCtxNames, e):
+        return e
+      return ""
+    return str(v)
+  return ""
+
+def _findMarker(text: str, marker: str, fromI: int) -> int:
+  mlen: int = len(marker)
+  n: int = len(text)
+  i: int = fromI
+  while i + mlen <= n:
+    if text[i : i + mlen] == marker:
+      return i
+    i += 1
+  return -1
+
+def expandMacroCalls(text: str, macro: str, ctx: EvalCtx, strCtxNames: list[str], strCtxValues: list[str]) -> str:
+  marker: str = "PY2CPP_" + macro + "("
+  mlen: int = len(marker)
+  out: str = ""
+  i: int = 0
+  n: int = len(text)
+  while i < n:
+    idx: int = _findMarker(text, marker, i)
+    if idx < 0:
+      out = out + text[i:]
+      break
+    out = out + text[i:idx]
+    start: int = idx + mlen
+    depth: int = 1
+    j: int = start
+    matched: bool = False
+    while j < n:
+      ch: str = text[j]
+      if ch == "(":
+        depth += 1
+      elif ch == ")":
+        depth -= 1
+        if depth == 0:
+          expr: str = text[start:j].strip()
+          out = out + _evalMacroExpr(expr, macro, ctx, strCtxNames, strCtxValues)
+          i = j + 1
+          matched = True
+          break
+      j += 1
+    if not matched:
+      # 括号不匹配：保留 marker 后原文
+      out = out + text[idx:]
+      break
+  return out
+
+def expandEvalAndEcho(text: str, intCtx: EvalCtx, strCtx: StringCtx) -> str:
+  # 行内碎片：先 ECHO 再 EVAL（对位 host emit_template_line）
+  t: str = expandMacroCalls(text, "ECHO", intCtx, strCtx.names, strCtx.values)
+  t = expandMacroCalls(t, "EVAL", intCtx, strCtx.names, strCtx.values)
+  return t
+
+def _parseRangeBounds(iterExpr: str, intCtx: EvalCtx) -> list[int]:
+  """``range(A,B)`` / ``range(A,B,C)`` → [start, stop, step]；失败返回空列表。"""
+  empty: list[int] = []
+  text: str = iterExpr.strip()
+  if not (len(text) >= len("range(") and text[:len("range(")] == "range("):
+    return empty
+  if not (len(text) >= len(")") and text[len(text)-len(")"):] == ")"):
+    return empty
+  inner: str = text[6 : len(text) - 1].strip()
+  parts: list[str] = []
+  depth: int = 0
+  cur: str = ""
+  k: int = 0
+  while k < len(inner):
+    ch: str = inner[k]
+    if ch == "(":
+      depth += 1
+      cur = cur + ch
+    elif ch == ")":
+      depth -= 1
+      cur = cur + ch
+    elif ch == "," and depth == 0:
+      parts.append(cur.strip())
+      cur = ""
+    else:
+      cur = cur + ch
+    k += 1
+  if cur != "" or len(parts) > 0:
+    parts.append(cur.strip())
+  startE: str = ""
+  stopE: str = ""
+  stepE: str = "1"
+  if len(parts) == 2:
+    startE = parts[0]
+    stopE = parts[1]
+  elif len(parts) == 3:
+    startE = parts[0]
+    stopE = parts[1]
+    stepE = parts[2]
+  else:
+    return empty
+  out: list[int] = []
+  out.append(evalIntExpr(startE, intCtx))
+  out.append(evalIntExpr(stopE, intCtx))
+  out.append(evalIntExpr(stepE, intCtx))
+  return out
+
+def expandForBlock(header: str, body: str, intCtx: EvalCtx, strCtx: StringCtx, listCtx: ListCtx) -> str:
+  err: str = assertSafeBeginHeader(header, "for")
+  if err != "":
+    return ""
+  text: str = _normHeader(header)
+  if not (len(text) >= len("for ") and text[:len("for ")] == "for "):
+    return ""
+  if " in " not in text:
+    return ""
+  rest: str = text[4:]
+  inAt: int = _findMarker(rest, " in ", 0)
+  if inAt < 0:
+    return ""
+  name: str = rest[:inAt].strip()
+  iterExpr: str = rest[inAt + 4 :].strip()
+  # 名称列表（对位宿主 ``for x in names``）
+  if _isIdent(iterExpr) and listCtx.has(iterExpr):
+    partsL: list[str] = []
+    nL: int = listCtx.lenOf(iterExpr)
+    j: int = 0
+    while j < nL:
+      strCtx.put(name, listCtx.at(iterExpr, j))
+      partsL.append(expandEvalAndEcho(body, intCtx, strCtx))
+      j = j + 1
+    return _joinLines(partsL)
+  bounds: list[int] = _parseRangeBounds(iterExpr, intCtx)
+  if len(bounds) != 3:
+    return ""
+  startV: int = bounds[0]
+  stopV: int = bounds[1]
+  stepV: int = bounds[2]
+  if stepV == 0:
+    return ""
+  parts: list[str] = []
+  i: int = startV
+  if stepV > 0:
+    while i < stopV:
+      intCtx.put(name, i)
+      parts.append(expandEvalAndEcho(body, intCtx, strCtx))
+      i = i + stepV
+  else:
+    while i > stopV:
+      intCtx.put(name, i)
+      parts.append(expandEvalAndEcho(body, intCtx, strCtx))
+      i = i + stepV
+  return _joinLines(parts)
+
+def expandIfChain(headers: list[str], bodies: list[str], intCtx: EvalCtx, strCtx: StringCtx) -> str:
+  n: int = len(headers)
+  if n == 0 or n != len(bodies):
+    return ""
+  i: int = 0
+  while i < n:
+    err: str = assertSafeBeginHeader(headers[i], "if")
+    if err != "":
+      return ""
+    h: str = _normHeader(headers[i])
+    if h == "else":
+      return expandEvalAndEcho(bodies[i], intCtx, strCtx)
+    test: str = ""
+    if (len(h) >= len("if ") and h[:len("if ")] == "if "):
+      test = h[3:].strip()
+    elif (len(h) >= len("elif ") and h[:len("elif ")] == "elif "):
+      test = h[5:].strip()
+    else:
+      return ""
+    if evalBoolExpr(test, intCtx) != 0:
+      return expandEvalAndEcho(bodies[i], intCtx, strCtx)
+    i += 1
+  return ""
+
+def _extractBlockBody(lines: list[str], start: int) -> list[int]:
+  """从 ``start``（BEGIN 下一行）起取匹配 END；返回 ``[bodyEndExclusive, nextIndex]``；失败空表。
+
+  体含嵌套 ``BEGIN/END`` 原文，供递归展开。薄 emit 勿写 ``return [a, b]`` 字面量。
+  """
+  out: list[int] = []
+  depth: int = 1
+  i: int = start
+  n: int = len(lines)
+  while i < n and depth > 0:
+    if _parseBeginHeader(lines[i]) != "":
+      depth += 1
+      i += 1
+    elif _isEndLine(lines[i]):
+      depth -= 1
+      if depth == 0:
+        out.append(i)
+        out.append(i + 1)
+        return out
+      i += 1
+    else:
+      i += 1
+  return out
+
+def expandBeginBlocks(text: str, intCtx: EvalCtx, strCtx: StringCtx, listCtx: ListCtx) -> str:
+  lines: list[str] = _splitLines(text)
+  out: list[str] = []
+  i: int = 0
+  n: int = len(lines)
+  while i < n:
+    header: str = _parseBeginHeader(lines[i])
+    if header == "":
+      out.append(lines[i])
+      i += 1
+      continue
+    span: list[int] = _extractBlockBody(lines, i + 1)
+    if len(span) != 2:
+      # 缺 END：原样吐出剩余
+      while i < n:
+        out.append(lines[i])
+        i += 1
+      break
+    bodyEnd: int = span[0]
+    nextI: int = span[1]
+    bodyLines: list[str] = []
+    bi: int = i + 1
+    while bi < bodyEnd:
+      bodyLines.append(lines[bi])
+      bi += 1
+    bodyText: str = _joinLines(bodyLines)
+    bodyExp: str = expandBeginBlocks(bodyText, intCtx, strCtx, listCtx)
+    h: str = _normHeader(header)
+    if (len(h) >= len("def ") and h[:len("def ")] == "def "):
+      # 宿主仍拥有模板 def；此处剥除
+      i = nextI
+      continue
+    if (len(h) >= len("for ") and h[:len("for ")] == "for "):
+      repl: str = expandForBlock(header, bodyExp, intCtx, strCtx, listCtx)
+      if repl != "":
+        out.append(repl)
+      i = nextI
+      continue
+    if (len(h) >= len("if ") and h[:len("if ")] == "if ") or h == "if":
+      headers: list[str] = []
+      bodies: list[str] = []
+      headers.append(header)
+      bodies.append(bodyExp)
+      i = nextI
+      while i < n:
+        h2: str = _parseBeginHeader(lines[i])
+        if h2 == "":
+          break
+        nh: str = _normHeader(h2)
+        if (len(nh) >= len("elif ") and nh[:len("elif ")] == "elif ") or nh == "else":
+          span2: list[int] = _extractBlockBody(lines, i + 1)
+          if len(span2) != 2:
+            break
+          bodyEnd2: int = span2[0]
+          nextI2: int = span2[1]
+          bodyLines2: list[str] = []
+          bj: int = i + 1
+          while bj < bodyEnd2:
+            bodyLines2.append(lines[bj])
+            bj += 1
+          bodyExp2: str = expandBeginBlocks(_joinLines(bodyLines2), intCtx, strCtx, listCtx)
+          headers.append(h2)
+          bodies.append(bodyExp2)
+          i = nextI2
+        else:
+          break
+      repl2: str = expandIfChain(headers, bodies, intCtx, strCtx)
+      if repl2 != "":
+        out.append(repl2)
+      continue
+    # elif/else 无先行 if：剥除
+    i = nextI
+  return _joinLines(out)
+
+def expandTemplateFrozen(text: str, intCtx: EvalCtx, strCtx: StringCtx, listCtx: ListCtx) -> str:
+  t: str = expandBeginBlocks(text, intCtx, strCtx, listCtx)
+  return expandEvalAndEcho(t, intCtx, strCtx)

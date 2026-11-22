@@ -1,6 +1,6 @@
 """``match`` 序列模式（``MatchSequence`` / ``MatchStar``）与映射模式（``MatchMapping``）。"""
 from __future__ import annotations
-import ast
+import host.tree_nodes as ast
 import copy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING

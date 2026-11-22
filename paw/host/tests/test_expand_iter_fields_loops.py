@@ -1,7 +1,7 @@
 """``expand_iter_fields_loops``：混入形参 ``Vec.iter_fields`` 译期展开。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import textwrap
 import unittest
 
@@ -13,10 +13,10 @@ from host.passes.varstack import expand_varstack
 
 class ExpandIterFieldsLoopsTests(unittest.TestCase):
   def _host(self, src: str) -> ClassInfo:
-    return ClassInfo(ast.parse(textwrap.dedent(src)).body[0])
+    return ClassInfo(ast._stdlib_parse(textwrap.dedent(src)).body[0])
 
   def _method(self, src: str) -> ast.FunctionDef:
-    mod = ast.parse(textwrap.dedent(src))
+    mod = ast._stdlib_parse(textwrap.dedent(src))
     return mod.body[0].body[0]
 
   def test_vec_iter_fields_unrolls(self) -> None:

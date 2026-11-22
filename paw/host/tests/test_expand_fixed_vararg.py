@@ -1,7 +1,7 @@
 """``*pack: T[:N]`` mixin 注入展开为 ``__arg_{pack}i``。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.analysis.ir import ClassInfo
@@ -9,7 +9,7 @@ from host.passes.fixed_vararg import expand_fixed_vararg
 
 
 def _parse_class(src: str) -> ClassInfo:
-  mod = ast.parse(src)
+  mod = ast._stdlib_parse(src)
   node = mod.body[0]
   assert isinstance(node, ast.ClassDef)
   return ClassInfo(node)
@@ -23,7 +23,7 @@ class Matrix3:
   _dim: int @const = 3
 """,
     )
-    method = ast.parse(
+    method = ast._stdlib_parse(
       """
 def from_axes_origin(*axis: Vec[:Self._dim - 1], origin: Vec = new.zero):
   x = axis[0]

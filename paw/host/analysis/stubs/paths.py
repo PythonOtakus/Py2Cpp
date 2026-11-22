@@ -73,21 +73,14 @@ def module_path_for_py(path: Path) -> str:
 
 
 def parse_stdlib_source(path: Path):
-  """读标准库源为 CPython AST（``.paw`` 经前端）。
+  """读标准库源为扫描用 AST（``.paw`` 经 Paw→Mid→``module_tree_from_mid``）。
 
-  模板前缀等桩**禁止空树**：不受 ``PY2CPP_NO_MATERIALIZE=1`` 影响
-  （``mid_ok`` 走 ``ast_from_mid``；空 ``tree.body`` 会导致 ``KeyError: array``）。
+  生产 ``parse_module`` 保持空 tree；stubs 扫描用 Mid 桥物化，**不** ``ast.parse`` 源文件。
   """
-  import os
-
+  from compiler.py.mid.tree_from_mid import module_tree_from_mid
   from ...frontend.api import parse_module_file
 
-  prev = os.environ.get("PY2CPP_NO_MATERIALIZE")
-  os.environ["PY2CPP_NO_MATERIALIZE"] = "0"
-  try:
-    return parse_module_file(path, use_cache=True).tree
-  finally:
-    if prev is None:
-      os.environ.pop("PY2CPP_NO_MATERIALIZE", None)
-    else:
-      os.environ["PY2CPP_NO_MATERIALIZE"] = prev
+  parsed = parse_module_file(path, use_cache=True)
+  if parsed.mid is None:
+    raise SyntaxError(f"{path}: 无 MidIR，无法为 stubs 构建扫描树")
+  return module_tree_from_mid(parsed.mid, filename=str(path))

@@ -3,7 +3,7 @@
 
 
 // 擦除协程句柄：``Coroutine[Y,S,R]`` 形参/字段/``@virtual`` 返回；具体 ``*_coroutine`` 经 ``makeCoroutine`` 装箱。
-namespace paw_coroutine_detail
+namespace py2cpp_coroutine_detail
 {
   template<typename ST>
   ST default_send_value()
@@ -227,6 +227,8 @@ struct py2cpp_coroutine_model : py2cpp_coroutine_detail::model_hdr
 {
   G gen;
 
+  explicit py2cpp_coroutine_model(G g) : gen(g) {}
+
   static PY2CPP_TYPE(PyIterResult)<YT, RT> send(void* ctx, ST value)
   {
     py2cpp_coroutine_model* self = static_cast<py2cpp_coroutine_model*>(ctx);
@@ -239,7 +241,7 @@ struct py2cpp_coroutine_model : py2cpp_coroutine_detail::model_hdr
   }
 };
 
-namespace paw_coroutine_detail
+namespace py2cpp_coroutine_detail
 {
   template<typename YT, typename ST, typename RT, typename G, bool = has_async_iter<G>::value>
   struct async_bind;
@@ -281,7 +283,7 @@ template<typename YT, typename ST, typename RT, typename G>
 PyCoroutine<YT, ST, RT> py2cpp_coroutine_access::make(G gen)
 {
   py2cpp_coroutine_model<YT, ST, RT, G>* model =
-    new py2cpp_coroutine_model<YT, ST, RT, G>();
+    new py2cpp_coroutine_model<YT, ST, RT, G>(gen);
   model->gen = gen;
   PyCoroutine<YT, ST, RT> out;
   out._ctx = model;

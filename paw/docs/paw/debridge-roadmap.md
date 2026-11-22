@@ -2,7 +2,7 @@
 
 目标：生产路径 **MidIR → C++ emit**，删除 `compiler/py/mid/materialize_ast.py`；passes 不再消费 `ast.*`。
 
-更新 2026-11-02。  
+更新 2026-11-05。  
 语法实现分层清单：[syntax-inventory.md](./syntax-inventory.md)。
 
 ## 阶段与退出条件
@@ -16,6 +16,21 @@
 | **P4 passes 迁 MidIR** | translator 记录 `mid_emit_ok`；`_emit_mid_capable_modules` 旁路写出 | seed 旁路产物在 `out/**/mid_emit/` | **完成（旁路）** |
 | **P5 删桥** | Mid emit 对齐 + 删物化 | seed 6/6 mid；stdlib **153/153**；MSVC 竖切 **6/6**；`PY2CPP_MID_PRIMARY=1` 跳过 AST emit | **完成**：已删 `materialize_ast.py`；生产树一律 `ast_from_mid`；`py2cpp`+`test`+`seed` mid_ok+直构全绿 |
 | **P6 passes 迁 Mid** | 少读 `ast.*`；空树可回填；C0 Mid 定点 | discover MidImport；空树回填；`fixedpoint` stage1==stage2==stage3 | **完成（C0 定点）**；真·C1 驱动/全量 S 另列 |
+| **Zero-AST（1A/2A）** | 生产/测试清零 `import ast`；ClassInfo/emit 只读 Mid+Syntax；删 `ast_from_mid`/LEGACY | `paw_ast_ban_checklist.py` → ALLOW 空；`rg "import ast"` 空；PRIMARY 全量；bootstrap+C1+dual+mid 153/153 | **完成**：无 stdlib `import ast`；过渡 `host.tree_nodes` facade；协议 traits/async 经 Mid 桥；fat lib / C1 / dual 绿 |
+
+## Zero-AST Phase 0（门闩与禁令）
+
+目标：`host/` + `compiler/`（含测试）禁止 `import ast` / `from ast import`；passes 合成结果写回 `module_mids`；ClassInfo 锚点改为 Mid。
+
+| 步 | 内容 | 退出 |
+|---|---|---|
+| **0** | `tools/paw_ast_ban_checklist.py`：热路径 `ast.parse`/`eval`/`exec` 债=0；`import ast` 仅允许 **shrinking ALLOW**（只减不增） | checklist OK；ALLOW 可枚举 |
+| **1** | Pass→Mid 回写（`append_mid_method` / `find_mid_class`）；至少 `@serializable` 的 `serialize`/`deserialize` 进 `MidClass.methods` | 单测：mid 含合成方法 |
+| **2** | ClassInfo 去 `ast.*` 字段；`register_module_from_mid` 主登记 | 无 `ClassInfo.node: ClassDef` |
+| **3** | 默认全 Mid PRIMARY；删 NodeVisitor AST emit | stdlib/tests 绿 |
+| **4** | 删 `ast_from_mid` / cpython_adapter / ir_to_ast / LEGACY | 生产仅 Paw/Mid；空 tree；临时桥 → `tree_from_mid` |
+
+当前水位：**Zero-AST 退出条件已满足**（checklist ALLOW 空、`rg import ast` 空、stdlib mid 153/153、force bootstrap fat lib、`paw_stage1_c1_link`、`paw_dual_compare`）。仅 `compiler/paw/**` 薄生产跳过 `tree_from_mid`；stdlib 仍填骨架（union.mro）。过渡 IR 仍经 `host.tree_nodes` 方法桥；真·零 AST 节点类型为后续收缩。
 
 ## 表面语法（2026-11-01 已硬切）
 
@@ -57,12 +72,11 @@ python tools/paw_debridge_accept.py
 REM stdlib mid-emit 覆盖率
 python tools/paw_mid_emit_coverage.py
 
-REM 空 tree（translator 回填 / register_module_from_mid）；=0 关闭空树仍走 ast_from_mid
-REM 未设置或 =1：全部 mid_ok 空树；=0 关闭
+REM Phase 4：生产 parse 恒空 tree（NO_MATERIALIZE 不再决定物化；ClassInfo←Mid）
 set PY2CPP_NO_MATERIALIZE=1
 
 REM mid_emit_ok：生产 Mid emit、跳过 AST emit
-REM 未设置：仅 compiler/paw/**；=1 全 mid_ok（含 stdlib/test）；=0 关闭
+REM 未设置或 =1：全部 mid_ok PRIMARY；=0 关闭（回退 AST emit）
 set PY2CPP_MID_PRIMARY=1
 
 REM 关闭 translator MidIR 旁路写出
@@ -83,7 +97,7 @@ set PY2CPP_MID_EMIT=0
 
 本轮（硬关键字）：`enum`/`union` → `TokenKind.KW_*`（不可作标识符）；`surface_rewrite`/`parser` 认 `KW_*`；`builtins.paw` 去掉 `def enum`/`def union`/`enum.mro`；`Rect.united`；`.paw` 禁 `@enum`/`@union`；`core/{optional,result,iter_result}.paw` 不再 `import union`。
 
-本轮（P5 默认 PRIMARY / Mid→ClassInfo）：未设 env 时 `compiler/paw/**` 自动 Mid 生产写出 **且** 默认跳过物化；空树经 `register_module_from_mid` 登记 `ClassInfo`；`parse_module` 缓存键含物化模式；翻译 seed 时 `project_root` 升到仓库根（模块路径 `compiler/paw/<stem>`），PRIMARY 写生产路径且不再被 AST 入口覆盖；`PermFlag.Read`/`Seal.MAX` → `Py…::…`；裸 stem PRIMARY 落 `entry_output_dir`；`for Class in …: Class()` 认局部调用。
+本轮（P5 默认 PRIMARY / Mid→ClassInfo）：未设 env 时全部 `mid_emit_ok` 自动 Mid 生产写出 **且** 默认跳过物化；空树经 `register_module_from_mid` 登记 `ClassInfo`；`parse_module` 缓存键含物化模式；翻译 seed 时 `project_root` 升到仓库根（模块路径 `compiler/paw/<stem>`），PRIMARY 写生产路径且不再被 AST 入口覆盖；`PermFlag.Read`/`Seal.MAX` → `Py…::…`；裸 stem PRIMARY 落 `entry_output_dir`；`for Class in …: Class()` 认局部调用。
 
 seed（`compiler/paw/*.paw`）保持 **8/8** mid-emit（含 `mid_emit`/`check`）+ stage1 MSVC 竖切同 stems。
 
@@ -104,13 +118,15 @@ seed（`compiler/paw/*.paw`）保持 **8/8** mid-emit（含 `mid_emit`/`check`�
 
 ## 剩余工作（真·删桥 / 自举）
 
-1. **P5**：已删 `materialize_ast`；`ast_from_mid` + `structure.py`
+1. **P5**：已删 `materialize_ast`；**Phase 4** 已删 `ast_from_mid`（临时桥 `tree_from_mid`）+ `structure.py`
 2. **P6**：默认空树；非 stdlib PRIMARY；Mid expand；stdlib PRIMARY 布局；**C0 Mid-emit 定点** `fixedpoint`（stage1==stage2==stage3）；stage1 MSVC 6/6
 3. **C1 seed 驱动**：parse→薄 mid_emit→**链跑** … + **D7 `c1_thin_reseed`→`c2_thin`** 已绿（`tools\paw_stage1_c1_link.bat`）
 4. **nested c1_emit / D4+–D7**：**绿** — 薄 emit 无真实 soft-skip；**D7：薄栈重种子 seed 语料**
 5. **C1→C2→C3（seed 薄定点）**：**绿** — `c2_thin`≡`c3_thin`；`tools\paw_c2_c3_thin_reseed.bat`；C2 span/parser 竖切
-6. **全量自举仍缺**：生产路径仍宿主 Mid；完整 S Paw 化；模板执行器离 CPython — 见 [parser-self-hosting.md](../parser-self-hosting.md)
+6. **全量自举（编译器）**：**绿** — `tools\paw_self_host_accept.bat`。**自举驱动 build_all**：**进行中** — `tools\paw_native_build_all.bat`（`c1_test_main` + `paw_native_parallel_build.py`）**107/155**（2026-11-05，`out/_native_build_all_log18.txt`；fail=48）；宿主 ClassInfo 路径仍 155/155。已抬升（相对 54→89→107）：Proxy/`super`、序列/`case new` match、ArgMeta `parse`/`helpText`、`@serializable`/union、descriptor/`ReplaceIfBadVar`、float `f` 后缀、`bytes_from_literal`、JsonDocument/`Console.run` kwargs、MemorySink RefCount、path `.parent` 词界、lazy 三目、UIPanel/widget/window/ECS mixin 薄桩、CM erase、`@noexcept`→`PyResult`、static_virtual 泛型、sqlite 链入等。缺口：`await`/`yield`/generator、完整 decorator 展开、`ui/test_flow`、`varstack`/部分 seed/协议与前端 opaque 泛型、web async、`test_str` 剩 cffi 等；并行每测例编 `sqlite3.c` 有竞态虚报。stdlib 仍 `tree_from_mid`+`tree_nodes` 桥 — 见 [parser-self-hosting.md](../parser-self-hosting.md)、[baseline.md](./baseline.md)
 7. **双实现对照**：见 [dual-impl.md](./dual-impl.md)；D0–D7 已绿
+8. **模板 / 子表达式离 CPython（1A/2A）**：**完成** — `template_profile` + `template_eval`（无内建 eval/exec）；`parse_expression`/`parse_type` → ExprSyntax/TypeSyntax；热路径 `ast.parse` debt **0**
+9. **Zero-AST（1A/2A）**：**完成** — 无 stdlib `import ast`；checklist ALLOW 空；PRIMARY+bootstrap/C1/dual/mid 153/153 绿；过渡 `host.tree_nodes` facade
 
 ## 节点分叉（已落地）
 

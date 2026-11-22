@@ -1,6 +1,6 @@
 """``d += handler`` / ``d -= handler`` 的 ``PyCallable`` 字面量与成员 thunk 生成。"""
 from __future__ import annotations
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 from ..analysis.delegates import DelegateInfo, DelegateParam
 from ..analysis.imports import binding_cpp_name

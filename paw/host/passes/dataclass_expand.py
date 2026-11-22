@@ -7,7 +7,7 @@
 """
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import copy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -24,6 +24,7 @@ from ..analysis.ir import (
 )
 from ..analysis.type_emit import write_field_ann_ast, write_field_storage
 from ..constant.stdlib_discovery import is_stdlib_codegen_module
+from .mid_method_parse import append_method_mid, ast_function_to_mid
 
 if TYPE_CHECKING:
   from ..translator import Translator
@@ -576,13 +577,28 @@ def _generate_repr(specs: list[DataclassFieldSpec], class_name: str) -> ast.Func
   return fn
 
 
-def _register_init(info: ClassInfo, init: ast.FunctionDef) -> None:
+def _register_init(
+  tr: Translator, info: ClassInfo, init: ast.FunctionDef,
+) -> None:
+  mid_fn = ast_function_to_mid(
+    init, path=f"{info.module_path or '<dataclass>'}.__init__.paw",
+  )
+  append_method_mid(tr, info, mid_fn)
+  info.mid_methods["__init__"] = mid_fn
   info.inits = [init]
   info.methods.pop("__init__", None)
   info._collect_fields_from_init(init)
 
 
-def _register_method(info: ClassInfo, method: ast.FunctionDef) -> None:
+def _register_method(
+  tr: Translator, info: ClassInfo, method: ast.FunctionDef,
+) -> None:
+  mid_fn = ast_function_to_mid(
+    method,
+    path=f"{info.module_path or '<dataclass>'}.{method.name}.paw",
+  )
+  append_method_mid(tr, info, mid_fn)
+  info.mid_methods[method.name] = mid_fn
   info.methods[method.name] = method
   info._collect_fields(method)
 
@@ -677,16 +693,16 @@ def expand_dataclass(tr: Translator) -> None:
       init = _generate_init(
         specs, info.name, call_post_init=has_post_init,
       )
-      _register_init(info, init)
+      _register_init(tr, info, init)
     elif opts.init and info.inits and has_post_init:
       raise NotImplementedError(
         f"{info.name}: 手写 __init__ 时须自行调用 self.__post_init__()，"
         "或由 @dataclass 自动生成 __init__"
       )
     if opts.eq and "__eq__" not in info.methods:
-      _register_method(info, _generate_eq(specs, info.name))
+      _register_method(tr, info, _generate_eq(specs, info.name))
     if opts.repr and "__repr__" not in info.methods and not info.repr_aliases_str:
-      _register_method(info, _generate_repr(specs, info.name))
+      _register_method(tr, info, _generate_repr(specs, info.name))
     if opts.order and "__cmp__" not in info.methods:
-      _register_method(info, _generate_cmp(specs, info.name))
+      _register_method(tr, info, _generate_cmp(specs, info.name))
     ast.fix_missing_locations(info.node)

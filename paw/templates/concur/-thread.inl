@@ -24,7 +24,7 @@ PY2CPP_IGNORE
 #include "paw/util/list.h"
 PY2CPP_END
 
-namespace paw_concur_thread_detail
+namespace py2cpp_concur_thread_detail
 {
   typedef PyCallable<void> ThreadTarget;
   struct ThreadState;

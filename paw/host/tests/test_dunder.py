@@ -1,7 +1,7 @@
 """模块内建常量 ``__name__`` / ``__file__`` / ``__line__`` / ``__debug__`` 的 C++ 降级。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.translator import Translator
@@ -9,7 +9,7 @@ from host.translator import Translator
 
 def _emit_expr(body: str, *, entry: str = "mod", debug: bool = False) -> str:
   mod_src = f"def probe():\n  {body}"
-  tree = ast.parse(mod_src)
+  tree = ast._stdlib_parse(mod_src)
   func = tree.body[0]
   assert isinstance(func, ast.FunctionDef)
   stmt = func.body[0]
@@ -31,7 +31,7 @@ class ModuleDunderEmitTests(unittest.TestCase):
 
   def test_line_is_ast_lineno(self):
     src = "return __line__\n"
-    tree = ast.parse(f"def f():\n  {src}")
+    tree = ast._stdlib_parse(f"def f():\n  {src}")
     ret = tree.body[0].body[0].value  # type: ignore[union-attr]
     tr = Translator("mod", "mod.py")
     tr.entry_module_path = "mod"

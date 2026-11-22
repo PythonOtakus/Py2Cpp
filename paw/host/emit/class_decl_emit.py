@@ -1,6 +1,6 @@
 """类声明 / 协议 traits / 字段与方法声明 emit（自 ``translator.py`` 拆出）。"""
 from __future__ import annotations
-import ast
+import host.tree_nodes as ast
 import textwrap
 from typing import TYPE_CHECKING
 from ..analysis.type_pred import (
@@ -247,6 +247,33 @@ def _emit_class_constraint_asserts(tr: 'Translator', info: ClassInfo) -> None:
                 tr.write_line(f'static_assert(::{bound}_check<{p}>::value, {compile_diag_c_utf8_literal(msg)});')
                 emitted.add((p, bound))
 
+def _iter_class_function_defs(
+    cls_info: ClassInfo,
+) -> list[ast.FunctionDef | ast.AsyncFunctionDef]:
+    """协议 / 类方法：优先 ``methods``/overloads（Mid 桥），再扫 ``node.body``。"""
+    ensure = getattr(cls_info, "ensure_methods_bridged_from_mid", None)
+    if callable(ensure):
+        ensure()
+    seen: set[int] = set()
+    out: list[ast.FunctionDef | ast.AsyncFunctionDef] = []
+
+    def add(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> None:
+        i = id(fn)
+        if i in seen:
+            return
+        seen.add(i)
+        out.append(fn)
+
+    for fn in cls_info.methods.values():
+        add(fn)
+    for overs in cls_info.method_overloads.values():
+        for fn in overs:
+            add(fn)
+    for stmt in cls_info.node.body:
+        if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            add(stmt)
+    return out
+
 def _protocol_method_specs(tr: 'Translator', info: ClassInfo) -> list[tuple[str, str]]:
     """协议实例方法 ``(名, 返回 C++ 类型)``；合并父协议声明。"""
     assert tr.type_parser is not None
@@ -259,9 +286,7 @@ def _protocol_method_specs(tr: 'Translator', info: ClassInfo) -> list[tuple[str,
                 collect(parent)
         tr.type_parser.set_type_aliases(cls_info.type_aliases, use_as_cpp_name=True)
         tp = set(cls_info.type_params)
-        for stmt in cls_info.node.body:
-            if not isinstance(stmt, ast.FunctionDef):
-                continue
+        for stmt in _iter_class_function_defs(cls_info):
             if not is_protocol_instance_method(stmt, cls_info):
                 continue
             ret_cpp = ''
@@ -301,9 +326,7 @@ def _protocol_static_method_specs(tr: 'Translator', info: ClassInfo) -> list[tup
                 collect(parent)
         tr.type_parser.set_type_aliases(cls_info.type_aliases, use_as_cpp_name=True)
         tp = set(cls_info.type_params)
-        for stmt in cls_info.node.body:
-            if not isinstance(stmt, ast.FunctionDef):
-                continue
+        for stmt in _iter_class_function_defs(cls_info):
             if not is_protocol_static_virtual_method(stmt):
                 continue
             ret_cpp = ''

@@ -1,7 +1,7 @@
 """``@annotation(inheritable=…, repeatable=…)`` 选项与 ``iter_*`` 实体基类 MRO 展开。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import fnmatch
 from collections import Counter
 from dataclasses import dataclass

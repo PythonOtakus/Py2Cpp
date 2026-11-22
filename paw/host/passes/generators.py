@@ -1,7 +1,7 @@
 """生成器 / 协程：``yield`` / ``yield from`` / ``async def``+``await`` → ``*_generator`` / ``*_coroutine``。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import copy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -2288,8 +2288,41 @@ _GENERATOR_PROTOCOL_METHODS = frozenset({
 })
 
 
+def _expand_one_classinfo_yielding_method(
+  tr: Translator,
+  info: ClassInfo,
+  name: str,
+  method: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> ast.FunctionDef | None:
+  """``async def`` / 含 ``yield`` 的方法 → wrapper；返回新 wrapper 或 ``None``（跳过）。"""
+  if name in _GENERATOR_PROTOCOL_METHODS:
+    return None
+  if _is_decorator_or_context_factory(method):
+    return None
+  is_async = isinstance(method, ast.AsyncFunctionDef)
+  if is_async:
+    func = async_def_to_function(method)
+    suffix = COROUTINE_SUFFIX
+    is_coroutine = True
+  elif body_needs_resume_machine(method.body):
+    func = method
+    suffix = GENERATOR_SUFFIX
+    is_coroutine = False
+  else:
+    return None
+  gen_name = f"{info.name}_{name}{suffix}"
+  wrapper, gen_cls = _expand_yielding_function(
+    tr, func, gen_name, is_coroutine=is_coroutine,
+  )
+  if gen_name not in tr.classes:
+    tr.classes[gen_name] = ClassInfo(gen_cls, info.module_path)
+    _register_generator_host_friend(info, gen_cls)
+    _append_gen_class_to_module(tr, info.module_path, gen_cls)
+  return wrapper
+
+
 def _expand_classinfo_generators(tr: Translator) -> None:
-  """混入等方法仅存在于 ``ClassInfo``、不在模块 AST 类体时，补做 generator 展开。"""
+  """``ClassInfo.methods`` 上的 ``async def`` / ``yield``（Mid 空 tree 时主路径）。"""
   for info in list(tr.classes.values()):
     if info.is_mixin or info.is_annotation or info.is_protocol:
       continue
@@ -2299,42 +2332,15 @@ def _expand_classinfo_generators(tr: Translator) -> None:
     if info.name.endswith(GENERATOR_SUFFIX) or info.name.endswith(COROUTINE_SUFFIX):
       continue
     for name in list(info.methods.keys()):
-      if name in _GENERATOR_PROTOCOL_METHODS:
-        continue
       method = info.methods[name]
-      if not body_needs_resume_machine(method.body):
-        continue
-      if _is_decorator_or_context_factory(method):
-        continue
-      gen_name = f"{info.name}_{name}{GENERATOR_SUFFIX}"
-      wrapper, gen_cls = _expand_yielding_function(
-        tr, method, gen_name, is_coroutine=False,
-      )
-      if gen_name not in tr.classes:
-        tr.classes[gen_name] = ClassInfo(gen_cls, info.module_path)
-        _register_generator_host_friend(info, gen_cls)
-        _append_gen_class_to_module(tr, info.module_path, gen_cls)
-      info.methods[name] = wrapper
+      wrapper = _expand_one_classinfo_yielding_method(tr, info, name, method)
+      if wrapper is not None:
+        info.methods[name] = wrapper
     for name, overloads in list(info.method_overloads.items()):
       new_overloads: list[ast.FunctionDef] = []
-      gen_name = f"{info.name}_{name}{GENERATOR_SUFFIX}"
       for method in overloads:
-        if name in _GENERATOR_PROTOCOL_METHODS:
-          new_overloads.append(method)
-          continue
-        if not body_needs_resume_machine(method.body):
-          new_overloads.append(method)
-          continue
-        if _is_decorator_or_context_factory(method):
-          new_overloads.append(method)
-          continue
-        wrapper, gen_cls = _expand_yielding_function(
-          tr, method, gen_name, is_coroutine=False,
-        )
-        tr.classes[gen_name] = ClassInfo(gen_cls, info.module_path)
-        _register_generator_host_friend(info, gen_cls)
-        _append_gen_class_to_module(tr, info.module_path, gen_cls)
-        new_overloads.append(wrapper)
+        wrapper = _expand_one_classinfo_yielding_method(tr, info, name, method)
+        new_overloads.append(wrapper if wrapper is not None else method)
       if new_overloads:
         info.method_overloads[name] = new_overloads
 

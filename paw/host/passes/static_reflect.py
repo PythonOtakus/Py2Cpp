@@ -1,7 +1,7 @@
 """``getattr`` / ``setattr`` / ``hasattr`` 编译期成员解析（零运行时反射）。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 import copy
 import re
 

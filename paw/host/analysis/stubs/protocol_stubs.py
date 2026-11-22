@@ -1,7 +1,7 @@
 """从 ``paw/**/protocols.py`` AST 推导 ``ir.PROTOCOL_*`` 表。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from functools import lru_cache
 from pathlib import Path
 

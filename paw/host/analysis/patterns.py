@@ -20,10 +20,13 @@ def temp_name(prefix: str = "tmp") -> str:
   return name
 
 
-def py2cpp_emit_symbol(*parts: str) -> str:
+def paw_emit_symbol(*parts: str) -> str:
   """命名空间级译器辅助符号（``__py2cpp_{…}``，如 peel struct、``type if`` picker）。"""
   body = "_".join(p.strip("_") for p in parts if p)
   return f"__py2cpp_{body}"
+
+
+py2cpp_emit_symbol = paw_emit_symbol  # 兼容旧名
 
 
 def auto_template_type_param_name(leaf: str, *, reserved: set[str]) -> str:

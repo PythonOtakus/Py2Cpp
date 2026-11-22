@@ -1,6 +1,7 @@
 // C1 seed driver: amalgamation of stage1 Mid seed + CLI.
 //   c1_seed_driver --smoke
 //   c1_seed_driver --emit-out DIR file.paw [...]
+//   c1_seed_driver --test-out DIR tests/.../test_*.paw [...]
 //   c1_seed_driver path/to/file.paw [...]
 #include <cstdio>
 #include <cstring>
@@ -15,6 +16,9 @@
 #include "compiler/paw/frontend/diagnostic.cpp"
 #include "compiler/paw/frontend/syntax_nodes.cpp"
 #include "compiler/paw/frontend/lexer.cpp"
+#include "compiler/paw/frontend/type_parse.cpp"
+#include "compiler/paw/frontend/param_parse.cpp"
+#include "compiler/paw/frontend/stmt_parse.cpp"
 #include "compiler/paw/frontend/parser.cpp"
 #include "compiler/paw/mid/emit_cpp.cpp"
 #include "compiler/paw/passes/check.cpp"
@@ -51,8 +55,18 @@ static std::string readFile(const char* path) {
   if (!in) {
     throw std::runtime_error(std::string("cannot open: ") + path);
   }
-  return std::string((std::istreambuf_iterator<char>(in)),
-                     std::istreambuf_iterator<char>());
+  std::string raw((std::istreambuf_iterator<char>(in)),
+                  std::istreambuf_iterator<char>());
+  // Defense in depth with parseSource(lx._text): drop CR so byte spans stay stable
+  // even if an older amalgamation still sliced the raw buffer.
+  std::string out;
+  out.reserve(raw.size());
+  for (char ch : raw) {
+    if (ch != '\r') {
+      out.push_back(ch);
+    }
+  }
+  return out;
 }
 
 static void writeUtf8Codepoint(std::ofstream& out, int32_t cp) {
@@ -118,16 +132,48 @@ static std::string relUnderPaw(const std::string& path) {
   return rel;
 }
 
-/** ``compiler/paw/frontend/lexer.paw`` → ``compiler/paw/frontend/lexer``. */
+/** Strip to ``tests/...`` without suffix when path contains tests/. */
+static std::string relUnderTests(const std::string& path) {
+  std::string s = path;
+  for (char& c : s) {
+    if (c == '\\') {
+      c = '/';
+    }
+  }
+  const char* marker = "tests/";
+  const auto pos = s.find(marker);
+  std::string rel =
+    (pos == std::string::npos) ? stemOf(path) : s.substr(pos);
+  if (rel.size() >= 4 && rel.substr(rel.size() - 4) == ".paw") {
+    rel = rel.substr(0, rel.size() - 4);
+  }
+  return rel;
+}
+
+/** ``compiler/paw/frontend/lexer.paw`` → ``compiler/paw/frontend/lexer``；
+ *  ``tests/lang/test_empty_main.paw`` → ``tests/lang/test_empty_main``. */
 static std::string modulePathOf(const std::string& path) {
+  std::string s = path;
+  for (char& c : s) {
+    if (c == '\\') {
+      c = '/';
+    }
+  }
+  if (s.find("tests/") != std::string::npos) {
+    return relUnderTests(path);
+  }
   return std::string("compiler/paw/") + relUnderPaw(path);
 }
 
-/** ``compiler/paw/frontend/lexer`` → ``frontend/lexer``. */
+/** ``compiler/paw/frontend/lexer`` → ``frontend/lexer``；
+ *  ``tests/lang/test_empty_main`` → ``tests/lang/test_empty_main``. */
 static std::string emitRelOfModulePath(const std::string& modulePath) {
   const char* marker = "compiler/paw/";
   if (modulePath.rfind(marker, 0) == 0) {
     return modulePath.substr(std::strlen(marker));
+  }
+  if (modulePath.rfind("tests/", 0) == 0) {
+    return modulePath;
   }
   return stemOf(modulePath);
 }
@@ -299,7 +345,8 @@ static int emitOne(const char* label, const PyStr& src, const std::string& modul
       return 1;
     }
   }
-  if (modulePath.find("parser") != std::string::npos) {
+  if (modulePath.size() >= 7 &&
+      modulePath.compare(modulePath.size() - 7, 7, "/parser") == 0) {
     if (!containsAscii(hdr, "parseSource(") ||
         !containsAscii(cpp, "parseTokens(") ||
         !containsAscii(hdr, "#include \"lexer.h\"")) {
@@ -394,7 +441,7 @@ static int runEmitEnumDump() {
   m1.valueSource = PyStr("2");
   (void)(en.members.append(m0));
   (void)(en.members.append(m1));
-  const PyStr out = emitEnum(en);
+  const PyStr out = emitEnum(en, PyList<PyEnumBundle, 0>{});
   if (!containsAscii(out, "enum class PyColor") ||
       !containsAscii(out, "Red = 1") ||
       !containsAscii(out, "Blue = 2")) {
@@ -421,6 +468,7 @@ int main(int argc, char** argv) {
     std::vector<const char*> paths;
     bool wantSmoke = false;
     bool wantEmitEnumDump = false;
+    bool testOut = false;
     for (int i = 1; i < argc; i += 1) {
       std::string a(argv[i]);
       if (a == "--smoke") {
@@ -431,11 +479,12 @@ int main(int argc, char** argv) {
         wantEmitEnumDump = true;
         continue;
       }
-      if (a == "--emit-out") {
+      if (a == "--emit-out" || a == "--test-out") {
         if (i + 1 >= argc) {
-          std::printf("FAIL usage: --emit-out DIR\n");
+          std::printf("FAIL usage: %s DIR\n", a.c_str());
           return 2;
         }
+        testOut = (a == "--test-out");
         emitOut = argv[++i];
         continue;
       }
@@ -448,6 +497,10 @@ int main(int argc, char** argv) {
       return runEmitEnumDump();
     }
     if (!emitOut.empty()) {
+      if (testOut && paths.empty()) {
+        std::printf("FAIL usage: --test-out DIR tests/.../file.paw\n");
+        return 2;
+      }
       if (wantSmoke && paths.empty()) {
         return runSmokeEmit(emitOut);
       }

@@ -1,5 +1,5 @@
 """条件类型别名编译期求值单测。"""
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.analysis.analyzer import TypeParser

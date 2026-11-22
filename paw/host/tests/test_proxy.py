@@ -1,5 +1,5 @@
 """``expand_proxy`` / ``__base__`` / ``Super`` 译器单测。"""
-import ast
+import host.tree_nodes as ast
 import unittest
 
 from host.analysis.ir import ClassInfo
@@ -17,7 +17,7 @@ from host.tests.test_class_type_base import _TrStub, _parse_class
 
 
 def _proxy_info() -> ClassInfo:
-  node = ast.parse(
+  node = ast._stdlib_parse(
     """
 @copyable
 @native
@@ -90,7 +90,7 @@ class TestProxyPass(unittest.TestCase):
 
   def test_counting_proxy_entity_base_is_inner_t(self):
     proxy = _proxy_info()
-    host_node = ast.parse("class CountingProxy[T](Proxy[T]): pass").body[0]
+    host_node = ast._stdlib_parse("class CountingProxy[T](Proxy[T]): pass").body[0]
     host = ClassInfo(host_node, "m")
     host.bases = ["Proxy"]
     tr = _TrStub({"Proxy": proxy, "CountingProxy": host})
@@ -104,7 +104,7 @@ class TestProxyPass(unittest.TestCase):
   def test_concrete_proxy_inner_widget(self):
     proxy = _proxy_info()
     widget = ClassInfo(_parse_class("class Widget: pass"), "m")
-    host_node = ast.parse("class LoggingProxy(Proxy[Widget]): pass").body[0]
+    host_node = ast._stdlib_parse("class LoggingProxy(Proxy[Widget]): pass").body[0]
     host = ClassInfo(host_node, "m")
     host.bases = ["Proxy"]
     tr = _TrStub({"Proxy": proxy, "Widget": widget, "LoggingProxy": host})

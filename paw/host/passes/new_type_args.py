@@ -1,7 +1,7 @@
 """``new(类型/类名)`` 为非法表达式，任意上下文须在翻译期拒绝。"""
 from __future__ import annotations
 
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 
 from ..translation_error import TranslationError, location_from_node

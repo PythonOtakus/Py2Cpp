@@ -41,13 +41,13 @@ class EnumMroEnumTests(TestCaseMixin):
     override def test(self):
         self.assertEqual(classify(Cat()), PetKindTypeEnum.Cat)
         self.assertTrue(PetKindTypeEnum.Other != PetKindTypeEnum.Dog)
-        self.assertEqual(str(PetKindTypeEnum.Dog), 'PetKindTypeEnum.Dog')
-        self.assertEqual(repr(PetKindTypeEnum.Other), '<PetKindTypeEnum.Other: -1>')
+        self.assertEqual(str(PetKindTypeEnum.Dog), "PetKindTypeEnum.Dog")
+        self.assertEqual(repr(PetKindTypeEnum.Other), "<PetKindTypeEnum.Other: -1>")
 
 def main():
     suite: TestSuite = new()
-    for Class in TestCaseMixin.iterSubclasses(sortConst='_testTag'):
+    for Class in TestCaseMixin.iterSubclasses(sortConst="_testTag"):
         suite.addTest(Class())
     return TextTestRunner().run(suite)
-if __name__ == '__main__':
+if __name__ == "__main__":
     raise SystemExit(main())

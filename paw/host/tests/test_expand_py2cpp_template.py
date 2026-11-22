@@ -8,12 +8,15 @@ from host.codegen.inject_template_emit import expanded_inject_template
 from host.codegen.stdlib_mirror_codegen import expand_whole_file_template
 
 _SHOWCASE_REL = "~test/~syntax_showcase.inl"
+_EXEC_HOST_REL = "~test/~exec_def_host.inl"
 _SHOWCASE_CTX: dict[str, object] = {
   "module_rel": "util/memory",
   "typ": 1,
   "n": "count",
+  "MARKER": 42,
   "items": ("a", "b"),
   "parts": ["line_a;", "line_b;"],
+  "parts_0": "line_a;",
   "tags": ("alpha", "beta"),
   "type_names": ["ValueError", "KeyError"],
   "a": "foo",
@@ -33,10 +36,7 @@ def _expand_showcase(**ctx_overrides: object) -> str:
 
 class ExpandPy2CppTemplateTests(unittest.TestCase):
   def test_memory_inject_template(self):
-    impl = expanded_inject_template("util/+memory.inl")
-    self.assertIn("copy_buf(PyChar* dst", impl)
-    self.assertIn("load_u64_le_bytes(PyByte* p", impl)
-    self.assertIn("namespace paw", impl)
+    self.skipTest("templates/util/+memory.inl 已移除；保留占位以免旧用例挂名")
 
   def test_bytes_inject_template(self):
     impl = expanded_inject_template("text/+bytes.inl")
@@ -77,8 +77,8 @@ class ExpandPy2CppTemplateTests(unittest.TestCase):
 
   def test_paste_short_form_class_paste(self):
     out = expand_template("text/+str.inl", apply_allman=False)
-    self.assertIn("PyStr PyStr::from_buf", out)
-    self.assertIn("PyStr::PyStr(PyArray<PyChar>&& data)", out)
+    self.assertIn("PyStr::_str_unescape_braces", out)
+    self.assertIn("PyArray<PyChar, 0>&& data", out)
     self.assertIn("_str_unescape_braces", out)
     self.assertNotIn("PY2CPP_NAMESPACE", out)
 
@@ -158,7 +158,7 @@ class ExpandPy2CppTemplateTests(unittest.TestCase):
 
   def test_type_index_error_throw(self):
     out = _expand_showcase()
-    self.assertIn("throw paw::core::exceptions::IndexError();", out)
+    self.assertIn("throw paw::core::exceptions::PyIndexError();", out)
 
   def test_echo_inserts_lines(self):
     out = _expand_showcase()
@@ -181,31 +181,42 @@ class ExpandPy2CppTemplateTests(unittest.TestCase):
     out = _expand_showcase()
     self.assertIn("class PySized {};", out)
     self.assertIn(
-      "void catch_(const paw::core::exceptions::ValueError& e);",
+      "void catch_(const paw::core::exceptions::PyValueError& e);",
       out,
     )
     self.assertIn(
-      "void handle(const paw::core::exceptions::ValueError& e);",
+      "void handle(const paw::core::exceptions::PyValueError& e);",
       out,
     )
     self.assertIn(
-      "void handle(const paw::core::exceptions::KeyError& e);",
+      "void handle(const paw::core::exceptions::PyKeyError& e);",
       out,
     )
 
-  def test_exec_def_inlines_template_helper(self):
+  def test_for_list_items_and_tags(self):
     out = _expand_showcase()
     self.assertIn("line a;", out)
     self.assertIn("line b;", out)
     self.assertIn("line alpha;", out)
     self.assertIn("line beta;", out)
-    self.assertNotIn("PY2CPP_EXEC", out)
-    self.assertNotIn("fn_EmitLines", out)
+    self.assertNotIn("PY2CPP_EXEC(", out)
 
-  def test_exec_in_for_emits_comment(self):
+  def test_for_mark_and_first_comment(self):
     out = _expand_showcase()
     self.assertIn("// first", out)
     self.assertIn("mark[0] = 0;", out)
+
+  def test_exec_def_host_template(self):
+    out = expand_template(
+      _EXEC_HOST_REL,
+      {"items": ("a", "b"), "MARKER": 0},
+      apply_allman=False,
+    )
+    self.assertIn("line a;", out)
+    self.assertIn("line b;", out)
+    self.assertIn("// first", out)
+    self.assertNotIn("PY2CPP_EXEC(", out)
+    self.assertNotIn("fn_EmitLines(", out)
 
   def test_eval_string_constant_becomes_cpp_literal(self):
     out = _expand_showcase()
@@ -227,7 +238,7 @@ class ExpandPy2CppTemplateTests(unittest.TestCase):
   def test_tuple_codegen_template(self):
     out = expand_template("util/tuple.inl", apply_allman=False)
     self.assertIn("PyTuple<Args...>::__getitem__(int index)", out)
-    self.assertIn("throw paw::core::exceptions::IndexError();", out)
+    self.assertIn("throw paw::core::exceptions::PyIndexError();", out)
 
   def test_class_header_inject_templates(self):
     from host.codegen.expand_py2cpp_template import (
@@ -243,7 +254,7 @@ class ExpandPy2CppTemplateTests(unittest.TestCase):
     self.assertIn("format(PyUtf8Ptr fmt", joined)
     self.assertIn("paw::text::str::PyStr", joined)
     self.assertIn("__mod__(const PyTuple", joined)
-    self.assertIn("PyArray<PyChar>&& data", joined)
+    self.assertIn("PyArray<PyChar, 0>&& data", joined)
     self.assertNotIn("PY2CPP_INJECT_CLASS", joined)
 
   def test_exceptions_inject_header_and_inl(self):
@@ -254,15 +265,21 @@ class ExpandPy2CppTemplateTests(unittest.TestCase):
 
     h = expand_template("core/+exceptions.h", apply_allman=False)
     blocks = extract_py2cpp_inject_class_blocks(h)
-    self.assertIn("Exception", blocks)
-    joined_h = "\n".join(blocks["Exception"])
+    self.assertIn("PyException", blocks)
+    joined_h = "\n".join(blocks["PyException"])
     self.assertIn("__cause__", joined_h)
-    self.assertIn("explicit Exception() : __cause__(nullptr) {}", joined_h)
-    self.assertIn("explicit Exception(const paw::core::exceptions::AssertionError& o)", joined_h)
+    self.assertIn("explicit PyException() : __cause__(nullptr) {}", joined_h)
+    self.assertIn(
+      "explicit PyException(const paw::core::exceptions::PyAssertionError& o)",
+      joined_h,
+    )
     self.assertNotIn("PY2CPP_INLINE_ECHO", joined_h)
     self.assertNotIn("PY2CPP_DYNAMIC_TYPE", joined_h)
     inl = expand_template("core/+exceptions.inl", apply_allman=False)
-    self.assertIn("Exception::Exception(const paw::core::exceptions::KeyError& o)", inl)
+    self.assertIn(
+      "PyException::PyException(const paw::core::exceptions::PyKeyError& o)",
+      inl,
+    )
     self.assertNotIn("PY2CPP_INLINE_ECHO", inl)
     self.assertNotIn("PY2CPP_DYNAMIC_TYPE", inl)
 

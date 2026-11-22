@@ -1,2 +1,159 @@
-"""Stub parity with ``compiler/py/mid/structure.py`` — not yet ported to Paw."""
+"""MidIR 结构化判定（与 ``compiler/py/mid/structure.py`` 对位；Paw MidModule 分表）。"""
 from paw import *
+from .nodes import MidClass, MidModule, MidOpaque
+
+def _lineNeedsRewrite(s: str) -> bool:
+  t: str = s.lstrip()
+  if t == "" or (len(t) >= len("#") and t[:len("#")] == "#"):
+    return False
+  if (len(t) >= len("enum ") and t[:len("enum ")] == "enum "):
+    return True
+  if (len(t) >= len("record ") and t[:len("record ")] == "record "):
+    return True
+  if (len(t) >= len("union ") and t[:len("union ")] == "union "):
+    return True
+  if (len(t) >= len("variant ") and t[:len("variant ")] == "variant "):
+    return True
+  if (len(t) >= len("protocol ") and t[:len("protocol ")] == "protocol "):
+    return True
+  if (len(t) >= len("mixin ") and t[:len("mixin ")] == "mixin "):
+    return True
+  if (len(t) >= len("native ") and t[:len("native ")] == "native "):
+    return True
+  if (len(t) >= len("static ") and t[:len("static ")] == "static "):
+    return True
+  if (len(t) >= len("ref ") and t[:len("ref ")] == "ref "):
+    return True
+  if (len(t) >= len("lazy ") and t[:len("lazy ")] == "lazy "):
+    return True
+  if (len(t) >= len("final ") and t[:len("final ")] == "final "):
+    return True
+  if (len(t) >= len("frozen ") and t[:len("frozen ")] == "frozen "):
+    return True
+  if (len(t) >= len("ordered ") and t[:len("ordered ")] == "ordered "):
+    return True
+  if (len(t) >= len("property ") and t[:len("property ")] == "property "):
+    return True
+  if (len(t) >= len("type enum") and t[:len("type enum")] == "type enum"):
+    return True
+  if (len(t) >= len("type union") and t[:len("type union")] == "type union"):
+    return True
+  if (len(t) >= len("const ") and t[:len("const ")] == "const ") and (":" in t):
+    return True
+  return False
+
+def opaqueNeedsRewrite(source: str) -> bool:
+  lines: list[str] = source.split("\n")
+  i: int = 0
+  while i < len(lines):
+    if _lineNeedsRewrite(lines[i]):
+      return True
+    i += 1
+  if ": ref " in source:
+    return True
+  if ": lazy " in source:
+    return True
+  if "-> ref " in source:
+    return True
+  if "-> lazy " in source:
+    return True
+  if ":ref " in source:
+    return True
+  if ":lazy " in source:
+    return True
+  if "->ref " in source:
+    return True
+  if "->lazy " in source:
+    return True
+  return False
+
+def _memberHeadNeedsRewrite(s: str) -> bool:
+  t: str = s.strip()
+  if t == "" or (len(t) >= len("#") and t[:len("#")] == "#"):
+    return False
+  if (len(t) >= len("def ") and t[:len("def ")] == "def "):
+    return True
+  if (len(t) >= len("async def ") and t[:len("async def ")] == "async def "):
+    return True
+  if (len(t) >= len("static ") and t[:len("static ")] == "static "):
+    return True
+  if (len(t) >= len("native ") and t[:len("native ")] == "native "):
+    return True
+  if (len(t) >= len("override ") and t[:len("override ")] == "override "):
+    return True
+  if (len(t) >= len("virtual ") and t[:len("virtual ")] == "virtual "):
+    return True
+  if (len(t) >= len("abstract ") and t[:len("abstract ")] == "abstract "):
+    return True
+  if (len(t) >= len("final ") and t[:len("final ")] == "final "):
+    return True
+  if (len(t) >= len("property ") and t[:len("property ")] == "property "):
+    return True
+  if (len(t) >= len("lazy ") and t[:len("lazy ")] == "lazy "):
+    return True
+  if (len(t) >= len("class ") and t[:len("class ")] == "class "):
+    return True
+  if (len(t) >= len("record ") and t[:len("record ")] == "record "):
+    return True
+  if (len(t) >= len("enum ") and t[:len("enum ")] == "enum "):
+    return True
+  if (len(t) >= len("protocol ") and t[:len("protocol ")] == "protocol "):
+    return True
+  if (len(t) >= len("mixin ") and t[:len("mixin ")] == "mixin "):
+    return True
+  if (len(t) >= len("union ") and t[:len("union ")] == "union "):
+    return True
+  if (len(t) >= len("variant ") and t[:len("variant ")] == "variant "):
+    return True
+  return False
+
+def classNeedsRewrite(item: MidClass) -> bool:
+  i: int = 0
+  while i < len(item.opaqueMembers):
+    mem: str = item.opaqueMembers[i]
+    s: str = mem.strip()
+    if _memberHeadNeedsRewrite(s):
+      return True
+    if opaqueNeedsRewrite(s):
+      return True
+    if (len(s) >= len("@") and s[:len("@")] == "@") and (not (len(s) >= len("@optional") and s[:len("@optional")] == "@optional")):
+      if (len(s) >= len("@variant") and s[:len("@variant")] == "@variant"):
+        i += 1
+        continue
+      if (len(s) >= len("@protocol") and s[:len("@protocol")] == "@protocol"):
+        i += 1
+        continue
+      if (len(s) >= len("@mixin") and s[:len("@mixin")] == "@mixin"):
+        i += 1
+        continue
+      if (len(s) >= len("@union") and s[:len("@union")] == "@union"):
+        i += 1
+        continue
+      if (len(s) >= len("@dataclass") and s[:len("@dataclass")] == "@dataclass"):
+        i += 1
+        continue
+      if (len(s) >= len("@enum") and s[:len("@enum")] == "@enum"):
+        i += 1
+        continue
+      if (len(s) >= len("@frozen") and s[:len("@frozen")] == "@frozen"):
+        i += 1
+        continue
+      if (len(s) >= len("@refcount") and s[:len("@refcount")] == "@refcount"):
+        i += 1
+        continue
+      return True
+    i += 1
+  return False
+
+def moduleFullyStructured(mid: MidModule) -> bool:
+  i: int = 0
+  while i < len(mid.classes):
+    if classNeedsRewrite(mid.classes[i]):
+      return False
+    i += 1
+  i = 0
+  while i < len(mid.opaques):
+    if opaqueNeedsRewrite(mid.opaques[i].source):
+      return False
+    i += 1
+  return True

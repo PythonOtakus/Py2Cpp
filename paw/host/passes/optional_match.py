@@ -1,6 +1,6 @@
 """``Optional[T]`` 的 ``match`` 语法糖（``case None`` / 字面量 / 捕获；**S0805** 禁止 ``case Optional.Some`` / ``case Optional.None_``）。"""
 from __future__ import annotations
-import ast
+import host.tree_nodes as ast
 from typing import TYPE_CHECKING
 from ..analysis.type_extract import optional_inner_type
 from ..analysis.ir import ClassInfo, cpp_option_tag_enum

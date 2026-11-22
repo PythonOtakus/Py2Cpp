@@ -1,0 +1,8 @@
+"""tree_from_mid — Mid-primary 自举路径禁用 Tree bridge。"""
+from paw import *
+
+def midNeedsTreeBridge() -> bool:
+  return False
+
+def treeBridgeBannedMessage() -> str:
+  return "tree_from_mid banned on Mid-primary self-host path"

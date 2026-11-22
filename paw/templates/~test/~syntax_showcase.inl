@@ -1,6 +1,7 @@
 // templates/~test/~syntax_showcase.inl
 // 七宏 + IGNORE / INCLUDE / SCOPE / TYPE 对照表（单测 ctx 见 test_expand_py2cpp_template._SHOWCASE_CTX）
 // 勿 mirror 到 out/；供 expand_py2cpp_template 单测与 clangd 阅读。
+// 冻结子集可原生展开（无 EXEC/def）；宿主专属 EXEC/def 见 ~exec_def_host.inl。
 //
 // | 设施 | 下文标记 |
 // | IGNORE 块 + ctx_* 桩 | 块首 |
@@ -11,8 +12,7 @@
 // | ECHO 整块 / 行内 / 表达式 / registry | §echo-* |
 // | BEGIN(for) 静态 / 运行时 / 名称列表 | §for-static / §for-runtime / §for-names |
 // | BEGIN(if/elif/else) | §if-chain |
-// | BEGIN(def) + 顶层 EXEC | §def-exec / §exec-const |
-// | EXEC 在 for 体内 | §exec-in-for |
+// | for-list（替代旧 helper 展开） | §for-list / §for-items |
 // | 纯 C++（无宏） | §pure-cpp |
 
 PY2CPP_IGNORE
@@ -27,12 +27,9 @@ PY2CPP_END
 // §include
 PY2CPP_INCLUDE("~snippet.inl")
 
-// §exec-const（构建期常量，供 EVAL 使用）
-PY2CPP_EXEC(MARKER = 42)
-
 PY2CPP_BEGIN_SCOPE
 
-// §eval-lit
+// §eval-lit（MARKER 由 ctx 注入，勿 EXEC）
 PyStr lit = PY2CPP_EVAL("hello");
 PyStr s = PY2CPP_EVAL("ab");
 PyInt num = PY2CPP_EVAL(42);
@@ -54,7 +51,7 @@ void fn() : x(0)PY2CPP_ECHO(ctx_Suffix)
 {
 }
 joined PY2CPP_ECHO(a + b);
-first PY2CPP_ECHO(parts[0]);
+first PY2CPP_ECHO(parts_0);
 
 // §echo-registry（ctx 覆盖 IGNORE 范例；短名经 registry 限定）
 class PY2CPP_ECHO(ctx_Base) {};
@@ -65,9 +62,9 @@ PY2CPP_BEGIN( for i in range(0, 3) )
   buf[PY2CPP_EVAL(i)] = PY2CPP_EVAL(i + 1);
 PY2CPP_END
 
-// §exec-in-for
+// §for-static（宿主 for 体不递归 BEGIN；EXEC-in-for 见 ~exec_def_host）
+// first
 PY2CPP_BEGIN( for k in range(0, 2) )
-  PY2CPP_EXEC(if k == 0: __py2cpp_echo('// first'))
   mark[PY2CPP_EVAL(k)] = PY2CPP_EVAL(k);
 PY2CPP_END
 
@@ -97,13 +94,10 @@ PY2CPP_BEGIN( for tag in tags )
 line PY2CPP_EVAL(tag);
 PY2CPP_END
 
-// §def-exec
-PY2CPP_BEGIN( def fn_EmitLines(in_Items) )
-PY2CPP_BEGIN( for x in in_Items )
+// §for-items
+PY2CPP_BEGIN( for x in items )
 line PY2CPP_EVAL(x);
 PY2CPP_END
-PY2CPP_END
-PY2CPP_EXEC(fn_EmitLines(items))
 
 // §pure-cpp
 int pure_cpp_only = 0;

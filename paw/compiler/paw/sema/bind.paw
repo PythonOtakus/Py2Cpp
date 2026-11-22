@@ -1,11 +1,56 @@
-"""SyntaxModule → HirModule → MidModule（enum Color 竖切；完整 HIR/Mid 节点仍在 py）。
+"""SyntaxModule → HirModule → MidModule（完整薄栈：enum/class/function/import/const）。
 
-节点类型在 ``hir/nodes`` / ``mid/nodes``（nested c1_emit 已解 ``nodes.h`` 撞名）。
+与 ``compiler/py/sema/bind.py`` 对位；Paw 侧用分表 ``HirModule`` / ``MidModule``。
 """
 from paw import *
-from ..frontend.syntax_nodes import EnumBundle, EnumMember, SyntaxModule
-from ..hir.nodes import HirEnum, HirEnumMember, HirModule
-from ..mid.nodes import MidEnum, MidEnumMember, MidModule
+from ..frontend.syntax_nodes import (
+  ClassBundle,
+  ConstField,
+  EnumBundle,
+  EnumMember,
+  FunctionBundle,
+  SyntaxModule,
+)
+from ..hir.nodes import (
+  HirClass,
+  HirEnum,
+  HirEnumMember,
+  HirField,
+  HirFunction,
+  HirImport,
+  HirModule,
+  HirModuleConst,
+  ObjectModel,
+)
+from ..mid.nodes import (
+  MidClass,
+  MidEnum,
+  MidEnumMember,
+  MidField,
+  MidFunction,
+  MidImport,
+  MidModule,
+  MidModuleConst,
+)
+
+def _bindFunction(fn: FunctionBundle, declId: int) -> HirFunction:
+  hf: HirFunction = new()
+  hf.declId = declId
+  hf.name = fn.name
+  hf.decoratorsSource = fn.decoratorsSource
+  hf.paramsSource = fn.paramsSource
+  hf.returnSource = fn.returnSource
+  hf.bodySource = fn.bodySource
+  hf.isAsync = fn.isAsync
+  hf.span = fn.span
+  hf.isStatic = fn.isStatic
+  hf.isNative = fn.isNative
+  hf.isOverride = fn.isOverride
+  hf.isFinal = fn.isFinal
+  hf.isAbstract = fn.isAbstract
+  hf.isVirtual = fn.isVirtual
+  hf.isProperty = fn.isProperty
+  return hf
 
 def bindModule(syntax: SyntaxModule, path: str) -> HirModule:
   hir: HirModule = new()
@@ -37,7 +82,96 @@ def bindModule(syntax: SyntaxModule, path: str) -> HirModule:
     hir.enums.append(he)
     nextId = nextId + 1
     ei += 1
+  ci: int = 0
+  while ci < len(syntax.classes):
+    cls: ClassBundle = syntax.classes[ci]
+    hc: HirClass = new()
+    hc.declId = nextId
+    nextId = nextId + 1
+    hc.name = cls.name
+    hc.isRecord = cls.isRecord
+    hc.isFinal = cls.isFinal
+    hc.isFrozen = cls.isFrozen
+    hc.isOrdered = cls.isOrdered
+    hc.isLazy = cls.isLazy
+    hc.isProtocol = cls.isProtocol
+    hc.isMixin = cls.isMixin
+    hc.isUnion = cls.isUnion
+    hc.isVariant = cls.isVariant
+    hc.isNative = cls.isNative
+    hc.basesSource = cls.basesSource
+    hc.decoratorsSource = cls.decoratorsSource
+    hc.span = cls.span
+    if cls.isRef:
+      hc.objectModel = ObjectModel.RefCount
+    else:
+      hc.objectModel = ObjectModel.Value
+    fi: int = 0
+    while fi < len(cls.constFields):
+      cf: ConstField = cls.constFields[fi]
+      hf: HirField = new()
+      hf.name = cf.name
+      hf.typeName = cf.typeName
+      hf.valueSource = cf.valueSource
+      hf.span = cf.span
+      hc.constFields.append(hf)
+      fi += 1
+    oi: int = 0
+    while oi < len(cls.opaqueMembers):
+      hc.opaqueMembers.append(cls.opaqueMembers[oi])
+      oi += 1
+    mti: int = 0
+    while mti < len(cls.methods):
+      meth: FunctionBundle = cls.methods[mti]
+      hc.methods.append(_bindFunction(meth, nextId))
+      nextId = nextId + 1
+      mti += 1
+    hir.classes.append(hc)
+    ci += 1
+  fi2: int = 0
+  while fi2 < len(syntax.functions):
+    fn: FunctionBundle = syntax.functions[fi2]
+    hir.functions.append(_bindFunction(fn, nextId))
+    nextId = nextId + 1
+    fi2 += 1
+  ii: int = 0
+  while ii < len(syntax.imports):
+    hi: HirImport = new()
+    hi.source = syntax.imports[ii]
+    hir.imports.append(hi)
+    ii += 1
+  mci: int = 0
+  while mci < len(syntax.moduleConsts):
+    mc: ConstField = syntax.moduleConsts[mci]
+    hmc: HirModuleConst = new()
+    hmc.name = mc.name
+    hmc.typeName = mc.typeName
+    hmc.valueSource = mc.valueSource
+    hmc.span = mc.span
+    hir.consts.append(hmc)
+    mci += 1
   return hir
+
+def _lowerFunction(hf: HirFunction) -> MidFunction:
+  mf: MidFunction = new()
+  mf.declId = hf.declId
+  mf.name = hf.name
+  mf.decoratorsSource = hf.decoratorsSource
+  mf.paramsSource = hf.paramsSource
+  mf.returnSource = hf.returnSource
+  mf.bodySource = hf.bodySource
+  mf.isAsync = hf.isAsync
+  mf.span = hf.span
+  mf.isStatic = hf.isStatic
+  mf.isNative = hf.isNative
+  mf.isOverride = hf.isOverride
+  mf.isFinal = hf.isFinal
+  mf.isAbstract = hf.isAbstract
+  mf.isVirtual = hf.isVirtual
+  mf.isDelegate = hf.isDelegate
+  mf.isProperty = hf.isProperty
+  mf.typeParamsSource = hf.typeParamsSource
+  return mf
 
 def lowerToMid(hir: HirModule) -> MidModule:
   mid: MidModule = new()
@@ -66,10 +200,79 @@ def lowerToMid(hir: HirModule) -> MidModule:
       mi += 1
     mid.enums.append(me)
     ei += 1
+  ci: int = 0
+  while ci < len(hir.classes):
+    hc: HirClass = hir.classes[ci]
+    mc: MidClass = new()
+    mc.declId = hc.declId
+    mc.name = hc.name
+    mc.objectModel = hc.objectModel
+    mc.isFinal = hc.isFinal
+    mc.isRecord = hc.isRecord
+    mc.isFrozen = hc.isFrozen
+    mc.isOrdered = hc.isOrdered
+    mc.isLazy = hc.isLazy
+    mc.isProtocol = hc.isProtocol
+    mc.isMixin = hc.isMixin
+    mc.isUnion = hc.isUnion
+    mc.isVariant = hc.isVariant
+    mc.basesSource = hc.basesSource
+    mc.decoratorsSource = hc.decoratorsSource
+    mc.isNative = hc.isNative
+    mc.span = hc.span
+    mc.typeParamsSource = hc.typeParamsSource
+    fi: int = 0
+    while fi < len(hc.constFields):
+      hf: HirField = hc.constFields[fi]
+      mf: MidField = new()
+      mf.name = hf.name
+      mf.typeName = hf.typeName
+      mf.valueSource = hf.valueSource
+      mc.constFields.append(mf)
+      fi += 1
+    fi = 0
+    while fi < len(hc.fields):
+      hf2: HirField = hc.fields[fi]
+      mf2: MidField = new()
+      mf2.name = hf2.name
+      mf2.typeName = hf2.typeName
+      mf2.valueSource = hf2.valueSource
+      mc.fields.append(mf2)
+      fi += 1
+    oi2: int = 0
+    while oi2 < len(hc.opaqueMembers):
+      mc.opaqueMembers.append(hc.opaqueMembers[oi2])
+      oi2 += 1
+    mti2: int = 0
+    while mti2 < len(hc.methods):
+      mc.methods.append(_lowerFunction(hc.methods[mti2]))
+      mti2 += 1
+    mid.classes.append(mc)
+    ci += 1
+  fi3: int = 0
+  while fi3 < len(hir.functions):
+    mid.functions.append(_lowerFunction(hir.functions[fi3]))
+    fi3 += 1
+  ii: int = 0
+  while ii < len(hir.imports):
+    mi2: MidImport = new()
+    mi2.source = hir.imports[ii].source
+    mi2.span = hir.imports[ii].span
+    mid.imports.append(mi2)
+    ii += 1
+  mci: int = 0
+  while mci < len(hir.consts):
+    hmc: HirModuleConst = hir.consts[mci]
+    mmc: MidModuleConst = new()
+    mmc.name = hmc.name
+    mmc.typeName = hmc.typeName
+    mmc.valueSource = hmc.valueSource
+    mmc.span = hmc.span
+    mid.consts.append(mmc)
+    mci += 1
   return mid
 
 def dumpMidModule(mid: MidModule) -> str:
-  # Align compiler/dual/dump_fmt.dump_mid_module (enum only; thin-emit friendly).
   out: str = ""
   ei: int = 0
   while ei < len(mid.enums):
@@ -92,7 +295,6 @@ def dumpMidModule(mid: MidModule) -> str:
     mi: int = 0
     while mi < len(e.members):
       m: MidEnumMember = e.members[mi]
-      # Thin emit drops whitespace-only / leading-space string lits — build indent from " ".
       sp: str = " "
       out = out + sp
       out = out + sp
@@ -103,4 +305,18 @@ def dumpMidModule(mid: MidModule) -> str:
       out = out + "\n"
       mi += 1
     ei += 1
+  ci: int = 0
+  while ci < len(mid.classes):
+    c: MidClass = mid.classes[ci]
+    out = out + "mid_class name="
+    out = out + c.name
+    out = out + "\n"
+    ci += 1
+  fi: int = 0
+  while fi < len(mid.functions):
+    f: MidFunction = mid.functions[fi]
+    out = out + "mid_fn name="
+    out = out + f.name
+    out = out + "\n"
+    fi += 1
   return out
